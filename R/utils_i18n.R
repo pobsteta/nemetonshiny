@@ -77,7 +77,7 @@ TRANSLATIONS <- list(
   acc_use_corrected = list(fr = "Utiliser la desserte corrig\u00e9e LiDAR", en = "Use the LiDAR-corrected road network"),
   acc_correct_failed = list(fr = "La correction LiDAR a \u00e9chou\u00e9.", en = "LiDAR correction failed."),
   acc_correct_no_lidar = list(fr = "Aucun nuage LiDAR HD dans le projet : correction impossible.", en = "No LiDAR HD point cloud in the project: correction not possible."),
-  acc_correct_memory_guard = list(fr = "Correction LiDAR annulée : la dérivation du MNT lirait tout le nuage de points et dépasserait la mémoire disponible.", en = "LiDAR correction cancelled: deriving the DTM would read the whole point cloud and exceed available memory."),
+  acc_correct_memory_guard = list(fr = "Correction LiDAR annul\u00e9e : la d\u00e9rivation du MNT lirait tout le nuage de points et d\u00e9passerait la m\u00e9moire disponible.", en = "LiDAR correction cancelled: deriving the DTM would read the whole point cloud and exceed available memory."),
   acc_layer_desserte_comparee = list(fr = "Desserte BD TOPO / corrig\u00e9e", en = "BD TOPO / corrected roads"),
   acc_compare_hint = list(fr = "Desserte BD TOPO color\u00e9e par classe, surcharg\u00e9e du statut de correction LiDAR l\u00e0 o\u00f9 la qualification a pu mesurer le tron\u00e7on.", en = "BD TOPO road network coloured by class, overlaid with the LiDAR correction status where qualification could measure the segment."),
   acc_compare_relief_vat = list(fr = "Fond : VAT (relief arch\u00e9o, rvt-py).", en = "Background: VAT (archaeological relief, rvt-py)."),
@@ -120,21 +120,21 @@ TRANSLATIONS <- list(
   acc_layer_debardage_accessfor = list(fr = "Classes de d\u00e9bardage/ACCESSFOR (IGN)", en = "Skidding classes/ACCESSFOR (IGN)"),
   acc_places_depot = list(fr = "Places de d\u00e9p\u00f4t", en = "Landing sites"),
 
-  # Contenu des « i » du selecteur « Couche affichee ». Les seuils sont injectes
+  # Contenu des " i " du selecteur " Couche affichee ". Les seuils sont injectes
   # depuis foretaccess_config() par .acc_layer_info() (meme principe que la
   # legende DFCI) : ils ne doivent pas etre recopies en dur ici, sinon ils
   # divergeraient silencieusement du moteur le jour ou la config change.
   acc_layer_info_skidder = list(
-    fr = "Zones exploitables au d\u00e9busqueur depuis la desserte : pente franchissable jusqu'\u00e0 %d %%, treuillage %d m en amont et %d m en aval. Les classes affich\u00e9es vont de « parcourable » \u00e0 « non accessible ».",
+    fr = "Zones exploitables au d\u00e9busqueur depuis la desserte : pente franchissable jusqu'\u00e0 %d %%, treuillage %d m en amont et %d m en aval. Les classes affich\u00e9es vont de \u00ab parcourable \u00bb \u00e0 \u00ab non accessible \u00bb.",
     en = "Areas workable by skidder from the road network: slope up to %d%%, winching %d m upslope and %d m downslope. Classes range from \"traversable\" to \"not accessible\"."),
   acc_layer_info_porteur = list(
     fr = "Zones exploitables au porteur : pente maximale %d %% en travers, %d %% en mont\u00e9e et %d %% en descente ; port\u00e9e de grue %d m depuis la piste.",
     en = "Areas workable by forwarder: maximum slope %d%% sidehill, %d%% uphill and %d%% downhill; %d m crane reach from the track."),
   acc_layer_info_dfci = list(
-    fr = "D\u00e9fendabilit\u00e9 incendie depuis les voies DFCI : bandes de distance jusqu'\u00e0 %d m, et « non d\u00e9fendable » au-del\u00e0 de %d %% de pente. La provenance des voies (OSM tagu\u00e9 ou estim\u00e9es) est indiqu\u00e9e par le bandeau au-dessus de la carte.",
+    fr = "D\u00e9fendabilit\u00e9 incendie depuis les voies DFCI : bandes de distance jusqu'\u00e0 %d m, et \u00ab non d\u00e9fendable \u00bb au-del\u00e0 de %d %% de pente. La provenance des voies (OSM tagu\u00e9 ou estim\u00e9es) est indiqu\u00e9e par le bandeau au-dessus de la carte.",
     en = "Fire defendability from DFCI roads: distance bands up to %d m, and \"not defendable\" beyond %d%% slope. The badge above the map states where the roads come from (tagged OSM or estimated)."),
   acc_layer_info_cable = list(
-    fr = "D\u00e9bardage par c\u00e2ble-m\u00e2t : port\u00e9e jusqu'\u00e0 %d m depuis la ligne. Cette couche n'existe que si le moteur « C\u00e2ble-m\u00e2t » a \u00e9t\u00e9 coch\u00e9 avant l'analyse (balayage angulaire, calcul long).",
+    fr = "D\u00e9bardage par c\u00e2ble-m\u00e2t : port\u00e9e jusqu'\u00e0 %d m depuis la ligne. Cette couche n'existe que si le moteur \u00ab C\u00e2ble-m\u00e2t \u00bb a \u00e9t\u00e9 coch\u00e9 avant l'analyse (balayage angulaire, calcul long).",
     en = "Cable-crane extraction: reach up to %d m from the line. This layer exists only if the \"Cable crane\" engine was ticked before the run (angular sweep, slow computation)."),
   acc_layer_info_debardage = list(
     fr = "Distance de d\u00e9bardage class\u00e9e depuis la desserte, tous moteurs coch\u00e9s confondus. Quand le raster national ACCESSFOR de l'IGN est disponible, la couche s'affiche en volet comparatif : le calcul \u00e0 gauche, la r\u00e9f\u00e9rence IGN \u00e0 droite, curseur d\u00e9pla\u00e7able.",
@@ -307,12 +307,12 @@ TRANSLATIONS <- list(
   # Action Plan tab (S3 skeleton)
   # ============================================================
   action_plan_filters_title = list(fr = "Filtres", en = "Filters"),
-  action_plan_horizon = list(fr = "Horizon (années)", en = "Horizon (years)"),
+  action_plan_horizon = list(fr = "Horizon (ann\u00e9es)", en = "Horizon (years)"),
   action_plan_type = list(fr = "Type d'action", en = "Action type"),
   action_plan_statut = list(fr = "Statut", en = "Status"),
   action_plan_famille = list(fr = "Famille d'objectifs", en = "Objective family"),
   action_plan_ug = list(fr = "UGF", en = "UGF"),
-  action_plan_reset_filters = list(fr = "Réinitialiser", en = "Reset"),
+  action_plan_reset_filters = list(fr = "R\u00e9initialiser", en = "Reset"),
   action_plan_view_map_table = list(fr = "Carte + Tableau", en = "Map + Table"),
   action_plan_view_kanban = list(fr = "Kanban", en = "Kanban"),
   action_plan_kanban_empty_col = list(
@@ -320,15 +320,15 @@ TRANSLATIONS <- list(
     en = "No action."
   ),
   action_plan_kanban_moved_fmt = list(
-    fr = "Action déplacée vers : %s.",
+    fr = "Action d\u00e9plac\u00e9e vers : %s.",
     en = "Action moved to: %s."
   ),
   action_plan_kanban_card_hint = list(
-    fr = "Double-clic pour éditer la fiche.",
+    fr = "Double-clic pour \u00e9diter la fiche.",
     en = "Double-click to edit the card."
   ),
   action_plan_kanban_edit_title = list(
-    fr = "Éditer la fiche action",
+    fr = "\u00c9diter la fiche action",
     en = "Edit action card"
   ),
   action_plan_kanban_edit_save = list(
@@ -336,15 +336,15 @@ TRANSLATIONS <- list(
     en = "Save"
   ),
   action_plan_kanban_edit_saved = list(
-    fr = "Fiche enregistrée.",
+    fr = "Fiche enregistr\u00e9e.",
     en = "Card saved."
   ),
   action_plan_map_title = list(fr = "Carte des actions", en = "Action map"),
   action_plan_table_title = list(fr = "Tableau des actions", en = "Action table"),
-  action_plan_color_year = list(fr = "Année", en = "Year"),
+  action_plan_color_year = list(fr = "Ann\u00e9e", en = "Year"),
   action_plan_color_type = list(fr = "Type", en = "Type"),
-  action_plan_color_priority = list(fr = "Priorité", en = "Priority"),
-  action_plan_generate_all = list(fr = "Générer les actions (IA)", en = "Generate actions (AI)"),
+  action_plan_color_priority = list(fr = "Priorit\u00e9", en = "Priority"),
+  action_plan_generate_all = list(fr = "G\u00e9n\u00e9rer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
   action_plan_map_pending = list(
     fr = "La carte interactive sera disponible avec la story S4.",
@@ -355,11 +355,11 @@ TRANSLATIONS <- list(
     en = "The interactive table will be available with story S5."
   ),
   action_plan_table_count_fmt = list(
-    fr = "%d action(s) après filtres.",
+    fr = "%d action(s) apr\u00e8s filtres.",
     en = "%d action(s) after filtering."
   ),
   action_plan_generate_pending = list(
-    fr = "Génération IA disponible avec la story S7.",
+    fr = "G\u00e9n\u00e9ration IA disponible avec la story S7.",
     en = "AI generation will be available with story S7."
   ),
   action_plan_add_pending = list(
@@ -379,17 +379,17 @@ TRANSLATIONS <- list(
   action_plan_actions_title = list(fr = "Tableau des actions",
                                    en = "Action board"),
   action_plan_section_selection = list(
-    fr = "Sélection", en = "Selection"
+    fr = "S\u00e9lection", en = "Selection"
   ),
   action_plan_section_ia = list(fr = "IA", en = "AI"),
   action_plan_section_manual = list(fr = "Saisie manuelle", en = "Manual entry"),
   action_plan_section_exports = list(fr = "Exports", en = "Exports"),
   action_plan_readonly_banner = list(
-    fr = "Mode lecture seule (votre rôle ne permet pas l'édition).",
+    fr = "Mode lecture seule (votre r\u00f4le ne permet pas l'\u00e9dition).",
     en = "Read-only mode (your role does not allow editing)."
   ),
   action_plan_readonly_locked = list(
-    fr = "Action interdite : votre rôle est en lecture seule.",
+    fr = "Action interdite : votre r\u00f4le est en lecture seule.",
     en = "Action denied: your role is read-only."
   ),
 
@@ -397,31 +397,31 @@ TRANSLATIONS <- list(
   action_plan_col_id          = list(fr = "id",            en = "id"),
   action_plan_col_ug_id       = list(fr = "ug_id",         en = "ug_id"),
   action_plan_col_ug_label    = list(fr = "UGF",           en = "UGF"),
-  action_plan_col_annee_offset = list(fr = "Décalage", en = "Offset"),
+  action_plan_col_annee_offset = list(fr = "D\u00e9calage", en = "Offset"),
   action_plan_invalid_year = list(
-    fr = "Année invalide.",
+    fr = "Ann\u00e9e invalide.",
     en = "Invalid year."
   ),
-  action_plan_col_annee       = list(fr = "Année",         en = "Year"),
+  action_plan_col_annee       = list(fr = "Ann\u00e9e",         en = "Year"),
   action_plan_col_type        = list(fr = "Type",          en = "Type"),
   action_plan_col_type_libre  = list(fr = "Type libre",    en = "Free type"),
-  action_plan_col_intensite   = list(fr = "Intensité",     en = "Intensity"),
-  action_plan_col_priorite    = list(fr = "Priorité",      en = "Priority"),
+  action_plan_col_intensite   = list(fr = "Intensit\u00e9",     en = "Intensity"),
+  action_plan_col_priorite    = list(fr = "Priorit\u00e9",      en = "Priority"),
   action_plan_col_statut      = list(fr = "Statut",        en = "Status"),
   action_plan_col_objectifs   = list(fr = "Objectifs",     en = "Objectives"),
-  action_plan_col_volume      = list(fr = "Volume (m³)",   en = "Volume (m³)"),
+  action_plan_col_volume      = list(fr = "Volume (m\u00b3)",   en = "Volume (m\u00b3)"),
   action_plan_col_surface     = list(fr = "Surface (ha)",  en = "Area (ha)"),
   action_plan_col_tiges       = list(fr = "Tiges",         en = "Stems"),
   action_plan_col_rdi         = list(fr = "RDI",           en = "RDI"),
-  action_plan_col_cout        = list(fr = "Coût (€)",      en = "Cost (€)"),
-  action_plan_col_revenu      = list(fr = "Revenu (€)",    en = "Revenue (€)"),
-  action_plan_col_bilan       = list(fr = "Bilan (€)",     en = "Balance (€)"),
+  action_plan_col_cout        = list(fr = "Co\u00fbt (\u20ac)",      en = "Cost (\u20ac)"),
+  action_plan_col_revenu      = list(fr = "Revenu (\u20ac)",    en = "Revenue (\u20ac)"),
+  action_plan_col_bilan       = list(fr = "Bilan (\u20ac)",     en = "Balance (\u20ac)"),
   action_plan_balance_empty = list(
-    fr = "Aucune action chiffrée. Le bilan apparaîtra dès que vous saisirez coût ou revenu.",
+    fr = "Aucune action chiffr\u00e9e. Le bilan appara\u00eetra d\u00e8s que vous saisirez co\u00fbt ou revenu.",
     en = "No costed action yet. Balance appears once cost or revenue is entered."
   ),
   action_plan_total_surface = list(fr = "Surface totale", en = "Total area"),
-  action_plan_total_cout = list(fr = "Coût total", en = "Total cost"),
+  action_plan_total_cout = list(fr = "Co\u00fbt total", en = "Total cost"),
   action_plan_total_revenu = list(fr = "Revenu total", en = "Total revenue"),
   action_plan_total_bilan = list(fr = "Bilan", en = "Balance"),
   action_plan_export_terrain = list(
@@ -433,19 +433,19 @@ TRANSLATIONS <- list(
     en = "Plan is empty."
   ),
   action_plan_export_terrain_no_obs = list(
-    fr = "Aucune action de type 'observation' à exporter.",
+    fr = "Aucune action de type 'observation' \u00e0 exporter.",
     en = "No 'observation' action to export."
   ),
   action_plan_export_terrain_ok_fmt = list(
-    fr = "%d point(s) d'observation envoyés vers l'onglet Terrain.",
+    fr = "%d point(s) d'observation envoy\u00e9s vers l'onglet Terrain.",
     en = "%d observation point(s) sent to the Field tab."
   ),
   action_plan_export_terrain_failed = list(
-    fr = "Échec de l'écriture des points d'observation.",
+    fr = "\u00c9chec de l'\u00e9criture des points d'observation.",
     en = "Failed to write observation points."
   ),
   action_plan_field_realised_fmt = list(
-    fr = "Import terrain : %d action(s) d'observation passées en 'réalisée'.",
+    fr = "Import terrain : %d action(s) d'observation pass\u00e9es en 'r\u00e9alis\u00e9e'.",
     en = "Field import: %d observation action(s) flipped to 'done'."
   ),
   action_plan_download_gpkg = list(
@@ -460,15 +460,15 @@ TRANSLATIONS <- list(
   action_plan_db_unavailable = list(fr = "Base de donn\u00e9es non configur\u00e9e.", en = "Database not configured."),
   action_plan_persisted_fmt = list(fr = "Plan d'actions enregistr\u00e9 en base (version %d).", en = "Action plan saved to database (version %d)."),
   action_plan_export_running_gpkg = list(
-    fr = "Export GeoPackage en cours…",
-    en = "Exporting GeoPackage…"
+    fr = "Export GeoPackage en cours\u2026",
+    en = "Exporting GeoPackage\u2026"
   ),
   action_plan_export_running_pdf = list(
-    fr = "Génération du rapport PDF…",
-    en = "Generating PDF report…"
+    fr = "G\u00e9n\u00e9ration du rapport PDF\u2026",
+    en = "Generating PDF report\u2026"
   ),
   action_plan_pdf_failed = list(
-    fr = "Échec de la génération du PDF",
+    fr = "\u00c9chec de la g\u00e9n\u00e9ration du PDF",
     en = "PDF generation failed"
   ),
   action_plan_col_commentaire = list(fr = "Commentaire",   en = "Comment"),
@@ -480,50 +480,50 @@ TRANSLATIONS <- list(
     en = "The project has no UGF."
   ),
   action_plan_generate_title = list(
-    fr = "Générer un plan d'actions (IA)",
+    fr = "G\u00e9n\u00e9rer un plan d'actions (IA)",
     en = "Generate action plan (AI)"
   ),
   action_plan_generate_help = list(
-    fr = "L'IA produit un plan à partir des commentaires de synthèse + des familles enregistrés dans le projet. Les actions arrivent en statut 'proposée'.",
+    fr = "L'IA produit un plan \u00e0 partir des commentaires de synth\u00e8se + des familles enregistr\u00e9s dans le projet. Les actions arrivent en statut 'propos\u00e9e'.",
     en = "The LLM produces a plan from the synthesis + family comments saved on the project. Actions land with status 'proposed'."
   ),
-  action_plan_generate_scope = list(fr = "Portée", en = "Scope"),
+  action_plan_generate_scope = list(fr = "Port\u00e9e", en = "Scope"),
   action_plan_generate_scope_all = list(
     fr = "Toutes les UGF du projet",
     en = "All project UGFs"
   ),
   action_plan_generate_scope_sel_fmt = list(
-    fr = "UGF sélectionnées (%d)",
+    fr = "UGF s\u00e9lectionn\u00e9es (%d)",
     en = "Selected UGFs (%d)"
   ),
   action_plan_generate_scope_sel_none = list(
-    fr = "UGF sélectionnées (aucune pour l'instant)",
+    fr = "UGF s\u00e9lectionn\u00e9es (aucune pour l'instant)",
     en = "Selected UGFs (none yet)"
   ),
   action_plan_generate_overwrite = list(
     fr = "Remplacer les actions existantes pour ces UGF",
     en = "Overwrite existing actions for these UGFs"
   ),
-  action_plan_generate_run = list(fr = "Générer", en = "Generate"),
+  action_plan_generate_run = list(fr = "G\u00e9n\u00e9rer", en = "Generate"),
   action_plan_generating = list(
-    fr = "Génération du plan en cours...",
+    fr = "G\u00e9n\u00e9ration du plan en cours...",
     en = "Generating plan..."
   ),
   action_plan_generate_no_comments = list(
-    fr = "Aucun commentaire (synthèse / famille) à exploiter. Génère d'abord la synthèse IA dans l'onglet 'Synthèse'.",
+    fr = "Aucun commentaire (synth\u00e8se / famille) \u00e0 exploiter. G\u00e9n\u00e8re d'abord la synth\u00e8se IA dans l'onglet 'Synth\u00e8se'.",
     en = "No comments (synthesis / family) to work from. Generate the AI synthesis from the 'Synthesis' tab first."
   ),
   action_plan_generate_no_actions = list(
-    fr = "Le LLM n'a renvoyé aucune action exploitable.",
+    fr = "Le LLM n'a renvoy\u00e9 aucune action exploitable.",
     en = "The LLM returned no usable action."
   ),
   action_plan_generate_ok_fmt = list(
-    fr = "%d action(s) ajoutée(s) ; %d écartée(s).",
+    fr = "%d action(s) ajout\u00e9e(s) ; %d \u00e9cart\u00e9e(s).",
     en = "%d action(s) added; %d discarded."
   ),
   action_plan_show_history = list(fr = "Historique", en = "History"),
   action_plan_history_pick_one = list(
-    fr = "Sélectionnez exactement une action dans le tableau.",
+    fr = "S\u00e9lectionnez exactement une action dans le tableau.",
     en = "Select exactly one row in the table."
   ),
   action_plan_history_title_fmt = list(
@@ -531,31 +531,31 @@ TRANSLATIONS <- list(
     en = "History of action %s"
   ),
   action_plan_history_empty = list(
-    fr = "Aucun changement enregistré pour cette action.",
+    fr = "Aucun changement enregistr\u00e9 pour cette action.",
     en = "No change recorded for this action yet."
   ),
   action_plan_no_selection = list(
-    fr = "Aucune ligne sélectionnée dans le tableau.",
+    fr = "Aucune ligne s\u00e9lectionn\u00e9e dans le tableau.",
     en = "No row selected in the table."
   ),
-  action_plan_status_proposee  = list(fr = "Proposée",  en = "Proposed"),
-  action_plan_status_validee   = list(fr = "Validée",   en = "Validated"),
-  action_plan_status_planifiee = list(fr = "Planifiée", en = "Planned"),
-  action_plan_status_realisee  = list(fr = "Réalisée",  en = "Done"),
-  action_plan_status_abandonnee = list(fr = "Abandonnée", en = "Abandoned"),
+  action_plan_status_proposee  = list(fr = "Propos\u00e9e",  en = "Proposed"),
+  action_plan_status_validee   = list(fr = "Valid\u00e9e",   en = "Validated"),
+  action_plan_status_planifiee = list(fr = "Planifi\u00e9e", en = "Planned"),
+  action_plan_status_realisee  = list(fr = "R\u00e9alis\u00e9e",  en = "Done"),
+  action_plan_status_abandonnee = list(fr = "Abandonn\u00e9e", en = "Abandoned"),
   action_plan_chat_title = list(
     fr = "Affiner le plan avec l'IA",
     en = "Refine the plan with AI"
   ),
   action_plan_chat_placeholder = list(
-    fr = "Ex. : Ajoute une éclaircie en année 5 sur les UGF du nord.",
+    fr = "Ex. : Ajoute une \u00e9claircie en ann\u00e9e 5 sur les UGF du nord.",
     en = "E.g. Add a thinning in year 5 on the northern UGFs."
   ),
   action_plan_chat_send = list(fr = "Envoyer", en = "Send"),
   action_plan_chat_clear = list(fr = "Effacer", en = "Clear"),
   action_plan_chat_thinking = list(
-    fr = "L'IA réfléchit…",
-    en = "AI is thinking…"
+    fr = "L'IA r\u00e9fl\u00e9chit\u2026",
+    en = "AI is thinking\u2026"
   ),
   action_plan_chat_role_user = list(
     fr = "Vous",
@@ -566,19 +566,19 @@ TRANSLATIONS <- list(
     en = "Assistant"
   ),
   action_plan_chat_scope_sel = list(
-    fr = "Sélection courante",
+    fr = "S\u00e9lection courante",
     en = "Current selection"
   ),
   action_plan_chat_apply_overwrite_warn_fmt = list(
-    fr = "⚠ Les actions existantes des %d UGF ciblées seront remplacées.",
-    en = "⚠ Existing actions for the %d targeted UGFs will be replaced."
+    fr = "\u26a0 Les actions existantes des %d UGF cibl\u00e9es seront remplac\u00e9es.",
+    en = "\u26a0 Existing actions for the %d targeted UGFs will be replaced."
   ),
   action_plan_chat_empty = list(
-    fr = "Posez une première question pour démarrer.",
+    fr = "Posez une premi\u00e8re question pour d\u00e9marrer.",
     en = "Ask a first question to start."
   ),
   action_plan_chat_apply_title = list(
-    fr = "Appliquer les modifications proposées ?",
+    fr = "Appliquer les modifications propos\u00e9es ?",
     en = "Apply proposed changes?"
   ),
   action_plan_chat_apply_fmt = list(
@@ -587,13 +587,13 @@ TRANSLATIONS <- list(
   ),
   action_plan_chat_apply_btn = list(fr = "Appliquer", en = "Apply"),
   action_plan_chat_applied_fmt = list(
-    fr = "%d action(s) appliquée(s).",
+    fr = "%d action(s) appliqu\u00e9e(s).",
     en = "%d action(s) applied."
   ),
   action_plan_add_title = list(fr = "Nouvelle action", en = "New action"),
-  action_plan_add_run = list(fr = "Créer", en = "Create"),
-  action_plan_add_ok = list(fr = "Action ajoutée.", en = "Action added."),
-  action_plan_year = list(fr = "Année cible", en = "Target year"),
+  action_plan_add_run = list(fr = "Cr\u00e9er", en = "Create"),
+  action_plan_add_ok = list(fr = "Action ajout\u00e9e.", en = "Action added."),
+  action_plan_year = list(fr = "Ann\u00e9e cible", en = "Target year"),
   action_plan_comment = list(fr = "Commentaire", en = "Comment"),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
@@ -833,7 +833,7 @@ TRANSLATIONS <- list(
     en = "LiDAR HD height"
   ),
   augmented_height_lidar_tooltip = list(
-    fr = "Les indicateurs de hauteur (P1, P2, C1, B2, R2) ont été calculés à partir du Modèle Numérique de Hauteur LiDAR HD (IGN, campagne aérienne nationale). Mesure directe (précision nominale ~0.5 m), pas de prédiction ML. NDP 2.",
+    fr = "Les indicateurs de hauteur (P1, P2, C1, B2, R2) ont \u00e9t\u00e9 calcul\u00e9s \u00e0 partir du Mod\u00e8le Num\u00e9rique de Hauteur LiDAR HD (IGN, campagne a\u00e9rienne nationale). Mesure directe (pr\u00e9cision nominale ~0.5 m), pas de pr\u00e9diction ML. NDP 2.",
     en = "Height indicators (P1, P2, C1, B2, R2) were computed from the IGN LiDAR HD Canopy Height Model (national airborne campaign). Direct measurement (~0.5 m nominal accuracy), not an ML prediction. NDP 2."
   ),
   augmented_height_ml_badge = list(
@@ -1315,7 +1315,7 @@ TRANSLATIONS <- list(
   indicator_R2 = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
   indicator_R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
   indicator_R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
-  indicator_R5 = list(fr = "Dépérissement", en = "Dieback"),
+  indicator_R5 = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback"),
   indicator_R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
   indicator_R7 = list(fr = "Risque de gel tardif", en = "Late-frost risk"),
   indicator_S1 = list(fr = "Densit\u00e9 de sentiers", en = "Trail Density"),
@@ -1532,7 +1532,7 @@ TRANSLATIONS <- list(
     en = "Once parcels are selected and project named, start calculations. They run in the background."
   ),
 
-  # ----- Tour : 1 step clé par onglet (spec tour v2) -----
+  # ----- Tour : 1 step cle par onglet (spec tour v2) -----
   tour_synthesis_title = list(fr = "Synth\u00e8se", en = "Synthesis"),
   tour_synthesis_desc = list(
     fr = "Le score global, le radar des 12 familles et la perspective IA par profil expert. G\u00e9n\u00e9rez une analyse adapt\u00e9e \u00e0 votre m\u00e9tier.",
@@ -1651,7 +1651,7 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement ortho IGN {type} : tuile {idx}/{n}\u2026",
     en = "Downloading IGN {type} ortho: tile {idx}/{n}\u2026"
   ),
-  # Open-Canopy pipeline phases — 5 steps
+  # Open-Canopy pipeline phases - 5 steps
   chm_phase_load_aoi = list(
     fr = "\u00c9tape 1/5 : chargement de l'AOI\u2026",
     en = "Step 1/5: loading AOI\u2026"
@@ -1717,11 +1717,11 @@ TRANSLATIONS <- list(
   # External API keys configuration (Theia + LLM, tabbed modal)
   # ============================================================
   api_keys_config_open = list(
-    fr = "Configuration des clés API externes",
+    fr = "Configuration des cl\u00e9s API externes",
     en = "External API keys configuration"
   ),
   api_keys_config_title = list(
-    fr = "Paramètres : clés API & corpus RAG",
+    fr = "Param\u00e8tres : cl\u00e9s API & corpus RAG",
     en = "Settings: API keys & RAG corpus"
   ),
   api_keys_config_intro = list(
@@ -1753,12 +1753,12 @@ TRANSLATIONS <- list(
     en = "Open or create a project to configure these sources."
   ),
   api_keys_fullscreen = list(
-    fr = "Plein écran",
+    fr = "Plein \u00e9cran",
     en = "Fullscreen"
   ),
   # LLM tab
   llm_config_intro = list(
-    fr = "Sélectionnez le fournisseur LLM puis enregistrez sa clé API. Une seule clé par fournisseur ; les autres restent inchangées.",
+    fr = "S\u00e9lectionnez le fournisseur LLM puis enregistrez sa cl\u00e9 API. Une seule cl\u00e9 par fournisseur ; les autres restent inchang\u00e9es.",
     en = "Pick the LLM provider then store its API key. One key per provider; the other ones stay untouched."
   ),
   llm_provider_label = list(
@@ -1766,25 +1766,25 @@ TRANSLATIONS <- list(
     en = "Provider"
   ),
   llm_status_label = list(
-    fr = "Clé API LLM",
+    fr = "Cl\u00e9 API LLM",
     en = "LLM API key"
   ),
-  # v0.51.8 — ligne résumé au-dessus du selectInput (vue d'ensemble
-  # « N/3 configurés : Mistral, OpenAI »).
+  # v0.51.8 - ligne resume au-dessus du selectInput (vue d'ensemble
+  # " N/3 configures : Mistral, OpenAI ").
   llm_summary_configured_fmt = list(
-    fr = "%d / %d fournisseurs configurés : %s.",
+    fr = "%d / %d fournisseurs configur\u00e9s : %s.",
     en = "%d of %d providers configured: %s."
   ),
   llm_summary_none_configured = list(
-    fr = "Aucun fournisseur configuré.",
+    fr = "Aucun fournisseur configur\u00e9.",
     en = "No provider configured yet."
   ),
   llm_status_ok = list(
-    fr = "Configurée pour %s.",
+    fr = "Configur\u00e9e pour %s.",
     en = "Configured for %s."
   ),
   llm_status_ko = list(
-    fr = "Aucune clé configurée pour %s.",
+    fr = "Aucune cl\u00e9 configur\u00e9e pour %s.",
     en = "No key configured for %s."
   ),
   llm_status_source_env = list(
@@ -1796,43 +1796,43 @@ TRANSLATIONS <- list(
     en = "Source: ~/.config/nemetonshiny/llm.json."
   ),
   llm_key_label = list(
-    fr = "Clé API",
+    fr = "Cl\u00e9 API",
     en = "API key"
   ),
   llm_key_help = list(
-    fr = "Stockée dans ~/.config/nemetonshiny/llm.json (chmod 0600) et exposée comme variable d'environnement dans la session R en cours.",
+    fr = "Stock\u00e9e dans ~/.config/nemetonshiny/llm.json (chmod 0600) et expos\u00e9e comme variable d'environnement dans la session R en cours.",
     en = "Stored in ~/.config/nemetonshiny/llm.json (chmod 0600) and exposed as an environment variable in the running R session."
   ),
   llm_key_save = list(
-    fr = "Enregistrer la clé",
+    fr = "Enregistrer la cl\u00e9",
     en = "Save key"
   ),
   llm_key_saved = list(
-    fr = "Clé LLM enregistrée.",
+    fr = "Cl\u00e9 LLM enregistr\u00e9e.",
     en = "LLM key saved."
   ),
   llm_key_save_failed = list(
-    fr = "Échec de l'enregistrement de la clé LLM.",
+    fr = "\u00c9chec de l'enregistrement de la cl\u00e9 LLM.",
     en = "Failed to save the LLM key."
   ),
   llm_key_missing = list(
-    fr = "Renseignez une clé API.",
+    fr = "Renseignez une cl\u00e9 API.",
     en = "Enter an API key."
   ),
   llm_key_configured_hint = list(
-    fr = "Clé enregistrée. Tu peux la modifier ou la supprimer.",
+    fr = "Cl\u00e9 enregistr\u00e9e. Tu peux la modifier ou la supprimer.",
     en = "Key stored. You can edit or delete it."
   ),
   llm_key_edit = list(
-    fr = "Modifier la clé",
+    fr = "Modifier la cl\u00e9",
     en = "Edit key"
   ),
   llm_key_delete = list(
-    fr = "Supprimer la clé",
+    fr = "Supprimer la cl\u00e9",
     en = "Delete key"
   ),
   llm_key_deleted = list(
-    fr = "Clé LLM supprimée.",
+    fr = "Cl\u00e9 LLM supprim\u00e9e.",
     en = "LLM key deleted."
   ),
 
@@ -1843,91 +1843,91 @@ TRANSLATIONS <- list(
     en = "Theia / DATA TERRA settings"
   ),
   theia_config_title = list(
-    fr = "Sources de données Theia / DATA TERRA",
+    fr = "Sources de donn\u00e9es Theia / DATA TERRA",
     en = "Theia / DATA TERRA data sources"
   ),
   theia_config_intro = list(
-    fr = "Theia / DATA TERRA fournit des données satellitaires publiques (FORMSpoT, biophysique, sols, neige…) utilisées pour calculer les indicateurs en NDP 0.",
-    en = "Theia / DATA TERRA provides public satellite data (FORMSpoT, biophysical, soil, snow…) used to compute the indicators at NDP 0."
+    fr = "Theia / DATA TERRA fournit des donn\u00e9es satellitaires publiques (FORMSpoT, biophysique, sols, neige\u2026) utilis\u00e9es pour calculer les indicateurs en NDP 0.",
+    en = "Theia / DATA TERRA provides public satellite data (FORMSpoT, biophysical, soil, snow\u2026) used to compute the indicators at NDP 0."
   ),
   theia_python_status_label = list(
-    fr = "Pré-requis Python / reticulate",
+    fr = "Pr\u00e9-requis Python / reticulate",
     en = "Python / reticulate prerequisite"
   ),
   theia_key_status_label = list(
-    fr = "Clé API Theia",
+    fr = "Cl\u00e9 API Theia",
     en = "Theia API key"
   ),
   theia_status_ready = list(
-    fr = "Theia est prêt : les sources satellitaires sont accessibles.",
+    fr = "Theia est pr\u00eat : les sources satellitaires sont accessibles.",
     en = "Theia is ready: satellite sources are accessible."
   ),
   theia_error_reticulate = list(
-    fr = "Le paquet R 'reticulate' est absent. Installez-le pour accéder aux sources Theia.",
+    fr = "Le paquet R 'reticulate' est absent. Installez-le pour acc\u00e9der aux sources Theia.",
     en = "The R package 'reticulate' is missing. Install it to access Theia sources."
   ),
   theia_error_python_modules = list(
-    fr = "Modules Python 'teledetection' / 'pystac_client' indisponibles. Ils sont déclarés automatiquement par reticulate::py_require().",
+    fr = "Modules Python 'teledetection' / 'pystac_client' indisponibles. Ils sont d\u00e9clar\u00e9s automatiquement par reticulate::py_require().",
     en = "Python modules 'teledetection' / 'pystac_client' unavailable. They are declared automatically by reticulate::py_require()."
   ),
   theia_error_no_key = list(
-    fr = "Aucune clé API Theia configurée. Renseignez-la ci-dessous.",
+    fr = "Aucune cl\u00e9 API Theia configur\u00e9e. Renseignez-la ci-dessous.",
     en = "No Theia API key configured. Enter it below."
   ),
-  # v0.46.4 — wording honnête du panel Theia config. theia_python_ok
-  # remplace l'ancienne réutilisation de theia_status_ready qui
+  # v0.46.4 - wording honnete du panel Theia config. theia_python_ok
+  # remplace l'ancienne reutilisation de theia_status_ready qui
   # mentait sur la dispo des modules Python (cf. fix
   # theia_python_ready : on ne probe plus py_module_available, donc
-  # « Python ok » signifie juste « reticulate installé »).
+  # " Python ok " signifie juste " reticulate installe ").
   theia_python_ok = list(
-    fr = "reticulate est installé. Les modules Python (teledetection, pystac_client) sont provisionnés automatiquement au premier accès Theia.",
+    fr = "reticulate est install\u00e9. Les modules Python (teledetection, pystac_client) sont provisionn\u00e9s automatiquement au premier acc\u00e8s Theia.",
     en = "reticulate is installed. The Python modules (teledetection, pystac_client) are provisioned automatically on first Theia access."
   ),
   theia_key_ok = list(
-    fr = "Clé API Theia configurée.",
+    fr = "Cl\u00e9 API Theia configur\u00e9e.",
     en = "Theia API key configured."
   ),
-  # v0.46.4 — message diagnostic quand toute la config Theia est OK
-  # (reticulate + clé) mais load_theia_source() échoue à l'exécution.
+  # v0.46.4 - message diagnostic quand toute la config Theia est OK
+  # (reticulate + cle) mais load_theia_source() echoue a l'execution.
   # Distinct de theia_error_no_key / theia_error_reticulate.
   theia_chm_load_failed = list(
-    fr = "La clé API Theia est configurée mais le chargement du CHM FORMSpoT a échoué (réseau, environnement Python, ou aucune donnée FORMSpoT pour cette zone). Voir les avertissements de téléchargement pour le détail.",
+    fr = "La cl\u00e9 API Theia est configur\u00e9e mais le chargement du CHM FORMSpoT a \u00e9chou\u00e9 (r\u00e9seau, environnement Python, ou aucune donn\u00e9e FORMSpoT pour cette zone). Voir les avertissements de t\u00e9l\u00e9chargement pour le d\u00e9tail.",
     en = "The Theia API key is configured but the FORMSpoT CHM download failed (network, Python environment, or no FORMSpoT data for this area). See the download warnings for details."
   ),
-  theia_key_label_access = list(fr = "Clé d'accès (access key)", en = "Access key"),
-  theia_key_label_secret = list(fr = "Clé secrète (secret key)", en = "Secret key"),
+  theia_key_label_access = list(fr = "Cl\u00e9 d'acc\u00e8s (access key)", en = "Access key"),
+  theia_key_label_secret = list(fr = "Cl\u00e9 secr\u00e8te (secret key)", en = "Secret key"),
   theia_key_help = list(
-    fr = "Créez une clé API sur https://gate.stac.teledetection.fr",
+    fr = "Cr\u00e9ez une cl\u00e9 API sur https://gate.stac.teledetection.fr",
     en = "Create an API key at https://gate.stac.teledetection.fr"
   ),
-  theia_key_save = list(fr = "Enregistrer la clé", en = "Save key"),
+  theia_key_save = list(fr = "Enregistrer la cl\u00e9", en = "Save key"),
   theia_key_saved = list(
-    fr = "Clé API Theia enregistrée.",
+    fr = "Cl\u00e9 API Theia enregistr\u00e9e.",
     en = "Theia API key saved."
   ),
   theia_key_save_failed = list(
-    fr = "Échec de l'enregistrement de la clé API Theia.",
+    fr = "\u00c9chec de l'enregistrement de la cl\u00e9 API Theia.",
     en = "Failed to save the Theia API key."
   ),
   theia_key_missing = list(
-    fr = "Renseignez la clé d'accès et la clé secrète.",
+    fr = "Renseignez la cl\u00e9 d'acc\u00e8s et la cl\u00e9 secr\u00e8te.",
     en = "Enter both the access key and the secret key."
   ),
-  # v0.51.6 — sous-section "clé déjà configurée" : Modifier / Supprimer.
+  # v0.51.6 - sous-section "cle deja configuree" : Modifier / Supprimer.
   theia_key_configured_hint = list(
-    fr = "Clé enregistrée dans ~/.config/teledetection/.apikey (chmod 0600). Tu peux la modifier ou la supprimer.",
+    fr = "Cl\u00e9 enregistr\u00e9e dans ~/.config/teledetection/.apikey (chmod 0600). Tu peux la modifier ou la supprimer.",
     en = "Key stored in ~/.config/teledetection/.apikey (chmod 0600). You can edit or delete it."
   ),
   theia_key_edit = list(
-    fr = "Modifier la clé",
+    fr = "Modifier la cl\u00e9",
     en = "Edit key"
   ),
   theia_key_delete = list(
-    fr = "Supprimer la clé",
+    fr = "Supprimer la cl\u00e9",
     en = "Delete key"
   ),
   theia_key_deleted = list(
-    fr = "Clé API Theia supprimée.",
+    fr = "Cl\u00e9 API Theia supprim\u00e9e.",
     en = "Theia API key deleted."
   ),
   theia_provenance_title = list(
@@ -1935,7 +1935,7 @@ TRANSLATIONS <- list(
     en = "Theia source provenance and licensing"
   ),
   theia_provenance_empty = list(
-    fr = "Métadonnées de provenance indisponibles.",
+    fr = "M\u00e9tadonn\u00e9es de provenance indisponibles.",
     en = "Provenance metadata unavailable."
   ),
   theia_col_source = list(fr = "Source", en = "Source"),
@@ -1943,11 +1943,11 @@ TRANSLATIONS <- list(
   theia_col_consumed_by = list(fr = "Indicateurs", en = "Consumed by"),
   theia_col_license = list(fr = "Licence", en = "License"),
   theia_chm_unavailable = list(
-    fr = "CHM Theia FORMSpoT indisponible : pré-requis Python ou clé API Theia manquant.",
+    fr = "CHM Theia FORMSpoT indisponible : pr\u00e9-requis Python ou cl\u00e9 API Theia manquant.",
     en = "Theia FORMSpoT CHM unavailable: missing Python prerequisite or Theia API key."
   ),
   compute_chm_required = list(
-    fr = "Modèle de hauteur de canopée (CHM) indisponible. Les indicateurs Production (P1/P2/P3) et Bois-énergie (E1) nécessitent un CHM (Theia FORMSpoT, LiDAR HD ou Open-Canopy). Configurez la clé API Theia via le menu de configuration.",
+    fr = "Mod\u00e8le de hauteur de canop\u00e9e (CHM) indisponible. Les indicateurs Production (P1/P2/P3) et Bois-\u00e9nergie (E1) n\u00e9cessitent un CHM (Theia FORMSpoT, LiDAR HD ou Open-Canopy). Configurez la cl\u00e9 API Theia via le menu de configuration.",
     en = "Canopy height model (CHM) unavailable. The Production indicators (P1/P2/P3) and Wood energy (E1) require a CHM (Theia FORMSpoT, LiDAR HD or Open-Canopy). Configure the Theia API key via the settings menu."
   ),
 
@@ -2224,38 +2224,38 @@ TRANSLATIONS <- list(
 
   # Tooltips on the sampling form (Export terrain)
   sampling_tt_target_error = list(
-    fr = "Erreur relative acceptée sur la moyenne de la variable cible (surface terrière G/ha). Ex. 10 % signifie ±10 %. Plus c'est serré, plus n est grand (n ~ 1 / E²).",
-    en = "Acceptable relative error on the mean of the target variable (basal area G/ha). E.g. 10 % means ±10 %. The tighter, the larger n (n ~ 1 / E²)."
+    fr = "Erreur relative accept\u00e9e sur la moyenne de la variable cible (surface terri\u00e8re G/ha). Ex. 10 % signifie \u00b110 %. Plus c'est serr\u00e9, plus n est grand (n ~ 1 / E\u00b2).",
+    en = "Acceptable relative error on the mean of the target variable (basal area G/ha). E.g. 10 % means \u00b110 %. The tighter, the larger n (n ~ 1 / E\u00b2)."
   ),
   sampling_tt_alpha = list(
-    fr = "Risque de 1ère espèce (α) : probabilité d'accepter à tort une erreur plus grande que la cible. Conventionnel à 5 % (intervalle de confiance 95 %).",
-    en = "Type-I error risk (α): probability of accepting a larger error than the target by chance. Standard 5 % (95 % confidence interval)."
+    fr = "Risque de 1\u00e8re esp\u00e8ce (\u03b1) : probabilit\u00e9 d'accepter \u00e0 tort une erreur plus grande que la cible. Conventionnel \u00e0 5 % (intervalle de confiance 95 %).",
+    en = "Type-I error risk (\u03b1): probability of accepting a larger error than the target by chance. Standard 5 % (95 % confidence interval)."
   ),
   sampling_tt_over_ratio = list(
-    fr = "Placettes de remplacement en plus des Base, en % de n_base. Utilisées si une placette Base est inaccessible sur le terrain. 20 % est un compromis courant.",
+    fr = "Placettes de remplacement en plus des Base, en % de n_base. Utilis\u00e9es si une placette Base est inaccessible sur le terrain. 20 % est un compromis courant.",
     en = "Replacement plots added on top of n_base, as a % of n_base. Used when a Base plot turns out to be inaccessible. 20 % is a common compromise."
   ),
   sampling_tt_cv_position = list(
-    fr = "Borne de la fourchette de CV (issue de la typologie) à utiliser. Basse = optimiste (n plus faible), Haute = conservatrice (n plus grand), Médiane = défaut.",
+    fr = "Borne de la fourchette de CV (issue de la typologie) \u00e0 utiliser. Basse = optimiste (n plus faible), Haute = conservatrice (n plus grand), M\u00e9diane = d\u00e9faut.",
     en = "Which bound of the CV range (from the typology) to use. Low = optimistic (smaller n), High = conservative (larger n), Mid = default."
   ),
   sampling_tt_seed = list(
-    fr = "Graine du générateur aléatoire. Garantit la reproductibilité : avec la même graine et les mêmes paramètres, le tirage est identique.",
+    fr = "Graine du g\u00e9n\u00e9rateur al\u00e9atoire. Garantit la reproductibilit\u00e9 : avec la m\u00eame graine et les m\u00eames param\u00e8tres, le tirage est identique.",
     en = "Random number generator seed. Guarantees reproducibility: same seed + same parameters = identical draw."
   ),
   sampling_tt_cv_source = list(
-    fr = "Source du coefficient de variation utilisé par la formule de Cochran. \"Manuel\" : vous fournissez le CV en %. \"BD Forêt v2 (auto)\" : le CV est dérivé automatiquement du cache BD Forêt v2 du projet (moyenne pondérée par surface des CV typiques par contexte sylvicole). Ce choix n'affecte PAS la méthode de tirage (GRTS / LPM2 / aléatoire), seulement la valeur de CV.",
-    en = "Source of the coefficient of variation fed to the Cochran formula. \"Manual\": you set the CV in %. \"BD Forêt v2 (auto)\": the CV is derived from the project's cached BD Forêt v2 (area-weighted mean of the typical CV per silvicultural context). This choice does NOT affect the draw method (GRTS / LPM2 / random), only the CV value."
+    fr = "Source du coefficient de variation utilis\u00e9 par la formule de Cochran. \"Manuel\" : vous fournissez le CV en %. \"BD For\u00eat v2 (auto)\" : le CV est d\u00e9riv\u00e9 automatiquement du cache BD For\u00eat v2 du projet (moyenne pond\u00e9r\u00e9e par surface des CV typiques par contexte sylvicole). Ce choix n'affecte PAS la m\u00e9thode de tirage (GRTS / LPM2 / al\u00e9atoire), seulement la valeur de CV.",
+    en = "Source of the coefficient of variation fed to the Cochran formula. \"Manual\": you set the CV in %. \"BD For\u00eat v2 (auto)\": the CV is derived from the project's cached BD For\u00eat v2 (area-weighted mean of the typical CV per silvicultural context). This choice does NOT affect the draw method (GRTS / LPM2 / random), only the CV value."
   ),
   sampling_tt_region = list(
-    fr = "Région biogéographique utilisée pour le domaine des espèces (liste déroulante dans QGIS). Ex. BFC = Bourgogne-Franche-Comté, EU = domaine européen générique.",
-    en = "Biogeographic region used for the species domain (dropdown in QGIS). E.g. BFC = Bourgogne-Franche-Comté, EU = generic European domain."
+    fr = "R\u00e9gion biog\u00e9ographique utilis\u00e9e pour le domaine des esp\u00e8ces (liste d\u00e9roulante dans QGIS). Ex. BFC = Bourgogne-Franche-Comt\u00e9, EU = domaine europ\u00e9en g\u00e9n\u00e9rique.",
+    en = "Biogeographic region used for the species domain (dropdown in QGIS). E.g. BFC = Bourgogne-Franche-Comt\u00e9, EU = generic European domain."
   ),
 
   # TSP map legend
   sampling_legend_tsp_title   = list(fr = "Parcours",        en = "Route"),
-  sampling_legend_tsp_start   = list(fr = "Départ",          en = "Start"),
-  sampling_legend_tsp_end     = list(fr = "Arrivée",         en = "Finish"),
+  sampling_legend_tsp_start   = list(fr = "D\u00e9part",          en = "Start"),
+  sampling_legend_tsp_end     = list(fr = "Arriv\u00e9e",         en = "Finish"),
   sampling_legend_tsp_line    = list(fr = "Ordre de visite", en = "Visit order"),
   sampling_legend_plots_title = list(fr = "Placettes",       en = "Plots"),
   qfield_download = list(
@@ -2355,7 +2355,7 @@ TRANSLATIONS <- list(
     fr = "Suivi continu Sentinel-2",
     en = "Continuous Sentinel-2 monitoring"
   ),
-  # v0.106.6 — « sur les placettes enregistrees » retire : le suivi sanitaire est
+  # v0.106.6 - " sur les placettes enregistrees " retire : le suivi sanitaire est
   # 100 % raster (FAST, FORDEAD puis RECONFORT), il n'y a plus de placettes.
   monitoring_subtitle = list(
     fr = "D\u00e9tection des baisses NDVI / NBR sur la zone de suivi.",
@@ -2373,31 +2373,31 @@ TRANSLATIONS <- list(
     fr = "Enregistrez une zone via R : nemeton::register_monitoring_zone(con, ...).",
     en = "Register a zone from R: nemeton::register_monitoring_zone(con, ...)."
   ),
-  # v0.52.5 — État « orphelin » : la base contient des zones mais
-  # aucune n'est rattachée au projet chargé. Symptôme typique :
-  # `helper-monitoring.R` côté cœur a wipe + recréé une stub
-  # (incident villards 2026-05-31, cf. brief cœur v0.54.0).
+  # v0.52.5 - Etat " orphelin " : la base contient des zones mais
+  # aucune n'est rattachee au projet charge. Symptome typique :
+  # `helper-monitoring.R` cote coeur a wipe + recree une stub
+  # (incident villards 2026-05-31, cf. brief coeur v0.54.0).
   monitoring_zone_orphan_title = list(
-    fr = "Zones présentes — mais aucune ne correspond à ce projet",
-    en = "Zones present — but none matches this project"
+    fr = "Zones pr\u00e9sentes \u2014 mais aucune ne correspond \u00e0 ce projet",
+    en = "Zones present \u2014 but none matches this project"
   ),
   monitoring_zone_orphan_body = list(
-    fr = "La base contient %d zone(s), mais aucune n'est rattachée au projet chargé. Symptôme typique d'un wipe par les tests cœur (incident villards 2026-05-31). Clique sur « Enregistrer ce projet comme zone de suivi » dans la barre latérale pour recréer la zone de suivi en un clic.",
-    en = "The monitoring DB contains %d zone(s), but none is linked to the loaded project. Typical symptom of a wipe by core tests (villards incident 2026-05-31). Click « Register this project as a monitoring zone » in the sidebar to recreate the monitoring zone in one click."
+    fr = "La base contient %d zone(s), mais aucune n'est rattach\u00e9e au projet charg\u00e9. Sympt\u00f4me typique d'un wipe par les tests c\u0153ur (incident villards 2026-05-31). Clique sur \u00ab Enregistrer ce projet comme zone de suivi \u00bb dans la barre lat\u00e9rale pour recr\u00e9er la zone de suivi en un clic.",
+    en = "The monitoring DB contains %d zone(s), but none is linked to the loaded project. Typical symptom of a wipe by core tests (villards incident 2026-05-31). Click \u00ab Register this project as a monitoring zone \u00bb in the sidebar to recreate the monitoring zone in one click."
   ),
   monitoring_date_range = list(
     fr = "P\u00e9riode d'observation",
     en = "Observation period"
   ),
-  # v0.61.0 — Clé `monitoring_bands` retirée. NDVI + NBR sont
-  # systématiquement téléchargés lors du Diagnostic FAST (câblage
+  # v0.61.0 - Cle `monitoring_bands` retiree. NDVI + NBR sont
+  # systematiquement telecharges lors du Diagnostic FAST (cablage
   # en dur dans `fast_task$invoke()`), donc le choix utilisateur
-  # n'a plus lieu d'être. Les radios NDVI/NBR des sidebars droits
-  # des onglets pilotent l'AFFICHAGE, pas le téléchargement.
-  # v0.52.13 — Label du radio mono-index (spec 017 nemeton@v0.55.0).
-  # L'utilisateur choisit l'indice spectral utilisé pour le raster
+  # n'a plus lieu d'etre. Les radios NDVI/NBR des sidebars droits
+  # des onglets pilotent l'AFFICHAGE, pas le telechargement.
+  # v0.52.13 - Label du radio mono-index (spec 017 nemeton@v0.55.0).
+  # L'utilisateur choisit l'indice spectral utilise pour le raster
   # d'alerte FAST (NDMI / NDVI / NBR / NDRE en count/rolling). Le seuil
-  # correspondant est piloté par les sliders
+  # correspondant est pilote par les sliders
   # monitoring_threshold_{ndvi,nbr,ndmi,ndre}.
   monitoring_fast_index_label = list(
     fr = "Indice FAST",
@@ -2423,57 +2423,57 @@ TRANSLATIONS <- list(
     fr = "Lancer le diagnostic FAST",
     en = "Run FAST diagnosis"
   ),
-  # v0.52.0 — Vrai cancel coopératif (nemeton@v0.53.0+). Le clic écrit
+  # v0.52.0 - Vrai cancel cooperatif (nemeton@v0.53.0+). Le clic ecrit
   # `<projet>/data/{fast,fordead}_cancel.flag`. Le worker poll ce
   # fichier entre tuiles (FAST) / entre phases reticulate (FORDEAD)
-  # et sort proprement au prochain checkpoint. Le libellé reflète ce
-  # vrai cancel ; le toast explique le mécanisme (tuile/phase courante
-  # finit, puis stop ; INSERT idempotents conservés).
+  # et sort proprement au prochain checkpoint. Le libelle reflete ce
+  # vrai cancel ; le toast explique le mecanisme (tuile/phase courante
+  # finit, puis stop ; INSERT idempotents conserves).
   monitoring_run_cancel_btn = list(
     fr = "Annuler le diagnostic",
     en = "Cancel the diagnostic"
   ),
   monitoring_run_cancel_done = list(
-    fr = "Annulation demandée. Le worker termine la tuile (FAST) / la phase (FORDEAD) en cours puis s'arrête proprement. Les INSERT déjà commités en base sont conservés (ON CONFLICT DO NOTHING — relance sans risque).",
-    en = "Cancellation requested. The worker finishes the current tile (FAST) / phase (FORDEAD) then exits cleanly. Already-committed DB rows are kept (ON CONFLICT DO NOTHING — safe to relaunch)."
+    fr = "Annulation demand\u00e9e. Le worker termine la tuile (FAST) / la phase (FORDEAD) en cours puis s'arr\u00eate proprement. Les INSERT d\u00e9j\u00e0 commit\u00e9s en base sont conserv\u00e9s (ON CONFLICT DO NOTHING \u2014 relance sans risque).",
+    en = "Cancellation requested. The worker finishes the current tile (FAST) / phase (FORDEAD) then exits cleanly. Already-committed DB rows are kept (ON CONFLICT DO NOTHING \u2014 safe to relaunch)."
   ),
-  # v0.73.0 (spec 020) — Wording bouton + messages réorientés
-  # « zones de suivi » (pluriel : 4 strates `_tot/_feu/_res/_mix`).
+  # v0.73.0 (spec 020) - Wording bouton + messages reorientes
+  # " zones de suivi " (pluriel : 4 strates `_tot/_feu/_res/_mix`).
   monitoring_register_btn = list(
-    fr = "Générer les zones de suivi",
+    fr = "G\u00e9n\u00e9rer les zones de suivi",
     en = "Generate monitoring zones"
   ),
   monitoring_register_no_project = list(
-    fr = "Chargez un projet avant de générer les zones de suivi.",
+    fr = "Chargez un projet avant de g\u00e9n\u00e9rer les zones de suivi.",
     en = "Load a project before generating monitoring zones."
   ),
   monitoring_register_no_samples = list(
-    fr = "Aucune UGF dans ce projet. Définissez d'abord les UGFs (onglet UGF).",
+    fr = "Aucune UGF dans ce projet. D\u00e9finissez d'abord les UGFs (onglet UGF).",
     en = "No forestry units in this project. Define UGFs first (UGF tab)."
   ),
   monitoring_register_no_db = list(
-    fr = "Base de suivi non configurée — impossible de générer les zones.",
-    en = "Monitoring database not configured — cannot generate zones."
+    fr = "Base de suivi non configur\u00e9e \u2014 impossible de g\u00e9n\u00e9rer les zones.",
+    en = "Monitoring database not configured \u2014 cannot generate zones."
   ),
   monitoring_register_running = list(
-    fr = "Génération des zones de suivi en cours (intersections sf)…",
-    en = "Generating monitoring zones (sf intersections)…"
+    fr = "G\u00e9n\u00e9ration des zones de suivi en cours (intersections sf)\u2026",
+    en = "Generating monitoring zones (sf intersections)\u2026"
   ),
-  # v0.73.0 — Anciennes clés `monitoring_register_success` et
-  # `_already` (singulier, n_plots) remplacées par
+  # v0.73.0 - Anciennes cles `monitoring_register_success` et
+  # `_already` (singulier, n_plots) remplacees par
   # `zones_build_success_fmt` (cf. plus bas).
   monitoring_register_error = list(
-    fr = "Échec de la génération des zones",
+    fr = "\u00c9chec de la g\u00e9n\u00e9ration des zones",
     en = "Zone generation failed"
   ),
-  # v0.73.0 (spec 020) — Clés spécifiques aux 4 strates.
+  # v0.73.0 (spec 020) - Cles specifiques aux 4 strates.
   zones_build_success_fmt = list(
-    fr = "%d zone(s) de suivi générée(s) : %s.",
+    fr = "%d zone(s) de suivi g\u00e9n\u00e9r\u00e9e(s) : %s.",
     en = "%d monitoring zone(s) generated: %s."
   ),
   zones_bdforet_missing = list(
-    fr = "BD Forêt manquante (`cache/layers/bdforet.gpkg`). Lancez d'abord le calcul du projet (onglet Synthèse) pour la télécharger.",
-    en = "BD Forêt missing (`cache/layers/bdforet.gpkg`). Run the project computation first (Synthesis tab) to download it."
+    fr = "BD For\u00eat manquante (`cache/layers/bdforet.gpkg`). Lancez d'abord le calcul du projet (onglet Synth\u00e8se) pour la t\u00e9l\u00e9charger.",
+    en = "BD For\u00eat missing (`cache/layers/bdforet.gpkg`). Run the project computation first (Synthesis tab) to download it."
   ),
   zone_tot = list(
     fr = "Toutes essences",
@@ -2484,28 +2484,28 @@ TRANSLATIONS <- list(
     en = "Deciduous"
   ),
   zone_res = list(
-    fr = "Résineux",
+    fr = "R\u00e9sineux",
     en = "Coniferous"
   ),
   zone_mix = list(
     fr = "Mixte",
     en = "Mixed"
   ),
-  # v0.77.0 — Bandeau « Surfaces des zones de suivi » (mode FAST) :
+  # v0.77.0 - Bandeau " Surfaces des zones de suivi " (mode FAST) :
   # rappelle la surface (ha) et la part (%) des 4 strates projet
   # `_tot/_feu/_res/_mix` au-dessus des sous-onglets FAST.
   monitoring_fast_surfaces_title = list(
     fr = "Surfaces des zones de suivi",
     en = "Monitoring zone surfaces"
   ),
-  # Format d'un segment : « Feuillus : 12.3 ha (45 %) ». %s = label
-  # strate, %.1f = hectares, %.0f = pourcentage relatif à la strate
+  # Format d'un segment : " Feuillus : 12.3 ha (45 %) ". %s = label
+  # strate, %.1f = hectares, %.0f = pourcentage relatif a la strate
   # `_tot` (toutes essences).
   monitoring_fast_surf_item = list(
     fr = "%s : %.1f ha (%.0f %%)",
     en = "%s: %.1f ha (%.0f%%)"
   ),
-  # Variante sans pourcentage (strate `_tot`, référence 100 %).
+  # Variante sans pourcentage (strate `_tot`, reference 100 %).
   monitoring_fast_surf_item_tot = list(
     fr = "%s : %.1f ha",
     en = "%s: %.1f ha"
@@ -2717,32 +2717,32 @@ TRANSLATIONS <- list(
     fr = "Carte pixel",
     en = "Pixel map"
   ),
-  # v0.34.0 — sous-onglets de carte pixel séparés par mode :
-  # FAST (NDVI/NBR raster, mode quick) vs FORDEAD (mask classifié de
-  # dépérissement, mode health). Visibilité pilotée côté server par
+  # v0.34.0 - sous-onglets de carte pixel separes par mode :
+  # FAST (NDVI/NBR raster, mode quick) vs FORDEAD (mask classifie de
+  # deperissement, mode health). Visibilite pilotee cote server par
   # un observe mode-driven.
   monitoring_subtab_pixel_map_fast = list(
     fr = "Carte FAST",
     en = "FAST map"
   ),
-  # v0.106.4 — ex-« Alertes FORDEAD » : ce sous-onglet rend la CARTE raster
-  # (le sous-onglet vectoriel homonyme a été supprimé en v0.92.x). Renomm\u00e9
-  # « Carte FORDEAD » pour la parit\u00e9 avec « Carte FAST » / « Carte RECONFORT ».
+  # v0.106.4 - ex-" Alertes FORDEAD " : ce sous-onglet rend la CARTE raster
+  # (le sous-onglet vectoriel homonyme a ete supprime en v0.92.x). Renomm\u00e9
+  # " Carte FORDEAD " pour la parit\u00e9 avec " Carte FAST " / " Carte RECONFORT ".
   monitoring_subtab_pixel_map_fordead = list(
     fr = "Carte FORDEAD",
     en = "FORDEAD map"
   ),
-  # v0.35.0 — sous-onglets Alertes séparés par mode, symétriques aux
+  # v0.35.0 - sous-onglets Alertes separes par mode, symetriques aux
   # cartes : Alertes FAST (pixels au-dessus du seuil NDVI/NBR
-  # rolling-window) vs Alertes FORDEAD (placettes flaguées par
-  # run_fordead_dieback). Visibilité pilotée par input$mode.
+  # rolling-window) vs Alertes FORDEAD (placettes flaguees par
+  # run_fordead_dieback). Visibilite pilotee par input$mode.
   monitoring_subtab_alerts_fast = list(
     fr = "Alertes FAST",
     en = "FAST alerts"
   ),
-  # v0.36.0 — Alertes FAST module (nemeton::list_fast_alerts_for_zone)
+  # v0.36.0 - Alertes FAST module (nemeton::list_fast_alerts_for_zone)
   # Severity buckets : critical (ratio < 0.5), warning ([0.5, 1)),
-  # info ([1, 1.1) — corridor d'avertissement).
+  # info ([1, 1.1) - corridor d'avertissement).
   monitoring_fast_severity_critical = list(
     fr = "Critique",
     en = "Critical"
@@ -2760,45 +2760,45 @@ TRANSLATIONS <- list(
     en = "Total plots"
   ),
   monitoring_fast_alerts_empty_title = list(
-    fr = "Aucune alerte FAST sur la fenêtre",
+    fr = "Aucune alerte FAST sur la fen\u00eatre",
     en = "No FAST alerts in window"
   ),
-  # v0.53.0 — bandeau d'erreur distinct de « zone saine » : affiché
-  # quand `read_fast_alert_raster()` lève une exception OU renvoie
-  # NULL (typiquement cache S2 incomplet pour l'indice choisi —
-  # courant pour NBR si B12 manque sur beaucoup de scènes).
+  # v0.53.0 - bandeau d'erreur distinct de " zone saine " : affiche
+  # quand `read_fast_alert_raster()` leve une exception OU renvoie
+  # NULL (typiquement cache S2 incomplet pour l'indice choisi -
+  # courant pour NBR si B12 manque sur beaucoup de scenes).
   monitoring_fast_alerts_error_title = list(
     fr = "Raster d'alerte non calculable",
     en = "Alert raster could not be computed"
   ),
   monitoring_fast_alerts_empty_body = list(
-    fr = "Aucun pixel n'a déclenché d'alerte sur la fenêtre choisie. Élargir la fenêtre, relever le seuil ou changer la zone pour explorer d'autres scénarios.",
+    fr = "Aucun pixel n'a d\u00e9clench\u00e9 d'alerte sur la fen\u00eatre choisie. \u00c9largir la fen\u00eatre, relever le seuil ou changer la zone pour explorer d'autres sc\u00e9narios.",
     en = "No pixel triggered an alert in the chosen window. Widen the window, raise the threshold, or change zone to explore further."
   ),
-  # v0.68.0 — Message NULL spécifique à « aucune scène cachée ne
-  # porte les bandes de cet indice dans la fenêtre » (brief FAST 6
+  # v0.68.0 - Message NULL specifique a " aucune scene cachee ne
+  # porte les bandes de cet indice dans la fenetre " (brief FAST 6
   # cartes nemeton@v0.65.0). Cas typique : NDMI demande B08+B11,
-  # une zone sans B11 produit NULL pour NDMI sur cette période.
-  # Le `%s` reçoit le nom de l'indice (NDVI/NBR/NDMI).
+  # une zone sans B11 produit NULL pour NDMI sur cette periode.
+  # Le `%s` recoit le nom de l'indice (NDVI/NBR/NDMI).
   monitoring_fast_alerts_no_scene = list(
-    fr = "%s : aucune scène cachée ne porte les bandes de cet indice dans la fenêtre (cache S2 vide ou incomplet pour les bandes requises).",
+    fr = "%s : aucune sc\u00e8ne cach\u00e9e ne porte les bandes de cet indice dans la fen\u00eatre (cache S2 vide ou incomplet pour les bandes requises).",
     en = "%s: no cached scene carries the required bands for this index in the window (S2 cache empty or missing required bands)."
   ),
-  # v0.41.1 — popup_plot renamed to popup_coords : FAST alerts are
+  # v0.41.1 - popup_plot renamed to popup_coords : FAST alerts are
   # moving from per-placette markers to a pixel raster (cf. spec
   # validation-sampling). The popup row anchors the user on a *position*
-  # rather than a logical plot, hence "Coordonnées" / "Coordinates".
+  # rather than a logical plot, hence "Coordonnees" / "Coordinates".
   monitoring_fast_alert_popup_coords = list(
-    fr = "Coordonnées",
+    fr = "Coordonn\u00e9es",
     en = "Coordinates"
   ),
-  # v0.41.1 — "Sévérité" est conservé le temps que
+  # v0.41.1 - "Severite" est conserve le temps que
   # nemeton::read_fast_alert_raster() tranche entre un score continu et
-  # des classes discrètes. Si score continu : reformuler en
+  # des classes discretes. Si score continu : reformuler en
   # monitoring_fast_alerts_legend_title ("Score d'alerte"). Si classes :
-  # garder ce libellé.
+  # garder ce libelle.
   monitoring_fast_alert_popup_severity = list(
-    fr = "Sévérité",
+    fr = "S\u00e9v\u00e9rit\u00e9",
     en = "Severity"
   ),
   monitoring_fast_alert_popup_ndvi = list(
@@ -2810,30 +2810,30 @@ TRANSLATIONS <- list(
     en = "NBR"
   ),
   monitoring_fast_alert_popup_last_obs = list(
-    fr = "Dernière observation",
+    fr = "Derni\u00e8re observation",
     en = "Last observation"
   ),
-  # v0.42.0 — wiring raster d'alerte FAST (spec 013, nemeton 0.46.0).
+  # v0.42.0 - wiring raster d'alerte FAST (spec 013, nemeton 0.46.0).
   # mod_monitoring_fast_alerts bascule de la liste markers per-placette
-  # à addRasterImage(read_fast_alert_raster()). Le module expose un
+  # a addRasterImage(read_fast_alert_raster()). Le module expose un
   # toggle compte / rolling : `count` retourne un entier par pixel
   # (nombre de dates en alerte), `rolling` un continu (magnitude).
-  # `legend_title` est utilisé pour le mode rolling, `legend_count_title`
+  # `legend_title` est utilise pour le mode rolling, `legend_count_title`
   # pour le mode count.
-  # v0.45.0 — libellés revus après tests user villards. "Compte" et
-  # "Magnitude" étaient abstraits ; "Fréquence" / "Intensité" parlent
-  # davantage du sens métier (jours en alerte vs intensité du déficit
-  # NDVI/NBR sur la fenêtre roulante).
+  # v0.45.0 - libelles revus apres tests user villards. "Compte" et
+  # "Magnitude" etaient abstraits ; "Frequence" / "Intensite" parlent
+  # davantage du sens metier (jours en alerte vs intensite du deficit
+  # NDVI/NBR sur la fenetre roulante).
   monitoring_fast_alerts_mode_label = list(
     fr = "Mode du raster",
     en = "Raster mode"
   ),
   monitoring_fast_alerts_mode_count = list(
-    fr = "Fréquence",
+    fr = "Fr\u00e9quence",
     en = "Frequency"
   ),
   monitoring_fast_alerts_mode_rolling = list(
-    fr = "Intensité",
+    fr = "Intensit\u00e9",
     en = "Intensity"
   ),
   monitoring_fast_alerts_mode_trend = list(
@@ -2841,12 +2841,12 @@ TRANSLATIONS <- list(
     en = "Trend"
   ),
   monitoring_fast_alerts_badge_count = list(
-    fr = "Alertes FAST — fréquence des dépassements de seuil %s, à la résolution Sentinel-2 (10 m)",
-    en = "FAST alerts — threshold-breach frequency for %s, at Sentinel-2 resolution (10 m)"
+    fr = "Alertes FAST \u2014 fr\u00e9quence des d\u00e9passements de seuil %s, \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
+    en = "FAST alerts \u2014 threshold-breach frequency for %s, at Sentinel-2 resolution (10 m)"
   ),
   monitoring_fast_alerts_badge_rolling = list(
-    fr = "Alertes FAST — intensité du déficit %s sur fenêtre roulante, à la résolution Sentinel-2 (10 m)",
-    en = "FAST alerts — %s deficit intensity over a rolling window, at Sentinel-2 resolution (10 m)"
+    fr = "Alertes FAST \u2014 intensit\u00e9 du d\u00e9ficit %s sur fen\u00eatre roulante, \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
+    en = "FAST alerts \u2014 %s deficit intensity over a rolling window, at Sentinel-2 resolution (10 m)"
   ),
   monitoring_fast_alerts_badge_trend = list(
     fr = "Alertes FAST \u2014 tendance pluriannuelle du d\u00e9clin %s (Theil-Sen + Mann-Kendall), \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
@@ -2879,17 +2879,17 @@ TRANSLATIONS <- list(
   # s'applique plus aux installations r\u00e9centes. Le hint
   # descriptif (\u00ab baisse sous stress hydrique \u00bb) est retir\u00e9
   # avec \u2014 \u00e9pure l'UI des sidebars FAST.
-  # v0.55.0 — Clés utilisées par les toasts `fast_prewarm:*` émis par
-  # le cœur (spec 018 nemeton@v0.61.0) consommés par l'observer
+  # v0.55.0 - Cles utilisees par les toasts `fast_prewarm:*` emis par
+  # le coeur (spec 018 nemeton@v0.61.0) consommes par l'observer
   # ingest_progress de mod_monitoring.R. Les noms `fast_mode_*` sont
-  # courts car réutilisables hors du contexte « alerts » (Carte FAST
-  # pourrait aussi vouloir afficher le libellé du mode si besoin).
+  # courts car reutilisables hors du contexte " alerts " (Carte FAST
+  # pourrait aussi vouloir afficher le libelle du mode si besoin).
   fast_mode_frequence = list(
-    fr = "Fréquence",
+    fr = "Fr\u00e9quence",
     en = "Frequency"
   ),
   fast_mode_intensite = list(
-    fr = "Intensité",
+    fr = "Intensit\u00e9",
     en = "Intensity"
   ),
   fast_mode_trend = list(
@@ -2897,11 +2897,11 @@ TRANSLATIONS <- list(
     en = "Trend"
   ),
   fast_prewarm_running = list(
-    fr = "Pré-calcul carte %s %s en cours…",
-    en = "Pre-computing %s %s map…"
+    fr = "Pr\u00e9-calcul carte %s %s en cours\u2026",
+    en = "Pre-computing %s %s map\u2026"
   ),
   fast_prewarm_done = list(
-    fr = "Carte %s %s prête.",
+    fr = "Carte %s %s pr\u00eate.",
     en = "%s %s map ready."
   ),
   fast_prewarm_failed = list(
@@ -2909,100 +2909,100 @@ TRANSLATIONS <- list(
     en = "%s %s map unavailable."
   ),
   fast_prewarm_cancelled = list(
-    fr = "Pré-calcul des cartes FAST annulé.",
+    fr = "Pr\u00e9-calcul des cartes FAST annul\u00e9.",
     en = "FAST map pre-computation cancelled."
   ),
-  # v0.70.1 — Toast court (4 s) émis à `fast_prewarm:complete` pour
-  # signaler la fin du Diagnostic FAST côté UX. Le toast running
-  # `fast_prewarm_progress` (persistent) est retiré juste avant.
+  # v0.70.1 - Toast court (4 s) emis a `fast_prewarm:complete` pour
+  # signaler la fin du Diagnostic FAST cote UX. Le toast running
+  # `fast_prewarm_progress` (persistent) est retire juste avant.
   # Sans ce signal, l'utilisateur ne savait pas si l'application
-  # était de nouveau disponible (le bouton « Lancer le diagnostic
-  # FAST » se réactive automatiquement via l'observer status() mais
-  # un signal explicite côté UI rassure).
+  # etait de nouveau disponible (le bouton " Lancer le diagnostic
+  # FAST " se reactive automatiquement via l'observer status() mais
+  # un signal explicite cote UI rassure).
   monitoring_fast_diagnostic_complete = list(
-    fr = "Diagnostic FAST terminé — application disponible.",
-    en = "FAST diagnostic complete — application available."
+    fr = "Diagnostic FAST termin\u00e9 \u2014 application disponible.",
+    en = "FAST diagnostic complete \u2014 application available."
   ),
   monitoring_fast_alerts_legend_title = list(
-    fr = "Intensité du déficit",
+    fr = "Intensit\u00e9 du d\u00e9ficit",
     en = "Deficit intensity"
   ),
   monitoring_fast_alerts_legend_count_title = list(
     fr = "Jours en alerte",
     en = "Alert days"
   ),
-  # v0.57.0 — Affichage du mask FAST en quartiles 0-4 (spec 017 D2
-  # nemeton@v0.55.0+). Le mask catégoriel sort de
+  # v0.57.0 - Affichage du mask FAST en quartiles 0-4 (spec 017 D2
+  # nemeton@v0.55.0+). Le mask categoriel sort de
   # `nemeton::compute_fast_alert_mask()`. La classe 0 (sain) est
-  # rendue transparente — pas de libellé i18n nécessaire pour elle.
+  # rendue transparente - pas de libelle i18n necessaire pour elle.
   fast_alert_legend_title = list(
-    fr = "Sévérité de l'alerte (%s)",
+    fr = "S\u00e9v\u00e9rit\u00e9 de l'alerte (%s)",
     en = "Alert severity (%s)"
   ),
   fast_alert_class_1 = list(
-    fr = "1 — Faible",
-    en = "1 — Low"
+    fr = "1 \u2014 Faible",
+    en = "1 \u2014 Low"
   ),
   fast_alert_class_2 = list(
-    fr = "2 — Modéré",
-    en = "2 — Moderate"
+    fr = "2 \u2014 Mod\u00e9r\u00e9",
+    en = "2 \u2014 Moderate"
   ),
   fast_alert_class_3 = list(
-    fr = "3 — Fort",
-    en = "3 — High"
+    fr = "3 \u2014 Fort",
+    en = "3 \u2014 High"
   ),
   fast_alert_class_4 = list(
-    fr = "4 — Sévère",
-    en = "4 — Severe"
+    fr = "4 \u2014 S\u00e9v\u00e8re",
+    en = "4 \u2014 Severe"
   ),
   monitoring_fast_alerts_opacity_label = list(
-    fr = "Opacité du raster",
+    fr = "Opacit\u00e9 du raster",
     en = "Raster opacity"
   ),
-  # v0.61.0 — Clé `monitoring_fast_alerts_raster_visible` retirée.
-  # Visibilité du raster d'alerte pilotée par le LayersControl
-  # Leaflet (entrée « Alertes » sous « UGF »).
+  # v0.61.0 - Cle `monitoring_fast_alerts_raster_visible` retiree.
+  # Visibilite du raster d'alerte pilotee par le LayersControl
+  # Leaflet (entree " Alertes " sous " UGF ").
   monitoring_fast_alerts_threshold_label = list(
     fr = "Masquer en dessous du seuil",
     en = "Hide below threshold"
   ),
-  # v0.42.0 — annotation des lignes horizontales de seuil sur le plot
-  # modal pixel de Carte FAST (Livrable 3 spec 013). Format : %s reçoit
+  # v0.42.0 - annotation des lignes horizontales de seuil sur le plot
+  # modal pixel de Carte FAST (Livrable 3 spec 013). Format : %s recoit
   # le nom de la bande ("NDVI" / "NBR"), %.2f la valeur du seuil.
   monitoring_pixel_plot_threshold_fmt = list(
     fr = "seuil %s %.2f",
     en = "%s threshold %.2f"
   ),
 
-  # v0.36.0 — Carte FORDEAD module (nemeton::read_fordead_dieback_mask)
-  # Empty state shown tant que le writer cœur n'a pas shippé.
+  # v0.36.0 - Carte FORDEAD module (nemeton::read_fordead_dieback_mask)
+  # Empty state shown tant que le writer coeur n'a pas shippe.
   monitoring_fordead_map_empty_title = list(
     fr = "Aucun masque FORDEAD disponible",
     en = "No FORDEAD mask available"
   ),
   monitoring_fordead_map_empty_body = list(
-    fr = "Lancer un diagnostic FORDEAD pour cette zone (mode Santé). Le masque classifié 0..4 du dépérissement s'affichera ici dès que le cœur Nemeton aura persisté le résultat sur disque (postprocess hook prévu dans une release ultérieure).",
+    fr = "Lancer un diagnostic FORDEAD pour cette zone (mode Sant\u00e9). Le masque classifi\u00e9 0..4 du d\u00e9p\u00e9rissement s'affichera ici d\u00e8s que le c\u0153ur Nemeton aura persist\u00e9 le r\u00e9sultat sur disque (postprocess hook pr\u00e9vu dans une release ult\u00e9rieure).",
     en = "Run a FORDEAD diagnostic for this zone (Health mode). The 0..4 classified dieback mask will appear here once the Nemeton core persists the run output on disk (postprocess hook scheduled for a later release)."
   ),
   monitoring_fordead_class_title = list(
-    fr = "Classe de dépérissement",
+    fr = "Classe de d\u00e9p\u00e9rissement",
     en = "Dieback class"
   ),
-  # Partie B — sélecteur de couche pixel de la Carte FORDEAD.
+  # Partie B - selecteur de couche pixel de la Carte FORDEAD.
   monitoring_fordead_layer_label = list(
     fr = "Couche",
     en = "Layer"
   ),
   monitoring_fordead_date_label = list(
-    fr = "Détecté jusqu'au",
+    fr = "D\u00e9tect\u00e9 jusqu'au",
     en = "Detected up to"
   ),
   monitoring_fordead_layer_severity = list(
-    fr = "Sévérité (0-4)",
+    fr = "S\u00e9v\u00e9rit\u00e9 (0-4)",
     en = "Severity (0-4)"
   ),
   monitoring_fordead_layer_first_detection = list(
-    fr = "Date de 1re détection",
+    fr = "Date de 1re d\u00e9tection",
     en = "First detection date"
   ),
   monitoring_fordead_layer_anomaly_index = list(
@@ -3010,19 +3010,19 @@ TRANSLATIONS <- list(
     en = "Anomaly index"
   ),
   monitoring_fordead_layer_confidence = list(
-    fr = "Zone modélisée",
+    fr = "Zone mod\u00e9lis\u00e9e",
     en = "Modelled area"
   ),
   monitoring_fordead_layer_modelled_yes = list(
-    fr = "Modélisé",
+    fr = "Mod\u00e9lis\u00e9",
     en = "Modelled"
   ),
   monitoring_fordead_layer_modelled_no = list(
-    fr = "Non modélisé",
+    fr = "Non mod\u00e9lis\u00e9",
     en = "Not modelled"
   ),
   monitoring_fordead_layer_legend_date = list(
-    fr = "Date de 1re détection",
+    fr = "Date de 1re d\u00e9tection",
     en = "First detection date"
   ),
   monitoring_fordead_layer_legend_index = list(
@@ -3030,24 +3030,24 @@ TRANSLATIONS <- list(
     en = "Anomaly index"
   ),
   monitoring_fordead_layer_unavailable = list(
-    fr = "Couche indisponible pour ce diagnostic (relancer un run FORDEAD récent pour la générer).",
+    fr = "Couche indisponible pour ce diagnostic (relancer un run FORDEAD r\u00e9cent pour la g\u00e9n\u00e9rer).",
     en = "Layer unavailable for this run (re-run a recent FORDEAD diagnosis to generate it)."
   ),
-  # Explications (bouton « i ») de chaque couche pixel FORDEAD.
+  # Explications (bouton " i ") de chaque couche pixel FORDEAD.
   monitoring_fordead_layer_info_severity = list(
-    fr = "Classe de dépérissement par pixel (0 = sain, 1 = faible, 2 = moyenne, 3 = forte, 4 = sol nu). Les pixels sains (0) sont transparents : seuls les pixels affectés sont peints.",
+    fr = "Classe de d\u00e9p\u00e9rissement par pixel (0 = sain, 1 = faible, 2 = moyenne, 3 = forte, 4 = sol nu). Les pixels sains (0) sont transparents : seuls les pixels affect\u00e9s sont peints.",
     en = "Per-pixel dieback class (0 = healthy, 1 = low, 2 = moderate, 3 = high, 4 = bare soil). Healthy pixels (0) are transparent: only affected pixels are painted."
   ),
   monitoring_fordead_layer_info_first_detection = list(
-    fr = "Date de la 1re anomalie de dépérissement détectée pour chaque pixel (du plus ancien au plus récent). Utile pour repérer la progression dans le temps.",
+    fr = "Date de la 1re anomalie de d\u00e9p\u00e9rissement d\u00e9tect\u00e9e pour chaque pixel (du plus ancien au plus r\u00e9cent). Utile pour rep\u00e9rer la progression dans le temps.",
     en = "Date of the first detected dieback anomaly for each pixel (oldest to most recent). Useful to track progression over time."
   ),
   monitoring_fordead_layer_info_anomaly_index = list(
-    fr = "Intensité continue de l'anomalie au dernier état (dernier indice d'anomalie CRSWIR). Plus la valeur est élevée, plus l'écart au modèle sain est marqué.",
+    fr = "Intensit\u00e9 continue de l'anomalie au dernier \u00e9tat (dernier indice d'anomalie CRSWIR). Plus la valeur est \u00e9lev\u00e9e, plus l'\u00e9cart au mod\u00e8le sain est marqu\u00e9.",
     en = "Continuous anomaly intensity at the latest state (last CRSWIR anomaly index). Higher values mean a stronger departure from the healthy model."
   ),
   monitoring_fordead_layer_info_confidence = list(
-    fr = "Pixels pour lesquels FORDEAD a pu calibrer un modèle exploitable (zone modélisée). Hors de cette zone, le diagnostic n'est pas fiable.",
+    fr = "Pixels pour lesquels FORDEAD a pu calibrer un mod\u00e8le exploitable (zone mod\u00e9lis\u00e9e). Hors de cette zone, le diagnostic n'est pas fiable.",
     en = "Pixels for which FORDEAD could calibrate a usable model (modelled area). Outside this area the diagnosis is not reliable."
   ),
   monitoring_fordead_class_0 = list(
@@ -3071,10 +3071,10 @@ TRANSLATIONS <- list(
     en = "bare soil"
   ),
 
-  # v0.59.0 (TODO #3) — Modal diagnostic pixel CRSWIR au clic sur la
-  # carte FORDEAD. Affiche la série CRSWIR observée vs la prédiction
-  # harmonique du modèle FORDEAD, avec marqueur vertical sur la
-  # date de 1re anomalie détectée.
+  # v0.59.0 (TODO #3) - Modal diagnostic pixel CRSWIR au clic sur la
+  # carte FORDEAD. Affiche la serie CRSWIR observee vs la prediction
+  # harmonique du modele FORDEAD, avec marqueur vertical sur la
+  # date de 1re anomalie detectee.
   monitoring_fordead_pixel_modal_title_fmt = list(
     fr = "Pixel CRSWIR FORDEAD \u2014 %.5f, %.5f",
     en = "FORDEAD CRSWIR pixel \u2014 %.5f, %.5f"
@@ -3146,11 +3146,11 @@ TRANSLATIONS <- list(
     fr = "Date d'observation",
     en = "Observation date"
   ),
-  # v0.61.0 — Clé `monitoring_pixel_map_raster_visible` retirée.
-  # Visibilité du raster pilotée par le LayersControl Leaflet
-  # (entrée `"NDVI/NBR"`). Seul le slider d'opacité reste.
+  # v0.61.0 - Cle `monitoring_pixel_map_raster_visible` retiree.
+  # Visibilite du raster pilotee par le LayersControl Leaflet
+  # (entree `"NDVI/NBR"`). Seul le slider d'opacite reste.
   monitoring_pixel_map_raster_opacity = list(
-    fr = "Opacité du raster",
+    fr = "Opacit\u00e9 du raster",
     en = "Raster opacity"
   ),
   monitoring_pixel_map_click_hint = list(
@@ -3169,16 +3169,16 @@ TRANSLATIONS <- list(
     fr = "Pas de cache disque disponible. Lance le diagnostic FAST pour peupler le cache COG.",
     en = "No disk cache available. Run a FAST diagnosis to populate the COG cache."
   ),
-  # v0.44.0 — diagnostic empty-states pour Carte FAST. Distingue le cas
-  # "cache absent" (existant) de "cache présent mais 0 obs en DB"
+  # v0.44.0 - diagnostic empty-states pour Carte FAST. Distingue le cas
+  # "cache absent" (existant) de "cache present mais 0 obs en DB"
   # (typique 403 SAS-token-expiry sur ingest long) et "build_index_stack
-  # KO" (extents incohérents entre scènes, multi-tuile MGRS).
+  # KO" (extents incoherents entre scenes, multi-tuile MGRS).
   monitoring_pixel_map_cache_no_obs_fmt = list(
-    fr = "Cache COG présent (%d scènes sur disque) mais aucune observation extraite en base. C’est probablement dû à des erreurs HTTP 403 pendant la phase de crop (tokens SAS Azure expirés sur ingest long). Relance le diagnostic FAST.",
+    fr = "Cache COG pr\u00e9sent (%d sc\u00e8nes sur disque) mais aucune observation extraite en base. C\u2019est probablement d\u00fb \u00e0 des erreurs HTTP 403 pendant la phase de crop (tokens SAS Azure expir\u00e9s sur ingest long). Relance le diagnostic FAST.",
     en = "COG cache present (%d scenes on disk) but no observation extracted to the database. Typically caused by HTTP 403 errors during the crop phase (Azure SAS tokens expiring on long ingestions). Re-run the FAST diagnosis."
   ),
   monitoring_pixel_map_stack_failed_fmt = list(
-    fr = "Empilement raster échoué : %s. Probablement des extents incohérents entre scènes (multi-tuile MGRS ou re-fetch partiel du cache).",
+    fr = "Empilement raster \u00e9chou\u00e9 : %s. Probablement des extents incoh\u00e9rents entre sc\u00e8nes (multi-tuile MGRS ou re-fetch partiel du cache).",
     en = "Raster stacking failed: %s. Likely extent mismatch between scenes (multi-tile MGRS or partial cache re-fetch)."
   ),
   monitoring_pixel_map_loading = list(
@@ -3365,15 +3365,15 @@ TRANSLATIONS <- list(
   # raster, pas sur un compte DB). La notif de fin n'annonce donc plus
   # \u00ab N alertes \u00bb \u2014 uniquement la dur\u00e9e. Le verdict sain/affect\u00e9 est lu
   # sur la carte FORDEAD (raster masqu\u00e9 par strate).
-  # spec 008 §5 — La durée est FORMATÉE par l'appelant (format_elapsed) avant
-  # d'arriver ici : « 13 min 39 s », plus « 819 s ». D'où %s et non %.0f.
+  # spec 008 sect.5 - La duree est FORMATEE par l'appelant (format_elapsed) avant
+  # d'arriver ici : " 13 min 39 s ", plus " 819 s ". D'ou %s et non %.0f.
   monitoring_health_success_done = list(
     fr = "Diagnostic FORDEAD termin\u00e9 en %s.",
     en = "FORDEAD diagnosis completed in %s."
   ),
-  # spec 008 §3 — Un job tué par le plafond mémoire (cgroup MemoryMax posé par
-  # le cœur) sort en SIGKILL → exit 137. Le message brut (« … failed for zone 3
-  # (exit 137) ») ne dit rien à l'utilisateur : on lui substitue une consigne.
+  # spec 008 sect.3 - Un job tue par le plafond memoire (cgroup MemoryMax pose par
+  # le coeur) sort en SIGKILL -> exit 137. Le message brut (" ... failed for zone 3
+  # (exit 137) ") ne dit rien a l'utilisateur : on lui substitue une consigne.
   monitoring_error_oom = list(
     fr = "Le calcul a d\u00e9pass\u00e9 la m\u00e9moire disponible et a \u00e9t\u00e9 arr\u00eat\u00e9. Fermez les autres applications, ou r\u00e9duisez l'emprise de la zone, puis relancez.",
     en = "The computation ran out of memory and was stopped. Close other applications, or reduce the zone extent, then run again."
@@ -3387,24 +3387,24 @@ TRANSLATIONS <- list(
     en = "FORDEAD diagnosis error"
   ),
   monitoring_health_phase_fmt = list(
-    fr = "FORDEAD — phase %s (%d/%d)",
-    en = "FORDEAD — phase %s (%d/%d)"
+    fr = "FORDEAD \u2014 phase %s (%d/%d)",
+    en = "FORDEAD \u2014 phase %s (%d/%d)"
   ),
   monitoring_health_phase_simple_fmt = list(
-    fr = "FORDEAD — phase %s",
-    en = "FORDEAD — phase %s"
+    fr = "FORDEAD \u2014 phase %s",
+    en = "FORDEAD \u2014 phase %s"
   ),
 
   # ----- FORDEAD phase toasts (v0.32.0) ---------------------------------
   # Templates use glue-style {placeholder} args because get_i18n()$t()
   # runs glue::glue() on the result. The fordead:* dispatcher in
   # R/mod_monitoring.R passes named args matching these placeholders.
-  # Per-phase labels are resolved by .fordead_phase_label() — when a
+  # Per-phase labels are resolved by .fordead_phase_label() - when a
   # future nemeton release emits a phase_name with no matching key
   # here, a Title-Cased version of the raw name is used as fallback.
   #
   # Accents are encoded as \uXXXX per the convention enforced in this
-  # file (utils_i18n.R, ~360 keys — see CLAUDE.md i18n rule 4).
+  # file (utils_i18n.R, ~360 keys - see CLAUDE.md i18n rule 4).
   monitoring_fordead_phase_progress = list(
     fr = "Phase {n}/{total} \u2014 {label}",
     en = "Phase {n}/{total} \u2014 {label}"
@@ -3429,17 +3429,17 @@ TRANSLATIONS <- list(
     fr = "Diagnostic RECONFORT (feuillus)",
     en = "RECONFORT diagnosis (broadleaves)"
   ),
-  # v0.106.6 — « Quelques minutes » retire : c'etait FAUX. Un run RECONFORT peut
+  # v0.106.6 - " Quelques minutes " retire : c'etait FAUX. Un run RECONFORT peut
   # durer des heures, voire des jours (l'emprise et le nombre de dates S2
   # gouvernent tout). Ne plus annoncer AUCUNE duree : le chrono sous le bouton
   # dit la verite pendant le run, une promesse figee dans l'aide ne peut que
-  # mentir. La dependance conda (opt-in) RESTE : sans ce bundle, le run echoue —
+  # mentir. La dependance conda (opt-in) RESTE : sans ce bundle, le run echoue -
   # c'est une condition d'execution, pas une estimation.
   monitoring_mode_reconfort_help = list(
     fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Opt-in : n\u00e9cessite le bundle conda IOTA\u00b2/GEODES.",
     en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). Opt-in: requires the conda IOTA\u00b2/GEODES bundle."
   ),
-  # « Carte RECONFORT » : l'onglet affiche les RASTERS du run (score, classes de
+  # " Carte RECONFORT " : l'onglet affiche les RASTERS du run (score, classes de
   # sante, probabilite) + le clic-pixel. La couche vectorielle d'alertes a ete
   # supprimee en v0.106.4 (nom de cle conserve, legacy).
   monitoring_subtab_pixel_map_reconfort = list(
@@ -3454,9 +3454,9 @@ TRANSLATIONS <- list(
     fr = "Zone hors domaine de calibration RECONFORT",
     en = "Area outside the RECONFORT calibration domain"
   ),
-  # v0.106.4 — Bandeau « composition d'essences » RECONFORT, symétrique du
-  # bandeau FORDEAD (monitoring_warning_species_*). RECONFORT est calibré sur
-  # les FEUILLUS : chêne, châtaignier, pin sylvestre.
+  # v0.106.4 - Bandeau " composition d'essences " RECONFORT, symetrique du
+  # bandeau FORDEAD (monitoring_warning_species_*). RECONFORT est calibre sur
+  # les FEUILLUS : chene, chataignier, pin sylvestre.
   monitoring_reconfort_species_title = list(
     fr = "Composition d'essences hors domaine valid\u00e9",
     en = "Species composition outside validated domain"
@@ -3466,10 +3466,10 @@ TRANSLATIONS <- list(
     en = "Only %.0f%% of oak + chestnut + Scots pine according to BD For\u00eat v2. RECONFORT is only calibrated on these species."
   ),
   monitoring_reconfort_year_incomplete = list(
-    fr = "Année Sentinel-2 incomplète : la saison n'est pas terminée. Choisissez au plus la dernière année complète.",
+    fr = "Ann\u00e9e Sentinel-2 incompl\u00e8te : la saison n'est pas termin\u00e9e. Choisissez au plus la derni\u00e8re ann\u00e9e compl\u00e8te.",
     en = "Incomplete Sentinel-2 year: the season is not over yet. Pick at most the latest complete year."
   ),
-  # --- Planche pixel dépérissement 4 panneaux (Partie B) ---
+  # --- Planche pixel deperissement 4 panneaux (Partie B) ---
   pixel_planche_title = list(fr = "Pixel \u2014 s\u00e9ries pluriannuelles des deux indices (fond orange = \u00e9t\u00e9)", en = "Pixel \u2014 multi-year series of both indices (orange band = summer)"),
   pixel_title_of_species = list(fr = "Pixel de %s", en = "%s pixel"),
   pixel_title_bare = list(fr = "Pixel", en = "Pixel"),
@@ -3480,12 +3480,12 @@ TRANSLATIONS <- list(
                             en = "Raw observations"),
   pixel_trough_swir = list(fr = "Trajectoire du creux estival CRswir", en = "Summer CRswir trough trajectory"),
   pixel_peak_re = list(fr = "Trajectoire du pic estival CRre", en = "Summer CRre peak trajectory"),
-  pixel_centroids = list(fr = "Centroïdes annuels", en = "Annual centroids"),
-  pixel_doy_axis = list(fr = "Jour de l'année", en = "Day of year"),
+  pixel_centroids = list(fr = "Centro\u00efdes annuels", en = "Annual centroids"),
+  pixel_doy_axis = list(fr = "Jour de l'ann\u00e9e", en = "Day of year"),
   pixel_cycles_swir = list(fr = "CRswir : cycles annuels repli\u00e9s", en = "CRswir: folded annual cycles"),
   pixel_cycles_re = list(fr = "CRre : cycles annuels repli\u00e9s", en = "CRre: folded annual cycles"),
   pixel_state_space = list(fr = "Espace CRswir \u00d7 CRre (\u00e9t\u00e9)", en = "CRswir \u00d7 CRre space (summer)"),
-  pixel_year = list(fr = "Année", en = "Year"),
+  pixel_year = list(fr = "Ann\u00e9e", en = "Year"),
   pixel_legend_crswir = list(fr = "CRswir (lissage l\u00e9ger)", en = "CRswir (light smoothing)"),
   pixel_legend_crre = list(fr = "CRre (lissage l\u00e9ger)", en = "CRre (light smoothing)"),
   pixel_axis_crswir = list(fr = "CRswir (\u2191 = plus d'eau)", en = "CRswir (\u2191 = more water)"),
@@ -3496,19 +3496,19 @@ TRANSLATIONS <- list(
   pixel_annot_peak = list(fr = "pic plus faible = s\u00e9nescence pr\u00e9coce", en = "lower peak = early senescence"),
   pixel_annot_drift = list(fr = "d\u00e9rive vers eau ET chloro. basses", en = "drift toward low water AND chlorophyll"),
   pixel_smooth_none = list(fr = "Aucun", en = "None"),
-  pixel_smooth_light = list(fr = "Léger", en = "Light"),
-  pixel_table_label = list(fr = "Table des données (série pixel)",
+  pixel_smooth_light = list(fr = "L\u00e9ger", en = "Light"),
+  pixel_table_label = list(fr = "Table des donn\u00e9es (s\u00e9rie pixel)",
                            en = "Data table (pixel series)"),
   pixel_plot_alt = list(
-    fr = "Planche 4 panneaux du suivi pluriannuel du pixel : séries CRswir/CRre à double axe, cycles annuels repliés et espace d'état.",
+    fr = "Planche 4 panneaux du suivi pluriannuel du pixel : s\u00e9ries CRswir/CRre \u00e0 double axe, cycles annuels repli\u00e9s et espace d'\u00e9tat.",
     en = "4-panel plate of multi-year pixel monitoring: dual-axis CRswir/CRre series, folded annual cycles and state space."
   ),
   monitoring_reconfort_outside_validity_body = list(
     fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Results are indicative (advisory, non-blocking)."
   ),
-  # v0.106.4 — la carte est 100 % raster : l'état vide ne parle plus d'« alertes »
-  # mais de l'absence de RUN (rien à afficher tant qu'aucun diagnostic n'a tourné).
+  # v0.106.4 - la carte est 100 % raster : l'etat vide ne parle plus d'" alertes "
+  # mais de l'absence de RUN (rien a afficher tant qu'aucun diagnostic n'a tourne).
   monitoring_reconfort_map_empty_title = list(
     fr = "Aucun run RECONFORT",
     en = "No RECONFORT run"
@@ -3565,7 +3565,7 @@ TRANSLATIONS <- list(
     fr = "Probabilit\u00e9",
     en = "Probability"
   ),
-  # Info-bulles « i » par couche (parite FORDEAD).
+  # Info-bulles " i " par couche (parite FORDEAD).
   reconfort_couche_score_info = list(
     fr = "Score continu de d\u00e9p\u00e9rissement issu du mod\u00e8le RECONFORT. Plus la valeur est \u00e9lev\u00e9e, plus le d\u00e9p\u00e9rissement est s\u00e9v\u00e8re. \u00c9chelle de couleur par quantiles (pleine intensit\u00e9).",
     en = "Continuous dieback score from the RECONFORT model. Higher means more severe dieback. Quantile colour scale (full contrast)."
@@ -3766,9 +3766,9 @@ TRANSLATIONS <- list(
     fr = "Plan de validation",
     en = "Validation plan"
   ),
-  # v0.43.3 — split du sous-onglet validation en 2 instances mode-driven
-  # (symétriques avec Alertes FAST/FORDEAD et Carte FAST/FORDEAD).
-  # Source figée par onglet, plus de radio à choisir.
+  # v0.43.3 - split du sous-onglet validation en 2 instances mode-driven
+  # (symetriques avec Alertes FAST/FORDEAD et Carte FAST/FORDEAD).
+  # Source figee par onglet, plus de radio a choisir.
   validation_sampling_title_fast = list(
     fr = "Plan de validation FAST",
     en = "FAST validation plan"
@@ -3793,8 +3793,8 @@ TRANSLATIONS <- list(
     fr = "Classes d'alerte retenues",
     en = "Retained alert classes"
   ),
-  # Spec control_classes (v0.51.0) — sélection des classes servant à
-  # tirer les placettes témoins + aide au choix (distribution du raster).
+  # Spec control_classes (v0.51.0) - selection des classes servant a
+  # tirer les placettes temoins + aide au choix (distribution du raster).
   validation_control_classes_label = list(
     fr = "Classes consid\u00e9r\u00e9es comme t\u00e9moins",
     en = "Classes used as controls"
@@ -3815,10 +3815,10 @@ TRANSLATIONS <- list(
     fr = "Aucune placette t\u00e9moin g\u00e9n\u00e9r\u00e9e : aucune cellule dans les classes t\u00e9moins choisies.",
     en = "No control plot generated: no cell in the chosen control classes."
   ),
-  # v0.45.0 — labels unifiés FAST entre Alertes FAST (légende) et
+  # v0.45.0 - labels unifies FAST entre Alertes FAST (legende) et
   # Plan de validation FAST (checkboxes). FAST = quartiles du raster
-  # d'alerte courant, calculés dynamiquement via .fast_class_labels().
-  # FORDEAD = labels biologiques statiques (le mask catégoriel
+  # d'alerte courant, calcules dynamiquement via .fast_class_labels().
+  # FORDEAD = labels biologiques statiques (le mask categoriel
   # FORDEAD est fixe).
   validation_class_unit_days = list(
     fr = "j",
@@ -3832,56 +3832,56 @@ TRANSLATIONS <- list(
     fr = "pente/an",
     en = "slope/yr"
   ),
-  # Fallback FAST quand le raster d'alerte n'est pas encore calculé
-  # (cache absent, ingestion pas encore lancée, etc.) — labels
-  # génériques par classe.
+  # Fallback FAST quand le raster d'alerte n'est pas encore calcule
+  # (cache absent, ingestion pas encore lancee, etc.) - labels
+  # generiques par classe.
   validation_class_fast_1 = list(
-    fr = "1 — faible (moins fiable)",
-    en = "1 — low (less reliable)"
+    fr = "1 \u2014 faible (moins fiable)",
+    en = "1 \u2014 low (less reliable)"
   ),
   validation_class_fast_2 = list(
-    fr = "2 — moyenne (moins fiable)",
-    en = "2 — medium (less reliable)"
+    fr = "2 \u2014 moyenne (moins fiable)",
+    en = "2 \u2014 medium (less reliable)"
   ),
   validation_class_fast_3 = list(
-    fr = "3 — forte",
-    en = "3 — high"
+    fr = "3 \u2014 forte",
+    en = "3 \u2014 high"
   ),
   validation_class_fast_4 = list(
-    fr = "4 — très forte",
-    en = "4 — very high"
+    fr = "4 \u2014 tr\u00e8s forte",
+    en = "4 \u2014 very high"
   ),
-  # FORDEAD : libellés biologiques fixes (mapping cœur du masque
-  # catégoriel produit par run_fordead_dieback()).
+  # FORDEAD : libelles biologiques fixes (mapping coeur du masque
+  # categoriel produit par run_fordead_dieback()).
   validation_class_fordead_1 = list(
-    fr = "1 — faible (moins fiable)",
-    en = "1 — low (less reliable)"
+    fr = "1 \u2014 faible (moins fiable)",
+    en = "1 \u2014 low (less reliable)"
   ),
   validation_class_fordead_2 = list(
-    fr = "2 — moyenne (moins fiable)",
-    en = "2 — medium (less reliable)"
+    fr = "2 \u2014 moyenne (moins fiable)",
+    en = "2 \u2014 medium (less reliable)"
   ),
   validation_class_fordead_3 = list(
-    fr = "3 — forte",
-    en = "3 — high"
+    fr = "3 \u2014 forte",
+    en = "3 \u2014 high"
   ),
   validation_class_fordead_4 = list(
-    fr = "4 — sol nu",
-    en = "4 — bare soil"
+    fr = "4 \u2014 sol nu",
+    en = "4 \u2014 bare soil"
   ),
   # ----- RECONFORT validation (spec 021 G4) -----
   validation_sampling_title_reconfort = list(
     fr = "Plan de validation RECONFORT",
     en = "RECONFORT validation plan"
   ),
-  reconfort_class_label_1 = list(fr = "1 — sain", en = "1 — healthy"),
+  reconfort_class_label_1 = list(fr = "1 \u2014 sain", en = "1 \u2014 healthy"),
   reconfort_class_label_2 = list(
-    fr = "2 — d\u00e9p\u00e9rissant",
-    en = "2 — declining"
+    fr = "2 \u2014 d\u00e9p\u00e9rissant",
+    en = "2 \u2014 declining"
   ),
   reconfort_class_label_3 = list(
-    fr = "3 — tr\u00e8s d\u00e9p\u00e9rissant",
-    en = "3 — severely declining"
+    fr = "3 \u2014 tr\u00e8s d\u00e9p\u00e9rissant",
+    en = "3 \u2014 severely declining"
   ),
   validation_buffer_label = list(
     fr = "Tampon (m) autour des alertes",
@@ -3940,7 +3940,7 @@ TRANSLATIONS <- list(
     fr = "Zone saine",
     en = "Healthy zone"
   ),
-  # --- Plan de validation FAST branché sur le trend (spec 025) ----------
+  # --- Plan de validation FAST branche sur le trend (spec 025) ----------
   validation_source_fast_trend = list(
     fr = "FAST trend (NDRE)",
     en = "FAST trend (NDRE)"
@@ -3950,7 +3950,7 @@ TRANSLATIONS <- list(
     en = "Index"
   ),
   validation_trend_window_label = list(
-    fr = "Fenêtre d'analyse",
+    fr = "Fen\u00eatre d'analyse",
     en = "Analysis window"
   ),
   validation_trend_n_plots_label = list(
@@ -3958,36 +3958,36 @@ TRANSLATIONS <- list(
     en = "Sanitary plots"
   ),
   validation_trend_n_control_label = list(
-    fr = "Placettes témoins",
+    fr = "Placettes t\u00e9moins",
     en = "Control plots"
   ),
   validation_trend_advanced_label = list(
-    fr = "Paramètres avancés",
+    fr = "Param\u00e8tres avanc\u00e9s",
     en = "Advanced parameters"
   ),
   validation_trend_params_note = list(
-    fr = "Mois de saison, années min. et seuil α sont repris de l'onglet « Alertes FAST » (mode Tendance).",
-    en = "Season months, min. years and α threshold are taken from the \"Alertes FAST\" tab (Trend mode)."
+    fr = "Mois de saison, ann\u00e9es min. et seuil \u03b1 sont repris de l'onglet \u00ab Alertes FAST \u00bb (mode Tendance).",
+    en = "Season months, min. years and \u03b1 threshold are taken from the \"Alertes FAST\" tab (Trend mode)."
   ),
   validation_trend_min_obs_label = list(
     fr = "Observations min. / an",
     en = "Min. observations / year"
   ),
   validation_trend_generate_btn = list(
-    fr = "Générer le plan sanitaire",
+    fr = "G\u00e9n\u00e9rer le plan sanitaire",
     en = "Generate sanitary plan"
   ),
   validation_trend_legend_title = list(
-    fr = "Sévérité du déclin (|pente| %s/an)",
+    fr = "S\u00e9v\u00e9rit\u00e9 du d\u00e9clin (|pente| %s/an)",
     en = "Decline severity (|slope| %s/yr)"
   ),
   validation_empty_trend_title = list(
-    fr = "Aucun déclin significatif",
+    fr = "Aucun d\u00e9clin significatif",
     en = "No significant decline"
   ),
   validation_empty_trend_body = list(
-    fr = "Aucun déclin pluriannuel significatif sur la fenêtre d'analyse — rien à valider.",
-    en = "No significant pluriannual decline on the analysis window — nothing to validate."
+    fr = "Aucun d\u00e9clin pluriannuel significatif sur la fen\u00eatre d'analyse \u2014 rien \u00e0 valider.",
+    en = "No significant pluriannual decline on the analysis window \u2014 nothing to validate."
   ),
   validation_empty_mask_body = list(
     fr = "Aucune cellule d'alerte dans les classes retenues sur la fen\u00eatre courante \u2014 rien \u00e0 valider.",
@@ -4369,7 +4369,7 @@ TRANSLATIONS <- list(
   regen_stand_section = list(fr = "Peuplement", en = "Stand"),
   regen_forest_type = list(fr = "Type de peuplement", en = "Stand type"),
   regen_forest_type_tip = list(
-    fr = "Phénologie du peuplement dans le bilan hydrique du sol (BILJOU). Un feuillu caduc (interception/transpiration saisonnières) et un résineux sempervirent (toute l'année) donnent des jours de stress hydrique différents, donc une sensibilité et une priorité différentes. Agit en amont : nécessite de relancer l'analyse (contrairement à l'essence cible, live).",
+    fr = "Ph\u00e9nologie du peuplement dans le bilan hydrique du sol (BILJOU). Un feuillu caduc (interception/transpiration saisonni\u00e8res) et un r\u00e9sineux sempervirent (toute l'ann\u00e9e) donnent des jours de stress hydrique diff\u00e9rents, donc une sensibilit\u00e9 et une priorit\u00e9 diff\u00e9rentes. Agit en amont : n\u00e9cessite de relancer l'analyse (contrairement \u00e0 l'essence cible, live).",
     en = "Stand phenology in the soil water balance (BILJOU). A deciduous broadleaf (seasonal interception/transpiration) and an evergreen conifer (year-round) yield different water-stress days, hence different sensitivity and priority. Applied upstream: requires re-running the analysis (unlike the target species, which is live)."),
   regen_forest_feuillu = list(fr = "Feuillu", en = "Broadleaf"),
   regen_forest_resineux = list(fr = "R\u00e9sineux", en = "Conifer"),
@@ -4378,16 +4378,16 @@ TRANSLATIONS <- list(
   regen_lai_max = list(fr = "LAI max", en = "Max LAI"),
   regen_ewm = list(fr = "Eau extractible (mm)", en = "Extractable water (mm)"),
   regen_ewm_hint = list(
-    fr = "Laisser vide pour dériver la réserve utile par UGF depuis SoilGrids (250 m). Saisir une valeur force un sol uniforme sur tout le massif.",
+    fr = "Laisser vide pour d\u00e9river la r\u00e9serve utile par UGF depuis SoilGrids (250 m). Saisir une valeur force un sol uniforme sur tout le massif.",
     en = "Leave empty to derive per-unit extractable water from SoilGrids (250 m). Entering a value forces a uniform soil across the whole area."
   ),
   regen_rooting_depth = list(fr = "Profondeur d'enracinement (cm)", en = "Rooting depth (cm)"),
   regen_rooting_depth_hint = list(
-    fr = "Profondeur sur laquelle SoilGrids intègre la réserve utile. Sans effet si l'eau extractible est saisie à la main.",
+    fr = "Profondeur sur laquelle SoilGrids int\u00e8gre la r\u00e9serve utile. Sans effet si l'eau extractible est saisie \u00e0 la main.",
     en = "Depth over which SoilGrids integrates extractable water. No effect when extractable water is entered manually."
   ),
   regen_canopy_pai_lidar = list(
-    fr = "LAI max du bilan hydrique dérivé du PAI LiDAR",
+    fr = "LAI max du bilan hydrique d\u00e9riv\u00e9 du PAI LiDAR",
     en = "Water-balance max LAI derived from the LiDAR PAI"
   ),
   regen_roots = list(fr = "Fractions racinaires", en = "Root fractions"),
@@ -4495,33 +4495,33 @@ TRANSLATIONS <- list(
   regen_phase_pai_raster = list(fr = "satellite", en = "satellite"),
   regen_phase_pai_cache = list(fr = "cache", en = "cache"),
   regen_pai_recompute = list(fr = "Recalculer le PAI", en = "Recompute PAI"),
-  regen_pai_recompute_tip = list(fr = "Supprime le cache PAI (cache/regeneration/pai.tif). Utile si le nuage LiDAR a été remplacé à emprise constante : la structure de végétation sera recalculée au prochain run.", en = "Deletes the PAI cache (cache/regeneration/pai.tif). Useful when the LiDAR cloud was replaced at constant extent: vegetation structure will be recomputed on the next run."),
-  regen_pai_cache_cleared = list(fr = "Cache PAI supprimé — recalcul au prochain run.", en = "PAI cache cleared — recomputed on next run."),
+  regen_pai_recompute_tip = list(fr = "Supprime le cache PAI (cache/regeneration/pai.tif). Utile si le nuage LiDAR a \u00e9t\u00e9 remplac\u00e9 \u00e0 emprise constante : la structure de v\u00e9g\u00e9tation sera recalcul\u00e9e au prochain run.", en = "Deletes the PAI cache (cache/regeneration/pai.tif). Useful when the LiDAR cloud was replaced at constant extent: vegetation structure will be recomputed on the next run."),
+  regen_pai_cache_cleared = list(fr = "Cache PAI supprim\u00e9 \u2014 recalcul au prochain run.", en = "PAI cache cleared \u2014 recomputed on next run."),
   regen_phase_micro_moy = list(fr = "Microclimat \u2014 \u00e9t\u00e9s moyens", en = "Microclimate \u2014 average summers"),
   regen_phase_micro_can = list(fr = "Microclimat \u2014 \u00e9t\u00e9s canicule", en = "Microclimate \u2014 heatwave summers"),
   regen_phase_exposition = list(fr = "Agr\u00e9gation de l'exposition\u2026", en = "Aggregating exposure\u2026"),
   regen_phase_ewm = list(fr = "R\u00e9serve utile (SoilGrids)", en = "Extractable water (SoilGrids)"),
   regen_engine_log = list(fr = "Journal du moteur", en = "Engine log"),
   regen_expert_section = list(
-    fr = "Paramètres experts (dérivés automatiquement si vides)",
+    fr = "Param\u00e8tres experts (d\u00e9riv\u00e9s automatiquement si vides)",
     en = "Expert parameters (auto-derived when empty)"
   ),
   regen_expert_hint = list(
-    fr = "Laisser vide : la valeur est dérivée de la donnée (PAI LiDAR, SoilGrids). Renseigner un champ force la valeur sur toutes les UGF et court-circuite la dérivation.",
+    fr = "Laisser vide : la valeur est d\u00e9riv\u00e9e de la donn\u00e9e (PAI LiDAR, SoilGrids). Renseigner un champ force la valeur sur toutes les UGF et court-circuite la d\u00e9rivation.",
     en = "Leave empty: the value is derived from the data (LiDAR PAI, SoilGrids). Filling a field forces the value on every unit and bypasses the derivation."
   ),
-  regen_override_badge = list(fr = "forcé", en = "forced"),
+  regen_override_badge = list(fr = "forc\u00e9", en = "forced"),
   regen_lai_derived_stats = list(
-    fr = "LAI dérivé : %s [%s – %s] sur %d UGF",
-    en = "Derived LAI: %s [%s – %s] across %d units"
+    fr = "LAI d\u00e9riv\u00e9 : %s [%s \u2013 %s] sur %d UGF",
+    en = "Derived LAI: %s [%s \u2013 %s] across %d units"
   ),
   regen_ewm_derived_stats = list(
-    fr = "Réserve utile dérivée (SoilGrids) : %s [%s – %s] mm sur %d UGF",
-    en = "Derived extractable water (SoilGrids): %s [%s – %s] mm across %d units"
+    fr = "R\u00e9serve utile d\u00e9riv\u00e9e (SoilGrids) : %s [%s \u2013 %s] mm sur %d UGF",
+    en = "Derived extractable water (SoilGrids): %s [%s \u2013 %s] mm across %d units"
   ),
   regen_ewm_fallback_uniform = list(
-    fr = "SoilGrids injoignable : repli sur un sol uniforme (%s mm) — le bilan hydrique n'est plus spatialisé par le sol.",
-    en = "SoilGrids unreachable: falling back to a uniform soil (%s mm) — the water balance is no longer spatialised by soil."
+    fr = "SoilGrids injoignable : repli sur un sol uniforme (%s mm) \u2014 le bilan hydrique n'est plus spatialis\u00e9 par le sol.",
+    en = "SoilGrids unreachable: falling back to a uniform soil (%s mm) \u2014 the water balance is no longer spatialised by soil."
   ),
   regen_log_ntfy_failed = list(
     fr = "Notification ntfy non envoy\u00e9e (canal indisponible) \u2014 les diagnostics restent dans ce journal.",
@@ -4949,7 +4949,7 @@ translate_task_message <- function(task, i18n) {
     return(i18n$t("download_complete"))
   }
 
-  # Spectral diversity (B4/L3) — biodivMapR run, spec 028
+  # Spectral diversity (B4/L3) - biodivMapR run, spec 028
   if (task == "spectral_diversity") {
     return(i18n$t("task_spectral_diversity"))
   }
@@ -4977,8 +4977,8 @@ translate_task_message <- function(task, i18n) {
   }
 
   # CHM inference (Open-Canopy ML pipeline, spec 005 phase 6).
-  # Not a download — handled separately so the UI does not mislabel
-  # a multi-minute ML run as a "Téléchargement".
+  # Not a download - handled separately so the UI does not mislabel
+  # a multi-minute ML run as a "Telechargement".
   if (task == "chm_inference_opencanopy") {
     return(i18n$t("chm_inference_opencanopy"))
   }
@@ -4992,12 +4992,12 @@ translate_task_message <- function(task, i18n) {
   }
 
   # Open-Canopy pipeline phases (5 steps).
-  #   "chm_phase:load_aoi"                   -> "Étape 1/5 : chargement de l'AOI…"
-  #   "chm_phase:download_ortho"             -> "Étape 2/5 : téléchargement ortho IGN…"
-  #   "chm_phase:setup_python"               -> "Étape 3/5 : configuration Python…"
-  #   "chm_phase:download_model:pvtv2"       -> "Étape 3/5 : téléchargement modèle pvtv2…"
-  #   "chm_phase:inference:pvtv2"            -> "Étape 4/5 : inférence modèle pvtv2…"
-  #   "chm_phase:export"                     -> "Étape 5/5 : export des résultats…"
+  #   "chm_phase:load_aoi"                   -> "Etape 1/5 : chargement de l'AOI..."
+  #   "chm_phase:download_ortho"             -> "Etape 2/5 : telechargement ortho IGN..."
+  #   "chm_phase:setup_python"               -> "Etape 3/5 : configuration Python..."
+  #   "chm_phase:download_model:pvtv2"       -> "Etape 3/5 : telechargement modele pvtv2..."
+  #   "chm_phase:inference:pvtv2"            -> "Etape 4/5 : inference modele pvtv2..."
+  #   "chm_phase:export"                     -> "Etape 5/5 : export des resultats..."
   if (grepl("^chm_phase:", task)) {
     parts <- strsplit(sub("^chm_phase:", "", task), ":", fixed = TRUE)[[1]]
     step <- parts[1] %||% ""
@@ -5013,8 +5013,8 @@ translate_task_message <- function(task, i18n) {
   }
 
   # Per-tile IGN ortho download inside the CHM pipeline.
-  #   "chm_tile_start:rvb:28"  -> "Téléchargement RVB : 28 tuiles…"
-  #   "chm_tile:rvb:5:28"      -> "Téléchargement RVB : tuile 5/28 …"
+  #   "chm_tile_start:rvb:28"  -> "Telechargement RVB : 28 tuiles..."
+  #   "chm_tile:rvb:5:28"      -> "Telechargement RVB : tuile 5/28 ..."
   if (grepl("^chm_tile_start:", task)) {
     parts <- strsplit(sub("^chm_tile_start:", "", task), ":", fixed = TRUE)[[1]]
     type_label <- toupper(parts[1] %||% "ortho")
@@ -5030,8 +5030,8 @@ translate_task_message <- function(task, i18n) {
   }
 
   # Per-inference-tile progress during the ML step.
-  #   "chm_inference_start:3"       -> "Inférence : 3 tuile(s)…"
-  #   "chm_inference_tile:2:3"      -> "Inférence tuile 2/3…"
+  #   "chm_inference_start:3"       -> "Inference : 3 tuile(s)..."
+  #   "chm_inference_tile:2:3"      -> "Inference tuile 2/3..."
   if (grepl("^chm_inference_start:", task)) {
     n_tiles <- suppressWarnings(
       as.integer(sub("^chm_inference_start:", "", task))

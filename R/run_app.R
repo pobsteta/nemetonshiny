@@ -20,7 +20,7 @@
 #'   simultaneously on the map. Default: \code{30}. Must be a positive integer.
 #' @param tour Logical. Auto-start the guided tour (cicerone) for a visitor who
 #'   has never seen it. Default: \code{TRUE}. Set to \code{FALSE} to boot
-#'   straight into the app — useful for demos, screencasts and automated tests,
+#'   straight into the app - useful for demos, screencasts and automated tests,
 #'   where the tour's client-side JS runs 2 s after connection and interferes.
 #'   Disabling only suppresses the AUTO-start: the tour stays available from the
 #'   help menu. Overridable per-session with the \code{NEMETON_TOUR} environment
@@ -33,7 +33,7 @@
 #' The application requires an internet connection for:
 #' \itemize{
 #'   \item Cadastral parcel data (API Cadastre / happign fallback
-#'   \item External data layers (INPN, IGN BD Forêt, Corine Land Cover)
+#'   \item External data layers (INPN, IGN BD Foret, Corine Land Cover)
 #' }
 #'
 #' Projects are saved locally in GeoParquet format for efficient caching.
@@ -106,21 +106,21 @@ run_app <- function(language = NULL,
     shiny.busy_indicators = FALSE
   )
 
-  # Résolution de travail des indicateurs de terrain (cf. APP_CONFIG). Résolue
-  # côté cœur par `.topo_target_res()` : option > variable d'env > défaut (2 m).
+  # Resolution de travail des indicateurs de terrain (cf. APP_CONFIG). Resolue
+  # cote coeur par `.topo_target_res()` : option > variable d'env > defaut (2 m).
   #
-  # Les DEUX canaux sont posés. `future` relaie bien les `options()` de la
-  # session appelante au worker `multisession` (vérifié : une option seule suffit
-  # à ce que le worker résolve 1 m), mais la variable d'environnement est le
-  # canal robuste — elle survit à tout mécanisme de sous-process qui ne relaierait
-  # pas les options, et c'est celui que le cœur documente.
+  # Les DEUX canaux sont poses. `future` relaie bien les `options()` de la
+  # session appelante au worker `multisession` (verifie : une option seule suffit
+  # a ce que le worker resolve 1 m), mais la variable d'environnement est le
+  # canal robuste - elle survit a tout mecanisme de sous-process qui ne relaierait
+  # pas les options, et c'est celui que le coeur documente.
   #
-  # La variable DOIT être posée AVANT `.ensure_async_plan()` : un process enfant
-  # hérite de l'environnement à sa CRÉATION, pas à chaque appel. L'option, elle,
-  # est relayée à chaque future et ne dépend pas de cet ordre.
+  # La variable DOIT etre posee AVANT `.ensure_async_plan()` : un process enfant
+  # herite de l'environnement a sa CREATION, pas a chaque appel. L'option, elle,
+  # est relayee a chaque future et ne depend pas de cet ordre.
   #
-  # Une valeur déjà présente dans l'environnement l'emporte : elle vient de
-  # l'utilisateur (ou de l'exploitant), qui doit pouvoir revenir au défaut cœur
+  # Une valeur deja presente dans l'environnement l'emporte : elle vient de
+  # l'utilisateur (ou de l'exploitant), qui doit pouvoir revenir au defaut coeur
   # sans modifier le code.
   if (!nzchar(Sys.getenv("NEMETON_TOPO_TARGET_RES"))) {
     Sys.setenv(NEMETON_TOPO_TARGET_RES = as.character(APP_CONFIG$topo_target_res))
@@ -129,8 +129,8 @@ run_app <- function(language = NULL,
     as.numeric(Sys.getenv("NEMETON_TOPO_TARGET_RES"))))
 
   # Configure async computation (ExtendedTask uses future for separate R process).
-  # `force = TRUE` : le point d'entrée de l'app IMPOSE son pool borné, sinon un
-  # plan non borné laissé par la session console lui survivrait (cf.
+  # `force = TRUE` : le point d'entree de l'app IMPOSE son pool borne, sinon un
+  # plan non borne laisse par la session console lui survivrait (cf.
   # .ensure_async_plan / .resolve_parallel_workers dans service_compute.R).
   n_workers <- .ensure_async_plan(force = TRUE)
   if (!is.na(n_workers)) {
@@ -202,9 +202,9 @@ get_default_project_dir <- function() {
 #'
 #' Always MERGES the `nemeton.app_options` option over the defaults: a partial
 #' option (e.g. a test setting only `project_dir`, or leaving `language` out)
-#' must not yield a NULL `language` — otherwise `app_ui()` → `get_expert_choices()`
-#' does `p$label[[NULL]]` and errors with « attempt to select less than one
-#' element ». `getOption(name, default)` returns the default ONLY when the option
+#' must not yield a NULL `language` - otherwise `app_ui()` -> `get_expert_choices()`
+#' does `p$label[[NULL]]` and errors with " attempt to select less than one
+#' element ". `getOption(name, default)` returns the default ONLY when the option
 #' is absent, so a partially-set option would drop fields without this merge.
 #'
 #' @return List of app options (all fields guaranteed present).

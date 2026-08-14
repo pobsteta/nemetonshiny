@@ -1,13 +1,13 @@
 # ===========================================================================
-# Service — Validation ACCESSFOR (référence IGN, onglet Accessibilité)
+# Service - Validation ACCESSFOR (reference IGN, onglet Accessibilite)
 # ===========================================================================
 #
-# Compare les classes de débardage calculées par l'app (skidder ForêtAccess) à la
-# couche nationale officielle **ACCESSFOR** de l'IGN (projet INRAE/IGN, WFS), même
-# filiation Sylvaccess. La table de correspondance est figée côté cœur par
+# Compare les classes de debardage calculees par l'app (skidder ForetAccess) a la
+# couche nationale officielle **ACCESSFOR** de l'IGN (projet INRAE/IGN, WFS), meme
+# filiation Sylvaccess. La table de correspondance est figee cote coeur par
 # `foretaccess::accessfor_correspondance()` (jointure sur l'ENTIER, jamais le
-# libellé) ; l'app récupère la couche ACCESSFOR (WFS `happign`) et calcule un taux
-# d'accord par classe. Règles 1/2 : aucune logique métier ici — crosswalk cœur +
+# libelle) ; l'app recupere la couche ACCESSFOR (WFS `happign`) et calcule un taux
+# d'accord par classe. Regles 1/2 : aucune logique metier ici - crosswalk coeur +
 # rasterisation/tabulation.
 
 #' WFS layer names of the IGN ACCESSFOR coverage (one per terrestrial engine)
@@ -51,7 +51,7 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
   rast <- tryCatch(terra::rast(classes_debardage_path), error = function(e) NULL)
   if (is.null(rast)) return(list(status = "error", reason = "accessfor_no_layer"))
 
-  # Emprise de la requête WFS = étendue du raster app (couvre le tampon), pas les
+  # Emprise de la requete WFS = etendue du raster app (couvre le tampon), pas les
   # seules parcelles : garantit que la couche ACCESSFOR recouvre tout le raster.
   aoi <- tryCatch(
     sf::st_as_sfc(sf::st_bbox(rast)),
@@ -68,15 +68,15 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
   }
   af <- tryCatch(sf::st_transform(af, terra::crs(rast)), error = function(e) af)
 
-  # Crosswalk cœur : valeur classes_debardage app -> code ACCESSFOR (sur l'entier).
+  # Crosswalk coeur : valeur classes_debardage app -> code ACCESSFOR (sur l'entier).
   corr <- tryCatch(foretaccess::accessfor_correspondance(), error = function(e) NULL)
   if (!is.data.frame(corr) || !all(c("fa_value", "accessfor_class") %in% names(corr))) {
     return(list(status = "error", reason = "accessfor_no_crosswalk"))
   }
 
   # Notre raster (valeurs 1..9) -> codes ACCESSFOR (via crosswalk). `subst` matche
-  # les LIBELLÉS sur un raster catégoriel (piège S4) : on repart d'une grille NUE
-  # (`terra::rast(rast)` ne copie pas les niveaux) remplie des valeurs numériques,
+  # les LIBELLES sur un raster categoriel (piege S4) : on repart d'une grille NUE
+  # (`terra::rast(rast)` ne copie pas les niveaux) remplie des valeurs numeriques,
   # pour un `subst` fiable sur les entiers.
   ok <- stats::complete.cases(corr[, c("fa_value", "accessfor_class")])
   our_num <- tryCatch({
@@ -86,25 +86,25 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
   }, error = function(e) NULL)
   if (is.null(our_num)) return(list(status = "error", reason = "accessfor_reclass_failed"))
 
-  # ACCESSFOR rasterisé sur la grille app.
+  # ACCESSFOR rasterise sur la grille app.
   af_r <- tryCatch(
     terra::rasterize(terra::vect(af), our_num, field = "class"),
     error = function(e) NULL)
   if (is.null(af_r)) return(list(status = "error", reason = "accessfor_rasterize_failed"))
 
-  # Raster ACCESSFOR AFFICHABLE : reclassé des codes ACCESSFOR vers NOS valeurs de
-  # bande (fa_value) + mêmes niveaux/coltab que le raster « classes de débardage »
-  # → il se colore et se légende à l'identique, directement comparable à l'œil.
-  # Écrit à côté des autres couches du run (cache d'accessibilité).
+  # Raster ACCESSFOR AFFICHABLE : reclasse des codes ACCESSFOR vers NOS valeurs de
+  # bande (fa_value) + memes niveaux/coltab que le raster " classes de debardage "
+  # -> il se colore et se legende a l'identique, directement comparable a l'oeil.
+  # Ecrit a cote des autres couches du run (cache d'accessibilite).
   accessfor_raster_path <- NULL
   af_disp <- tryCatch({
     okv <- stats::complete.cases(corr[, c("accessfor_class", "fa_value")])
     r <- terra::subst(af_r, from = corr$accessfor_class[okv], to = corr$fa_value[okv])
-    # EMPRISE IDENTIQUE aux classes de débardage : ACCESSFOR (issu d'un vecteur
+    # EMPRISE IDENTIQUE aux classes de debardage : ACCESSFOR (issu d'un vecteur
     # national) remplirait tout le rectangle bbox, alors que classes_debardage est
-    # restreint à la forêt (AOI + tampon). On masque donc ACCESSFOR aux cellules
-    # forêt du raster app — non NA et hors « hors_foret » — pour un vis-à-vis strict
-    # sous le volet. (Valeurs posées AVANT les niveaux/coltab pour ne pas les perdre.)
+    # restreint a la foret (AOI + tampon). On masque donc ACCESSFOR aux cellules
+    # foret du raster app - non NA et hors " hors_foret " - pour un vis-a-vis strict
+    # sous le volet. (Valeurs posees AVANT les niveaux/coltab pour ne pas les perdre.)
     lv <- terra::levels(rast)[[1]]
     hf_code <- if (is.data.frame(lv) && nrow(lv) > 0L) {
       as.numeric(lv[[1]])[!is.na(lv[[2]]) & lv[[2]] == "hors_foret"]
@@ -128,7 +128,7 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
     }
   }
 
-  # Comparaison sur les cellules communes (les deux non NA). `c()` non nommé sur
+  # Comparaison sur les cellules communes (les deux non NA). `c()` non nomme sur
   # SpatRaster empile les couches ; on renomme les colonnes par position ensuite.
   df <- tryCatch(stats::na.omit(terra::as.data.frame(c(our_num, af_r))),
                  error = function(e) NULL)

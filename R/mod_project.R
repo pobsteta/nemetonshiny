@@ -122,16 +122,16 @@ mod_project_ui <- function(id) {
             )
           ),
 
-          # Forêt ancienne → N2 continuité (spec 031) : plus de bloc d'upload.
-          # La couche IGN « BD Forêts anciennes » (nationale, Etalab 2.0) est
-          # récupérée automatiquement au calcul (voir build_foret_ancienne_layer
-          # → nemeton::load_foret_ancienne_source). Rien à configurer.
+          # Foret ancienne -> N2 continuite (spec 031) : plus de bloc d'upload.
+          # La couche IGN " BD Forets anciennes " (nationale, Etalab 2.0) est
+          # recuperee automatiquement au calcul (voir build_foret_ancienne_layer
+          # -> nemeton::load_foret_ancienne_source). Rien a configurer.
 
-          # Les sources Theia optionnelles (coupes rases SUFOSAT → T3, spec
-          # 030 ; rafraîchissement urbain LST → A5, spec 032) ne sont plus
-          # configurées ici : elles ont rejoint l'onglet « Sources
-          # optionnelles » du modal de paramètres (roue dentée), aux côtés des
-          # identifiants Theia dont elles dépendent — cf. mod_sources_config.
+          # Les sources Theia optionnelles (coupes rases SUFOSAT -> T3, spec
+          # 030 ; rafraichissement urbain LST -> A5, spec 032) ne sont plus
+          # configurees ici : elles ont rejoint l'onglet " Sources
+          # optionnelles " du modal de parametres (roue dentee), aux cotes des
+          # identifiants Theia dont elles dependent - cf. mod_sources_config.
 
           # Creation date (auto)
           htmltools::div(
@@ -446,7 +446,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
         return()
       }
 
-      # Guard against renderUI button creation (NULL → 0 transition)
+      # Guard against renderUI button creation (NULL -> 0 transition)
       # When the form switches from create to edit mode, the new button's
       # input value goes from NULL to 0, which triggers bindEvent.
       # Only proceed if a button was actually clicked (value > 0).
@@ -484,7 +484,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
           rv$current_project <- project
           rv$editing_project_id <- project$id
 
-          # Update app state — reload through load_project() so the UGF
+          # Update app state - reload through load_project() so the UGF
           # tab receives a fully-populated object (parcels + tenements +
           # ugs auto-generated via ensure_project_migrated). Without
           # this, create_project() only returns list(id, path, metadata)
@@ -516,7 +516,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
 
           rv$current_project <- project
 
-          # Update app state — see CREATE branch above. update_project()
+          # Update app state - see CREATE branch above. update_project()
           # returns parcels + indicators but no tenements/ugs, so we
           # also reload through load_project() to keep the UGF map in
           # sync (especially after a parcel change that may have made

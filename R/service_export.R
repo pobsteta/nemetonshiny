@@ -11,7 +11,7 @@ NULL
 #' Extract footnote definitions (id -> text) from a RAG sources markdown
 #'
 #' `nemeton::format_citations()` emits source entries as lines
-#' `"[^1] author … p. N. <url>"` (no colon → not a valid Pandoc footnote
+#' `"[^1] author ... p. N. <url>"` (no colon -> not a valid Pandoc footnote
 #' definition). Returns a named character vector `id -> text`.
 #' @noRd
 .parse_source_defs <- function(sources_md) {
@@ -27,16 +27,16 @@ NULL
 #' Make a synthesis comment's `[^n]` references render as REAL footnotes
 #'
 #' The synthesis perspective carries inline footnote references (`[^1]`,
-#' `[^2]`, …) but the raw text alone gives Pandoc no definitions, so they
+#' `[^2]`, ...) but the raw text alone gives Pandoc no definitions, so they
 #' print as literal `[^2]`. Two real-world complications (observed on
 #' generated perspectives) must be handled or the literals remain:
 #'
-#'  * **Orphan refs** — the LLM sometimes cites a number BEYOND the
+#'  * **Orphan refs** - the LLM sometimes cites a number BEYOND the
 #'    available sources (e.g. `[^7]` when only 4 sources exist). Such refs
-#'    have no definition → Pandoc keeps them literal.
-#'  * **Duplicate refs** — the same `[^n]` is referenced several times
-#'    (body + a « Sources mobilisées » summary). Pandoc does NOT support
-#'    referencing one footnote twice → 2nd+ occurrences stay literal.
+#'    have no definition -> Pandoc keeps them literal.
+#'  * **Duplicate refs** - the same `[^n]` is referenced several times
+#'    (body + a " Sources mobilisees " summary). Pandoc does NOT support
+#'    referencing one footnote twice -> 2nd+ occurrences stay literal.
 #'
 #' Strategy: keep the FIRST occurrence of each VALID id (one that has a
 #' definition) as a real footnote, and STRIP every orphan / duplicate
@@ -45,7 +45,7 @@ NULL
 #'
 #' @param comment Character. The synthesis comment (may carry `[^n]`).
 #' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
-#' @return The comment with cleaned refs + appended `[^n]: …` definitions,
+#' @return The comment with cleaned refs + appended `[^n]: ...` definitions,
 #'   ready for Quarto/Pandoc. Unchanged when there is nothing to resolve.
 #' @noRd
 .prepare_footnotes <- function(comment, sources_md) {
@@ -53,11 +53,11 @@ NULL
   defs <- .parse_source_defs(sources_md)
   if (!length(defs)) return(comment)
 
-  # v0.84.10 — dédup par CONTENU : une même source peut apparaître dans
-  # `sources_md` sous plusieurs ids (corpus ingéré en plusieurs documents,
-  # ou ancienne numérotation par chunk). On veut UNE seule note par source.
+  # v0.84.10 - dedup par CONTENU : une meme source peut apparaitre dans
+  # `sources_md` sous plusieurs ids (corpus ingere en plusieurs documents,
+  # ou ancienne numerotation par chunk). On veut UNE seule note par source.
   # Pour chaque texte de citation, on retient un id CANONIQUE (le 1er
-  # rencontré) et on réécrit toutes les refs vers cet id.
+  # rencontre) et on reecrit toutes les refs vers cet id.
   canon_by_id   <- character(0)   # id source -> id canonique
   canon_text    <- character(0)   # id canonique -> texte
   text_to_canon <- character(0)   # texte -> id canonique
@@ -74,16 +74,16 @@ NULL
 
   pat     <- "\\[\\^[0-9]+\\]"
   markers <- regmatches(comment, gregexpr(pat, comment, perl = TRUE))[[1]]
-  if (!length(markers)) return(comment)  # no refs → nothing to do
+  if (!length(markers)) return(comment)  # no refs -> nothing to do
   pieces  <- strsplit(comment, pat, perl = TRUE)[[1]]
 
-  used <- character(0)   # ids canoniques déjà émis comme note
+  used <- character(0)   # ids canoniques deja emis comme note
   out  <- if (length(pieces)) pieces[1] else ""
   for (i in seq_along(markers)) {
     id    <- sub("\\[\\^([0-9]+)\\]", "\\1", markers[i])
     canon <- if (id %in% names(canon_by_id)) canon_by_id[[id]] else NA_character_
     # garder la 1re ref vers chaque source UNIQUE ; retirer orphelines,
-    # doublons d'id ET doublons de SOURCE (même contenu, id différent).
+    # doublons d'id ET doublons de SOURCE (meme contenu, id different).
     keep  <- !is.na(canon) && !(canon %in% used)
     tok   <- if (keep) sprintf("[^%s]", canon) else ""
     if (keep) used <- c(used, canon)
@@ -91,13 +91,13 @@ NULL
     out   <- paste0(out, tok, nxt)
   }
 
-  # Cosmetic — stripping refs (orphelines / doublons / d'un résumé
-  # « Sources mobilisées : [^x], [^y] ») laisse des virgules orphelines
-  # ("… : , , ."). On les recolle conservativement.
-  out <- gsub("\\s*,(\\s*,)+", ",", out, perl = TRUE)  # runs of commas → one
-  out <- gsub(":\\s*,\\s*", ": ", out, perl = TRUE)    # ": ," → ": "
-  out <- gsub(",\\s*([.;])", "\\1", out, perl = TRUE)  # ", ." → "."
-  out <- gsub(":\\s*([.;])", "\\1", out, perl = TRUE)  # ": ." → "." (empty list)
+  # Cosmetic - stripping refs (orphelines / doublons / d'un resume
+  # " Sources mobilisees : [^x], [^y] ") laisse des virgules orphelines
+  # ("... : , , ."). On les recolle conservativement.
+  out <- gsub("\\s*,(\\s*,)+", ",", out, perl = TRUE)  # runs of commas -> one
+  out <- gsub(":\\s*,\\s*", ": ", out, perl = TRUE)    # ": ," -> ": "
+  out <- gsub(",\\s*([.;])", "\\1", out, perl = TRUE)  # ", ." -> "."
+  out <- gsub(":\\s*([.;])", "\\1", out, perl = TRUE)  # ": ." -> "." (empty list)
 
   if (length(used)) {
     u <- unique(used)
@@ -115,8 +115,8 @@ NULL
 #' Companion to [.prepare_footnotes()] for the per-family analysis pages. Same
 #' content deduplication (one note per UNIQUE source, keep the first reference,
 #' strip orphan / duplicate markers), with footnote labels **namespaced per
-#' family** (`[^C-1]`, `[^C-2]`, …) so they never collide with the synthesis
-#' footnotes — or another family's — in the same Pandoc/LaTeX document (numeric
+#' family** (`[^C-1]`, `[^C-2]`, ...) so they never collide with the synthesis
+#' footnotes - or another family's - in the same Pandoc/LaTeX document (numeric
 #' ids would clash and Pandoc cannot reference one definition twice).
 #'
 #' Only page-bottom footnotes are emitted; the visible per-family sources list
@@ -124,7 +124,7 @@ NULL
 #'
 #' @param comment Character. The family comment (may carry `[^n]`).
 #' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
-#' @param code Character. Family code (B, C, …) used as the label namespace.
+#' @param code Character. Family code (B, C, ...) used as the label namespace.
 #' @return The processed comment, ready for Quarto/Pandoc. Unchanged when there
 #'   is nothing to resolve (no comment, no sources, or no markers).
 #' @noRd
@@ -150,7 +150,7 @@ NULL
 
   pat     <- "\\[\\^[0-9]+\\]"
   markers <- regmatches(comment, gregexpr(pat, comment, perl = TRUE))[[1]]
-  if (!length(markers)) return(comment)  # no refs → nothing to do
+  if (!length(markers)) return(comment)  # no refs -> nothing to do
   pieces  <- strsplit(comment, pat, perl = TRUE)[[1]]
 
   used_order <- character(0)   # canonical ids in first-seen order
@@ -189,7 +189,7 @@ NULL
 
 #' Distinct documentary sources cited by a family comment (markdown block)
 #'
-#' Builds the per-family « Sources documentaires » list shown in the app UI
+#' Builds the per-family " Sources documentaires " list shown in the app UI
 #' under a family's comment. Parses the `[^n]` markers actually cited in the
 #' comment, looks their definitions up in the shared RAG `sources_md`, and
 #' returns them as a markdown block of distinct sources (deduplicated by
@@ -213,7 +213,7 @@ NULL
   seen_text <- character(0)
   out       <- character(0)
   for (id in ids) {
-    if (!(id %in% names(defs))) next            # orphan ref → skip
+    if (!(id %in% names(defs))) next            # orphan ref -> skip
     txt <- defs[[id]]
     if (txt %in% seen_text) next                # same source already listed
     seen_text <- c(seen_text, txt)
@@ -500,8 +500,8 @@ prepare_report_data <- function(project, family_scores, language,
 
   # Metadata
   meta <- project$metadata
-  # family_scores is now a UGF-level sf (one row per Unité de Gestion
-  # Forestière); parcel count is the number of cadastral parcels.
+  # family_scores is now a UGF-level sf (one row per Unite de Gestion
+  # Forestiere); parcel count is the number of cadastral parcels.
   has_ugs <- has_ug_data(project)
   n_ugs <- nrow(family_scores)
   n_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else n_ugs
@@ -520,7 +520,7 @@ prepare_report_data <- function(project, family_scores, language,
   }, character(1))
 
   # Build per-UGF score data for detailed tables. Prefer the UGF label
-  # (assigned by the user — e.g. "TSF-Sud", "Parc 22a") over a
+  # (assigned by the user - e.g. "TSF-Sud", "Parc 22a") over a
   # truncated ID. Kept under the `parcel_scores` list name for
   # backwards-compat with the existing Quarto template.
   parcel_scores <- list()
@@ -612,7 +612,7 @@ prepare_report_data <- function(project, family_scores, language,
     synthesis_comments = synthesis_comments,
     family_comments = family_comments,
 
-    # reGénération section (spec 027 L6) — NULL when no run is available
+    # reGeneration section (spec 027 L6) - NULL when no run is available
     regeneration = .build_regeneration_report_block(regen_units, i18n, language),
 
     # Language
@@ -749,7 +749,7 @@ generate_family_maps <- function(family_scores, output_dir, language) {
 
     # Filename must match what inst/quarto/report_template.qmd looks
     # for: family_<CODE>_map.png (e.g. family_C_map.png). Do not use
-    # get_famille_col() — that returns "famille_carbone" which the
+    # get_famille_col() - that returns "famille_carbone" which the
     # template does not search for.
     output_file <- file.path(output_dir, paste0("family_", code, "_map.png"))
 
@@ -877,12 +877,12 @@ export_geopackage <- function(family_scores, output_file, layer_name = "nemeton_
 }
 
 
-#' Export a reGénération result to GeoPackage (spec 027 L6)
+#' Export a reGeneration result to GeoPackage (spec 027 L6)
 #'
 #' @description
 #' Writes the per-UGF climate-vulnerability result to a GeoPackage, keeping the
-#' spec 027 §7 column contract (whichever columns are present) plus any UG
-#' identifier. No business logic — a plain spatial export of `run_regeneration`
+#' spec 027 sect.7 column contract (whichever columns are present) plus any UG
+#' identifier. No business logic - a plain spatial export of `run_regeneration`
 #' output.
 #'
 #' @param regen_units sf. Enriched UGF from `run_regeneration()`.
@@ -905,13 +905,13 @@ export_regeneration_geopackage <- function(regen_units, output_file,
 }
 
 
-#' Build the reGénération summary table for the Quarto report (spec 027 L6)
+#' Build the reGeneration summary table for the Quarto report (spec 027 L6)
 #'
 #' @description
-#' Prepares the data behind the PDF report's "reGénération" section: the most
+#' Prepares the data behind the PDF report's "reGeneration" section: the most
 #' sensitive UGF ranked by \code{rang_sensibilite} (fallback: descending
-#' priority index), with the key spec 027 §7 fields. Returns a plain data.frame
-#' ready for \code{knitr::kable()} in the `.qmd` — no rendering here, so it is
+#' priority index), with the key spec 027 sect.7 fields. Returns a plain data.frame
+#' ready for \code{knitr::kable()} in the `.qmd` - no rendering here, so it is
 #' testable without Quarto. Returns \code{NULL} when there is nothing to report.
 #'
 #' @param regen_units sf/data.frame. Output of \code{run_regeneration()}.
@@ -937,10 +937,10 @@ regeneration_report_summary <- function(regen_units, top_n = 10L) {
 }
 
 
-#' Build the reGénération block for the PDF report data (spec 027 L6)
+#' Build the reGeneration block for the PDF report data (spec 027 L6)
 #'
 #' @description
-#' Turns the reGénération run into a ready-to-render block for the Quarto
+#' Turns the reGeneration run into a ready-to-render block for the Quarto
 #' template: a title, a short intro and a data.frame with translated headers
 #' (numbers rounded). Returns \code{NULL} when no run is available, so the
 #' template section is simply skipped.
@@ -2324,8 +2324,8 @@ add_parcel_labels <- function(data, id_col = "id") {
 #' @param family_comments Named list. Optional comments per family (keyed by family code, supports markdown).
 #' @param cover_image Character. Optional path to cover image for first page.
 #' @param use_quarto Logical. Whether to try Quarto first. Default TRUE.
-#' @param regen_units sf. Optional reGénération run output; when provided, a
-#'   "reGénération" section is appended to the Quarto report (spec 027 L6).
+#' @param regen_units sf. Optional reGeneration run output; when provided, a
+#'   "reGeneration" section is appended to the Quarto report (spec 027 L6).
 #'
 #' @return Character. Path to generated PDF.
 #' @export
@@ -2393,7 +2393,7 @@ generate_report_pdf <- function(project,
 
 #' Render a per-UGF satellite (Esri.WorldImagery) PNG for a PDF report
 #'
-#' Shared by the action-plan and reGénération PDF exports so both show the same
+#' Shared by the action-plan and reGeneration PDF exports so both show the same
 #' basemap. Best-effort: returns NA when the geometry is not sf, tiles are
 #' unavailable (no maptiles / network error) or the produced PNG is unusably
 #' small (a 0-byte PNG passed to \includegraphics crashes xelatex). Falls back
@@ -2507,9 +2507,9 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   temp_dir <- tempfile("nemeton_actions_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
-  # Carte satellite (Esri.WorldImagery) par UGF, pré-rendue en R : le qmd reste
-  # simple et toute erreur réseau/maptiles dégrade en NA (figure ignorée).
-  # Helper partagé avec l'export reGénération pour une parité stricte.
+  # Carte satellite (Esri.WorldImagery) par UGF, pre-rendue en R : le qmd reste
+  # simple et toute erreur reseau/maptiles degrade en NA (figure ignoree).
+  # Helper partage avec l'export reGeneration pour une parite stricte.
   render_ug_map <- .render_ug_satellite_png
 
   # Surfaces in hectares (best-effort)
@@ -2632,12 +2632,12 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
 
 
 # ===========================================================================
-# reGénération — export PDF (fiche par UGF, sur le patron du Plan d'actions)
+# reGeneration - export PDF (fiche par UGF, sur le patron du Plan d'actions)
 # ===========================================================================
 
-#' Build the per-UGF data list for the reGénération PDF
+#' Build the per-UGF data list for the reGeneration PDF
 #'
-#' Pure (no Shiny, no Quarto) so it is unit-testable: turns the reGénération
+#' Pure (no Shiny, no Quarto) so it is unit-testable: turns the reGeneration
 #' result (`units`, station conditions), the deterministic species `ranking`
 #' and the per-UGF `comments` into the structure consumed by
 #' `inst/quarto/regeneration_template.qmd`. Condition labels and the
@@ -2645,7 +2645,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
 #' template stays language-agnostic.
 #'
 #' @param project List. Project (metadata$name, id).
-#' @param units sf/data.frame. reGénération result carrying station columns.
+#' @param units sf/data.frame. reGeneration result carrying station columns.
 #' @param ranking Long ranking data.frame (ug_id, rank, label, suitability,
 #'   limiting_factor, confidence) or NULL.
 #' @param comments Named list `ug_id -> comment`.
@@ -2662,7 +2662,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   i18n <- get_i18n(language)
   df <- if (inherits(units, "sf")) sf::st_drop_geometry(units) else units
   project_name <- tryCatch(project$metadata$name, error = function(e) NULL) %||%
-    tryCatch(project$id, error = function(e) NULL) %||% "reGénération"
+    tryCatch(project$id, error = function(e) NULL) %||% "reG\u00e9n\u00e9ration"
 
   empty <- list(project_name = as.character(project_name), n_ugfs = 0L,
                 generated_on = format(Sys.Date()), ugfs = list())
@@ -2677,7 +2677,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
     if (nrow(df) == 0L) return(empty)
   }
 
-  # Champs de station affichés (mêmes que la fiche parcelle) + clés i18n.
+  # Champs de station affiches (memes que la fiche parcelle) + cles i18n.
   field_key <- c(indice_priorite_regen = "indice", sensibilite = "sensibilite",
     njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
     rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
@@ -2744,7 +2744,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
        generated_on = format(Sys.Date()), ugfs = ugfs)
 }
 
-#' Generate the reGénération PDF report (fiche per UGF)
+#' Generate the reGeneration PDF report (fiche per UGF)
 #'
 #' Mirrors `generate_action_plan_pdf`: builds a per-UGF data list (station
 #' conditions + deterministic top-N species + per-UGF comment) and renders it
@@ -2752,7 +2752,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
 #' recomputed from `units` via `regeneration_species_ranking` (NA/error-safe).
 #'
 #' @param project List. Project (metadata$name, id).
-#' @param units sf. reGénération result carrying station columns + geometry.
+#' @param units sf. reGeneration result carrying station columns + geometry.
 #' @param comments Named list `ug_id -> comment` (from data/regen_comments.json).
 #' @param output_file Character. Destination PDF path.
 #' @param language "fr" or "en".
@@ -2764,7 +2764,7 @@ generate_regeneration_pdf <- function(project, units, comments = list(),
                                       output_file, language = "fr",
                                       filter_ug_ids = NULL, top_n = 3L) {
   if (!ensure_quarto_installed()) {
-    stop("Quarto is required for the reGénération PDF report.", call. = FALSE)
+    stop("Quarto is required for the reG\u00e9n\u00e9ration PDF report.", call. = FALSE)
   }
   ranking <- tryCatch(regeneration_species_ranking(units, top_n = top_n),
                       error = function(e) NULL)
@@ -2772,15 +2772,15 @@ generate_regeneration_pdf <- function(project, units, comments = list(),
   template_path <- system.file("quarto", "regeneration_template.qmd",
                                package = "nemetonshiny")
   if (!file.exists(template_path)) {
-    stop("reGénération template not found.", call. = FALSE)
+    stop("reG\u00e9n\u00e9ration template not found.", call. = FALSE)
   }
 
   temp_dir <- tempfile("nemeton_regen_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
-  # Cartes satellite par UGF (helper partagé avec le Plan d'actions). Pré-rendues
-  # ici pour garder le builder pur ; NA -> figure ignorée par le template.
+  # Cartes satellite par UGF (helper partage avec le Plan d'actions). Pre-rendues
+  # ici pour garder le builder pur ; NA -> figure ignoree par le template.
   maps <- list()
   if (inherits(units, "sf")) {
     geom <- sf::st_geometry(units)
@@ -2819,7 +2819,7 @@ generate_regeneration_pdf <- function(project, units, comments = list(),
     }
     NULL
   }, error = function(e) {
-    cli::cli_warn("reGénération PDF render failed: {e$message}")
+    cli::cli_warn("reG\u00e9n\u00e9ration PDF render failed: {e$message}")
     NULL
   })
 }

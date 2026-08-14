@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.13] - 2026-08-14
+
+### Changed
+
+- `R CMD check` : 1 ERROR, 2 WARNINGs et 4 NOTEs ramenes a zero. Sources `R/`
+  entierement ASCII (chaines echappees `\uXXXX`, commentaires translitteres),
+  `:::` internes bascules sur `utils::getFromNamespace()` pour preserver les
+  workers `future`, dependances optionnelles declarees, fichiers de depot
+  ecartes du tarball, fonctions de base qualifiees.
+
+### Fixed
+
+- Course dans `test-mod_rag_admin-e2e.R` : le clic sur l'onglet RAG etait
+  conditionnel et pouvait ne jamais avoir lieu.
+
 ## [0.122.12] - 2026-08-14
 
 ### Fixed

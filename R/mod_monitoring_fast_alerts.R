@@ -1,11 +1,11 @@
-# mod_monitoring_fast_alerts.R — Sub-tab "Alertes FAST" of Suivi sanitaire.
+# mod_monitoring_fast_alerts.R - Sub-tab "Alertes FAST" of Suivi sanitaire.
 #
-# v0.42.0 — Spec 013 wiring : the module now consumes
+# v0.42.0 - Spec 013 wiring : the module now consumes
 # `nemeton::read_fast_alert_raster()` (count / rolling modes, pixel
 # resolution Sentinel-2 10 m, EPSG:2154) and renders it via
 # `leaflet::addRasterImage()`. Replaces the previous markers-per-
-# placette representation backed by `list_fast_alerts_for_zone()` —
-# cohérent avec FORDEAD déjà raster (cf. mod_monitoring_fordead_map).
+# placette representation backed by `list_fast_alerts_for_zone()` -
+# coherent avec FORDEAD deja raster (cf. mod_monitoring_fordead_map).
 #
 # Two display modes (radio button) :
 #
@@ -14,28 +14,28 @@
 #                 0 transparent / 1-2 jaune / 3-5 orange / 6+ rouge.
 #
 #   - "rolling" : continuous raster, max(deficit_ndvi, deficit_nbr) sur
-#                 la fenêtre roulante trailing de window_days jours
+#                 la fenetre roulante trailing de window_days jours
 #                 (0 = pas en alerte, > 0 = magnitude). Palette continue
-#                 jaune → rouge avec borne supérieure capée sur le
-#                 percentile 95 pour stabiliser l'échelle face à une
-#                 queue extrême minoritaire.
+#                 jaune -> rouge avec borne superieure capee sur le
+#                 percentile 95 pour stabiliser l'echelle face a une
+#                 queue extreme minoritaire.
 #
-#   - "trend"   : déclin chronique pluriannuel (dépérissement feuillus).
-#                 Composite saisonnier annuel (months) → Theil-Sen
-#                 (pente) + Mann-Kendall (significativité, alpha) par
-#                 pixel (nemeton spec 023). Indices red-edge / humidité
-#                 (NDMI défaut, NDRE) ; threshold / window_days ignorés ;
-#                 paramètres months / min_years / alpha exposés en sidebar.
-#                 Même sortie 0-4 que count/rolling après discrétisation.
+#   - "trend"   : declin chronique pluriannuel (deperissement feuillus).
+#                 Composite saisonnier annuel (months) -> Theil-Sen
+#                 (pente) + Mann-Kendall (significativite, alpha) par
+#                 pixel (nemeton spec 023). Indices red-edge / humidite
+#                 (NDMI defaut, NDRE) ; threshold / window_days ignores ;
+#                 parametres months / min_years / alpha exposes en sidebar.
+#                 Meme sortie 0-4 que count/rolling apres discretisation.
 #
-# Pas de popup au clic — l'exploration pixel-par-pixel se fait sur
-# l'onglet « Carte FAST » (mod_monitoring_pixel_map).
+# Pas de popup au clic - l'exploration pixel-par-pixel se fait sur
+# l'onglet " Carte FAST " (mod_monitoring_pixel_map).
 
 #' FAST index choices for a given mode (mode-dependent vocabulary)
 #'
 #' count / rolling expose the short-term shock indices NDMI / NDVI / NBR ;
 #' trend exposes the moisture / red-edge indices NDMI / NDRE (chronic
-#' decline — NDRE only makes sense for a pluriannual decline trend, not for
+#' decline - NDRE only makes sense for a pluriannual decline trend, not for
 #' acute threshold exceedances).
 #'
 #' @param mode "count", "rolling" or "trend".
@@ -61,7 +61,7 @@
 #' argument plumbing shared by the displayed raster (`raster_r`) and the trend
 #' cache pre-warming observer, so the two call sites never drift. Persists a
 #' TIF per (index, parameters) and returns its path (idempotent: a cached
-#' result is reused, no recompute). No error handling here — callers wrap it
+#' result is reused, no recompute). No error handling here - callers wrap it
 #' so they can route failures to their own UI feedback.
 #' @noRd
 .compute_fast_mask <- function(con, zone, index, threshold, dr, mode,
@@ -98,34 +98,34 @@ mod_monitoring_fast_alerts_ui <- function(id) {
   # language switch via updateRadioButtons / updateCheckboxInput /
   # updateSliderInput.
   i18n <- get_i18n("fr")
-  # v0.52.8 — Layout migré du flex-wrap horizontal (contrôles au-dessus
+  # v0.52.8 - Layout migre du flex-wrap horizontal (controles au-dessus
   # de la carte) vers un `bslib::layout_sidebar(position = "right")`
-  # symétrique avec Carte FAST. La carte gagne en lisibilité (zone
-  # rectangulaire complète) et les contrôles vivent dans une sidebar
-  # de largeur fixe à droite, plus cohérente avec l'onglet voisin.
-  # `output$panel` continue de rendre un bandeau optionnel « zone
-  # saine » au-dessus de la carte — il vit désormais dans le slot
+  # symetrique avec Carte FAST. La carte gagne en lisibilite (zone
+  # rectangulaire complete) et les controles vivent dans une sidebar
+  # de largeur fixe a droite, plus coherente avec l'onglet voisin.
+  # `output$panel` continue de rendre un bandeau optionnel " zone
+  # saine " au-dessus de la carte - il vit desormais dans le slot
   # principal de `layout_sidebar`.
   bslib::card(
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 250L, position = "right", open = "always",
-        # v0.52.14 — Radio « Indice FAST » dans le sidebar de cet
-        # onglet (symétrique avec Carte FAST qui a son propre
-        # `input$index`). v0.52.13 l'avait posé dans le sidebar
+        # v0.52.14 - Radio " Indice FAST " dans le sidebar de cet
+        # onglet (symetrique avec Carte FAST qui a son propre
+        # `input$index`). v0.52.13 l'avait pose dans le sidebar
         # parent ; on le rapatrie ici pour que chaque onglet pilote
-        # son indice indépendamment, comme Carte FAST.
+        # son indice independamment, comme Carte FAST.
         # `nemeton::read_fast_alert_raster()` (spec 017 mono-index)
-        # ne consomme qu'un seul indice à la fois — le radio choisit
+        # ne consomme qu'un seul indice a la fois - le radio choisit
         # lequel, et le `threshold` correspondant est lu depuis le
         # sidebar parent (`thresholds_r$ndvi` ou `thresholds_r$nbr`).
         htmltools::tagAppendAttributes(
           shiny::radioButtons(
             ns("index"),
             label = i18n$t("monitoring_fast_index_label"),
-            # Choix initiaux du mode count/rolling (défaut "count") : NDMI
-            # (humidité), NDVI (défaut), NBR. NDRE (red-edge) n'est proposé
-            # qu'en mode Tendance (déclin chronique) — l'observer `mode`
+            # Choix initiaux du mode count/rolling (defaut "count") : NDMI
+            # (humidite), NDVI (defaut), NBR. NDRE (red-edge) n'est propose
+            # qu'en mode Tendance (declin chronique) - l'observer `mode`
             # bascule le vocabulaire via .fast_index_choices().
             choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
             selected = "NDVI",
@@ -134,10 +134,10 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           class = "mb-2"
         ),
         # NDMI hint + B11 re-ingestion note (shown only when NDMI active).
-        # v0.46.2 — `mb-0` retire le margin-bottom 1rem du form-group
-        # par défaut. Le label est maintenant porté par `label =` (et
+        # v0.46.2 - `mb-0` retire le margin-bottom 1rem du form-group
+        # par defaut. Le label est maintenant porte par `label =` (et
         # non plus par un `<strong>` sibling) puisqu'on est en sidebar
-        # verticale — l'alignement « label - radios » est naturel.
+        # verticale - l'alignement " label - radios " est naturel.
         htmltools::tagAppendAttributes(
           shiny::radioButtons(
             ns("mode"),
@@ -151,9 +151,9 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           ),
           class = "mb-2"
         ),
-        # Paramètres trend-only (Theil-Sen + Mann-Kendall, nemeton
-        # spec 023). Masqués hors mode `trend` ; threshold / window_days
-        # n'ont pas de sens en trend (ignorés côté cœur).
+        # Parametres trend-only (Theil-Sen + Mann-Kendall, nemeton
+        # spec 023). Masques hors mode `trend` ; threshold / window_days
+        # n'ont pas de sens en trend (ignores cote coeur).
         shiny::conditionalPanel(
           condition = sprintf("input['%s'] == 'trend'", ns("mode")),
           shiny::sliderInput(
@@ -169,31 +169,31 @@ mod_monitoring_fast_alerts_ui <- function(id) {
             value = 0.05, min = 0.001, max = 0.2, step = 0.005
           )
         ),
-        # v0.61.0 — Le checkbox `raster_visible` est retiré. Le toggle
-        # de visibilité du raster d'alerte passe désormais par le
-        # LayersControl Leaflet (entrée « Alertes » sous la couche UGF
-        # dans le contrôle de couches de la carte).
+        # v0.61.0 - Le checkbox `raster_visible` est retire. Le toggle
+        # de visibilite du raster d'alerte passe desormais par le
+        # LayersControl Leaflet (entree " Alertes " sous la couche UGF
+        # dans le controle de couches de la carte).
         shiny::sliderInput(
           ns("raster_opacity"),
           label = i18n$t("monitoring_fast_alerts_opacity_label"),
           min = 0, max = 1, value = 0.75, step = 0.05
         )
       ),
-      # v0.53.0 — Le banner « zone saine » et le leafletOutput sont
-      # désormais 2 outputs SÉPARÉS. Avant ce bump, ils vivaient dans
-      # un seul `output$panel` qui dépendait de `raster_r` (pour
-      # décider d'afficher le banner ou non) → à chaque changement
+      # v0.53.0 - Le banner " zone saine " et le leafletOutput sont
+      # desormais 2 outputs SEPARES. Avant ce bump, ils vivaient dans
+      # un seul `output$panel` qui dependait de `raster_r` (pour
+      # decider d'afficher le banner ou non) -> a chaque changement
       # de raster_r (switch index NDVI/NBR, slider seuil, etc.), le
-      # `renderUI` du panel re-render → le `leafletOutput` est
-      # détruit + recréé → la map est ré-initialisée → l'observer
-      # `leafletProxy::addRasterImage` peint dans le vide → user
+      # `renderUI` du panel re-render -> le `leafletOutput` est
+      # detruit + recree -> la map est re-initialisee -> l'observer
+      # `leafletProxy::addRasterImage` peint dans le vide -> user
       # devait bouger un autre slider pour forcer un repaint. Ce
-      # split rend la map immortelle (renderLeaflet appelé UNE FOIS)
+      # split rend la map immortelle (renderLeaflet appele UNE FOIS)
       # et seul le banner re-render quand raster_r change.
-      # Bandeau `alert-info` bleu symétrique de Carte FAST : rappelle la
-      # résolution Sentinel-2 (10 m) et décrit ce qui est peint selon le
-      # mode (fréquence / intensité) et l'indice. Output SÉPARÉ du
-      # leafletOutput (comme `banner`) → re-render sans détruire la map.
+      # Bandeau `alert-info` bleu symetrique de Carte FAST : rappelle la
+      # resolution Sentinel-2 (10 m) et decrit ce qui est peint selon le
+      # mode (frequence / intensite) et l'indice. Output SEPARE du
+      # leafletOutput (comme `banner`) -> re-render sans detruire la map.
       shiny::uiOutput(ns("resolution_badge")),
       shiny::uiOutput(ns("banner")),
       leaflet::leafletOutput(ns("map"), height = "55vh")
@@ -207,7 +207,7 @@ mod_monitoring_fast_alerts_ui <- function(id) {
 #' @param app_state Parent `reactiveValues` carrying `language`,
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id
-#'   (chr or int — coerced to integer inside).
+#'   (chr or int - coerced to integer inside).
 #' @param date_range_r Reactive returning a length-2 Date vector
 #'   `[date_from, date_to]`.
 #' @param thresholds_r Reactive returning `list(ndvi, nbr, window_days)`.
@@ -228,49 +228,49 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       get_i18n(app_state$language %||% "fr")
     })
 
-    # v0.53.0 — capture la dernière cause d'échec du raster (NULL =
-    # OK, sinon chaîne descriptive). Lu par output$banner pour
-    # distinguer « zone saine » (raster calculé, 0 alerte) de
-    # « impossible à calculer » (cache incomplet pour cet indice).
+    # v0.53.0 - capture la derniere cause d'echec du raster (NULL =
+    # OK, sinon chaine descriptive). Lu par output$banner pour
+    # distinguer " zone saine " (raster calcule, 0 alerte) de
+    # " impossible a calculer " (cache incomplet pour cet indice).
     last_raster_error <- shiny::reactiveVal(NULL)
 
-    # v0.94.x — Seuils débouncés (400 ms) pour le CALCUL du raster. Chaque
-    # valeur intermédiaire du slider de seuil produit une clé de cache
-    # distincte côté cœur (`compute_fast_alert_mask` : le nom encode
-    # `thr%.2f`) → un recalcul complet non caché par cran. En débounçant, on
+    # v0.94.x - Seuils debounces (400 ms) pour le CALCUL du raster. Chaque
+    # valeur intermediaire du slider de seuil produit une cle de cache
+    # distincte cote coeur (`compute_fast_alert_mask` : le nom encode
+    # `thr%.2f`) -> un recalcul complet non cache par cran. En debouncant, on
     # ne calcule que la valeur finale (le glissement n'empile plus de calculs
-    # lourds). L'indice / le mode / la zone / les dates restent NON débouncés
-    # (réaction immédiate). Consommé par l'observer de calcul, `compute_fast_
-    # raster()` et le pré-chauffage trend.
+    # lourds). L'indice / le mode / la zone / les dates restent NON debounces
+    # (reaction immediate). Consomme par l'observer de calcul, `compute_fast_
+    # raster()` et le pre-chauffage trend.
     thresholds_deb <- shiny::debounce(thresholds_r, 400)
 
     # Refresh radio labels on language change. Preserves selection by
     # echoing back input$mode (or default "count" before first click).
-    # v0.46.1 — `inline = TRUE` doit être passé explicitement ;
-    # `updateRadioButtons` ne mémorise pas la valeur `inline` du
-    # render initial (default FALSE → re-stack en vertical à chaque
+    # v0.46.1 - `inline = TRUE` doit etre passe explicitement ;
+    # `updateRadioButtons` ne memorise pas la valeur `inline` du
+    # render initial (default FALSE -> re-stack en vertical a chaque
     # changement de langue).
-    # v0.52.8 — le label « Mode du raster » est désormais porté par
-    # le contrôle lui-même (sidebar verticale, plus de `<strong>`
-    # sibling), donc il faut le rafraîchir aussi sur changement de
-    # langue. Idem pour le checkbox visibility et le slider opacité.
+    # v0.52.8 - le label " Mode du raster " est desormais porte par
+    # le controle lui-meme (sidebar verticale, plus de `<strong>`
+    # sibling), donc il faut le rafraichir aussi sur changement de
+    # langue. Idem pour le checkbox visibility et le slider opacite.
     shiny::observe({
       i18n <- i18n_r()
-      # v0.67.1 — Bug d'oscillation : sans `isolate()`, lire
-      # `input$index` et `input$mode` dans cet observer crée une
-      # dépendance reactive → le user clique NDVI → NBR → input$index
-      # change → l'observer re-fire → `updateRadioButtons(selected =
-      # "NBR")` re-broadcast → le client re-bind l'event change →
-      # boucle infinie de cliquetis NDVI ↔ NBR / count ↔ rolling.
-      # L'observer doit dépendre UNIQUEMENT de la langue
-      # (`i18n_r()`). `isolate()` lit la sélection courante au
-      # moment du re-render i18n sans la traquer comme dépendance.
+      # v0.67.1 - Bug d'oscillation : sans `isolate()`, lire
+      # `input$index` et `input$mode` dans cet observer cree une
+      # dependance reactive -> le user clique NDVI -> NBR -> input$index
+      # change -> l'observer re-fire -> `updateRadioButtons(selected =
+      # "NBR")` re-broadcast -> le client re-bind l'event change ->
+      # boucle infinie de cliquetis NDVI <-> NBR / count <-> rolling.
+      # L'observer doit dependre UNIQUEMENT de la langue
+      # (`i18n_r()`). `isolate()` lit la selection courante au
+      # moment du re-render i18n sans la traquer comme dependance.
       cur_mode  <- shiny::isolate(input$mode  %||% "count")
       cur_index <- shiny::isolate(input$index %||% .fast_index_default(cur_mode))
-      # v0.52.14 — rafraîchir aussi le label du radio `index` (label
-      # « Indice FAST » → « FAST index » sur switch FR/EN).
-      # Les choix d'indices dépendent du mode (trend → NDMI/NDRE) ; on
-      # garde la sélection courante si elle reste valide, sinon défaut.
+      # v0.52.14 - rafraichir aussi le label du radio `index` (label
+      # " Indice FAST " -> " FAST index " sur switch FR/EN).
+      # Les choix d'indices dependent du mode (trend -> NDMI/NDRE) ; on
+      # garde la selection courante si elle reste valide, sinon defaut.
       idx_choices <- .fast_index_choices(cur_mode)
       if (!(cur_index %in% idx_choices)) cur_index <- .fast_index_default(cur_mode)
       shiny::updateRadioButtons(
@@ -294,15 +294,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         session, "raster_opacity",
         label = i18n$t("monitoring_fast_alerts_opacity_label")
       )
-      # v0.61.0 — Le label du checkbox `raster_visible` n'est plus
-      # rafraîchi car le checkbox a été retiré (visibilité gérée
+      # v0.61.0 - Le label du checkbox `raster_visible` n'est plus
+      # rafraichi car le checkbox a ete retire (visibilite geree
       # par le LayersControl Leaflet).
     })
 
-    # Mode change → adapte le vocabulaire d'indices (trend → NDMI/NDRE ;
-    # count/rolling → NDMI/NDVI/NBR). Préserve l'indice courant s'il
-    # reste valide pour le nouveau mode, sinon retombe sur le défaut.
-    # `ignoreInit = TRUE` : le rendu initial pose déjà les bons choix.
+    # Mode change -> adapte le vocabulaire d'indices (trend -> NDMI/NDRE ;
+    # count/rolling -> NDMI/NDVI/NBR). Preserve l'indice courant s'il
+    # reste valide pour le nouveau mode, sinon retombe sur le defaut.
+    # `ignoreInit = TRUE` : le rendu initial pose deja les bons choix.
     shiny::observeEvent(input$mode, {
       i18n <- i18n_r()
       mode <- input$mode %||% "count"
@@ -324,7 +324,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     #
     # `refresh_r()` is taken as an explicit dep so the reactive
     # re-evaluates after an ingestion that may have just created the
-    # cache directory — symmetric with mod_monitoring_pixel_map.
+    # cache directory - symmetric with mod_monitoring_pixel_map.
     cache_dir_r <- shiny::reactive({
       refresh_r()
       proj <- app_state$current_project
@@ -336,9 +336,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       cd
     })
 
-    # Inventaire disque des scènes S2 cachées (scene_id + obs_date), requis
-    # par `nemeton::extract_pixel_trend()` au clic. Même logique que la Carte
-    # FAST (mod_monitoring_pixel_map) ; on réutilise le helper package-interne
+    # Inventaire disque des scenes S2 cachees (scene_id + obs_date), requis
+    # par `nemeton::extract_pixel_trend()` au clic. Meme logique que la Carte
+    # FAST (mod_monitoring_pixel_map) ; on reutilise le helper package-interne
     # `.pixel_scene_date_from_id`.
     scenes_df_r <- shiny::reactive({
       refresh_r()
@@ -361,9 +361,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     })
 
     # Calcul effectif du mask d'alerte (lourd). Extrait de `raster_r` pour
-    # être appelé en DIFFÉRÉ (onFlushed) par le trigger ci-dessous, afin que
-    # la notification « calcul en cours » s'affiche AVANT le calcul. Lit les
-    # réactifs directement → l'appelant l'enveloppe dans isolate/domaine.
+    # etre appele en DIFFERE (onFlushed) par le trigger ci-dessous, afin que
+    # la notification " calcul en cours " s'affiche AVANT le calcul. Lit les
+    # reactifs directement -> l'appelant l'enveloppe dans isolate/domaine.
     compute_fast_raster <- function() {
       refresh_r()
       zone <- zone_id_r()
@@ -380,61 +380,61 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       mode <- input$mode %||% "count"
-      # v0.52.13 → v0.52.14 — `nemeton@v0.55.0` (spec 017) : API
-      # mono-index. L'indice vient désormais du radio LOCAL de
-      # l'onglet (`input$index`, dans le sidebar droit) — pas du
+      # v0.52.13 -> v0.52.14 - `nemeton@v0.55.0` (spec 017) : API
+      # mono-index. L'indice vient desormais du radio LOCAL de
+      # l'onglet (`input$index`, dans le sidebar droit) - pas du
       # sidebar parent. Le `threshold` correspondant reste lu depuis
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
       idx <- input$index %||% .fast_index_default(mode)
       # Per-index threshold from the parent sidebar. NDMI uses its own
       # slider (th$ndmi), falling back to the NDVI threshold if absent.
-      # NDRE n'existe qu'en mode trend, où le threshold est ignoré côté
-      # cœur (Theil-Sen / Mann-Kendall) — on retombe donc sur th$ndmi.
+      # NDRE n'existe qu'en mode trend, ou le threshold est ignore cote
+      # coeur (Theil-Sen / Mann-Kendall) - on retombe donc sur th$ndmi.
       thr <- switch(idx,
                     NBR  = th$nbr,
                     NDMI = th$ndmi %||% th$ndvi,
                     NDRE = th$ndmi %||% th$ndvi,
                     th$ndvi)
-      # Paramètres trend-only (Theil-Sen + Mann-Kendall, nemeton spec
-      # 023). En count/rolling ces valeurs valent les défauts cœur et
-      # sont ignorées ; en trend elles viennent de la sidebar.
+      # Parametres trend-only (Theil-Sen + Mann-Kendall, nemeton spec
+      # 023). En count/rolling ces valeurs valent les defauts coeur et
+      # sont ignorees ; en trend elles viennent de la sidebar.
       is_trend <- identical(mode, "trend")
       tm <- if (is_trend) input$trend_months %||% c(6L, 9L) else c(6L, 9L)
       months_v    <- seq.int(as.integer(tm[1]), as.integer(tm[2]))
       min_years_v <- if (is_trend) as.integer(input$trend_min_years %||% 4L) else 4L
       alpha_v     <- if (is_trend) as.numeric(input$trend_alpha %||% 0.05) else 0.05
-      # v0.57.0 — Passage du raster CONTINU au mask catégoriel 0-4
+      # v0.57.0 - Passage du raster CONTINU au mask categoriel 0-4
       # (quartiles, spec 017 D1-D2 nemeton@v0.55.0+). On appelle
-      # désormais `nemeton::compute_fast_alert_mask()` qui produit
-      # un SpatRaster avec valeurs discrètes :
+      # desormais `nemeton::compute_fast_alert_mask()` qui produit
+      # un SpatRaster avec valeurs discretes :
       #   0 = sain (pas d'alerte)
       #   1 = faible  (1er quartile au-dessus du seuil)
-      #   2 = modéré  (2e quartile)
+      #   2 = modere  (2e quartile)
       #   3 = fort    (3e quartile)
-      #   4 = sévère  (4e quartile)
-      # La fonction persiste le TIF résultat sous `mask_cache_dir` et
+      #   4 = severe  (4e quartile)
+      # La fonction persiste le TIF resultat sous `mask_cache_dir` et
       # renvoie son path invisiblement. On le charge ensuite via
       # `terra::rast()` pour passer au reactive en aval (banner,
       # leafletProxy::addRasterImage).
       #
       # Cache D6 (`result_cache_dir`) reste actif : il cache le raster
-      # continu intermédiaire calculé par `read_fast_alert_raster()`
-      # à l'intérieur de `compute_fast_alert_mask()`. Le mask 0-4
-      # final est persisté sous son propre cache (`mask_cache_dir`).
+      # continu intermediaire calcule par `read_fast_alert_raster()`
+      # a l'interieur de `compute_fast_alert_mask()`. Le mask 0-4
+      # final est persiste sous son propre cache (`mask_cache_dir`).
       result_cache <- .fast_alert_cache_dir(
         app_state$current_project$path
       )
       mask_cache <- .fast_alert_mask_cache_dir(
         app_state$current_project$path
       )
-      # v0.60.0 — `parallel = TRUE` en dur (retrait du checkbox UI
-      # introduit en v0.58.0). Le cœur fait un fallback séquentiel
-      # silencieux si `furrr` est absent, donc aucune dégradation.
+      # v0.60.0 - `parallel = TRUE` en dur (retrait du checkbox UI
+      # introduit en v0.58.0). Le coeur fait un fallback sequentiel
+      # silencieux si `furrr` est absent, donc aucune degradation.
       # Spec 017 D4 nemeton@v0.57.0+.
       compute_errored <- FALSE
       mask_path <- tryCatch(
-        # Args trend-only (months / min_years / alpha) ignorés en
-        # count/rolling côté cœur.
+        # Args trend-only (months / min_years / alpha) ignores en
+        # count/rolling cote coeur.
         .compute_fast_mask(con, zone, idx, thr, dr, mode,
                            th$window_days, months_v, min_years_v, alpha_v,
                            cd, mask_cache, result_cache),
@@ -442,22 +442,22 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           cli::cli_alert_warning(
             "compute_fast_alert_mask failed (index={idx}): {e$message}"
           )
-          # v0.85.14 — surface le VRAI message d'erreur cœur (ex.
-          # « [mosaic] resolution does not match » sur un cache
-          # multi-tuiles MGRS) au lieu du message générique « aucune
-          # scène » ci-dessous, qui le masquait (le 2e setter écrasait
-          # le 1er). On note l'erreur pour ne PAS la réécraser.
+          # v0.85.14 - surface le VRAI message d'erreur coeur (ex.
+          # " [mosaic] resolution does not match " sur un cache
+          # multi-tuiles MGRS) au lieu du message generique " aucune
+          # scene " ci-dessous, qui le masquait (le 2e setter ecrasait
+          # le 1er). On note l'erreur pour ne PAS la reecraser.
           compute_errored <<- TRUE
           last_raster_error(sprintf("%s : %s", idx, conditionMessage(e)))
           NULL
         }
       )
       if (is.null(mask_path) || !nzchar(mask_path)) {
-        # v0.68.0 — Message i18n (brief FAST 6 cartes nemeton@v0.65.0).
-        # Cas « aucune scène cachée ne porte les bandes » UNIQUEMENT
-        # quand le cœur a renvoyé NULL SANS lever d'erreur. Si le calcul
-        # a échoué (compute_errored), on conserve le vrai message déjà
-        # posé dans le handler ci-dessus.
+        # v0.68.0 - Message i18n (brief FAST 6 cartes nemeton@v0.65.0).
+        # Cas " aucune scene cachee ne porte les bandes " UNIQUEMENT
+        # quand le coeur a renvoye NULL SANS lever d'erreur. Si le calcul
+        # a echoue (compute_errored), on conserve le vrai message deja
+        # pose dans le handler ci-dessus.
         if (!compute_errored) {
           last_raster_error(sprintf(
             i18n_r()$t("monitoring_fast_alerts_no_scene"),
@@ -482,37 +482,37 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       out
     }
 
-    # Résultat du mask, alimenté par le trigger déféré ci-dessous. Les
+    # Resultat du mask, alimente par le trigger defere ci-dessous. Les
     # consommateurs (bandeau, peinture carte, clic trend) lisent `raster_r()`
-    # qui retourne cette valeur — sans déclencher le calcul lourd.
+    # qui retourne cette valeur - sans declencher le calcul lourd.
     raster_rv <- shiny::reactiveVal(NULL)
     raster_r  <- shiny::reactive(raster_rv())
     # TRUE pendant qu'un raster d'alerte se calcule (entre l'affichage de
-    # la notif « calcul en cours » et la fin du `onFlushed`). Le bandeau
-    # s'en sert pour afficher « calcul en cours » au lieu d'un faux
-    # « zone saine » tant que le raster n'est pas prêt.
+    # la notif " calcul en cours " et la fin du `onFlushed`). Le bandeau
+    # s'en sert pour afficher " calcul en cours " au lieu d'un faux
+    # " zone saine " tant que le raster n'est pas pret.
     computing_rv <- shiny::reactiveVal(FALSE)
 
-    # v0.88.x — Notification « calcul en cours » + calcul différé : au
+    # v0.88.x - Notification " calcul en cours " + calcul differe : au
     # changement d'indice / mode / zone / dates / seuils / params trend, on
     # affiche d'abord un message bas-droite, PUIS on calcule le mask via
-    # onFlushed (un calcul synchrone ne flush l'UI qu'à sa sortie → le
-    # message ne serait pas visible). Évite les clics intempestifs avant
+    # onFlushed (un calcul synchrone ne flush l'UI qu'a sa sortie -> le
+    # message ne serait pas visible). Evite les clics intempestifs avant
     # l'affichage de la nouvelle carte.
     shiny::observe({
-      # Dépendances : recalcul quand l'un de ces réactifs change. Les seuils
-      # sont pris DÉBOUNCÉS (thresholds_deb) : glisser le slider ne relance
-      # plus un calcul lourd à chaque cran, seulement après 400 ms de repos.
+      # Dependances : recalcul quand l'un de ces reactifs change. Les seuils
+      # sont pris DEBOUNCES (thresholds_deb) : glisser le slider ne relance
+      # plus un calcul lourd a chaque cran, seulement apres 400 ms de repos.
       refresh_r(); zone_id_r(); date_range_r(); thresholds_deb()
       input$index; input$mode
       input$trend_months; input$trend_min_years; input$trend_alpha
-      # Dépendance sur l'onglet principal actif : on ne calcule (et ne
-      # notifie) que lorsque « Suivi sanitaire » est ouvert. Au chargement
+      # Dependance sur l'onglet principal actif : on ne calcule (et ne
+      # notifie) que lorsque " Suivi sanitaire " est ouvert. Au chargement
       # d'un projet, `zone_id_r()` se remplit (zone monitoring auto-
-      # sélectionnée) alors que l'utilisateur est encore sur « Sélection »
-      # — sans ce garde, le message « Calcul du raster d'alerte… »
-      # s'affichait à tort. Quand l'utilisateur bascule sur l'onglet, ce
-      # réactif change et l'observer recalcule.
+      # selectionnee) alors que l'utilisateur est encore sur " Selection "
+      # - sans ce garde, le message " Calcul du raster d'alerte... "
+      # s'affichait a tort. Quand l'utilisateur bascule sur l'onglet, ce
+      # reactif change et l'observer recalcule.
       active_tab <- app_state$active_main_tab
       zone <- shiny::isolate(zone_id_r())
       if (is.null(zone) || !isTRUE(nzchar(zone))) {
@@ -523,13 +523,13 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (!identical(active_tab, "monitoring")) {
         return()
       }
-      # Marque l'état « calcul en cours » AVANT le flush, pour que le
-      # bandeau n'affiche pas « zone saine » sur le raster pas encore prêt.
-      # v0.91.x — la notification bas-droite n'est plus émise ici : elle est
-      # centralisée dans `mod_monitoring` (un seul indicateur agrégé pour les
-      # DEUX calculs lourds du Suivi), piloté par `computing_rv` exporté en
+      # Marque l'etat " calcul en cours " AVANT le flush, pour que le
+      # bandeau n'affiche pas " zone saine " sur le raster pas encore pret.
+      # v0.91.x - la notification bas-droite n'est plus emise ici : elle est
+      # centralisee dans `mod_monitoring` (un seul indicateur agrege pour les
+      # DEUX calculs lourds du Suivi), pilote par `computing_rv` exporte en
       # retour. On conserve uniquement le set/clear de `computing_rv` (bandeau
-      # in-panel + agrégateur parent) et le calcul différé.
+      # in-panel + agregateur parent) et le calcul differe.
       computing_rv(TRUE)
       session$onFlushed(function() {
         on.exit(computing_rv(FALSE), add = TRUE)
@@ -539,15 +539,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       }, once = TRUE)
     })
 
-    # ----- Pré-calcul des DEUX rasters de Tendance (NDMI + NDRE) ------
-    # En mode trend, `raster_r` calcule/affiche l'indice sélectionné ;
-    # cet observateur réchauffe en arrière-plan (later) le cache disque
-    # des DEUX indices trend, de sorte que basculer le radio NDMI ↔ NDRE
-    # soit instantané (cache hit). `compute_fast_alert_mask` persiste un
-    # TIF par (index, paramètres) → idempotent (pas de recalcul si déjà
+    # ----- Pre-calcul des DEUX rasters de Tendance (NDMI + NDRE) ------
+    # En mode trend, `raster_r` calcule/affiche l'indice selectionne ;
+    # cet observateur rechauffe en arriere-plan (later) le cache disque
+    # des DEUX indices trend, de sorte que basculer le radio NDMI <-> NDRE
+    # soit instantane (cache hit). `compute_fast_alert_mask` persiste un
+    # TIF par (index, parametres) -> idempotent (pas de recalcul si deja
     # en cache). N'a d'effet qu'en trend : count/rolling restent
-    # mono-index à la demande. Le trigger est débouncé pour ne pas
-    # empiler des calculs lourds pendant le réglage des sliders trend.
+    # mono-index a la demande. Le trigger est debounce pour ne pas
+    # empiler des calculs lourds pendant le reglage des sliders trend.
     trend_prewarm_trigger <- shiny::reactive({
       list(input$mode, zone_id_r(), date_range_r(),
            input$trend_months, input$trend_min_years, input$trend_alpha,
@@ -569,13 +569,13 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       months_v     <- seq.int(as.integer(tm[1]), as.integer(tm[2]))
       min_years_v  <- as.integer(input$trend_min_years %||% 4L)
       alpha_v      <- as.numeric(input$trend_alpha %||% 0.05)
-      thr          <- th$ndmi %||% th$ndvi          # ignoré en trend (Theil-Sen)
+      thr          <- th$ndmi %||% th$ndvi          # ignore en trend (Theil-Sen)
       window_v     <- th$window_days %||% 30L
       result_cache <- .fast_alert_cache_dir(proj$path)
       mask_cache   <- .fast_alert_mask_cache_dir(proj$path)
 
-      # Différé : laisse `raster_r` afficher l'indice sélectionné d'abord,
-      # puis réchauffe le cache des deux indices hors du cycle de rendu.
+      # Differe : laisse `raster_r` afficher l'indice selectionne d'abord,
+      # puis rechauffe le cache des deux indices hors du cycle de rendu.
       later::later(function() {
         for (idx in c("NDMI", "NDRE")) {
           con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
@@ -594,17 +594,17 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       }, delay = 0.4)
     }) |> shiny::bindEvent(trend_prewarm_trigger())
 
-    # ===== Clic carte (mode trend) → graphe de tendance par pixel ======
+    # ===== Clic carte (mode trend) -> graphe de tendance par pixel ======
     # En mode Tendance, un clic sur la carte ouvre une modale montrant,
-    # pour le pixel cliqué, les composites saisonniers annuels de l'indice
-    # + la droite Theil-Sen + la significativité — i.e. POURQUOI ce pixel a
-    # cette couleur. Toute la statistique vient du cœur
-    # (`nemeton::extract_pixel_trend`, garanti cohérent avec le raster) ;
-    # l'app ne recalcule rien (règle 1).
+    # pour le pixel clique, les composites saisonniers annuels de l'indice
+    # + la droite Theil-Sen + la significativite - i.e. POURQUOI ce pixel a
+    # cette couleur. Toute la statistique vient du coeur
+    # (`nemeton::extract_pixel_trend`, garanti coherent avec le raster) ;
+    # l'app ne recalcule rien (regle 1).
     pixel_trend_computing <- shiny::reactiveVal(FALSE)
 
-    # Sévérité 0-4 du pixel : lue directement dans le raster mask affiché
-    # (les quartiles sont zone-wide → non recalculables au pixel).
+    # Severite 0-4 du pixel : lue directement dans le raster mask affiche
+    # (les quartiles sont zone-wide -> non recalculables au pixel).
     .severity_at <- function(rast, lng, lat) {
       if (is.null(rast)) return(NA_integer_)
       tryCatch({
@@ -617,8 +617,8 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     }
 
     # Construit + affiche la modale du graphe trend. Lourd (lit la valeur du
-    # pixel sur N scènes) → appelé en différé (onFlushed) par l'observateur
-    # de clic, pour afficher d'abord la notification « calcul en cours ».
+    # pixel sur N scenes) -> appele en differe (onFlushed) par l'observateur
+    # de clic, pour afficher d'abord la notification " calcul en cours ".
     show_pixel_trend <- function(lng, lat, cd, sdf, idx, months_v,
                                  min_years_v, alpha_v, rast) {
       i18n <- i18n_r()
@@ -654,7 +654,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         marker = list(color = "#1B6B1B", size = 6),
         hovertemplate = paste0("%{x}<br>", idx, " = %{y:.3f}<extra></extra>")
       )
-      # Droite Theil-Sen (seulement si assez d'années) — rouge si déclin
+      # Droite Theil-Sen (seulement si assez d'annees) - rouge si declin
       # significatif, gris sinon.
       if (enough && !is.na(res$theil_sen_slope)) {
         line_col <- if (signif) "#C0392B" else "#7F7F7F"
@@ -668,8 +668,8 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       }
       p <- plotly::layout(
         p,
-        # Police globale agrandie : axes, ticks, légende et hover héritent de
-        # cette taille, lisibles en plein écran (spec UX).
+        # Police globale agrandie : axes, ticks, legende et hover heritent de
+        # cette taille, lisibles en plein ecran (spec UX).
         font   = list(size = 16),
         margin = list(t = 20, b = 40, l = 50, r = 10),
         xaxis  = list(title = i18n$t("fast_trend_pixel_xaxis"), dtick = 1),
@@ -679,13 +679,13 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       )
       p <- plotly::config(p, responsive = TRUE)
 
-      # Bandeau d'annotations sous le titre (pente / p / significativité /
-      # années / classe sévérité).
-      slope_txt <- if (is.na(res$theil_sen_slope)) "–" else
+      # Bandeau d'annotations sous le titre (pente / p / significativite /
+      # annees / classe severite).
+      slope_txt <- if (is.na(res$theil_sen_slope)) "\u2013" else
         sprintf("%+.4f", res$theil_sen_slope)
-      p_txt <- if (is.na(res$mann_kendall_p)) "–" else
+      p_txt <- if (is.na(res$mann_kendall_p)) "\u2013" else
         sprintf("%.3f", res$mann_kendall_p)
-      sev_txt <- if (is.na(sev)) "–" else as.character(sev)
+      sev_txt <- if (is.na(sev)) "\u2013" else as.character(sev)
       info <- htmltools::div(
         class = "small text-muted mb-2 d-flex flex-wrap gap-3",
         htmltools::span(sprintf(i18n$t("fast_trend_pixel_slope_fmt"), slope_txt)),
@@ -711,9 +711,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             style = paste("position: absolute; top: 0.75rem;",
                           "right: 0.75rem; z-index: 2;"),
             title = i18n$t("fast_trend_pixel_fullscreen"),
-            # Toggle plein écran + `resize` différé : plotly (responsive)
-            # n'écoute que window.resize ; sans cet événement, le graphe
-            # garde sa taille initiale et ne remplit pas l'écran agrandi.
+            # Toggle plein ecran + `resize` differe : plotly (responsive)
+            # n'ecoute que window.resize ; sans cet evenement, le graphe
+            # garde sa taille initiale et ne remplit pas l'ecran agrandi.
             onclick = paste0(
               "this.closest('.modal-dialog').classList.toggle('modal-fullscreen');",
               "setTimeout(function(){window.dispatchEvent(new Event('resize'));},250);"),
@@ -761,7 +761,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         id = notif_id, type = "message", duration = NULL
       )
       # onFlushed : la notif part au client AVANT le calcul lourd (un
-      # observateur synchrone ne flush qu'à sa sortie).
+      # observateur synchrone ne flush qu'a sa sortie).
       session$onFlushed(function() {
         on.exit({
           shiny::removeNotification(notif_id, session = session)
@@ -773,15 +773,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     })
 
     # ----- Banner : seul ce slot re-render selon raster_r() ----------
-    # v0.46.3 — la carte (OSM + UGFs) est désormais affichée même
-    # quand le raster d'alerte est vide. Un bandeau « zone saine »
+    # v0.46.3 - la carte (OSM + UGFs) est desormais affichee meme
+    # quand le raster d'alerte est vide. Un bandeau " zone saine "
     # vert s'affiche au-dessus pour donner l'info, mais l'utilisateur
-    # conserve le repère spatial (où est la zone, où sont les UGFs).
-    # v0.53.0 — Banner extrait dans son propre uiOutput (était inclus
-    # dans output$panel qui contenait aussi le leafletOutput → à
-    # chaque raster_r change, la map était détruite/recréée et le
+    # conserve le repere spatial (ou est la zone, ou sont les UGFs).
+    # v0.53.0 - Banner extrait dans son propre uiOutput (etait inclus
+    # dans output$panel qui contenait aussi le leafletOutput -> a
+    # chaque raster_r change, la map etait detruite/recreee et le
     # `addRasterImage` peignait dans le vide). Maintenant le banner
-    # re-render indépendamment, la map est rendue UNE FOIS.
+    # re-render independamment, la map est rendue UNE FOIS.
     # Blue resolution / context badge (mirrors Carte FAST). Reacts to
     # the mode + index so the message stays pertinent to what is drawn.
     output$resolution_badge <- shiny::renderUI({
@@ -793,7 +793,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # depuis le client, donc `input$index` vaut encore l'ancien
       # indice (ex. NBR), invalide en trend. On retombe alors sur le
       # defaut du mode (NDMI en trend) plutot que d'afficher un libelle
-      # « declin NBR » qui n'existe pas en tendance pluriannuelle.
+      # " declin NBR " qui n'existe pas en tendance pluriannuelle.
       index <- input$index %||% .fast_index_default(mode)
       if (!(index %in% .fast_index_choices(mode))) {
         index <- .fast_index_default(mode)
@@ -816,23 +816,23 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     output$banner <- shiny::renderUI({
       i18n <- i18n_r()
       # Tant que le raster se calcule, on NE rend RIEN ici (au lieu du vert
-      # « zone saine » qui serait incohérent : le raster pas encore prêt
-      # paraît vide). Le retour visuel « calcul en cours » est porté par la
-      # notification bas-droite unique de `mod_monitoring` — un bandeau bleu
-      # in-panel ferait doublon. Une fois le calcul terminé, `computing_rv`
-      # repasse à FALSE et la logique erreur/vide/alertes ci-dessous prend
+      # " zone saine " qui serait incoherent : le raster pas encore pret
+      # parait vide). Le retour visuel " calcul en cours " est porte par la
+      # notification bas-droite unique de `mod_monitoring` - un bandeau bleu
+      # in-panel ferait doublon. Une fois le calcul termine, `computing_rv`
+      # repasse a FALSE et la logique erreur/vide/alertes ci-dessous prend
       # le relais.
       if (isTRUE(computing_rv())) {
         return(NULL)
       }
       r <- raster_r()
       err <- last_raster_error()
-      # v0.53.0 — 2 cas distincts au lieu d'un message vert
-      # « zone saine » générique :
-      #   * Erreur réelle (cache S2 incomplet pour cet indice,
-      #     exception cœur) → bandeau JAUNE warning avec la cause.
-      #   * Raster calculé mais 0 cellule en alerte → bandeau VERT
-      #     « zone saine » classique.
+      # v0.53.0 - 2 cas distincts au lieu d'un message vert
+      # " zone saine " generique :
+      #   * Erreur reelle (cache S2 incomplet pour cet indice,
+      #     exception coeur) -> bandeau JAUNE warning avec la cause.
+      #   * Raster calcule mais 0 cellule en alerte -> bandeau VERT
+      #     " zone saine " classique.
       if (!is.null(err)) {
         return(htmltools::div(
           class = "alert alert-warning d-flex align-items-center gap-3 m-2 py-2 small",
@@ -844,12 +844,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           )
         ))
       }
-      # IMPORTANT : ne montrer le vert « zone saine » QUE pour un raster
-      # réellement calculé et vide. `raster_rv` NULL = pas encore calculé
-      # (ex. au tout début, ou tant que l'onglet n'a pas été ouvert : ce
-      # bandeau a `suspendWhenHidden = FALSE` donc il se rend même caché).
-      # Sans ce distinguo, à l'ouverture de l'onglet on voyait le vert
-      # périmé EN MÊME TEMPS que la notif « calcul en cours » — incohérent.
+      # IMPORTANT : ne montrer le vert " zone saine " QUE pour un raster
+      # reellement calcule et vide. `raster_rv` NULL = pas encore calcule
+      # (ex. au tout debut, ou tant que l'onglet n'a pas ete ouvert : ce
+      # bandeau a `suspendWhenHidden = FALSE` donc il se rend meme cache).
+      # Sans ce distinguo, a l'ouverture de l'onglet on voyait le vert
+      # perime EN MEME TEMPS que la notif " calcul en cours " - incoherent.
       if (is.null(r)) {
         return(NULL)
       }
@@ -868,22 +868,22 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       NULL
     })
 
-    # v0.51.5 — la carte de base (tuiles + UGF + fitBounds) est rendue
-    # UNE seule fois ; le raster d'alerte est ajouté/mis à jour via
-    # leafletProxy dans l'observe ci-dessous. Avant, chaque déplacement
-    # de slider (seuils, opacité) ou changement de mode déclenchait un
-    # renderLeaflet complet → le zoom utilisateur et le fond sélectionné
-    # (OSM / Satellite) étaient perdus à chaque tick. Symétrique avec
+    # v0.51.5 - la carte de base (tuiles + UGF + fitBounds) est rendue
+    # UNE seule fois ; le raster d'alerte est ajoute/mis a jour via
+    # leafletProxy dans l'observe ci-dessous. Avant, chaque deplacement
+    # de slider (seuils, opacite) ou changement de mode declenchait un
+    # renderLeaflet complet -> le zoom utilisateur et le fond selectionne
+    # (OSM / Satellite) etaient perdus a chaque tick. Symetrique avec
     # la Carte FAST.
     output$map <- leaflet::renderLeaflet({
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
-      # v0.61.0 — Le raster d'alerte apparaît désormais dans le
-      # LayersControl Leaflet (groupe `"Raster"`, sous « UGF »).
-      # Quand le user décoche, Leaflet masque le group ; l'observer
+      # v0.61.0 - Le raster d'alerte apparait desormais dans le
+      # LayersControl Leaflet (groupe `"Raster"`, sous " UGF ").
+      # Quand le user decoche, Leaflet masque le group ; l'observer
       # leafletProxy plus bas ajoute l'image dans `group = "Raster"`.
       overlays <- c(
         if (!is.null(ugf_4326)) "UGF" else NULL,
-        "Raster"  # = .alert_raster_group (défini dans le server)
+        "Raster"  # = .alert_raster_group (defini dans le server)
       )
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
@@ -915,34 +915,34 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       m
     })
 
-    # Raster overlay update — fires on raster/mode/opacity changes
+    # Raster overlay update - fires on raster/mode/opacity changes
     # via leafletProxy, preserving user zoom and selected base
     # layer (OSM vs Satellite). The legend is added with a stable
     # layerId so we can remove and re-add it without touching the
     # layers control.
     #
-    # v0.61.0 — `.alert_raster_group` est utilisé comme libellé
-    # visible dans le LayersControl Leaflet (entrée « Alertes »
-    # sous « UGF »). Le checkbox UI `raster_visible` est retiré :
-    # Leaflet gère seul la visibilité via le contrôle de couches.
-    # v0.106.4 — ex-« Alertes » : le groupe porte un RASTER (pixels au-dessus
-    # du seuil), pas des marqueurs. Littéral neutre FR/EN, comme « UGF ».
+    # v0.61.0 - `.alert_raster_group` est utilise comme libelle
+    # visible dans le LayersControl Leaflet (entree " Alertes "
+    # sous " UGF "). Le checkbox UI `raster_visible` est retire :
+    # Leaflet gere seul la visibilite via le controle de couches.
+    # v0.106.4 - ex-" Alertes " : le groupe porte un RASTER (pixels au-dessus
+    # du seuil), pas des marqueurs. Litteral neutre FR/EN, comme " UGF ".
     .alert_raster_group <- "Raster"
     .alert_legend_id    <- "alert-legend"
     shiny::observe({
       i18n    <- i18n_r()
       r       <- raster_r()
       mode    <- input$mode %||% "count"
-      # v0.76.0 — l'indice courant (NDMI / NDVI / NBR) est injecté dans
-      # le titre de la légende pour rappeler à l'utilisateur quel indice
-      # alimente les classes de sévérité affichées (symétrie avec le
-      # badge de résolution qui mentionne déjà l'indice).
+      # v0.76.0 - l'indice courant (NDMI / NDVI / NBR) est injecte dans
+      # le titre de la legende pour rappeler a l'utilisateur quel indice
+      # alimente les classes de severite affichees (symetrie avec le
+      # badge de resolution qui mentionne deja l'indice).
       index   <- input$index %||% "NDVI"
-      # Groupes overlay cochés côté client (leaflet `input$<id>_groups`),
-      # lus pour respecter la décoche du group raster.
-      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
-      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
-      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      # Groupes overlay coches cote client (leaflet `input$<id>_groups`),
+      # lus pour respecter la decoche du group raster.
+      # `isolate()` : leaflet renvoie cet input a chaque ajout/retrait de
+      # groupe, et cet observe en ajoute - une lecture reactive le rendrait
+      # auto-declenchant (peintures multiples). Cf. mod_accessibility.
       shown   <- shiny::isolate(input$map_groups)
 
       proxy <- leaflet::leafletProxy("map") |>
@@ -955,21 +955,21 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (!is.finite(raster_opacity) || raster_opacity < 0) raster_opacity <- 0
       if (raster_opacity > 1) raster_opacity <- 1
 
-      # v0.57.0 — `raster_r()` renvoie désormais un mask catégoriel
+      # v0.57.0 - `raster_r()` renvoie desormais un mask categoriel
       # 0-4 produit par `nemeton::compute_fast_alert_mask()` (spec
       # 017 D2). Plus de branchement count/rolling ici : les 2 modes
-      # passent par la même palette discrète. Le `mode` côté cœur
-      # change comment les quartiles sont CALCULÉS (compte de jours
-      # vs intensité rolling), pas comment ils sont AFFICHÉS.
+      # passent par la meme palette discrete. Le `mode` cote coeur
+      # change comment les quartiles sont CALCULES (compte de jours
+      # vs intensite rolling), pas comment ils sont AFFICHES.
       #
       # Mask 0-4 :
       #   0 = sain    (transparent, on voit OSM/UGF dessous)
-      #   1 = faible  → jaune
-      #   2 = modéré  → orange
-      #   3 = fort    → rouge-orangé
-      #   4 = sévère  → rouge foncé
+      #   1 = faible  -> jaune
+      #   2 = modere  -> orange
+      #   3 = fort    -> rouge-orange
+      #   4 = severe  -> rouge fonce
       # La classe 0 reste TRANSPARENTE (na.color = transparent +
-      # domain démarrant à 1) — le banner vert « zone saine » prend
+      # domain demarrant a 1) - le banner vert " zone saine " prend
       # le relais visuel quand le raster entier est en classe 0.
       r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
 
@@ -980,9 +980,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         i18n$t("fast_alert_class_3"),
         i18n$t("fast_alert_class_4")
       )
-      # `colorBin` avec 4 bornes pour 4 classes (1,2,3,4 inclus à
+      # `colorBin` avec 4 bornes pour 4 classes (1,2,3,4 inclus a
       # droite). `bins = c(0.5, 1.5, 2.5, 3.5, 4.5)` mappe chaque
-      # valeur entière à sa classe sans ambiguïté.
+      # valeur entiere a sa classe sans ambiguite.
       pal <- leaflet::colorBin(
         palette  = cols,
         domain   = c(0.5, 4.5),
@@ -1004,36 +1004,36 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           opacity  = 0.85,
           layerId  = .alert_legend_id
         )
-      # Respecter la décoche : si le group raster n'est pas coché, le masquer
-      # après l'avoir re-dessiné via proxy.
+      # Respecter la decoche : si le group raster n'est pas coche, le masquer
+      # apres l'avoir re-dessine via proxy.
       if (!is.null(shown) && !(.alert_raster_group %in% shown)) {
         leaflet::hideGroup(proxy, .alert_raster_group)
       }
     })
 
-    # v0.37.1 — see mod_monitoring_fordead_map.R : the navset toggles
+    # v0.37.1 - see mod_monitoring_fordead_map.R : the navset toggles
     # nav_panels with bslib::nav_show() / nav_hide(), which leaves
     # Shiny's visibility detection unreliable. Force the panel
     # uiOutput to evaluate unconditionally so empty-state / leaflet
     # wrapper render the moment the user opens the sub-tab.
-    # v0.53.0 — `panel` renommé en `banner` + leafletOutput direct.
+    # v0.53.0 - `panel` renomme en `banner` + leafletOutput direct.
     shiny::outputOptions(output, "banner", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "map",    suspendWhenHidden = FALSE)
 
-    # v0.52.14 — `index_r` exporté pour que le module
+    # v0.52.14 - `index_r` exporte pour que le module
     # validation_sampling (qui consomme aussi `read_fast_alert_raster`
-    # pour la prévisualisation) suive l'indice choisi par
-    # l'utilisateur côté Alertes FAST. Sans ce wiring,
-    # validation_sampling serait coincé sur NDVI ou NBR en dur.
+    # pour la previsualisation) suive l'indice choisi par
+    # l'utilisateur cote Alertes FAST. Sans ce wiring,
+    # validation_sampling serait coince sur NDVI ou NBR en dur.
     invisible(list(
       raster  = raster_r,
-      # v0.91.x — état « calcul du raster d'alerte en cours » exposé pour
-      # l'indicateur agrégé centralisé dans `mod_monitoring`.
+      # v0.91.x - etat " calcul du raster d'alerte en cours " expose pour
+      # l'indicateur agrege centralise dans `mod_monitoring`.
       computing = shiny::reactive(isTRUE(computing_rv())),
       index_r = shiny::reactive(input$index %||% "NDVI"),
-      # v0.87.x — params trend exportés pour que le « Plan de validation
-      # FAST » réutilise la MÊME définition de tendance que celle affichée
-      # ici (mois saison / années min / alpha), sans dupliquer les contrôles.
+      # v0.87.x - params trend exportes pour que le " Plan de validation
+      # FAST " reutilise la MEME definition de tendance que celle affichee
+      # ici (mois saison / annees min / alpha), sans dupliquer les controles.
       trend_params_r = shiny::reactive({
         tm <- input$trend_months %||% c(6L, 9L)
         list(
@@ -1059,28 +1059,28 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 }
 
 
-# v0.45.0 — adaptive quartile classification for the count-mode
+# v0.45.0 - adaptive quartile classification for the count-mode
 # alert raster.
 #
-# v0.45.0 (suite, label unification) — produit 4 classes alignées
-# avec les classes 1-4 du masque catégoriel utilisé par
-# `nemeton::compute_fast_alert_mask()` (qui découpe sur les
-# quartiles par défaut). Cohérence avec Plan de validation FAST :
+# v0.45.0 (suite, label unification) - produit 4 classes alignees
+# avec les classes 1-4 du masque categoriel utilise par
+# `nemeton::compute_fast_alert_mask()` (qui decoupe sur les
+# quartiles par defaut). Coherence avec Plan de validation FAST :
 # les checkbox classes 1-4 du formulaire affichent EXACTEMENT les
-# mêmes intervalles que la légende Alertes FAST.
+# memes intervalles que la legende Alertes FAST.
 #
-# Labels préfixés par le numéro de classe + unité optionnelle. Ex :
-#   "1 — 1-12 j" / "2 — 13-25 j" / "3 — 26-37 j" / "4 — >37 j"
+# Labels prefixes par le numero de classe + unite optionnelle. Ex :
+#   "1 - 1-12 j" / "2 - 13-25 j" / "3 - 26-37 j" / "4 - >37 j"
 #
-# Distribution dégénérée (constant value, < 4 valeurs distinctes)
-# collapse à moins de 4 classes — l'appelant adapte la palette via
+# Distribution degeneree (constant value, < 4 valeurs distinctes)
+# collapse a moins de 4 classes - l'appelant adapte la palette via
 # `.alert_count_palette(length(labels))`.
 #
-# @param r SpatRaster avec NA hors AOI et zéros masqués upstream.
+# @param r SpatRaster avec NA hors AOI et zeros masques upstream.
 # @param unit Suffixe optionnel pour chaque label (ex. "j" / "d").
-#   Pas d'espace ajouté ; passer `" j"` pour avoir « 1-12 j ».
+#   Pas d'espace ajoute ; passer `" j"` pour avoir " 1-12 j ".
 # @return list(breaks, labels). Breaks : 5 points pour 4 classes
-#   (ou moins si la distribution est dégénérée).
+#   (ou moins si la distribution est degeneree).
 .classify_alert_count <- function(r, unit = "") {
   vals <- tryCatch(terra::values(r), error = function(e) NULL)
   if (is.null(vals)) return(list(breaks = c(0, 1),
@@ -1096,7 +1096,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
                               labels = sprintf("1+%s", unit)))
   if (length(q) == 1L) {
     return(list(breaks = c(0, q[1] + 0.5),
-                labels = sprintf("1 — %d%s", q[1], unit)))
+                labels = sprintf("1 \u2014 %d%s", q[1], unit)))
   }
   # 4 quartiles produce up to 4 bins. Labels carry the class
   # number prefix (1..n) + interval + optional unit.
@@ -1109,7 +1109,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
            else if (lo > hi) sprintf("%d%s", lo, unit)
            else if (lo == hi) sprintf("%d%s", lo, unit)
            else sprintf("%d-%d%s", lo, hi, unit)
-    labels[i] <- sprintf("%d — %s", i, rng)
+    labels[i] <- sprintf("%d \u2014 %s", i, rng)
   }
   # Bins for colorBin : 5 points for 4 classes. Lower edges of
   # bins 2..n on `q[i] - 0.5`, upper edge of the top bin on
@@ -1120,16 +1120,16 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 }
 
 
-# v0.45.0 — wrapper produisant des labels par classe FAST/FORDEAD
+# v0.45.0 - wrapper produisant des labels par classe FAST/FORDEAD
 # pour les consommateurs externes (mod_validation_sampling au moins).
-# Pour FORDEAD, retourne les libellés biologiques fixes (1=faible,
-# 2=moyenne, 3=forte, 4=sol nu). Pour FAST, dérive les labels des
-# quartiles du raster fourni ; fallback statique générique quand le
+# Pour FORDEAD, retourne les libelles biologiques fixes (1=faible,
+# 2=moyenne, 3=forte, 4=sol nu). Pour FAST, derive les labels des
+# quartiles du raster fourni ; fallback statique generique quand le
 # raster est NULL.
 #
 # @param r SpatRaster mono-couche (count) ou NULL.
 # @param source "FAST" ou "FORDEAD".
-# @param mode "count" ou "rolling" — drive l'unité affichée.
+# @param mode "count" ou "rolling" - drive l'unite affichee.
 # @param i18n L'objet `get_i18n(lang)`.
 # @return named list "1".."4" -> label string.
 .fast_class_labels <- function(r, source = c("FAST", "FORDEAD"),
@@ -1183,16 +1183,16 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 # distribution collapses.
 .alert_count_palette <- function(n) {
   full <- c("#FFEDA0", "#FED976", "#FEB24C", "#FC4E2A", "#B10026")
-  if (n <= 1L) return(full[length(full)])  # single bucket → deepest red
+  if (n <= 1L) return(full[length(full)])  # single bucket -> deepest red
   if (n >= length(full)) return(full)
   # Pick `n` evenly-spaced shades from the 5-color ramp.
   full[round(seq.int(1L, length(full), length.out = n))]
 }
 
 
-# v0.45.0 — best-effort UGF polygon resolver for the leaflet overlay.
+# v0.45.0 - best-effort UGF polygon resolver for the leaflet overlay.
 # Returns the project UGFs reprojected to WGS84, or NULL when the
-# project has no `indicators_sf` (no indicator computation yet) —
+# project has no `indicators_sf` (no indicator computation yet) -
 # in which case the map shows just the raster without spatial
 # reference outlines.
 .ugf_for_overlay <- function(project) {

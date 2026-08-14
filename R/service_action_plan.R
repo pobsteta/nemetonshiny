@@ -380,7 +380,7 @@ update_action_in_plan <- function(plan, action_id, updates,
   current <- plan$actions[[idx]]
   horizon <- plan$horizon_annees %||% 20L
 
-  # Status updates only need a known status name — the Kanban allows
+  # Status updates only need a known status name - the Kanban allows
   # free movement between columns, so we no longer enforce a DAG of
   # allowed transitions here. `is_valid_status_transition()` and
   # `ACTION_PLAN_TRANSITIONS` are kept for callers that want to
@@ -608,7 +608,7 @@ audit_to_dataframe <- function(audit) {
   shorten <- function(x) {
     if (is.null(x)) return(NA_character_)
     # as.character() strips the `json` class jsonlite::toJSON() stamps
-    # on its result — otherwise rbind() propagates it to the whole
+    # on its result - otherwise rbind() propagates it to the whole
     # column and audit_to_dataframe() no longer returns a tidy
     # plain-character data.frame.
     if (is.list(x)) return(as.character(jsonlite::toJSON(

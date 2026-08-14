@@ -56,17 +56,23 @@ test_that("RAG admin tab boots inside the settings modal", {
   # DataTables must not initialise inside a display:none container. A
   # tabsetPanel exposes no settable input binding, so activate the tab by
   # clicking its nav link, which reveals the panel and flips config_tab.
-  app$run_js(
-    "var t = document.querySelector('.modal [data-value=\"tab_rag\"]');
-     if (t) { t.click(); }"
-  )
+  # ATTENDRE le lien d'onglet AVANT de cliquer. Le `if (t) { t.click(); }`
+  # d'origine ne cliquait tout simplement PAS quand le nœud n'était pas encore
+  # rendu, et l'attente suivante ne pouvait alors plus jamais aboutir : le test
+  # échouait sur un délai dépassé, en accusant le mauvais coupable. Observé en
+  # CI (run 6c0e5f78), et vert au même instant sur le commit voisin — donc bien
+  # une course, pas une régression.
+  app$wait_for_js("!!document.querySelector('.modal [data-value=\"tab_rag\"]')",
+                  timeout = 10 * 1000)
+  app$run_js("document.querySelector('.modal [data-value=\"tab_rag\"]').click();")
   try(app$wait_for_idle(timeout = 6 * 1000), silent = TRUE)
   # The add_row control is a static actionButton in the nested namespace; once
   # the lazy tab mounts, its DOM node exists. Wait on it rather than a fixed
-  # sleep so the assertion is not racy.
+  # sleep so the assertion is not racy. 20 s et non 8 : le montage paresseux
+  # passe par un aller-retour serveur, et un runner CI chargé dépasse 8 s.
   app$wait_for_js(
     "!!document.getElementById('theia_config-rag_admin-add_row')",
-    timeout = 8 * 1000
+    timeout = 20 * 1000
   )
 
   vals <- app$get_values()$input

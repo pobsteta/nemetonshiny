@@ -1,15 +1,15 @@
-# Graphiques au clic sur la carte « Contexte régional (E-OBS) » — spec 036.
+# Graphiques au clic sur la carte " Contexte regional (E-OBS) " - spec 036.
 #
-# Pure visualisation (plotly). AUCUN calcul métier ici (règle 1) : la série
+# Pure visualisation (plotly). AUCUN calcul metier ici (regle 1) : la serie
 # estivale, la climatologie mensuelle et l'ajustement de tendance viennent des
-# accesseurs cœur (`nemeton::eobs_summer_series` / `eobs_monthly_climatology` /
+# accesseurs coeur (`nemeton::eobs_summer_series` / `eobs_monthly_climatology` /
 # `eobs_trend_fit`). Ces helpers ne font que METTRE EN FORME des `data.frame`
-# déjà extraits à la maille cliquée. Tous NA-safe : hors emprise E-OBS, la série
-# est intégralement `NA` → on rend un panneau « hors couverture » plutôt qu'un
+# deja extraits a la maille cliquee. Tous NA-safe : hors emprise E-OBS, la serie
+# est integralement `NA` -> on rend un panneau " hors couverture " plutot qu'un
 # graphe vide.
 
-# Panneau plotly minimal affichant un message centré (hors couverture, données
-# manquantes). Sert de repli commun aux 4 tracés.
+# Panneau plotly minimal affichant un message centre (hors couverture, donnees
+# manquantes). Sert de repli commun aux 4 traces.
 .regen_ctx_empty_plot <- function(msg) {
   plotly::layout(
     plotly::plot_ly(type = "scatter", mode = "none"),
@@ -18,17 +18,17 @@
       yref = "paper", x = 0.5, y = 0.5, font = list(size = 14, color = "#666"))))
 }
 
-# Une série (data.frame year/value) est exploitable si elle a >= 2 valeurs finies.
+# Une serie (data.frame year/value) est exploitable si elle a >= 2 valeurs finies.
 .regen_ctx_series_ok <- function(ser) {
   is.data.frame(ser) && nrow(ser) > 0L &&
     sum(is.finite(suppressWarnings(as.numeric(ser$value)))) >= 2L
 }
 
-# Statistiques ombrothermiques (Gaussen-Bagnouls + De Martonne) à partir des deux
-# climatologies mensuelles (précip mm/mois, température °C/mois). PURE viz-support :
-#   - mois secs de Gaussen : P < 2T (précip mensuelle sous deux fois la T°) ;
+# Statistiques ombrothermiques (Gaussen-Bagnouls + De Martonne) a partir des deux
+# climatologies mensuelles (precip mm/mois, temperature degC/mois). PURE viz-support :
+#   - mois secs de Gaussen : P < 2T (precip mensuelle sous deux fois la Tdeg) ;
 #   - indice de De Martonne annuel : sum(P) / (mean(T) + 10).
-# NA-safe : un mois dont P ou T manque n'est pas compté sec ; indices `NA` si la
+# NA-safe : un mois dont P ou T manque n'est pas compte sec ; indices `NA` si la
 # jointure est vide. Renvoie `list(dry_idx, dry_months, demartonne)`.
 .regen_ctx_ombro_stats <- function(clim_rr, clim_t) {
   empty <- list(dry_idx = integer(0), dry_months = NA_integer_, demartonne = NA_real_)
@@ -48,14 +48,14 @@
     demartonne = if (is.finite(mean_t)) tot_p / (mean_t + 10) else NA_real_)
 }
 
-# Graphe 1 — série estivale + droite de tendance. La pente AFFICHÉE est
-# `fit$slope_decade` (= la couleur de la maille), jamais un `lm` ré-estimé.
-# `unit` : suffixe d'annotation de pente ("°C/déc" ou "mm/déc").
-# Titre d'un graphe rendu comme ANNOTATION `paper` (haut-centre) plutôt que comme
+# Graphe 1 - serie estivale + droite de tendance. La pente AFFICHEE est
+# `fit$slope_decade` (= la couleur de la maille), jamais un `lm` re-estime.
+# `unit` : suffixe d'annotation de pente ("degC/dec" ou "mm/dec").
+# Titre d'un graphe rendu comme ANNOTATION `paper` (haut-centre) plutot que comme
 # `layout(title=)`. Raison : `plotly::subplot()` ne conserve qu'UN titre global
-# (le dernier), écrasant les autres ; il remappe en revanche les annotations
+# (le dernier), ecrasant les autres ; il remappe en revanche les annotations
 # `paper` sur le domaine de chaque panneau. Un titre-annotation donne donc un
-# titre PAR panneau (bivariée : tx à gauche, rr à droite) tout en restant correct
+# titre PAR panneau (bivariee : tx a gauche, rr a droite) tout en restant correct
 # pour un graphe unique.
 .regen_ctx_title_ann <- function(title) {
   list(text = title, x = 0.5, y = 1.0, xref = "paper", yref = "paper",
@@ -70,14 +70,14 @@
   p <- plotly::add_markers(p, x = yr, y = val, name = title,
     marker = list(size = 8, color = "#1f6feb"))
   anns <- list(.regen_ctx_title_ann(title))
-  # Droite de tendance depuis le cœur : y = intercept + year * slope_decade/10.
+  # Droite de tendance depuis le coeur : y = intercept + year * slope_decade/10.
   if (is.list(fit) && all(c("slope_decade", "intercept") %in% names(fit)) &&
       is.finite(fit$slope_decade) && is.finite(fit$intercept)) {
     line_y <- fit$intercept + yr * (fit$slope_decade / 10)
     p <- plotly::add_lines(p, x = yr, y = line_y, name = i18n$t("regen_ctx_trend"),
       line = list(color = "#d62728", width = 2))
     ann <- sprintf("%s %s%s", format(signif(fit$slope_decade, 3), trim = TRUE), unit,
-      if (is.finite(fit$r2 %||% NA)) sprintf("  |  R²=%.2f", fit$r2) else "")
+      if (is.finite(fit$r2 %||% NA)) sprintf("  |  R\u00b2=%.2f", fit$r2) else "")
     if (is.finite(fit$p_value %||% NA)) ann <- sprintf("%s  |  p=%.3g", ann, fit$p_value)
     anns <- c(anns, list(list(text = ann, showarrow = FALSE,
       xref = "paper", yref = "paper", x = 0.02, y = 0.98, xanchor = "left",
@@ -88,9 +88,9 @@
     showlegend = FALSE, margin = list(t = 40))
 }
 
-# Graphe 2 — anomalies annuelles (valeur - moyenne), colorées +/-. `sense` pilote
-# la couleur défavorable : "hot_red" (T°max, chaud = rouge) ou "dry_red"
-# (précip, sec = rouge, donc anomalie négative en rouge).
+# Graphe 2 - anomalies annuelles (valeur - moyenne), colorees +/-. `sense` pilote
+# la couleur defavorable : "hot_red" (Tdegmax, chaud = rouge) ou "dry_red"
+# (precip, sec = rouge, donc anomalie negative en rouge).
 .regen_ctx_anomaly_plot <- function(ser, title, sense, i18n) {
   if (!.regen_ctx_series_ok(ser)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_out_of_coverage")))
   yr <- suppressWarnings(as.numeric(ser$year)); val <- suppressWarnings(as.numeric(ser$value))
@@ -107,9 +107,9 @@
     showlegend = FALSE, margin = list(t = 40))
 }
 
-# Graphe 3 — distribution des pentes du buffer (valeurs du raster de contexte
-# affiché, déjà en mémoire) + trait vertical à la pente de la maille cliquée.
-# `values` : numeric des pentes ; `point_value` : pente au point. AUCUN appel cœur.
+# Graphe 3 - distribution des pentes du buffer (valeurs du raster de contexte
+# affiche, deja en memoire) + trait vertical a la pente de la maille cliquee.
+# `values` : numeric des pentes ; `point_value` : pente au point. AUCUN appel coeur.
 .regen_ctx_distrib_plot <- function(values, point_value, title, unit, i18n) {
   v <- suppressWarnings(as.numeric(values)); v <- v[is.finite(v)]
   if (length(v) < 5L) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_distrib_na")))
@@ -122,8 +122,8 @@
     bargap = 0.02, showlegend = FALSE, margin = list(t = 40))
   pv <- suppressWarnings(as.numeric(point_value))
   if (length(pv) == 1L && is.finite(pv)) {
-    # Percentile régional du point (spec 036 §5.3) : « ce point est au P{xx} du
-    # massif » — situe la maille dans la distribution des pentes du buffer.
+    # Percentile regional du point (spec 036 sect.5.3) : " ce point est au P{xx} du
+    # massif " - situe la maille dans la distribution des pentes du buffer.
     pct <- round(100 * mean(v <= pv))
     p <- plotly::layout(p,
       shapes = list(list(type = "line", x0 = pv, x1 = pv, y0 = 0, y1 = 1,
@@ -139,10 +139,10 @@
   p
 }
 
-# Graphe 4 — diagramme ombrothermique (Gaussen-Bagnouls) : barres précip (bleu) +
-# courbe température (rouge), deux axes Y couplés P = 2T, mois secs (P < 2T)
-# ombrés, annotation « n mois secs / De Martonne ». `temp_is_tg` : titre honnête
-# (T° moyenne réelle vs repli T°max majorant la sécheresse).
+# Graphe 4 - diagramme ombrothermique (Gaussen-Bagnouls) : barres precip (bleu) +
+# courbe temperature (rouge), deux axes Y couples P = 2T, mois secs (P < 2T)
+# ombres, annotation " n mois secs / De Martonne ". `temp_is_tg` : titre honnete
+# (Tdeg moyenne reelle vs repli Tdegmax majorant la secheresse).
 .regen_ctx_ombro_plot <- function(clim_rr, clim_t, temp_is_tg, i18n) {
   ok_rr <- is.data.frame(clim_rr) && any(is.finite(suppressWarnings(as.numeric(clim_rr$value))))
   ok_t  <- is.data.frame(clim_t)  && any(is.finite(suppressWarnings(as.numeric(clim_t$value))))
@@ -154,30 +154,30 @@
   mlab <- labs[months]
   st <- .regen_ctx_ombro_stats(clim_rr, clim_t)
 
-  # Axes couplés P = 2T : l'axe précip (droite) est gradué 2× l'axe °C (gauche).
-  # L'axe température (gauche) doit contenir À LA FOIS max(T) ET max(P)/2 — sinon,
-  # dès que la précipitation dépasse 2×Tmax (cas fréquent), les barres débordaient
-  # en haut et étaient tronquées (« mur » de barres au plafond, diagramme faux).
+  # Axes couples P = 2T : l'axe precip (droite) est gradue 2x l'axe degC (gauche).
+  # L'axe temperature (gauche) doit contenir A LA FOIS max(T) ET max(P)/2 - sinon,
+  # des que la precipitation depasse 2xTmax (cas frequent), les barres debordaient
+  # en haut et etaient tronquees (" mur " de barres au plafond, diagramme faux).
   t_hi <- max(max(Tm, na.rm = TRUE), max(P, na.rm = TRUE) / 2)
   t_lo <- min(c(Tm, 0), na.rm = TRUE)
   pad  <- 0.1 * max(t_hi - t_lo, 1)
   t_rng <- c(t_lo - pad, t_hi + pad)
 
-  # x NUMÉRIQUE 1-12 (positions uniques) : les libellés de mois sont des lettres à
-  # doublons (J,F,M,A,M,J,J,A,S,O,N,D) ; un axe catégoriel FUSIONNERAIT les mois
-  # homonymes (mai/mars, juin/juil/janv, avr/août) — d'où 8 barres au lieu de 12,
-  # la saison estivale repliée. On garde les lettres en GRADUATIONS seulement.
-  # Les barres précip sont portées par l'axe de BASE (y) et la courbe de
-  # température par l'axe SUPERPOSÉ (y2). Dans plotly, l'axe superposé est
+  # x NUMERIQUE 1-12 (positions uniques) : les libelles de mois sont des lettres a
+  # doublons (J,F,M,A,M,J,J,A,S,O,N,D) ; un axe categoriel FUSIONNERAIT les mois
+  # homonymes (mai/mars, juin/juil/janv, avr/aout) - d'ou 8 barres au lieu de 12,
+  # la saison estivale repliee. On garde les lettres en GRADUATIONS seulement.
+  # Les barres precip sont portees par l'axe de BASE (y) et la courbe de
+  # temperature par l'axe SUPERPOSE (y2). Dans plotly, l'axe superpose est
   # toujours rendu au-dessus de l'axe de base, quel que soit l'ordre d'ajout
-  # des traces : la courbe de température passe ainsi DEVANT les barres.
+  # des traces : la courbe de temperature passe ainsi DEVANT les barres.
   p <- plotly::plot_ly()
   p <- plotly::add_bars(p, x = months, y = P, name = i18n$t("regen_ctx_axis_precip"),
     marker = list(color = "#4292c6"))
   p <- plotly::add_trace(p, x = months, y = Tm, name = i18n$t("regen_ctx_axis_temp"),
     yaxis = "y2", type = "scatter", mode = "lines+markers",
     line = list(color = "#d62728", width = 2), marker = list(color = "#d62728"))
-  # Mois secs (P < 2T) : bande verticale ombrée (positions numériques du mois).
+  # Mois secs (P < 2T) : bande verticale ombree (positions numeriques du mois).
   shapes <- lapply(st$dry_idx, function(mo) {
     list(type = "rect", xref = "x", yref = "paper", x0 = mo - 0.5, x1 = mo + 0.5,
       y0 = 0, y1 = 1, fillcolor = "rgba(214,39,40,.10)", line = list(width = 0))
@@ -186,19 +186,19 @@
     i18n$t("regen_ctx_dry_months"),
     if (is.finite(st$dry_months)) st$dry_months else 0L,
     i18n$t("regen_ctx_demartonne"),
-    if (is.finite(st$demartonne)) format(signif(st$demartonne, 3), trim = TRUE) else "—")
+    if (is.finite(st$demartonne)) format(signif(st$demartonne, 3), trim = TRUE) else "\u2014")
   title <- if (isTRUE(temp_is_tg)) i18n$t("regen_ctx_ombro_tg") else i18n$t("regen_ctx_ombro_proxy_tx")
-  # Titre + récap en UNE annotation deux lignes (haut-centre) : évite le
-  # chevauchement titre/récap qui rendait l'entête illisible en plein écran.
+  # Titre + recap en UNE annotation deux lignes (haut-centre) : evite le
+  # chevauchement titre/recap qui rendait l'entete illisible en plein ecran.
   header <- paste0("<b>", title, "</b><br>", recap)
 
   plotly::layout(p,
     shapes = shapes,
     xaxis = list(title = "", tickmode = "array", tickvals = months,
       ticktext = mlab, range = c(0.5, 12.5)),
-    # Axe de BASE = précipitations (à droite, bleu) ; axe SUPERPOSÉ =
-    # températures (à gauche, rouge). L'axe superposé étant dessiné au-dessus,
-    # la courbe de température reste devant les barres.
+    # Axe de BASE = precipitations (a droite, bleu) ; axe SUPERPOSE =
+    # temperatures (a gauche, rouge). L'axe superpose etant dessine au-dessus,
+    # la courbe de temperature reste devant les barres.
     yaxis  = list(title = i18n$t("regen_ctx_axis_precip"), range = 2 * t_rng,
       side = "right", titlefont = list(color = "#4292c6"),
       tickfont = list(color = "#4292c6")),

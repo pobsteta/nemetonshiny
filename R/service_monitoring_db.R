@@ -10,16 +10,16 @@
 #'
 #' Resolution order:
 #'
-#' 1. `NEMETON_DB_URL` — passed straight through to nemeton.
-#' 2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts — assembled into
+#' 1. `NEMETON_DB_URL` - passed straight through to nemeton.
+#' 2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts - assembled into
 #'    a postgresql URL (credentials URL-encoded so passwords with `@`,
-#'    `:`, `/` … don't break the parse).
-#' 3. No PG env vars set AND a `project` is passed → fall back to a
+#'    `:`, `/` ... don't break the parse).
+#' 3. No PG env vars set AND a `project` is passed -> fall back to a
 #'    **local SQLite/WAL file** at
 #'    `<project$path>/data/monitoring.sqlite`. This single-user mode
 #'    avoids requiring a TimescaleDB instance for individual users.
 #'    Requires the `RSQLite` R package.
-#' 4. None of the above — return NULL so the Monitoring tab can show
+#' 4. None of the above - return NULL so the Monitoring tab can show
 #'    a configuration hint instead of crashing.
 #'
 #' @name service_monitoring_db
@@ -33,7 +33,7 @@ NULL
 #'   `app_state$current_project`). When provided and no PG env var is
 #'   set, a local SQLite/WAL file is used at
 #'   `<project$path>/data/monitoring.sqlite`. When NULL and no PG env
-#'   var is set, returns NULL — preserves the pre-0.24.0 behaviour for
+#'   var is set, returns NULL - preserves the pre-0.24.0 behaviour for
 #'   callers that don't have a project in scope.
 #' @param db_url Optional pre-resolved URL. Takes precedence over
 #'   `project`. Used by async workers (`run_ingestion_async`,
@@ -42,10 +42,10 @@ NULL
 #' @param read_only Logical. When `TRUE`, open the connection
 #'   read-only and SKIP the migration step. SQLite/WAL allows 1 writer
 #'   + N concurrent readers across processes, so readers (alerts list,
-#'   raster rendering, zone list, …) use `read_only = TRUE` to coexist
+#'   raster rendering, zone list, ...) use `read_only = TRUE` to coexist
 #'   with the async ingestion worker, which grabs a brief RW handle
 #'   when it needs to INSERT. A RO open requires the file to already
-#'   exist (migration done by a prior RW path) — if it doesn't, we
+#'   exist (migration done by a prior RW path) - if it doesn't, we
 #'   degrade to `NULL` (monitoring not initialised yet) rather than
 #'   crash. For PostgreSQL `read_only` is a no-op core-side (native
 #'   concurrency) and migration still proceeds via the RW init paths,
@@ -75,29 +75,29 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
     .resolve_monitoring_db_url(project)
   }
   if (!nzchar(url)) {
-    # Empty URL is not an "error" per se — the resolver already
+    # Empty URL is not an "error" per se - the resolver already
     # decided we are not configured. The bandeau will show the
-    # diagnostic state (no project / RSQLite missing / …).
+    # diagnostic state (no project / RSQLite missing / ...).
     return(NULL)
   }
 
   # Reader path : RO connexion. Pour SQLite, l'existence du fichier
-  # est un proxy fiable de « schéma déjà migré » (un précédent RW path
-  # a forcément créé le fichier ET appliqué les migrations dans la même
-  # transaction) — on saute la migration pour éviter le coût inutile à
+  # est un proxy fiable de " schema deja migre " (un precedent RW path
+  # a forcement cree le fichier ET applique les migrations dans la meme
+  # transaction) - on saute la migration pour eviter le cout inutile a
   # chaque reactive tick, et le WAL RW lock est non-exclusif donc les
   # readers coexistent avec le worker.
   #
-  # v0.52.1 — Pour Postgres en revanche, la base existe toujours (elle
-  # est créée par l'admin du cluster), mais le SCHÉMA peut ne pas avoir
-  # encore été migré au tout premier reactive tick d'une session — d'où
-  # le warning « relation "monitoring_zone" does not exist » au boot,
-  # avant que le premier RW path (sauvegarde projet, ingest FAST…)
+  # v0.52.1 - Pour Postgres en revanche, la base existe toujours (elle
+  # est creee par l'admin du cluster), mais le SCHEMA peut ne pas avoir
+  # encore ete migre au tout premier reactive tick d'une session - d'ou
+  # le warning " relation "monitoring_zone" does not exist " au boot,
+  # avant que le premier RW path (sauvegarde projet, ingest FAST...)
   # n'ouvre une connexion qui applique enfin les migrations. On lance
-  # donc `.ensure_monitoring_schema()` également sur le RO path pour
+  # donc `.ensure_monitoring_schema()` egalement sur le RO path pour
   # Postgres : c'est idempotent (un simple SELECT sur `schema_migration`
-  # après la 1re fois, sub-milliseconde) et ça élimine la race au
-  # démarrage. Le coût asymptotique reste celui d'un SELECT par tick.
+  # apres la 1re fois, sub-milliseconde) et ca elimine la race au
+  # demarrage. Le cout asymptotique reste celui d'un SELECT par tick.
   if (isTRUE(read_only)) {
     if (.is_file_db_url(url) && !file.exists(.file_db_path_from_url(url))) {
       .nemeton_env$.last_monitoring_db_error <-
@@ -116,8 +116,8 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
       }
     )
     if (is.null(con)) return(NULL)
-    # Postgres uniquement : migrer si nécessaire. SQLite a déjà été
-    # migré au moment où le fichier a été créé par un RW path antérieur.
+    # Postgres uniquement : migrer si necessaire. SQLite a deja ete
+    # migre au moment ou le fichier a ete cree par un RW path anterieur.
     if (!.is_file_db_url(url)) {
       schema_ok <- tryCatch({
         .ensure_monitoring_schema(con)
@@ -191,7 +191,7 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 
 #' Forward-compatible wrapper around `nemeton::db_connect()`
 #'
-#' Calls `nemeton::db_connect(url, read_only = …)` and forwards
+#' Calls `nemeton::db_connect(url, read_only = ...)` and forwards
 #' `connect_timeout` (libpq connect bound, in seconds) ONLY when the
 #' installed `db_connect()` actually exposes that argument.
 #'
@@ -202,7 +202,7 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 #' core release > 0.77.x; until the user's installed core carries it,
 #' passing it would raise an "unused argument" error. We therefore
 #' introspect `formals()` and degrade to the plain 2-arg call on older
-#' cores — a strict no-op until the core release ships, after which the
+#' cores - a strict no-op until the core release ships, after which the
 #' timeout activates automatically (no app bump required, thanks to the
 #' `@*release` remote).
 #'
@@ -229,7 +229,7 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 #' Returns the most recent connection failure message (or NULL if the
 #' last attempt succeeded). Used by `mod_monitoring`'s status card to
 #' surface the real cause when the bandeau falls back to the generic
-#' "Base non configurée" path.
+#' "Base non configuree" path.
 #'
 #' @noRd
 last_monitoring_db_error <- function() {
@@ -242,9 +242,9 @@ last_monitoring_db_error <- function() {
 #' Used by the UI to decide which banner to show ("Postgres ready" vs
 #' "local single-user" vs "Not configured"). Returns one of:
 #'
-#' * `"postgres"` — a PG URL is resolvable (env vars or NEMETON_DB_URL).
-#' * `"local"`    — fallback to a local single-user SQLite/WAL file.
-#' * `"none"`     — nothing configured.
+#' * `"postgres"` - a PG URL is resolvable (env vars or NEMETON_DB_URL).
+#' * `"local"`    - fallback to a local single-user SQLite/WAL file.
+#' * `"none"`     - nothing configured.
 #'
 #' @param project Optional project list (same semantic as
 #'   [get_monitoring_db_connection()]).
@@ -267,8 +267,8 @@ monitoring_db_backend <- function(project = NULL) {
 #' Historical note: a previous version of this helper memoized success
 #' in `.nemeton_env$.monitoring_schema_initialized`. That flag was
 #' process-level (shared across ALL connections in the R session),
-#' so opening a *fresh* local DB file in the same session — different
-#' project, deleted file, or just a different `db_url` — caused the
+#' so opening a *fresh* local DB file in the same session - different
+#' project, deleted file, or just a different `db_url` - caused the
 #' migration to be silently SKIPPED, leaving the new file without any
 #' table. The bug surfaced as "Table monitoring_zone does not exist!"
 #' at registration time. Always call `db_migrate()` now; the
@@ -279,10 +279,10 @@ monitoring_db_backend <- function(project = NULL) {
   if (is.null(con)) return(invisible(FALSE))
   if (!requireNamespace("nemeton", quietly = TRUE)) return(invisible(FALSE))
   # `nemeton::db_migrate()` emits a `cli::cli_alert_info` line on every
-  # call — "Database schema up to date (N migrations applied)." That's
+  # call - "Database schema up to date (N migrations applied)." That's
   # informative the FIRST time but turns into noise once we re-open
   # connections at every reactive tick (zones, validity, alerts...).
-  # We muffle ONLY the no-op message — the "Applied migration X" line
+  # We muffle ONLY the no-op message - the "Applied migration X" line
   # of an actual first-run migration is still surfaced, as well as any
   # warning/error.
   ok <- tryCatch(
@@ -323,7 +323,7 @@ close_monitoring_db_connection <- function(con) {
 
 #' Resolve a monitoring DB URL from env vars or project fallback
 #'
-#' Returns an empty string when nothing is usable — callers must treat
+#' Returns an empty string when nothing is usable - callers must treat
 #' "" as "not configured" and either skip the DB call or surface the
 #' configuration hint to the user.
 #'
@@ -334,12 +334,12 @@ close_monitoring_db_connection <- function(con) {
 #'    credentials sitting in `.Renviron` (Clever Cloud creds dumped by
 #'    the build pipeline) that would otherwise win the cascade and try
 #'    to dial an unreachable Postgres host.
-#' 2. `NEMETON_DB_URL` — passed straight through.
-#' 3. `POSTGRESQL_ADDON_*` / `NEMETON_DB_*` env parts — assembled into
+#' 2. `NEMETON_DB_URL` - passed straight through.
+#' 3. `POSTGRESQL_ADDON_*` / `NEMETON_DB_*` env parts - assembled into
 #'    a postgresql URL.
-#' 4. `project$path` + `RSQLite` pkg present → local SQLite/WAL file
+#' 4. `project$path` + `RSQLite` pkg present -> local SQLite/WAL file
 #'    (`sqlite://<project>/data/monitoring.sqlite`).
-#' 5. None of the above — return "".
+#' 5. None of the above - return "".
 #'
 #' @noRd
 .resolve_monitoring_db_url <- function(project = NULL) {
@@ -353,10 +353,10 @@ close_monitoring_db_connection <- function(con) {
     if (nzchar(url)) return(url)
   }
 
-  # Single-user local fallback : SQLite/WAL (cœur nemeton >= 0.51.0).
+  # Single-user local fallback : SQLite/WAL (coeur nemeton >= 0.51.0).
   # SQLite en WAL autorise 1 writer + N lecteurs concurrents ENTRE
-  # PROCESSUS — la session Shiny et le worker future d'ingestion
-  # (process Rscript séparé) coexistent nativement sur le même fichier.
+  # PROCESSUS - la session Shiny et le worker future d'ingestion
+  # (process Rscript separe) coexistent nativement sur le meme fichier.
   if (is.null(project) || is.null(project$path)) return("")
 
   data_dir <- file.path(project$path, "data")
@@ -390,7 +390,7 @@ close_monitoring_db_connection <- function(con) {
   }
   # Canonical `sqlite://` + absolute path. `nemeton::db_connect` parses
   # it via `.parse_sqlite_url` (strips the optional `//`), so Unix
-  # `/home/...` → `sqlite:///home/...` and Windows `C:/...` →
+  # `/home/...` -> `sqlite:///home/...` and Windows `C:/...` ->
   # `sqlite://C:/...` both round-trip correctly.
   paste0("sqlite://", normalizePath(sqlite_path, winslash = "/", mustWork = FALSE))
 }
@@ -409,7 +409,7 @@ close_monitoring_db_connection <- function(con) {
 #' Build a postgresql URL from individual env vars
 #'
 #' Returns "" (empty string) when not enough information is available
-#' to build a usable URL — caller must treat that as "not configured".
+#' to build a usable URL - caller must treat that as "not configured".
 #'
 #' @noRd
 .build_monitoring_db_url <- function() {
@@ -426,7 +426,7 @@ close_monitoring_db_connection <- function(con) {
   password <- Sys.getenv("POSTGRESQL_ADDON_PASSWORD",
                          Sys.getenv("NEMETON_DB_PASSWORD", ""))
 
-  # Refuse to emit a URL with empty credentials — nemeton::db_connect()
+  # Refuse to emit a URL with empty credentials - nemeton::db_connect()
   # would crash on parse or on dbConnect itself, hiding the real cause.
   if (!all(nzchar(c(host, dbname, user, password)))) return("")
 
@@ -440,7 +440,7 @@ close_monitoring_db_connection <- function(con) {
 #' List the monitoring zones registered in the DB
 #'
 #' Returns a data.frame with columns `id` (integer) and `name`
-#' (character). On any error (DB down, schema not migrated, …) returns
+#' (character). On any error (DB down, schema not migrated, ...) returns
 #' an empty data.frame with the same columns and emits a warning. The
 #' UI must always have a value to bind to.
 #'
@@ -450,7 +450,7 @@ close_monitoring_db_connection <- function(con) {
 #' Resolve a monitoring zone name from its id (best-effort)
 #'
 #' Used by the FAST / FORDEAD workers to compose ntfy push messages
-#' that say « (zone villards) » instead of « (zone 1) » — the i18n
+#' that say " (zone villards) " instead of " (zone 1) " - the i18n
 #' templates take `%s` and the call site has only the integer id.
 #'
 #' Silent fallback to `as.character(zone_id)` when the zone row was
@@ -460,7 +460,7 @@ close_monitoring_db_connection <- function(con) {
 #'
 #' @param con A DBIConnection (or NULL).
 #' @param zone_id Integer.
-#' @return Character length-1 — the zone name, or the stringified id
+#' @return Character length-1 - the zone name, or the stringified id
 #'   when resolution fails / `con` is NULL / id is NULL.
 #' @noRd
 .resolve_zone_name <- function(con, zone_id) {
@@ -537,12 +537,12 @@ register_project_as_zone <- function(con, project) {
   }
 
   # Idempotency: the project metadata may already point at a registered
-  # zone. Check that the row still exists before reusing — the DB could
+  # zone. Check that the row still exists before reusing - the DB could
   # have been wiped or the zone deleted out-of-band.
   #
-  # Spec 011 (v0.41.0) — on reuse, also backfill `project_uuid` on the
+  # Spec 011 (v0.41.0) - on reuse, also backfill `project_uuid` on the
   # existing row when it is NULL. Migrates pre-spec-011 zones (registered
-  # before v0.44.0 cœur) without forcing the user to re-INSERT a zone.
+  # before v0.44.0 coeur) without forcing the user to re-INSERT a zone.
   existing_id <- project$metadata$monitoring_zone_id
   if (!is.null(existing_id) && length(existing_id) == 1L &&
       !is.na(suppressWarnings(as.integer(existing_id)))) {
@@ -638,17 +638,17 @@ get_monitoring_zone_aoi <- function(con, zone_id) {
 }
 
 
-#' G3 — validity check for a monitoring zone
+#' G3 - validity check for a monitoring zone
 #'
 #' Thin wrapper around `nemeton::check_fordead_validity()` that pulls the
 #' zone AOI from the DB.
 #'
-#' `units` is optional — when missing OR when present but lacking a
+#' `units` is optional - when missing OR when present but lacking a
 #' species column AND `bdforet` is also NULL, the species check is
 #' skipped and `species_valid` is NA. When `bdforet` is provided AND
-#' `units` lacks a species column, the cœur (nemeton@v0.26.0+) derives
-#' the dominant species from BD Forêt V2 via `enrich_parcels_bdforet()`
-#' and runs the species check normally — this is the common case for
+#' `units` lacks a species column, the coeur (nemeton@v0.26.0+) derives
+#' the dominant species from BD Foret V2 via `enrich_parcels_bdforet()`
+#' and runs the species check normally - this is the common case for
 #' nemetonshiny since UGFs typically don't carry an essence column.
 #'
 #' @param con A DBIConnection or NULL.
@@ -656,7 +656,7 @@ get_monitoring_zone_aoi <- function(con, zone_id) {
 #' @param units Optional sf of forest units carrying a species column
 #'   (`essence_dominante` / `essence` / `species_label` / `species` /
 #'   `essence_principale`). When NULL, species check is skipped.
-#' @param bdforet Optional sf of BD Forêt V2 (formation_vegetale)
+#' @param bdforet Optional sf of BD Foret V2 (formation_vegetale)
 #'   covering the AOI. Forwarded to `nemeton::check_fordead_validity()`
 #'   so it can resolve the dominant species when `units` doesn't carry
 #'   one. Caller-side: load from `<project>/cache/layers/bdforet.gpkg`
@@ -680,9 +680,9 @@ validity_check_for_zone <- function(con, zone_id, units = NULL,
 }
 
 
-# v0.106.4 — `list_alerts_for_zone()` supprimée : son seul consommateur était
-# l'affichage vectoriel des alertes (marqueurs « placettes ») des cartes de
-# suivi sanitaire, retiré de FAST (a18f3ab2), FORDEAD (Phase A, D2) puis
-# RECONFORT. La lecture de la table `alerts` subsiste là où elle a un sens
-# métier : `service_r5.R` (indicateur R5) appelle `nemeton::list_alerts()`
+# v0.106.4 - `list_alerts_for_zone()` supprimee : son seul consommateur etait
+# l'affichage vectoriel des alertes (marqueurs " placettes ") des cartes de
+# suivi sanitaire, retire de FAST (a18f3ab2), FORDEAD (Phase A, D2) puis
+# RECONFORT. La lecture de la table `alerts` subsiste la ou elle a un sens
+# metier : `service_r5.R` (indicateur R5) appelle `nemeton::list_alerts()`
 # directement.

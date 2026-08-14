@@ -1,33 +1,33 @@
-# service_tour.R — Définition déclarative du Tour guidé (cicerone).
+# service_tour.R - Definition declarative du Tour guide (cicerone).
 #
-# L'AUTO-démarrage est optionnel : `run_app(tour = FALSE)` (ou NEMETON_TOUR=0)
-# fait démarrer l'app directement, sans le tour. Motivation : le tour injecte du
-# JS client 2 s après la connexion, ce qui gêne les démos/captures et rend les
-# tests E2E instables (cicerone émet « There are no steps defined to iterate »
-# sur le même flush, ce qui déstabilise la session shinytest2). Le tour reste
-# lançable à la main depuis l'aide — seul l'auto-démarrage est supprimé.
+# L'AUTO-demarrage est optionnel : `run_app(tour = FALSE)` (ou NEMETON_TOUR=0)
+# fait demarrer l'app directement, sans le tour. Motivation : le tour injecte du
+# JS client 2 s apres la connexion, ce qui gene les demos/captures et rend les
+# tests E2E instables (cicerone emet " There are no steps defined to iterate "
+# sur le meme flush, ce qui destabilise la session shinytest2). Le tour reste
+# lancable a la main depuis l'aide - seul l'auto-demarrage est supprime.
 #
-# Le tour est une liste ORDONNÉE de steps, chacun ancré sur un élément
-# (id namespacé) d'un onglet. cicerone (>= 1.0.4) sait activer l'onglet
-# cible (`tab` + `tab_id`) AVANT de cadrer l'élément : un seul guide peut
+# Le tour est une liste ORDONNEE de steps, chacun ancre sur un element
+# (id namespace) d'un onglet. cicerone (>= 1.0.4) sait activer l'onglet
+# cible (`tab` + `tab_id`) AVANT de cadrer l'element : un seul guide peut
 # donc traverser tous les onglets de `main_nav` sans orchestrateur
 # manuel. Chaque step porte `tab_id = "main_nav"` ; cicerone bascule
-# l'onglet, ce qui rend le tour robuste quel que soit l'onglet d'où il
-# est relancé.
+# l'onglet, ce qui rend le tour robuste quel que soit l'onglet d'ou il
+# est relance.
 #
-# Couverture (1 step clé par onglet + onboarding détaillé sur l'Accueil) :
-#   selection   → recherche, carte, nom/description/owner, créer
-#   synthesis   → synthèse (score / radar / perspective IA)
-#   action_plan → plan d'action
-#   terrain     → échantillonnage terrain (sous-onglet par défaut)
-#   monitoring  → mode de suivi (FAST / FORDEAD / RECONFORT)
-#   familles    → vue d'une famille d'indicateurs (Carbone, représentative)
+# Couverture (1 step cle par onglet + onboarding detaille sur l'Accueil) :
+#   selection   -> recherche, carte, nom/description/owner, creer
+#   synthesis   -> synthese (score / radar / perspective IA)
+#   action_plan -> plan d'action
+#   terrain     -> echantillonnage terrain (sous-onglet par defaut)
+#   monitoring  -> mode de suivi (FAST / FORDEAD / RECONFORT)
+#   familles    -> vue d'une famille d'indicateurs (Carbone, representative)
 #
-# ANCRES : ce sont des ids stables. Les `uiOutput`/cards/inputs ciblés
-# sont TOUJOURS présents dans le DOM (un `uiOutput` vide reste un
-# conteneur) — on évite délibérément les boutons conditionnels (ex.
+# ANCRES : ce sont des ids stables. Les `uiOutput`/cards/inputs cibles
+# sont TOUJOURS presents dans le DOM (un `uiOutput` vide reste un
+# conteneur) - on evite deliberement les boutons conditionnels (ex.
 # `start_compute`, rendu seulement en statut draft). Si un module renomme
-# une ancre, mettre à jour ici ET le test d'inventaire
+# une ancre, mettre a jour ici ET le test d'inventaire
 # (`test-service_tour.R`).
 
 #' Build the ordered guided-tour step specs.
@@ -39,7 +39,7 @@
 #' @noRd
 build_tour_steps <- function(i18n, max_parcels = 30L) {
   list(
-    # ----- Accueil (onboarding création de projet) -----
+    # ----- Accueil (onboarding creation de projet) -----
     list(tab = "selection", el = "home-search_collapse",
          title = i18n$t("tour_search_title"),
          description = i18n$t("tour_search_desc")),
@@ -58,7 +58,7 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
     list(tab = "selection", el = "home-project-create_project",
          title = i18n$t("tour_create_title"),
          description = i18n$t("tour_create_desc")),
-    # ----- 1 step clé par onglet -----
+    # ----- 1 step cle par onglet -----
     list(tab = "synthesis", el = "synthesis-project_summary",
          title = i18n$t("tour_synthesis_title"),
          description = i18n$t("tour_synthesis_desc")),
@@ -83,22 +83,22 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
 #' On NE PEUT PAS utiliser le couple `tab`/`tab_id` natif de cicerone :
 #' son JS (cicerone.js) bascule l'onglet via
 #' `Shiny.inputBindings.bindingNames['shiny.bootstrapTabInput'].binding.setValue()`,
-#' incompatible avec le `page_navbar` bslib (Bootstrap 5) — l'appel lève
+#' incompatible avec le `page_navbar` bslib (Bootstrap 5) - l'appel leve
 #' une exception qui AVORTE tout le tour (il ne se lance plus du tout).
-#' On bascule donc l'onglet côté client en cliquant le lien de nav
-#' (`#main_nav a[data-value="<tab>"]`, marqué `data-bs-toggle="tab"`),
-#' synchrone et compatible BS4/BS5. `on_highlight_started` s'exécute juste
-#' avant le cadrage de l'élément, donc l'onglet est actif au moment du
+#' On bascule donc l'onglet cote client en cliquant le lien de nav
+#' (`#main_nav a[data-value="<tab>"]`, marque `data-bs-toggle="tab"`),
+#' synchrone et compatible BS4/BS5. `on_highlight_started` s'execute juste
+#' avant le cadrage de l'element, donc l'onglet est actif au moment du
 #' highlight.
 #'
-#' IMPORTANT — le retour doit être une **expression de fonction**
+#' IMPORTANT - le retour doit etre une **expression de fonction**
 #' (`function(){...}`), pas un bloc d'instructions : cicerone (1.0.4) passe
 #' `on_highlight_started` brut dans `new Function("return " + js)()`
-#' (cicerone.js:101). Une chaîne commençant par `var` produit
-#' `return var …` → `SyntaxError: Unexpected token 'var'`, ce qui casse la
-#' compilation des steps (driver.js se retrouve « no steps to iterate ») et
-#' donc la bascule d'onglet du tour. L'envelopper en `function(){…}` la rend
-#' valide : `new Function("return function(){…}")()` renvoie la fonction.
+#' (cicerone.js:101). Une chaine commencant par `var` produit
+#' `return var ...` -> `SyntaxError: Unexpected token 'var'`, ce qui casse la
+#' compilation des steps (driver.js se retrouve " no steps to iterate ") et
+#' donc la bascule d'onglet du tour. L'envelopper en `function(){...}` la rend
+#' valide : `new Function("return function(){...}")()` renvoie la fonction.
 #' @noRd
 .tour_switch_tab_js <- function(tab) {
   sprintf(
@@ -119,9 +119,9 @@ build_tour_guide <- function(i18n, max_parcels = 30L) {
   steps <- build_tour_steps(i18n, max_parcels = max_parcels)
   guide <- cicerone::Cicerone$new()
   for (s in steps) {
-    # `is_id = TRUE` (cicerone default) → el is treated as an #id.
+    # `is_id = TRUE` (cicerone default) -> el is treated as an #id.
     # Tab switching is done client-side via on_highlight_started (see
-    # .tour_switch_tab_js) — PAS via tab/tab_id (binding cassé sous bslib).
+    # .tour_switch_tab_js) - PAS via tab/tab_id (binding casse sous bslib).
     guide$step(
       el                  = s$el,
       title               = s$title,

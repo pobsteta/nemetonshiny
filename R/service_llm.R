@@ -3,7 +3,7 @@
 # Mirror of the Theia API key persistence pattern (R/service_theia.R) :
 #
 #   * env vars take precedence (MISTRAL_API_KEY / ANTHROPIC_API_KEY /
-#     OPENAI_API_KEY — the well-established names ellmer + the public
+#     OPENAI_API_KEY - the well-established names ellmer + the public
 #     SDKs already look up) ;
 #   * fallback to a single JSON file `~/.config/nemetonshiny/llm.json`
 #     of shape `{"mistral": "...", "anthropic": "...", "openai": "..."}`
@@ -15,7 +15,7 @@
 
 
 # Provider registry. Adding a provider here is enough to expose it in
-# the modal — the helpers iterate over `names(.LLM_PROVIDERS)`.
+# the modal - the helpers iterate over `names(.LLM_PROVIDERS)`.
 .LLM_PROVIDERS <- list(
   mistral   = list(label = "Mistral",   env = "MISTRAL_API_KEY"),
   anthropic = list(label = "Anthropic", env = "ANTHROPIC_API_KEY"),
@@ -44,7 +44,7 @@ llm_providers <- function() {
 
 
 # Read the persisted keys file as a named list. Returns an empty list
-# when the file does not exist or fails to parse. Internal — callers
+# when the file does not exist or fails to parse. Internal - callers
 # read through llm_status() / llm_save_api_key().
 .llm_read_file <- function() {
   path <- .llm_apikey_path()
@@ -53,7 +53,7 @@ llm_providers <- function() {
     {
       raw <- jsonlite::read_json(path, simplifyVector = TRUE)
       if (is.null(raw) || !is.list(raw)) return(list())
-      # Drop empty entries — defensive in case of manual editing.
+      # Drop empty entries - defensive in case of manual editing.
       Filter(function(v) is.character(v) && nzchar(v), raw)
     },
     error = function(e) {
@@ -153,7 +153,7 @@ llm_save_api_key <- function(provider, key) {
   keys <- .llm_read_file()
   keys[[provider]] <- key
   ok <- .llm_write_file(keys)
-  # Always set the env var, even if the file write failed — that way
+  # Always set the env var, even if the file write failed - that way
   # the running session has the key (Best effort, durability unknown).
   do.call(Sys.setenv, stats::setNames(list(key), spec$env))
   isTRUE(ok)

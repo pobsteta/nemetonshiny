@@ -1,6 +1,6 @@
-#' Police des annotations pédagogiques de la planche pixel.
+#' Police des annotations pedagogiques de la planche pixel.
 #'
-#' 14 px (et non 10) + gris foncé : lisible en plein écran, où plotly
+#' 14 px (et non 10) + gris fonce : lisible en plein ecran, ou plotly
 #' agrandit la planche mais PAS la police (taille fixe en px).
 #' @noRd
 .PIXEL_ANNOT_FONT <- list(size = 14, color = "#333333")
@@ -14,12 +14,12 @@
 #' comes straight from `prepared`.
 #'
 #' Panels:
-#' * A — dual native Y axis (CRswir left `y`, CRre right `y2`): raw points
+#' * A - dual native Y axis (CRswir left `y`, CRre right `y2`): raw points
 #'   (optional), smoothed curves, summer bands, interpolation-gap shading, and
 #'   the summer trough (CRswir) / peak (CRre) trajectories distinguished by
 #'   dash + symbol (non-colour redundancy).
-#' * B / C — folded annual cycles (x = day-of-year), one line per year, cividis.
-#' * D — CRswir x CRre state space, coloured by year (single colorbar) with the
+#' * B / C - folded annual cycles (x = day-of-year), one line per year, cividis.
+#' * D - CRswir x CRre state space, coloured by year (single colorbar) with the
 #'   annual-centroid trajectory.
 #'
 #' @param prepared List returned by [nemeton::prepare_pixel_dieback_series()]:
@@ -29,7 +29,7 @@
 #'   `val_re`); `gaps` (`from`, `to`).
 #' @param opts List of display options: `show_points` (logical, default TRUE)
 #'   toggles the raw-observation markers; `summer` (length-2 integer DOY, default
-#'   `c(152L, 273L)`) drives the summer band shading only (cosmetic — must match
+#'   `c(152L, 273L)`) drives the summer band shading only (cosmetic - must match
 #'   the `summer` passed to the core preparer).
 #' @param i18n App translator (`get_i18n()` result) or NULL. All labels go
 #'   through it (rule 4).
@@ -40,10 +40,10 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   show_points <- isTRUE(opts$show_points %||% TRUE)
   summer      <- opts$summer %||% c(152L, 273L)
 
-  # Métadonnées du pixel (titre) : essence + lon/lat + modèle. Fournies par le
-  # module au clic (attr(series, "species") / "v_model" + coordonnées du clic
-  # carte) ; toutes facultatives. Le titre reprend la maquette (« Pixel de
-  # <essence> — … ») et ajoute une 2ᵉ ligne lat/lon (parité graphique FORDEAD).
+  # Metadonnees du pixel (titre) : essence + lon/lat + modele. Fournies par le
+  # module au clic (attr(series, "species") / "v_model" + coordonnees du clic
+  # carte) ; toutes facultatives. Le titre reprend la maquette (" Pixel de
+  # <essence> - ... ") et ajoute une 2e ligne lat/lon (parite graphique FORDEAD).
   .ok1 <- function(x) !is.null(x) && length(x) == 1L && !is.na(x)
   .sp  <- if (.ok1(opts$species) && nzchar(as.character(opts$species)))
     as.character(opts$species) else NULL
@@ -65,17 +65,17 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   )
   title_txt <- if (length(sub_bits))
     paste0(title_main, "<br><span style='font-size:11px;color:#666'>",
-           paste(sub_bits, collapse = " — "), "</span>")
+           paste(sub_bits, collapse = " \u2014 "), "</span>")
   else title_main
 
   # Colours: CRswir / CRre fixed hues on panel A; cividis ramp for the
   # per-year traces (folded cycles + state space). Les deux trajectoires ont
-  # une couleur DÉDIÉE (rouge = creux CRswir, violet = pic CRre) — cf. image
-  # de référence — chacune reprise sur ses points, sa ligne et ses libellés.
+  # une couleur DEDIEE (rouge = creux CRswir, violet = pic CRre) - cf. image
+  # de reference - chacune reprise sur ses points, sa ligne et ses libelles.
   col_swir <- "#1F77B4"  # bleu (CRswir)
   col_re   <- "#2CA02C"  # vert (CRre)
-  col_trough <- "#D62728"  # rouge — trajectoire du creux estival CRswir
-  col_peak   <- "#7E3F9E"  # violet — trajectoire du pic estival CRre
+  col_trough <- "#D62728"  # rouge - trajectoire du creux estival CRswir
+  col_peak   <- "#7E3F9E"  # violet - trajectoire du pic estival CRre
 
   .df <- function(x) if (is.data.frame(x)) x else NULL
   grid_swir <- .df(prepared$grid_swir); grid_re <- .df(prepared$grid_re)
@@ -84,7 +84,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   state     <- .df(prepared$state);     centroids <- .df(prepared$centroids)
   gaps      <- .df(prepared$gaps)
 
-  # Palette année partagée (discrète) : cividis mappé aux années présentes.
+  # Palette annee partagee (discrete) : cividis mappe aux annees presentes.
   yrs <- sort(unique(stats::na.omit(c(
     grid_swir$year, grid_re$year, state$year
   ))))
@@ -95,7 +95,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   )
 
   # ---------------------------------------------------------------
-  # Shapes panneau A : bandes estivales (par année) + lacunes ombrées.
+  # Shapes panneau A : bandes estivales (par annee) + lacunes ombrees.
   # ---------------------------------------------------------------
   shapes <- list()
   for (y in yrs) {
@@ -121,7 +121,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   }
 
   # ---------------------------------------------------------------
-  # Panneau A — double axe Y natif.
+  # Panneau A - double axe Y natif.
   # ---------------------------------------------------------------
   pA <- plotly::plot_ly()
   if (show_points && !is.null(obs_swir) && nrow(obs_swir)) {
@@ -150,8 +150,8 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
       hovertemplate = paste0("CRswir<br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
     )
   }
-  # Trajectoire creux estival CRswir (rouge, pointillés, cercles, labels rouges
-  # sous les points) — axe y.
+  # Trajectoire creux estival CRswir (rouge, pointilles, cercles, labels rouges
+  # sous les points) - axe y.
   if (!is.null(trough) && nrow(trough)) {
     pA <- plotly::add_trace(
       pA, data = trough, x = ~date, y = ~val, yaxis = "y",
@@ -173,8 +173,8 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
       hovertemplate = paste0("CRre<br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
     )
   }
-  # Trajectoire pic estival CRre (violet, pointillés, cercles, labels violets
-  # au-dessus des points) — axe y2.
+  # Trajectoire pic estival CRre (violet, pointilles, cercles, labels violets
+  # au-dessus des points) - axe y2.
   if (!is.null(peak) && nrow(peak)) {
     pA <- plotly::add_trace(
       pA, data = peak, x = ~date, y = ~val, yaxis = "y2",
@@ -206,9 +206,9 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   )
 
   # ---------------------------------------------------------------
-  # Panneaux B & C — cycles annuels repliés (x = doy), 1 ligne/année.
+  # Panneaux B & C - cycles annuels replies (x = doy), 1 ligne/annee.
   # ---------------------------------------------------------------
-  # Bande estivale (orange) commune aux cycles repliés (x = doy).
+  # Bande estivale (orange) commune aux cycles replies (x = doy).
   summer_band <- list(
     type = "rect", xref = "x", yref = "paper",
     x0 = as.integer(summer[1]), x1 = as.integer(summer[2]),
@@ -239,9 +239,9 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
       yaxis = list(title = y_title)
     )
   }
-  # Annotations « pédagogiques » ancrées en coordonnées données (doy, valeur).
-  # v0.106.4 — police 10 → 14 px, gris #666 → #333 : ces annotations portent la
-  # LECTURE du diagnostic ; en plein écran plotly agrandit la planche mais garde
+  # Annotations " pedagogiques " ancrees en coordonnees donnees (doy, valeur).
+  # v0.106.4 - police 10 -> 14 px, gris #666 -> #333 : ces annotations portent la
+  # LECTURE du diagnostic ; en plein ecran plotly agrandit la planche mais garde
   # une police FIXE en px, elles devenaient donc illisibles.
   annot_trough <- list(
     x = 235, y = 0.72, xref = "x", yref = "y", showarrow = TRUE,
@@ -258,7 +258,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   pC <- folded(grid_re,   "CRre",   annot_peak)
 
   # ---------------------------------------------------------------
-  # Panneau D — espace d'état CRswir x CRre, couleur = année (1 seule colorbar).
+  # Panneau D - espace d'etat CRswir x CRre, couleur = annee (1 seule colorbar).
   # ---------------------------------------------------------------
   pD <- plotly::plot_ly()
   if (!is.null(state) && nrow(state)) {
@@ -277,7 +277,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
                              "<br>CRre %{y:.3f}<extra></extra>")
     )
   }
-  # Trajectoire des centroïdes annuels (losanges reliés en pointillés).
+  # Trajectoire des centroides annuels (losanges relies en pointilles).
   if (!is.null(centroids) && nrow(centroids)) {
     cc <- centroids[order(centroids$year), , drop = FALSE]
     pD <- plotly::add_trace(
@@ -336,7 +336,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   fig
 }
 
-# v0.106.4 — `.pixel_export_engine()` / `save_plotly_png()` supprimées avec
-# le bouton « Exporter PNG » de la modale pixel RECONFORT (leur unique
+# v0.106.4 - `.pixel_export_engine()` / `save_plotly_png()` supprimees avec
+# le bouton " Exporter PNG " de la modale pixel RECONFORT (leur unique
 # consommateur). La planche reste exportable depuis la barre d'outils
-# native de plotly (icône appareil photo).
+# native de plotly (icone appareil photo).

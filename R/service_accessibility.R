@@ -1,25 +1,25 @@
 # ===========================================================================
-# Service — Accessibilité forestière (ForêtAccess, onglet Terrain)
+# Service - Accessibilite forestiere (ForetAccess, onglet Terrain)
 # ===========================================================================
 #
 # Adaptateur applicatif (non-Shiny) autour du paquet `foretaccess` (cartographie
-# de l'accessibilité, réimplémentation de Sylvaccess — INRAE). Conformément aux
-# règles 1/2 (aucune logique métier ici), ce fichier ne fait qu'orchestrer :
-#   - résoudre l'AOI (géométrie du projet) et le MNT (déjà sur disque) ;
-#   - acquérir la desserte (IGN BD TOPO V3) pour l'emprise ;
-#   - appeler `foretaccess::preprocess()` + les moteurs terrestres exportés ;
+# de l'accessibilite, reimplementation de Sylvaccess - INRAE). Conformement aux
+# regles 1/2 (aucune logique metier ici), ce fichier ne fait qu'orchestrer :
+#   - resoudre l'AOI (geometrie du projet) et le MNT (deja sur disque) ;
+#   - acquerir la desserte (IGN BD TOPO V3) pour l'emprise ;
+#   - appeler `foretaccess::preprocess()` + les moteurs terrestres exportes ;
 #   - persister les rasters de classes + un GeoPackage vecteur exportable.
 #
 # Moteurs TERRESTRES (skidder, porteur, camion DFCI), en R pur, plus le moteur
-# CÂBLE-MÂT (`potentiel_cable`, noyau Rust de foretaccess) : balayage 360°/pixel
-# depuis les places de dépôt, très coûteux (plusieurs minutes à la dizaine de
-# minutes selon l'emprise) — d'où son opt-in dans l'UI.
+# CABLE-MAT (`potentiel_cable`, noyau Rust de foretaccess) : balayage 360deg/pixel
+# depuis les places de depot, tres couteux (plusieurs minutes a la dizaine de
+# minutes selon l'emprise) - d'ou son opt-in dans l'UI.
 #
 # Le calcul est LONG (rasterisation, focal, propagation least-cost) : il tourne
 # dans un worker `future` (cf. mod_accessibility.R). Un `SpatRaster` terra n'est
-# PAS sérialisable entre process (pointeur externe) : le worker ÉCRIT les
-# rasters sur disque et ne renvoie que des CHEMINS + les data.frames de récap
-# (sérialisables). Le process principal relit les `.tif` pour l'affichage.
+# PAS serialisable entre process (pointeur externe) : le worker ECRIT les
+# rasters sur disque et ne renvoie que des CHEMINS + les data.frames de recap
+# (serialisables). Le process principal relit les `.tif` pour l'affichage.
 
 #' Accessibility engines exposed by the app
 #'
@@ -29,16 +29,16 @@
 #' The cable was long excluded for lack of a **landing-sites** layer (`departs`):
 #' `potentiel_cable(departs = NULL)` fell back onto the whole road network
 #' (~10 681 cells x 360 azimuths, > 1 h, knowingly optimistic). foretaccess now
-#' produces that layer: `qualifier_desserte()` (NDP 1, LiDAR width) →
-#' `places_depot()` (selective) → `departs` fed to `potentiel_cable()`. Without a
+#' produces that layer: `qualifier_desserte()` (NDP 1, LiDAR width) ->
+#' `places_depot()` (selective) -> `departs` fed to `potentiel_cable()`. Without a
 #' LiDAR point cloud the app falls back to `places_depot()` on the raw BD TOPO
 #' (less selective, but correct). See `run_accessibility()`.
 #' @noRd
 ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 
-# NOTE : `.resolve_project_aoi_2154()` (résolution AOI projet -> EPSG:2154) et
-# `.acquire_mnt_highres()` (MNT 5 m HIGHRES) vivent désormais dans
-# `R/service_foretaccess_io.R`, partagés avec le futur onglet Desserte.
+# NOTE : `.resolve_project_aoi_2154()` (resolution AOI projet -> EPSG:2154) et
+# `.acquire_mnt_highres()` (MNT 5 m HIGHRES) vivent desormais dans
+# `R/service_foretaccess_io.R`, partages avec le futur onglet Desserte.
 
 #' Directory holding the accessibility artefacts of a project
 #' @noRd
@@ -104,16 +104,16 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 
 #' Locate the DEM to feed the RVT relief background
 #'
-#' Preference order — **best terrain source first** :
-#'   1. `cache/layers/lidar_mnt_mosaic.tif` — the **native 0.5 m IGN LiDAR HD
+#' Preference order - **best terrain source first** :
+#'   1. `cache/layers/lidar_mnt_mosaic.tif` - the **native 0.5 m IGN LiDAR HD
 #'      DTM** (bare ground). A CVAT on it is striping-free and reveals the true
 #'      micro-relief (road embankments, ditches). This is the right source.
-#'   2. `cache/accessibility/emprise_<b>m/mnt_highres_1m.tif` — the WMS RGE ALTI
+#'   2. `cache/accessibility/emprise_<b>m/mnt_highres_1m.tif` - the WMS RGE ALTI
 #'      HIGHRES 1 m (resampled, carries a tile striping the CVAT amplifies).
 #'      Fallback only, for projects without a LiDAR DTM.
 #'   3. any `mnt_highres_*.tif`.
 #'
-#' NB: `lidar_mnh_mosaic.tif` is a canopy height model (MNH), NOT terrain —
+#' NB: `lidar_mnh_mosaic.tif` is a canopy height model (MNH), NOT terrain -
 #' deliberately excluded (a relief RVT must run on bare ground).
 #'
 #' @param project_path Project directory, or NULL.
@@ -141,7 +141,7 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #'
 #' Returns the project's CVAT relief as a display-ready `SpatRaster` (aggregated
 #' to ~2000 px so `addRasterImage` stays under its size cap), **only when a CVAT
-#' already exists** (precomputed or cached — `.rvt_is_cheap`). Never triggers the
+#' already exists** (precomputed or cached - `.rvt_is_cheap`). Never triggers the
 #' ~1 min live `vat_combined()` at map-render time. `NULL` when no CVAT is ready.
 #'
 #' Used as a semi-transparent overlay over OSM/Satellite on the Accessibility and
@@ -174,7 +174,7 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #' scans `cache/accessibility/` for the known class rasters (`acc_<engine>.tif`
 #' and `acc_classes_debardage.tif`) and rebuilds a minimal `run_accessibility()`
 #' result (same shape as a live run, marked `from_cache = TRUE`). The per-engine
-#' recap tables are NOT persisted, so `recaps` is empty — only the display layers
+#' recap tables are NOT persisted, so `recaps` is empty - only the display layers
 #' (rasters + exportable GeoPackage) are restored. Returns `NULL` when the project
 #' has no cached raster yet.
 #'
@@ -185,8 +185,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   cache_dir <- .accessibility_cache_dir(project_path)
   if (!dir.exists(cache_dir)) return(NULL)
-  # Engines d'abord (dans l'ordre canonique), puis les classes de débardage :
-  # le 1er élément devient la couche sélectionnée par défaut dans l'UI.
+  # Engines d'abord (dans l'ordre canonique), puis les classes de debardage :
+  # le 1er element devient la couche selectionnee par defaut dans l'UI.
   known <- c(
     stats::setNames(paste0("acc_", ACCESSIBILITY_ENGINES, ".tif"),
                     ACCESSIBILITY_ENGINES),
@@ -202,9 +202,9 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   }
   if (length(raster_paths) == 0L) return(NULL)
   gpkg <- file.path(cache_dir, "accessibilite.gpkg")
-  # Raster ACCESSFOR (IGN) déjà calculé et écrit lors du run (validation
-  # systématique) : s'il est sur disque, on le restaure pour que la couche
-  # « Classes de débardage/ACCESSFOR (IGN) » réaffiche le volet sans requête WFS.
+  # Raster ACCESSFOR (IGN) deja calcule et ecrit lors du run (validation
+  # systematique) : s'il est sur disque, on le restaure pour que la couche
+  # " Classes de debardage/ACCESSFOR (IGN) " reaffiche le volet sans requete WFS.
   af <- file.path(cache_dir, "accessfor_skidder.tif")
   list(
     status = "success",
@@ -217,16 +217,16 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
     from_cache = TRUE)
 }
 
-#' Flag the DFCI source tronçons on a road network (with provenance)
+#' Flag the DFCI source troncons on a road network (with provenance)
 #'
 #' `camion_dfci()` needs starting points (the `dfci` flag on `desserte`, turned
 #' into `dfci_source_mask` by `preprocess()`) or it aborts. Resolution order:
 #' 1. **OSM `ref:FR:DFCI`** network via `foretaccess::acquire_dfci()` +
-#'    `flag_dfci()` — the authoritative source (`"osm"`).
+#'    `flag_dfci()` - the authoritative source (`"osm"`).
 #' 2. **Geometric fallback** built into `flag_dfci()` when no OSM DFCI line is
-#'    found (emprise / traversal / turn-around heuristics) — `"geometrique"`.
+#'    found (emprise / traversal / turn-around heuristics) - `"geometrique"`.
 #' 3. **App heuristic** of last resort when nothing was flagged: forest
-#'    roads/tracks (`classe` in route/piste) are treated as sources —
+#'    roads/tracks (`classe` in route/piste) are treated as sources -
 #'    `"heuristique"` (surfaced to the user as a warning badge).
 #'
 #' @param desserte Road network `sf` (carries a `classe` column).
@@ -260,20 +260,20 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #' desserte, per-buffer sub-cache). Returns `list(status = "ok", aoi, aoi_ext,
 #' epsg, acq_dir, mnt, desserte)` or a structured error list.
 #' @noRd
-# --- Garde-fou mémoire de la correction LiDAR --------------------------------
+# --- Garde-fou memoire de la correction LiDAR --------------------------------
 #
-# `foretaccess::qualifier_desserte()` mesure les largeurs tronçon par tronçon en
-# exploitant correctement le `LAScatalog` (hors mémoire, avec filtre de
+# `foretaccess::qualifier_desserte()` mesure les largeurs troncon par troncon en
+# exploitant correctement le `LAScatalog` (hors memoire, avec filtre de
 # couverture depuis 1.19.1). MAIS `.mnt_alsroads()` (desserte_lidar.R), quand le
-# MNT fourni dépasse 1,5 m, dérive un MNT à 1 m par
+# MNT fourni depasse 1,5 m, derive un MNT a 1 m par
 # `readLAS(ctg$filename, filter = "-keep_class 2")` : le vecteur COMPLET des
-# dalles, donc tout le nuage sol en mémoire d'un coup, puis une triangulation
-# (`rasterize_terrain(tin())`) par-dessus. Le catalogue est court-circuité, alors
+# dalles, donc tout le nuage sol en memoire d'un coup, puis une triangulation
+# (`rasterize_terrain(tin())`) par-dessus. Le catalogue est court-circuite, alors
 # que `rasterize_terrain()` sait travailler directement sur un `LAScatalog`.
 #
-# Mesuré sur le projet ForêtAccess : 4 dalles LiDAR HD = 165,5 M de points
-# (908 Mo compressés) -> worker à 16,8 Go en 15 min, puis OOM machine (RStudio et
-# navigateur emportés). Le chemin normal est d'éviter la dérivation (MNT <= 1,5 m
+# Mesure sur le projet ForetAccess : 4 dalles LiDAR HD = 165,5 M de points
+# (908 Mo compresses) -> worker a 16,8 Go en 15 min, puis OOM machine (RStudio et
+# navigateur emportes). Le chemin normal est d'eviter la derivation (MNT <= 1,5 m
 # fourni) ; ce garde-fou n'est que le filet quand on n'y arrive pas.
 
 #' Estimate the peak memory of the ALSroads DTM derivation for a point cloud
@@ -281,8 +281,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #' Ground points (ASPRS class 2) are typically ~20-35 % of an IGN LiDAR HD tile;
 #' a `lidR` point costs ~60 bytes with its attributes, and the Delaunay
 #' triangulation of `rasterize_terrain(tin())` roughly doubles that. Deliberately
-#' coarse — it only has to tell « comfortable » from « this will kill the
-#' machine ».
+#' coarse - it only has to tell " comfortable " from " this will kill the
+#' machine ".
 #'
 #' @param laz_dir Directory of `.laz`/`.copc.laz` tiles, or a `LAScatalog`.
 #' @param ground_frac Assumed share of ground points.
@@ -401,9 +401,9 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #' Complete the BD TOPO network with the OSM segments it lacks
 #'
 #' INVARIANT: the corrected network ALWAYS carries the whole declared BD TOPO.
-#' OSM is a **complement, never a substitute** — the core states the same rule
-#' (`acquire_desserte_osm()`: « Source complémentaire de la BD TOPO, jamais
-#' substitutive »). This helper can therefore only ever ADD rows.
+#' OSM is a **complement, never a substitute** - the core states the same rule
+#' (`acquire_desserte_osm()`: " Source complementaire de la BD TOPO, jamais
+#' substitutive "). This helper can therefore only ever ADD rows.
 #'
 #' An OSM segment is kept for the part of it lying OUTSIDE a `corridor_m` buffer
 #' around the BD TOPO, and only when that part reaches `min_ajout_m`. Without the
@@ -433,8 +433,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   }
   if (!requireNamespace("foretaccess", quietly = TRUE)) return(seule("osm_indisponible"))
 
-  # Injoignable et vide ne sont PAS le même diagnostic : le premier est une
-  # panne réseau (bride Overpass, mesurée > 10 min), le second un constat.
+  # Injoignable et vide ne sont PAS le meme diagnostic : le premier est une
+  # panne reseau (bride Overpass, mesuree > 10 min), le second un constat.
   osm <- tryCatch(
     foretaccess::acquire_desserte_osm(aoi_ext, crs = 2154, cache_dir = acq_dir),
     error = function(e) structure(list(), class = "acc_err"))
@@ -445,7 +445,7 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
     osm <- sf::st_transform(osm, sf::st_crs(base))
     corridor <- sf::st_union(sf::st_buffer(sf::st_geometry(base), corridor_m))
     # `st_difference` CLIPPE : on n'ajoute que la portion hors corridor, pas le
-    # tronçon entier — sa moitié déjà déclarée ferait doublon avec la BD TOPO.
+    # troncon entier - sa moitie deja declaree ferait doublon avec la BD TOPO.
     hors <- suppressWarnings(sf::st_difference(osm, corridor))
     if (nrow(hors) == 0L) return(seule("osm_rien_a_ajouter"))
     hors <- suppressWarnings(sf::st_cast(hors, "MULTILINESTRING"))
@@ -455,7 +455,7 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
     a <- sf::st_sf(classe = .osm_highway_vers_classe(hors[["highway"]]),
                    largeur = NA_real_, source = "osm",
                    geometry = sf::st_geometry(hors))
-    # `rbind.sf` exige le MÊME nom de colonne géométrique des deux côtés.
+    # `rbind.sf` exige le MEME nom de colonne geometrique des deux cotes.
     gcol <- attr(base, "sf_column")
     if (!identical(gcol, "geometry")) {
       names(a)[names(a) == "geometry"] <- gcol
@@ -464,7 +464,7 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
     a
   }, error = function(e) NULL)
   # NB : les `return(seule(...))` du bloc ci-dessus sortent bien de CETTE
-  # fonction — l'expression d'un `tryCatch()` s'évalue dans le frame appelant.
+  # fonction - l'expression d'un `tryCatch()` s'evalue dans le frame appelant.
   if (is.null(ajout) || !inherits(ajout, "sf")) return(seule("osm_fusion_echouee"))
 
   garder <- intersect(names(base), names(ajout))
@@ -478,19 +478,19 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
        n_osm = nrow(osm), statut = "ok")
 }
 
-#' Correct a project's road network with LiDAR HD (NDP 1) — standalone step
+#' Correct a project's road network with LiDAR HD (NDP 1) - standalone step
 #'
 #' The HEAVY part (`qualifier_desserte()` : re-aligned geometry, measured widths)
 #' is run ON ITS OWN, decoupled from the engine runs, and
 #' the corrected desserte is persisted to `desserte_corrigee.gpkg`. Engine runs
 #' then reuse it (via `run_accessibility(use_corrected_desserte = TRUE)`) with NO
-#' re-qualification — keeping them light. Requires a LiDAR point cloud + foretaccess
+#' re-qualification - keeping them light. Requires a LiDAR point cloud + foretaccess
 #' >= 1.19.1 (the version that fixed the qualification segfault). Best-effort and
 #' structured (returns `list(status = "error", reason = ...)` instead of throwing).
 #'
 #' @param aoi_path Path to the AOI GeoPackage (written by the app before invoke).
 #' @param cache_dir Accessibility cache directory of the project.
-#' @param buffer_m Buffer (m) around the forest AOI — MUST match the engine run.
+#' @param buffer_m Buffer (m) around the forest AOI - MUST match the engine run.
 #' @param project_path Project root (to resolve the LiDAR point-cloud cache).
 #' @return `list(status, n_troncons, n_bdtopo, n_osm_ajoutes, osm_statut,
 #'   corrected_path)` on success, or a structured error list.
@@ -505,29 +505,29 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   has_laz <- dir.exists(laz_dir) &&
     length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
   if (!has_laz) return(list(status = "error", reason = "acc_correct_no_lidar"))
-  # Deux gardes retirés ici, tous deux devenus faux :
+  # Deux gardes retires ici, tous deux devenus faux :
   #
-  # 1. `packageVersion("foretaccess") >= "1.19.1"` — `Imports:` impose >= 2.0.1,
-  #    la condition ne pouvait plus échouer.
-  # 2. `requireNamespace("lidR") && requireNamespace("ALSroads")` — c'était un
-  #    FAUX REFUS depuis `foretaccess` 1.27.0, qui a retiré le moteur ALSroads au
-  #    profit de dessertR : son NEWS dit « ALSroads et lidR ne sont plus utilisés
-  #    du tout ». Le garde refusait donc la correction LiDAR sur toute machine ne
-  #    les ayant pas installés, alors que le cœur n'en a plus besoin. Il ne
-  #    passait ici que parce que les deux paquets traînaient encore sur le poste
+  # 1. `packageVersion("foretaccess") >= "1.19.1"` - `Imports:` impose >= 2.0.1,
+  #    la condition ne pouvait plus echouer.
+  # 2. `requireNamespace("lidR") && requireNamespace("ALSroads")` - c'etait un
+  #    FAUX REFUS depuis `foretaccess` 1.27.0, qui a retire le moteur ALSroads au
+  #    profit de dessertR : son NEWS dit " ALSroads et lidR ne sont plus utilises
+  #    du tout ". Le garde refusait donc la correction LiDAR sur toute machine ne
+  #    les ayant pas installes, alors que le coeur n'en a plus besoin. Il ne
+  #    passait ici que parce que les deux paquets trainaient encore sur le poste
   #    de dev.
 
   # MNT pour le recalage ALSroads. `foretaccess` (`.mnt_alsroads`,
-  # desserte_lidar.R) renvoie le MNT fourni tel quel dès qu'il est <= 1,5 m ;
-  # au-delà il en DÉRIVE un en lisant TOUTES les dalles d'un coup
-  # (`readLAS(ctg$filename, ...)`) — 165,5 M de points -> OOM (16,8 Go). On fournit
+  # desserte_lidar.R) renvoie le MNT fourni tel quel des qu'il est <= 1,5 m ;
+  # au-dela il en DERIVE un en lisant TOUTES les dalles d'un coup
+  # (`readLAS(ctg$filename, ...)`) - 165,5 M de points -> OOM (16,8 Go). On fournit
   # donc toujours un MNT <= 1,5 m (aucun point lu).
   #
-  # PRÉFÉRENCE : le MNT LiDAR HD 0,5 m NATIF (`lidar_mnt_mosaic.tif`) quand il
-  # existe, plutôt que le WMS RGE ALTI 1 m. Trois gains : (1) recalage ALSroads
-  # bien plus précis (0,5 m natif vs 1 m rééchantillonné, strié) ; (2) COHÉRENCE
-  # avec le fond relief RVT du comparateur, calculé sur le même MNT ; (3) toujours
-  # pas d'OOM (0,5 m <= 1,5 m -> pas de dérivation). Repli WMS 1 m sinon.
+  # PREFERENCE : le MNT LiDAR HD 0,5 m NATIF (`lidar_mnt_mosaic.tif`) quand il
+  # existe, plutot que le WMS RGE ALTI 1 m. Trois gains : (1) recalage ALSroads
+  # bien plus precis (0,5 m natif vs 1 m reechantillonne, strie) ; (2) COHERENCE
+  # avec le fond relief RVT du comparateur, calcule sur le meme MNT ; (3) toujours
+  # pas d'OOM (0,5 m <= 1,5 m -> pas de derivation). Repli WMS 1 m sinon.
   acq <- .acquire_mnt_desserte(aoi_path, cache_dir, buffer_m, res_m = 1)
   if (!identical(acq$status, "ok")) return(acq)
 
@@ -538,9 +538,9 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
     tryCatch(terra::rast(lidar_mnt_path), error = function(e) acq$mnt)
   } else acq$mnt
 
-  # Filet : si le MNT retenu reste trop grossier (> 1,5 m — WMS dégradé, repli
-  # acquire_mnt, ou LiDAR absent), la dérivation se déclenchera côté foretaccess.
-  # On estime alors son coût depuis le nuage et on refuse plutôt que de partir en
+  # Filet : si le MNT retenu reste trop grossier (> 1,5 m - WMS degrade, repli
+  # acquire_mnt, ou LiDAR absent), la derivation se declenchera cote foretaccess.
+  # On estime alors son cout depuis le nuage et on refuse plutot que de partir en
   # OOM.
   if (max(terra::res(mnt_alsroads)) > 1.5) {
     chk <- .lidar_memory_check(laz_dir)
@@ -554,48 +554,48 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
     }
   }
 
-  # Cache PERSISTANT des mesures par tronçon. `qualifier_desserte()` sans
-  # `cache_dir` écrit son `desserte_lidar.rds` dans `tempdir()`, VOLATILE : chaque
-  # correction repayait ~4-5 h de mesure ALSroads. foretaccess mémoïse par tronçon
-  # (clé = WKT de la LINESTRING, stable pour une emprise donnée, même les échecs)
-  # et relit ce fichier au démarrage : en le posant dans le cache d'emprise, une
-  # relance retrouve les tronçons déjà mesurés et ne rappelle `measure_road` que
-  # sur les nouveaux — la 2e correction d'un même projet est quasi immédiate.
-  # Sous-répertoire DÉDIÉ (pas `acq_dir` directement) : le cache foretaccess est
-  # keyé par WKT SANS versionner le DTM ni les paramètres. Un `desserte_lidar.rds`
-  # traînant à la racine de `acq_dir` (run antérieur, DTM potentiellement
-  # différent — p.ex. le `dtm_alsroads` dérivé au lieu du MNT à 1 m) serait
-  # réutilisé à tort et rendrait des largeurs incohérentes. On isole donc le cache
-  # de CE chemin (MNT à 1 m). Invalidation naturelle si l'emprise change (acq_dir
-  # suit le buffer) ou si les tronçons changent (nouveaux WKT).
-  # Cache DÉDIÉ à la source du MNT : le cache foretaccess est keyé par WKT sans
-  # versionner le DTM. Réutiliser un cache fait avec un autre MNT rendrait des
-  # largeurs incohérentes -> un sous-répertoire par source (`_lidar` vs `_wms`).
+  # Cache PERSISTANT des mesures par troncon. `qualifier_desserte()` sans
+  # `cache_dir` ecrit son `desserte_lidar.rds` dans `tempdir()`, VOLATILE : chaque
+  # correction repayait ~4-5 h de mesure ALSroads. foretaccess memoise par troncon
+  # (cle = WKT de la LINESTRING, stable pour une emprise donnee, meme les echecs)
+  # et relit ce fichier au demarrage : en le posant dans le cache d'emprise, une
+  # relance retrouve les troncons deja mesures et ne rappelle `measure_road` que
+  # sur les nouveaux - la 2e correction d'un meme projet est quasi immediate.
+  # Sous-repertoire DEDIE (pas `acq_dir` directement) : le cache foretaccess est
+  # keye par WKT SANS versionner le DTM ni les parametres. Un `desserte_lidar.rds`
+  # trainant a la racine de `acq_dir` (run anterieur, DTM potentiellement
+  # different - p.ex. le `dtm_alsroads` derive au lieu du MNT a 1 m) serait
+  # reutilise a tort et rendrait des largeurs incoherentes. On isole donc le cache
+  # de CE chemin (MNT a 1 m). Invalidation naturelle si l'emprise change (acq_dir
+  # suit le buffer) ou si les troncons changent (nouveaux WKT).
+  # Cache DEDIE a la source du MNT : le cache foretaccess est keye par WKT sans
+  # versionner le DTM. Reutiliser un cache fait avec un autre MNT rendrait des
+  # largeurs incoherentes -> un sous-repertoire par source (`_lidar` vs `_wms`).
   qualif_cache <- file.path(acq$acq_dir,
                             if (use_lidar_mnt) "qualif_cache_lidar" else "qualif_cache")
   dir.create(qualif_cache, recursive = TRUE, showWarnings = FALSE)
-  # RÉSEAU À QUALIFIER = BD TOPO INTÉGRALE + ce qu'OSM porte en plus.
+  # RESEAU A QUALIFIER = BD TOPO INTEGRALE + ce qu'OSM porte en plus.
   cplt <- .desserte_complement_osm(acq$desserte, acq$aoi_ext, acq$acq_dir)
   reseau <- cplt$reseau
 
-  # INVARIANT — `retirer_disparues = FALSE`, le défaut du cœur.
+  # INVARIANT - `retirer_disparues = FALSE`, le defaut du coeur.
   #
-  # Nous passions ici `TRUE` : la correction RETIRAIT les tronçons dont l'état
-  # mesuré vaut `abandonnee` ou `hors_route`. Mesuré sur ForêtAccess, elle
-  # supprimait 280 tronçons sur 373 — 84 % du linéaire, dont UNE `route` sur
-  # DEUX. Ce n'était pas un constat de terrain : `hors_route` signifie « les deux
-  # conductivités faibles », c'est-à-dire AUCUN signal, ce qui désigne un échec
-  # de mesure bien plus souvent qu'une route effacée — une plateforme routière
-  # laisse une empreinte dans le terrain pendant des décennies. `dsr_etat()`
-  # avertit d'ailleurs que l'état « n'est réellement interprétable que le long
-  # d'un tracé retenu par le pathfinder ».
+  # Nous passions ici `TRUE` : la correction RETIRAIT les troncons dont l'etat
+  # mesure vaut `abandonnee` ou `hors_route`. Mesure sur ForetAccess, elle
+  # supprimait 280 troncons sur 373 - 84 % du lineaire, dont UNE `route` sur
+  # DEUX. Ce n'etait pas un constat de terrain : `hors_route` signifie " les deux
+  # conductivites faibles ", c'est-a-dire AUCUN signal, ce qui designe un echec
+  # de mesure bien plus souvent qu'une route effacee - une plateforme routiere
+  # laisse une empreinte dans le terrain pendant des decennies. `dsr_etat()`
+  # avertit d'ailleurs que l'etat " n'est reellement interpretable que le long
+  # d'un trace retenu par le pathfinder ".
   #
-  # La règle, désormais, ne se contourne pas : la desserte corrigée CONSERVE
-  # l'intégralité de la BD TOPO, s'enrichit d'OSM, qualifie l'ensemble et le
-  # rend. La qualification RENSEIGNE (état, largeur, géométrie recalée) ; elle
-  # ne DÉCIDE pas de l'existence. Un tronçon jugé abandonné reste dans la
-  # couche, porteur de son état, et c'est l'utilisateur qui en tire les
-  # conséquences.
+  # La regle, desormais, ne se contourne pas : la desserte corrigee CONSERVE
+  # l'integralite de la BD TOPO, s'enrichit d'OSM, qualifie l'ensemble et le
+  # rend. La qualification RENSEIGNE (etat, largeur, geometrie recalee) ; elle
+  # ne DECIDE pas de l'existence. Un troncon juge abandonne reste dans la
+  # couche, porteur de son etat, et c'est l'utilisateur qui en tire les
+  # consequences.
   dq <- tryCatch(
     foretaccess::qualifier_desserte(reseau, las_source = laz_dir,
                                     mnt = mnt_alsroads, cache_dir = qualif_cache,
@@ -608,17 +608,17 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   if (!inherits(dq, "sf") || nrow(dq) == 0L || !("classe" %in% names(dq))) {
     return(list(status = "error", reason = "acc_correct_attrs_lost"))
   }
-  # Garde-fou d'INVARIANT : perdre un tronçon déclaré est une erreur, pas un
-  # résultat. Mieux vaut refuser la correction que rendre un réseau amputé qui
-  # se lira comme une desserte complète — c'est exactement le mode d'échec que
+  # Garde-fou d'INVARIANT : perdre un troncon declare est une erreur, pas un
+  # resultat. Mieux vaut refuser la correction que rendre un reseau ampute qui
+  # se lira comme une desserte complete - c'est exactement le mode d'echec que
   # ce correctif supprime.
   if (nrow(dq) < nrow(reseau)) {
     return(list(status = "error", reason = "acc_correct_invariant_broken",
                 detail = sprintf("%d troncons en entree, %d en sortie",
                                  nrow(reseau), nrow(dq))))
   }
-  # `qualifier_desserte()` ne s'engage pas à transporter nos colonnes : on
-  # réattache `source` par position, et seulement si la correspondance est sûre.
+  # `qualifier_desserte()` ne s'engage pas a transporter nos colonnes : on
+  # reattache `source` par position, et seulement si la correspondance est sure.
   if (!("source" %in% names(dq)) && nrow(dq) == nrow(reseau)) {
     dq$source <- reseau$source
   }
@@ -627,10 +627,10 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   ok <- tryCatch({
     sf::st_write(sf::st_transform(dq, 2154), out, layer = "desserte_corrigee",
                  quiet = TRUE, delete_dsn = TRUE)
-    # Desserte BD TOPO D'ORIGINE (avant recalage) dans le MÊME fichier, couche
-    # `desserte_origine` : le comparateur swipe (mod_accessibility) l'affiche à
-    # gauche, la corrigée à droite, pour donner à voir le décalage recalé par
-    # ALSroads. Best-effort — l'écriture de la corrigée reste l'objectif premier.
+    # Desserte BD TOPO D'ORIGINE (avant recalage) dans le MEME fichier, couche
+    # `desserte_origine` : le comparateur swipe (mod_accessibility) l'affiche a
+    # gauche, la corrigee a droite, pour donner a voir le decalage recale par
+    # ALSroads. Best-effort - l'ecriture de la corrigee reste l'objectif premier.
     tryCatch(
       sf::st_write(sf::st_transform(acq$desserte, 2154), out,
                    layer = "desserte_origine", quiet = TRUE, append = TRUE),
@@ -650,14 +650,14 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
 #' the **IGN RGE ALTI 5 m** DEM (Sylvaccess-calibrated resolution) and the road
 #' network (**IGN BD TOPO V3**) for the buffered AOI, derives the forest mask
-#' from **IGN BD Forêt V2** clipped to that emprise, runs
+#' from **IGN BD Foret V2** clipped to that emprise, runs
 #' `foretaccess::preprocess()` then the requested engines, writes
 #' each engine's categorical class raster to
 #' `cache/accessibility/acc_<engine>.tif`, and writes an exportable GeoPackage
 #' (`foret` + `desserte` layers). Returns only serialisable data (paths + recap
 #' data.frames), never terra/sf objects tied to this process.
 #'
-#' The DEM, road network and BD Forêt layer are cached under
+#' The DEM, road network and BD Foret layer are cached under
 #' `cache_dir/emprise_<m>m/` by `acquire_mnt()` / `acquire_desserte()` /
 #' `acquire_foret()`: a second run with the same buffer reuses them (no
 #' re-download).
@@ -676,7 +676,7 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
 #'   DEM and road-network acquisition. Access to a stand comes from roads that
 #'   lie OUTSIDE it, and the least-cost propagation needs the surrounding terrain;
 #'   without a buffer the road network is clipped at the parcel edge and access
-#'   is truncated. The forest **mask** stays the original AOI — only the analysed
+#'   is truncated. The forest **mask** stays the original AOI - only the analysed
 #'   emprise widens. `0` (default) keeps the historical behaviour (forest extent
 #'   only). Each buffer value acquires the DEM/roads in its own sub-cache so
 #'   changing it re-fetches cleanly instead of reusing a stale emprise.
@@ -688,20 +688,20 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
   if (length(engines) == 0L) {
     return(list(status = "error", reason = "accessibility_need_engine"))
   }
-  # Acquisition commune (AOI tamponnée, MNT HIGHRES + repli, desserte BD TOPO) —
-  # factorisée avec l'étape de correction LiDAR (cf. .acquire_mnt_desserte).
+  # Acquisition commune (AOI tamponnee, MNT HIGHRES + repli, desserte BD TOPO) -
+  # factorisee avec l'etape de correction LiDAR (cf. .acquire_mnt_desserte).
   acq <- .acquire_mnt_desserte(aoi_path, cache_dir, buffer_m)
   if (!identical(acq$status, "ok")) return(acq)
   aoi <- acq$aoi; aoi_ext <- acq$aoi_ext; epsg <- acq$epsg
   acq_dir <- acq$acq_dir; mnt <- acq$mnt; desserte <- acq$desserte
 
-  # DESSERTE CORRIGÉE (NDP 1) — DÉCOUPLÉE : la qualification LiDAR (~2-3 h, lourde
-  # en mémoire) N'EST PLUS lancée ici. Elle est produite au préalable et à la
-  # demande par `run_desserte_lidar_correction()` (bouton dédié), qui persiste
+  # DESSERTE CORRIGEE (NDP 1) - DECOUPLEE : la qualification LiDAR (~2-3 h, lourde
+  # en memoire) N'EST PLUS lancee ici. Elle est produite au prealable et a la
+  # demande par `run_desserte_lidar_correction()` (bouton dedie), qui persiste
   # `desserte_corrigee.gpkg`. Ici on se contente de LA CHARGER si l'utilisateur a
-  # coché « utiliser la desserte corrigée » et qu'elle existe : elle remplace la
-  # brute en entrée de `preprocess()` -> tous les moteurs. Les runs moteurs
-  # restent donc légers (aucun pic mémoire, pas de navigateur tué).
+  # coche " utiliser la desserte corrigee " et qu'elle existe : elle remplace la
+  # brute en entree de `preprocess()` -> tous les moteurs. Les runs moteurs
+  # restent donc legers (aucun pic memoire, pas de navigateur tue).
   desserte_source <- NA_character_
   if (isTRUE(use_corrected_desserte)) {
     cp <- .corrected_desserte_path(cache_dir)
@@ -713,17 +713,17 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
       desserte <- tryCatch(sf::st_transform(dc, epsg), error = function(e) dc)
       desserte_source <- "ndp1_lidar"
     } else {
-      desserte_source <- "ndp0_brute"   # demandée mais indisponible/invalide -> brut
+      desserte_source <- "ndp0_brute"   # demandee mais indisponible/invalide -> brut
     }
   }
 
-  # Flag DFCI sur la desserte : sans lui, `camion_dfci()` s'arrête (« Aucune
-  # desserte-source DFCI »), car `preprocess()` construit `dfci_source_mask` à
+  # Flag DFCI sur la desserte : sans lui, `camion_dfci()` s'arrete (" Aucune
+  # desserte-source DFCI "), car `preprocess()` construit `dfci_source_mask` a
   # partir de la colonne `dfci` de la desserte. Source OSM `ref:FR:DFCI` en
-  # priorité (foretaccess::acquire_dfci + flag_dfci), repli géométrique de
+  # priorite (foretaccess::acquire_dfci + flag_dfci), repli geometrique de
   # flag_dfci, puis heuristique app routes/pistes en dernier recours. La
-  # provenance (`dfci_source`) est remontée pour signaler le cas heuristique à
-  # l'utilisateur. Posé seulement si le moteur DFCI est demandé.
+  # provenance (`dfci_source`) est remontee pour signaler le cas heuristique a
+  # l'utilisateur. Pose seulement si le moteur DFCI est demande.
   dfci_source <- NA_character_
   if ("camion_dfci" %in% engines) {
     fl <- .resolve_desserte_dfci(desserte, aoi_ext, epsg, acq_dir)
@@ -731,19 +731,19 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     dfci_source <- fl$source
   }
 
-  # 3. Masque forêt = forêt réelle (IGN BD Forêt V2) restreinte à l'emprise
-  # tamponnée, PAS la simple géométrie déclarée du projet. `acquire_foret`
-  # clippe la BD Forêt sur `aoi_ext` par st_intersection : le résultat est
-  # exactement (emprise projet + buffer) ∩ forêt BD Forêt V2. Ainsi l'analyse
-  # couvre toute la forêt accessible dans le tampon (y compris hors parcelles du
-  # projet) et ne peint pas en « forêt » des zones non boisées. Repli sur la
-  # géométrie projet si la BD Forêt est indisponible ou vide sur l'emprise.
+  # 3. Masque foret = foret reelle (IGN BD Foret V2) restreinte a l'emprise
+  # tamponnee, PAS la simple geometrie declaree du projet. `acquire_foret`
+  # clippe la BD Foret sur `aoi_ext` par st_intersection : le resultat est
+  # exactement (emprise projet + buffer) inter foret BD Foret V2. Ainsi l'analyse
+  # couvre toute la foret accessible dans le tampon (y compris hors parcelles du
+  # projet) et ne peint pas en " foret " des zones non boisees. Repli sur la
+  # geometrie projet si la BD Foret est indisponible ou vide sur l'emprise.
   foret_bd <- tryCatch(
     foretaccess::acquire_foret(aoi_ext, crs = epsg, cache_dir = acq_dir),
     error = function(e) NULL)
   foret_mask <- if (inherits(foret_bd, "sf") && nrow(foret_bd) > 0L) foret_bd else aoi
 
-  # 4. Prétraitement commun (pente, exposition, masques, rasterisation).
+  # 4. Pretraitement commun (pente, exposition, masques, rasterisation).
   pre <- tryCatch(
     foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = foret_mask),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
@@ -752,11 +752,11 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
                 detail = pre$msg))
   }
 
-  # 5bis. Couche `departs` (places de dépôt) pour le moteur câble. La desserte a
-  # DÉJÀ été corrigée au LiDAR en amont (§2bis) le cas échéant : on ne re-qualifie
-  # PAS ici, on place les dépôts sur la desserte courante. En NDP 1, la largeur
-  # mesurée (`largeur_carrossable_m`) rend `places_depot()` sélective (départs
-  # réalistes ~1189 vs ~1877) ; en NDP 0 (colonne absente), `largeur_champ = NULL`.
+  # 5bis. Couche `departs` (places de depot) pour le moteur cable. La desserte a
+  # DEJA ete corrigee au LiDAR en amont (sect.2bis) le cas echeant : on ne re-qualifie
+  # PAS ici, on place les depots sur la desserte courante. En NDP 1, la largeur
+  # mesuree (`largeur_carrossable_m`) rend `places_depot()` selective (departs
+  # realistes ~1189 vs ~1877) ; en NDP 0 (colonne absente), `largeur_champ = NULL`.
   departs <- NULL
   if ("cable" %in% engines) {
     lc <- if (identical(desserte_source, "ndp1_lidar") &&
@@ -771,12 +771,12 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     }
   }
 
-  # 5. Moteurs : raster de classes -> disque ; recap -> mémoire.
+  # 5. Moteurs : raster de classes -> disque ; recap -> memoire.
   engine_fun <- list(
     skidder = foretaccess::skidder,
     porteur = foretaccess::porteur,
     camion_dfci = foretaccess::camion_dfci,
-    # Signature différente (departs) mais même forme de retour ($accessibilite /
+    # Signature differente (departs) mais meme forme de retour ($accessibilite /
     # $recap) : closure pour l'aligner sur le contrat f(pre) de la boucle.
     cable = function(pre) foretaccess::potentiel_cable(pre, departs = departs))
   recaps <- list()
@@ -796,9 +796,9 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     if (isTRUE(ok)) raster_paths[[eng]] <- rp
     recaps[[eng]] <- res$recap
 
-    # Le skidder produit AUSSI le raster « classes de débardage » : les bandes de
-    # distance Sylvaccess (0-250, …, > 2000 m) + inaccessible / inexploitable /
-    # hors_foret, prêt à l'affichage avec sa table de couleurs (vert proche ->
+    # Le skidder produit AUSSI le raster " classes de debardage " : les bandes de
+    # distance Sylvaccess (0-250, ..., > 2000 m) + inaccessible / inexploitable /
+    # hors_foret, pret a l'affichage avec sa table de couleurs (vert proche ->
     # rouge lointain). `pre` fournit le masque d'exclusion (classe inexploitable).
     if (identical(eng, "skidder")) {
       dbg <- tryCatch(foretaccess::classes_debardage(res, pre),
@@ -814,7 +814,7 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     }
   }
 
-  # 6. GeoPackage exportable : masque forêt (BD Forêt V2 ∩ emprise) + desserte.
+  # 6. GeoPackage exportable : masque foret (BD Foret V2 inter emprise) + desserte.
   # Best-effort.
   gpkg_path <- file.path(cache_dir, "accessibilite.gpkg")
   unlink(gpkg_path)
@@ -823,10 +823,10 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
                  quiet = TRUE, delete_dsn = TRUE)
     sf::st_write(sf::st_transform(desserte, 2154), gpkg_path, layer = "desserte",
                  quiet = TRUE, append = TRUE)
-    # Places de dépôt calculées par `places_depot()` le long de la desserte
-    # (corrigée au LiDAR en NDP 1) : on PERSISTE la géométrie (pas seulement le
-    # nombre) pour l'afficher en couche « Places de dépôt » sur les cartes
-    # Accessibilité et Desserte.
+    # Places de depot calculees par `places_depot()` le long de la desserte
+    # (corrigee au LiDAR en NDP 1) : on PERSISTE la geometrie (pas seulement le
+    # nombre) pour l'afficher en couche " Places de depot " sur les cartes
+    # Accessibilite et Desserte.
     if (inherits(departs, "sf") && nrow(departs) > 0L) {
       sf::st_write(sf::st_transform(departs, 2154), gpkg_path,
                    layer = "places_depot", quiet = TRUE, append = TRUE)
@@ -834,12 +834,12 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
   }, error = function(e) cli::cli_warn(
     "accessibility GPKG write failed: {conditionMessage(e)}"))
 
-  # 7. Validation ACCESSFOR (IGN) SYSTÉMATIQUE dès que les classes de débardage
-  # ont été produites (skidder) : récupère la couche nationale IGN (WFS happign),
-  # la reclasse sur NOTRE grille + emprise, calcule l'accord et écrit le raster
-  # ACCESSFOR affichable. Exécuté ICI (dans le worker `future`) pour ne pas bloquer
-  # le thread principal. Best-effort réseau : un échec (WFS indisponible, happign
-  # absent) ne fait PAS échouer l'analyse — le rendu « classes de débardage »
+  # 7. Validation ACCESSFOR (IGN) SYSTEMATIQUE des que les classes de debardage
+  # ont ete produites (skidder) : recupere la couche nationale IGN (WFS happign),
+  # la reclasse sur NOTRE grille + emprise, calcule l'accord et ecrit le raster
+  # ACCESSFOR affichable. Execute ICI (dans le worker `future`) pour ne pas bloquer
+  # le thread principal. Best-effort reseau : un echec (WFS indisponible, happign
+  # absent) ne fait PAS echouer l'analyse - le rendu " classes de debardage "
   # retombe alors sur un raster simple (pas de volet ACCESSFOR).
   accessfor <- NULL
   if (!is.null(raster_paths[["classes_debardage"]])) {
@@ -859,13 +859,13 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     gpkg_path = if (file.exists(gpkg_path)) gpkg_path else NULL,
     n_desserte = nrow(desserte),
     dfci_source = dfci_source,
-    # Provenance de la desserte utilisée : "ndp1_lidar" (desserte corrigée LiDAR
-    # chargée depuis le cache) / "ndp0_brute" (corrigée demandée mais absente ->
-    # repli brut) / NA (desserte corrigée non demandée).
+    # Provenance de la desserte utilisee : "ndp1_lidar" (desserte corrigee LiDAR
+    # chargee depuis le cache) / "ndp0_brute" (corrigee demandee mais absente ->
+    # repli brut) / NA (desserte corrigee non demandee).
     desserte_source = desserte_source,
     n_departs = if (inherits(departs, "sf")) nrow(departs) else NA_integer_,
-    # ACCESSFOR (référence IGN) : chemin du raster affichable (vis-à-vis des classes
-    # de débardage sous le volet) + résumé d'accord pour le panneau de validation.
+    # ACCESSFOR (reference IGN) : chemin du raster affichable (vis-a-vis des classes
+    # de debardage sous le volet) + resume d'accord pour le panneau de validation.
     accessfor_raster_path = accessfor$accessfor_raster_path,
     accessfor = accessfor)
 }

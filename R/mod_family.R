@@ -19,15 +19,15 @@ mod_family_server <- function(id, family_code, app_state) {
     # ================================================================
     # REACTIVE: Extract family indicator columns from project
     # ================================================================
-    # R5 dépérissement (32e indicateur, CONDITIONNEL) : injecté en direct
-    # depuis les alertes de la zone de suivi liée, à l'identique du radar
-    # (mod_synthesis). Best-effort — sans zone / sans alerte, l'sf est rendu
-    # inchangé et la famille R reste R1-R4. N'enrichit QUE la famille R
-    # (les 11 autres n'ont pas de R5 → on évite le coût DB + spatial).
+    # R5 deperissement (32e indicateur, CONDITIONNEL) : injecte en direct
+    # depuis les alertes de la zone de suivi liee, a l'identique du radar
+    # (mod_synthesis). Best-effort - sans zone / sans alerte, l'sf est rendu
+    # inchange et la famille R reste R1-R4. N'enrichit QUE la famille R
+    # (les 11 autres n'ont pas de R5 -> on evite le cout DB + spatial).
     # `project$indicators == st_drop_geometry(project$indicators_sf)`
-    # (cf. attach_indicators_sf), donc les deux réactifs ci-dessous dérivent
-    # de cette même source enrichie : la colonne R5 apparaît côté config
-    # (déjà listée dans INDICATOR_FAMILIES$R) ET côté données.
+    # (cf. attach_indicators_sf), donc les deux reactifs ci-dessous derivent
+    # de cette meme source enrichie : la colonne R5 apparait cote config
+    # (deja listee dans INDICATOR_FAMILIES$R) ET cote donnees.
     enriched_sf <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
@@ -42,9 +42,9 @@ mod_family_server <- function(id, family_code, app_state) {
         return(NULL)
       }
       if (identical(toupper(family_code), "R")) {
-        # R5 (dépérissement, alertes suivi) + R6/R7 (sensibilité / gel, résultat
-        # reGénération persisté) : injectés pour être affichés et comptés à côté
-        # de R1-R4 dès qu'ils sont accessibles. Best-effort chacun.
+        # R5 (deperissement, alertes suivi) + R6/R7 (sensibilite / gel, resultat
+        # reGeneration persiste) : injectes pour etre affiches et comptes a cote
+        # de R1-R4 des qu'ils sont accessibles. Best-effort chacun.
         add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project)
       } else {
         base_sf
@@ -149,12 +149,12 @@ mod_family_server <- function(id, family_code, app_state) {
       }
 
       # Toutes les cartes indicateurs de la famille sur UNE seule ligne :
-      # flexbox à largeurs égales (`flex: 1 1 0`) + `flex-nowrap`. Le grid
-      # Bootstrap 12 colonnes ne répartit pas 5 cartes également (12/5 non
-      # entier) : avec R5, la famille Risques & Résilience (5 indicateurs)
-      # débordait sur 2 lignes (4 + 1). Le flex gère n'importe quel n (1..5)
-      # sur une ligne, cartes de largeur égale. `min-width: 0` laisse la carte
-      # Leaflet rétrécir sous la largeur de son contenu (sinon overflow).
+      # flexbox a largeurs egales (`flex: 1 1 0`) + `flex-nowrap`. Le grid
+      # Bootstrap 12 colonnes ne repartit pas 5 cartes egalement (12/5 non
+      # entier) : avec R5, la famille Risques & Resilience (5 indicateurs)
+      # debordait sur 2 lignes (4 + 1). Le flex gere n'importe quel n (1..5)
+      # sur une ligne, cartes de largeur egale. `min-width: 0` laisse la carte
+      # Leaflet retrecir sous la largeur de son contenu (sinon overflow).
       map_cols <- lapply(seq_len(n), function(i) {
         map_id <- paste0("map", i)
         htmltools::div(
@@ -252,7 +252,7 @@ mod_family_server <- function(id, family_code, app_state) {
     })
 
     # ================================================================
-    # OBSERVER: Click on table row → zoom to parcel on maps
+    # OBSERVER: Click on table row -> zoom to parcel on maps
     # ================================================================
     shiny::observeEvent(input$indicator_table_rows_selected, {
       row_idx <- input$indicator_table_rows_selected
@@ -265,7 +265,7 @@ mod_family_server <- function(id, family_code, app_state) {
       ind_data <- indicators_data()
       if (is.null(ind_data) || row_idx > nrow(ind_data)) return()
 
-      # Rows are keyed by ug_id — resolve selection through it, not
+      # Rows are keyed by ug_id - resolve selection through it, not
       # by row index (which changes after sort / search in DataTables).
       if ("ug_id" %in% names(ind_data) && "ug_id" %in% names(sf_data)) {
         selected_id <- ind_data[["ug_id"]][row_idx]
@@ -586,7 +586,7 @@ mod_family_server <- function(id, family_code, app_state) {
         save_comments(project_id,
                       synthesis = NULL,
                       families = app_state$family_comments)
-        # v0.52.9 — signaler la modif aux consommateurs (mod_action_plan).
+        # v0.52.9 - signaler la modif aux consommateurs (mod_action_plan).
         app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       }
     }, ignoreInit = TRUE)
@@ -624,11 +624,11 @@ mod_family_server <- function(id, family_code, app_state) {
     }, ignoreInit = TRUE)
 
     # ================================================================
-    # OUTPUT: « Sources documentaires » de la famille
-    # Affiche, sous le commentaire, les sources documentaires citées
-    # par ce commentaire (mêmes données RAG que la synthèse, persistées
+    # OUTPUT: " Sources documentaires " de la famille
+    # Affiche, sous le commentaire, les sources documentaires citees
+    # par ce commentaire (memes donnees RAG que la synthese, persistees
     # dans `synthesis_sources$sources_md`). Vide quand le commentaire ne
-    # cite aucune source (ex. perspective générée sans RAG).
+    # cite aucune source (ex. perspective generee sans RAG).
     # ================================================================
     output$ai_sources <- shiny::renderUI({
       comment <- input$analysis_comments
@@ -749,7 +749,7 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
   pal_name <- if (is_risk) "YlOrRd" else "viridis"
   pal <- leaflet::colorNumeric(pal_name, domain = val_range, na.color = "#cccccc")
 
-  # Build hover labels — prefer the user-assigned UGF label, fall
+  # Build hover labels - prefer the user-assigned UGF label, fall
   # back to ug_id, then to row index as last resort.
   ids <- if ("label" %in% names(sf_wgs84)) {
     as.character(sf_wgs84[["label"]])
@@ -783,7 +783,7 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
         weight = 2, color = "#000", fillOpacity = 0.9, bringToFront = TRUE
       ),
       label = labels,
-      # Taille laissée à `.leaflet-tooltip` (custom.css), règle unique de l'app :
+      # Taille laissee a `.leaflet-tooltip` (custom.css), regle unique de l'app :
       # un `textsize` ou un `font-size` inline la surpasserait.
       labelOptions = leaflet::labelOptions(direction = "auto")
     ) |>
@@ -809,7 +809,7 @@ get_indicator_cols <- function(data) {
     "id", "nemeton_id", "geo_parcelle",
     "contenance", "code_insee", "section", "numero",
     # Generic area column carried by create_test_units() and various
-    # sf fixtures — never a valid indicator.
+    # sf fixtures - never a valid indicator.
     "area",
     # Geometry
     "geometry", "geom"

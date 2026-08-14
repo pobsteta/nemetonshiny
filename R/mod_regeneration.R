@@ -1,19 +1,19 @@
-# reGénération — module Shiny (spec 027, L4)
+# reGeneration - module Shiny (spec 027, L4)
 #
-# Onglet de lecture de vulnérabilité climatique : exposition microclimatique ×
-# stress hydrique du sol, pour prioriser les interventions de régénération.
+# Onglet de lecture de vulnerabilite climatique : exposition microclimatique x
+# stress hydrique du sol, pour prioriser les interventions de regeneration.
 # Pattern golem : mod_regeneration_ui(id) + mod_regeneration_server(id, app_state).
-# Aucune logique métier ici — tout passe par service_regeneration (→ nemeton).
+# Aucune logique metier ici - tout passe par service_regeneration (-> nemeton).
 
-# `.fmt_elapsed()` (chrono MM:SS des boutons/notifs async) est désormais partagé
-# dans R/utils_notif.R avec le rendu unifié `.running_notif_content()`.
+# `.fmt_elapsed()` (chrono MM:SS des boutons/notifs async) est desormais partage
+# dans R/utils_notif.R avec le rendu unifie `.running_notif_content()`.
 
-# --- Phase en cours du moteur reGénération (canal fichier, spec 027) ---------
-# Le worker future écrit sa phase dans cache/regeneration/engine_status.json ;
+# --- Phase en cours du moteur reGeneration (canal fichier, spec 027) ---------
+# Le worker future ecrit sa phase dans cache/regeneration/engine_status.json ;
 # la session principale le poll (invalidateLater 1000) et rend la phase dans la
 # notif bas-droite. Cf. brief engine-phase-status.
 
-# Lit engine_status.json ; NULL si absent/illisible/périmé (> 2 min sans MAJ).
+# Lit engine_status.json ; NULL si absent/illisible/perime (> 2 min sans MAJ).
 .regen_read_phase <- function(project_path) {
   if (is.null(project_path)) return(NULL)
   f <- file.path(project_path, "cache", "regeneration", "engine_status.json")
@@ -24,7 +24,7 @@
   st
 }
 
-# « base ({i}/{n}) » seulement si l'événement a fourni l'avancement.
+# " base ({i}/{n}) " seulement si l'evenement a fourni l'avancement.
 .regen_step_lbl <- function(i18n, key, st) {
   base <- i18n$t(key)
   if (!is.null(st$i) && !is.null(st$n))
@@ -32,7 +32,7 @@
   else base
 }
 
-# « base {year} ({i}/{n}) » seulement si l'événement era5 a fourni l'année.
+# " base {year} ({i}/{n}) " seulement si l'evenement era5 a fourni l'annee.
 .regen_micro_lbl <- function(i18n, key, st) {
   base <- i18n$t(key)
   if (!is.null(st$year) && !is.null(st$i) && !is.null(st$n))
@@ -40,10 +40,10 @@
   else base
 }
 
-# Lit engine.log (JSONL, écrit en ajout par le worker — spec 035 B3.b). Renvoie
+# Lit engine.log (JSONL, ecrit en ajout par le worker - spec 035 B3.b). Renvoie
 # un data.frame (ts, level, source, message), vide si absent/illisible. Contrairement
-# à engine_status.json, ce fichier SURVIT à la mort du worker (OOM) : c'est le seul
-# moyen de récupérer les diagnostics quand engine_task$result() est inaccessible.
+# a engine_status.json, ce fichier SURVIT a la mort du worker (OOM) : c'est le seul
+# moyen de recuperer les diagnostics quand engine_task$result() est inaccessible.
 .regen_read_log <- function(project_path) {
   empty <- data.frame(ts = integer(0), level = character(0),
                       source = character(0), message = character(0),
@@ -65,8 +65,8 @@
     stringsAsFactors = FALSE)))
 }
 
-# Relaie le journal du worker vers la console du processus PRINCIPAL (B3.c) —
-# les cli_warn du worker `multisession` n'y arrivent jamais d'eux-mêmes.
+# Relaie le journal du worker vers la console du processus PRINCIPAL (B3.c) -
+# les cli_warn du worker `multisession` n'y arrivent jamais d'eux-memes.
 .regen_relay_log <- function(log) {
   if (!is.data.frame(log) || !nrow(log)) return(invisible(NULL))
   for (i in seq_len(nrow(log))) {
@@ -79,8 +79,8 @@
   invisible(NULL)
 }
 
-# Médiane + étendue d'un vecteur dérivé par UGF (spec 035 B4.a). NULL si le
-# vecteur est scalaire ou absent : il n'y a alors rien de spatialisé à montrer.
+# Mediane + etendue d'un vecteur derive par UGF (spec 035 B4.a). NULL si le
+# vecteur est scalaire ou absent : il n'y a alors rien de spatialise a montrer.
 .regen_derived_stats <- function(x, digits = 1) {
   x <- suppressWarnings(as.numeric(x))
   x <- x[is.finite(x)]
@@ -89,7 +89,7 @@
   list(median = fmt(stats::median(x)), min = fmt(min(x)), max = fmt(max(x)), n = length(x))
 }
 
-# Entrées actionnables du journal (erreurs + avertissements), formatées « source: message ».
+# Entrees actionnables du journal (erreurs + avertissements), formatees " source: message ".
 .regen_log_issues <- function(log) {
   if (!is.data.frame(log) || !nrow(log)) return(character(0))
   sel <- log$level %in% c("error", "warning")
@@ -97,35 +97,35 @@
   unique(sprintf("%s: %s", log$source[sel], log$message[sel]))
 }
 
-# Supprime engine_status.json en fin de tâche (success/error). Le worker écrit
+# Supprime engine_status.json en fin de tache (success/error). Le worker ecrit
 # `done` mais ne supprime PAS (course avec le poll) : c'est le module qui nettoie.
-# NE TOUCHE PAS à engine.log : il doit survivre au run pour le post-mortem (B3.a).
+# NE TOUCHE PAS a engine.log : il doit survivre au run pour le post-mortem (B3.a).
 .regen_cleanup_status <- function(app_state) {
   project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
   if (!is.null(project_path))
     unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
 }
 
-# Exécute le moteur reGénération sous PLAFOND mémoire (cgroup systemd) quand le
-# cœur le permet, sinon repli sur l'appel direct dans ce worker (brief 035
-# regen-capped). Appelé DANS le worker `future` (nemeton + nemetonshiny chargés).
+# Execute le moteur reGeneration sous PLAFOND memoire (cgroup systemd) quand le
+# coeur le permet, sinon repli sur l'appel direct dans ce worker (brief 035
+# regen-capped). Appele DANS le worker `future` (nemeton + nemetonshiny charges).
 #
 # Anti-OOM : le moteur microclimf+BILJOU tournait dans un worker multisession NU,
-# dans le scope de l'app — un pic mémoire postérieur au run faisait tuer RStudio
+# dans le scope de l'app - un pic memoire posterieur au run faisait tuer RStudio
 # par systemd-oomd (incident 2026-07-15). `nemeton::run_memory_capped()` isole le
-# heavy dans un enfant sous cgroup plafonné (comme FORDEAD, spec 008).
+# heavy dans un enfant sous cgroup plafonne (comme FORDEAD, spec 008).
 #
-# Garde de CAPACITÉ : la version généralisée de run_memory_capped (arguments
+# Garde de CAPACITE : la version generalisee de run_memory_capped (arguments
 # `package=`/`options=`, nemeton >= 0.158.0) sait lancer une fonction INTERNE
-# d'un autre package (`run_regeneration_engine` n'est pas exporté). Tant que le
-# cœur installé ne l'expose pas, on retombe proprement sur le chemin nu — l'app
-# ne casse pas sur un cœur antérieur. Flag `nemetonshiny.regen_capped` (TRUE par
-# défaut) : le passer FALSE force le repli (utile en dev quand la lib installée
-# est en retard sur la source pkgload, cf. caveat §1 du brief).
+# d'un autre package (`run_regeneration_engine` n'est pas exporte). Tant que le
+# coeur installe ne l'expose pas, on retombe proprement sur le chemin nu - l'app
+# ne casse pas sur un coeur anterieur. Flag `nemetonshiny.regen_capped` (TRUE par
+# defaut) : le passer FALSE force le repli (utile en dev quand la lib installee
+# est en retard sur la source pkgload, cf. caveat sect.1 du brief).
 .regen_run_engine_capped <- function(units, project_path, cfg, app_opts) {
   options(nemeton.app_options = app_opts)
-  fn <- getFromNamespace("run_regeneration_engine", "nemetonshiny")
-  # Même référence pour le test de capacité ET l'appel (cohérence + mockable).
+  fn <- utils::getFromNamespace("run_regeneration_engine", "nemetonshiny")
+  # Meme reference pour le test de capacite ET l'appel (coherence + mockable).
   rmc <- if (requireNamespace("nemeton", quietly = TRUE)) nemeton::run_memory_capped else NULL
   capped_ok <- isTRUE(getOption("nemetonshiny.regen_capped", TRUE)) &&
     !is.null(rmc) &&
@@ -136,37 +136,37 @@
     package = "nemetonshiny",
     args    = list(units = units, project_path = project_path, cfg = cfg),
     options = list(nemeton.app_options = app_opts),
-    # memory_max = NULL → défaut cœur (70 % RAM) ; MemorySwapMax=0 déjà géré côté
-    # cœur. Le progress reste le canal disque (engine_status.json/engine.log),
-    # poll 1 s inchangé : pas de progress_callback nécessaire.
+    # memory_max = NULL -> defaut coeur (70 % RAM) ; MemorySwapMax=0 deja gere cote
+    # coeur. Le progress reste le canal disque (engine_status.json/engine.log),
+    # poll 1 s inchange : pas de progress_callback necessaire.
     quiet   = FALSE)
 }
 
-# Plage d'un axe de la légende bivariée (Contexte régional E-OBS). Utilise la
-# plage RÉELLEMENT observée sur la zone — quantiles du raster downscalé exposés
-# par le cœur dans la sous-méta `sub$palette$low/high` — plutôt que les seuils
-# fixes de classification. Garantit que 0 (et sa ligne pointillée blanche) reste
-# DANS la plage, avec une marge de 10 %, même si toutes les tendances sont du
-# même signe. La position fractionnaire du 0 est alors recalculée sur cette plage.
-# Repli sur les seuils cœur (`break_vec`) + la position 0 cœur (`core_zero`) quand
-# la plage observée est absente (vieux cache, sous-méta manquante).
+# Plage d'un axe de la legende bivariee (Contexte regional E-OBS). Utilise la
+# plage REELLEMENT observee sur la zone - quantiles du raster downscale exposes
+# par le coeur dans la sous-meta `sub$palette$low/high` - plutot que les seuils
+# fixes de classification. Garantit que 0 (et sa ligne pointillee blanche) reste
+# DANS la plage, avec une marge de 10 %, meme si toutes les tendances sont du
+# meme signe. La position fractionnaire du 0 est alors recalculee sur cette plage.
+# Repli sur les seuils coeur (`break_vec`) + la position 0 coeur (`core_zero`) quand
+# la plage observee est absente (vieux cache, sous-meta manquante).
 # Renvoie `list(range = c(lo, hi), zero = frac_0_dans_range)`.
 .regen_biv_axis <- function(sub, break_vec, core_zero) {
   lo <- suppressWarnings(as.numeric(sub$palette$low))
   hi <- suppressWarnings(as.numeric(sub$palette$high))
   if (length(lo) == 1L && length(hi) == 1L && is.finite(lo) && is.finite(hi)) {
     if (hi < lo) { t <- lo; lo <- hi; hi <- t }
-    pad <- 0.1 * max(hi - lo, abs(lo), abs(hi), 1e-6)   # marge visibilité du 0
+    pad <- 0.1 * max(hi - lo, abs(lo), abs(hi), 1e-6)   # marge visibilite du 0
     lo <- min(lo, -pad); hi <- max(hi, pad)             # 0 strictement dans [lo, hi]
     return(list(range = c(lo, hi), zero = (0 - lo) / (hi - lo)))
   }
   list(range = break_vec, zero = core_zero)             # repli seuils fixes
 }
 
-# Découpe le libellé de la légende bivariée en deux lignes : la partie AVANT la
-# première parenthèse (titre principal) + le contenu de la parenthèse finale
-# (sous-titre, le couple de variables « T°max estivale × précipitations »).
-# Sans parenthèse : titre seul, sous-titre NULL (compat cache/label ancien).
+# Decoupe le libelle de la legende bivariee en deux lignes : la partie AVANT la
+# premiere parenthese (titre principal) + le contenu de la parenthese finale
+# (sous-titre, le couple de variables " Tdegmax estivale x precipitations ").
+# Sans parenthese : titre seul, sous-titre NULL (compat cache/label ancien).
 # Renvoie `list(title = ..., subtitle = ...|NULL)`.
 .regen_biv_title <- function(raw) {
   raw <- trimws(as.character(raw %||% ""))
@@ -177,19 +177,19 @@
   list(title = raw, subtitle = NULL)
 }
 
-# Libellé i18n d'une phase (voir modèle 6 phases + états terminaux du brief).
+# Libelle i18n d'une phase (voir modele 6 phases + etats terminaux du brief).
 .regen_phase_label <- function(i18n, st) {
   switch(st$phase %||% "",
     "grille"     = i18n$t("regen_phase_grille"),
     "pai"        = sprintf(i18n$t("regen_phase_pai"),
                            i18n$t(switch(st$source %||% "",
-                             "cache" = "regen_phase_pai_cache",   # hit disque : phase éclair
-                             "lidar" = "regen_phase_pai_lidar",   # dérivé du nuage COPC : long
+                             "cache" = "regen_phase_pai_cache",   # hit disque : phase eclair
+                             "lidar" = "regen_phase_pai_lidar",   # derive du nuage COPC : long
                              "regen_phase_pai_raster"))),         # repli satellite S2/PROSAIL
     "microclimf_moyenne"  = .regen_micro_lbl(i18n, "regen_phase_micro_moy", st),
     "microclimf_canicule" = .regen_micro_lbl(i18n, "regen_phase_micro_can", st),
     "exposition" = i18n$t("regen_phase_exposition"),
-    # Réserve utile SoilGrids : « (i/n) » compte les horizons de profondeur.
+    # Reserve utile SoilGrids : " (i/n) " compte les horizons de profondeur.
     "ewm"        = .regen_step_lbl(i18n, "regen_phase_ewm", st),
     "biljou"     = i18n$t("regen_phase_biljou"),
     "microclimf_skipped" = sprintf(i18n$t("regen_phase_micro_skip"),
@@ -198,12 +198,12 @@
     "")
 }
 
-#' Selectize render bolding species present on the AOI (BDforêt v2)
+#' Selectize render bolding species present on the AOI (BDforet v2)
 #'
 #' Returns the JS `render` object (as a string, wrap in `I()`) for the target
 #' species selectize: any option whose optgroup equals the "present" group label
 #' is shown in bold, both in the dropdown and once selected. Lets the user see at
-#' a glance where the present species (BDforêt v2) end and the adaptation ones
+#' a glance where the present species (BDforet v2) end and the adaptation ones
 #' begin. `present_label` is the localized optgroup title used as the marker.
 #' @noRd
 .species_bold_render <- function(present_label) {
@@ -217,7 +217,7 @@
   paste0("{option: ", fn, ", item: ", fn, "}")
 }
 
-#' Archive a rendered reGénération PDF into the project's `exports/` directory
+#' Archive a rendered reGeneration PDF into the project's `exports/` directory
 #'
 #' Mirrors `.archive_action_plan_pdf` (mod_action_plan.R): a single current PDF
 #' per project under `<project_path>/exports/<slug>_regeneration.pdf`. Called
@@ -244,7 +244,7 @@
       invisible(isTRUE(ok))
     },
     error = function(e) {
-      cli::cli_warn("reGénération PDF archive failed: {conditionMessage(e)}")
+      cli::cli_warn("reG\u00e9n\u00e9ration PDF archive failed: {conditionMessage(e)}")
       invisible(FALSE)
     }
   )
@@ -304,7 +304,7 @@
       })))
 }
 
-#' reGénération tab UI
+#' reGeneration tab UI
 #' @param id Module id.
 #' @noRd
 mod_regeneration_ui <- function(id) {
@@ -312,21 +312,21 @@ mod_regeneration_ui <- function(id) {
   opts <- get_app_options()
   i18n <- get_i18n(opts$language %||% "fr")
 
-  # Label + « i » d'information. Pattern UNIQUE de l'app : `info_popover()`,
-  # celui des titres de l'onglet Synthèse (icône bleue `circle-info` + popover
-  # au clic). Ne pas réintroduire d'icône d'information ad hoc ici.
+  # Label + " i " d'information. Pattern UNIQUE de l'app : `info_popover()`,
+  # celui des titres de l'onglet Synthese (icone bleue `circle-info` + popover
+  # au clic). Ne pas reintroduire d'icone d'information ad hoc ici.
   label_tt <- function(label, tooltip) {
     htmltools::tagList(label, " ",
       info_popover(tooltip, placement = "right"))
   }
 
-  # Variante pour les entrées du radio « Couche affichée » : le contenu décrit la
-  # variable puis rappelle la lecture de l'échelle de couleurs, commune aux 4
-  # couches (dégradé continu borné aux min/max des UG affichées).
-  # `info_popover_in_label()` et non `info_popover()` : le « i » vit DANS le
-  # <label> d'un radio, où un clic sélectionnerait aussi la couche (cf. son
-  # roxygen). Ici la conséquence est chère : la vue « précipitations »
-  # déclenche un téléchargement E-OBS de ~800 Mo.
+  # Variante pour les entrees du radio " Couche affichee " : le contenu decrit la
+  # variable puis rappelle la lecture de l'echelle de couleurs, commune aux 4
+  # couches (degrade continu borne aux min/max des UG affichees).
+  # `info_popover_in_label()` et non `info_popover()` : le " i " vit DANS le
+  # <label> d'un radio, ou un clic selectionnerait aussi la couche (cf. son
+  # roxygen). Ici la consequence est chere : la vue " precipitations "
+  # declenche un telechargement E-OBS de ~800 Mo.
   layer_tt <- function(label, tooltip) {
     htmltools::tagList(label, " ",
       info_popover_in_label(
@@ -344,13 +344,13 @@ mod_regeneration_ui <- function(id) {
 
       htmltools::tags$p(class = "text-muted small", i18n$t("regen_intro")),
 
-      # Verrou instantané côté client (brief 035 verrou-boutons, retour UX) :
-      # dès qu'un bouton `.regen-calc-btn` est cliqué, TOUS passent `disabled`
-      # sans attendre l'aller-retour serveur — supprime la fenêtre où les autres
-      # boutons paraissent encore cliquables. Le serveur reste l'autorité :
-      # l'observer de verrou ré-active (ou maintient grisé) selon l'état réel.
-      # `setTimeout(0)` : laisser l'événement de clic courant enregistrer son
-      # input Shiny AVANT de désactiver. Idempotent (garde `__regenCalcLock`).
+      # Verrou instantane cote client (brief 035 verrou-boutons, retour UX) :
+      # des qu'un bouton `.regen-calc-btn` est clique, TOUS passent `disabled`
+      # sans attendre l'aller-retour serveur - supprime la fenetre ou les autres
+      # boutons paraissent encore cliquables. Le serveur reste l'autorite :
+      # l'observer de verrou re-active (ou maintient grise) selon l'etat reel.
+      # `setTimeout(0)` : laisser l'evenement de clic courant enregistrer son
+      # input Shiny AVANT de desactiver. Idempotent (garde `__regenCalcLock`).
       htmltools::tags$script(htmltools::HTML(paste0(
         "(function(){",
         "if(window.__regenCalcLock)return;window.__regenCalcLock=true;",
@@ -361,10 +361,10 @@ mod_regeneration_ui <- function(id) {
         "document.querySelectorAll('.regen-calc-btn').forEach(function(b){b.disabled=true;});",
         "},0);},false);})();"))),
 
-      # --- Années de référence — placées en tête -------------------------
-      # Le bloc année moyenne / caniculaire + le bouton Auto (E-OBS) + l'indice
-      # E-OBS précèdent le moteur : l'utilisateur choisit d'abord les millésimes
-      # de référence, puis lance le moteur microclimf qui les consomme.
+      # --- Annees de reference - placees en tete -------------------------
+      # Le bloc annee moyenne / caniculaire + le bouton Auto (E-OBS) + l'indice
+      # E-OBS precedent le moteur : l'utilisateur choisit d'abord les millesimes
+      # de reference, puis lance le moteur microclimf qui les consomme.
       htmltools::tags$strong(i18n$t("regen_years_section")),
       shiny::fluidRow(
         shiny::column(6, shiny::numericInput(ns("year_moyenne"),
@@ -381,10 +381,10 @@ mod_regeneration_ui <- function(id) {
       shiny::uiOutput(ns("eobs_status")),
       htmltools::tags$hr(class = "my-2"),
 
-      # --- Moteur microclimf réel (opt-in, coûteux) ----------------------
+      # --- Moteur microclimf reel (opt-in, couteux) ----------------------
       # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
-      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
-      # ne sont pas réunis ; le statut est affiché sous le bouton.
+      # Desactive tant que les prerequis (grille LiDAR HD + identifiants CDS)
+      # ne sont pas reunis ; le statut est affiche sous le bouton.
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
       bslib::tooltip(
         bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
@@ -393,14 +393,14 @@ mod_regeneration_ui <- function(id) {
           type = "outline-primary", class = "btn-sm w-100 regen-calc-btn"),
         i18n$t("regen_engine_tip"), placement = "right"),
       shiny::uiOutput(ns("engine_status")),
-      # Journal du moteur (spec 035 B3.e) : replié par défaut, alimenté par
+      # Journal du moteur (spec 035 B3.e) : replie par defaut, alimente par
       # engine.log. Seul support durable des diagnostics du worker.
       shiny::uiOutput(ns("engine_log")),
       htmltools::tags$hr(class = "my-2"),
 
-      # --- Moteur « risque de gel tardif » (R7, meteoland) ---------------
-      # Opt-in, coûteux (interpolation Tmin journalière SAFRAN→MNT) → worker +
-      # cache. Grisé si meteoland (Suggests) est absent, avec explication.
+      # --- Moteur " risque de gel tardif " (R7, meteoland) ---------------
+      # Opt-in, couteux (interpolation Tmin journaliere SAFRAN->MNT) -> worker +
+      # cache. Grise si meteoland (Suggests) est absent, avec explication.
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_frost_section")),
       if (regen_meteoland_available()) {
         bslib::tooltip(
@@ -420,8 +420,8 @@ mod_regeneration_ui <- function(id) {
             i18n$t("regen_frost_unavailable")))
       },
       # Bilan persistant du dernier calcul gel (retour UX) : surtout le cas
-      # « aucun jour de gel tardif », sinon un run réussi sans gel semble n'avoir
-      # rien produit. Alimenté par l'observer de fin de frost_task.
+      # " aucun jour de gel tardif ", sinon un run reussi sans gel semble n'avoir
+      # rien produit. Alimente par l'observer de fin de frost_task.
       shiny::uiOutput(ns("frost_status")),
       htmltools::tags$hr(class = "my-2"),
 
@@ -432,9 +432,9 @@ mod_regeneration_ui <- function(id) {
         choices = stats::setNames(c("feuillu", "resineux"),
           c(i18n$t("regen_forest_feuillu"), i18n$t("regen_forest_resineux"))),
         selected = "feuillu", inline = TRUE),
-      # Débourrement / chute des feuilles = phénologie des feuillus caducs. Un
-      # résineux sempervirent n'a pas de cycle foliaire saisonnier (BILJOU mode
-      # coniferous, LAI permanent) : on masque ces deux champs hors « Feuillu ».
+      # Debourrement / chute des feuilles = phenologie des feuillus caducs. Un
+      # resineux sempervirent n'a pas de cycle foliaire saisonnier (BILJOU mode
+      # coniferous, LAI permanent) : on masque ces deux champs hors " Feuillu ".
       shiny::conditionalPanel(
         condition = "input.forest_type == 'feuillu'", ns = ns,
         shiny::fluidRow(
@@ -444,15 +444,15 @@ mod_regeneration_ui <- function(id) {
             i18n$t("regen_leaf_fall"), value = 300, min = 200, max = 366))
         )
       ),
-      # --- Paramètres experts (spec 035 B4.b) ----------------------------
-      # `lai_max` et `ewm` partagent la même sémantique : vide = dérivé de la
-      # donnée (PAI LiDAR / SoilGrids), rempli = forcé. Isolés dans la sidebar,
-      # ils invitaient au remplissage réflexe — saisir `lai_max` annule le
-      # bénéfice d'un PAI calculé en 57 min, sans aucun signal. Repliés par défaut,
-      # avec une seule phrase portant la sémantique commune.
+      # --- Parametres experts (spec 035 B4.b) ----------------------------
+      # `lai_max` et `ewm` partagent la meme semantique : vide = derive de la
+      # donnee (PAI LiDAR / SoilGrids), rempli = force. Isoles dans la sidebar,
+      # ils invitaient au remplissage reflexe - saisir `lai_max` annule le
+      # benefice d'un PAI calcule en 57 min, sans aucun signal. Replies par defaut,
+      # avec une seule phrase portant la semantique commune.
       # `rooting_depth_cm` n'est pas un override : c'est la profondeur sur laquelle
-      # SoilGrids intègre la réserve utile. Il vit ici parce qu'il n'a de sens que
-      # pour qui touche à ces réglages, mais il garde une valeur par défaut.
+      # SoilGrids integre la reserve utile. Il vit ici parce qu'il n'a de sens que
+      # pour qui touche a ces reglages, mais il garde une valeur par defaut.
       bslib::accordion(
         open = FALSE, class = "mb-2",
         bslib::accordion_panel(
@@ -470,10 +470,10 @@ mod_regeneration_ui <- function(id) {
         )
       ),
 
-      # --- Forçage / résolution -----------------------------------------
-      # L'« Essence cible » vit désormais à droite de la carte (sous « Couche
-      # affichée ») car elle met à jour la choroplèthe en direct ; le « Buffer
-      # contexte régional » vit dans l'onglet carte « Contexte régional (E-OBS) ».
+      # --- Forcage / resolution -----------------------------------------
+      # L'" Essence cible " vit desormais a droite de la carte (sous " Couche
+      # affichee ") car elle met a jour la choroplethe en direct ; le " Buffer
+      # contexte regional " vit dans l'onglet carte " Contexte regional (E-OBS) ".
       shiny::radioButtons(ns("forcing"),
         label_tt(i18n$t("regen_forcing"), i18n$t("regen_forcing_tip")),
         choices = stats::setNames(c("safran", "era5"),
@@ -489,29 +489,29 @@ mod_regeneration_ui <- function(id) {
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
         class = "btn-primary w-100 regen-calc-btn", icon = bsicons::bs_icon("play-fill")),
 
-      # Provenance de la donnée canopée effectivement utilisée (spec 033 D5) :
+      # Provenance de la donnee canopee effectivement utilisee (spec 033 D5) :
       # LiDAR HD (PAI structural) ou repli satellite S2/PROSAIL (NDP 0). Lu
-      # depuis nemeton::detect_ndp() ; ne s'affiche que si une canopée est utilisée.
+      # depuis nemeton::detect_ndp() ; ne s'affiche que si une canopee est utilisee.
       shiny::uiOutput(ns("canopy_provenance")),
-      # Valeurs réellement utilisées par le moteur (spec 035 B4.a) : médiane +
-      # étendue du lai_max et de la réserve utile par UGF, ou badge « forcé ».
-      # Les exports ont migré dans le sidebar droit de Carte+Tableau, sous le
-      # panneau « Affiner la reGénération avec l'IA ».
+      # Valeurs reellement utilisees par le moteur (spec 035 B4.a) : mediane +
+      # etendue du lai_max et de la reserve utile par UGF, ou badge " force ".
+      # Les exports ont migre dans le sidebar droit de Carte+Tableau, sous le
+      # panneau " Affiner la reGeneration avec l'IA ".
       shiny::uiOutput(ns("derived_stats"))
     ),
 
-    # --- Résultats -------------------------------------------------------
+    # --- Resultats -------------------------------------------------------
     shiny::uiOutput(ns("status")),
     bslib::navset_card_tab(
       bslib::nav_panel(
         i18n$t("regen_map_table_view"),
-        # Pattern « Plan d'actions » : Carte (colonne gauche, pleine hauteur) et,
-        # dans la colonne droite, Tableau des UGF (moitié haute) + Fiches parcelles
-        # (moitié basse) empilés. Un clic carte sélectionne l'UGF (surlignage + ligne
-        # de table), la table pilote la carte en retour (croisé, multi-sélection).
-        # Sidebar DROITE : panneau IA repliable « Affiner la reGénération avec l'IA »
-        # (pattern « Affiner » du Plan d'actions) — conseil narratif (P2) en surcouche
-        # du classement déterministe top-3 (P1).
+        # Pattern " Plan d'actions " : Carte (colonne gauche, pleine hauteur) et,
+        # dans la colonne droite, Tableau des UGF (moitie haute) + Fiches parcelles
+        # (moitie basse) empiles. Un clic carte selectionne l'UGF (surlignage + ligne
+        # de table), la table pilote la carte en retour (croise, multi-selection).
+        # Sidebar DROITE : panneau IA repliable " Affiner la reGeneration avec l'IA "
+        # (pattern " Affiner " du Plan d'actions) - conseil narratif (P2) en surcouche
+        # du classement deterministe top-3 (P1).
         bslib::layout_sidebar(
           fillable = FALSE,
           sidebar = bslib::sidebar(
@@ -537,9 +537,9 @@ mod_regeneration_ui <- function(id) {
                   class = "card-body",
                   htmltools::tags$p(class = "small text-muted",
                     i18n$t("regen_ai_panel_help")),
-                  # Conseil(s) affiché(s) en haut (façon historique de chat).
+                  # Conseil(s) affiche(s) en haut (facon historique de chat).
                   shiny::uiOutput(ns("regen_ai_advice")),
-                  # Portée : mêmes possibilités que « Affiner le plan avec l'IA ».
+                  # Portee : memes possibilites que " Affiner le plan avec l'IA ".
                   shiny::radioButtons(ns("regen_ai_scope"),
                     i18n$t("regen_ai_scope"),
                     choices = stats::setNames(
@@ -561,8 +561,8 @@ mod_regeneration_ui <- function(id) {
                       i18n$t("regen_ai_send"),
                       icon = shiny::icon("paper-plane"),
                       class = "btn-sm btn-primary flex-fill"))))),
-            # --- Exports (sous le panneau IA) : regroupés dans un accordéon
-            # repliable « Exports » (replié par défaut). Mêmes boutons/toasts que
+            # --- Exports (sous le panneau IA) : regroupes dans un accordeon
+            # repliable " Exports " (replie par defaut). Memes boutons/toasts que
             # le Plan d'actions ; Envoyer vers Terrain / Enregistrer en base =
             # toast bas-droite au clic (onclick) + gel via .regen-calc-btn.
             bslib::accordion(
@@ -599,8 +599,8 @@ mod_regeneration_ui <- function(id) {
         bslib::layout_columns(
           col_widths = c(6, 6), fillable = FALSE,
           # --- Carte (colonne gauche) ------------------------------------------
-          # Sidebar DROITE dédiée : le radio « Couche affichée » vit à droite de la
-          # carte ; les fonds OSM/Satellite/UGF restent dans le contrôle natif
+          # Sidebar DROITE dediee : le radio " Couche affichee " vit a droite de la
+          # carte ; les fonds OSM/Satellite/UGF restent dans le controle natif
           # Leaflet (coin carte).
           bslib::card(
             full_screen = TRUE,
@@ -612,8 +612,8 @@ mod_regeneration_ui <- function(id) {
                 sidebar = bslib::sidebar(
                   position = "right", open = "always", width = 240,
                   htmltools::tags$strong(i18n$t("regen_map_layer")),
-                  # Chaque couche porte un « i » qui explique la variable
-                  # cartographiée et comment lire sa légende.
+                  # Chaque couche porte un " i " qui explique la variable
+                  # cartographiee et comment lire sa legende.
                   shiny::radioButtons(ns("map_layer"), NULL,
                     choiceValues = c("indice_priorite_regen", "sensibilite", "njstress",
                                      "d_tmax", "r7_gel_days"),
@@ -624,16 +624,16 @@ mod_regeneration_ui <- function(id) {
                       layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info")),
                       layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info"))),
                     selected = "indice_priorite_regen"),
-                  # Essence cible : re-priorise la choroplèthe en direct (sans
-                  # relancer l'analyse). N'affecte QUE la couche « Indice de
-                  # priorité » — masquée pour les autres couches (conditionalPanel).
+                  # Essence cible : re-priorise la choroplethe en direct (sans
+                  # relancer l'analyse). N'affecte QUE la couche " Indice de
+                  # priorite " - masquee pour les autres couches (conditionalPanel).
                   shiny::conditionalPanel(
                     condition = "input.map_layer == 'indice_priorite_regen'", ns = ns,
                     htmltools::tags$hr(class = "my-2"),
-                    # Les essences PRÉSENTES sur les UGF (BDforêt v2, optgroup en
-                    # tête) sont affichées EN GRAS pour distinguer d'emblée la
-                    # frontière avec les essences d'adaptation. Le render selectize
-                    # met en gras toute option dont l'optgroup == libellé « présentes ».
+                    # Les essences PRESENTES sur les UGF (BDforet v2, optgroup en
+                    # tete) sont affichees EN GRAS pour distinguer d'emblee la
+                    # frontiere avec les essences d'adaptation. Le render selectize
+                    # met en gras toute option dont l'optgroup == libelle " presentes ".
                     shiny::selectizeInput(ns("species"), label_tt(i18n$t("regen_species_target"),
                         i18n$t("regen_species_tip")),
                       choices = stats::setNames("", i18n$t("regen_species_generic")),
@@ -644,10 +644,10 @@ mod_regeneration_ui <- function(id) {
               )
             )
           ),
-          # --- Colonne droite : Tableau (moitié haute) + Fiches (moitié basse) --
-          # Pile verticale calée sur la hauteur de la carte (70vh). Chaque carte
-          # prend 50 % (flex:1) et fait défiler son contenu (min-height:0 requis
-          # pour qu'un enfant flex puisse rétrécir sous son contenu).
+          # --- Colonne droite : Tableau (moitie haute) + Fiches (moitie basse) --
+          # Pile verticale calee sur la hauteur de la carte (70vh). Chaque carte
+          # prend 50 % (flex:1) et fait defiler son contenu (min-height:0 requis
+          # pour qu'un enfant flex puisse retrecir sous son contenu).
           htmltools::div(
             style = htmltools::css(display = "flex", `flex-direction` = "column",
               height = "70vh", gap = "0.5rem"),
@@ -685,10 +685,10 @@ mod_regeneration_ui <- function(id) {
         )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
-        # Contexte régional en RASTER downscalé (eobs_downscale, cœur >= 0.153.0),
-        # 3 vues : tendance T°max (tx), tendance précipitations (rr), et croisement
-        # BIVARIÉ (classes 1-9). La sidebar droite porte le sélecteur de vue, le
-        # rayon (buffer) et l'opacité — tout ce qui ne concerne que cette carte.
+        # Contexte regional en RASTER downscale (eobs_downscale, coeur >= 0.153.0),
+        # 3 vues : tendance Tdegmax (tx), tendance precipitations (rr), et croisement
+        # BIVARIE (classes 1-9). La sidebar droite porte le selecteur de vue, le
+        # rayon (buffer) et l'opacite - tout ce qui ne concerne que cette carte.
         bslib::layout_sidebar(
           fillable = TRUE,
           sidebar = bslib::sidebar(
@@ -696,20 +696,20 @@ mod_regeneration_ui <- function(id) {
             htmltools::tags$strong(i18n$t("regen_context_view")),
             shiny::radioButtons(ns("context_view"), NULL,
               choiceValues = c("tx", "rr", "bivariate"),
-              # Chaque vue porte un « i » expliquant la variable et la lecture.
+              # Chaque vue porte un " i " expliquant la variable et la lecture.
               choiceNames  = list(
                 layer_tt(i18n$t("regen_context_view_tx"), i18n$t("regen_context_view_tx_info")),
                 layer_tt(i18n$t("regen_context_view_rr"), i18n$t("regen_context_view_rr_info")),
                 layer_tt(i18n$t("regen_context_view_bivariate"), i18n$t("regen_context_view_bivariate_info"))),
               selected = "tx"),
-            # Téléchargement de la série précipitations (~800 Mo) : requis pour les
-            # vues rr / bivariée.
+            # Telechargement de la serie precipitations (~800 Mo) : requis pour les
+            # vues rr / bivariee.
             bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
               icon = bsicons::bs_icon("cloud-download"),
               label_busy = i18n$t("regen_busy_generic"),
               type = "outline-secondary", class = "btn-sm w-100 mb-2 regen-calc-btn"),
-            # Température moyenne (tg) : requise par le diagramme ombrothermique
-            # (Gaussen) du panneau au clic. Opt-in, même coût (~800 Mo) que rr.
+            # Temperature moyenne (tg) : requise par le diagramme ombrothermique
+            # (Gaussen) du panneau au clic. Opt-in, meme cout (~800 Mo) que rr.
             bslib::input_task_button(ns("fetch_eobs_tg"), i18n$t("regen_fetch_tg"),
               icon = bsicons::bs_icon("thermometer-half"),
               label_busy = i18n$t("regen_busy_generic"),
@@ -722,8 +722,8 @@ mod_regeneration_ui <- function(id) {
             shiny::sliderInput(ns("context_opacity"), NULL,
               min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE),
             # Purge le cache raster (.tif + meta) des 3 vues et relance le calcul
-            # de la vue courante : à utiliser quand un raster caché est périmé
-            # (ancienne version cœur, bornes/classement changés).
+            # de la vue courante : a utiliser quand un raster cache est perime
+            # (ancienne version coeur, bornes/classement changes).
             htmltools::tags$hr(class = "my-2"),
             shiny::actionButton(ns("recompute_context"), i18n$t("regen_context_recompute"),
               icon = bsicons::bs_icon("arrow-repeat"),
@@ -736,7 +736,7 @@ mod_regeneration_ui <- function(id) {
   )
 }
 
-#' reGénération tab server
+#' reGeneration tab server
 #' @param id Module id.
 #' @param app_state reactiveValues carrying `current_project` (whose
 #'   `indicators_sf` holds the UGF units).
@@ -747,55 +747,55 @@ mod_regeneration_server <- function(id, app_state) {
     i18n <- get_i18n(get_app_options()$language %||% "fr")
 
     # Verrou projet (serveur multi-utilisateurs) : chaque action mutante est
-    # gardée par `deny_if_readonly(app_state, i18n)` (helper partagé, R/service_lock.R)
-    # qui refuse l'action et prévient l'utilisateur quand le projet est ouvert en
+    # gardee par `deny_if_readonly(app_state, i18n)` (helper partage, R/service_lock.R)
+    # qui refuse l'action et previent l'utilisateur quand le projet est ouvert en
     # lecture seule (verrou d'autrui, ou anonyme).
 
     rv <- shiny::reactiveValues(
       result = NULL, years = NULL, warnings = character(0),
       running = FALSE, eobs = NULL, lai_source = NA_character_,
       engine_log = NULL,
-      # Valeurs dérivées par le moteur (spec 035 B4.a) : rendent visible la
-      # spatialisation du lai_max et de la réserve utile.
+      # Valeurs derivees par le moteur (spec 035 B4.a) : rendent visible la
+      # spatialisation du lai_max et de la reserve utile.
       lai_max = NULL, ewm = NULL, ewm_source = NA_character_,
-      # Incrémenté après acquisition de la série `rr` : re-rend la carte contexte.
+      # Incremente apres acquisition de la serie `rr` : re-rend la carte contexte.
       context_refresh = 0L,
-      # Incrémenté à chaque clic sur un bouton de calcul : force l'observer de
-      # verrou à re-synchroniser l'état des boutons (verrou instantané côté client).
+      # Incremente a chaque clic sur un bouton de calcul : force l'observer de
+      # verrou a re-synchroniser l'etat des boutons (verrou instantane cote client).
       click_tick = 0L,
-      # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
-      # à NULL à la fin de la tâche. NULL = pas de run en cours.
+      # Chrono des boutons async (spec 027 feedback) : instant de depart, remis
+      # a NULL a la fin de la tache. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
       engine_start = NULL, eobs_start = NULL,
-      # Chrono du téléchargement des précipitations E-OBS (~800 Mo) : notif
-      # persistante « engrenage + MM:SS » tant que la tâche tourne.
+      # Chrono du telechargement des precipitations E-OBS (~800 Mo) : notif
+      # persistante " engrenage + MM:SS " tant que la tache tourne.
       eobs_rr_running = FALSE, eobs_rr_start = NULL,
-      # Idem pour la T° moyenne (tg) — requise par le diagramme ombrothermique.
+      # Idem pour la Tdeg moyenne (tg) - requise par le diagramme ombrothermique.
       eobs_tg_running = FALSE, eobs_tg_start = NULL,
-      # Série au dernier point cliqué sur la carte de contexte (4 graphes E-OBS).
+      # Serie au dernier point clique sur la carte de contexte (4 graphes E-OBS).
       click_series = NULL,
-      # Chrono du moteur « risque de gel tardif » (R7, meteoland).
+      # Chrono du moteur " risque de gel tardif " (R7, meteoland).
       frost_running = FALSE, frost_start = NULL,
       # Bilan persistant du dernier calcul gel (status none/detected/skipped/error
-      # + stats) affiché sous le bouton « Risque de gel » — retour UX.
+      # + stats) affiche sous le bouton " Risque de gel " - retour UX.
       frost_summary = NULL,
-      # Raster de contexte régional (E-OBS downscalé) + son meta (status, palette,
+      # Raster de contexte regional (E-OBS downscale) + son meta (status, palette,
       # value_label) ; chrono du calcul async (WMS IGN + krigeage, ~4 s).
       context_raster = NULL, context_meta = NULL,
       context_running = FALSE, context_start = NULL,
-      context_loaded_view = NULL,   # vue actuellement chargée : tx / rr / bivariate
-      # Restauration différée à l'entrée dans l'onglet reGénération (et non à
+      context_loaded_view = NULL,   # vue actuellement chargee : tx / rr / bivariate
+      # Restauration differee a l'entree dans l'onglet reGeneration (et non a
       # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
       # l'observer de restauration ne le consomme (toast + relecture cache) que
-      # lorsque l'onglet reGénération est actif.
+      # lorsque l'onglet reGeneration est actif.
       regen_needs_restore = FALSE
     )
 
     # UGF units of the current project (EPSG:2154), with the same geometry
-    # fallback chain as mod_monitoring_pixel_map : indicators_sf → UGF →
+    # fallback chain as mod_monitoring_pixel_map : indicators_sf -> UGF ->
     # parcelles. Sans ce repli, un projet Reconfort/monitoring qui n'a pas
-    # (encore) calculé les 31 indicateurs n'a pas d'indicators_sf, et l'onglet
-    # tombait sur le message trompeur « besoin d'un projet ».
+    # (encore) calcule les 31 indicateurs n'a pas d'indicators_sf, et l'onglet
+    # tombait sur le message trompeur " besoin d'un projet ".
     units_sf <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
@@ -813,42 +813,42 @@ mod_regeneration_server <- function(id, app_state) {
       NULL
     })
 
-    # --- Restauration à l'ouverture d'un projet (spec 035 B2) ----------------
-    # Sans ça, rouvrir un projet déjà analysé affichait les contours d'UGF nus :
-    # `rv$result` n'était écrit que par « Lancer l'analyse » ou par la fin du
+    # --- Restauration a l'ouverture d'un projet (spec 035 B2) ----------------
+    # Sans ca, rouvrir un projet deja analyse affichait les contours d'UGF nus :
+    # `rv$result` n'etait ecrit que par " Lancer l'analyse " ou par la fin du
     # moteur. Ici on RELIT le cache disque via `restore_regeneration()`.
     #
-    # NE PAS appeler `run_regeneration()` ici. Son étape R3
-    # (`indicateur_r3_secheresse(dem = )`) re-dérive la topographie depuis la
-    # mosaïque MNT LiDAR : 132 s mesurées sur un projet de 30 UGF, contre 0,3 s
-    # pour tout le reste. Shiny étant mono-thread, cet appel synchrone gelait
-    # TOUTE la session à l'ouverture — y compris l'onglet Sélection.
+    # NE PAS appeler `run_regeneration()` ici. Son etape R3
+    # (`indicateur_r3_secheresse(dem = )`) re-derive la topographie depuis la
+    # mosaique MNT LiDAR : 132 s mesurees sur un projet de 30 UGF, contre 0,3 s
+    # pour tout le reste. Shiny etant mono-thread, cet appel synchrone gelait
+    # TOUTE la session a l'ouverture - y compris l'onglet Selection.
     #
-    # Déclenché sur (projet, unités) : le projet est posé avant les géométries,
+    # Declenche sur (projet, unites) : le projet est pose avant les geometries,
     # donc un observateur sur le seul `current_project` verrait `units_sf()` NULL
-    # et n'aurait aucune occasion de réessayer.
-    # (A) Observateur DONNÉES — tout onglet. Un changement de projet (ou d'UGF)
-    # purge le résultat précédent (sinon le choroplèthe d'un projet resterait à
-    # l'écran, et mod_synthesis lirait une reGénération périmée) et pose le
-    # drapeau « à restaurer ». AUCUN toast, AUCUNE relecture ici : la
-    # restauration est différée à l'entrée dans l'onglet reGénération (obs. B).
+    # et n'aurait aucune occasion de reessayer.
+    # (A) Observateur DONNEES - tout onglet. Un changement de projet (ou d'UGF)
+    # purge le resultat precedent (sinon le choroplethe d'un projet resterait a
+    # l'ecran, et mod_synthesis lirait une reGeneration perimee) et pose le
+    # drapeau " a restaurer ". AUCUN toast, AUCUNE relecture ici : la
+    # restauration est differee a l'entree dans l'onglet reGeneration (obs. B).
     shiny::observeEvent(list(app_state$current_project, units_sf()), {
       rv$result <- NULL
       rv$lai_source <- NA_character_
       app_state$regeneration_result <- NULL
       rv$regen_needs_restore <- TRUE
-      # Raster de contexte : périmé au changement de projet/UGF → recalcul lazy.
+      # Raster de contexte : perime au changement de projet/UGF -> recalcul lazy.
       rv$context_raster <- NULL
       rv$context_meta <- NULL
       rv$context_loaded_view <- NULL
     }, ignoreNULL = FALSE)
 
-    # (B) Observateur RESTAURATION — uniquement quand l'onglet reGénération est
-    # actif. C'est ici — et pas à l'ouverture du projet — que le toast « en bas »
-    # s'affiche et que le cache disque est relu. Déclenché par l'activation de
+    # (B) Observateur RESTAURATION - uniquement quand l'onglet reGeneration est
+    # actif. C'est ici - et pas a l'ouverture du projet - que le toast " en bas "
+    # s'affiche et que le cache disque est relu. Declenche par l'activation de
     # l'onglet OU par un nouveau drapeau (changement de projet/UGF pendant qu'on
-    # est déjà sur l'onglet). Le drapeau est consommé (une seule tentative) pour
-    # ne pas re-toaster à chaque aller-retour d'onglet.
+    # est deja sur l'onglet). Le drapeau est consomme (une seule tentative) pour
+    # ne pas re-toaster a chaque aller-retour d'onglet.
     shiny::observeEvent(list(app_state$active_main_tab, rv$regen_needs_restore), {
       if (!identical(app_state$active_main_tab, "regeneration")) return()
       if (!isTRUE(rv$regen_needs_restore)) return()
@@ -861,14 +861,14 @@ mod_regeneration_server <- function(id, app_state) {
 
       pc <- load_regeneration_precomputed(project_path)
       # Ne restaurer que si une sortie de MOTEUR existe : `dem` / `eobs_*` seuls
-      # ne produisent aucun indice, et une restauration à vide n'affiche rien.
+      # ne produisent aucun indice, et une restauration a vide n'affiche rien.
       if (is.null(pc$biljou) && is.null(pc$sensibilite)) return()
 
-      # Retour visuel « en bas » (parité Suivi sanitaire) : la restauration +
+      # Retour visuel " en bas " (parite Suivi sanitaire) : la restauration +
       # le rendu des cartes prennent un temps perceptible. On peint le toast
-      # MAINTENANT, puis on diffère le travail synchrone d'un tick (`later`) pour
-      # qu'il s'affiche AVANT le calcul — sinon show + remove tomberaient dans le
-      # même flush Shiny (invisibles).
+      # MAINTENANT, puis on differe le travail synchrone d'un tick (`later`) pour
+      # qu'il s'affiche AVANT le calcul - sinon show + remove tomberaient dans le
+      # meme flush Shiny (invisibles).
       nid <- session$ns("regen_restore_notif")
       shiny::showNotification(i18n$t("regen_restore_loading"), id = nid,
                               duration = NULL, type = "message")
@@ -877,12 +877,12 @@ mod_regeneration_server <- function(id, app_state) {
                         error = function(e) NULL)
         if (!is.null(res)) {
           rv$result <- res$units
-          # Restaurer n'est pas analyser : ni avertissements, ni années détectées.
+          # Restaurer n'est pas analyser : ni avertissements, ni annees detectees.
           rv$warnings <- character(0)
           rv$canopy_source <- regen_canopy_provenance(res$units)
           # mod_synthesis lit app_state$regeneration_result pour la perspective
-          # IA : sans cette ligne, la synthèse d'un projet rouvert ignore la
-          # reGénération.
+          # IA : sans cette ligne, la synthese d'un projet rouvert ignore la
+          # reGeneration.
           app_state$regeneration_result <- res$units
         }
         try(shiny::removeNotification(nid, session = session), silent = TRUE)
@@ -890,9 +890,9 @@ mod_regeneration_server <- function(id, app_state) {
     }, ignoreNULL = FALSE)
 
     # Populate the optional target-species selector from the core
-    # (nemeton::regen_species_choices). Réactif à l'AOI : les essences présentes
-    # sur les parcelles (BD Forêt v2 → classe via map_tfv_to_species_class) sont
-    # listées en tête (groupe « présentes »), puis les essences d'adaptation.
+    # (nemeton::regen_species_choices). Reactif a l'AOI : les essences presentes
+    # sur les parcelles (BD Foret v2 -> classe via map_tfv_to_species_class) sont
+    # listees en tete (groupe " presentes "), puis les essences d'adaptation.
     shiny::observe({
       units <- tryCatch(units_sf(), error = function(e) NULL)
       df <- regeneration_species_choices(units = units, lang = i18n$language)
@@ -904,7 +904,7 @@ mod_regeneration_server <- function(id, app_state) {
       }
       named <- function(sub) stats::setNames(sub$code, sub$label)
       choices <- list()
-      choices[[generic_lbl]] <- ""   # option générique (toutes essences) en tête
+      choices[[generic_lbl]] <- ""   # option generique (toutes essences) en tete
       if ("groupe" %in% names(df)) {
         present <- df[df$groupe == "present", , drop = FALSE]
         others  <- df[df$groupe != "present", , drop = FALSE]
@@ -918,14 +918,14 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # Auto-detect the average / heatwave years from E-OBS for this AOI.
-    # Async : l'acquisition E-OBS (CDS) est déléguée à un worker future (cf.
-    # eobs_task) ; le résultat met à jour les deux champs Année.
+    # Async : l'acquisition E-OBS (CDS) est deleguee a un worker future (cf.
+    # eobs_task) ; le resultat met a jour les deux champs Annee.
     shiny::observeEvent(input$auto_years, {
       if (deny_if_busy()) return()
       units <- units_sf()
       if (is.null(units)) {
-        # Le bouton passe « busy » dès le clic : le remettre prêt sur ce retour
-        # anticipé, sinon il reste grisé.
+        # Le bouton passe " busy " des le clic : le remettre pret sur ce retour
+        # anticipe, sinon il reste grise.
         bslib::update_task_button("auto_years", state = "ready")
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
@@ -933,7 +933,7 @@ mod_regeneration_server <- function(id, app_state) {
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       rv$eobs_running <- TRUE
       rv$eobs_start <- Sys.time()
-      # Notif persistante en bas à droite (retirée en fin de tâche) — le run
+      # Notif persistante en bas a droite (retiree en fin de tache) - le run
       # E-OBS (CDS) peut durer plusieurs minutes.
       shiny::showNotification(i18n$t("regen_auto_running"), type = "message",
                               duration = NULL, id = session$ns("eobs_notif"))
@@ -965,9 +965,9 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # Statut/chrono sous le bouton Auto (E-OBS) — tick chaque seconde tant que
-    # la détection tourne (spec 027 feedback). Le sablier « en cours » vit
-    # désormais ici (retiré de eobs_index_display pour ne pas doubler).
+    # Statut/chrono sous le bouton Auto (E-OBS) - tick chaque seconde tant que
+    # la detection tourne (spec 027 feedback). Le sablier " en cours " vit
+    # desormais ici (retire de eobs_index_display pour ne pas doubler).
     output$eobs_status <- shiny::renderUI({
       if (isTRUE(rv$eobs_running)) {
         shiny::invalidateLater(1000)
@@ -977,8 +977,8 @@ mod_regeneration_server <- function(id, app_state) {
           htmltools::tags$span(class = "ms-1 font-monospace",
                                .fmt_elapsed(rv$eobs_start))))
       }
-      # Détection terminée : confirmation persistante sous le bouton (le toast
-      # regen_auto_done ne dure que 6 s). Rappelle les millésimes retenus.
+      # Detection terminee : confirmation persistante sous le bouton (le toast
+      # regen_auto_done ne dure que 6 s). Rappelle les millesimes retenus.
       if (is.null(rv$eobs)) return(NULL)
       htmltools::div(class = "small text-success mt-1",
         bsicons::bs_icon("check-circle", class = "me-1"),
@@ -997,7 +997,7 @@ mod_regeneration_server <- function(id, app_state) {
       }
       rv$running <- TRUE
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
-      # NA/NULL numeric inputs → NULL (let the core auto-detect / default).
+      # NA/NULL numeric inputs -> NULL (let the core auto-detect / default).
       na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
       cfg <- list(
         year_moyenne = na_null(input$year_moyenne),
@@ -1008,8 +1008,8 @@ mod_regeneration_server <- function(id, app_state) {
         hydric_only = isTRUE(input$hydric_only)
       )
 
-      # withProgress affiche un overlay immédiat (retour visible avant le calcul
-      # synchrone) et empêche les reclics pendant le run.
+      # withProgress affiche un overlay immediat (retour visible avant le calcul
+      # synchrone) et empeche les reclics pendant le run.
       res <- shiny::withProgress(message = i18n$t("regen_running"), value = 0.2, {
         precomputed <- load_regeneration_precomputed(project_path)
         shiny::incProgress(0.3)
@@ -1025,17 +1025,17 @@ mod_regeneration_server <- function(id, app_state) {
       })
       rv$running <- FALSE
       if (!is.null(res)) {
-        # Reporter R7 (gel) du résultat précédent (brief 035 §8) : run_regeneration()
-        # ne produit pas r7_gel_days (pas de tmin en entrée) et écrasait sèchement
-        # rv$result, vidant la couche gel dès qu'on relançait l'analyse après R7.
-        # `.regen_attach_r7` réattache par ug_id (no-op si aucun R7 antérieur).
+        # Reporter R7 (gel) du resultat precedent (brief 035 sect.8) : run_regeneration()
+        # ne produit pas r7_gel_days (pas de tmin en entree) et ecrasait sechement
+        # rv$result, vidant la couche gel des qu'on relancait l'analyse apres R7.
+        # `.regen_attach_r7` reattache par ug_id (no-op si aucun R7 anterieur).
         carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
         rv$result <- carried
         rv$years <- res$years
         rv$warnings <- res$warnings %||% character(0)
-        # Provenance canopée lue sur le résultat (repli satellite / LiDAR HD).
+        # Provenance canopee lue sur le resultat (repli satellite / LiDAR HD).
         rv$canopy_source <- regen_canopy_provenance(res$units)
-        # Publier le résultat pour l'export PDF (section reGénération de mod_synthesis).
+        # Publier le resultat pour l'export PDF (section reGeneration de mod_synthesis).
         app_state$regeneration_result <- carried
         nw <- length(rv$warnings)
         if (nw > 0L) {
@@ -1047,13 +1047,13 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # --- Essence cible : mise à jour LIVE de la choroplèthe ----------------
-    # L'essence n'alimente que la dernière étape (indice de priorité). Sur un
-    # résultat déjà analysé, on re-priorise en place — sans rejouer l'analyse
-    # complète (donc sans R3/topographie LiDAR) — pour que la carte reflète
-    # aussitôt l'essence choisie. `ignoreInit` : ne pas réagir au peuplement du
-    # sélecteur. On s'efface pendant un run / le moteur (qui appliquent déjà
-    # l'essence eux-mêmes).
+    # --- Essence cible : mise a jour LIVE de la choroplethe ----------------
+    # L'essence n'alimente que la derniere etape (indice de priorite). Sur un
+    # resultat deja analyse, on re-priorise en place - sans rejouer l'analyse
+    # complete (donc sans R3/topographie LiDAR) - pour que la carte reflete
+    # aussitot l'essence choisie. `ignoreInit` : ne pas reagir au peuplement du
+    # selecteur. On s'efface pendant un run / le moteur (qui appliquent deja
+    # l'essence eux-memes).
     shiny::observeEvent(input$species, {
       if (is.null(rv$result)) return()
       if (isTRUE(rv$running) || isTRUE(rv$engine_running)) return()
@@ -1062,12 +1062,12 @@ mod_regeneration_server <- function(id, app_state) {
       app_state$regeneration_result <- updated
     }, ignoreInit = TRUE)
 
-    # --- Moteur microclimf réel (option B, async) -------------------------
-    # Provenance identique à la session principale pour recharger le namespace
+    # --- Moteur microclimf reel (option B, async) -------------------------
+    # Provenance identique a la session principale pour recharger le namespace
     # dans le worker future (cf. mod_home compute_task). Le run est lourd
-    # (LiDAR HD + ERA5 + microclimf) : il tourne dans un process séparé, ne
-    # renvoie qu'un sf, et la sortie est cachée (sensibilite.gpkg) pour être
-    # consommée en fast-path par run_regeneration au run suivant.
+    # (LiDAR HD + ERA5 + microclimf) : il tourne dans un process separe, ne
+    # renvoie qu'un sf, et la sortie est cachee (sensibilite.gpkg) pour etre
+    # consommee en fast-path par run_regeneration au run suivant.
     .dev_pkg_path <- tryCatch(
       if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
         find.package("nemetonshiny") else NULL,
@@ -1082,21 +1082,21 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          # spec 008 §4 — le worker (superviseur) est PERSISTANT : lui rendre sa
-          # mémoire. Avec le chemin capé, le heavy vit dans un ENFANT cgroup ; ce
+          # spec 008 sect.4 - le worker (superviseur) est PERSISTANT : lui rendre sa
+          # memoire. Avec le chemin cape, le heavy vit dans un ENFANT cgroup ; ce
           # worker ne fait que bloquer dessus (peu de RAM).
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
-          nemetonshiny:::.regen_run_engine_capped(units, project_path, cfg, app_opts)
+          utils::getFromNamespace(".regen_run_engine_capped", "nemetonshiny")(units, project_path, cfg, app_opts)
         }, seed = TRUE)
       })
 
-    # Auto E-OBS async : l'acquisition E-OBS (CDS, même clé qu'ERA5) peut être
-    # lente / mise en file → worker future, ne renvoie que la paire d'années.
+    # Auto E-OBS async : l'acquisition E-OBS (CDS, meme cle qu'ERA5) peut etre
+    # lente / mise en file -> worker future, ne renvoie que la paire d'annees.
     eobs_task <- shiny::ExtendedTask$new(
       function(units, project_path, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
@@ -1106,21 +1106,21 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          fn <- getFromNamespace("run_regeneration_detect_years", "nemetonshiny")
+          fn <- utils::getFromNamespace("run_regeneration_detect_years", "nemetonshiny")
           fn(units, project_path)
         }, seed = TRUE)
       })
 
-    # Acquisition opt-in de la série précipitations E-OBS (~800 Mo, CDS). Jamais
-    # déclenchée par un rendu : uniquement sur clic explicite, dans un worker.
+    # Acquisition opt-in de la serie precipitations E-OBS (~800 Mo, CDS). Jamais
+    # declenchee par un rendu : uniquement sur clic explicite, dans un worker.
     eobs_rr_task <- shiny::ExtendedTask$new(
       function(units, project_path, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
@@ -1130,20 +1130,20 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          fn <- getFromNamespace("regen_fetch_eobs_rr", "nemetonshiny")
+          fn <- utils::getFromNamespace("regen_fetch_eobs_rr", "nemetonshiny")
           fn(units, project_path)
         }, seed = TRUE)
       })
 
-    # Acquisition de la T° moyenne (tg) pour le diagramme ombrothermique — même
+    # Acquisition de la Tdeg moyenne (tg) pour le diagramme ombrothermique - meme
     # patron que rr (opt-in, worker future, ~800 Mo, cache .nc).
     eobs_tg_task <- shiny::ExtendedTask$new(
       function(units, project_path, dev_path, app_opts) {
@@ -1154,20 +1154,20 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          fn <- getFromNamespace("regen_fetch_eobs_tg", "nemetonshiny")
+          fn <- utils::getFromNamespace("regen_fetch_eobs_tg", "nemetonshiny")
           fn(units, project_path)
         }, seed = TRUE)
       })
 
-    # Moteur « risque de gel tardif » (R7, meteoland). Opt-in, worker future,
-    # sortie cachée (tmin_*.tif) : interpolation Tmin journalière → indicateur R7.
+    # Moteur " risque de gel tardif " (R7, meteoland). Opt-in, worker future,
+    # sortie cachee (tmin_*.tif) : interpolation Tmin journaliere -> indicateur R7.
     frost_task <- shiny::ExtendedTask$new(
       function(units, project_path, cfg, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
@@ -1177,22 +1177,22 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          fn <- getFromNamespace("run_regeneration_frost", "nemetonshiny")
+          fn <- utils::getFromNamespace("run_regeneration_frost", "nemetonshiny")
           fn(units, project_path, cfg)
         }, seed = TRUE)
       })
 
-    # Raster de contexte régional (E-OBS downscalé, ~4 s WMS + krigeage) : worker
-    # future, sortie cachée (.tif + meta.json). Renvoie le CHEMIN du raster (le
-    # pointeur SpatRaster ne traverse pas la frontière future) + le meta.
+    # Raster de contexte regional (E-OBS downscale, ~4 s WMS + krigeage) : worker
+    # future, sortie cachee (.tif + meta.json). Renvoie le CHEMIN du raster (le
+    # pointeur SpatRaster ne traverse pas la frontiere future) + le meta.
     context_task <- shiny::ExtendedTask$new(
       function(units, project_path, view, buffer_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
@@ -1202,22 +1202,22 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          fn <- getFromNamespace("run_regeneration_context_raster", "nemetonshiny")
+          fn <- utils::getFromNamespace("run_regeneration_context_raster", "nemetonshiny")
           fn(units, project_path, view = view, buffer_m = buffer_m)
         }, seed = TRUE)
       })
 
-    # Lier chaque input_task_button à sa tâche : bslib désactive le bouton +
-    # affiche le spinner tant que la tâche tourne, puis le réactive (succès OU
-    # erreur). Empêche les runs concurrents (réécriture sensibilite/biljou.gpkg).
+    # Lier chaque input_task_button a sa tache : bslib desactive le bouton +
+    # affiche le spinner tant que la tache tourne, puis le reactive (succes OU
+    # erreur). Empeche les runs concurrents (reecriture sensibilite/biljou.gpkg).
     # `bind_task_button()` prend l'id local au module (sans ns()).
     bslib::bind_task_button(engine_task, "run_engine")
     bslib::bind_task_button(eobs_task, "auto_years")
@@ -1226,12 +1226,12 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(frost_task, "run_frost")
 
     # --- Verrou d'exclusion mutuelle des calculs (brief 035 verrou-boutons) ---
-    # Chaque task button ne connaît que SA tâche (bind_task_button) : rien
-    # n'empêche de lancer un 2e calcul lourd pendant qu'un 1er tourne (workers
-    # future concurrents sur les mêmes rasters/RAM/cache/regeneration). `busy()`
-    # est vrai dès qu'une tâche UTILISATEUR tourne. `context_task` est EXCLU : il
-    # est auto-déclenché par un changement de vue/buffer et griserait la sidebar
-    # de façon erratique sans que l'utilisateur ait rien lancé.
+    # Chaque task button ne connait que SA tache (bind_task_button) : rien
+    # n'empeche de lancer un 2e calcul lourd pendant qu'un 1er tourne (workers
+    # future concurrents sur les memes rasters/RAM/cache/regeneration). `busy()`
+    # est vrai des qu'une tache UTILISATEUR tourne. `context_task` est EXCLU : il
+    # est auto-declenche par un changement de vue/buffer et griserait la sidebar
+    # de facon erratique sans que l'utilisateur ait rien lance.
     busy <- shiny::reactive({
       any(vapply(
         list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task),
@@ -1240,24 +1240,24 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # Grisage client : task buttons via update_task_button (le binding bslib
-    # ignore la clé `disabled`), actionButton classiques via updateActionButton.
+    # ignore la cle `disabled`), actionButton classiques via updateActionButton.
     TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "fetch_eobs_tg", "run_frost")
     # `export_terrain` porte `.regen-calc-btn` (le verrou client le grise au clic)
     # mais n'est ni un task button ni un moteur : il DOIT figurer ici, sinon
-    # l'observer d'autorité ne le ré-active jamais et il reste grisé à vie.
+    # l'observer d'autorite ne le re-active jamais et il reste grise a vie.
     ACTION_BTNS <- c("run", "recompute_pai", "persist_db", "export_terrain")
-    # meteoland absent → run_frost est rendu désactivé : ne jamais le repasser
-    # « ready » (sinon l'observer l'activerait alors qu'il ne doit pas l'être).
+    # meteoland absent -> run_frost est rendu desactive : ne jamais le repasser
+    # " ready " (sinon l'observer l'activerait alors qu'il ne doit pas l'etre).
     frost_ok <- regen_meteoland_available()
 
-    # Grisage instantané côté client (JS délégué, cf. UI) : au clic, TOUS les
+    # Grisage instantane cote client (JS delegue, cf. UI) : au clic, TOUS les
     # boutons de calcul passent `disabled` sans attendre l'aller-retour serveur.
-    # Cet observer est la source d'autorité qui RÉ-active — dès que le verrou
-    # retombe. Il dépend de `rv$click_tick` pour se ré-exécuter APRÈS chaque clic,
-    # y compris un clic qui n'a rien lancé (pas de projet, prérequis KO,
-    # lecture seule…) : sans ça, le grisage client resterait collé.
+    # Cet observer est la source d'autorite qui RE-active - des que le verrou
+    # retombe. Il depend de `rv$click_tick` pour se re-executer APRES chaque clic,
+    # y compris un clic qui n'a rien lance (pas de projet, prerequis KO,
+    # lecture seule...) : sans ca, le grisage client resterait colle.
     shiny::observe({
-      rv$click_tick                                   # dépendance : re-sync post-clic
+      rv$click_tick                                   # dependance : re-sync post-clic
       locked <- isTRUE(busy()) || isTRUE(rv$running)
       for (btn in TASK_BTNS) {
         if (identical(btn, "run_frost") && !frost_ok) next
@@ -1269,8 +1269,8 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # Bump du compteur au moindre clic sur un bouton de calcul : force l'observer
-    # ci-dessus à recalculer l'état d'autorité (re-active ce que le JS a grisé si
-    # le clic n'a finalement lancé aucun calcul).
+    # ci-dessus a recalculer l'etat d'autorite (re-active ce que le JS a grise si
+    # le clic n'a finalement lance aucun calcul).
     shiny::observeEvent(
       list(input$run_engine, input$run_frost, input$auto_years,
            input$fetch_eobs_rr, input$fetch_eobs_tg, input$run,
@@ -1279,10 +1279,10 @@ mod_regeneration_server <- function(id, app_state) {
       }, ignoreInit = TRUE)
 
     # Garde serveur (la partie robuste) : le grisage client est contournable
-    # (double-clic rapide, race websocket, page rechargée avec un état périmé).
-    # En tête de chaque observeEvent de déclencheur. Ne remet PAS le task button
-    # « ready » : le laisser grisé est cohérent avec le verrou ; l'observer
-    # ci-dessus le réactive quand busy() repasse FALSE (fin de la tâche active).
+    # (double-clic rapide, race websocket, page rechargee avec un etat perime).
+    # En tete de chaque observeEvent de declencheur. Ne remet PAS le task button
+    # " ready " : le laisser grise est coherent avec le verrou ; l'observer
+    # ci-dessus le reactive quand busy() repasse FALSE (fin de la tache active).
     deny_if_busy <- function() {
       if (!isTRUE(busy())) return(FALSE)
       shiny::showNotification(i18n$t("regen_busy_already"), type = "warning", duration = 5)
@@ -1302,9 +1302,9 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      # Notif persistante « engrenage qui tourne + chrono MM:SS » (cadre unifié
-      # partagé avec les moteurs) : le téléchargement (~800 Mo, CDS) dure
-      # plusieurs minutes. Retirée en fin de tâche par l'observer de statut.
+      # Notif persistante " engrenage qui tourne + chrono MM:SS " (cadre unifie
+      # partage avec les moteurs) : le telechargement (~800 Mo, CDS) dure
+      # plusieurs minutes. Retiree en fin de tache par l'observer de statut.
       rv$eobs_rr_running <- TRUE
       rv$eobs_rr_start <- Sys.time()
       shiny::showNotification(
@@ -1313,8 +1313,8 @@ mod_regeneration_server <- function(id, app_state) {
       eobs_rr_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
     })
 
-    # Tick 1 s : rafraîchit le chrono de la notif de téléchargement `rr` (même id
-    # → Shiny remplace le contenu en place) tant que la tâche tourne.
+    # Tick 1 s : rafraichit le chrono de la notif de telechargement `rr` (meme id
+    # -> Shiny remplace le contenu en place) tant que la tache tourne.
     shiny::observe({
       if (!isTRUE(rv$eobs_rr_running)) return()
       shiny::invalidateLater(1000)
@@ -1347,7 +1347,7 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # --- Acquisition T° moyenne (tg) pour le diagramme ombrothermique --------
+    # --- Acquisition Tdeg moyenne (tg) pour le diagramme ombrothermique --------
     shiny::observeEvent(input$fetch_eobs_tg, {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
@@ -1398,14 +1398,14 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # --- Moteur « risque de gel tardif » (R7, meteoland) ------------------
+    # --- Moteur " risque de gel tardif " (R7, meteoland) ------------------
     shiny::observeEvent(input$run_frost, {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run_frost", state = "ready")
         return()
       }
-      units <- rv$result %||% units_sf()   # enrichir le résultat courant si présent
+      units <- rv$result %||% units_sf()   # enrichir le resultat courant si present
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(units) || is.null(project_path)) {
         bslib::update_task_button("run_frost", state = "ready")
@@ -1430,7 +1430,7 @@ mod_regeneration_server <- function(id, app_state) {
       frost_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
     })
 
-    # Tick 1 s : chrono de la notif « interpolation gel ».
+    # Tick 1 s : chrono de la notif " interpolation gel ".
     shiny::observe({
       if (!isTRUE(rv$frost_running)) return()
       shiny::invalidateLater(1000)
@@ -1453,8 +1453,8 @@ mod_regeneration_server <- function(id, app_state) {
           rv$result <- res$units
           app_state$regeneration_result <- res$units
           if (identical(res$r7_status, "calculated")) {
-            # Bilan persistant sous le bouton (retour UX) : médiane/étendue des
-            # jours de gel tardif par UGF, ou « aucun gel détecté » si tout est nul.
+            # Bilan persistant sous le bouton (retour UX) : mediane/etendue des
+            # jours de gel tardif par UGF, ou " aucun gel detecte " si tout est nul.
             vals <- suppressWarnings(as.numeric(res$units$r7_gel_days))
             vals <- vals[is.finite(vals)]
             rv$frost_summary <- if (length(vals) && max(vals) > 0) {
@@ -1468,7 +1468,7 @@ mod_regeneration_server <- function(id, app_state) {
             shiny::showNotification(i18n$t("regen_frost_done"), type = "message", duration = 6)
           } else {
             # Tmin indisponible (meteoland/SAFRAN KO, < N stations) : R7 skip,
-            # jamais un crash — l'utilisateur sait pourquoi le radar n'a pas R7.
+            # jamais un crash - l'utilisateur sait pourquoi le radar n'a pas R7.
             rv$frost_summary <- list(status = "skipped")
             shiny::showNotification(i18n$t("regen_frost_skipped"), type = "warning", duration = 10)
           }
@@ -1482,43 +1482,43 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # Bilan persistant du dernier calcul gel, sous le bouton « Risque de gel »
-    # (retour UX). Le cas « aucun gel » est le plus important — un run réussi
-    # sans gélée tardive semblait sinon n'avoir rien produit. Rien tant qu'aucun
-    # calcul n'a été lancé, ni pendant le run (la notif bas-droite suffit).
+    # Bilan persistant du dernier calcul gel, sous le bouton " Risque de gel "
+    # (retour UX). Le cas " aucun gel " est le plus important - un run reussi
+    # sans gelee tardive semblait sinon n'avoir rien produit. Rien tant qu'aucun
+    # calcul n'a ete lance, ni pendant le run (la notif bas-droite suffit).
     output$frost_status <- shiny::renderUI({
       if (isTRUE(rv$frost_running)) return(NULL)
       s <- rv$frost_summary
       if (is.null(s)) return(NULL)
-      line <- function(cls, icon, body) htmltools::div(
+      frost_line <- function(cls, icon, body) htmltools::div(
         class = sprintf("small %s mt-1", cls),
         bsicons::bs_icon(icon, class = "me-1"), body)
       switch(s$status %||% "",
-        "none" = line("text-success", "check-circle", i18n$t("regen_frost_none_detected")),
+        "none" = frost_line("text-success", "check-circle", i18n$t("regen_frost_none_detected")),
         "detected" = {
           st <- s$stats
           if (is.null(st)) return(NULL)
-          line("text-warning", "thermometer-snow",
+          frost_line("text-warning", "thermometer-snow",
                sprintf(i18n$t("regen_frost_detected_stats"),
                        st$median, st$min, st$max, st$n))
         },
-        "skipped" = line("text-muted", "dash-circle", i18n$t("regen_frost_skipped")),
+        "skipped" = frost_line("text-muted", "dash-circle", i18n$t("regen_frost_skipped")),
         NULL)
     })
 
-    # --- Contexte régional (raster E-OBS downscalé) ----------------------
-    # Calcul lazy quand l'onglet reGénération est actif et que la série tx est là.
-    # Fast-path cache (.tif + meta.json) → rendu instantané ; sinon worker async
+    # --- Contexte regional (raster E-OBS downscale) ----------------------
+    # Calcul lazy quand l'onglet reGeneration est actif et que la serie tx est la.
+    # Fast-path cache (.tif + meta.json) -> rendu instantane ; sinon worker async
     # (~4 s WMS + krigeage). Une seule tentative par projet (rv$context_raster).
-    # Déclenché aussi par le SÉLECTEUR de vue (tx / rr / bivariate) : chaque vue a
+    # Declenche aussi par le SELECTEUR de vue (tx / rr / bivariate) : chaque vue a
     # son propre raster + cache. Cache-first, sinon worker async. Bandeau
-    # need_tx / need_rr si une série requise manque.
+    # need_tx / need_rr si une serie requise manque.
     shiny::observeEvent(
       list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view), {
       if (!identical(app_state$active_main_tab, "regeneration")) return()
       if (isTRUE(rv$context_running)) return()
       view <- input$context_view %||% "tx"
-      # Déjà chargé pour CETTE vue → ne rien refaire.
+      # Deja charge pour CETTE vue -> ne rien refaire.
       if (identical(rv$context_loaded_view, view) &&
           (!is.null(rv$context_raster) ||
            (!is.null(rv$context_meta) && !identical(rv$context_meta$status, "ok")))) return()
@@ -1545,11 +1545,11 @@ mod_regeneration_server <- function(id, app_state) {
                           .dev_pkg_path, get_app_options())
     }, ignoreNULL = FALSE)
 
-    # Recalcul forcé du contexte : purge le cache disque (.tif + meta) des 3 vues
-    # — sinon l'observer lazy relit un raster périmé — puis re-déclenche le calcul
-    # de la vue courante. Les autres vues se recalculeront à leur prochaine
-    # sélection (cache absent). Indispensable après un changement cœur (classement
-    # bivarié, bornes) qui rend un raster caché incorrect.
+    # Recalcul force du contexte : purge le cache disque (.tif + meta) des 3 vues
+    # - sinon l'observer lazy relit un raster perime - puis re-declenche le calcul
+    # de la vue courante. Les autres vues se recalculeront a leur prochaine
+    # selection (cache absent). Indispensable apres un changement coeur (classement
+    # bivarie, bornes) qui rend un raster cache incorrect.
     shiny::observeEvent(input$recompute_context, {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) return()
@@ -1563,11 +1563,11 @@ mod_regeneration_server <- function(id, app_state) {
         unlink(c(p$tif, p$meta))
       }
       rv$context_raster <- NULL; rv$context_meta <- NULL; rv$context_loaded_view <- NULL
-      rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-déclenche l'observer lazy
+      rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-declenche l'observer lazy
       shiny::showNotification(i18n$t("regen_context_recomputing"), type = "message", duration = 4)
     })
 
-    # Tick 1 s : chrono de la notif « contexte régional ».
+    # Tick 1 s : chrono de la notif " contexte regional ".
     shiny::observe({
       if (!isTRUE(rv$context_running)) return()
       shiny::invalidateLater(1000)
@@ -1595,9 +1595,9 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # Invalidation manuelle du cache PAI (§3 brief pai-cache) : supprime
-    # cache/regeneration/pai.tif → le prochain run recalcule la structure de
-    # végétation depuis le nuage LiDAR. Sans effet si le fichier n'existe pas.
+    # Invalidation manuelle du cache PAI (sect.3 brief pai-cache) : supprime
+    # cache/regeneration/pai.tif -> le prochain run recalcule la structure de
+    # vegetation depuis le nuage LiDAR. Sans effet si le fichier n'existe pas.
     shiny::observeEvent(input$recompute_pai, {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) return()
@@ -1636,29 +1636,29 @@ mod_regeneration_server <- function(id, app_state) {
         year_canicule = na_null(input$year_canicule),
         forest_type = input$forest_type %||% "feuillu",
         forcing = forcing,
-        # ewm NULL => SoilGrids par UGF ; valeur saisie => sol uniforme forcé.
+        # ewm NULL => SoilGrids par UGF ; valeur saisie => sol uniforme force.
         ewm = na_null(input$ewm),
         rooting_depth_cm = na_null(input$rooting_depth_cm),
         lai_max = na_null(input$lai_max),
         budburst = na_null(input$budburst),
         leaf_fall = na_null(input$leaf_fall)
       )
-      # Supprimer un engine_status.json périmé d'un run précédent : sans ça, le
-      # poll afficherait une phase fantôme du run antérieur au démarrage.
+      # Supprimer un engine_status.json perime d'un run precedent : sans ca, le
+      # poll afficherait une phase fantome du run anterieur au demarrage.
       unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
       rv$engine_running <- TRUE
       rv$engine_start <- Sys.time()
-      # Notif persistante bas-droite (retirée en fin de tâche) — le moteur réel
-      # (LiDAR HD + ERA5 + microclimf) peut durer plusieurs minutes. Le libellé
-      # est ensuite rafraîchi phase par phase par l'observe de poll ci-dessous.
+      # Notif persistante bas-droite (retiree en fin de tache) - le moteur reel
+      # (LiDAR HD + ERA5 + microclimf) peut durer plusieurs minutes. Le libelle
+      # est ensuite rafraichi phase par phase par l'observe de poll ci-dessous.
       shiny::showNotification(i18n$t("regen_engine_running"), type = "message",
                               duration = NULL, id = session$ns("engine_notif"))
       engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
     })
 
-    # Poll (1 s) du fichier d'état écrit par le worker : rafraîchit la notif
-    # persistante bas-droite (même id → Shiny remplace le contenu en place) avec
-    # le libellé de la phase en cours + chrono. Cf. brief engine-phase-status §3.3.
+    # Poll (1 s) du fichier d'etat ecrit par le worker : rafraichit la notif
+    # persistante bas-droite (meme id -> Shiny remplace le contenu en place) avec
+    # le libelle de la phase en cours + chrono. Cf. brief engine-phase-status sect.3.3.
     shiny::observe({
       if (!isTRUE(rv$engine_running)) return()
       shiny::invalidateLater(1000)
@@ -1678,10 +1678,10 @@ mod_regeneration_server <- function(id, app_state) {
         rv$engine_start <- NULL
         shiny::removeNotification(session$ns("engine_notif"))
         .regen_cleanup_status(app_state)
-        # Le worker a écrit sensibilite.gpkg / biljou.gpkg : recharger le
-        # precomputed et relancer l'analyse normale (fast-path) pour rafraîchir
-        # carte/table. Les avertissements spécifiques du moteur (échec réel
-        # microclimf/BILJOU) sont remontés en toast.
+        # Le worker a ecrit sensibilite.gpkg / biljou.gpkg : recharger le
+        # precomputed et relancer l'analyse normale (fast-path) pour rafraichir
+        # carte/table. Les avertissements specifiques du moteur (echec reel
+        # microclimf/BILJOU) sont remontes en toast.
         eng <- tryCatch(engine_task$result(), error = function(e) NULL)
         project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
         units <- units_sf()
@@ -1699,16 +1699,16 @@ mod_regeneration_server <- function(id, app_state) {
           res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
                           error = function(e) NULL)
           if (!is.null(res)) {
-            # Reporter R7 (gel) du résultat précédent (brief 035 §8) : le re-run
-            # fast-path post-moteur n'a pas de tmin → sans report, il vidait la
-            # couche gel calculée avant le moteur.
+            # Reporter R7 (gel) du resultat precedent (brief 035 sect.8) : le re-run
+            # fast-path post-moteur n'a pas de tmin -> sans report, il vidait la
+            # couche gel calculee avant le moteur.
             carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
             rv$result <- carried
             rv$years <- res$years
             app_state$regeneration_result <- carried
           }
         }
-        # Provenance rapportée par le moteur (fiable : survit au cache gpkg qui
+        # Provenance rapportee par le moteur (fiable : survit au cache gpkg qui
         # perdrait l'attribut lai_source lu par detect_ndp).
         rv$canopy_source <- eng$canopy %||% NA_character_
         rv$lai_source <- eng$lai_source %||% NA_character_
@@ -1716,18 +1716,18 @@ mod_regeneration_server <- function(id, app_state) {
         rv$ewm <- eng$ewm
         rv$ewm_source <- eng$ewm_source %||% NA_character_
 
-        # B3.b — CUMULER, ne pas écraser. `res$warnings` sont ceux du re-run
-        # fast-path (un ensemble sans rapport) ; les écrire seuls effaçait les
+        # B3.b - CUMULER, ne pas ecraser. `res$warnings` sont ceux du re-run
+        # fast-path (un ensemble sans rapport) ; les ecrire seuls effacait les
         # diagnostics du moteur, qui ne survivaient alors que dans un toast de 10 s.
         eng_warns <- eng$warnings %||% character(0)
         log <- .regen_read_log(project_path)
         rv$engine_log <- log
-        .regen_relay_log(log)                            # B3.c — console du process principal
+        .regen_relay_log(log)                            # B3.c - console du process principal
         rv$warnings <- unique(c(res$warnings %||% character(0), eng_warns))
 
         if (length(eng_warns)) {
           shiny::showNotification(
-            htmltools::tags$span(paste(eng_warns, collapse = " — ")),
+            htmltools::tags$span(paste(eng_warns, collapse = " \u2014 ")),
             type = "warning", duration = 10)
         }
         shiny::showNotification(i18n$t("regen_engine_done"), type = "message", duration = 6)
@@ -1739,9 +1739,9 @@ mod_regeneration_server <- function(id, app_state) {
         project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
         err <- tryCatch(engine_task$result(), error = function(e) conditionMessage(e))
 
-        # B3.b — le worker est mort (OOM, kill) : `engine_task$result()` lève et
-        # `eng` n'existe pas. Les avertissements accumulés avant la mort ne sont
-        # récupérables que par le journal disque.
+        # B3.b - le worker est mort (OOM, kill) : `engine_task$result()` leve et
+        # `eng` n'existe pas. Les avertissements accumules avant la mort ne sont
+        # recuperables que par le journal disque.
         log <- .regen_read_log(project_path)
         rv$engine_log <- log
         .regen_relay_log(log)
@@ -1771,8 +1771,8 @@ mod_regeneration_server <- function(id, app_state) {
         return(htmltools::div(class = "small text-muted mt-1",
           bsicons::bs_icon("info-circle", class = "me-1"), i18n$t("regen_engine_prereq_core")))
       }
-      # Une ligne par moteur : prêt (vert) ou prérequis manquant (gris).
-      line <- function(ready, ok_key, ko_key) {
+      # Une ligne par moteur : pret (vert) ou prerequis manquant (gris).
+      engine_line <- function(ready, ok_key, ko_key) {
         if (isTRUE(ready)) {
           htmltools::div(class = "small text-success",
             bsicons::bs_icon("check-circle", class = "me-1"), i18n$t(ok_key))
@@ -1782,13 +1782,13 @@ mod_regeneration_server <- function(id, app_state) {
         }
       }
       htmltools::div(class = "mt-1",
-        line(pre$microclimf, "regen_engine_ready_micro", "regen_engine_status_micro"),
-        line(pre$biljou, "regen_engine_ready_biljou", "regen_engine_status_biljou_era5"))
+        engine_line(pre$microclimf, "regen_engine_ready_micro", "regen_engine_status_micro"),
+        engine_line(pre$biljou, "regen_engine_ready_biljou", "regen_engine_status_biljou_era5"))
     })
 
-    # Badge de provenance canopée (spec 033 D5). Priorité à la source rapportée
+    # Badge de provenance canopee (spec 033 D5). Priorite a la source rapportee
     # par le moteur (rv$canopy_source) ; sinon lecture de detect_ndp() sur le
-    # résultat. Rien affiché tant qu'aucune canopée n'est utilisée.
+    # resultat. Rien affiche tant qu'aucune canopee n'est utilisee.
     output$canopy_provenance <- shiny::renderUI({
       src <- rv$canopy_source
       if (is.null(src) || is.na(src)) {
@@ -1801,16 +1801,16 @@ mod_regeneration_server <- function(id, app_state) {
             bsicons::bs_icon("badge-sd", class = "me-1"), i18n$t("regen_canopee_satellite")),
           i18n$t("regen_canopee_satellite_info"), placement = "right")
       } else {
-        # Canopée LiDAR HD : le PAI structural a été dérivé du nuage et mis en
+        # Canopee LiDAR HD : le PAI structural a ete derive du nuage et mis en
         # cache (cache/regeneration/pai.tif). On expose ici l'invalidation manuelle
-        # du cache — pertinente seulement dans ce cas (le repli satellite n'écrit
-        # pas de pai.tif). Le lien n'apparaît donc qu'après un run LiDAR réussi.
+        # du cache - pertinente seulement dans ce cas (le repli satellite n'ecrit
+        # pas de pai.tif). Le lien n'apparait donc qu'apres un run LiDAR reussi.
         htmltools::tagList(
           htmltools::tags$span(class = "badge text-bg-success mt-2 d-inline-block",
             bsicons::bs_icon("badge-hd", class = "me-1"), i18n$t("regen_canopee_lidar")),
           # Le PAI structural alimente aussi le lai_max de BILJOU (spec 035 B1.a) :
-          # le dire, sinon rien ne distingue ce run de l'ancien, où le bilan
-          # hydrique retombait sur le défaut cœur par type de peuplement.
+          # le dire, sinon rien ne distingue ce run de l'ancien, ou le bilan
+          # hydrique retombait sur le defaut coeur par type de peuplement.
           if (identical(rv$lai_source, "pai_lidar"))
             htmltools::tags$small(class = "text-muted d-block mt-1",
               bsicons::bs_icon("droplet-half", class = "me-1"),
@@ -1823,29 +1823,29 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    # Valeurs dérivées (spec 035 B4.a) : ce que le moteur a RÉELLEMENT utilisé.
-    # Sans ça, rien à l'écran ne distingue un lai_max par UGF d'un scalaire, et le
-    # repli SoilGrids → sol uniforme reste invisible.
+    # Valeurs derivees (spec 035 B4.a) : ce que le moteur a REELLEMENT utilise.
+    # Sans ca, rien a l'ecran ne distingue un lai_max par UGF d'un scalaire, et le
+    # repli SoilGrids -> sol uniforme reste invisible.
     output$derived_stats <- shiny::renderUI({
       na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
       forced_badge <- htmltools::tags$span(
         class = "badge text-bg-warning ms-1", i18n$t("regen_override_badge"))
-      line <- function(icon, body) htmltools::tags$div(
+      note_line <- function(icon, body) htmltools::tags$div(
         class = "small text-muted mt-1", bsicons::bs_icon(icon, class = "me-1"), body)
 
       lai <- if (!is.null(na_null(input$lai_max))) {
-        line("sliders", htmltools::tagList(i18n$t("regen_lai_max"), forced_badge))
+        note_line("sliders", htmltools::tagList(i18n$t("regen_lai_max"), forced_badge))
       } else {
         st <- .regen_derived_stats(rv$lai_max)
         if (!is.null(st))
-          line("bounding-box", sprintf(i18n$t("regen_lai_derived_stats"),
+          note_line("bounding-box", sprintf(i18n$t("regen_lai_derived_stats"),
                                        st$median, st$min, st$max, st$n))
       }
 
       ewm <- if (!is.null(na_null(input$ewm))) {
-        line("sliders", htmltools::tagList(i18n$t("regen_ewm"), forced_badge))
+        note_line("sliders", htmltools::tagList(i18n$t("regen_ewm"), forced_badge))
       } else if (identical(rv$ewm_source, "soilgrids_fallback")) {
-        # Le seul endroit où le repli silencieux devient visible sans lire le journal.
+        # Le seul endroit ou le repli silencieux devient visible sans lire le journal.
         htmltools::tags$div(class = "small text-warning mt-1",
           bsicons::bs_icon("exclamation-triangle-fill", class = "me-1"),
           sprintf(i18n$t("regen_ewm_fallback_uniform"),
@@ -1853,7 +1853,7 @@ mod_regeneration_server <- function(id, app_state) {
       } else {
         st <- .regen_derived_stats(rv$ewm, digits = 0)
         if (!is.null(st))
-          line("layers", sprintf(i18n$t("regen_ewm_derived_stats"),
+          note_line("layers", sprintf(i18n$t("regen_ewm_derived_stats"),
                                  st$median, st$min, st$max, st$n))
       }
 
@@ -1861,8 +1861,8 @@ mod_regeneration_server <- function(id, app_state) {
       htmltools::tagList(lai, ewm)
     })
 
-    # Journal du moteur (B3.e) : `<details>` replié, horodatage + niveau + source.
-    # Rendu dès qu'une entrée existe — y compris après un worker mort, où c'est
+    # Journal du moteur (B3.e) : `<details>` replie, horodatage + niveau + source.
+    # Rendu des qu'une entree existe - y compris apres un worker mort, ou c'est
     # la seule trace des diagnostics.
     output$engine_log <- shiny::renderUI({
       log <- rv$engine_log
@@ -1894,9 +1894,9 @@ mod_regeneration_server <- function(id, app_state) {
           htmltools::tags$ul(class = "mb-0",
             lapply(rv$warnings, function(w) htmltools::tags$li(w))))
       }
-      # Sans résultat, on affiche quand même les avertissements : un moteur qui
-      # meurt (OOM) ne produit AUCUN résultat, et c'est précisément là qu'il faut
-      # voir pourquoi. Auparavant le `return()` précoce les masquait.
+      # Sans resultat, on affiche quand meme les avertissements : un moteur qui
+      # meurt (OOM) ne produit AUCUN resultat, et c'est precisement la qu'il faut
+      # voir pourquoi. Auparavant le `return()` precoce les masquait.
       if (is.null(rv$result)) {
         return(htmltools::div(
           htmltools::div(class = "text-muted small fst-italic mb-2",
@@ -1910,9 +1910,9 @@ mod_regeneration_server <- function(id, app_state) {
       )
     })
 
-    # Base map — STABLE widget (parité cartes FORDEAD/FAST) : fonds OSM/Satellite
-    # + contrôle de couches natif (boîtier coin haut-droit). Ne dépend que du
-    # cadrage ; les polygones colorés (groupe « UGF ») sont (re)dessinés par
+    # Base map - STABLE widget (parite cartes FORDEAD/FAST) : fonds OSM/Satellite
+    # + controle de couches natif (boitier coin haut-droit). Ne depend que du
+    # cadrage ; les polygones colores (groupe " UGF ") sont (re)dessines par
     # l'observer leafletProxy ci-dessous selon la couche choisie dans la sidebar.
     output$map <- leaflet::renderLeaflet({
       units <- units_sf()
@@ -1924,8 +1924,8 @@ mod_regeneration_server <- function(id, app_state) {
           overlayGroups = "UGF",
           options       = leaflet::layersControlOptions(collapsed = TRUE))
       if (!is.null(units)) {
-        # Contour UGF de base, visible immédiatement (avant toute analyse).
-        # L'observer proxy le remplace par le choroplèthe dès qu'un résultat existe.
+        # Contour UGF de base, visible immediatement (avant toute analyse).
+        # L'observer proxy le remplace par le choroplethe des qu'un resultat existe.
         geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
         m <- leaflet::addPolygons(m, data = geo, group = "UGF", weight = 1,
           layerId = if ("ug_id" %in% names(geo)) geo$ug_id else NULL,
@@ -1938,9 +1938,9 @@ mod_regeneration_server <- function(id, app_state) {
       m
     })
 
-    # Data layer via proxy — swap the choropleth + legend without recreating the
-    # widget (préserve le LayersControl et le zoom). Réagit au résultat et au
-    # radio « Couche affichée » de la sidebar.
+    # Data layer via proxy - swap the choropleth + legend without recreating the
+    # widget (preserve le LayersControl et le zoom). Reagit au resultat et au
+    # radio " Couche affichee " de la sidebar.
     shiny::observe({
       res <- rv$result
       units <- units_sf()
@@ -1948,8 +1948,8 @@ mod_regeneration_server <- function(id, app_state) {
       proxy <- leaflet::leafletProxy("map")
       leaflet::clearGroup(proxy, "UGF")
       leaflet::removeControl(proxy, "regen_legend")
-      # Pas (encore) de résultat exploitable → garder le contour UGF de base
-      # visible plutôt qu'une carte vide.
+      # Pas (encore) de resultat exploitable -> garder le contour UGF de base
+      # visible plutot qu'une carte vide.
       if (is.null(res) || !col %in% names(res)) {
         if (!is.null(units)) {
           geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
@@ -1969,7 +1969,7 @@ mod_regeneration_server <- function(id, app_state) {
         return()
       }
       # reverse = TRUE : pour les 4 couches, une valeur HAUTE est toujours
-      # défavorable (plus vulnérable, plus de jours de stress, canopée moins
+      # defavorable (plus vulnerable, plus de jours de stress, canopee moins
       # tamponnante). Sans inversion, RdYlGn peindrait les UG les plus critiques
       # en vert. Rouge = critique, vert = favorable.
       pal <- leaflet::colorNumeric("RdYlGn", domain = vals, na.color = "#cccccc",
@@ -1986,17 +1986,17 @@ mod_regeneration_server <- function(id, app_state) {
                    "priorite"))))
     })
 
-    # --- Sélection croisée carte <-> tableau (pattern « Plan d'actions ») -----
-    # `selected_ug_rv` (vecteur d'ug_id) est l'UNIQUE source de vérité de la
-    # sélection. Un clic carte et une sélection de lignes la mettent à jour ;
-    # l'overlay bleu et la/les fiche(s) parcelle en découlent. `reactiveVal`
-    # dédoublonne par identical(), donc le round-trip (carte -> rv -> table ->
+    # --- Selection croisee carte <-> tableau (pattern " Plan d'actions ") -----
+    # `selected_ug_rv` (vecteur d'ug_id) est l'UNIQUE source de verite de la
+    # selection. Un clic carte et une selection de lignes la mettent a jour ;
+    # l'overlay bleu et la/les fiche(s) parcelle en decoulent. `reactiveVal`
+    # dedoublonne par identical(), donc le round-trip (carte -> rv -> table ->
     # retour) ne boucle pas.
     selected_ug_rv <- shiny::reactiveVal(character())
 
-    # Classement top-3 des essences de régénération par UGF (spec 039, cœur
-    # `regen_rank_species` >= 0.162.0). Calculé une fois par résultat ; la fiche
-    # parcelle le filtre par UGF sélectionnée. Déterministe (tolérances écologiques
+    # Classement top-3 des essences de regeneration par UGF (spec 039, coeur
+    # `regen_rank_species` >= 0.162.0). Calcule une fois par resultat ; la fiche
+    # parcelle le filtre par UGF selectionnee. Deterministe (tolerances ecologiques
     # vs conditions de station), le narratif IA viendra en surcouche (P2).
     species_ranking <- shiny::reactive({
       res <- rv$result
@@ -2004,7 +2004,7 @@ mod_regeneration_server <- function(id, app_state) {
       regeneration_species_ranking(res, top_n = 3L)
     })
 
-    # --- Conseil de régénération par IA (spec 039, P2) -----------------------
+    # --- Conseil de regeneration par IA (spec 039, P2) -----------------------
     # Surcouche narrative du classement d\u00e9terministe : le LLM ne CLASSE pas, il
     # met en prose le top-3 + les conditions de station, via le profil FIG\u00c9
     # `regeneration` (comme le Plan d'actions fige `planificateur`). Panneau
@@ -2095,9 +2095,9 @@ mod_regeneration_server <- function(id, app_state) {
         }))
     })
 
-    # Source UNIQUE du tableau : mêmes lignes et même ordre pour le rendu DT, le
+    # Source UNIQUE du tableau : memes lignes et meme ordre pour le rendu DT, le
     # mapping clic->ligne et la/les fiche(s) parcelle. Le filtre couverture agit
-    # ici -> les index de lignes DT restent cohérents avec les fiches.
+    # ici -> les index de lignes DT restent coherents avec les fiches.
     regen_table_df <- shiny::reactive({
       res <- rv$result
       shiny::req(res)
@@ -2113,7 +2113,7 @@ mod_regeneration_server <- function(id, app_state) {
       df
     })
 
-    # Clic carte -> toggle l'UGF dans la sélection + surligne la/les ligne(s)
+    # Clic carte -> toggle l'UGF dans la selection + surligne la/les ligne(s)
     # correspondante(s) du tableau (DT::selectRows). L'overlay bleu et les fiches
     # suivent via `selected_ug_rv`.
     shiny::observeEvent(input$map_shape_click, {
@@ -2130,8 +2130,8 @@ mod_regeneration_server <- function(id, app_state) {
         if (length(rows) > 0L) rows else NULL)
     })
 
-    # Sélection de lignes -> met à jour la source de vérité (sens tableau ->
-    # carte). ignoreNULL = FALSE pour capter aussi la désélection totale.
+    # Selection de lignes -> met a jour la source de verite (sens tableau ->
+    # carte). ignoreNULL = FALSE pour capter aussi la deselection totale.
     shiny::observeEvent(input$table_rows_selected, {
       df <- regen_table_df()
       sel <- input$table_rows_selected
@@ -2139,15 +2139,15 @@ mod_regeneration_server <- function(id, app_state) {
       selected_ug_rv(ugs)
     }, ignoreNULL = FALSE)
 
-    # Bouton « Effacer la sélection » : vide la sélection carte + table.
+    # Bouton " Effacer la selection " : vide la selection carte + table.
     shiny::observeEvent(input$clear_selection, {
       selected_ug_rv(character())
       DT::selectRows(DT::dataTableProxy("table"), NULL)
     })
 
-    # Overlay des UGF sélectionnées (groupe « Selection » distinct du groupe
-    # « UGF » choroplèthe -> ne le recouvre pas, se met à jour seul). Même orange
-    # (#FF8C00) que le surlignage de sélection du Plan d'actions, pour la cohérence.
+    # Overlay des UGF selectionnees (groupe " Selection " distinct du groupe
+    # " UGF " choroplethe -> ne le recouvre pas, se met a jour seul). Meme orange
+    # (#FF8C00) que le surlignage de selection du Plan d'actions, pour la coherence.
     shiny::observe({
       units <- units_sf()
       sel <- selected_ug_rv()
@@ -2163,11 +2163,11 @@ mod_regeneration_server <- function(id, app_state) {
         color = "#FF8C00", weight = 4, fill = FALSE, opacity = 0.95)
     })
 
-    # Bandeau du contexte régional (raster). La série requise dépend de la vue :
-    # `tx` seule pour la tendance T°max, `tx` + `rr` pour les précipitations et la
-    # bivariée. Quatre cas : série absente → bandeau `need_tx` / `need_rr` ; calcul
-    # en cours → rien (la notif chrono suffit) ; dégradé → message issu de
-    # `meta$reason`. Statut « ok » → pas de bandeau (hors note de fiabilité basse).
+    # Bandeau du contexte regional (raster). La serie requise depend de la vue :
+    # `tx` seule pour la tendance Tdegmax, `tx` + `rr` pour les precipitations et la
+    # bivariee. Quatre cas : serie absente -> bandeau `need_tx` / `need_rr` ; calcul
+    # en cours -> rien (la notif chrono suffit) ; degrade -> message issu de
+    # `meta$reason`. Statut " ok " -> pas de bandeau (hors note de fiabilite basse).
     output$context_status <- shiny::renderUI({
       rv$context_refresh
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
@@ -2179,11 +2179,11 @@ mod_regeneration_server <- function(id, app_state) {
         htmltools::div(class = "flex-grow-1", msg))
       meta   <- rv$context_meta %||% list()
       status <- meta$status
-      # Série requise manquante (poussée par l'observer de déclenchement).
+      # Serie requise manquante (poussee par l'observer de declenchement).
       if (identical(status, "need_tx")) return(warn(i18n$t("regen_context_need_tx")))
       if (identical(status, "need_rr")) return(warn(i18n$t("regen_context_need_rr")))
       if (identical(status, "ok")) {
-        # OK : note de fiabilité basse (rr / bivarié), en info discrète.
+        # OK : note de fiabilite basse (rr / bivarie), en info discrete.
         if (identical(meta$reliability, "low")) {
           return(htmltools::div(class = "alert alert-info py-2 small d-flex align-items-center",
             bsicons::bs_icon("info-circle", class = "me-2"),
@@ -2191,36 +2191,36 @@ mod_regeneration_server <- function(id, app_state) {
         }
         return(NULL)
       }
-      if (is.null(status)) return(NULL)                    # pas encore évalué
-      # Dégradé : mapper meta$reason (clé i18n) ; repli générique sinon.
+      if (is.null(status)) return(NULL)                    # pas encore evalue
+      # Degrade : mapper meta$reason (cle i18n) ; repli generique sinon.
       reason <- meta$reason %||% "eobs_downscale_too_few_cells"
       warn(if (i18n$has(reason)) i18n$t(reason) else i18n$t("eobs_downscale_too_few_cells"))
     })
 
-    # Ajoute le raster de contexte + sa légende à une carte/proxy leaflet, selon
-    # la vue : univariée tx/rr (colorNumeric, sens de palette piloté par
-    # meta$palette$sense — hot_unfavorable=haut rouge, dry_unfavorable=bas rouge)
-    # ou bivariée (colorFactor 1-9 + légende 2D 3×3). Partagé rendu/proxy.
+    # Ajoute le raster de contexte + sa legende a une carte/proxy leaflet, selon
+    # la vue : univariee tx/rr (colorNumeric, sens de palette pilote par
+    # meta$palette$sense - hot_unfavorable=haut rouge, dry_unfavorable=bas rouge)
+    # ou bivariee (colorFactor 1-9 + legende 2D 3x3). Partage rendu/proxy.
     .context_add_layer <- function(m, rast, meta, op) {
       if (!inherits(rast, "SpatRaster") || !identical(meta$status, "ok")) return(m)
       pal <- meta$palette %||% list()
       opts <- leaflet::gridOptions(pane = "contexteRaster")
       if (!is.null(pal$colors)) {
-        # Bivarié : classes 1..N*N → colorFactor + légende bivariée 2D N×N. Le
-        # cœur livre 25 classes (5×5, `ncol = 5`) ; la légende suit `pal$ncol`.
+        # Bivarie : classes 1..N*N -> colorFactor + legende bivariee 2D NxN. Le
+        # coeur livre 25 classes (5x5, `ncol = 5`) ; la legende suit `pal$ncol`.
         classes <- pal$classes %||% seq_along(pal$colors)
-        # Coercition en entier : les classes bivariées SONT des entiers 1-25 ; une
-        # valeur décimale (source ou reprojection) ne matcherait aucune classe et
-        # laisserait un trou. Garde-fou complémentaire du `method = "ngb"` ci-dessous.
+        # Coercition en entier : les classes bivariees SONT des entiers 1-25 ; une
+        # valeur decimale (source ou reprojection) ne matcherait aucune classe et
+        # laisserait un trou. Garde-fou complementaire du `method = "ngb"` ci-dessous.
         rast <- terra::round(rast)
         cmap <- leaflet::colorFactor(pal$colors, domain = classes, na.color = "transparent")
-        # Axes annotés par la plage RÉELLEMENT observée sur la zone (quantiles des
-        # rasters downscalés) via `.regen_biv_axis`, avec 0 garanti dans la plage.
+        # Axes annotes par la plage REELLEMENT observee sur la zone (quantiles des
+        # rasters downscales) via `.regen_biv_axis`, avec 0 garanti dans la plage.
         zcore <- pal$zero %||% list()
         ys <- .regen_biv_axis(meta$tx, meta$breaks$tmax,   suppressWarnings(as.numeric(zcore[["tmax"]])))
         xs <- .regen_biv_axis(meta$rr, meta$breaks$precip, suppressWarnings(as.numeric(zcore[["precip"]])))
-        # Titre en deux lignes : « Tendance bivariée » + le couple de variables
-        # entre parenthèses (T°max estivale × précipitations) en sous-titre.
+        # Titre en deux lignes : " Tendance bivariee " + le couple de variables
+        # entre parentheses (Tdegmax estivale x precipitations) en sous-titre.
         raw_title <- meta$value_label %||% i18n$t("regen_context_bivariate")
         biv_title <- .regen_biv_title(raw_title)
         leg <- as.character(bivariate_legend_html(
@@ -2234,22 +2234,22 @@ mod_regeneration_server <- function(id, app_state) {
           x_range = xs$range,
           y_range = ys$range))
         # method = "ngb" (plus proche voisin) OBLIGATOIRE pour un raster
-        # CATÉGORIEL : la reprojection par défaut (bilinéaire) interpole les codes
-        # de classe entiers 1-25 en valeurs décimales (3.4, 7.2…) qui ne
-        # correspondent à aucune classe de la palette → pixels transparents (trous).
+        # CATEGORIEL : la reprojection par defaut (bilineaire) interpole les codes
+        # de classe entiers 1-25 en valeurs decimales (3.4, 7.2...) qui ne
+        # correspondent a aucune classe de la palette -> pixels transparents (trous).
         m |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
             method = "ngb", group = "Contexte E-OBS", options = opts) |>
           leaflet::addControl(html = leg, position = "bottomright", layerId = "context_legend",
             className = "nmt-bivariate-control")
       } else {
-        # Univarié : colorNumeric, sens piloté par meta$palette$sense.
+        # Univarie : colorNumeric, sens pilote par meta$palette$sense.
         lo <- pal$low; hi <- pal$high
         if (is.null(lo) || is.null(hi)) {
           vv <- suppressWarnings(range(terra::values(rast), na.rm = TRUE)); lo <- vv[1]; hi <- vv[2]
         }
         if (!is.finite(lo) || !is.finite(hi) || lo == hi) return(m)
-        rev <- !identical(pal$sense, "dry_unfavorable")   # dry_unfavorable → bas = rouge
+        rev <- !identical(pal$sense, "dry_unfavorable")   # dry_unfavorable -> bas = rouge
         cn <- leaflet::colorNumeric("RdYlBu", domain = c(lo, hi), reverse = rev,
                                     na.color = "transparent")
         m |>
@@ -2261,11 +2261,11 @@ mod_regeneration_server <- function(id, app_state) {
       }
     }
 
-    # Carte de contexte — patron FAST/FORDEAD : fond STABLE (jamais re-rendu) +
-    # `leafletProxy` pour le raster/l'opacité/la légende. Rendu de base lit raster
-    # + opacité en `isolate` → zoom + fond OSM/Satellite préservés au slider et au
-    # changement de fond ; l'observer proxy met à jour sans reconstruire. Raster
-    # dans un map-pane dédié SOUS l'emprise UGF.
+    # Carte de contexte - patron FAST/FORDEAD : fond STABLE (jamais re-rendu) +
+    # `leafletProxy` pour le raster/l'opacite/la legende. Rendu de base lit raster
+    # + opacite en `isolate` -> zoom + fond OSM/Satellite preserves au slider et au
+    # changement de fond ; l'observer proxy met a jour sans reconstruire. Raster
+    # dans un map-pane dedie SOUS l'emprise UGF.
     output$context_map <- leaflet::renderLeaflet({
       units <- units_sf()
       shiny::req(units)
@@ -2290,16 +2290,16 @@ mod_regeneration_server <- function(id, app_state) {
       m
     })
 
-    # Mise à jour RASTER + LÉGENDE via leafletProxy : réagit au raster (calcul
-    # async / changement de vue), au meta et au curseur d'opacité — sans
-    # re-render (zoom + fond préservés). Respecte la décoche du group.
+    # Mise a jour RASTER + LEGENDE via leafletProxy : reagit au raster (calcul
+    # async / changement de vue), au meta et au curseur d'opacite - sans
+    # re-render (zoom + fond preserves). Respecte la decoche du group.
     shiny::observe({
       rast <- rv$context_raster
       meta <- rv$context_meta %||% list()
       op   <- max(0, min(1, as.numeric(input$context_opacity %||% 0.8)))
-      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
-      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
-      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      # `isolate()` : leaflet renvoie cet input a chaque ajout/retrait de
+      # groupe, et cet observe en ajoute - une lecture reactive le rendrait
+      # auto-declenchant (peintures multiples). Cf. mod_accessibility.
       shown <- shiny::isolate(input$context_map_groups)
       proxy <- leaflet::leafletProxy("context_map") |>
         leaflet::clearGroup("Contexte E-OBS") |>
@@ -2312,23 +2312,23 @@ mod_regeneration_server <- function(id, app_state) {
 
     # --- Graphiques au clic sur la maille E-OBS (spec 036) -------------------
     # Le clic leaflet (input$context_map_click, lng/lat 4326) ouvre un panneau de
-    # 4 graphes rendant la donnée SOUS la couleur, à la maille cliquée. Toute la
-    # donnée vient des accesseurs cœur (eobs_summer_series / eobs_trend_fit /
-    # eobs_monthly_climatology) ; l'app ne fait que clic → point → tracé.
+    # 4 graphes rendant la donnee SOUS la couleur, a la maille cliquee. Toute la
+    # donnee vient des accesseurs coeur (eobs_summer_series / eobs_trend_fit /
+    # eobs_monthly_climatology) ; l'app ne fait que clic -> point -> trace.
     #
-    # Cache de session des stacks estivaux (une couche/an, résolution E-OBS
-    # native ~11 km — cf. §7 honnêteté spatiale) : le 1er clic lit le .nc caché,
-    # les suivants sont instantanés. Clé = projet + buffer + variable.
+    # Cache de session des stacks estivaux (une couche/an, resolution E-OBS
+    # native ~11 km - cf. sect.7 honnetete spatiale) : le 1er clic lit le .nc cache,
+    # les suivants sont instantanes. Cle = projet + buffer + variable.
     summer_stacks <- new.env(parent = emptyenv())
     .load_summer_stack <- function(units, project_path, var, buffer_m) {
       key <- paste(project_path %||% "-", buffer_m, var, sep = "|")
       if (!is.null(summer_stacks[[key]])) return(summer_stacks[[key]]$stk)
       stk <- .regen_load_eobs_buffered(units, project_path, var, buffer_m)
-      summer_stacks[[key]] <- list(stk = stk)   # mémoïse même NULL (évite de re-tenter)
+      summer_stacks[[key]] <- list(stk = stk)   # memoise meme NULL (evite de re-tenter)
       stk
     }
 
-    # Extrait la série estivale au point + son ajustement de tendance pour une
+    # Extrait la serie estivale au point + son ajustement de tendance pour une
     # variable ; renvoie NULL si le stack est absent. `pt` = c(lng, lat) en 4326.
     .ctx_series_entry <- function(units, project_path, var, pt, buffer_m) {
       stk <- .load_summer_stack(units, project_path, var, buffer_m)
@@ -2342,9 +2342,9 @@ mod_regeneration_server <- function(id, app_state) {
         sense = if (var == "tx") "hot_red" else "dry_red")
     }
 
-    # Entrée de distribution pour une variable : lit le raster de pente caché
-    # (`context_<var>.tif`) + extrait la pente au point cliqué. Renvoie NULL si le
-    # raster de pente n'a pas (encore) été calculé pour cette variable.
+    # Entree de distribution pour une variable : lit le raster de pente cache
+    # (`context_<var>.tif`) + extrait la pente au point clique. Renvoie NULL si le
+    # raster de pente n'a pas (encore) ete calcule pour cette variable.
     .ctx_distrib_entry <- function(var, ev, project_path) {
       cached <- regeneration_context_cached(project_path, var)
       rast <- cached$raster
@@ -2360,8 +2360,8 @@ mod_regeneration_server <- function(id, app_state) {
         unit  = i18n$t(if (var == "tx") "regen_ctx_unit_tx" else "regen_ctx_unit_rr"))
     }
 
-    # Garde anti-multi-clics (parité FAST/FORDEAD) : ignore tout nouveau clic tant
-    # que le graphique précédent n'a pas fini de se calculer.
+    # Garde anti-multi-clics (parite FAST/FORDEAD) : ignore tout nouveau clic tant
+    # que le graphique precedent n'a pas fini de se calculer.
     ctx_computing <- shiny::reactiveVal(FALSE)
 
     shiny::observeEvent(input$context_map_click, {
@@ -2374,18 +2374,18 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      pt   <- c(ev$lng, ev$lat)                 # EPSG:4326, accepté tel quel
+      pt   <- c(ev$lng, ev$lat)                 # EPSG:4326, accepte tel quel
       buf  <- (input$buffer_km %||% 25) * 1000
       view <- rv$context_loaded_view %||% input$context_view %||% "tx"
 
       notif_id <- session$ns("ctx_computing")
       ctx_computing(TRUE)
-      # Message « Calcul du graphique en cours… » affiché TOUT DE SUITE.
+      # Message " Calcul du graphique en cours... " affiche TOUT DE SUITE.
       shiny::showNotification(i18n$t("regen_ctx_computing"),
         id = notif_id, type = "message", duration = NULL)
 
-      # Calcul APRÈS le flush courant (`onFlushed`) : la notification part au
-      # client AVANT l'extraction synchrone (série/climatologie, quelques
+      # Calcul APRES le flush courant (`onFlushed`) : la notification part au
+      # client AVANT l'extraction synchrone (serie/climatologie, quelques
       # secondes) ; le flag `ctx_computing` bloque les clics entre-temps.
       session$onFlushed(function() {
         on.exit({
@@ -2393,20 +2393,20 @@ mod_regeneration_server <- function(id, app_state) {
           shiny::isolate(ctx_computing(FALSE))
         }, add = TRUE)
 
-        # Graphes 1-2 : série(s) + tendance(s). Vue tx/rr → variable de la vue ;
-        # bivariée → les DEUX (le sens du croisement).
+        # Graphes 1-2 : serie(s) + tendance(s). Vue tx/rr -> variable de la vue ;
+        # bivariee -> les DEUX (le sens du croisement).
         vars <- switch(view, tx = "tx", rr = "rr", bivariate = c("tx", "rr"), "tx")
         entries <- Filter(Negate(is.null),
           lapply(vars, function(v) .ctx_series_entry(units, project_path, v, pt, buf)))
 
         # Graphe 3 : distribution des pentes du buffer + pente de la maille. Une
-        # entrée par variable de la vue (bivariée → tx ET rr). Le raster de pente
-        # est relu depuis le cache `context_<var>.tif` (la bivariée porte des
-        # classes 1-25, donc on lit les rasters univariés sous-jacents).
+        # entree par variable de la vue (bivariee -> tx ET rr). Le raster de pente
+        # est relu depuis le cache `context_<var>.tif` (la bivariee porte des
+        # classes 1-25, donc on lit les rasters univaries sous-jacents).
         distrib_entries <- Filter(Negate(is.null),
           lapply(vars, function(v) .ctx_distrib_entry(v, ev, project_path)))
 
-        # Graphe 4 : climatologie mensuelle. tg si acquise (honnête), sinon repli tx.
+        # Graphe 4 : climatologie mensuelle. tg si acquise (honnete), sinon repli tx.
         nc_tg <- regen_eobs_cached_nc(project_path, "tg")
         nc_t  <- nc_tg %||% regen_eobs_cached_nc(project_path, "tx")
         temp_is_tg <- !is.null(nc_tg)
@@ -2420,11 +2420,11 @@ mod_regeneration_server <- function(id, app_state) {
           distrib = distrib_entries, clim_t = clim_t, clim_rr = clim_rr,
           temp_is_tg = temp_is_tg, has_temp = !is.null(nc_t)))
 
-        # Bouton « plein écran » ancré en HAUT À DROITE du titre (même patron que
+        # Bouton " plein ecran " ancre en HAUT A DROITE du titre (meme patron que
         # FAST/FORDEAD, mod_monitoring_pixel_map) : un JS bascule la classe BS5
         # `.modal-fullscreen` sur la `.modal-dialog` + dispatch `resize` (plotly
-        # responsive n'écoute que window.resize). Le wrapper flex + la règle CSS
-        # `.modal-fullscreen` font grandir le graphe à la taille de l'écran.
+        # responsive n'ecoute que window.resize). Le wrapper flex + la regle CSS
+        # `.modal-fullscreen` font grandir le graphe a la taille de l'ecran.
         shiny::showModal(shiny::modalDialog(
           title = htmltools::tagList(
             htmltools::span(sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng)),
@@ -2453,7 +2453,7 @@ mod_regeneration_server <- function(id, app_state) {
       }, once = TRUE)
     })
 
-    # Graphe 1 — série(s) + tendance(s). Bivariée → deux panneaux côte à côte.
+    # Graphe 1 - serie(s) + tendance(s). Bivariee -> deux panneaux cote a cote.
     output$ctx_g1 <- plotly::renderPlotly({
       cs <- rv$click_series
       if (is.null(cs) || !length(cs$entries)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_out_of_coverage")))
@@ -2462,7 +2462,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
     })
 
-    # Graphe 2 — anomalies annuelles. Bivariée → deux panneaux.
+    # Graphe 2 - anomalies annuelles. Bivariee -> deux panneaux.
     output$ctx_g2 <- plotly::renderPlotly({
       cs <- rv$click_series
       if (is.null(cs) || !length(cs$entries)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_out_of_coverage")))
@@ -2471,8 +2471,8 @@ mod_regeneration_server <- function(id, app_state) {
       if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
     })
 
-    # Graphe 3 — distribution régionale des pentes + maille cliquée. Bivariée →
-    # deux panneaux (tx et rr) côte à côte.
+    # Graphe 3 - distribution regionale des pentes + maille cliquee. Bivariee ->
+    # deux panneaux (tx et rr) cote a cote.
     output$ctx_g3 <- plotly::renderPlotly({
       cs <- rv$click_series
       d <- cs$distrib
@@ -2482,8 +2482,8 @@ mod_regeneration_server <- function(id, app_state) {
       if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
     })
 
-    # Graphe 4 — diagramme ombrothermique (Gaussen). Sans température acquise :
-    # panneau d'invite à télécharger la série (bouton tg dans la sidebar).
+    # Graphe 4 - diagramme ombrothermique (Gaussen). Sans temperature acquise :
+    # panneau d'invite a telecharger la serie (bouton tg dans la sidebar).
     output$ctx_g4 <- plotly::renderPlotly({
       cs <- rv$click_series
       if (is.null(cs) || !isTRUE(cs$has_temp)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_ombro_need_temp")))
@@ -2496,7 +2496,7 @@ mod_regeneration_server <- function(id, app_state) {
       DT::datatable(df, rownames = FALSE,
         selection = list(mode = "multiple", target = "row"),
         options = list(pageLength = 15, scrollX = TRUE,
-          # Localisation des libellés DT (boîte de recherche, pagination...)
+          # Localisation des libelles DT (boite de recherche, pagination...)
           language = if (identical(i18n$language, "fr")) {
             list(
               search = "Rechercher :",
@@ -2578,9 +2578,9 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
 
-    # Fiche(s) parcelle : une par UGF sélectionnée (multi-sélection). Les lignes
-    # viennent de la MÊME `regen_table_df()` que le tableau, l'ordre suit la
-    # sélection courante (`selected_ug_rv`, alimentée carte + table).
+    # Fiche(s) parcelle : une par UGF selectionnee (multi-selection). Les lignes
+    # viennent de la MEME `regen_table_df()` que le tableau, l'ordre suit la
+    # selection courante (`selected_ug_rv`, alimentee carte + table).
     output$parcel_sheet <- shiny::renderUI({
       df <- tryCatch(regen_table_df(), error = function(e) NULL)
       if (is.null(df)) return(htmltools::div(class = "text-muted fst-italic",
@@ -2591,13 +2591,13 @@ mod_regeneration_server <- function(id, app_state) {
       }
       fields <- c("indice_priorite_regen", "sensibilite", "njstress",
         "istress", "deb_stress", "rew_min", "d_tmax", "d_vpd", "couverture_pct")
-      # Classement top-3 des essences (spec 039) : calculé une fois, filtré par UGF.
+      # Classement top-3 des essences (spec 039) : calcule une fois, filtre par UGF.
       rk <- tryCatch(species_ranking(), error = function(e) NULL)
       one_sheet <- function(row) {
         fs <- intersect(fields, names(row))
         ug <- if ("ug_id" %in% names(row)) as.character(row$ug_id) else ""
-        # Zone de commentaire éditable par UGF (persistée). Lecture ISOLÉE pour
-        # ne pas re-rendre la fiche à chaque frappe (sinon le curseur saute) ;
+        # Zone de commentaire editable par UGF (persistee). Lecture ISOLEE pour
+        # ne pas re-rendre la fiche a chaque frappe (sinon le curseur saute) ;
         # le bouton d'insertion IA passe par updateTextAreaInput (pas de re-render).
         key <- .regen_comment_key(ug)
         comment_zone <- htmltools::div(class = "mt-1 mb-3",
@@ -2625,7 +2625,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (length(rows) == 0L) {
         return(htmltools::div(class = "text-muted fst-italic", i18n$t("regen_select_ug")))
       }
-      # Bouton unique : insère le dernier conseil IA dans TOUTES les UGF sélectionnées.
+      # Bouton unique : insere le dernier conseil IA dans TOUTES les UGF selectionnees.
       insert_btn <- htmltools::div(class = "mb-2",
         shiny::actionButton(ns("regen_comment_insert_ai"),
           i18n$t("regen_comment_insert_ai"),
@@ -2637,13 +2637,13 @@ mod_regeneration_server <- function(id, app_state) {
             one_sheet(df[i, , drop = FALSE])))))
     })
 
-    # --- Export GPKG (§7) -------------------------------------------------
+    # --- Export GPKG (sect.7) -------------------------------------------------
     # --- Envoyer vers Terrain : centro\u00efdes des UGF (s\u00e9lection ou toutes) vers la
     # couche \u00ab regeneration \u00bb du samples.gpkg (parit\u00e9 Plan d'actions). Rafra\u00eechit
     # mod_sampling via app_state$samples_refresh.
     shiny::observeEvent(input$export_terrain, {
-      # Le toast bas-droite est affiché client-side (onclick) ; on le masque à la
-      # fin de l'opération quel que soit le chemin (succès, garde, erreur).
+      # Le toast bas-droite est affiche client-side (onclick) ; on le masque a la
+      # fin de l'operation quel que soit le chemin (succes, garde, erreur).
       on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()), add = TRUE)
       if (deny_if_readonly(app_state, i18n)) return()
       project <- app_state$current_project
@@ -2707,9 +2707,9 @@ mod_regeneration_server <- function(id, app_state) {
     )
 
     # --- Export PDF (fiche par UGF : conditions + top-3 + commentaire) -----
-    # Même patron que le Plan d'actions : nom <slug>_regeneration.pdf, toast
-    # client (nemetonShowDownloadToast) masqué en on.exit, et archivage best-
-    # effort dans <projet>/exports/ sur le seul chemin succès.
+    # Meme patron que le Plan d'actions : nom <slug>_regeneration.pdf, toast
+    # client (nemetonShowDownloadToast) masque en on.exit, et archivage best-
+    # effort dans <projet>/exports/ sur le seul chemin succes.
     output$export_pdf <- shiny::downloadHandler(
       filename = function() {
         paste0(.project_export_slug(app_state$current_project, "nemeton"),
@@ -2736,7 +2736,7 @@ mod_regeneration_server <- function(id, app_state) {
             language = i18n$language),
           error = function(e) {
             err_msg <- conditionMessage(e)
-            cli::cli_warn("reGénération PDF export failed: {err_msg}")
+            cli::cli_warn("reG\u00e9n\u00e9ration PDF export failed: {err_msg}")
             shiny::showNotification(
               paste(i18n$t("regen_export_pdf_failed"), ":", err_msg),
               type = "error", duration = NULL)
@@ -2747,14 +2747,14 @@ mod_regeneration_server <- function(id, app_state) {
             c("PDF generation failed.",
               "See the in-app error toast for the underlying cause."), file)
         } else {
-          # Chemin succès uniquement : archive une copie dans exports/, parité
-          # avec le Plan d'actions et le rapport de synthèse. Best-effort.
+          # Chemin succes uniquement : archive une copie dans exports/, parite
+          # avec le Plan d'actions et le rapport de synthese. Best-effort.
           .archive_regeneration_pdf(file, project)
         }
       }
     )
 
-    # --- Persistance versionnée en base (§6A) -----------------------------
+    # --- Persistance versionnee en base (sect.6A) -----------------------------
     shiny::observeEvent(input$persist_db, {
       on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()), add = TRUE)
       if (deny_if_readonly(app_state, i18n)) return()

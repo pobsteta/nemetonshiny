@@ -10,7 +10,7 @@
 #' internally through its STAC gateway (`signing.stac.teledetection.fr`,
 #' pure R) and reads them with /vsicurl/. Access requires a registered
 #' API key (`TLD_*` env vars). Python/reticulate is no longer used for
-#' THEIA URL signing (it remains required by other core paths —
+#' THEIA URL signing (it remains required by other core paths -
 #' FORDEAD / RECONFORT).
 #'
 #' @name service_theia
@@ -26,7 +26,7 @@ THEIA_SOURCE_KEYS <- c(
 )
 
 # CHM source used to unblock the Production family (P1/P2/P3) and E1.
-# FORMSpoT stores canopy height (at 1.5 m) in DECIMETRES — see
+# FORMSpoT stores canopy height (at 1.5 m) in DECIMETRES - see
 # `download_chm_theia()` for the metres conversion.
 THEIA_CHM_SOURCE <- "formspot"
 
@@ -52,7 +52,7 @@ THEIA_INDICATOR_SOURCES <- list(
 #' Check the Python prerequisites for Theia access
 #'
 #' `load_theia_source()` signs STAC asset URLs via the core's STAC
-#' gateway (pure R) — no Python needed for THEIA signing itself. This
+#' gateway (pure R) - no Python needed for THEIA signing itself. This
 #' guard remains because other core paths provisioned alongside THEIA
 #' (`teledetection`, `pystac_client`) are declared by `nemeton` via
 #' `reticulate::py_require()`. We deliberately do NOT probe them with

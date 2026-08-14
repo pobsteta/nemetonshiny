@@ -1,13 +1,13 @@
-# Notifications de progression persistantes (bas-droite) — cadre unifié.
+# Notifications de progression persistantes (bas-droite) - cadre unifie.
 #
-# Même cadre / police / picto (roue dentée animée) / chronomètre qui defile
-# pour les moteurs FAST / FORDEAD / RECONFORT (mod_monitoring) et reGénération
+# Meme cadre / police / picto (roue dentee animee) / chronometre qui defile
+# pour les moteurs FAST / FORDEAD / RECONFORT (mod_monitoring) et reGeneration
 # (mod_regeneration). Ce fichier centralise le rendu du contenu de la notif ;
 # chaque module reste responsable du cycle de vie (showNotification / id /
 # removeNotification) et du tick (observe + invalidateLater(1000)).
 
-# Durée écoulée depuis `start` en "MM:SS" (ou "H:MM:SS" au-delà d'une heure).
-# "" si NULL. Partagé par tous les chronos de notif async.
+# Duree ecoulee depuis `start` en "MM:SS" (ou "H:MM:SS" au-dela d'une heure).
+# "" si NULL. Partage par tous les chronos de notif async.
 .fmt_elapsed <- function(start) {
   if (is.null(start)) return("")
   s <- as.integer(difftime(Sys.time(), start, units = "secs"))
@@ -19,19 +19,19 @@
   }
 }
 
-# Contenu unifié d'une notif « en cours » : picto roue dentée animé (classe CSS
-# `nmt-spin`, rotation 360°) + libellé + (si `start` fourni) chronomètre
-# monospace « — MM:SS » qui défile. `label` peut être un texte ou des tags
-# htmltools. Rendu identique partout (cadre / police / picto) — moteur de calcul
-# monitoring FAST/FORDEAD/RECONFORT, moteur reGénération et analyse
-# Accessibilité.
+# Contenu unifie d'une notif " en cours " : picto roue dentee anime (classe CSS
+# `nmt-spin`, rotation 360deg) + libelle + (si `start` fourni) chronometre
+# monospace " - MM:SS " qui defile. `label` peut etre un texte ou des tags
+# htmltools. Rendu identique partout (cadre / police / picto) - moteur de calcul
+# monitoring FAST/FORDEAD/RECONFORT, moteur reGeneration et analyse
+# Accessibilite.
 #
-# Roue dentée plutôt que sablier : `nmt-spin` est une rotation continue, qui
-# convient à un engrenage alors qu'un sablier devrait se retourner.
+# Roue dentee plutot que sablier : `nmt-spin` est une rotation continue, qui
+# convient a un engrenage alors qu'un sablier devrait se retourner.
 .running_notif_content <- function(label, start = NULL) {
   chrono <- if (!is.null(start)) {
     htmltools::tagList(
-      " — ",
+      " \u2014 ",
       htmltools::tags$span(class = "font-monospace", .fmt_elapsed(start)))
   }
   htmltools::tagList(

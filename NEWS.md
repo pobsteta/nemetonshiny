@@ -1,3 +1,38 @@
+# nemetonshiny 0.122.13 (2026-08-14)
+
+### Changed — `R CMD check` sans aucun avertissement ni note
+
+Le rapport passe de **1 ERROR, 2 WARNINGs, 4 NOTEs** a **0 / 0 / 0**.
+
+Les 5 190 lignes non-ASCII des 62 fichiers de `R/` sont traitees selon leur
+contexte, par un analyseur lexical R : dans une **chaine**, echappement
+`\uXXXX` — le texte rendu est identique, c'est la regle 4 du projet ; dans un
+**commentaire**, translitteration ASCII. Les 60 caracteres distincts sont tous
+couverts, aucun n'est devenu `?`. Preuve que rien n'a bouge cote utilisateur :
+l'empreinte des 1 754 cles i18n est identique avant et apres, valeur par valeur.
+
+Les 26 appels `nemetonshiny:::` ne sont PAS supprimes — ils vivent dans des
+workers `future`, ou seule la namespace est chargee, et les retirer casserait
+l'asynchrone. Ils adoptent l'idiome que `mod_regeneration` utilisait deja :
+`utils::getFromNamespace()`. Meme effet, sans le motif que le check denonce.
+
+Le reste : `dessertR`, `ecmwfr`, `lidR` et `opencanopy` declares en `Suggests` ;
+`.Renviron`, `.Renviron.txt`, `CITATION.cff`, `LICENSE` et `specs/` ecartes du
+tarball ; `getFromNamespace`, `isolate` et `head` qualifies ; trois helpers
+locaux homonymes `line` renommes par ce qu'ils rendent (`frost_line`,
+`engine_line`, `note_line`).
+
+### Fixed — Course dans le smoke E2E du RAG
+
+Le test cliquait l'onglet RAG via `if (t) { t.click(); }` : quand le noeud
+n'etait pas encore rendu, le clic n'avait **pas lieu**, et l'attente suivante ne
+pouvait plus aboutir — le test echouait sur un delai depasse en accusant le
+mauvais coupable. Observe en CI, vert au meme instant sur le commit voisin.
+
+Le lien d'onglet est desormais attendu AVANT le clic, qui devient
+inconditionnel, et le montage paresseux dispose de 20 s au lieu de 8 : il passe
+par un aller-retour serveur, hors de portee sur un runner charge.
+
 # nemetonshiny 0.122.12 (2026-08-14)
 
 ### Fixed — `R CMD check` repasse au vert

@@ -1,24 +1,24 @@
-# mod_validation_sampling.R — Spec 014 phase B (sous-onglet UI).
+# mod_validation_sampling.R - Spec 014 phase B (sous-onglet UI).
 #
-# Cinquième sous-onglet de Suivi sanitaire : « Plan de validation ».
-# Toujours visible quand une `monitoring_zone_id` est posée (pas
+# Cinquieme sous-onglet de Suivi sanitaire : " Plan de validation ".
+# Toujours visible quand une `monitoring_zone_id` est posee (pas
 # mode-driven comme les couples FAST / FORDEAD). L'utilisateur choisit
-# la source d'alerte (FORDEAD ou FAST) et génère un plan
-# d'échantillonnage de validation terrain via le cœur
-# `nemeton::create_validation_sampling_plan()`, encapsulé côté app par
+# la source d'alerte (FORDEAD ou FAST) et genere un plan
+# d'echantillonnage de validation terrain via le coeur
+# `nemeton::create_validation_sampling_plan()`, encapsule cote app par
 # `generate_validation_plan()`.
 #
-# Sortie : carte Leaflet (raster d'alerte + markers Validation / Témoin),
-# table DT du plan, bouton « Persister dans samples.gpkg » et bouton
-# « Exporter pour QGIS » qui produit un .qgz dans <project>/exports/.
+# Sortie : carte Leaflet (raster d'alerte + markers Validation / Temoin),
+# table DT du plan, bouton " Persister dans samples.gpkg " et bouton
+# " Exporter pour QGIS " qui produit un .qgz dans <project>/exports/.
 
 
 #' Plan de validation sub-tab UI
 #'
 #' @param id Module namespace id.
 #' @param source Optional character `"FAST"` or `"FORDEAD"`. When
-#'   provided, the radio button « Source d'alerte » is omitted from
-#'   the sidebar — the source is **fixed** for this instance. This is
+#'   provided, the radio button " Source d'alerte " is omitted from
+#'   the sidebar - the source is **fixed** for this instance. This is
 #'   the mode used by `mod_monitoring`, which mounts two instances of
 #'   the module (one per source, mode-driven visibility like the
 #'   FAST / FORDEAD alerts and pixel map couples). v0.43.3.
@@ -36,7 +36,7 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
       selected = "FORDEAD"
     )
   } else {
-    # Fixed source — surface it as a static badge so the user knows
+    # Fixed source - surface it as a static badge so the user knows
     # *which* source this sub-tab targets without exposing a control.
     htmltools::div(
       class = "mb-2",
@@ -50,10 +50,10 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
     )
   }
   is_fast <- identical(source, "FAST")
-  # ----- Paramètres : trend (FAST, spec 025) vs catégoriel (FORDEAD/RECONFORT)
+  # ----- Parametres : trend (FAST, spec 025) vs categoriel (FORDEAD/RECONFORT)
   param_ui <- if (is_fast) {
-    # Plan sanitaire branché sur le trend (déclin pluriannuel) — pas de
-    # classes/témoins/tampon : la pondération est continue (|pente|).
+    # Plan sanitaire branche sur le trend (declin pluriannuel) - pas de
+    # classes/temoins/tampon : la ponderation est continue (|pente|).
     htmltools::tagList(
       shiny::selectInput(
         ns("trend_index"), i18n$t("validation_trend_index_label"),
@@ -62,7 +62,7 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
       shiny::dateRangeInput(
         ns("trend_win"), i18n$t("validation_trend_window_label"),
         start = "2017-01-01", end = Sys.Date(),
-        weekstart = 1, separator = " → "
+        weekstart = 1, separator = " \u2192 "
       ),
       shiny::numericInput(
         ns("n_validation"), i18n$t("validation_trend_n_plots_label"),
@@ -76,9 +76,9 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         ns("seed"), i18n$t("validation_seed_label"),
         value = 42L, min = 0L, max = 1e6L, step = 1L
       ),
-      # v0.87.x — les paramètres de tendance (mois saison / années min /
-      # alpha) ne sont plus dupliqués ici : ils sont définis dans l'onglet
-      # « Alertes FAST » (mode Tendance) et réutilisés via `trend_params_r`.
+      # v0.87.x - les parametres de tendance (mois saison / annees min /
+      # alpha) ne sont plus dupliques ici : ils sont definis dans l'onglet
+      # " Alertes FAST " (mode Tendance) et reutilises via `trend_params_r`.
       htmltools::tags$small(
         class = "text-muted d-block mt-1",
         i18n$t("validation_trend_params_note")
@@ -96,9 +96,9 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         label = i18n$t("validation_n_control_label"),
         value = 5L, min = 0L, max = 100L, step = 1L
       ),
-      # spec 014 — pondération du tirage. Continu (∝ sévérité par pixel :
-      # FORDEAD anomaly_index / RECONFORT score) = défaut, parité FAST ; les
-      # classes ci-dessous restent le masque d'éligibilité. Uniforme = poids
+      # spec 014 - ponderation du tirage. Continu (prop severite par pixel :
+      # FORDEAD anomaly_index / RECONFORT score) = defaut, parite FAST ; les
+      # classes ci-dessous restent le masque d'eligibilite. Uniforme = poids
       # par classe (historique).
       shiny::radioButtons(
         ns("weighting"),
@@ -110,8 +110,8 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         ),
         selected = "continuous"
       ),
-      # spec 021 — RECONFORT : masque catégoriel 1/2/3, alertes c(2,3),
-      # témoins c(1). FORDEAD : échelle 0-4.
+      # spec 021 - RECONFORT : masque categoriel 1/2/3, alertes c(2,3),
+      # temoins c(1). FORDEAD : echelle 0-4.
       if (identical(source, "RECONFORT")) {
         shiny::checkboxGroupInput(
           ns("classes"),
@@ -129,7 +129,7 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         shiny::checkboxGroupInput(
           ns("classes"),
           label   = i18n$t("validation_classes_label"),
-          # Ordre décroissant de sévérité : 4, 3, 2, 1.
+          # Ordre decroissant de severite : 4, 3, 2, 1.
           choices = stats::setNames(
             c("4", "3", "2", "1"),
             c(i18n$t("validation_class_fordead_4"),
@@ -249,7 +249,7 @@ mod_validation_sampling_server <- function(id, app_state,
     })
 
     # Default the source radio to whatever the parent sidebar mode is
-    # at first sub-tab open. After that the user owns the choice — the
+    # at first sub-tab open. After that the user owns the choice - the
     # observer only fires once per parent-mode flip.
     # No-op when source is fixed (the radio doesn't exist).
     if (is.null(source_fixed)) {
@@ -265,11 +265,11 @@ mod_validation_sampling_server <- function(id, app_state,
       })
     }
 
-    # v0.45.0 — label unification : pour FAST, charge best-effort le
+    # v0.45.0 - label unification : pour FAST, charge best-effort le
     # raster d'alerte continu et calcule les labels quartile via
-    # `.fast_class_labels()`, partagé avec Alertes FAST. Pour FORDEAD,
-    # labels biologiques statiques. Le résultat alimente le checkbox
-    # `classes` via updateCheckboxGroupInput (préserve la sélection
+    # `.fast_class_labels()`, partage avec Alertes FAST. Pour FORDEAD,
+    # labels biologiques statiques. Le resultat alimente le checkbox
+    # `classes` via updateCheckboxGroupInput (preserve la selection
     # courante).
     preview_raster_r <- shiny::reactive({
       if (!identical(current_source(), "FAST")) return(NULL)
@@ -277,11 +277,11 @@ mod_validation_sampling_server <- function(id, app_state,
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       zone_id <- suppressWarnings(as.integer(
         proj$metadata$monitoring_zone_id))
-      # v0.48.1 — guard longueur nulle : un projet sans zone
-      # enregistrée a `monitoring_zone_id == NULL`, donc
+      # v0.48.1 - guard longueur nulle : un projet sans zone
+      # enregistree a `monitoring_zone_id == NULL`, donc
       # `as.integer(NULL)` retourne `integer(0)` et `is.na(integer(0))`
-      # vaut `logical(0)` → `if` plantait « argument de longueur
-      # nulle ». On vérifie length avant is.na.
+      # vaut `logical(0)` -> `if` plantait " argument de longueur
+      # nulle ". On verifie length avant is.na.
       if (length(zone_id) != 1L || is.na(zone_id)) return(NULL)
       th <- thresholds_r()
       dr <- date_range_r()
@@ -292,10 +292,10 @@ mod_validation_sampling_server <- function(id, app_state,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      # v0.52.13 — API mono-index (nemeton@v0.55.0, spec 017).
-      # v0.52.15 — cache D6 (nemeton@v0.57.0) sur la prévisualisation
-      # FAST : un clic sur l'aperçu après changement de seuil/index est
-      # désormais instantané si le COG résultat est déjà sur disque.
+      # v0.52.13 - API mono-index (nemeton@v0.55.0, spec 017).
+      # v0.52.15 - cache D6 (nemeton@v0.57.0) sur la previsualisation
+      # FAST : un clic sur l'apercu apres changement de seuil/index est
+      # desormais instantane si le COG resultat est deja sur disque.
       idx <- th$index %||% "NDVI"
       # NDMI / NDRE use their own thresholds (th$ndmi / th$ndre),
       # falling back to NDVI's when absent.
@@ -304,7 +304,7 @@ mod_validation_sampling_server <- function(id, app_state,
                     NDMI = th$ndmi %||% th$ndvi,
                     NDRE = th$ndre %||% th$ndmi %||% th$ndvi,
                     th$ndvi)
-      # v0.55.0 — helper unique partagé (cohérence hash D6).
+      # v0.55.0 - helper unique partage (coherence hash D6).
       result_cache <- .fast_alert_cache_dir(proj$path)
       tryCatch(
         nemeton::read_fast_alert_raster(
@@ -327,17 +327,17 @@ mod_validation_sampling_server <- function(id, app_state,
     shiny::observe({
       i18n <- i18n_r()
       src  <- current_source()
-      # spec 021 — RECONFORT a une échelle catégorielle 1/2/3 (≠ 0-4
-      # FORDEAD/FAST) et ses libellés sont fixés statiquement à l'UI.
-      # `.fast_class_labels()` ne connaît que FAST/FORDEAD (match.arg) et
-      # réécrirait les choix sur c("3","4","1","2") — on saute donc cet
-      # observer pour RECONFORT. FAST utilise désormais le trend (spec 025)
-      # sans cases « classes » → on saute aussi.
+      # spec 021 - RECONFORT a une echelle categorielle 1/2/3 (!= 0-4
+      # FORDEAD/FAST) et ses libelles sont fixes statiquement a l'UI.
+      # `.fast_class_labels()` ne connait que FAST/FORDEAD (match.arg) et
+      # reecrirait les choix sur c("3","4","1","2") - on saute donc cet
+      # observer pour RECONFORT. FAST utilise desormais le trend (spec 025)
+      # sans cases " classes " -> on saute aussi.
       if (identical(src, "RECONFORT") || identical(src, "FAST")) return()
       r    <- preview_raster_r()
       labels <- .fast_class_labels(r, source = src,
                                    mode = "count", i18n = i18n)
-      # Ordre décroissant de sévérité : 4, 3, 2, 1.
+      # Ordre decroissant de severite : 4, 3, 2, 1.
       shiny::updateCheckboxGroupInput(
         session, "classes",
         choices = stats::setNames(
@@ -350,19 +350,19 @@ mod_validation_sampling_server <- function(id, app_state,
     })
 
     # Classified alert mask (0-4) for the current source/zone, read from
-    # the project cache (no compute — best-effort). This is the raster
+    # the project cache (no compute - best-effort). This is the raster
     # whose class values the `classes` / `control_classes` filters act on,
     # so its distribution drives both the on-screen hint and the
     # control-class auto-relax. Returns NULL when no cached mask exists.
     alert_mask_r <- shiny::reactive({
-      # PERF/UX — ne toucher la base monitoring + lire le raster d'alerte
-      # QUE lorsque l'onglet Santé est réellement actif. Sinon cette
-      # reactive se ré-évalue à chaque changement de `current_project` (donc
-      # à chaque chargement de projet depuis l'Accueil), ouvrant une
+      # PERF/UX - ne toucher la base monitoring + lire le raster d'alerte
+      # QUE lorsque l'onglet Sante est reellement actif. Sinon cette
+      # reactive se re-evalue a chaque changement de `current_project` (donc
+      # a chaque chargement de projet depuis l'Accueil), ouvrant une
       # connexion DB + lisant un raster hors du chemin de chargement, et
-      # l'observateur auto-relax ci-dessous fait fuiter son toast « Aucun
-      # pixel sain » par-dessus la carte. Même garde que `pixel_stack_r`
-      # (v0.75.2) : `active_main_tab` est exposé par app_server.
+      # l'observateur auto-relax ci-dessous fait fuiter son toast " Aucun
+      # pixel sain " par-dessus la carte. Meme garde que `pixel_stack_r`
+      # (v0.75.2) : `active_main_tab` est expose par app_server.
       shiny::req(identical(app_state$active_main_tab, "monitoring"))
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return(NULL)
@@ -393,7 +393,7 @@ mod_validation_sampling_server <- function(id, app_state,
       .validation_class_distribution(alert_mask_r())
     })
 
-    # Distribution hint : "Distribution du raster : 0=0, 1=0, …, 4=8471".
+    # Distribution hint : "Distribution du raster : 0=0, 1=0, ..., 4=8471".
     # Plus a help note when no healthy (class 0) pixel exists.
     output$class_distribution <- shiny::renderUI({
       i18n <- i18n_r()
@@ -419,7 +419,7 @@ mod_validation_sampling_server <- function(id, app_state,
     # drawn at all. Fires once.
     auto_relax_done <- shiny::reactiveVal(FALSE)
     shiny::observe({
-      # FAST = trend (pas de masque catégoriel ni de cases témoins).
+      # FAST = trend (pas de masque categoriel ni de cases temoins).
       if (identical(current_source(), "FAST")) return()
       if (isTRUE(auto_relax_done())) return()
       dist <- class_distribution_r()
@@ -440,16 +440,16 @@ mod_validation_sampling_server <- function(id, app_state,
     })
 
     # The plan reactive : only fires on the Generate button. eventReactive
-    # makes input changes invalidate the value silently — the user must
+    # makes input changes invalidate the value silently - the user must
     # re-click Generate to get a fresh plan.
     plan_rv <- shiny::reactiveVal(NULL)
     plan_error <- shiny::reactiveVal(NULL)
-    # Garde anti-clics : empêche de relancer une génération tant que la
-    # précédente n'est pas terminée (le tirage + lecture raster est lourd).
+    # Garde anti-clics : empeche de relancer une generation tant que la
+    # precedente n'est pas terminee (le tirage + lecture raster est lourd).
     generating <- shiny::reactiveVal(FALSE)
 
-    # Génération effective du plan. Appelée en différé (onFlushed) par
-    # l'observateur du bouton, pour que la notification « calcul en cours »
+    # Generation effective du plan. Appelee en differe (onFlushed) par
+    # l'observateur du bouton, pour que la notification " calcul en cours "
     # s'affiche AVANT le calcul lourd.
     run_generate <- function() {
       plan_rv(NULL)
@@ -464,18 +464,18 @@ mod_validation_sampling_server <- function(id, app_state,
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # Zone d'échantillonnage = zone choisie dans le sélecteur « Zone de
-      # suivi » (`zone_id_r`), PAS la zone mémorisée dans la metadata (qui
-      # peut pointer sur une zone d'un autre projet / une essence obsolète).
+      # Zone d'echantillonnage = zone choisie dans le selecteur " Zone de
+      # suivi " (`zone_id_r`), PAS la zone memorisee dans la metadata (qui
+      # peut pointer sur une zone d'un autre projet / une essence obsolete).
       zid <- suppressWarnings(as.integer(zone_id_r()))
       if (length(zid) != 1L || is.na(zid)) zid <- NULL
 
-      # ----- FAST = plan sanitaire branché sur le trend (spec 025) -------
-      # Pondération continue par |pente| ; pas de classes/témoins/tampon.
+      # ----- FAST = plan sanitaire branche sur le trend (spec 025) -------
+      # Ponderation continue par |pente| ; pas de classes/temoins/tampon.
       if (identical(current_source(), "FAST")) {
         win <- input$trend_win
-        # Définition de tendance réutilisée depuis Alertes FAST (mois /
-        # années min / alpha) ; repli sur les défauts cœur si indisponible.
+        # Definition de tendance reutilisee depuis Alertes FAST (mois /
+        # annees min / alpha) ; repli sur les defauts coeur si indisponible.
         tp <- trend_params_r() %||% list()
         months_v    <- tp$months %||% 6:9
         min_years_v <- as.integer(tp$min_years %||% 4L)
@@ -518,9 +518,9 @@ mod_validation_sampling_server <- function(id, app_state,
         return()
       }
 
-      # spec 021 — RECONFORT : classes catégorielles 1/2/3 (alertes 2/3,
-      # témoin 1) au lieu de l'échelle 0-4 FORDEAD/FAST. Les défauts
-      # ci-dessous ne servent que si la sélection est vidée (input NULL).
+      # spec 021 - RECONFORT : classes categorielles 1/2/3 (alertes 2/3,
+      # temoin 1) au lieu de l'echelle 0-4 FORDEAD/FAST. Les defauts
+      # ci-dessous ne servent que si la selection est videe (input NULL).
       is_reconfort <- identical(current_source(), "RECONFORT")
       classes_int <- as.integer(
         input$classes %||% (if (is_reconfort) c("2", "3") else c("3", "4")))
@@ -540,9 +540,9 @@ mod_validation_sampling_server <- function(id, app_state,
           classes         = classes_int,
           control_classes = control_int,
           buffer_m        = as.numeric(input$buffer_m %||% 0),
-          # spec 014 — pondération continue (FORDEAD/RECONFORT). NULL sur FAST
-          # (chemin trend séparé) → "uniform". Le service replie proprement en
-          # uniforme si la couche de sévérité est absente.
+          # spec 014 - ponderation continue (FORDEAD/RECONFORT). NULL sur FAST
+          # (chemin trend separe) -> "uniform". Le service replie proprement en
+          # uniforme si la couche de severite est absente.
           weighting       = input$weighting %||% "uniform",
           seed            = as.integer(input$seed %||% 42L),
           ndvi_threshold  = th$ndvi,
@@ -550,8 +550,8 @@ mod_validation_sampling_server <- function(id, app_state,
           window_days     = th$window_days %||% 30L,
           date_from       = if (length(dr) == 2L) dr[1] else NULL,
           date_to         = if (length(dr) == 2L) dr[2] else NULL,
-          # v0.52.15 — index mono-indice (spec 017). `th$index` est
-          # alimenté par le retour `index_r` de mod_monitoring_fast_alerts
+          # v0.52.15 - index mono-indice (spec 017). `th$index` est
+          # alimente par le retour `index_r` de mod_monitoring_fast_alerts
           # (cf. v0.52.14) pour le source FAST. Source FORDEAD est
           # `index`-agnostic mais le param est inoffensif.
           index           = th$index
@@ -566,8 +566,8 @@ mod_validation_sampling_server <- function(id, app_state,
       }
       plan_rv(res)
 
-      # Deliverable 5 — the cœur warns (cli) "No cell matching
-      # control_classes" and returns 0 témoins silently. Surface a clean
+      # Deliverable 5 - the coeur warns (cli) "No cell matching
+      # control_classes" and returns 0 temoins silently. Surface a clean
       # UI toast when control plots were requested but none came back.
       n_temoin <- tryCatch(
         sum(as.character(res$type) == "Temoin", na.rm = TRUE),
@@ -586,13 +586,13 @@ mod_validation_sampling_server <- function(id, app_state,
       if (isTRUE(shiny::isolate(generating()))) return()  # garde anti-clics
       generating(TRUE)
       notif_id <- session$ns("plan_generating")
-      # Message bas-droite « génération en cours » affiché TOUT DE SUITE.
+      # Message bas-droite " generation en cours " affiche TOUT DE SUITE.
       shiny::showNotification(
         i18n_r()$t("validation_generating"),
         id = notif_id, type = "message", duration = NULL
       )
-      # Calcul après le flush (onFlushed) : la notif part au client avant
-      # le calcul lourd (un observateur synchrone ne flush qu'à sa sortie).
+      # Calcul apres le flush (onFlushed) : la notif part au client avant
+      # le calcul lourd (un observateur synchrone ne flush qu'a sa sortie).
       session$onFlushed(function() {
         on.exit({
           shiny::removeNotification(notif_id, session = session)
@@ -603,10 +603,10 @@ mod_validation_sampling_server <- function(id, app_state,
     })
 
     # Invalidate the result silently if the user touches any input
-    # after the plan was generated — the toast hint is rendered in the
+    # after the plan was generated - the toast hint is rendered in the
     # panel state.
     shiny::observe({
-      # Catégoriel (FORDEAD/RECONFORT) + trend (FAST) : on dépend des deux
+      # Categoriel (FORDEAD/RECONFORT) + trend (FAST) : on depend des deux
       # jeux d'inputs ; ceux absents dans un mode valent NULL (sans effet).
       input$source; input$n_validation; input$n_control;
       input$classes; input$control_classes; input$buffer_m; input$seed
@@ -658,12 +658,12 @@ mod_validation_sampling_server <- function(id, app_state,
       plan <- plan_rv()
 
       if (!is.null(err)) {
-        # FAST trend : aucun déclin significatif sur la fenêtre → message
-        # dédié (≠ « zone saine » du masque catégoriel count/rolling).
+        # FAST trend : aucun declin significatif sur la fenetre -> message
+        # dedie (!= " zone saine " du masque categoriel count/rolling).
         empty_trend <- "validation_empty_trend" %in% err$class
         empty_mask  <- "validation_empty_mask" %in% err$class
-        # spec 014 — raster de sévérité non géoréférencé / non alignable
-        # (pondération continue) : message dédié, ≠ « pas de masque ».
+        # spec 014 - raster de severite non georeference / non alignable
+        # (ponderation continue) : message dedie, != " pas de masque ".
         weight_mismatch <- "validation_weight_mismatch" %in% err$class
         title_key <- if (empty_trend) {
           "validation_empty_trend_title"
@@ -712,7 +712,7 @@ mod_validation_sampling_server <- function(id, app_state,
       coords <- sf::st_coordinates(plan_ll)
       types  <- as.character(plan_ll$type)
       # FAST trend : plan sanitaire (source "FAST_TREND"), couleur continue
-      # par sévérité (|pente|) ; FORDEAD/RECONFORT : 2 couleurs catégorielles.
+      # par severite (|pente|) ; FORDEAD/RECONFORT : 2 couleurs categorielles.
       is_trend <- identical(as.character(plan_ll$source[1] %||% ""),
                             "FAST_TREND")
 
@@ -741,15 +741,15 @@ mod_validation_sampling_server <- function(id, app_state,
         colors <- c(Validation = "#2CA02C", Temoin = "#7F7F7F")
         types[!types %in% names(colors)] <- "Validation"
         fill <- unname(colors[types])
-        # spec 014 — pondération continue : le plan porte `alert_weight`
-        # (sévérité brute au point tiré). Ajouté à l'infobulle quand présent.
+        # spec 014 - ponderation continue : le plan porte `alert_weight`
+        # (severite brute au point tire). Ajoute a l'infobulle quand present.
         has_weight <- "alert_weight" %in% names(plan_ll)
         wt <- if (has_weight)
           suppressWarnings(as.numeric(plan_ll$alert_weight)) else NULL
         sev_lbl <- i18n$t("validation_alert_weight_col")
         popups <- vapply(seq_len(nrow(plan_ll)), function(i) {
           base <- sprintf(
-            "<strong>%s</strong><br/>%s — class %s<br/>visit_order: %d",
+            "<strong>%s</strong><br/>%s \u2014 class %s<br/>visit_order: %d",
             htmltools::htmlEscape(as.character(plan_ll$plot_id[i])),
             htmltools::htmlEscape(types[i]),
             htmltools::htmlEscape(as.character(
@@ -763,7 +763,7 @@ mod_validation_sampling_server <- function(id, app_state,
         }, character(1))
       }
 
-      # v0.45.0 — overlay UGF (polygones bleu vif) pour le repère spatial.
+      # v0.45.0 - overlay UGF (polygones bleu vif) pour le repere spatial.
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
 
       m <- leaflet::leaflet() |>
@@ -775,7 +775,7 @@ mod_validation_sampling_server <- function(id, app_state,
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
 
-      # Overlay du masque catégoriel sous les marqueurs — uniquement
+      # Overlay du masque categoriel sous les marqueurs - uniquement
       # FORDEAD/RECONFORT (le plan trend ne repose pas sur un masque 0-4).
       if (!is_trend) {
         r <- alert_raster_r()
@@ -848,8 +848,8 @@ mod_validation_sampling_server <- function(id, app_state,
       plan <- plan_rv()
       if (is.null(plan)) return(NULL)
       df <- sf::st_drop_geometry(plan)
-      # `alert_weight` (spec 014, mode continu) inséré après `alert_value` ;
-      # absent en mode uniforme et sur FAST catégoriel (intersect le retire).
+      # `alert_weight` (spec 014, mode continu) insere apres `alert_value` ;
+      # absent en mode uniforme et sur FAST categoriel (intersect le retire).
       keep <- intersect(
         c("plot_id", "type", "alert_value", "alert_weight", "index",
           "alert_class", "visit_order", "source", "source_run_id",

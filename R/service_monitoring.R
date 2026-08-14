@@ -29,7 +29,7 @@
 #' @noRd
 run_ingestion_async <- function() {
   # Capture the package source path (when running via devtools::load_all)
-  # so the future worker can re-load nemetonshiny — workers don't
+  # so the future worker can re-load nemetonshiny - workers don't
   # inherit the parent's loaded namespaces.
   .dev_pkg_path <- tryCatch(
     if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
@@ -41,7 +41,7 @@ run_ingestion_async <- function() {
   # Capture diagnostic env vars in the parent so we can replay them
   # inside the worker. `future::multisession` workers are separate
   # Rscript.exe processes on Windows that may have been spawned BEFORE
-  # the user `Sys.setenv()`d these — they then run blind. We pickle
+  # the user `Sys.setenv()`d these - they then run blind. We pickle
   # the values via the auto-captured globals mechanism (future scans
   # the expression for symbols defined in the parent) and re-set them
   # at the top of the promise body.
@@ -55,32 +55,32 @@ run_ingestion_async <- function() {
                                    log_path = NULL,
                                    lang = "fr",
                                    cancel_path = NULL,
-                                   # v0.85.2.9000 — sentinelle de run
-                                   # écrite côté worker (survit à la
+                                   # v0.85.2.9000 - sentinelle de run
+                                   # ecrite cote worker (survit a la
                                    # fermeture de session) ; lue au
                                    # relancement par .detect_ingest_state().
                                    sentinel_path = NULL,
-                                   # v0.55.0 — pré-calcul des 4 cartes
-                                   # FAST déplacé du helper app vers
+                                   # v0.55.0 - pre-calcul des 4 cartes
+                                   # FAST deplace du helper app vers
                                    # l'API native `nemeton@v0.61.0` :
                                    # `prewarm_alerts = TRUE` + chemin
-                                   # `prewarm_mask_cache_dir`. Le cœur
-                                   # enchaîne les 4
+                                   # `prewarm_mask_cache_dir`. Le coeur
+                                   # enchaine les 4
                                    # `read_fast_alert_raster()` en fin
-                                   # d'ingestion, dans le même process
-                                   # worker → progress events
+                                   # d'ingestion, dans le meme process
+                                   # worker -> progress events
                                    # `fast_prewarm:*` natifs, cancel
-                                   # coopératif géré côté cœur.
-                                   # v0.54.0 (préc.) faisait ce
-                                   # pré-calcul via un helper app
-                                   # `.prewarm_fast_alerts()` retiré
+                                   # cooperatif gere cote coeur.
+                                   # v0.54.0 (prec.) faisait ce
+                                   # pre-calcul via un helper app
+                                   # `.prewarm_fast_alerts()` retire
                                    # ici car redondant avec spec 018.
                                    prewarm_alerts = TRUE,
                                    prewarm_mask_cache_dir = NULL,
-                                   # Nom d'affichage (projet) résolu côté
-                                   # parent depuis app_state — toujours à jour,
+                                   # Nom d'affichage (projet) resolu cote
+                                   # parent depuis app_state - toujours a jour,
                                    # contrairement au nom de zone en DB qui peut
-                                   # être périmé (projet renommé). NULL → repli
+                                   # etre perime (projet renomme). NULL -> repli
                                    # sur .resolve_zone_name (tests / legacy).
                                    project_name = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
@@ -89,7 +89,7 @@ run_ingestion_async <- function() {
       if (!is_parallel) .ensure_async_plan()
     }
     promises::future_promise({
-      # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
+      # spec 008 sect.4 - rendre la memoire au systeme : le worker est PERSISTANT.
       on.exit(.release_worker_memory(), add = TRUE)
       # Replay diagnostic env vars captured in the parent so the
       # worker sees the same NEMETON_S2_CACHE_DEBUG / NEMETON_*
@@ -141,32 +141,32 @@ run_ingestion_async <- function() {
       # The observer that calls $invoke() pre-resolves the URL from
       # `app_state$current_project` (which workers can't reach) and
       # passes it explicitly. An empty string means no PG env vars
-      # AND no project — i.e. no DB at all.
+      # AND no project - i.e. no DB at all.
       con <- get_monitoring_db_connection(db_url = db_url)
       if (is.null(con)) {
         stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # ntfy push channel — resolved worker-side (env vars replayed
-      # above). NULL when NEMETON_NTFY_TOPIC is unset → every
-      # `.ntfy_send()` call below is a silent no-op. Symétrique avec
+      # ntfy push channel - resolved worker-side (env vars replayed
+      # above). NULL when NEMETON_NTFY_TOPIC is unset -> every
+      # `.ntfy_send()` call below is a silent no-op. Symetrique avec
       # FORDEAD (cf. run_fordead_async). v0.42.1.
       ntfy <- .ntfy_config()
       i18n <- get_i18n(lang %||% "fr")
 
-      # v0.43.2 — resolve the display name once so the start push reads
-      # « (zone villards) » instead of « (zone 1) ». Priorité au nom de
-      # projet passé par le parent (à jour) ; repli DB si absent. Silent
-      # fallback to the integer id on any error — le résolveur est
-      # cosmétique et NE DOIT JAMAIS abort une ingestion longue.
+      # v0.43.2 - resolve the display name once so the start push reads
+      # " (zone villards) " instead of " (zone 1) ". Priorite au nom de
+      # projet passe par le parent (a jour) ; repli DB si absent. Silent
+      # fallback to the integer id on any error - le resolveur est
+      # cosmetique et NE DOIT JAMAIS abort une ingestion longue.
       zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
       # Composite progress callback: the file writer the parent's
       # reactivePoll tails PLUS a worker-side ntfy push when the
-      # first per-scene event arrives (one-shot, dedupé via state env).
-      # Évite la noise pour les ingestions courtes et le spam pour
-      # les ingestions longues (30-100 scènes).
+      # first per-scene event arrives (one-shot, dedupe via state env).
+      # Evite la noise pour les ingestions courtes et le spam pour
+      # les ingestions longues (30-100 scenes).
       progress_cb <- .build_ingest_progress_callback(progress_path,
                                                      ntfy, i18n)
 
@@ -183,16 +183,16 @@ run_ingestion_async <- function() {
       )
 
       # Heartbeat 1/3: worker reached the start of its body. Useful
-      # when the worker is silent — if we don't see this in the
+      # when the worker is silent - if we don't see this in the
       # console after invoke, the worker never spawned (future plan
       # broken).
       .ws_emit(progress_cb, list(current = "s2:worker_started",
                                  cache_dir = cache_dir,
                                  skip_cached = skip_cached))
 
-      # v0.85.2.9000 — Sentinelle « running » (worker-side, survit à la
-      # fermeture de session). Porte l'identité du run pour que le
-      # bandeau de reprise affiche zone + période au relancement.
+      # v0.85.2.9000 - Sentinelle " running " (worker-side, survit a la
+      # fermeture de session). Porte l'identite du run pour que le
+      # bandeau de reprise affiche zone + periode au relancement.
       .write_ingest_sentinel(sentinel_path, "running", list(
         zone_id    = zone_id,
         zone_name  = zone_name,
@@ -205,7 +205,7 @@ run_ingestion_async <- function() {
 
       # If a cache_dir is provided, ensure the directory exists before
       # the worker hands it to nemeton. The worker can't reach `dir.create`
-      # if the path's parent doesn't exist yet — happens on a brand-new
+      # if the path's parent doesn't exist yet - happens on a brand-new
       # project that hasn't created its `data/` folder yet.
       if (!is.null(cache_dir) && nzchar(cache_dir)) {
         if (!dir.exists(cache_dir)) {
@@ -227,11 +227,11 @@ run_ingestion_async <- function() {
       # Planetary Computer returns 504 and nemeton falls back to "0
       # scenes found" silently). We propagate them back to the main
       # process so the result observer can surface the real cause
-      # instead of a misleading "Téléchargement terminé : 0 scènes".
+      # instead of a misleading "Telechargement termine : 0 scenes".
       #
       # Also wrap in tryCatch so any R error inside the worker
       # surfaces explicitly via the progress channel BEFORE the
-      # future rejects — the standard future rejection message
+      # future rejects - the standard future rejection message
       # ("MultisessionFuture was interrupted") swallows the actual
       # R error and leaves the user with no diagnostic.
       warns <- character()
@@ -247,25 +247,25 @@ run_ingestion_async <- function() {
             skip_cached       = skip_cached,
             cache_dir         = cache_dir,
             progress_callback = progress_cb,
-            # v0.52.0 — cancel coopératif (nemeton@v0.53.0). Le worker
+            # v0.52.0 - cancel cooperatif (nemeton@v0.53.0). Le worker
             # polled `file.exists(cancel_path)` entre chaque tuile ; si
-            # présent → sortie propre avec commit partiel + résumé
-            # `status = "cancelled"`. Le caller (mod_monitoring) écrit
-            # le fichier sur clic « Annuler le diagnostic », et le
-            # supprime avant chaque lancement pour éviter un cancel
-            # fantôme persistant.
+            # present -> sortie propre avec commit partiel + resume
+            # `status = "cancelled"`. Le caller (mod_monitoring) ecrit
+            # le fichier sur clic " Annuler le diagnostic ", et le
+            # supprime avant chaque lancement pour eviter un cancel
+            # fantome persistant.
             cancel_path       = cancel_path,
-            # v0.55.0 — pré-calcul natif des 4 cartes FAST (spec 018
-            # nemeton@v0.61.0). Quand `prewarm_alerts = TRUE`, le cœur
-            # enchaîne 4 `read_fast_alert_raster()` (NDVI/NBR × count/
-            # rolling) en fin d'ingestion réussie + remplit le cache
+            # v0.55.0 - pre-calcul natif des 4 cartes FAST (spec 018
+            # nemeton@v0.61.0). Quand `prewarm_alerts = TRUE`, le coeur
+            # enchaine 4 `read_fast_alert_raster()` (NDVI/NBR x count/
+            # rolling) en fin d'ingestion reussie + remplit le cache
             # D6 sous `<prewarm_mask_cache_dir>/zone_<id>/`. Le
-            # `progress_callback` émet les events `fast_prewarm:*`
-            # consommés par l'observer parent.
+            # `progress_callback` emet les events `fast_prewarm:*`
+            # consommes par l'observer parent.
             prewarm_alerts         = prewarm_alerts,
             prewarm_mask_cache_dir = prewarm_mask_cache_dir
           ),
-          # Catch every `message()` signaled by nemeton — including
+          # Catch every `message()` signaled by nemeton - including
           # `.s2_cache_log()` traces (gated on NEMETON_S2_CACHE_DEBUG)
           # AND cli's `cli_alert_*` / `cli_inform` calls (cli inherits
           # from `message` via `rlang::inform`). We rewrite each one to
@@ -288,7 +288,7 @@ run_ingestion_async <- function() {
             error_message = conditionMessage(e),
             error_class   = paste(class(e), collapse = "/")
           ))
-          # v0.85.2.9000 — sentinelle terminale « error » côté worker.
+          # v0.85.2.9000 - sentinelle terminale " error " cote worker.
           .write_ingest_sentinel(sentinel_path, "error", list(
             error_message = conditionMessage(e),
             finished_at   = as.numeric(Sys.time())
@@ -305,23 +305,23 @@ run_ingestion_async <- function() {
       )
 
       # Heartbeat 3/3: nemeton::ingest_sentinel2_timeseries a rendu la
-      # main. Si l'événement apparaît dans la console / le progress file
-      # mais que le bouton ne se réactive pas côté UI (et que la
-      # notification de complétion ne sort jamais), le worker est en
+      # main. Si l'evenement apparait dans la console / le progress file
+      # mais que le bouton ne se reactive pas cote UI (et que la
+      # notification de completion ne sort jamais), le worker est en
       # train de finaliser sa sortie (typiquement un checkpoint SQLite
-      # sur le fichier WAL après les INSERTs obs_pixel). L'utilisateur
-      # peut cliquer « Annuler » pour force-unlock l'UI sans risque
-      # (le worker continuera son commit en arrière-plan).
+      # sur le fichier WAL apres les INSERTs obs_pixel). L'utilisateur
+      # peut cliquer " Annuler " pour force-unlock l'UI sans risque
+      # (le worker continuera son commit en arriere-plan).
       .ws_emit(progress_cb, list(
         current  = "s2:ingest_done",
         n_scenes = as.integer(summary$n_scenes %||% 0L),
         n_obs    = as.integer(summary$n_obs_inserted %||% 0L)
       ))
 
-      # v0.85.2.9000 — sentinelle terminale côté worker. `cancelled`
-      # quand le cœur a honoré le cancel coopératif (commit partiel),
-      # `done` sinon. Écrite AVANT le prewarm/finalisation pour que le
-      # relancement ne voie jamais un faux « running » après coup.
+      # v0.85.2.9000 - sentinelle terminale cote worker. `cancelled`
+      # quand le coeur a honore le cancel cooperatif (commit partiel),
+      # `done` sinon. Ecrite AVANT le prewarm/finalisation pour que le
+      # relancement ne voie jamais un faux " running " apres coup.
       .write_ingest_sentinel(
         sentinel_path,
         if (identical(as.character(summary$status %||% ""), "cancelled"))
@@ -332,19 +332,19 @@ run_ingestion_async <- function() {
         )
       )
 
-      # v0.55.0 — Le pré-calcul des 4 cartes FAST est désormais fait
-      # PAR LE CŒUR (spec 018 nemeton@v0.61.0) via les params
+      # v0.55.0 - Le pre-calcul des 4 cartes FAST est desormais fait
+      # PAR LE COEUR (spec 018 nemeton@v0.61.0) via les params
       # `prewarm_alerts = TRUE` et `prewarm_mask_cache_dir = ...`
-      # passés à `ingest_sentinel2_timeseries()` ci-dessus. Le helper
-      # app `.prewarm_fast_alerts()` (livré en v0.54.0) est retiré
+      # passes a `ingest_sentinel2_timeseries()` ci-dessus. Le helper
+      # app `.prewarm_fast_alerts()` (livre en v0.54.0) est retire
       # ici car il faisait double emploi avec l'API native. Les
-      # progress events `fast_prewarm:*` sont émis par le cœur via
-      # `progress_callback` et capturés par l'observer parent en
-      # `mod_monitoring.R` qui les transforme en toasts localisés.
+      # progress events `fast_prewarm:*` sont emis par le coeur via
+      # `progress_callback` et captures par l'observer parent en
+      # `mod_monitoring.R` qui les transforme en toasts localises.
 
       duration_sec <- as.numeric(difftime(Sys.time(), .ws_t0,
                                           units = "secs"))
-      # v0.70.4 — Le format `monitoring_ntfy_ingest_complete` ne
+      # v0.70.4 - Le format `monitoring_ntfy_ingest_complete` ne
       # consomme plus `n_obs_inserted` (toujours 0 depuis
       # nemeton@v0.58.0). 2 args : `n_scenes` + `duration`.
       .ntfy_send(
@@ -368,12 +368,12 @@ run_ingestion_async <- function() {
 }
 
 
-# v0.55.0 — helper `.prewarm_fast_alerts()` retiré : la logique est
-# désormais dans le cœur `nemeton::ingest_sentinel2_timeseries()` via
+# v0.55.0 - helper `.prewarm_fast_alerts()` retire : la logique est
+# desormais dans le coeur `nemeton::ingest_sentinel2_timeseries()` via
 # les params `prewarm_alerts = TRUE` + `prewarm_mask_cache_dir`
 # (spec 018 v0.61.0). Le worker app passe simplement les 2 params,
-# le cœur enchaîne en interne les 4 `read_fast_alert_raster()` avec
-# le même `con` / `cache_dir` / `cancel_path` qu'il tient déjà.
+# le coeur enchaine en interne les 4 `read_fast_alert_raster()` avec
+# le meme `con` / `cache_dir` / `cancel_path` qu'il tient deja.
 
 
 #' Build a worker-side progress writer
@@ -389,13 +389,13 @@ run_ingestion_async <- function() {
 #' @noRd
 .build_progress_writer <- function(progress_path) {
   if (is.null(progress_path) || !nzchar(progress_path)) return(NULL)
-  # v0.70.0 — Double transport (brief logs FAST propres) :
+  # v0.70.0 - Double transport (brief logs FAST propres) :
   # * `progress_path` (.json) : DERNIER event, atomic write +
-  #   rename. Sert au toast Shiny coalescé (1 toast actif).
+  #   rename. Sert au toast Shiny coalesce (1 toast actif).
   # * `ndjson_path` (.ndjson) : journal APPEND-ONLY, une ligne
-  #   par event. Drainé par le mirror console côté lecteur,
+  #   par event. Draine par le mirror console cote lecteur,
   #   garantit l'ordre et l'absence de saut.
-  # Le path NDJSON est dérivé du JSON (même répertoire, suffixe
+  # Le path NDJSON est derive du JSON (meme repertoire, suffixe
   # `.ndjson` au lieu de `.json`). Si l'extension n'est pas `.json`,
   # on append `.ndjson` au path complet.
   ndjson_path <- if (grepl("\\.json$", progress_path)) {
@@ -406,7 +406,7 @@ run_ingestion_async <- function() {
   function(event) {
     # suppressWarnings as well as tryCatch: writing under a missing
     # directory emits a "cannot open file" *warning* before the error
-    # — losing a progress tick must be fully silent (the reader always
+    # - losing a progress tick must be fully silent (the reader always
     # wraps its read in tryCatch).
     tryCatch(
       suppressWarnings({
@@ -416,7 +416,7 @@ run_ingestion_async <- function() {
         tmp <- paste0(progress_path, ".tmp")
         writeLines(line, con = tmp, useBytes = TRUE)
         # file.rename is atomic on POSIX, best-effort on Windows where
-        # the destination must not exist — fall back to a write+unlink
+        # the destination must not exist - fall back to a write+unlink
         # cycle that is good enough for a polling reader.
         ok <- file.rename(tmp, progress_path)
         if (!isTRUE(ok)) {
@@ -424,8 +424,8 @@ run_ingestion_async <- function() {
           unlink(tmp)
         }
         # --- 2. NDJSON append-only (mirror console) ----------------
-        # v0.70.0 — Une ligne par event, séquentielle, jamais écrasée.
-        # `cat(append = TRUE)` ouvre/écrit/ferme atomiquement — pas
+        # v0.70.0 - Une ligne par event, sequentielle, jamais ecrasee.
+        # `cat(append = TRUE)` ouvre/ecrit/ferme atomiquement - pas
         # de leak de descripteur si le worker meurt.
         cat(line, "\n", sep = "", file = ndjson_path, append = TRUE)
       }),
@@ -437,21 +437,21 @@ run_ingestion_async <- function() {
 
 #' Write the FAST ingestion run sentinel (worker-side, session-independent)
 #'
-#' v0.85.2.9000 — A small JSON marker the ingestion worker writes at
+#' v0.85.2.9000 - A small JSON marker the ingestion worker writes at
 #' start (`status = "running"`) and at termination (`"done"` /
 #' `"error"` / `"cancelled"`). Because it is written by the worker
 #' process (not the Shiny session), it survives a browser disconnect /
 #' session end. A freshly-launched Shiny instance reads it (via
-#' [.detect_ingest_state()]) to surface an « ingestion en cours » /
-#' « ingestion interrompue » banner.
+#' [.detect_ingest_state()]) to surface an " ingestion en cours " /
+#' " ingestion interrompue " banner.
 #'
-#' Atomic write (.tmp + rename), fully silent on error — a sentinel
+#' Atomic write (.tmp + rename), fully silent on error - a sentinel
 #' write must never abort the ingestion.
 #'
 #' @param path Sentinel file path (`<project>/data/ingest_run.json`),
 #'   or NULL (no-op, e.g. PG-only setup with no project on disk).
 #' @param status One of `"running"`, `"done"`, `"error"`, `"cancelled"`.
-#' @param extra Named list merged into the payload (zone, dates, …).
+#' @param extra Named list merged into the payload (zone, dates, ...).
 #' @return Invisibly the path (or NULL).
 #' @noRd
 .write_ingest_sentinel <- function(path, status, extra = list()) {
@@ -477,7 +477,7 @@ run_ingestion_async <- function() {
 
 #' Read the FAST ingestion run sentinel
 #'
-#' v0.85.2.9000 — Companion reader for [.write_ingest_sentinel()].
+#' v0.85.2.9000 - Companion reader for [.write_ingest_sentinel()].
 #'
 #' @param path Sentinel file path or NULL.
 #' @return A named list (parsed JSON) or NULL when absent / unreadable.
@@ -491,17 +491,17 @@ run_ingestion_async <- function() {
 }
 
 
-#' Async FORDEAD dieback diagnosis (E6.c.5 — spec 008)
+#' Async FORDEAD dieback diagnosis (E6.c.5 - spec 008)
 #'
 #' Wraps `nemeton::run_fordead_dieback()` in a `shiny::ExtendedTask`.
 #' Since nemeton@v0.24.0 the pipeline is **6 phases via reticulate**:
-#' ingest → vegetation index → train → forest mask → dieback detection
-#' → export. The full run takes minutes to hours, so it runs in a
+#' ingest -> vegetation index -> train -> forest mask -> dieback detection
+#' -> export. The full run takes minutes to hours, so it runs in a
 #' `future` worker. The worker re-loads `nemetonshiny` and opens a
 #' fresh DB connection.
 #'
-#' Breaking signature change in v0.24.0 (cf. spec 008 §13 + ADR-013
-#' amendement A2): `aoi` / `scenes_df` / `forest_mask` removed —
+#' Breaking signature change in v0.24.0 (cf. spec 008 sect.13 + ADR-013
+#' amendement A2): `aoi` / `scenes_df` / `forest_mask` removed -
 #' the core now derives everything from `(con, zone_id, cache_dir)`.
 #' The new `ingest` phase 0 fetches the bands FAST didn't cache
 #' (B02 / B05 / B8A / B11) and reuses what FAST already downloaded
@@ -510,17 +510,17 @@ run_ingestion_async <- function() {
 #' transparently.
 #'
 #' Inputs are passed at `$invoke()` time:
-#' * `dates_training`    — length-2 Date or character (start, end)
-#' * `dates_monitoring`  — length-2 Date or character
-#' * `threshold_anomaly` — numeric, default 0.16 (ONF/DSF 2024)
-#' * `vegetation_index`  — "CRSWIR" (FORDEAD est mono-indice ; cf.
+#' * `dates_training`    - length-2 Date or character (start, end)
+#' * `dates_monitoring`  - length-2 Date or character
+#' * `threshold_anomaly` - numeric, default 0.16 (ONF/DSF 2024)
+#' * `vegetation_index`  - "CRSWIR" (FORDEAD est mono-indice ; cf.
 #'                         `nemeton::run_fordead_dieback()`)
-#' * `zone_id`           — integer, required for AOI lookup + DB INSERT
-#' * `cache_dir`         — path to the project's Sentinel-2 COG cache
+#' * `zone_id`           - integer, required for AOI lookup + DB INSERT
+#' * `cache_dir`         - path to the project's Sentinel-2 COG cache
 #'                         (typically `<project>/cache/layers/sentinel2`)
-#' * `db_url`            — pre-resolved DB URL (workers can't reach
+#' * `db_url`            - pre-resolved DB URL (workers can't reach
 #'                         app_state)
-#' * `progress_path`     — JSON file the worker writes to for the
+#' * `progress_path`     - JSON file the worker writes to for the
 #'                         parent's reactivePoll to tail
 #'
 #' On success, `$result()` returns the list produced by
@@ -543,15 +543,15 @@ run_fordead_async <- function() {
                                    zone_id = NULL, cache_dir = NULL,
                                    db_url = "", progress_path = NULL,
                                    lang = "fr",
-                                   # v0.71.1 — output_dir + keep_output
-                                   # forwardés au cœur. Sans cela, le
-                                   # cœur utilisait `tempfile("fordead_")`
-                                   # (/tmp), supprimé en fin de run.
+                                   # v0.71.1 - output_dir + keep_output
+                                   # forwardes au coeur. Sans cela, le
+                                   # coeur utilisait `tempfile("fordead_")`
+                                   # (/tmp), supprime en fin de run.
                                    output_dir = NULL,
                                    keep_output = TRUE,
                                    cancel_path = NULL,
-                                   # Nom d'affichage (projet) résolu côté parent
-                                   # — cf. run_ingestion_async. NULL → repli DB.
+                                   # Nom d'affichage (projet) resolu cote parent
+                                   # - cf. run_ingestion_async. NULL -> repli DB.
                                    project_name = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
@@ -560,7 +560,7 @@ run_fordead_async <- function() {
     }
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
-      # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
+      # spec 008 sect.4 - rendre la memoire au systeme : le worker est PERSISTANT.
       on.exit(.release_worker_memory(), add = TRUE)
 
       if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
@@ -575,9 +575,9 @@ run_fordead_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # URL passée à l'enfant plafonné, qui ouvre SA propre connexion
-      # (une DBIConnection ne franchit pas une frontière de process).
-      # Le parent la résout normalement ; repli sur les variables
+      # URL passee a l'enfant plafonne, qui ouvre SA propre connexion
+      # (une DBIConnection ne franchit pas une frontiere de process).
+      # Le parent la resout normalement ; repli sur les variables
       # d'environnement si l'appelant ne l'a pas fournie.
       child_db_url <- if (nzchar(db_url %||% "")) {
         db_url
@@ -585,14 +585,14 @@ run_fordead_async <- function() {
         .resolve_monitoring_db_url(NULL)
       }
 
-      # ntfy push channel — resolved worker-side (env vars replayed
-      # above). NULL when NEMETON_NTFY_TOPIC is unset → every
+      # ntfy push channel - resolved worker-side (env vars replayed
+      # above). NULL when NEMETON_NTFY_TOPIC is unset -> every
       # `.ntfy_send()` call below is a silent no-op.
       ntfy  <- .ntfy_config()
       i18n  <- get_i18n(lang %||% "fr")
 
-      # v0.43.2 — resolve the display name once for the start push,
-      # symétrique avec FAST : priorité au nom de projet (parent), repli DB.
+      # v0.43.2 - resolve the display name once for the start push,
+      # symetrique avec FAST : priorite au nom de projet (parent), repli DB.
       zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
       # Composite progress callback: the file writer the parent's
@@ -601,13 +601,13 @@ run_fordead_async <- function() {
       # name, not per progress tick) so a 6-phase run yields 6
       # notifications, not hundreds.
       #
-      # v0.106.5.9003 — le run lui-même tourne dans un process ENFANT
-      # plafonné (`nemeton::run_memory_capped()`), et c'est cet enfant
-      # qui écrit les fichiers de progression. Le composite n'est donc
-      # plus passé au cœur : il ne sert plus qu'aux heartbeats émis par
-      # le worker lui-même (`.ws_emit()` ci-dessous), qui doivent bien
-      # atterrir dans le fichier. Au cœur, on ne rejoue que `ntfy_cb`
-      # (sinon chaque événement serait écrit deux fois).
+      # v0.106.5.9003 - le run lui-meme tourne dans un process ENFANT
+      # plafonne (`nemeton::run_memory_capped()`), et c'est cet enfant
+      # qui ecrit les fichiers de progression. Le composite n'est donc
+      # plus passe au coeur : il ne sert plus qu'aux heartbeats emis par
+      # le worker lui-meme (`.ws_emit()` ci-dessous), qui doivent bien
+      # atterrir dans le fichier. Au coeur, on ne rejoue que `ntfy_cb`
+      # (sinon chaque evenement serait ecrit deux fois).
       progress_cb <- .build_fordead_progress_callback(progress_path,
                                                       ntfy, i18n)
       ntfy_cb     <- .build_fordead_ntfy_callback(ntfy, i18n)
@@ -620,10 +620,10 @@ run_fordead_async <- function() {
         title = .ntfy_title("FORDEAD", zone_name)
       )
 
-      # v0.71.1 — Si output_dir est NULL (cas legacy ou worker invoqué
-      # sans le param), garder le défaut cœur (tempfile). Sinon,
-      # créer le dossier côté worker (le mkdir côté main session
-      # peut avoir échoué).
+      # v0.71.1 - Si output_dir est NULL (cas legacy ou worker invoque
+      # sans le param), garder le defaut coeur (tempfile). Sinon,
+      # creer le dossier cote worker (le mkdir cote main session
+      # peut avoir echoue).
       if (!is.null(output_dir) && nzchar(output_dir)) {
         if (!dir.exists(output_dir)) {
           tryCatch(
@@ -632,25 +632,25 @@ run_fordead_async <- function() {
           )
         }
       }
-      # v0.106.5.9003 (spec 008) — FORDEAD tourne dans un process R
-      # ENFANT plafonné en mémoire (`nemeton::run_memory_capped()`,
-      # cœur >= 0.157.0), pas dans le worker `future`. Raison : le
-      # Python de FORDEAD vit dans l'interpréteur EMBARQUÉ de
-      # reticulate, donc sa mémoire est celle du worker, donc celle du
-      # scope systemd de l'app — et `systemd-oomd` ne tue pas le
+      # v0.106.5.9003 (spec 008) - FORDEAD tourne dans un process R
+      # ENFANT plafonne en memoire (`nemeton::run_memory_capped()`,
+      # coeur >= 0.157.0), pas dans le worker `future`. Raison : le
+      # Python de FORDEAD vit dans l'interpreteur EMBARQUE de
+      # reticulate, donc sa memoire est celle du worker, donc celle du
+      # scope systemd de l'app - et `systemd-oomd` ne tue pas le
       # processus fautif mais le SCOPE entier (app + session R
-      # emportées, 2026-07-13 / 2026-07-14). Le cœur pose un cgroup
+      # emportees, 2026-07-13 / 2026-07-14). Le coeur pose un cgroup
       # `MemoryMax=` + `MemorySwapMax=0` sur l'enfant : un run qui
-      # déborde meurt SEUL, avec une erreur attrapable (le tryCatch
-      # ci-dessous, inchangé).
+      # deborde meurt SEUL, avec une erreur attrapable (le tryCatch
+      # ci-dessous, inchange).
       #
-      # Frontière de process → deux arguments ne traversent pas et sont
-      # reconstruits côté enfant :
-      #   * `con`               → `db_url` (l'enfant ouvre sa connexion) ;
-      #   * `progress_callback` → `progress_path` (l'enfant écrit les
+      # Frontiere de process -> deux arguments ne traversent pas et sont
+      # reconstruits cote enfant :
+      #   * `con`               -> `db_url` (l'enfant ouvre sa connexion) ;
+      #   * `progress_callback` -> `progress_path` (l'enfant ecrit les
       #     fichiers .json/.ndjson, le parent les tail et rejoue chaque
-      #     événement dans `ntfy_cb` → les push ntfy sont préservés).
-      # `cancel_path` est inchangé : l'enfant poll le même fichier.
+      #     evenement dans `ntfy_cb` -> les push ntfy sont preserves).
+      # `cancel_path` est inchange : l'enfant poll le meme fichier.
       result <- tryCatch(
         nemeton::run_memory_capped(
           "run_fordead_dieback",
@@ -661,19 +661,19 @@ run_fordead_async <- function() {
             dates_monitoring  = dates_monitoring,
             threshold_anomaly = threshold_anomaly,
             vegetation_index  = vegetation_index,
-            # v0.71.1 — Forward output_dir + keep_output au cœur
-            # (`nemeton::run_fordead_dieback`). Par défaut le cœur
-            # utilisait `tempfile("fordead_")` → /tmp. Désormais les
-            # outputs intermédiaires (training, masks bruts) vivent
+            # v0.71.1 - Forward output_dir + keep_output au coeur
+            # (`nemeton::run_fordead_dieback`). Par defaut le coeur
+            # utilisait `tempfile("fordead_")` -> /tmp. Desormais les
+            # outputs intermediaires (training, masks bruts) vivent
             # sous `<projet>/cache/layers/fordead/output_zone_<id>` et
-            # sont préservés (`keep_output = TRUE`) — inspectables.
-            # NULL = retombe sur le défaut cœur (back-compat).
+            # sont preserves (`keep_output = TRUE`) - inspectables.
+            # NULL = retombe sur le defaut coeur (back-compat).
             output_dir        = output_dir,
             keep_output       = keep_output,
-            # v0.52.0 — cancel coopératif (nemeton@v0.53.0). L'enfant
+            # v0.52.0 - cancel cooperatif (nemeton@v0.53.0). L'enfant
             # polle `file.exists(cancel_path)` entre phases reticulate
-            # (training → monitoring → écriture alertes). Granularité
-            # plus grossière que FAST mais cohérente — l'utilisateur
+            # (training -> monitoring -> ecriture alertes). Granularite
+            # plus grossiere que FAST mais coherente - l'utilisateur
             # sait qu'il abandonne au prochain checkpoint.
             cancel_path       = cancel_path
           ),
@@ -695,10 +695,10 @@ run_fordead_async <- function() {
       )
 
       # Heartbeat de fin : nemeton::run_fordead_dieback a rendu la main.
-      # Symétrique au heartbeat `s2:ingest_done` côté FAST (cf. l.~240).
-      # Si cet événement apparaît dans la console mais que le bouton ne
-      # se réactive pas, le worker finalise sa sortie côté SQLite WAL
-      # — l'utilisateur peut force-unlock l'UI via « Annuler ».
+      # Symetrique au heartbeat `s2:ingest_done` cote FAST (cf. l.~240).
+      # Si cet evenement apparait dans la console mais que le bouton ne
+      # se reactive pas, le worker finalise sa sortie cote SQLite WAL
+      # - l'utilisateur peut force-unlock l'UI via " Annuler ".
       .ws_emit(progress_cb, list(
         current           = "fordead:dieback_done",
         n_alerts_inserted = as.integer(result$n_alerts_inserted %||% 0L)
@@ -722,23 +722,23 @@ run_fordead_async <- function() {
 #'
 #' Wraps `nemeton::run_reconfort_dieback()` in a `shiny::ExtendedTask`,
 #' mirroring [run_fordead_async()] with the RECONFORT parameter set.
-#' The run is heavy / opt-in (conda IOTA² + GEODES + OTB/Shark) and
+#' The run is heavy / opt-in (conda IOTA2 + GEODES + OTB/Shark) and
 #' takes minutes to hours, so it runs in a `future` worker that re-loads
 #' `nemetonshiny` and opens a fresh DB connection.
 #'
 #' Inputs passed at `$invoke()` time:
-#' * `zone_id`       — integer, required (AOI lookup + DB INSERT)
-#' * `cache_dir`     — RECONFORT cache (`<project>/cache/layers/reconfort`);
+#' * `zone_id`       - integer, required (AOI lookup + DB INSERT)
+#' * `cache_dir`     - RECONFORT cache (`<project>/cache/layers/reconfort`);
 #'                     the persist phase writes `zone_<id>/run_<run_id>/`
-#' * `s2_year`       — integer Sentinel-2 year
-#' * `db_url`        — pre-resolved DB URL (workers can't reach app_state)
-#' * `progress_path` — JSON file the worker writes to for the parent's
+#' * `s2_year`       - integer Sentinel-2 year
+#' * `db_url`        - pre-resolved DB URL (workers can't reach app_state)
+#' * `progress_path` - JSON file the worker writes to for the parent's
 #'                     reactivePoll to tail (events `reconfort:*`)
-#' * `output_dir`    — working dir for intermediate outputs (NULL = core
+#' * `output_dir`    - working dir for intermediate outputs (NULL = core
 #'                     default tempfile)
 #'
 #' Unlike FORDEAD, `nemeton::run_reconfort_dieback()` has no `cancel_path`
-#' parameter — there is no cooperative cancellation; the UI relies on the
+#' parameter - there is no cooperative cancellation; the UI relies on the
 #' force-unlock escape hatch only.
 #'
 #' On success, `$result()` returns the list produced by the core (carrying
@@ -759,8 +759,8 @@ run_reconfort_async <- function() {
                                    s2_year = NULL, db_url = "",
                                    progress_path = NULL, lang = "fr",
                                    output_dir = NULL,
-                                   # Nom d'affichage (projet) résolu côté parent
-                                   # — cf. run_ingestion_async. NULL → repli DB.
+                                   # Nom d'affichage (projet) resolu cote parent
+                                   # - cf. run_ingestion_async. NULL -> repli DB.
                                    project_name = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
@@ -769,7 +769,7 @@ run_reconfort_async <- function() {
     }
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
-      # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
+      # spec 008 sect.4 - rendre la memoire au systeme : le worker est PERSISTANT.
       on.exit(.release_worker_memory(), add = TRUE)
 
       if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
@@ -784,12 +784,12 @@ run_reconfort_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # ntfy push channel — resolved worker-side (env vars replayed
-      # above). NULL when NEMETON_NTFY_TOPIC is unset → every
-      # `.ntfy_send()` below is a silent no-op. Symétrique avec FORDEAD.
+      # ntfy push channel - resolved worker-side (env vars replayed
+      # above). NULL when NEMETON_NTFY_TOPIC is unset -> every
+      # `.ntfy_send()` below is a silent no-op. Symetrique avec FORDEAD.
       ntfy      <- .ntfy_config()
       i18n      <- get_i18n(lang %||% "fr")
-      # Priorité au nom de projet (parent, à jour), repli DB — cf. FAST.
+      # Priorite au nom de projet (parent, a jour), repli DB - cf. FAST.
       zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
       # Composite progress callback: the file writer the parent's
@@ -856,14 +856,14 @@ run_reconfort_async <- function() {
 #' completion / error messages to a topic the user subscribes to from
 #' a phone or browser.
 #'
-#' Returns `NULL` when `NEMETON_NTFY_TOPIC` is unset — every
+#' Returns `NULL` when `NEMETON_NTFY_TOPIC` is unset - every
 #' `.ntfy_send()` then becomes a silent no-op, so ntfy is strictly
 #' opt-in and the feature degrades cleanly when not configured.
 #'
-#' Env vars (cf. CLAUDE.md — no secret in code):
-#' * `NEMETON_NTFY_TOPIC` — topic name (required to enable).
-#' * `NEMETON_NTFY_URL`   — server, default `https://ntfy.sh`.
-#' * `NEMETON_NTFY_TOKEN` — bearer token for a protected topic
+#' Env vars (cf. CLAUDE.md - no secret in code):
+#' * `NEMETON_NTFY_TOPIC` - topic name (required to enable).
+#' * `NEMETON_NTFY_URL`   - server, default `https://ntfy.sh`.
+#' * `NEMETON_NTFY_TOKEN` - bearer token for a protected topic
 #'   (optional, self-hosted ntfy).
 #'
 #' @return A named list (`url`, `topic`, `token`) or `NULL`.
@@ -887,14 +887,14 @@ run_reconfort_async <- function() {
 #' fixed ASCII string because ntfy headers are not UTF-8 safe.
 #'
 #' Wrapped in `tryCatch` and given a short timeout: a notification is
-#' never worth aborting — or even slowing down — a FORDEAD run for.
+#' never worth aborting - or even slowing down - a FORDEAD run for.
 #' No-op when `cfg` is `NULL`.
 #'
 #' @param cfg Output of `.ntfy_config()` (or `NULL`).
 #' @param message Body text (UTF-8).
 #' @param priority ntfy priority (`"min"`/`"low"`/`"default"`/`"high"`/`"max"`).
 #' @param tags Character vector of ntfy tags / emoji short-codes.
-#' @param title Title HTTP header — ASCII only (ntfy headers are not
+#' @param title Title HTTP header - ASCII only (ntfy headers are not
 #'   UTF-8 safe). Defaults to a neutral `"Nemeton"`; FAST callers pass
 #'   `"Nemeton FAST"`, FORDEAD callers `"Nemeton FORDEAD"` so the
 #'   device groups notifications by stream (v0.43.1 fix : FAST runs
@@ -902,10 +902,10 @@ run_reconfort_async <- function() {
 #'   hard-coded here).
 #' @return `TRUE` on a sent request, `FALSE` otherwise (invisibly).
 #' @noRd
-# Titre ntfy « Nemeton <moteur> — <projet> », ASCII-safe (les en-têtes HTTP ntfy
-# ne sont pas UTF-8 safe → translittération + strip des caractères non-ASCII).
-# `project` peut être NULL/"" (retombe sur le titre moteur seul). Partagé par
-# FAST/FORDEAD/RECONFORT (service_monitoring) et reGénération (service_regeneration).
+# Titre ntfy " Nemeton <moteur> - <projet> ", ASCII-safe (les en-tetes HTTP ntfy
+# ne sont pas UTF-8 safe -> translitteration + strip des caracteres non-ASCII).
+# `project` peut etre NULL/"" (retombe sur le titre moteur seul). Partage par
+# FAST/FORDEAD/RECONFORT (service_monitoring) et reGeneration (service_regeneration).
 .ntfy_title <- function(engine, project = NULL) {
   base <- paste0("Nemeton ", engine)
   if (is.null(project) || !nzchar(as.character(project))) return(base)
@@ -956,11 +956,11 @@ run_reconfort_async <- function() {
 #'
 #' Wraps `.build_progress_writer()` (for the parent's reactivePoll
 #' tail) with a one-shot ntfy push when the first per-scene event
-#' arrives — that's when the worker confirms it knows the total scene
-#' count and is starting the actual download. Dédupliqué via state env
-#' (un push max par run, indépendant du nombre de scènes 30-100).
+#' arrives - that's when the worker confirms it knows the total scene
+#' count and is starting the actual download. Deduplique via state env
+#' (un push max par run, independant du nombre de scenes 30-100).
 #'
-#' Start / complete / error ntfy pushes are NOT here — they live in the
+#' Start / complete / error ntfy pushes are NOT here - they live in the
 #' worker body around the nemeton call (cf. `run_ingestion_async`).
 #' Putting them in the callback would mean intercepting an arbitrary
 #' event boundary; keeping them in the worker keeps the lifecycle
@@ -1014,19 +1014,19 @@ run_reconfort_async <- function() {
 #' ntfy-only FORDEAD phase callback (no file write)
 #'
 #' v0.106.5.9003 (spec 008, brief `brief-nemetonshiny-fordead-capped`)
-#' — La moitié « push » de [.build_fordead_progress_callback()], isolée
-#' pour l'exécution plafonnée en process enfant
-#' (`nemeton::run_memory_capped()`). Sous isolation, **l'enfant écrit
-#' déjà** les fichiers `.json` / `.ndjson` de progression au format de
+#' - La moitie " push " de [.build_fordead_progress_callback()], isolee
+#' pour l'execution plafonnee en process enfant
+#' (`nemeton::run_memory_capped()`). Sous isolation, **l'enfant ecrit
+#' deja** les fichiers `.json` / `.ndjson` de progression au format de
 #' [.build_progress_writer()] ; rejouer le callback composite dans le
-#' parent dupliquerait chaque événement (lignes NDJSON en double,
+#' parent dupliquerait chaque evenement (lignes NDJSON en double,
 #' console en double). Le parent ne rejoue donc que le push ntfy.
 #'
-#' La dédup par phase (une notification par phase, pas par tick) vit
-#' dans l'état `last_phase` de la closure — état côté parent, donc
-#' préservé même si l'enfant meurt et redémarre.
+#' La dedup par phase (une notification par phase, pas par tick) vit
+#' dans l'etat `last_phase` de la closure - etat cote parent, donc
+#' preserve meme si l'enfant meurt et redemarre.
 #'
-#' @param ntfy `.ntfy_config()` output (or `NULL` → no-op).
+#' @param ntfy `.ntfy_config()` output (or `NULL` -> no-op).
 #' @param i18n A `get_i18n()` translator.
 #' @return A callback `function(event)`.
 #' @noRd
@@ -1055,14 +1055,14 @@ run_reconfort_async <- function() {
 
 #' Memory ceiling for the capped FORDEAD child process
 #'
-#' v0.106.5.9003 (spec 008) — Resolves `NEMETON_MEMORY_MAX` into the
+#' v0.106.5.9003 (spec 008) - Resolves `NEMETON_MEMORY_MAX` into the
 #' `memory_max` argument of `nemeton::run_memory_capped()`:
 #'
-#' * unset / empty  → `NULL` : the core default (70 % of RAM).
-#' * `"none"` / `"off"` / `"false"` / `"0"` → `FALSE` : no ceiling at
+#' * unset / empty  -> `NULL` : the core default (70 % of RAM).
+#' * `"none"` / `"off"` / `"false"` / `"0"` -> `FALSE` : no ceiling at
 #'   all (escape hatch when a legitimate run gets killed).
-#' * anything else  → passed through verbatim (`"16G"`, `"21474836480"`,
-#'   … — the core validates and hands it to `systemd-run`).
+#' * anything else  -> passed through verbatim (`"16G"`, `"21474836480"`,
+#'   ... - the core validates and hands it to `systemd-run`).
 #'
 #' Read worker-side (the worker is what spawns the child), hence the
 #' env var is forwarded by [.capture_worker_envvars()].
@@ -1118,15 +1118,15 @@ run_reconfort_async <- function() {
 }
 
 
-#' Human-readable duration string (granularité minute)
+#' Human-readable duration string (granularite minute)
 #'
 #' Formats a number of seconds as `"45 s"` / `"12 min"` / `"13 h 47 min"`.
 #' Returns `"?"` for `NULL` / non-finite input.
 #'
-#' v0.106.5 (spec 008 §5, consolidation) — mince adaptateur sur
-#' `nemeton::format_duration(with_seconds = FALSE)` (cœur >= 0.155.0).
-#' L'implémentation locale est retirée : une seule source de vérité pour le
-#' format des durées (règle #2). Cf. `format_elapsed()` pour la granularité
+#' v0.106.5 (spec 008 sect.5, consolidation) - mince adaptateur sur
+#' `nemeton::format_duration(with_seconds = FALSE)` (coeur >= 0.155.0).
+#' L'implementation locale est retiree : une seule source de verite pour le
+#' format des durees (regle #2). Cf. `format_elapsed()` pour la granularite
 #' seconde.
 #'
 #' @param sec Number of seconds.
@@ -1141,7 +1141,7 @@ run_reconfort_async <- function() {
 #'
 #' When a FORDEAD run outlives its Shiny session (long run + browser
 #' disconnect), the in-session `fordead_last_result()` reactiveVal is
-#' lost on reload — even though the worker completed and persisted its
+#' lost on reload - even though the worker completed and persisted its
 #' dieback mask. This helper rebuilds a synthetic "success" result by
 #' inspecting the on-disk mask cache, so the "Carte FORDEAD" /
 #' "Alertes FORDEAD" sub-tabs can show the completed run instead of a
@@ -1211,7 +1211,7 @@ run_reconfort_async <- function() {
 #' relevant `NEMETON_*` env vars at invoke time (parent side) and
 #' replay them on the worker side via `.apply_worker_envvars()`.
 #'
-#' Returns a named character vector — `future` auto-pickles it as a
+#' Returns a named character vector - `future` auto-pickles it as a
 #' captured global when it appears inside the `future_promise()`
 #' expression body.
 #'
@@ -1230,7 +1230,7 @@ run_reconfort_async <- function() {
     "NEMETON_DB_NAME",
     "NEMETON_DB_USER",
     "NEMETON_DB_PASSWORD",
-    # Clever Cloud addon vars — consumed by the app-DB resolver
+    # Clever Cloud addon vars - consumed by the app-DB resolver
     # (`.resolve_db_config`) for the background project sync worker
     # (`db_sync_project_async`). Harmless for the monitoring workers.
     "POSTGRESQL_ADDON_HOST",
@@ -1238,7 +1238,7 @@ run_reconfort_async <- function() {
     "POSTGRESQL_ADDON_DB",
     "POSTGRESQL_ADDON_USER",
     "POSTGRESQL_ADDON_PASSWORD",
-    # ntfy push channel (E6 — out-of-band FORDEAD progress). The worker
+    # ntfy push channel (E6 - out-of-band FORDEAD progress). The worker
     # outlives the Shiny session on long runs; ntfy is how the user
     # still gets notified. Forwarded so the worker can resolve the
     # topic / server / token without reaching app_state.
@@ -1249,10 +1249,10 @@ run_reconfort_async <- function() {
     # pipelines longs y streament leurs stacks au lieu de les tenir en RAM :
     # ~800 Mo pour une petite AOI, de l'ordre de la dizaine de Go a l'echelle
     # d'un departement. Le run tourne DANS le worker, donc c'est le worker qui
-    # doit voir la variable — et les workers sont PRE-CHAUFFES au demarrage de
+    # doit voir la variable - et les workers sont PRE-CHAUFFES au demarrage de
     # la session (warmup_async_workers) : ils figent leur environnement a ce
     # moment-la. Sans ce transfert, un NEMETON_SCRATCH_DIR pose ensuite serait
-    # ignore en silence et le coeur retomberait sur tempdir() — qui est parfois
+    # ignore en silence et le coeur retomberait sur tempdir() - qui est parfois
     # un tmpfs, c'est-a-dire de la RAM, ce qui annulerait tout le benefice.
     "NEMETON_SCRATCH_DIR",
     # plafond memoire du process enfant FORDEAD (nemeton >= 0.157.0).
@@ -1268,8 +1268,8 @@ run_reconfort_async <- function() {
 #' Replay captured env vars on the worker side
 #'
 #' Called as the first line of the `future_promise()` body so all
-#' downstream `nemeton::*` calls — including the verbose tracing
-#' driven by `NEMETON_S2_CACHE_DEBUG` — see the same env as the
+#' downstream `nemeton::*` calls - including the verbose tracing
+#' driven by `NEMETON_S2_CACHE_DEBUG` - see the same env as the
 #' parent.
 #'
 #' Robust to NULL / empty inputs (no-op).
@@ -1282,7 +1282,7 @@ run_reconfort_async <- function() {
 }
 
 
-#' Rendre au systeme la memoire d'une tache worker terminee (spec 008 §4)
+#' Rendre au systeme la memoire d'une tache worker terminee (spec 008 sect.4)
 #'
 #' Les workers `future::multisession` sont des processus R **persistants** : ils
 #' survivent a la tache et gardent tout ce qu'ils ont alloue. Un run lourd fait
@@ -1292,11 +1292,11 @@ run_reconfort_async <- function() {
 #'
 #' Appele en `on.exit()` a la fin du corps du worker. Les DEUX etapes comptent,
 #' et dans cet ordre :
-#'   1. `rm(list = ls(envir = env), envir = env)` — `on.exit` s'execute pendant
+#'   1. `rm(list = ls(envir = env), envir = env)` - `on.exit` s'execute pendant
 #'      que la frame du worker est ENCORE VIVANTE : les gros objets y sont
 #'      toujours lies, un `gc()` seul ne peut donc rien liberer. Mesure : `gc()`
 #'      seul ne fait tomber le worker que de 6,4 Go a 1,6 Go.
-#'   2. `gc(full = TRUE)` — une fois les liens coupes, R rend les pages a l'OS.
+#'   2. `gc(full = TRUE)` - une fois les liens coupes, R rend les pages a l'OS.
 #'      Mesure : le worker retombe a ~210 Mo (son niveau a vide).
 #'
 #' La valeur de retour de la tache est deja calculee quand `on.exit` tourne :

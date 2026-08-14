@@ -106,19 +106,19 @@ reload_expert_profiles <- function() {
 #' @return Named character vector (names = translated labels, values = profile keys).
 #' @noRd
 # Internal-only expert profiles : NOT user-selectable perspectives.
-# `planificateur` is a JSON-only profile (« Tu produis exclusivement du
-# JSON valide… ») consumed by the action-plan generation, which hardcodes
+# `planificateur` is a JSON-only profile (" Tu produis exclusivement du
+# JSON valide... ") consumed by the action-plan generation, which hardcodes
 # `build_system_prompt(expert = "planificateur")` (mod_action_plan). It
 # must stay in `get_expert_profiles()` (the action plan needs it) but be
-# excluded from the perspective dropdown — otherwise selecting it in
-# Synthèse makes « Générer par IA » return raw JSON instead of prose.
-# `regeneration` is the reGénération « Affiner » profile, hardcoded by
+# excluded from the perspective dropdown - otherwise selecting it in
+# Synthese makes " Generer par IA " return raw JSON instead of prose.
+# `regeneration` is the reGeneration " Affiner " profile, hardcoded by
 # mod_regeneration ; likewise internal, not a general perspective.
 .INTERNAL_EXPERT_KEYS <- c("planificateur", "regeneration")
 
 get_expert_choices <- function(lang = "fr") {
   # Ceinture : un `lang` NULL/vide (option app partielle) ferait `p$label[[NULL]]`
-  # -> « attempt to select less than one element ». Retomber sur "fr".
+  # -> " attempt to select less than one element ". Retomber sur "fr".
   if (is.null(lang) || length(lang) != 1L || is.na(lang) || !nzchar(lang)) {
     lang <- "fr"
   }

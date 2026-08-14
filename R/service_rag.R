@@ -1,28 +1,28 @@
-# RAG orchestration — récupération de passages corpus pour les
-# perspectives IA sourcées (spec brief 2026-06-02, nemeton@v0.62.0).
+# RAG orchestration - recuperation de passages corpus pour les
+# perspectives IA sourcees (spec brief 2026-06-02, nemeton@v0.62.0).
 #
-# Règles de séparation app/cœur (CLAUDE.md §1, §3) : aucune logique
-# métier ici — embedding, similarité pgvector et formatage des
-# citations vivent côté `nemeton`. Ce service se contente :
-#   1. d'ouvrir/réutiliser une connexion DB (corpus dédié ou partagé),
+# Regles de separation app/coeur (CLAUDE.md sect.1, sect.3) : aucune logique
+# metier ici - embedding, similarite pgvector et formatage des
+# citations vivent cote `nemeton`. Ce service se contente :
+#   1. d'ouvrir/reutiliser une connexion DB (corpus dedie ou partage),
 #   2. d'appeler `nemeton::retrieve_knowledge()` avec les bons filtres,
-#   3. de dédupliquer par document pour le bloc Sources,
-#   4. de produire un payload structuré consommé par `llm_prompts.R`
+#   3. de dedupliquer par document pour le bloc Sources,
+#   4. de produire un payload structure consomme par `llm_prompts.R`
 #      (prompt) et `mod_synthesis.R` (UI).
 #
 # Le service est **non-bloquant par construction** : toute erreur,
-# corpus vide, clé manquante ou option désactivée renvoie un payload
-# « empty » et la perspective est générée sans sources.
+# corpus vide, cle manquante ou option desactivee renvoie un payload
+# " empty " et la perspective est generee sans sources.
 
 #' Resolve a knowledge-base DB connection (RAG corpus)
 #'
 #' Priority order :
-#'   1. `NEMETON_KNOWLEDGE_DB_URL` — dedicated corpus DB.
-#'   2. `app_con` (passed in) — corpus co-located with the app's
+#'   1. `NEMETON_KNOWLEDGE_DB_URL` - dedicated corpus DB.
+#'   2. `app_con` (passed in) - corpus co-located with the app's
 #'      monitoring DB (typical prod setup: same `NEMETON_DB_URL`,
 #'      `knowledge_*` tables alongside `monitoring_zone`).
 #'
-#' Read-only by intent — the caller never writes to the corpus from
+#' Read-only by intent - the caller never writes to the corpus from
 #' the app side.
 #'
 #' @param app_con An existing app DB connection (or NULL).
@@ -50,10 +50,10 @@ rag_knowledge_con <- function(app_con = NULL) {
 #' If the input doesn't have the `profil_` prefix (already a short
 #' code), it's returned unchanged.
 #'
-#' Quelques clés d'app (noms de fichiers `inst/experts/*.yml`) diffèrent
-#' du code utilisé pour taguer le corpus. Sans alias, le profil ne
-#' récupère AUCUNE référence et les documents tagués restent orphelins.
-#' Cas connu : `owner` (label « Propriétaire ») ↔ corpus
+#' Quelques cles d'app (noms de fichiers `inst/experts/*.yml`) different
+#' du code utilise pour taguer le corpus. Sans alias, le profil ne
+#' recupere AUCUNE reference et les documents tagues restent orphelins.
+#' Cas connu : `owner` (label " Proprietaire ") <-> corpus
 #' `proprietaire_prive` (4 documents). On corrige le mapping ici.
 #'
 #' @param profile_key Character. App-side profile key (typically
@@ -75,16 +75,16 @@ rag_profile_code <- function(profile_key) {
 #' Build a short, semantically-rich situation summary for embedding
 #'
 #' The query passed to `retrieve_knowledge()` is embedded by Mistral
-#' (→ 1024-dim vector → pgvector cosine search). Better embeddings
+#' (-> 1024-dim vector -> pgvector cosine search). Better embeddings
 #' come from a concrete French sentence than from a JSON dump. We
-#' compose : `« Perspective pour un <profil>. <famille saillante 1>,
-#' <fait marquant 2>… »`.
+#' compose : `" Perspective pour un <profil>. <famille saillante 1>,
+#' <fait marquant 2>... "`.
 #'
 #' Strategy (V1, kept simple) :
 #'   * Translate the profile key to a human-readable French label.
 #'   * Mention up to 3 family codes with the highest weights in the
 #'     project (or NULL if not available).
-#'   * Bail out to a generic sentence if the unit data is empty —
+#'   * Bail out to a generic sentence if the unit data is empty -
 #'     never produce an empty string (an empty query would fail the
 #'     embedding call upstream).
 #'
@@ -102,7 +102,7 @@ build_situation_summary <- function(units = NULL, profile_key = NULL,
   if (identical(lang, "en")) {
     sprintf("Perspective for a %s on this forest unit.", prof_short)
   } else {
-    sprintf("Perspective pour un acteur %s sur cette unité forestière.",
+    sprintf("Perspective pour un acteur %s sur cette unit\u00e9 foresti\u00e8re.",
             prof_short)
   }
 }
@@ -116,7 +116,7 @@ build_situation_summary <- function(units = NULL, profile_key = NULL,
 #'
 #' **Non-blocking by construction** : any error (no connection,
 #' missing schema, empty corpus, missing API key, network failure,
-#' 0 chunks above threshold) returns the canonical `empty` payload —
+#' 0 chunks above threshold) returns the canonical `empty` payload -
 #' the caller MUST generate the perspective without sources rather
 #' than failing.
 #'
@@ -135,11 +135,11 @@ build_situation_summary <- function(units = NULL, profile_key = NULL,
 #'   threshold. The real corpus test gives ~0.87 for a clearly
 #'   relevant doc ; 0.55 keeps a margin without much noise.
 #' @return A list with members :
-#'   * `chunks` — full data.frame (NULL when empty)
-#'   * `prompt_block` — text block injected before the user prompt,
+#'   * `chunks` - full data.frame (NULL when empty)
+#'   * `prompt_block` - text block injected before the user prompt,
 #'     numbered `[^n]` for citation
-#'   * `sources_md` — markdown block « Sources documentaires » for UI
-#'   * `n_sources` — count of UNIQUE documents (after dedup)
+#'   * `sources_md` - markdown block " Sources documentaires " for UI
+#'   * `n_sources` - count of UNIQUE documents (after dedup)
 #' @noRd
 rag_context <- function(app_con, profile_code, family_codes,
                         situation_text, lang = "fr", top_k = 8L,
@@ -147,7 +147,7 @@ rag_context <- function(app_con, profile_code, family_codes,
   empty <- list(chunks = NULL, prompt_block = "", sources_md = "",
                 n_sources = 0L)
 
-  # Opt-out global via option — useful for tests, CI, dev environments
+  # Opt-out global via option - useful for tests, CI, dev environments
   # where the corpus isn't available.
   if (!isTRUE(getOption("nemeton.rag_enabled", TRUE))) return(empty)
 
@@ -181,51 +181,51 @@ rag_context <- function(app_con, profile_code, family_codes,
   )
   if (is.null(chunks) || !nrow(chunks)) return(empty)
 
-  # v0.61.1 — observabilité : une ligne par perspective dans le log
+  # v0.61.1 - observabilite : une ligne par perspective dans le log
   # de l'app. Visible dans la console R (dev) ou la log container
-  # (prod). Aide à diagnostiquer un corpus muet : si on voit
-  # systématiquement « 0 chunk(s) », c'est un problème de filtre /
+  # (prod). Aide a diagnostiquer un corpus muet : si on voit
+  # systematiquement " 0 chunk(s) ", c'est un probleme de filtre /
   # seuil / embed ; si on ne voit jamais la ligne, c'est que
-  # `rag_context()` a court-circuité avant le retrieve (corpus
+  # `rag_context()` a court-circuite avant le retrieve (corpus
   # indisponible, opt-out, situation_text vide, etc.).
   cli::cli_inform(
-    "RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"
+    "RAG: {nrow(chunks)} chunk(s) r\u00e9cup\u00e9r\u00e9(s) au-dessus de {min_similarity}"
   )
 
-  # v0.84.6 — numérotation [^n] cohérente entre le prompt et les sources.
+  # v0.84.6 - numerotation [^n] coherente entre le prompt et les sources.
   #
-  # AVANT : le prompt numérotait TOUS les chunks ([^1]..[^K], K≤top_k=8)
-  # alors que le bloc sources dédupliquait par document ([^1]..[^N], N≤K)
-  # PUIS `format_citations` renumérotait. Le LLM citait donc des numéros
-  # de CHUNK ([^7], [^8]) absents de la liste DÉDUPLIQUÉE des sources →
-  # refs orphelines + numéros pointant sur le mauvais document.
+  # AVANT : le prompt numerotait TOUS les chunks ([^1]..[^K], K<=top_k=8)
+  # alors que le bloc sources dedupliquait par document ([^1]..[^N], N<=K)
+  # PUIS `format_citations` renumerotait. Le LLM citait donc des numeros
+  # de CHUNK ([^7], [^8]) absents de la liste DEDUPLIQUEE des sources ->
+  # refs orphelines + numeros pointant sur le mauvais document.
   #
-  # MAINTENANT : on déduplique par document EN AMONT et on numérote le
-  # prompt PAR DOCUMENT (1..N), avec la MÊME numérotation que
-  # `format_citations(best_per_doc)`. Les chunks d'un même document sont
-  # regroupés sous un seul `[^d]`. Le LLM ne peut donc citer que
-  # `[^1]..[^N]`, tous présents dans les sources et pointant sur le bon
+  # MAINTENANT : on deduplique par document EN AMONT et on numerote le
+  # prompt PAR DOCUMENT (1..N), avec la MEME numerotation que
+  # `format_citations(best_per_doc)`. Les chunks d'un meme document sont
+  # regroupes sous un seul `[^d]`. Le LLM ne peut donc citer que
+  # `[^1]..[^N]`, tous presents dans les sources et pointant sur le bon
   # document.
   #
-  # `best_per_doc` est trié par similarité décroissante (`chunks` l'est),
+  # `best_per_doc` est trie par similarite decroissante (`chunks` l'est),
   # donc `!duplicated()` garde le meilleur chunk par doc et fixe l'ordre
-  # de numérotation, repris à l'identique par `format_citations`.
+  # de numerotation, repris a l'identique par `format_citations`.
   best_per_doc <- chunks[!duplicated(chunks$document_id), , drop = FALSE]
   doc_ids      <- best_per_doc$document_id
 
   block_title <- if (identical(lang, "en")) {
     "## Reference documents"
   } else {
-    "## Documents de référence"
+    "## Documents de r\u00e9f\u00e9rence"
   }
   lines <- vapply(seq_along(doc_ids), function(d) {
     txts <- chunks$text[chunks$document_id == doc_ids[d]]
-    sprintf("[^%d] %s", d, paste(txts, collapse = " […] "))
+    sprintf("[^%d] %s", d, paste(txts, collapse = " [\u2026] "))
   }, character(1))
   prompt_block <- paste0(block_title, "\n", paste(lines, collapse = "\n\n"))
 
-  # Sources block : une citation par document unique, numérotée [^1]..[^N]
-  # DANS LE MÊME ORDRE que le prompt ci-dessus.
+  # Sources block : une citation par document unique, numerotee [^1]..[^N]
+  # DANS LE MEME ORDRE que le prompt ci-dessus.
   sources_md <- tryCatch(
     nemeton::format_citations(best_per_doc, format = "markdown",
                               lang = lang),

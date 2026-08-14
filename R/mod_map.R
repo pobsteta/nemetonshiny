@@ -107,7 +107,7 @@ mod_map_ui <- function(id) {
     bslib::card_footer(
       class = "py-2",
 
-      # Selection summary — static HTML updated via JS (no renderUI)
+      # Selection summary - static HTML updated via JS (no renderUI)
       # to avoid Shiny busy state on each parcel click
       htmltools::div(
         id = ns("selection_summary"),
@@ -311,7 +311,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
         # During project restore, parcels are set directly BEFORE
         # commune_geometry arrives, so loading is already visible
         # (shown by mod_home) and the combined observer will render
-        # immediately — no need to re-show here.
+        # immediately - no need to re-show here.
         if (is.null(parcel_data) || nrow(parcel_data) == 0) {
           show_map_loading(TRUE)
         }
@@ -340,7 +340,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
 
       # Wait for both commune geometry AND parcels before rendering.
       # While parcels are loading (geom set, parcels NULL), the loading
-      # overlay stays visible — no map clearing or flashing.
+      # overlay stays visible - no map clearing or flashing.
       if (is.null(geom) || is.null(parcel_data) || nrow(parcel_data) == 0) {
         return()
       }
@@ -604,7 +604,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
       }
 
       # Build hover labels once over the attribute table (vectorised), before
-      # any geometry simplification — labels depend only on attributes.
+      # any geometry simplification - labels depend only on attributes.
       labels <- create_parcel_labels(parcel_data)
 
       # Simplify geometry for display only. When the data is projected (metres),
@@ -643,9 +643,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
           fillOpacity = STYLE$parcel_default$fillOpacity,
           label = lapply(labels, htmltools::HTML),
           # Pas de `font-size` ni de `textsize` ici : la taille des infobulles
-          # est fixée une seule fois, dans `.leaflet-tooltip` (custom.css). Un
+          # est fixee une seule fois, dans `.leaflet-tooltip` (custom.css). Un
           # style inline la surpasserait et ferait diverger cette carte des
-          # autres. Le reste de l'habillage (ombre, coins) est propre à cette
+          # autres. Le reste de l'habillage (ombre, coins) est propre a cette
           # carte et reste ici.
           labelOptions = leaflet::labelOptions(
             style = list(
