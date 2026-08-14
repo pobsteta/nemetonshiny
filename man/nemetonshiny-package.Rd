@@ -39,7 +39,7 @@ run_app()
   \item \strong{Terrain} - two sub-tabs:
     \itemize{
       \item \emph{Export terrain}: design a sampling plan from a
-        target error + CV (derived from BD Forêt v2 or manual)
+        target error + CV (derived from BD Foret v2 or manual)
         and export it as a QField \code{.qgz} project.
       \item \emph{Import terrain}: ingest a GeoPackage returned
         by QField, validate it, attach aggregates to the project
@@ -69,7 +69,7 @@ Language is handled via an in-house translator in
 \section{Author}{
 
 
-\strong{Pascal Obstétar} (\email{pascal.obstetar@gmail.com})
+\strong{Pascal Obstetar} (\email{pascal.obstetar@gmail.com})
 }
 
 \seealso{

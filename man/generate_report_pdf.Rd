@@ -33,8 +33,8 @@ generate_report_pdf(
 
 \item{use_quarto}{Logical. Whether to try Quarto first. Default TRUE.}
 
-\item{regen_units}{sf. Optional reGénération run output; when provided, a
-"reGénération" section is appended to the Quarto report (spec 027 L6).}
+\item{regen_units}{sf. Optional reGeneration run output; when provided, a
+"reGeneration" section is appended to the Quarto report (spec 027 L6).}
 }
 \value{
 Character. Path to generated PDF.

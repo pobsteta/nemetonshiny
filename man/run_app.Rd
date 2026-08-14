@@ -24,7 +24,7 @@ simultaneously on the map. Default: \code{30}. Must be a positive integer.}
 
 \item{tour}{Logical. Auto-start the guided tour (cicerone) for a visitor who
 has never seen it. Default: \code{TRUE}. Set to \code{FALSE} to boot
-straight into the app — useful for demos, screencasts and automated tests,
+straight into the app - useful for demos, screencasts and automated tests,
 where the tour's client-side JS runs 2 s after connection and interferes.
 Disabling only suppresses the AUTO-start: the tour stays available from the
 help menu. Overridable per-session with the \code{NEMETON_TOUR} environment
@@ -50,7 +50,7 @@ analysis. The application allows users to:
 The application requires an internet connection for:
 \itemize{
   \item Cadastral parcel data (API Cadastre / happign fallback
-  \item External data layers (INPN, IGN BD Forêt, Corine Land Cover)
+  \item External data layers (INPN, IGN BD Foret, Corine Land Cover)
 }
 
 Projects are saved locally in GeoParquet format for efficient caching.

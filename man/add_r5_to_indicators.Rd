@@ -2,7 +2,7 @@
 % Please edit documentation in R/service_r5.R
 \name{add_r5_to_indicators}
 \alias{add_r5_to_indicators}
-\title{Enrich the radar indicator sf with a live R5 dépérissement column}
+\title{Enrich the radar indicator sf with a live R5 deperissement column}
 \usage{
 add_r5_to_indicators(base_sf, project)
 }
