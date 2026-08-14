@@ -1,3 +1,68 @@
+# nemetonshiny 0.122.6 (2026-08-14)
+
+### Fixed — Décocher « Relief CVAT » éteint bien le relief
+
+Dans la carte d'accessibilité, avec la couche « Desserte BD TOPO / corrigée »
+sélectionnée, décocher « Relief CVAT » laissait le relief à l'écran.
+
+La carte peint le relief par deux chemins — le rendu de la carte (fond
+semi-transparent au-dessus d'OSM) et le comparateur de desserte (fond opaque
+sous les tronçons) — et ils affichaient le **même fichier**, les deux passant par
+`generate_rvt()`. Mais ils écrivaient dans deux groupes leaflet distincts, dont
+un seul était déclaré dans le contrôle de couches. Décocher masquait donc le
+raster invisible et laissait celui qu'on voyait, sans case pour l'éteindre.
+
+Il n'y a plus qu'un groupe de relief, porté par une constante, déclaré dans le
+contrôle en toutes circonstances — y compris quand aucun CVAT n'est prêt au
+rendu, puisque le comparateur peut en peindre un plus tard via son worker
+asynchrone. Les deux chemins de peinture respectent l'état de la case ; quitter
+le comparateur rend le fond semi-transparent au lieu de laisser la carte nue.
+
+Ce n'est pas une régression du correctif de repeinture : ce relief-là n'a jamais
+eu de case depuis son introduction.
+
+### Changed — Sidebar de l'onglet Accessibilité rétractable
+
+La barre latérale gauche (moteurs, lancement, exports) se replie comme celle de
+l'onglet Export terrain, pour rendre toute la largeur à la carte. Elle était en
+`open = "always"`, qui supprime le chevron de repli. La barre latérale droite,
+qui porte l'affichage des résultats, reste toujours ouverte.
+
+### Changed — Couleurs de la légende BD TOPO plus contrastées
+
+Les classes de tronçons se distinguaient mal, et surtout `Route` (`#37474F`)
+était à ΔE Lab = 8 de la source `BD TOPO` (`#455A64`) de la légende voisine :
+la même couleur, à l'œil, dans deux légendes côte à côte.
+
+| Classe | Avant | Après |
+|--------|-------|-------|
+| Route | `#37474F` | `#C62828` |
+| Piste | `#8D6E63` | `#3E2723` |
+| Réseau public | `#1565C0` | `#1E88E5` |
+| Hors desserte | `#BDBDBD` | inchangé |
+
+La palette est choisie en maximisant le **pire cas** sur les 6 paires
+intra-légende et les 12 paires croisées avec la palette de source, évalué en
+vision normale et simulée (deutan / protan / tritan), sous contrainte de
+contraste ≥ 3:1 sur blanc (WCAG objets graphiques) pour rester lisible sur le
+relief clair. Pire paire : ΔE 8 → 20.9. Piste et réseau public gardent leur
+famille de teinte ; seule `Route` devait bouger.
+
+`test-acc_palettes.R` mesure ces trois propriétés — c'est ce test qui aurait
+attrapé la collision d'origine.
+
+### Changed — Les derniers « i » hors pattern rentrent dans le rang
+
+Les 7 « i » du plan d'échantillonnage (onglet Export terrain) et ceux des radios
+de couche des cartes FORDEAD et RECONFORT passent à l'icône bleue et au popover
+au clic. Il n'y a plus de tooltip `bsicons` gris dans l'app.
+
+Le variant sûr-dans-un-label est extrait en `info_popover_in_label()` : un clic
+dans un `<label>` active son contrôle, donc un « i » posé là *sélectionne* le
+choix en s'ouvrant — et chaque sélection de couche coûte une lecture de raster.
+`mod_regeneration` portait cette subtilité en commentaire inline ; elle vit
+maintenant à un seul endroit, et les trois appelants s'y ramènent.
+
 # nemetonshiny 0.122.5 (2026-08-14)
 
 ### Changed — La sidebar de Sélection suit le sous-onglet affiché
