@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.3" id="nemetonshiny-01223-2026-08-14">nemetonshiny 0.122.3 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01223-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-comparateur-de-desserte-se-repeignait-plusieurs-fois-0-122-3">Fixed — Le comparateur de desserte se repeignait plusieurs fois<a class="anchor" aria-label="anchor" href="#fixed--le-comparateur-de-desserte-se-repeignait-plusieurs-fois-0-122-3"></a></h4>
+<p>En sélectionnant la couche « Desserte BD TOPO / corrigée » de l’onglet Terrain &gt; Accessibilité, le fond relief et les tronçons se peignaient deux à quatre fois avant de se stabiliser.</p>
+<p>Cause : leaflet renvoie <code>input$map_groups</code> à <strong>chaque</strong> ajout ou retrait de groupe sur la carte (coalescé à 100 ms). Les quatre observes qui peignent la carte d’accessibilité lisaient cet input <em>réactivement</em> tout en ajoutant et retirant des groupes : chaque peinture se re-déclenchait elle-même, et déclenchait aussi les trois autres, qui partagent le même input. La boucle convergeait — d’où la stabilisation — mais après plusieurs relectures du GeoPackage et plusieurs ré-encodages du raster de relief.</p>
+<p>Les trois observes qui ont besoin de cette valeur (respect de la décoche d’un groupe après re-dessin) la lisent désormais sous <code>isolate()</code> : la valeur reste juste au moment de peindre, et cocher/décocher une case reste géré par le LayersControl côté client, sans repeindre. Dans l’observe du comparateur, la lecture était purement morte (aucun <code>hideGroup</code> pour ses groupes) — elle est supprimée.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-fond-relief-rvt-nest-plus-recalculé-à-chaque-passage-0-122-3">Fixed — Le fond relief RVT n’est plus recalculé à chaque passage<a class="anchor" aria-label="anchor" href="#fixed--le-fond-relief-rvt-nest-plus-recalcul%C3%A9-%C3%A0-chaque-passage-0-122-3"></a></h4>
+<p>Conséquence du même défaut, mais qui survivait à sa correction : chaque ré-entrée dans le comparateur relançait <code>generate_rvt()</code> — et, sur le chemin coûteux, un worker de ~1 min pouvant déjà être en vol pour le même MNT. Le chemin RVT obtenu est mémorisé par MNT source et repeint tel quel ; un seul worker par MNT peut être en vol.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.2" id="nemetonshiny-01222-2026-08-13">nemetonshiny 0.122.2 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01222-2026-08-13"></a></h2>
 <div class="section level4">
