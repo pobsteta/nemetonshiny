@@ -12,6 +12,33 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.14\] - 2026-08-14
+
+### Fixed
+
+- Installation des dependances en CI : `dessertR`, `lidR` et
+  `opencanopy`, declares en `Suggests` par la v0.122.13, ne sont pas
+  resolvables par `pak` (absents du CRAN) et faisaient echouer
+  `R-CMD-check` et `pkgdown` avant meme le check. Retires ; `ecmwfr`
+  (CRAN) reste declare.
+
+## \[0.122.13\] - 2026-08-14
+
+### Changed
+
+- `R CMD check` : 1 ERROR, 2 WARNINGs et 4 NOTEs ramenes a zero. Sources
+  `R/` entierement ASCII (chaines echappees `\uXXXX`, commentaires
+  translitteres), `:::` internes bascules sur
+  [`utils::getFromNamespace()`](https://rdrr.io/r/utils/getFromNamespace.html)
+  pour preserver les workers `future`, dependances optionnelles
+  declarees, fichiers de depot ecartes du tarball, fonctions de base
+  qualifiees.
+
+### Fixed
+
+- Course dans `test-mod_rag_admin-e2e.R` : le clic sur l’onglet RAG
+  etait conditionnel et pouvait ne jamais avoir lieu.
+
 ## \[0.122.12\] - 2026-08-14
 
 ### Fixed

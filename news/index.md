@@ -1,5 +1,66 @@
 # Changelog
 
+## nemetonshiny 0.122.14 (2026-08-14)
+
+#### Fixed — L’installation des dependances en CI ne casse plus
+
+La v0.122.13 declarait `dessertR`, `lidR` et `opencanopy` en `Suggests`
+pour eteindre l’avertissement `checking dependencies in R code`. Ces
+trois paquets ne sont pas sur le CRAN — ils sont installes depuis GitHub
+sur le poste de developpement — et `pak` ne peut pas les resoudre en CI
+: l’installation des dependances echouait avant meme le check
+(`error in pak subprocess`), rendant `R-CMD-check` ET `pkgdown` rouges.
+
+Ils sont retires des `Suggests`. `ecmwfr` reste declare : il est sur le
+CRAN.
+
+Consequence assumee : l’avertissement revient, limite a ces trois
+paquets. Le declarer exigerait de les ajouter a `Remotes:`, donc de les
+compiler a chaque run de CI — `lidR` et `dessertR` ont du code C++,
+`opencanopy` une chaine lourde. Un avertissement de portabilite ne vaut
+pas ce prix ; la decision est consignee ici pour ne pas etre reprise a
+l’aveugle.
+
+## nemetonshiny 0.122.13 (2026-08-14)
+
+#### Changed — `R CMD check` sans aucun avertissement ni note
+
+Le rapport passe de **1 ERROR, 2 WARNINGs, 4 NOTEs** a **0 / 0 / 0**.
+
+Les 5 190 lignes non-ASCII des 62 fichiers de `R/` sont traitees selon
+leur contexte, par un analyseur lexical R : dans une **chaine**,
+echappement `\uXXXX` — le texte rendu est identique, c’est la regle 4 du
+projet ; dans un **commentaire**, translitteration ASCII. Les 60
+caracteres distincts sont tous couverts, aucun n’est devenu `?`. Preuve
+que rien n’a bouge cote utilisateur : l’empreinte des 1 754 cles i18n
+est identique avant et apres, valeur par valeur.
+
+Les 26 appels `nemetonshiny:::` ne sont PAS supprimes — ils vivent dans
+des workers `future`, ou seule la namespace est chargee, et les retirer
+casserait l’asynchrone. Ils adoptent l’idiome que `mod_regeneration`
+utilisait deja :
+[`utils::getFromNamespace()`](https://rdrr.io/r/utils/getFromNamespace.html).
+Meme effet, sans le motif que le check denonce.
+
+Le reste : `dessertR`, `ecmwfr`, `lidR` et `opencanopy` declares en
+`Suggests` ; `.Renviron`, `.Renviron.txt`, `CITATION.cff`, `LICENSE` et
+`specs/` ecartes du tarball ; `getFromNamespace`, `isolate` et `head`
+qualifies ; trois helpers locaux homonymes `line` renommes par ce qu’ils
+rendent (`frost_line`, `engine_line`, `note_line`).
+
+#### Fixed — Course dans le smoke E2E du RAG
+
+Le test cliquait l’onglet RAG via `if (t) { t.click(); }` : quand le
+noeud n’etait pas encore rendu, le clic n’avait **pas lieu**, et
+l’attente suivante ne pouvait plus aboutir — le test echouait sur un
+delai depasse en accusant le mauvais coupable. Observe en CI, vert au
+meme instant sur le commit voisin.
+
+Le lien d’onglet est desormais attendu AVANT le clic, qui devient
+inconditionnel, et le montage paresseux dispose de 20 s au lieu de 8 :
+il passe par un aller-retour serveur, hors de portee sur un runner
+charge.
+
 ## nemetonshiny 0.122.12 (2026-08-14)
 
 #### Fixed — `R CMD check` repasse au vert
@@ -4298,7 +4359,8 @@ toute la variabilité vient du sol et du LAI qu’on lui passe.
   consommée en fast-path par le run normal. Plancher cœur relevé à
   **`nemeton (>= 0.132.0)`**.
 - **SAFRAN sans clé Copernicus** : le forçage `SAFRAN` (défaut) débloque
-  le bilan hydrique **sans identifiants CDS** ; `ecmwfr::wf_set_key`
+  le bilan hydrique **sans identifiants CDS** ;
+  [`ecmwfr::wf_set_key`](https://rdrr.io/pkg/ecmwfr/man/wf_set_key.html)
   n’est requis que pour le forçage `ERA5`. Le statut du moteur affiche
   la disponibilité de chaque moteur (microclimf / BILJOU) selon les
   prérequis réunis.
@@ -4322,8 +4384,9 @@ toute la variabilité vient du sol et du LAI qu’on lui passe.
   LiDAR HD** du projet existe (`<projet>/cache/layers/lidar_mnt` +
   `lidar_mnh`, produite au calcul des indices avec source CHM LiDAR HD)
   et que les **identifiants Copernicus CDS** sont configurés
-  (`ecmwfr::wf_set_key`) — sinon un message i18n propre indique le
-  prérequis manquant. Aucun secret dans le repo (règle
+  ([`ecmwfr::wf_set_key`](https://rdrr.io/pkg/ecmwfr/man/wf_set_key.html))
+  — sinon un message i18n propre indique le prérequis manquant. Aucun
+  secret dans le repo (règle
   [\#8](https://github.com/pobsteta/nemetonshiny/issues/8)).
 - **BILJOU (bilan hydrique) reste sur la garde option A** :
   l’acquisition météo/sol doit vivre dans le cœur (`load_biljou_forcing`

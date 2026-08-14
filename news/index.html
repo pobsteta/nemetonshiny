@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,30 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.14" id="nemetonshiny-012214-2026-08-14">nemetonshiny 0.122.14 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012214-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--linstallation-des-dependances-en-ci-ne-casse-plus-0-122-14">Fixed — L’installation des dependances en CI ne casse plus<a class="anchor" aria-label="anchor" href="#fixed--linstallation-des-dependances-en-ci-ne-casse-plus-0-122-14"></a></h4>
+<p>La v0.122.13 declarait <code>dessertR</code>, <code>lidR</code> et <code>opencanopy</code> en <code>Suggests</code> pour eteindre l’avertissement <code>checking dependencies in R code</code>. Ces trois paquets ne sont pas sur le CRAN — ils sont installes depuis GitHub sur le poste de developpement — et <code>pak</code> ne peut pas les resoudre en CI : l’installation des dependances echouait avant meme le check (<code>error in pak subprocess</code>), rendant <code>R-CMD-check</code> ET <code>pkgdown</code> rouges.</p>
+<p>Ils sont retires des <code>Suggests</code>. <code>ecmwfr</code> reste declare : il est sur le CRAN.</p>
+<p>Consequence assumee : l’avertissement revient, limite a ces trois paquets. Le declarer exigerait de les ajouter a <code>Remotes:</code>, donc de les compiler a chaque run de CI — <code>lidR</code> et <code>dessertR</code> ont du code C++, <code>opencanopy</code> une chaine lourde. Un avertissement de portabilite ne vaut pas ce prix ; la decision est consignee ici pour ne pas etre reprise a l’aveugle.</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.13" id="nemetonshiny-012213-2026-08-14">nemetonshiny 0.122.13 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012213-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="changed--r-cmd-check-sans-aucun-avertissement-ni-note-0-122-13">Changed — <code>R CMD check</code> sans aucun avertissement ni note<a class="anchor" aria-label="anchor" href="#changed--r-cmd-check-sans-aucun-avertissement-ni-note-0-122-13"></a></h4>
+<p>Le rapport passe de <strong>1 ERROR, 2 WARNINGs, 4 NOTEs</strong> a <strong>0 / 0 / 0</strong>.</p>
+<p>Les 5 190 lignes non-ASCII des 62 fichiers de <code>R/</code> sont traitees selon leur contexte, par un analyseur lexical R : dans une <strong>chaine</strong>, echappement <code>\uXXXX</code> — le texte rendu est identique, c’est la regle 4 du projet ; dans un <strong>commentaire</strong>, translitteration ASCII. Les 60 caracteres distincts sont tous couverts, aucun n’est devenu <code>?</code>. Preuve que rien n’a bouge cote utilisateur : l’empreinte des 1 754 cles i18n est identique avant et apres, valeur par valeur.</p>
+<p>Les 26 appels <code>nemetonshiny:::</code> ne sont PAS supprimes — ils vivent dans des workers <code>future</code>, ou seule la namespace est chargee, et les retirer casserait l’asynchrone. Ils adoptent l’idiome que <code>mod_regeneration</code> utilisait deja : <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">utils::getFromNamespace()</a></code>. Meme effet, sans le motif que le check denonce.</p>
+<p>Le reste : <code>dessertR</code>, <code>ecmwfr</code>, <code>lidR</code> et <code>opencanopy</code> declares en <code>Suggests</code> ; <code>.Renviron</code>, <code>.Renviron.txt</code>, <code>CITATION.cff</code>, <code>LICENSE</code> et <code>specs/</code> ecartes du tarball ; <code>getFromNamespace</code>, <code>isolate</code> et <code>head</code> qualifies ; trois helpers locaux homonymes <code>line</code> renommes par ce qu’ils rendent (<code>frost_line</code>, <code>engine_line</code>, <code>note_line</code>).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--course-dans-le-smoke-e2e-du-rag-0-122-13">Fixed — Course dans le smoke E2E du RAG<a class="anchor" aria-label="anchor" href="#fixed--course-dans-le-smoke-e2e-du-rag-0-122-13"></a></h4>
+<p>Le test cliquait l’onglet RAG via <code>if (t) { t.click(); }</code> : quand le noeud n’etait pas encore rendu, le clic n’avait <strong>pas lieu</strong>, et l’attente suivante ne pouvait plus aboutir — le test echouait sur un delai depasse en accusant le mauvais coupable. Observe en CI, vert au meme instant sur le commit voisin.</p>
+<p>Le lien d’onglet est desormais attendu AVANT le clic, qui devient inconditionnel, et le montage paresseux dispose de 20 s au lieu de 8 : il passe par un aller-retour serveur, hors de portee sur un runner charge.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.12" id="nemetonshiny-012212-2026-08-14">nemetonshiny 0.122.12 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012212-2026-08-14"></a></h2>
 <div class="section level4">
@@ -1995,7 +2019,7 @@
 <h4 id="added--regénération--bilan-hydrique-biljou-réel-option-b-spec-l2-0-100-0">Added — reGénération : bilan hydrique BILJOU réel (option B, spec 027 L2)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--bilan-hydrique-biljou-r%C3%A9el-option-b-spec-l2-0-100-0"></a></h4>
 <ul><li>Le <strong>moteur réel</strong> (opt-in) lance désormais <strong>aussi le bilan hydrique BILJOU</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/load_biljou_forcing.html" class="external-link">nemeton::load_biljou_forcing</a></code> + <code>build_biljou_soil</code> + <code>regen_bilan_hydrique</code>), en plus de microclimf, dans le même worker <code>future</code>. Sortie mise en cache (<code>biljou.gpkg</code>) et consommée en fast-path par le run normal. Plancher cœur relevé à <strong><code>nemeton (&gt;= 0.132.0)</code></strong>.</li>
 <li>
-<strong>SAFRAN sans clé Copernicus</strong> : le forçage <code>SAFRAN</code> (défaut) débloque le bilan hydrique <strong>sans identifiants CDS</strong> ; <code>ecmwfr::wf_set_key</code> n’est requis que pour le forçage <code>ERA5</code>. Le statut du moteur affiche la disponibilité de chaque moteur (microclimf / BILJOU) selon les prérequis réunis.</li>
+<strong>SAFRAN sans clé Copernicus</strong> : le forçage <code>SAFRAN</code> (défaut) débloque le bilan hydrique <strong>sans identifiants CDS</strong> ; <code><a href="https://rdrr.io/pkg/ecmwfr/man/wf_set_key.html" class="external-link">ecmwfr::wf_set_key</a></code> n’est requis que pour le forçage <code>ERA5</code>. Le statut du moteur affiche la disponibilité de chaque moteur (microclimf / BILJOU) selon les prérequis réunis.</li>
 <li>
 <strong>Dégradation propre</strong> : hors couverture forçage/sol → garde <code>regen_guard_biljou</code> (message i18n) sans erreur brute ; chaque moteur échoue indépendamment.</li>
 </ul></div>
@@ -2006,7 +2030,7 @@
 <h4 id="added--regénération--moteur-microclimf-réel-option-b-spec-l1-0-99-0">Added — reGénération : moteur microclimf réel (option B, spec 027 L1)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--moteur-microclimf-r%C3%A9el-option-b-spec-l1-0-99-0"></a></h4>
 <ul><li>Nouveau <strong>run microclimf réel</strong> (LiDAR HD + forçage ERA5-Land) via le chemin moteur de <code><a href="https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html" class="external-link">nemeton::regen_sensibilite</a></code>, opt-in depuis la sidebar reGénération (« Moteur microclimf réel »). Exécution <strong>asynchrone</strong> (worker <code>future</code>) : le run lourd (minutes→heures) ne bloque pas l’application ; la sortie est mise en cache (<code>sensibilite.gpkg</code>) et consommée en fast-path par le run normal.</li>
 <li>
-<strong>Prérequis gardés</strong> : le moteur n’est lançable que si la <strong>grille LiDAR HD</strong> du projet existe (<code>&lt;projet&gt;/cache/layers/lidar_mnt</code> + <code>lidar_mnh</code>, produite au calcul des indices avec source CHM LiDAR HD) et que les <strong>identifiants Copernicus CDS</strong> sont configurés (<code>ecmwfr::wf_set_key</code>) — sinon un message i18n propre indique le prérequis manquant. Aucun secret dans le repo (règle <a href="https://github.com/pobsteta/nemetonshiny/issues/8" class="external-link">#8</a>).</li>
+<strong>Prérequis gardés</strong> : le moteur n’est lançable que si la <strong>grille LiDAR HD</strong> du projet existe (<code>&lt;projet&gt;/cache/layers/lidar_mnt</code> + <code>lidar_mnh</code>, produite au calcul des indices avec source CHM LiDAR HD) et que les <strong>identifiants Copernicus CDS</strong> sont configurés (<code><a href="https://rdrr.io/pkg/ecmwfr/man/wf_set_key.html" class="external-link">ecmwfr::wf_set_key</a></code>) — sinon un message i18n propre indique le prérequis manquant. Aucun secret dans le repo (règle <a href="https://github.com/pobsteta/nemetonshiny/issues/8" class="external-link">#8</a>).</li>
 <li>
 <strong>BILJOU (bilan hydrique) reste sur la garde option A</strong> : l’acquisition météo/sol doit vivre dans le cœur (<code>load_biljou_forcing</code> / <code>build_biljou_soil</code>, brief cœur fourni) avant d’activer son run réel.</li>
 </ul></div>
