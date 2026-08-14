@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.5\] - 2026-08-14
+
+### Changed
+
+- Onglet Sélection : les blocs « Carte UGF » et « Tableau UGF » de la
+  sidebar ne s’affichent plus que dans leur propre sous-onglet
+  (`conditionalPanel` sur la valeur du navset). Sur « Carte cadastrale
+  », aucun des deux. Masquage côté client : pas d’aller-retour serveur,
+  et les entrées gardent leur valeur.
+
 ## \[0.122.4\] - 2026-08-14
 
 ### Fixed
