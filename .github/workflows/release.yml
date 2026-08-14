@@ -9,7 +9,11 @@ name: release
 #      `X.Y.Z.9000+` sont ignorés) ;
 #   3. ne procède QUE si le tag `vX.Y.Z` n'existe pas déjà
 #      (idempotent : un re-push de main ne recrée pas la release) ;
-#   4. crée le tag annoté + la release GitHub (`--generate-notes`).
+#   4. crée le tag annoté + la release GitHub, dont le corps est la
+#      SECTION CORRESPONDANTE de NEWS.md — pas `--generate-notes`, qui
+#      ne produisait qu'un lien « Full Changelog » et obligeait à
+#      recopier les notes à la main après coup. Repli sur
+#      `--generate-notes` si la section est introuvable ou vide.
 #
 # Utilise le `GITHUB_TOKEN` intégré (permission `contents: write`),
 # qui a le droit de créer tags et releases — contrairement au proxy
@@ -63,6 +67,50 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Extract release notes from NEWS.md
+        id: notes
+        if: steps.gate.outputs.release == 'true' && steps.tag.outputs.exists == 'false'
+        run: |
+          version="${{ steps.ver.outputs.version }}"
+
+          # Section = tout ce qui suit « # nemetonshiny <version> » jusqu'au
+          # titre de version suivant.
+          #
+          # Comparaison par PRÉFIXE EXACT et non par regex : les points de la
+          # version y seraient des jokers. Et le caractère qui suit la version
+          # doit être un séparateur, sinon extraire « 0.122.1 » attraperait le
+          # titre « 0.122.10 » — le jour où ce numéro existera.
+          awk -v v="$version" '
+            BEGIN { hdr = "# nemetonshiny " v; n = length(hdr) }
+            substr($0, 1, n) == hdr {
+              suivant = substr($0, n + 1, 1)
+              if (suivant == "" || suivant == " " || suivant == "(") {
+                inside = 1
+                next
+              }
+            }
+            inside && substr($0, 1, 15) == "# nemetonshiny " { exit }
+            inside { print }
+          ' NEWS.md > /tmp/notes_body.md
+
+          # Retire les lignes vides de tête et de queue.
+          sed -i -e '/./,$!d' /tmp/notes_body.md
+          sed -i -e :a -e '/^\n*$/{$d;N;};/\n$/ba' /tmp/notes_body.md
+
+          if [ -s /tmp/notes_body.md ]; then
+            prev="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+            if [ -n "$prev" ]; then
+              printf '\n**Full Changelog**: %s/%s/compare/%s...v%s\n' \
+                "${{ github.server_url }}" "${{ github.repository }}" \
+                "$prev" "$version" >> /tmp/notes_body.md
+            fi
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "Notes extraites de NEWS.md ($(wc -l < /tmp/notes_body.md) lignes)."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Aucune section « # nemetonshiny $version » dans NEWS.md — repli sur --generate-notes."
+          fi
+
       - name: Create annotated tag + GitHub release
         if: steps.gate.outputs.release == 'true' && steps.tag.outputs.exists == 'false'
         env:
@@ -73,5 +121,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$v" -m "Release ${{ steps.ver.outputs.version }}"
           git push origin "$v"
-          gh release create "$v" --generate-notes --title "$v"
+          if [ "${{ steps.notes.outputs.found }}" = "true" ]; then
+            gh release create "$v" --notes-file /tmp/notes_body.md --title "$v"
+          else
+            gh release create "$v" --generate-notes --title "$v"
+          fi
           echo "Release $v créée."
