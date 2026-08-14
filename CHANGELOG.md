@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.7\] - 2026-08-14
+
+### Fixed
+
+- Les trois smoke E2E (`rag_admin`, `monitoring`,
+  `validation-control-classes`) déclaraient « No DB » sans l’imposer :
+  sur un poste dont le `.Renviron` pose `NEMETON_DB_URL`, le démarrage
+  synchrone de l’app (init de schéma, migrations, requêtes) repoussait
+  l’action attendue au-delà de la fenêtre d’attente. Le démarrage est
+  mutualisé dans `helper-e2e_app.R`, qui impose `NEMETON_DB_LOCAL=1` et
+  réessaye `Page.navigate` trois fois — ce délai est codé en dur dans
+  chromote et échappe à `load_timeout`. Sur un poste avec base :
+  `rag_admin` passe d’échec à PASS, les deux autres de saut silencieux à
+  PASS.
+
 ## \[0.122.6\] - 2026-08-14
 
 ### Fixed

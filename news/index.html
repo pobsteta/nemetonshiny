@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,37 +33,44 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.122.6" id="nemetonshiny-01226-2026-08-14">nemetonshiny 0.122.6 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01226-2026-08-14"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.122.7" id="nemetonshiny-01227-2026-08-14">nemetonshiny 0.122.7 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01227-2026-08-14"></a></h2>
 <div class="section level4">
-<h4 id="changed--le-menu-des-familles-affiche-le-code-de-chaque-famille-0-122-6">Changed — Le menu des familles affiche le code de chaque famille<a class="anchor" aria-label="anchor" href="#changed--le-menu-des-familles-affiche-le-code-de-chaque-famille-0-122-6"></a></h4>
+<h4 id="fixed--les-trois-smoke-e2e-testent-enfin-quelque-chose-0-122-7">Fixed — Les trois smoke E2E testent enfin quelque chose<a class="anchor" aria-label="anchor" href="#fixed--les-trois-smoke-e2e-testent-enfin-quelque-chose-0-122-7"></a></h4>
+<p>Les trois tests <code>*-e2e.R</code> déclarent en en-tête « No DB » — c’est leur prémisse — mais rien ne l’imposait. Sur un poste dont le <code>.Renviron</code> pose <code>NEMETON_DB_URL</code>, le démarrage de l’app fait de vrais travaux synchrones : résolution de config, init du schéma, migrations, requêtes projets et zones. La boucle Shiny étant mono-thread, un <code>showModal()</code> ou un changement d’onglet arrivait après la fenêtre d’attente du test. Contrôlé : l’échec se reproduit à l’identique avec le code de <code>main</code>, et disparaît dès que la base est hors-jeu.</p>
+<p>Second défaut, plus sournois : <code>Page.navigate</code> expire aux 10 s codées en dur dans le champ <code>default_timeout</code> de chromote — hors de portée de <code>load_timeout</code> d’AppDriver comme de <code>options(chromote.timeout=)</code>, les deux vérifiés sans effet. L’UI complète (tous les onglets, leaflet + plotly + DT) dépasse parfois ce délai, et le test se <strong>sautait</strong> alors sans rien signaler.</p>
+<p>Le démarrage est désormais mutualisé dans <code>helper-e2e_app.R</code> : base hors-jeu via <code>NEMETON_DB_LOCAL=1</code> (l’interrupteur prévu par <code>.resolve_db_config()</code>, qui survit dans le sous-processus parce qu’il n’est pas déclaré dans <code>.Renviron</code>), et <code>Page.navigate</code> réessayé trois fois, en fermant le navigateur entre chaque tentative — sans quoi le retry se sabote lui-même.</p>
+<p>Résultat sur un poste avec base configurée : <code>rag_admin</code> passe de <strong>échec</strong> à <code>PASS</code>, et les deux autres de <strong>saut silencieux</strong> à <code>PASS 6</code> et <code>PASS 1</code>. Le smoke monitoring ne vérifiait donc plus rien depuis un moment.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-menu-des-familles-affiche-le-code-de-chaque-famille-0-122-7">Changed — Le menu des familles affiche le code de chaque famille<a class="anchor" aria-label="anchor" href="#changed--le-menu-des-familles-affiche-le-code-de-chaque-famille-0-122-7"></a></h4>
 <p>« Carbone &amp; Vitalité » devient « Carbone &amp; Vitalité (C) », et de même pour les onze autres. Le code de famille est la clé qui circule partout ailleurs — radar, exports, profils experts, indicateurs B1/C2/… — et le menu était le seul endroit qui ne le donnait pas, obligeant à connaître la correspondance de tête.</p>
 <p>Les douze <code>nav_panel</code> écrits à la main deviennent douze appels à un helper local qui compose le libellé à partir du code déjà passé au module : le code n’est plus écrit qu’une fois par famille. Les valeurs d’onglet (<code>input$main_nav</code>) ne changent pas — elles sont lues ailleurs.</p>
 </div>
 <div class="section level4">
-<h4 id="fixed--infobulles-de-carte-lisibles-0-122-6">Fixed — Infobulles de carte lisibles<a class="anchor" aria-label="anchor" href="#fixed--infobulles-de-carte-lisibles-0-122-6"></a></h4>
+<h4 id="fixed--infobulles-de-carte-lisibles-0-122-7">Fixed — Infobulles de carte lisibles<a class="anchor" aria-label="anchor" href="#fixed--infobulles-de-carte-lisibles-0-122-7"></a></h4>
 <p>Les infobulles des cartes (<code>label=</code> leaflet) ne fixaient aucune taille de police : elles héritaient du <code>font: 12px/1.5</code> de <code>.leaflet-container</code>, trop petit pour les étiquettes qui portent une information de terrain — état et largeur carrossable d’un tronçon (« En service — 2.1 m »), classe BD TOPO, diagnostic d’un pixel. Elles passent à 15px avec un interligne de 1.35, en restant compactes : une infobulle suit le pointeur, elle ne doit pas devenir un panneau.</p>
 <p>Corriger cette règle a mis au jour que la feuille de style servie n’était pas celle qu’on éditait — cf. la section suivante.</p>
 </div>
 <div class="section level4">
-<h4 id="removed--les-copies--min--du-css-et-du-js-0-122-6">Removed — Les copies « min » du CSS et du JS<a class="anchor" aria-label="anchor" href="#removed--les-copies--min--du-css-et-du-js-0-122-6"></a></h4>
+<h4 id="removed--les-copies--min--du-css-et-du-js-0-122-7">Removed — Les copies « min » du CSS et du JS<a class="anchor" aria-label="anchor" href="#removed--les-copies--min--du-css-et-du-js-0-122-7"></a></h4>
 <p>L’app servait <code>custom.min.css</code> et <code>custom.min.js</code>, deux copies que <strong>rien ne régénérait</strong> — ni build, ni script, ni étape CI — et qui n’étaient pas minifiées : 747 lignes commentées pour le CSS, 816 lignes identiques octet pour octet pour le JS.</p>
 <p>Conséquence côté CSS : le fichier servi avait dérivé de deux commits et <strong>deux règles n’ont jamais atteint le navigateur</strong> — les ascenseurs de la légende bivariée du contexte E-OBS et l’affordance de la cellule commentaire du plan d’action. Les deux features avaient été livrées et testées côté R ; leur CSS dormait dans le fichier source. Côté JS la copie était encore à jour, mais le piège était le même : la prochaine édition n’aurait pas été servie.</p>
 <p>L’app sert désormais <code>custom.css</code> et <code>custom.js</code>, et les copies sont supprimées. Aucune perte de performance — les fichiers « min » ne l’étaient pas. La classe de bug disparaît au lieu d’être surveillée.</p>
 <p><code>test-static_assets.R</code> échoue si une copie <code>custom.min.*</code> réapparaît, et <code>test-app_ui.R</code> si le lien pointe ailleurs que sur la source. Les <code>.min.js</code> vendorés (Sortable) restent légitimes : ils arrivent minifiés de l’amont, on ne les régénère pas. Une copie « min » ne redevient acceptable qu’avec un build qui la produise <strong>et</strong> une étape CI qui vérifie qu’elle est à jour.</p>
 </div>
 <div class="section level4">
-<h4 id="fixed--décocher--relief-cvat--éteint-bien-le-relief-0-122-6">Fixed — Décocher « Relief CVAT » éteint bien le relief<a class="anchor" aria-label="anchor" href="#fixed--d%C3%A9cocher--relief-cvat--%C3%A9teint-bien-le-relief-0-122-6"></a></h4>
+<h4 id="fixed--décocher--relief-cvat--éteint-bien-le-relief-0-122-7">Fixed — Décocher « Relief CVAT » éteint bien le relief<a class="anchor" aria-label="anchor" href="#fixed--d%C3%A9cocher--relief-cvat--%C3%A9teint-bien-le-relief-0-122-7"></a></h4>
 <p>Dans la carte d’accessibilité, avec la couche « Desserte BD TOPO / corrigée » sélectionnée, décocher « Relief CVAT » laissait le relief à l’écran.</p>
 <p>La carte peint le relief par deux chemins — le rendu de la carte (fond semi-transparent au-dessus d’OSM) et le comparateur de desserte (fond opaque sous les tronçons) — et ils affichaient le <strong>même fichier</strong>, les deux passant par <code>generate_rvt()</code>. Mais ils écrivaient dans deux groupes leaflet distincts, dont un seul était déclaré dans le contrôle de couches. Décocher masquait donc le raster invisible et laissait celui qu’on voyait, sans case pour l’éteindre.</p>
 <p>Il n’y a plus qu’un groupe de relief, porté par une constante, déclaré dans le contrôle en toutes circonstances — y compris quand aucun CVAT n’est prêt au rendu, puisque le comparateur peut en peindre un plus tard via son worker asynchrone. Les deux chemins de peinture respectent l’état de la case ; quitter le comparateur rend le fond semi-transparent au lieu de laisser la carte nue.</p>
 <p>Ce n’est pas une régression du correctif de repeinture : ce relief-là n’a jamais eu de case depuis son introduction.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--sidebar-de-longlet-accessibilité-rétractable-0-122-6">Changed — Sidebar de l’onglet Accessibilité rétractable<a class="anchor" aria-label="anchor" href="#changed--sidebar-de-longlet-accessibilit%C3%A9-r%C3%A9tractable-0-122-6"></a></h4>
+<h4 id="changed--sidebar-de-longlet-accessibilité-rétractable-0-122-7">Changed — Sidebar de l’onglet Accessibilité rétractable<a class="anchor" aria-label="anchor" href="#changed--sidebar-de-longlet-accessibilit%C3%A9-r%C3%A9tractable-0-122-7"></a></h4>
 <p>La barre latérale gauche (moteurs, lancement, exports) se replie comme celle de l’onglet Export terrain, pour rendre toute la largeur à la carte. Elle était en <code>open = "always"</code>, qui supprime le chevron de repli. La barre latérale droite, qui porte l’affichage des résultats, reste toujours ouverte.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--couleurs-de-la-légende-bd-topo-plus-contrastées-0-122-6">Changed — Couleurs de la légende BD TOPO plus contrastées<a class="anchor" aria-label="anchor" href="#changed--couleurs-de-la-l%C3%A9gende-bd-topo-plus-contrast%C3%A9es-0-122-6"></a></h4>
+<h4 id="changed--couleurs-de-la-légende-bd-topo-plus-contrastées-0-122-7">Changed — Couleurs de la légende BD TOPO plus contrastées<a class="anchor" aria-label="anchor" href="#changed--couleurs-de-la-l%C3%A9gende-bd-topo-plus-contrast%C3%A9es-0-122-7"></a></h4>
 <p>Les classes de tronçons se distinguaient mal, et surtout <code>Route</code> (<code>#37474F</code>) était à ΔE Lab = 8 de la source <code>BD TOPO</code> (<code>#455A64</code>) de la légende voisine : la même couleur, à l’œil, dans deux légendes côte à côte.</p>
 <table class="table"><thead><tr><th>Classe</th>
 <th>Avant</th>
@@ -84,7 +91,7 @@
 <p><code>test-acc_palettes.R</code> mesure ces trois propriétés — c’est ce test qui aurait attrapé la collision d’origine.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--les-derniers--i--hors-pattern-rentrent-dans-le-rang-0-122-6">Changed — Les derniers « i » hors pattern rentrent dans le rang<a class="anchor" aria-label="anchor" href="#changed--les-derniers--i--hors-pattern-rentrent-dans-le-rang-0-122-6"></a></h4>
+<h4 id="changed--les-derniers--i--hors-pattern-rentrent-dans-le-rang-0-122-7">Changed — Les derniers « i » hors pattern rentrent dans le rang<a class="anchor" aria-label="anchor" href="#changed--les-derniers--i--hors-pattern-rentrent-dans-le-rang-0-122-7"></a></h4>
 <p>Les 7 « i » du plan d’échantillonnage (onglet Export terrain) et ceux des radios de couche des cartes FORDEAD et RECONFORT passent à l’icône bleue et au popover au clic. Il n’y a plus de tooltip <code>bsicons</code> gris dans l’app.</p>
 <p>Le variant sûr-dans-un-label est extrait en <code>info_popover_in_label()</code> : un clic dans un <code>&lt;label&gt;</code> active son contrôle, donc un « i » posé là <em>sélectionne</em> le choix en s’ouvrant — et chaque sélection de couche coûte une lecture de raster. <code>mod_regeneration</code> portait cette subtilité en commentaire inline ; elle vit maintenant à un seul endroit, et les trois appelants s’y ramènent.</p>
 </div>
