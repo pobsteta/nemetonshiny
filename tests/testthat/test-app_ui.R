@@ -155,3 +155,42 @@ test_that("app_add_external_resources head content includes link and meta tags",
     }
   )
 })
+
+# ==============================================================================
+# Menu « Familles d'indicateurs » — le libellé porte le code de la famille
+# ==============================================================================
+
+test_that("chaque famille du menu affiche son code entre parentheses", {
+  # Le code (B, C, W, …) est la clé qui circule partout ailleurs : radar,
+  # exports, profils experts, indicateurs B1/C2/… Le menu était le seul endroit
+  # qui ne le donnait pas.
+  attendus <- c(famille_carbone = "C", famille_biodiversite = "B",
+                famille_eau = "W", famille_air = "A", famille_sol = "F",
+                famille_paysage = "L", famille_temporel = "T",
+                famille_risque = "R", famille_social = "S",
+                famille_production = "P", famille_energie = "E",
+                famille_naturalite = "N")
+
+  for (lang in c("fr", "en")) {
+    html <- with_mocked_bindings(
+      get_app_options = function() list(language = lang),
+      as.character(htmltools::renderTags(nemetonshiny:::app_ui(NULL))$html)
+    )
+    i18n <- nemetonshiny:::get_i18n(lang)
+
+    for (key in names(attendus)) {
+      # `renderTags` échappe `&` en `&amp;` — on compare sur du texte échappé.
+      libelle <- htmltools::htmlEscape(
+        sprintf("%s (%s)", i18n$t(key), attendus[[key]]))
+      expect_true(grepl(libelle, html, fixed = TRUE),
+                  info = sprintf("[%s] libellé attendu absent : %s", lang, libelle))
+    }
+
+    # Les valeurs d'onglet ne doivent PAS bouger : `input$main_nav` est lu
+    # ailleurs (mod_ug, tours guidés, navigation programmatique).
+    for (key in names(attendus)) {
+      expect_true(grepl(sprintf("data-value=\"%s\"", key), html, fixed = TRUE),
+                  info = sprintf("[%s] valeur d'onglet perdue : %s", lang, key))
+    }
+  }
+})

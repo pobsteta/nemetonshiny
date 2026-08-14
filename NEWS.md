@@ -1,5 +1,18 @@
 # nemetonshiny 0.122.6 (2026-08-14)
 
+### Changed — Le menu des familles affiche le code de chaque famille
+
+« Carbone & Vitalité » devient « Carbone & Vitalité (C) », et de même pour les
+onze autres. Le code de famille est la clé qui circule partout ailleurs — radar,
+exports, profils experts, indicateurs B1/C2/… — et le menu était le seul endroit
+qui ne le donnait pas, obligeant à connaître la correspondance de tête.
+
+Les douze `nav_panel` écrits à la main deviennent douze appels à un helper local
+qui compose le libellé à partir du code déjà passé au module : le code n'est plus
+écrit qu'une fois par famille. Les valeurs d'onglet (`input$main_nav`) ne
+changent pas — elles sont lues ailleurs.
+
+
 ### Fixed — Infobulles de carte lisibles
 
 Les infobulles des cartes (`label=` leaflet) ne fixaient aucune taille de
