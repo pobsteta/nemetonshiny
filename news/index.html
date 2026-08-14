@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.123.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.124.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,45 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.124.0" id="nemetonshiny-01240-2026-08-14">nemetonshiny 0.124.0 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01240-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="added--les-sorties-de-longlet-desserte-deviennent-visibles-0-124-0">Added — Les sorties de l’onglet Desserte deviennent visibles<a class="anchor" aria-label="anchor" href="#added--les-sorties-de-longlet-desserte-deviennent-visibles-0-124-0"></a></h4>
+<p>Cinq actions de la sidebar produisaient toutes un résultat sur disque ; <strong>deux seulement étaient visibles sur la carte</strong>. Le complément OSM et la détection de routes — les deux traitements les plus coûteux de l’onglet, plusieurs minutes et jusqu’à 8 Go pour la seconde — n’affichaient qu’un compteur. Pour voir sa propre géométrie, il fallait connaître le chemin du cache et ouvrir QGIS.</p>
+<ul><li>
+<strong>Deux calques de plus</strong> : « Pistes OSM » et « Routes détectées », tous deux en trait tireté (hypothèse, pas relevé) et <strong>éteints au départ</strong> — ce sont des diagnostics, et 544 tronçons OSM noieraient les 39 routes conçues.</li>
+<li>
+<strong>Popup de détection</strong> : <code>CLASSE</code>, mais aussi <code>CLASSE_CONF</code>, <code>CLASSE_MOTIF</code> et <code>OSM_TAGS</code>. Une classe posée sur deux critères sur six ne vaut pas une classe posée sur six, et la moyenne affichée en sidebar ne le dit pas tronçon par tronçon. Le balisage OSM est présenté comme une <strong>proposition</strong> : rien n’est téléversé.</li>
+<li>
+<strong>Le typage survit au rechargement.</strong> Il était le seul des cinq sans aucun <code>.load_cached_*</code> : on rouvrait le projet, <code>typage_&lt;moteur&gt;.gpkg</code> était bien sur le disque, et l’onglet redemandait de typer le réseau.</li>
+<li>
+<strong>Le GeoPackage téléchargé contient tout</strong> : le réseau typé, les pistes OSM et les routes détectées s’ajoutent aux parcelles et au réseau créé, pour les actions qui ont tourné. Le typage exporté est celui <strong>du moteur courant</strong>, un projet pouvant porter <code>typage_glouton.gpkg</code> et <code>typage_steiner.gpkg</code> côte à côte.</li>
+<li>
+<strong>Le chemin du cache est affiché</strong> sous le bouton de téléchargement.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed-0-124-0">Changed<a class="anchor" aria-label="anchor" href="#changed-0-124-0"></a></h4>
+<ul><li>
+<code>run_desserte_osm()</code> renvoie désormais <code>gpkg_path</code>, et le persiste dans <code>osm.rds</code> : sans lui le calque disparaissait au rechargement du projet alors que le fichier était là.</li>
+<li>Palette des classes détectées choisie <strong>par mesure</strong> : séparation minimale de 27,4 en CIE Lab, conservée sous simulation de deutéranopie, protanopie <em>et</em> tritanopie, et d’au moins 20 vis-à-vis de toutes les autres couches de la carte.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="note--ce-que-le-calque-osm-nest-pas-0-124-0">Note — ce que le calque OSM n’est pas<a class="anchor" aria-label="anchor" href="#note--ce-que-le-calque-osm-nest-pas-0-124-0"></a></h4>
+<p><code><a href="https://pobsteta.github.io/foretaccess/reference/comparer_desserte_osm.html" class="external-link">foretaccess::comparer_desserte_osm()</a></code> ne renvoie <strong>aucune géométrie</strong> : le « hors corridor », c’est-à-dire le gisement à instruire, n’en sort qu’en kilomètres agrégés par type. Ce que l’app écrit dans <code>desserte_osm.gpkg</code> est donc l’acquisition OSM <strong>brute</strong>, doublons de la BD TOPO compris — d’où le libellé « Pistes OSM » et non « pistes absentes de la BD TOPO ». Recalculer la différence côté app dupliquerait la logique du cœur avec un <code>corridor_m</code> qui pourrait diverger, pour 104 s de calcul déjà fait ailleurs. Le manque est déposé en brief côté <code>foretaccess</code> (<code>osm_hors_corridor</code> / <code>bdtopo_hors_corridor</code>).</p>
+</div>
+<div class="section level4">
+<h4 id="added--le-réseau-créé-est-enfin-lisible-0-124-0">Added — Le réseau créé est enfin lisible<a class="anchor" aria-label="anchor" href="#added--le-r%C3%A9seau-cr%C3%A9%C3%A9-est-enfin-lisible-0-124-0"></a></h4>
+<p>Quatre ajouts sur le même thème : voir ce que l’onglet Desserte a produit.</p>
+<ul><li>
+<strong>Plein écran sur le profil en travers.</strong> Même bascule que les graphiques du Suivi sanitaire — <code>modal-fullscreen</code> + un <code>resize</code> différé, sans lequel plotly en mode responsive resterait à sa taille initiale et le bouton semblerait ne rien faire.</li>
+<li>
+<strong>Calque « Lignes créées ».</strong> Le résultat <em>vectoriel</em> du moteur, écrit depuis toujours dans la couche <code>reseau_cree</code> du GeoPackage et jamais peint. Il s’ajoute au raster plutôt qu’il ne le remplace : le raster est le support du calcul et se lit en escalier au zoom, les lignes portent les attributs par route (ordre de création, coût, longueur) qu’une grille ne peut pas porter.</li>
+<li>
+<strong>Accents uniformisés</strong> dans le menu des couches de l’onglet.</li>
+<li>
+<strong>Un « i » par badge du bilan.</strong> Six chiffres, six explications : ce que mesure « parcelles desservies » (à la distance de débardage retenue), pourquoi « 0 route créée » n’est pas un échec, que le coût est dans l’unité du raster de coût et non en euros, et quelles sont les deux contraintes ACCESSFOR dont les infractions sont <em>signalées, jamais retirées</em>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.123.0" id="nemetonshiny-01230-2026-08-14">nemetonshiny 0.123.0 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01230-2026-08-14"></a></h2>
 <div class="section level4">

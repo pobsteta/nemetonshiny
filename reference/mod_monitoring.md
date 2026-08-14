@@ -1,10 +1,10 @@
-# Monitoring Module for nemetonApp (E6.b + E6.c.5 — health monitoring)
+# Monitoring Module for nemetonApp (E6.b + E6.c.5 - health monitoring)
 
 Two-mode forest health monitoring:
 
-\* \*\*Mode 1 — Surveillance rapide\*\* (E6.b): rolling-window NDVI/NBR
+\* \*\*Mode 1 - Surveillance rapide\*\* (E6.b): rolling-window NDVI/NBR
 on Sentinel-2, detects recent shocks (cuts, windthrows, fires).
-Seconds-scale. \* \*\*Mode 2 — Diagnostic sanitaire\*\* (E6.c.5, spec
+Seconds-scale. \* \*\*Mode 2 - Diagnostic sanitaire\*\* (E6.c.5, spec
 008): FORDEAD via reticulate (CRSWIR + harmonic model), detects
 progressive dieback (bark beetle, drought). Minutes-to-hours scale.
 

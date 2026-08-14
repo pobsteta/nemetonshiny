@@ -1,4 +1,4 @@
-# Enrich the radar indicator sf with a live R5 dépérissement column
+# Enrich the radar indicator sf with a live R5 deperissement column
 
 Best-effort: returns \`base_sf\` unchanged when there is no bound
 monitoring zone, no reachable DB, or no dieback alert. The added column

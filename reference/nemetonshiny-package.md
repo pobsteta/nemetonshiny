@@ -28,7 +28,7 @@ other way around (ADR-009).
 - **Terrain** - two sub-tabs:
 
   - *Export terrain*: design a sampling plan from a target error + CV
-    (derived from BD Forêt v2 or manual) and export it as a QField
+    (derived from BD Foret v2 or manual) and export it as a QField
     `.qgz` project.
 
   - *Import terrain*: ingest a GeoPackage returned by QField, validate
@@ -51,7 +51,7 @@ Currently 358+ FR / EN keys.
 
 ## Author
 
-**Pascal Obstétar** (<pascal.obstetar@gmail.com>)
+**Pascal Obstetar** (<pascal.obstetar@gmail.com>)
 
 ## See also
 

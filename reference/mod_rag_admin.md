@@ -1,12 +1,12 @@
-# RAG corpus administration module (spec 009.2 — consumes nemeton \>= 0.63.0)
+# RAG corpus administration module (spec 009.2 - consumes nemeton \>= 0.63.0)
 
 Admin tab to curate the knowledge corpus that feeds the sourced AI
 perspectives (E7). Lets an administrator : 1. edit the writable manifest
-(CSV) — add / edit / delete documents ; 2. validate the manifest live
+(CSV) - add / edit / delete documents ; 2. validate the manifest live
 (D5 licence guardrails) ; 3. import the corpus into the database
 (embeddings) asynchronously, with progress + report ; 4. inspect the
 database inventory and delete a document.
 
-All business logic lives in \`nemeton\` (CLAUDE.md §1) ; this module
+All business logic lives in \`nemeton\` (CLAUDE.md sect.1) ; this module
 only wires the exported functions to the UI. Every string goes through
-i18n (CLAUDE.md §3).
+i18n (CLAUDE.md sect.3).

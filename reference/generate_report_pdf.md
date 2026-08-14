@@ -56,7 +56,7 @@ generate_report_pdf(
 
 - regen_units:
 
-  sf. Optional reGénération run output; when provided, a "reGénération"
+  sf. Optional reGeneration run output; when provided, a "reGeneration"
   section is appended to the Quarto report (spec 027 L6).
 
 ## Value
