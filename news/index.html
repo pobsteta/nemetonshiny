@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.8.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,30 +33,36 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.122.8" id="nemetonshiny-01228-2026-08-14">nemetonshiny 0.122.8 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01228-2026-08-14"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.122.9" id="nemetonshiny-01229-2026-08-14">nemetonshiny 0.122.9 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01229-2026-08-14"></a></h2>
 <div class="section level4">
-<h4 id="fixed--le-menu-des-couches-pilote-enfin-tout-ce-que-la-carte-affiche-0-122-8">Fixed — Le menu des couches pilote enfin tout ce que la carte affiche<a class="anchor" aria-label="anchor" href="#fixed--le-menu-des-couches-pilote-enfin-tout-ce-que-la-carte-affiche-0-122-8"></a></h4>
+<h4 id="changed--les-notes-de-release-viennent-de-newsmd-0-122-9">Changed — Les notes de release viennent de NEWS.md<a class="anchor" aria-label="anchor" href="#changed--les-notes-de-release-viennent-de-newsmd-0-122-9"></a></h4>
+<p><code>release.yml</code> créait la release avec <code>--generate-notes</code>, qui ne produit qu’un lien « Full Changelog » : les notes devaient être recopiées à la main après coup, et ne l’étaient pas. Le workflow extrait désormais de <code>NEWS.md</code> la section de la version publiée et la passe en corps de release, avec le lien de comparaison en pied.</p>
+<p>L’extraction compare le titre par préfixe exact plutôt que par expression régulière — les points d’un numéro de version y seraient des jokers — et exige un séparateur après le numéro, faute de quoi extraire <code>0.122.1</code> attraperait le titre <code>0.122.10</code> le jour où il existera. Si la section est introuvable ou vide, le workflow retombe sur <code>--generate-notes</code> et émet un avertissement plutôt que de publier une release sans corps.</p>
+<p>Testé hors CI sur les vraies sections du fichier, y compris la plus ancienne (pas de titre suivant) et un numéro absent (repli).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-menu-des-couches-pilote-enfin-tout-ce-que-la-carte-affiche-0-122-9">Fixed — Le menu des couches pilote enfin tout ce que la carte affiche<a class="anchor" aria-label="anchor" href="#fixed--le-menu-des-couches-pilote-enfin-tout-ce-que-la-carte-affiche-0-122-9"></a></h4>
 <p>Les deux couches du comparateur de desserte étaient peintes sans être déclarées dans le contrôle de couches : aucune case ne pouvait les éteindre. C’est le même défaut que celui du relief corrigé en 0.122.6, et il se corrige de la même manière — noms portés par des constantes, groupes déclarés en toutes circonstances, état des cases respecté au re-dessin.</p>
 <p>Elles apparaissent désormais sous « Desserte origine » et « Desserte corrigée ». Décocher la seconde est précisément la façon de lire ce qu’elle change par rapport à la BD TOPO qu’elle recouvre.</p>
 </div>
 <div class="section level4">
-<h4 id="fixed--plus-de-tronçons-contradictoires-sous-le-comparateur-0-122-8">Fixed — Plus de tronçons contradictoires sous le comparateur<a class="anchor" aria-label="anchor" href="#fixed--plus-de-tron%C3%A7ons-contradictoires-sous-le-comparateur-0-122-8"></a></h4>
+<h4 id="fixed--plus-de-tronçons-contradictoires-sous-le-comparateur-0-122-9">Fixed — Plus de tronçons contradictoires sous le comparateur<a class="anchor" aria-label="anchor" href="#fixed--plus-de-tron%C3%A7ons-contradictoires-sous-le-comparateur-0-122-9"></a></h4>
 <p>La couche « Desserte » du run (les routes qui ont servi au calcul) restait peinte par-dessus le comparateur, avec sa propre palette : deux jeux de tronçons de même couleur y disaient des choses différentes, sans légende pour le signaler. Elle n’est plus peinte tant que le comparateur est sélectionné — il montre les mêmes tronçons, en plus précis.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--infobulles-de-carte-àpx-partout-0-122-8">Changed — Infobulles de carte à 17px, partout<a class="anchor" aria-label="anchor" href="#changed--infobulles-de-carte-%C3%A0px-partout-0-122-8"></a></h4>
+<h4 id="changed--infobulles-de-carte-àpx-partout-0-122-9">Changed — Infobulles de carte à 17px, partout<a class="anchor" aria-label="anchor" href="#changed--infobulles-de-carte-%C3%A0px-partout-0-122-9"></a></h4>
 <p>15px ne suffisait pas. Surtout, quatre appels imposaient leur propre taille en inline (<code>mod_map</code> 12px, <code>mod_family</code> 12px, <code>mod_ug</code> 12 et 13px) : un style inline bat toujours une feuille de style, ces cartes échappaient donc à la règle. Ces tailles sont retirées ; <code>.leaflet-tooltip</code> est désormais le seul endroit qui fixe la taille d’une infobulle, et <code>test-static_assets.R</code> échoue si un <code>textsize=</code> ou un <code>font-size</code> inline réapparaît dans <code>R/</code>.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--libellés-du-menu-des-couches-uniformisés-0-122-8">Changed — Libellés du menu des couches uniformisés<a class="anchor" aria-label="anchor" href="#changed--libell%C3%A9s-du-menu-des-couches-uniformis%C3%A9s-0-122-8"></a></h4>
+<h4 id="changed--libellés-du-menu-des-couches-uniformisés-0-122-9">Changed — Libellés du menu des couches uniformisés<a class="anchor" aria-label="anchor" href="#changed--libell%C3%A9s-du-menu-des-couches-uniformis%C3%A9s-0-122-9"></a></h4>
 <p>« Accessibilité » et « Places de dépôt » prennent leurs accents, comme « Desserte corrigée ». Ces noms de groupe étaient écrits en littéral à 18 endroits, dans deux modules : en accentuer un en oubliant les autres aurait rompu le lien entre la case et la couche. Ils passent par des constantes, dont une partagée entre les cartes Accessibilité et Desserte.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--la-légende--source-du-tronçon--devient--tronçon-corrigé--0-122-8">Changed — La légende « Source du tronçon » devient « Tronçon corrigé »<a class="anchor" aria-label="anchor" href="#changed--la-l%C3%A9gende--source-du-tron%C3%A7on--devient--tron%C3%A7on-corrig%C3%A9--0-122-8"></a></h4>
+<h4 id="changed--la-légende--source-du-tronçon--devient--tronçon-corrigé--0-122-9">Changed — La légende « Source du tronçon » devient « Tronçon corrigé »<a class="anchor" aria-label="anchor" href="#changed--la-l%C3%A9gende--source-du-tron%C3%A7on--devient--tron%C3%A7on-corrig%C3%A9--0-122-9"></a></h4>
 <p>Elle nommait la VARIABLE alors qu’elle n’a le plus souvent qu’une modalité, « BD TOPO » : tant qu’aucun ajout OSM ni détection LiDAR n’apporte de tronçon, la couche corrigée EST la BD TOPO, et le titre n’apprenait rien. Il nomme désormais la COUCHE.</p>
 </div>
 <div class="section level4">
-<h4 id="changed--la-sidebar-daccessibilité-prend-le-bloc-repliable-des-autres-onglets-0-122-8">Changed — La sidebar d’Accessibilité prend le bloc repliable des autres onglets<a class="anchor" aria-label="anchor" href="#changed--la-sidebar-daccessibilit%C3%A9-prend-le-bloc-repliable-des-autres-onglets-0-122-8"></a></h4>
+<h4 id="changed--la-sidebar-daccessibilité-prend-le-bloc-repliable-des-autres-onglets-0-122-9">Changed — La sidebar d’Accessibilité prend le bloc repliable des autres onglets<a class="anchor" aria-label="anchor" href="#changed--la-sidebar-daccessibilit%C3%A9-prend-le-bloc-repliable-des-autres-onglets-0-122-9"></a></h4>
 <p>Les commandes de la barre latérale gauche de l’onglet Accessibilité (correction LiDAR, moteurs d’exploitation, lancement de l’analyse) sont regroupées dans une carte repliable titrée « Accessibilité », de structure identique à celle de l’onglet Import terrain : en-tête vert cliquable, icône de l’onglet, chevron.</p>
 <p>Elle est dépliée par défaut — elle porte le bouton « Lancer l’analyse ». La barre latérale droite, qui porte l’affichage des résultats, ne change pas.</p>
 <p>Le test compare la structure des deux en-têtes plutôt que de la décrire : il échoue si l’un des deux blocs dérive de l’autre.</p>

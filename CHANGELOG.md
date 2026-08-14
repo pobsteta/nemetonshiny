@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.9\] - 2026-08-14
+
+### Changed
+
+- `release.yml` : le corps de la release GitHub vient désormais de la
+  section correspondante de `NEWS.md` au lieu de `--generate-notes`, qui
+  ne produisait qu’un lien « Full Changelog ». Extraction par préfixe
+  exact avec séparateur obligatoire après le numéro de version ; repli
+  sur `--generate-notes` et avertissement si la section est absente.
+
 ## \[0.122.8\] - 2026-08-14
 
 ### Fixed
