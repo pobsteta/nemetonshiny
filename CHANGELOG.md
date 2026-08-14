@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.14] - 2026-08-14
+
+### Fixed
+
+- Installation des dependances en CI : `dessertR`, `lidR` et `opencanopy`,
+  declares en `Suggests` par la v0.122.13, ne sont pas resolvables par `pak`
+  (absents du CRAN) et faisaient echouer `R-CMD-check` et `pkgdown` avant meme
+  le check. Retires ; `ecmwfr` (CRAN) reste declare.
+
 ## [0.122.13] - 2026-08-14
 
 ### Changed
