@@ -31,19 +31,11 @@ mod_sampling_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
-  # Helper: combine a label with an info icon that carries a tooltip,
-  # matching the pattern used elsewhere in the app (mod_synthesis /
-  # mod_family).
+  # Label + « i » d'information. Pattern UNIQUE de l'app : `info_popover()`,
+  # celui des titres de l'onglet Synthèse (icône bleue `circle-info` + popover
+  # au clic). Ne pas réintroduire d'icône d'information ad hoc ici.
   label_tt <- function(label, tooltip) {
-    htmltools::tagList(
-      label,
-      " ",
-      bslib::tooltip(
-        bsicons::bs_icon("info-circle", class = "text-muted ms-1"),
-        tooltip,
-        placement = "right"
-      )
-    )
+    htmltools::tagList(label, " ", info_popover(tooltip, placement = "right"))
   }
 
   bslib::layout_sidebar(
