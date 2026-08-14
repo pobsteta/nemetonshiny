@@ -1,5 +1,65 @@
 # Changelog
 
+## nemetonshiny 0.123.0 (2026-08-14)
+
+#### Added — Profil en travers d’un tronçon au clic
+
+Dans l’onglet Accessibilité, couche « Desserte BD TOPO / corrigée », un
+clic sur la carte affiche la **coupe transversale** du tronçon le plus
+proche : le nuage LiDAR de la tranche, le profil du terrain, la chaussée
+ajustée, et les cinq familles de bords cotées — chaussée roulable,
+plateforme, bande de secours, emprise, accotements.
+
+Le calcul appartient au cœur :
+[`foretaccess::profil_travers()`](https://pobsteta.github.io/foretaccess/reference/profil_travers.html)
+(release 2.3.0, spec 030), écrite d’après le brief
+`specs/BRIEF-profil-travers-desserte.md`. L’app résout les chemins du
+projet, convertit le clic WGS84 vers le CRS de travail, appelle, et
+**dessine** : `acc_profil_travers()` pour l’adaptateur,
+`fct_plot_desserte_profil.R` pour la planche — présentation pure, même
+contrat que `fct_plot_pixel_dieback.R`.
+
+Le clic est **asynchrone** malgré un coût mesuré à 0,4 s côté cœur : ce
+chiffre vaut sur une dalle d’exemple, la première lecture d’un catalogue
+LAZ réel est autrement plus lourde, et la boucle Shiny est mono-thread.
+
+Chaque ingrédient manquant a sa propre raison — pas de projet, pas de
+desserte corrigée, pas de nuage, pas de MNT — et l’absence de tronçon
+sous le clic est rendue comme une **réponse** (avertissement), pas comme
+une panne.
+
+#### Changed — Le classement de desserte passe par `foretaccess`
+
+`service_desserte.R` appelait `dessertR::dsr_classer()` **directement**,
+alors que `dessertR` n’était déclaré nulle part dans `DESCRIPTION`,
+derrière un `tryCatch(NULL)` : sur un poste sans ce moteur, le
+classement disparaissait **en silence**. Il passe par
+[`foretaccess::classer_desserte()`](https://pobsteta.github.io/foretaccess/reference/classer_desserte.html),
+livré dans le même lot cœur à la demande du §7 du brief — le wrapper
+fait le recast `LINESTRING` et rend l’indisponibilité **visible**.
+
+#### Changed — Couleurs de la légende « Tronçon corrigé »
+
+`BD TOPO` passe au **rouge**, `OSM` au **vert** : l’intérêt de cette
+couche est de montrer d’un coup d’œil ce que la correction a **ajouté**.
+
+Le rouge est `#FF0000` et non un rouge plus doux : la légende de classe
+voisine porte déjà un rouge (`Route`, `#C62828`), et tous les rouges
+usuels s’en trouvent à 7 à 20 unités Lab — la collision corrigée en
+0.122.6 — quand le rouge pur en garde 34,7. `test-acc_palettes.R`
+refusait les autres candidats.
+
+#### Changed — Bloc « Desserte » dans la barre latérale
+
+L’onglet Desserte adopte le bloc repliable d’Accessibilité et d’Import
+terrain, et sa barre latérale devient rétractable. Le test de parité
+compare désormais les **trois** en-têtes au même gabarit.
+
+#### Changed — Plancher `foretaccess` porté à 2.3.0
+
+L’app consomme `profil_travers()` et `classer_desserte()`, absentes
+avant cette release.
+
 ## nemetonshiny 0.122.14 (2026-08-14)
 
 #### Fixed — L’installation des dependances en CI ne casse plus

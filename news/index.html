@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.123.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,34 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.123.0" id="nemetonshiny-01230-2026-08-14">nemetonshiny 0.123.0 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01230-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="added--profil-en-travers-dun-tronçon-au-clic-0-123-0">Added — Profil en travers d’un tronçon au clic<a class="anchor" aria-label="anchor" href="#added--profil-en-travers-dun-tron%C3%A7on-au-clic-0-123-0"></a></h4>
+<p>Dans l’onglet Accessibilité, couche « Desserte BD TOPO / corrigée », un clic sur la carte affiche la <strong>coupe transversale</strong> du tronçon le plus proche : le nuage LiDAR de la tranche, le profil du terrain, la chaussée ajustée, et les cinq familles de bords cotées — chaussée roulable, plateforme, bande de secours, emprise, accotements.</p>
+<p>Le calcul appartient au cœur : <code><a href="https://pobsteta.github.io/foretaccess/reference/profil_travers.html" class="external-link">foretaccess::profil_travers()</a></code> (release 2.3.0, spec 030), écrite d’après le brief <code>specs/BRIEF-profil-travers-desserte.md</code>. L’app résout les chemins du projet, convertit le clic WGS84 vers le CRS de travail, appelle, et <strong>dessine</strong> : <code>acc_profil_travers()</code> pour l’adaptateur, <code>fct_plot_desserte_profil.R</code> pour la planche — présentation pure, même contrat que <code>fct_plot_pixel_dieback.R</code>.</p>
+<p>Le clic est <strong>asynchrone</strong> malgré un coût mesuré à 0,4 s côté cœur : ce chiffre vaut sur une dalle d’exemple, la première lecture d’un catalogue LAZ réel est autrement plus lourde, et la boucle Shiny est mono-thread.</p>
+<p>Chaque ingrédient manquant a sa propre raison — pas de projet, pas de desserte corrigée, pas de nuage, pas de MNT — et l’absence de tronçon sous le clic est rendue comme une <strong>réponse</strong> (avertissement), pas comme une panne.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-classement-de-desserte-passe-par-foretaccess-0-123-0">Changed — Le classement de desserte passe par <code>foretaccess</code>
+<a class="anchor" aria-label="anchor" href="#changed--le-classement-de-desserte-passe-par-foretaccess-0-123-0"></a></h4>
+<p><code>service_desserte.R</code> appelait <code>dessertR::dsr_classer()</code> <strong>directement</strong>, alors que <code>dessertR</code> n’était déclaré nulle part dans <code>DESCRIPTION</code>, derrière un <code>tryCatch(NULL)</code> : sur un poste sans ce moteur, le classement disparaissait <strong>en silence</strong>. Il passe par <code><a href="https://pobsteta.github.io/foretaccess/reference/classer_desserte.html" class="external-link">foretaccess::classer_desserte()</a></code>, livré dans le même lot cœur à la demande du §7 du brief — le wrapper fait le recast <code>LINESTRING</code> et rend l’indisponibilité <strong>visible</strong>.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--couleurs-de-la-légende--tronçon-corrigé--0-123-0">Changed — Couleurs de la légende « Tronçon corrigé »<a class="anchor" aria-label="anchor" href="#changed--couleurs-de-la-l%C3%A9gende--tron%C3%A7on-corrig%C3%A9--0-123-0"></a></h4>
+<p><code>BD TOPO</code> passe au <strong>rouge</strong>, <code>OSM</code> au <strong>vert</strong> : l’intérêt de cette couche est de montrer d’un coup d’œil ce que la correction a <strong>ajouté</strong>.</p>
+<p>Le rouge est <code>#FF0000</code> et non un rouge plus doux : la légende de classe voisine porte déjà un rouge (<code>Route</code>, <code>#C62828</code>), et tous les rouges usuels s’en trouvent à 7 à 20 unités Lab — la collision corrigée en 0.122.6 — quand le rouge pur en garde 34,7. <code>test-acc_palettes.R</code> refusait les autres candidats.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--bloc--desserte--dans-la-barre-latérale-0-123-0">Changed — Bloc « Desserte » dans la barre latérale<a class="anchor" aria-label="anchor" href="#changed--bloc--desserte--dans-la-barre-lat%C3%A9rale-0-123-0"></a></h4>
+<p>L’onglet Desserte adopte le bloc repliable d’Accessibilité et d’Import terrain, et sa barre latérale devient rétractable. Le test de parité compare désormais les <strong>trois</strong> en-têtes au même gabarit.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--plancher-foretaccess-porté-à-0-123-0">Changed — Plancher <code>foretaccess</code> porté à 2.3.0<a class="anchor" aria-label="anchor" href="#changed--plancher-foretaccess-port%C3%A9-%C3%A0-0-123-0"></a></h4>
+<p>L’app consomme <code>profil_travers()</code> et <code>classer_desserte()</code>, absentes avant cette release.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.14" id="nemetonshiny-012214-2026-08-14">nemetonshiny 0.122.14 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012214-2026-08-14"></a></h2>
 <div class="section level4">
