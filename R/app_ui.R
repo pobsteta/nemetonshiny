@@ -277,11 +277,20 @@ app_add_external_resources <- function() {
           background-size: 20px 20px;
         }
       ")),
-      # Custom CSS - minified for performance (cache-busting to ensure latest version)
+      # Custom CSS — le FICHIER SOURCE, avec cache-busting.
+      #
+      # On servait `custom.min.css`, un fichier « minifié » qui ne l'était pas
+      # (747 lignes commentées, copie manuelle de `custom.css`) et que rien ne
+      # régénérait — ni build, ni script, ni CI. Il a dérivé de deux commits, et
+      # deux règles n'ont jamais atteint le navigateur : les ascenseurs de la
+      # légende bivariée E-OBS et l'affordance de la cellule commentaire du plan
+      # d'action. Servir la source supprime la classe de bug au lieu de la
+      # surveiller. Ne pas réintroduire de copie « min » sans build qui la
+      # produise ET une étape CI qui vérifie qu'elle est à jour.
       htmltools::tags$link(
         rel = "stylesheet",
         type = "text/css",
-        href = paste0("www/css/custom.min.css?v=", as.integer(Sys.time()))
+        href = paste0("www/css/custom.css?v=", as.integer(Sys.time()))
       ),
       # Favicon
       htmltools::tags$link(
@@ -308,9 +317,13 @@ app_add_external_resources <- function() {
                    as.integer(Sys.time()))
     ),
 
-    # Custom JS - minified for performance (cache-busting to ensure latest version)
+    # Custom JS — le FICHIER SOURCE, même raison que le CSS ci-dessus :
+    # `custom.min.js` était une copie octet pour octet de `custom.js` (816
+    # lignes, pas minifiée) que rien ne régénérait. Le CSS avait déjà dérivé de
+    # deux commits ; ici la copie était encore à jour, mais le piège était le
+    # même — la prochaine édition ne serait pas partie en production.
     htmltools::tags$script(
-      src = paste0("www/js/custom.min.js?v=", as.integer(Sys.time()))
+      src = paste0("www/js/custom.js?v=", as.integer(Sys.time()))
     ),
 
     # Comparaison « swipe » de deux rasters (Accessibilite : classes de debardage

@@ -27,10 +27,16 @@ test_that("app_add_external_resources contains CSS link tag", {
       rendered <- htmltools::renderTags(result)
       full_html <- paste(rendered$head, rendered$html)
 
-      # Should contain a link tag for CSS
+      # Le lien doit viser le fichier SOURCE. On servait une copie « min » que
+      # rien ne régénérait, et qui a fini par avaler deux règles ; il n'y a plus
+      # qu'un fichier, c'est lui qu'on sert.
       expect_true(
+        grepl("www/css/custom\\.css", full_html),
+        info = "Expected CSS link tag for custom.css"
+      )
+      expect_false(
         grepl("custom\\.min\\.css", full_html),
-        info = "Expected CSS link tag for custom.min.css"
+        info = "custom.min.css a été supprimé : ne pas le servir"
       )
     }
   )
@@ -46,10 +52,15 @@ test_that("app_add_external_resources contains JS script tag", {
       rendered <- htmltools::renderTags(result)
       full_html <- paste(rendered$head, rendered$html)
 
-      # Should contain a script tag for JS
+      # Le fichier SOURCE, comme pour le CSS : la copie « min » n'était pas
+      # minifiée et rien ne la régénérait.
       expect_true(
+        grepl("www/js/custom\\.js", full_html),
+        info = "Expected JS script tag for custom.js"
+      )
+      expect_false(
         grepl("custom\\.min\\.js", full_html),
-        info = "Expected JS script tag for custom.min.js"
+        info = "custom.min.js a été supprimé : ne pas le servir"
       )
     }
   )
