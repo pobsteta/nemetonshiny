@@ -22,6 +22,20 @@ app_ui <- function(request) {
     error = function(e) NULL
   )
 
+  # Un onglet de famille d'indicateurs. Le libellé porte le CODE entre
+  # parenthèses — « Carbone & Vitalité (C) » : ce code est la clé qui circule
+  # partout ailleurs (radar, exports, profils experts, briefs cœur, tableaux
+  # d'indicateurs B1/C2/…), et le menu était le seul endroit qui ne le donnait
+  # pas. Le composer ici, à partir du code déjà passé au module, évite de
+  # l'écrire deux fois par famille.
+  family_tab <- function(key, code) {
+    bslib::nav_panel(
+      title = sprintf("%s (%s)", i18n$t(key), code),
+      value = key,
+      mod_family_ui(key, code)
+    )
+  }
+
   htmltools::tagList(
     # Add external resources (CSS, JS)
     app_add_external_resources(),
@@ -131,66 +145,18 @@ app_ui <- function(request) {
         title = i18n$t("tab_families"),
         icon = bsicons::bs_icon("layers"),
 
-        bslib::nav_panel(
-          title = i18n$t("famille_carbone"),
-          value = "famille_carbone",
-          mod_family_ui("famille_carbone", "C")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_biodiversite"),
-          value = "famille_biodiversite",
-          mod_family_ui("famille_biodiversite", "B")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_eau"),
-          value = "famille_eau",
-          mod_family_ui("famille_eau", "W")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_air"),
-          value = "famille_air",
-          mod_family_ui("famille_air", "A")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_sol"),
-          value = "famille_sol",
-          mod_family_ui("famille_sol", "F")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_paysage"),
-          value = "famille_paysage",
-          mod_family_ui("famille_paysage", "L")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_temporel"),
-          value = "famille_temporel",
-          mod_family_ui("famille_temporel", "T")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_risque"),
-          value = "famille_risque",
-          mod_family_ui("famille_risque", "R")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_social"),
-          value = "famille_social",
-          mod_family_ui("famille_social", "S")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_production"),
-          value = "famille_production",
-          mod_family_ui("famille_production", "P")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_energie"),
-          value = "famille_energie",
-          mod_family_ui("famille_energie", "E")
-        ),
-        bslib::nav_panel(
-          title = i18n$t("famille_naturalite"),
-          value = "famille_naturalite",
-          mod_family_ui("famille_naturalite", "N")
-        )
+        family_tab("famille_carbone",      "C"),
+        family_tab("famille_biodiversite", "B"),
+        family_tab("famille_eau",          "W"),
+        family_tab("famille_air",          "A"),
+        family_tab("famille_sol",          "F"),
+        family_tab("famille_paysage",      "L"),
+        family_tab("famille_temporel",     "T"),
+        family_tab("famille_risque",       "R"),
+        family_tab("famille_social",       "S"),
+        family_tab("famille_production",   "P"),
+        family_tab("famille_energie",      "E"),
+        family_tab("famille_naturalite",   "N")
       ),
 
       # === Navbar items (right side) ===
@@ -277,11 +243,20 @@ app_add_external_resources <- function() {
           background-size: 20px 20px;
         }
       ")),
-      # Custom CSS - minified for performance (cache-busting to ensure latest version)
+      # Custom CSS — le FICHIER SOURCE, avec cache-busting.
+      #
+      # On servait `custom.min.css`, un fichier « minifié » qui ne l'était pas
+      # (747 lignes commentées, copie manuelle de `custom.css`) et que rien ne
+      # régénérait — ni build, ni script, ni CI. Il a dérivé de deux commits, et
+      # deux règles n'ont jamais atteint le navigateur : les ascenseurs de la
+      # légende bivariée E-OBS et l'affordance de la cellule commentaire du plan
+      # d'action. Servir la source supprime la classe de bug au lieu de la
+      # surveiller. Ne pas réintroduire de copie « min » sans build qui la
+      # produise ET une étape CI qui vérifie qu'elle est à jour.
       htmltools::tags$link(
         rel = "stylesheet",
         type = "text/css",
-        href = paste0("www/css/custom.min.css?v=", as.integer(Sys.time()))
+        href = paste0("www/css/custom.css?v=", as.integer(Sys.time()))
       ),
       # Favicon
       htmltools::tags$link(
@@ -308,9 +283,13 @@ app_add_external_resources <- function() {
                    as.integer(Sys.time()))
     ),
 
-    # Custom JS - minified for performance (cache-busting to ensure latest version)
+    # Custom JS — le FICHIER SOURCE, même raison que le CSS ci-dessus :
+    # `custom.min.js` était une copie octet pour octet de `custom.js` (816
+    # lignes, pas minifiée) que rien ne régénérait. Le CSS avait déjà dérivé de
+    # deux commits ; ici la copie était encore à jour, mais le piège était le
+    # même — la prochaine édition ne serait pas partie en production.
     htmltools::tags$script(
-      src = paste0("www/js/custom.min.js?v=", as.integer(Sys.time()))
+      src = paste0("www/js/custom.js?v=", as.integer(Sys.time()))
     ),
 
     # Comparaison « swipe » de deux rasters (Accessibilite : classes de debardage

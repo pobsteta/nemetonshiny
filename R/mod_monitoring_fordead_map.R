@@ -122,18 +122,12 @@
                   title = i18n$t("monitoring_fordead_class_title")))
 }
 
-# Construit le libellé d'un choix de couche (radio) avec une icône « i »
-# (tooltip bslib) qui explique ce que la couche raster affiche.
+# Construit le libellé d'un choix de couche (radio) avec le « i » d'information
+# de l'app — `info_popover_in_label()`, variant sûr dans un <label> de radio :
+# s'informer sur une couche ne doit pas la sélectionner (chaque sélection
+# déclenche une lecture de raster).
 .fordead_layer_choice <- function(label, info) {
-  htmltools::tagList(
-    label,
-    bslib::tooltip(
-      bsicons::bs_icon("info-circle",
-                       class = "ms-1 text-primary",
-                       style = "cursor: help;"),
-      info
-    )
-  )
+  htmltools::tagList(label, " ", info_popover_in_label(info))
 }
 
 # Ajoute la légende correspondant à la spec (.fordead_layer_spec$legend).

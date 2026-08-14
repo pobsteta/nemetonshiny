@@ -314,6 +314,37 @@ info_popover <- function(..., placement = "auto") {
 }
 
 
+#' Information "i" inside the `<label>` of a radio / checkbox choice
+#'
+#' @description
+#' Same "i" as [info_popover()], but safe to put inside the label of a choice
+#' (`choiceNames` of [shiny::radioButtons()], a checkbox label, …).
+#'
+#' A click anywhere in a `<label>` activates its control — so an "i" placed
+#' there would SELECT the choice on its way to opening the popover. Informing
+#' oneself is not choosing, and the cost is real: on the map-layer radios, the
+#' selected layer triggers a raster read (and, in the regeneration context view,
+#' an ~800 MB E-OBS download).
+#'
+#' The popover's own handler runs first (capture-phase), then the label's
+#' default action is cancelled. Note it does NOT stop propagation: the document
+#' must keep seeing the click, otherwise already-open popovers would never
+#' close.
+#'
+#' @param ... Popover content, passed on to [info_popover()].
+#' @param placement Character. Popover side.
+#'
+#' @return A `<span>` wrapping the popover trigger.
+#'
+#' @noRd
+info_popover_in_label <- function(..., placement = "auto") {
+  htmltools::tags$span(
+    onclick = "event.preventDefault();",
+    info_popover(..., placement = placement)
+  )
+}
+
+
 #' Apply accessible styling to ggplot
 #'
 #' @description

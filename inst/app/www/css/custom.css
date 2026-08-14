@@ -315,6 +315,19 @@ html, body {
   width: auto;
 }
 
+/* Infobulles de carte (leaflet `label=`). `.leaflet-tooltip` ne fixe aucune
+   taille : elle hérite du `font: 12px/1.5` de `.leaflet-container`, trop petit
+   pour les étiquettes utiles au terrain — état et largeur carrossable d'un
+   tronçon (« En service — 2.1 m »), classe d'un tronçon BD TOPO, diagnostic
+   d'un pixel. 15px reste compact : l'infobulle suit le pointeur, elle ne doit
+   pas devenir un panneau. `font-weight` laissé à sa valeur — c'est la TAILLE
+   qui manquait, pas le gras, qui épaissit le texte sans gagner en lisibilité. */
+.leaflet-tooltip {
+  font-size: 15px;
+  line-height: 1.35;
+  padding: 5px 8px;
+}
+
 .leaflet-control-zoom a {
   min-width: var(--min-touch-target);
   min-height: var(--min-touch-target);

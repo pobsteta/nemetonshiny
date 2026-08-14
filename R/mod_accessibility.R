@@ -10,6 +10,60 @@
 # calcul est long → `ExtendedTask` + `future_promise`, même patron que le moteur
 # reGénération (notif persistante bas-droite avec chrono, retour immédiat).
 
+# --- Palettes du comparateur de desserte -----------------------------------
+# Deux légendes cohabitent à l'écran : la CLASSE du tronçon BD TOPO (couche de
+# fond, trait fin) et la SOURCE du tronçon corrigé (par-dessus, trait épais).
+# La contrainte n'est donc pas seulement de séparer les classes entre elles,
+# mais AUSSI de ne pas les confondre avec la palette de source d'à côté.
+#
+# Constantes de FICHIER et non locales au serveur : `test-acc_palettes.R` mesure
+# leur séparation, ce qu'il ne pourrait pas faire depuis une closure.
+
+#' Colours of the BD TOPO road classes (background layer)
+#'
+#' Chosen under three constraints, verified by `test-acc_palettes.R`:
+#' pairwise Lab distance >= 20 across the 6 intra-palette pairs AND the 12 pairs
+#' against [DESS_SOURCE_COLS]; the same holds under simulated deutan / protan /
+#' tritan vision; and each hue keeps a >= 3:1 contrast ratio against white (WCAG
+#' non-text contrast) so it stays readable on the light RVT relief.
+#'
+#' The previous `route = "#37474F"` sat at Lab distance 8 from
+#' `bdtopo = "#455A64"` — the same colour, to the eye, in two adjacent legends.
+#' `piste` and `reseau_public` keep their hue family (brown, blue); only `route`
+#' had to move.
+#'
+#' @noRd
+DESS_CLASSE_COLS <- c(route = "#C62828", piste = "#3E2723",
+                      reseau_public = "#1E88E5", hors_desserte = "#BDBDBD")
+
+#' Colours of the corrected road sources (foreground layer)
+#'
+#' The corrected network KEEPS the whole BD TOPO and adds what OSM carries on
+#' top; LiDAR detection will provide the third. Three plainly distinct hues,
+#' distinct from [DESS_CLASSE_COLS] as well.
+#'
+#' @noRd
+DESS_SOURCE_COLS <- c(bdtopo = "#455A64", osm = "#7B1FA2",
+                      detectee = "#F9A825")
+
+
+#' Name of the single relief overlay group of the Accessibility map
+#'
+#' There is ONE relief on this map, and one checkbox for it. Two code paths
+#' paint it — the map render (semi-transparent backdrop over OSM/Satellite) and
+#' the desserte comparator (opaque backdrop under the road lines) — but they
+#' display the very same file: `.acc_cvat_overlay_raster()` and the comparator
+#' both go through `generate_rvt()`.
+#'
+#' They used to paint into two different groups, only one of which was declared
+#' in the `addLayersControl()` overlays. Unchecking "Relief CVAT" while the
+#' comparator was on therefore hid a raster the user could not see and left the
+#' visible one — the comparator's — on screen, with no checkbox of its own.
+#'
+#' @noRd
+ACC_RELIEF_GROUP <- "Relief CVAT"
+
+
 #' Buffer around the forest AOI, in metres, from the sidebar input
 #'
 #' The input is expressed in METRES (default 250 m) — the services downstream
@@ -208,7 +262,12 @@ mod_accessibility_ui <- function(id) {
     # Barre latérale GAUCHE : sélection des moteurs, lancement, export. Ce sont
     # les commandes du CALCUL.
     sidebar = bslib::sidebar(
-      width = 320, open = "always", position = "left",
+      # `open = TRUE` et NON `"always"` : `"always"` supprime le chevron de
+      # repli. La sidebar est rétractable comme celle de l'onglet Export
+      # terrain, pour rendre toute la largeur à la carte. Ouverte par défaut :
+      # elle porte le bouton « Lancer l'analyse ».
+      id = ns("sidebar"),
+      width = 320, open = TRUE, position = "left",
       htmltools::tags$p(class = "text-muted small", i18n$t("acc_intro")),
 
       # --- Correction LiDAR de la desserte (NDP 1) — ÉTAPE DÉCOUPLÉE -------------
@@ -967,8 +1026,12 @@ mod_accessibility_server <- function(id, app_state) {
       # proposé dans le LayersControl quand un CVAT existe déjà pour le projet.
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       cvat_bg <- .acc_cvat_overlay_raster(project_path)
+      # Le relief est déclaré SYSTÉMATIQUEMENT, même sans CVAT prêt à cet
+      # instant : le comparateur de desserte peut en peindre un plus tard (son
+      # worker async), et sans case déclarée ici ce relief-là serait
+      # inextinguible. Une case sans couche ne fait rien, c'est sans risque.
       overlays <- c(if (!is.null(geo)) "UGF" else NULL,
-                    if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
+                    ACC_RELIEF_GROUP,
                     "Accessibilite", "Desserte", "Places de depot")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
@@ -993,7 +1056,7 @@ mod_accessibility_server <- function(id, app_state) {
         grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
           domain = c(0, 1), na.color = "transparent")
         m <- leaflet::addRasterImage(m, cvat_bg, colors = grey, opacity = 0.6,
-          group = "Relief CVAT", maxBytes = 16 * 1024^2,
+          group = ACC_RELIEF_GROUP, maxBytes = 16 * 1024^2,
           options = leaflet::gridOptions(pane = "nemetonCvatBase"))
       }
       if (!is.null(geo)) {
@@ -1180,11 +1243,19 @@ mod_accessibility_server <- function(id, app_state) {
       }
       grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
         domain = c(0, 1), na.color = "transparent")
-      leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("Relief RVT") |>
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup(ACC_RELIEF_GROUP) |>
         leaflet::addRasterImage(rr, colors = grey, opacity = 1,
-          group = "Relief RVT", maxBytes = 16 * 1024^2,
+          group = ACC_RELIEF_GROUP, maxBytes = 16 * 1024^2,
           options = leaflet::gridOptions(pane = "nemetonRvtFond"))
+      # La case du LayersControl doit rester respectée : re-peindre un groupe
+      # décoché ne doit pas le ré-afficher. `isolate()` obligatoire — cet appel
+      # vit dans un observe qui AJOUTE des groupes, une lecture réactive le
+      # rendrait auto-déclenchant (cf. v0.122.3/0.122.4).
+      shown <- shiny::isolate(input$map_groups)
+      if (!is.null(shown) && !(ACC_RELIEF_GROUP %in% shown)) {
+        leaflet::hideGroup(proxy, ACC_RELIEF_GROUP)
+      }
       invisible()
     }
 
@@ -1215,14 +1286,6 @@ mod_accessibility_server <- function(id, app_state) {
     # largeur, géométrie recalée). Ce qui ajoute, c'est le complément OSM — et
     # demain la détection LiDAR. D'où trois sources et non deux, et d'où le fait
     # que la couche corrigée contienne TOUJOURS au moins toute la BD TOPO.
-    DESS_CLASSE_COLS <- c(route = "#37474F", piste = "#8D6E63",
-                          reseau_public = "#1565C0", hors_desserte = "#BDBDBD")
-    # Couleurs par SOURCE du troncon. La desserte corrigee CONSERVE toute la BD
-    # TOPO et s'y ajoute ce qu'OSM porte en plus ; la detection LiDAR fournira la
-    # troisieme. Trois teintes franchement distinctes, et distinctes aussi de la
-    # palette de classe du fond.
-    DESS_SOURCE_COLS <- c(bdtopo = "#455A64", osm = "#7B1FA2",
-                          detectee = "#F9A825")
     shiny::observe({
       on <- identical(input$layer, "desserte_comparee") &&
         isTRUE(corrected_available())
@@ -1232,7 +1295,7 @@ mod_accessibility_server <- function(id, app_state) {
       # fois avant de se stabiliser.
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("Relief RVT") |>
+        leaflet::clearGroup(ACC_RELIEF_GROUP) |>
         leaflet::clearGroup("Desserte origine") |>
         leaflet::clearGroup("Desserte corrigee") |>
         leaflet::removeControl("cmp_legend_l") |>
@@ -1241,6 +1304,22 @@ mod_accessibility_server <- function(id, app_state) {
       if (!on) {
         shiny::removeNotification(session$ns("rvt_notif"))
         if (isTRUE(compare_active())) compare_active(FALSE)
+        # Le relief est un groupe PARTAGÉ depuis que la case le pilote : on vient
+        # d'effacer celui du comparateur (opaque), il faut donc rendre le fond
+        # semi-transparent de la carte de base, sinon quitter le comparateur
+        # laisserait la carte sans relief jusqu'au prochain re-rendu complet.
+        cvat_bg <- .acc_cvat_overlay_raster(project_path)
+        if (!is.null(cvat_bg)) {
+          grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
+            domain = c(0, 1), na.color = "transparent")
+          proxy <- leaflet::addRasterImage(proxy, cvat_bg, colors = grey,
+            opacity = 0.6, group = ACC_RELIEF_GROUP, maxBytes = 16 * 1024^2,
+            options = leaflet::gridOptions(pane = "nemetonCvatBase"))
+          shown <- shiny::isolate(input$map_groups)
+          if (!is.null(shown) && !(ACC_RELIEF_GROUP %in% shown)) {
+            leaflet::hideGroup(proxy, ACC_RELIEF_GROUP)
+          }
+        }
         return()
       }
 
