@@ -12,6 +12,34 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.124.1\] - 2026-08-15
+
+### Fixed
+
+- Carte d’accessibilité : les étiquettes de tronçon affichent les
+  classes traduites (« Route », « Piste », « Réseau public », « Hors
+  desserte ») au lieu des codes bruts du cœur ; une classe inconnue
+  reste affichée telle quelle.
+- Infobulles de carte : sélecteur descendant
+  `.leaflet-container .leaflet-tooltip`, sans quoi le `padding` de la
+  règle était écrasé en silence par `leaflet.css`, injectée après à
+  spécificité égale.
+- Onglet Desserte : les boutons d’action des panneaux (intégrité,
+  optimisation, complément OSM, détection) s’affichaient en vert plein
+  sans texte visible — `input_task_button()` reçoit sa couleur par
+  `type`, pas par `class`, et les deux classes cumulées donnaient du
+  vert sur vert.
+
+### Changed
+
+- Infobulles de carte en demi-gras, couleur plus dense et ombre portée
+  plus marquée : sur imagerie satellite, c’est le contraste local qui
+  décide de la lisibilité, pas la taille absolue.
+- Sidebar de l’onglet Desserte : les textes d’aide et les avertissements
+  passent dans des « i » (sur le libellé du champ, ou à côté du bouton
+  d’action) au lieu de s’empiler sous chaque réglage. Le chemin du cache
+  reste visible.
+
 ## \[0.124.0\] - 2026-08-14
 
 ### Added
