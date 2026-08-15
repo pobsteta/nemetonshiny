@@ -1,3 +1,37 @@
+# nemetonshiny 0.124.1 (2026-08-15)
+
+### Fixed — L'étiquette d'un tronçon dit enfin ce qu'il est
+
+Survoler un tronçon de la carte d'accessibilité affichait `hors_desserte` : le
+code brut du cœur, en snake_case et souligné, au moment précis où le lecteur
+cherche à identifier une ligne sur un fond satellite. La légende juste à côté
+traduisait pourtant déjà les mêmes codes. L'étiquette lit désormais « Hors
+desserte », « Route », « Piste », « Réseau public » — un seul vocabulaire pour
+la carte et pour la légende.
+
+Une classe inconnue reste affichée **telle quelle** plutôt que repliée sur un
+« autre » : `hors_desserte` est arrivée avec `foretaccess 2.0.0`, et un repli
+muet masquerait la prochaine addition du même genre.
+
+### Fixed — Infobulles de carte : une moitié de règle était morte
+
+Mesure au `getComputedStyle` sur la pile de styles réelle (custom.css puis
+leaflet.css, l'ordre de l'application) : la taille de 17 px passait bien, mais
+le `padding` de notre règle était **inerte**. `leaflet.css` est injectée par
+htmlwidgets *après* notre feuille et déclare `.leaflet-tooltip` à la même
+spécificité — à égalité, la dernière chargée gagne. Le sélecteur descendant
+`.leaflet-container .leaflet-tooltip` passe devant quel que soit l'ordre de
+chargement.
+
+### Changed — Les infobulles passent en demi-gras
+
+Après un quatrième signalement de lisibilité. La note précédente affirmait que
+« c'est la taille qui manquait, pas le gras » : c'était incomplet. Sur imagerie
+satellite, ce qui décide est le **contraste local** et non la taille absolue —
+un texte fin de 17 px y reste moins lisible qu'un texte de 15 px sur un panneau
+blanc. D'où `font-weight: 600`, une couleur plus dense et une ombre portée plus
+marquée.
+
 # nemetonshiny 0.124.0 (2026-08-14)
 
 ### Added — Les sorties de l'onglet Desserte deviennent visibles

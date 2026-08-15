@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.124.1] - 2026-08-15
+
+### Fixed
+
+- Carte d'accessibilité : les étiquettes de tronçon affichent les classes
+  traduites (« Route », « Piste », « Réseau public », « Hors desserte ») au lieu
+  des codes bruts du cœur ; une classe inconnue reste affichée telle quelle.
+- Infobulles de carte : sélecteur descendant `.leaflet-container
+  .leaflet-tooltip`, sans quoi le `padding` de la règle était écrasé en silence
+  par `leaflet.css`, injectée après à spécificité égale.
+
+### Changed
+
+- Infobulles de carte en demi-gras, couleur plus dense et ombre portée plus
+  marquée : sur imagerie satellite, c'est le contraste local qui décide de la
+  lisibilité, pas la taille absolue.
+
 ## [0.124.0] - 2026-08-14
 
 ### Added
