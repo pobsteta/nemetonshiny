@@ -36,6 +36,36 @@
 DESS_CLASSE_COLS <- c(route = "#C62828", piste = "#3E2723",
                       reseau_public = "#1E88E5", hors_desserte = "#BDBDBD")
 
+#' Translate BD TOPO road classes for display
+#'
+#' The classes are core codes (`route`, `piste`, `reseau_public`,
+#' `hors_desserte`). They were already translated for the LEGEND but shipped raw
+#' to the map LABELS, so hovering a segment showed `hors_desserte` - an
+#' underscored snake_case code, on a satellite background, at the exact moment
+#' the reader is trying to identify a line. That is an i18n violation (rule 3)
+#' and it is also why the label read as unreadable: it is not only small type,
+#' it is machine vocabulary.
+#'
+#' An unknown class is returned AS IS rather than mapped to a catch-all: the
+#' core added `hors_desserte` in `foretaccess 2.0.0`, and a silent fallback
+#' would hide the next such addition.
+#'
+#' @param cl Character vector of class codes (any case).
+#' @param i18n Translator.
+#' @return A character vector of display labels.
+#' @noRd
+.acc_classe_label <- function(cl, i18n) {
+  cles <- c(route = "acc_desserte_route", piste = "acc_desserte_piste",
+            reseau_public = "acc_desserte_reseau_public",
+            hors_desserte = "acc_desserte_hors")
+  cl <- tolower(as.character(cl))
+  vapply(cl, function(k) {
+    if (is.na(k) || !nzchar(k)) return("")
+    if (!(k %in% names(cles))) return(k)
+    i18n$t(cles[[k]])
+  }, character(1), USE.NAMES = FALSE)
+}
+
 #' Colours of the corrected road sources (foreground layer)
 #'
 #' Red for BD TOPO, green for OSM: the point of this layer is to show at a
@@ -1336,7 +1366,7 @@ mod_accessibility_server <- function(id, app_state) {
       proxy |>
         leaflet::addPolylines(data = d, group = "Desserte",
           color = cols, weight = 2, opacity = 0.9,
-          label = ~ as.character(classe))
+          label = .acc_classe_label(cl, i18n))
       # Respecter la decoche du groupe " Desserte " apres re-dessin proxy.
       if (!is.null(shown) && !("Desserte" %in% shown)) {
         leaflet::hideGroup(proxy, "Desserte")
@@ -1526,7 +1556,7 @@ mod_accessibility_server <- function(id, app_state) {
             group = ACC_DESSERTE_ORIG_GROUP, weight = 2, opacity = 0.95,
             color = col_util,
             options = leaflet::pathOptions(pane = "nemetonDessBase"),
-            label = ~ as.character(classe))
+            label = .acc_classe_label(cl[!hors], i18n))
         }
         if (any(hors)) {
           proxy <- leaflet::addPolylines(proxy, data = dorig[hors, , drop = FALSE],
@@ -1571,10 +1601,10 @@ mod_accessibility_server <- function(id, app_state) {
 
       # Legende UNIQUE : classement des troncons BD TOPO, puis statut de
       # correction. Seules les modalites reellement presentes sont listees.
-      lbl_classe <- c(route = i18n$t("acc_desserte_route"),
-                      piste = i18n$t("acc_desserte_piste"),
-                      reseau_public = i18n$t("acc_desserte_reseau_public"),
-                      hors_desserte = i18n$t("acc_desserte_hors"))
+      # Meme helper que les etiquettes de la carte : deux vocabulaires pour la
+      # meme classe se liraient comme deux classes.
+      lbl_classe <- stats::setNames(
+        .acc_classe_label(names(DESS_CLASSE_COLS), i18n), names(DESS_CLASSE_COLS))
       lbl_source <- c(bdtopo = i18n$t("acc_source_bdtopo"),
                       osm = i18n$t("acc_source_osm"),
                       detectee = i18n$t("acc_source_detectee"))

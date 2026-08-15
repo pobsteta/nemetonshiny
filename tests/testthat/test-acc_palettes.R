@@ -78,3 +78,35 @@ test_that("les traits restent lisibles sur le relief RVT clair", {
   # Et le gris de `hors_desserte` reste, lui, volontairement en retrait.
   expect_lt(.contrast_on_white(cols[["hors_desserte"]]), 3)
 })
+
+# --- Etiquettes de classe : du vocabulaire humain, pas des codes -------------
+
+test_that("les classes BD TOPO s'affichent traduites, jamais en code brut", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  lab <- nemetonshiny:::.acc_classe_label(
+    c("route", "piste", "reseau_public", "hors_desserte"), i18n)
+
+  expect_identical(lab, c("Route", "Piste", "Réseau public", "Hors desserte"))
+  # Le defaut signale quatre fois : l'infobulle montrait `hors_desserte`, code
+  # snake_case souligne, au moment precis ou le lecteur cherche a identifier une
+  # ligne sur un fond satellite.
+  expect_false(any(grepl("_", lab, fixed = TRUE)))
+})
+
+test_that("une classe inconnue du coeur passe telle quelle", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  # `hors_desserte` est arrivee en foretaccess 2.0.0 : un repli muet sur
+  # " autre " masquerait la prochaine addition du meme genre.
+  expect_silent(lab <- nemetonshiny:::.acc_classe_label(c("classe_neuve", NA, ""), i18n))
+  expect_identical(lab, c("classe_neuve", "", ""))
+})
+
+test_that("plus aucune etiquette de carte ne sert le code brut de la classe", {
+  f <- testthat::test_path("..", "..", "R", "mod_accessibility.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes (package installe)")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  # `label = ~ as.character(classe)` etait present a DEUX endroits, alors que la
+  # legende voisine traduisait deja les memes codes.
+  expect_false(any(grepl("label = ~ as.character(classe)", code, fixed = TRUE)))
+})

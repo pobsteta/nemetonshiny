@@ -136,3 +136,56 @@ test_that("les libelles du controle de couches sont uniformement accentues", {
     expect_false(any(grepl(litt, code, fixed = TRUE)), info = litt)
   }
 })
+
+# --- Sidebar : moins de texte visible, des boutons qui se lisent -------------
+
+.dess_html <- function() as.character(nemetonshiny:::mod_desserte_ui("d"))
+
+test_that("les boutons d'action ne portent qu'UNE classe de couleur", {
+  h <- .dess_html()
+  b <- regmatches(h, gregexpr("<button[^>]*class=\"[^\"]*btn[^\"]*\"[^>]*>", h))[[1]]
+  expect_gt(length(b), 4L)
+
+  # `input_task_button()` n'a pas d'argument `class` pour la COULEUR : il a
+  # `type`. Passer `class = "btn-outline-primary"` ajoutait la classe SANS
+  # retirer le `btn-primary` que `type` pose par defaut. Les deux presentes,
+  # `custom.css` donnait le fond vert (`.btn-primary`, background-color en
+  # direct) et Bootstrap la couleur de texte verte (`--bs-btn-color` de
+  # `.btn-outline-primary`) : vert sur vert, bouton illisible.
+  expect_length(
+    grep("btn-primary[^\"]*btn-outline-primary|btn-outline-primary[^\"]*btn-primary",
+         b), 0L)
+
+  # Et `type` n'existe pas sur `actionButton` : il y deviendrait un attribut
+  # HTML `type="outline-primary"`, un type inconnu que le navigateur traite
+  # comme " submit ".
+  expect_length(grep("type=\"outline", b), 0L)
+})
+
+test_that("aucun i n'est place dans un en-tete qui replie quelque chose", {
+  h <- .dess_html()
+  # Mesure en navigateur : dans un titre d'accordeon, un " i " replie le panneau
+  # qu'on est en train de lire. `stopPropagation()`, `preventDefault()` et un
+  # ecouteur en phase de CAPTURE ont tous echoue - Bootstrap enregistre son
+  # gestionnaire en premier. Le " i " va donc a cote du bouton d'action.
+  titres <- regmatches(
+    h, gregexpr("<button class=\"accordion-button(.|\n)*?</button>", h))[[1]]
+  expect_gt(length(titres), 3L)
+  expect_false(any(grepl("fa-circle-info", titres, fixed = TRUE)))
+
+  i <- regexpr("card-header bg-success", h, fixed = TRUE)
+  expect_gt(i, 0L)
+  entete <- substr(h, i, i + 900L)   # l'en-tete replie tient largement dedans
+  expect_false(grepl("fa-circle-info", entete, fixed = TRUE))
+})
+
+test_that("les explications sont repliees, plus etalees sous les champs", {
+  h <- .dess_html()
+  # La sidebar empilait un paragraphe `text-muted small` - parfois un bloc
+  # `alert` entier - sous presque chaque reglage, repoussant " Lancer le calcul "
+  # hors de l'ecran. Ces textes vivent desormais dans un " i ".
+  expect_false(grepl("text-muted small", h, fixed = TRUE))
+  expect_false(grepl("alert alert-warning", h, fixed = TRUE))
+  # Ils ne sont pas SUPPRIMES pour autant : autant de " i " que d'explications.
+  expect_gte(length(regmatches(h, gregexpr("fa-circle-info", h))[[1]]), 10L)
+})

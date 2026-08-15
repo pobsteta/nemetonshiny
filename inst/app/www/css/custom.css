@@ -319,20 +319,36 @@ html, body {
    taille : elle hérite du `font: 12px/1.5` de `.leaflet-container`, trop petit
    pour les étiquettes utiles au terrain — état et largeur carrossable d'un
    tronçon (« En service — 2.1 m »), classe d'un tronçon BD TOPO, diagnostic
-   d'un pixel. 17px reste compact : l'infobulle suit le pointeur, elle ne doit
-   pas devenir un bandeau qui masque le tracé qu'elle décrit. `font-weight`
-   laissé à sa valeur — c'est la TAILLE qui manquait, pas le gras, qui épaissit
-   le texte sans gagner en lisibilité.
+   d'un pixel.
 
-   RÈGLE UNIQUE : c'est ici, et nulle part ailleurs, qu'on fixe la taille d'une
+   SÉLECTEUR DESCENDANT, et ce n'est pas cosmétique. `leaflet.css` est injectée
+   par htmlwidgets APRÈS cette feuille, et déclare elle aussi `.leaflet-tooltip`
+   (même spécificité 0-1-0) : à égalité, la dernière chargée gagne. Sa règle ne
+   porte pas de `font-size`, donc la taille passait — mais son `padding: 6px`
+   écrasait le nôtre, qui était inerte sans que rien ne le signale (vérifié au
+   `getComputedStyle` : 17px appliqué, padding 6px de leaflet). `.leaflet-container
+   .leaflet-tooltip` (0-2-0) passe devant quel que soit l'ordre de chargement.
+
+   `font-weight: 600` ajouté après un QUATRIÈME signalement de lisibilité. La
+   note précédente disait « c'est la TAILLE qui manquait, pas le gras » : c'était
+   incomplet. Sur un fond satellite, un texte fin de 17px reste moins lisible
+   qu'un texte de 15px sur le panneau blanc auquel l'utilisateur le compare — ce
+   n'est pas la taille absolue qui décide, c'est le contraste local. Le gras et
+   l'ombre portée traitent cela ; la taille seule ne le pouvait pas.
+
+   RÈGLE UNIQUE : c'est ici, et nulle part ailleurs, qu'on fixe l'apparence d'une
    infobulle de carte. Un `labelOptions(textsize=)` ou un `style` inline la
    surpasserait sans discussion (l'inline bat toujours la feuille) et
    ré-introduirait des tailles divergentes d'une carte à l'autre — c'est
    exactement ce qui existait dans mod_map, mod_family et mod_ug. */
-.leaflet-tooltip {
+.leaflet-container .leaflet-tooltip {
   font-size: 17px;
+  font-weight: 600;
   line-height: 1.35;
-  padding: 5px 8px;
+  padding: 5px 9px;
+  color: #1a1a1a;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
 .leaflet-control-zoom a {
