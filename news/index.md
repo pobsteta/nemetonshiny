@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 0.124.2 (2026-08-15)
+
+#### Fixed — Le calcul des indicateurs n’emporte plus la session
+
+Lancer le calcul des 31 indicateurs sur un projet avec R5 faisait tuer
+RStudio par `systemd-oomd` :
+
+    Killed .../app-gnome-rstudio-589155.scope due to memory pressure for
+    user@1000.service being 77.22% > 50.00% for > 20s
+    Current Memory Usage: 17.1G
+
+Le calcul tournait dans un worker `future` **nu**, donc dans le
+périmètre de la session : un pic du calcul est un pic du périmètre, et
+le système choisit sa victime. FORDEAD (spec 008) et la reGénération
+avaient été isolés en processus enfant plafonné après le même incident
+en juillet 2025 ; ce chemin-ci ne l’était pas, alors que la desserte et
+la correction LiDAR ont chacune leur garde.
+
+`start_computation()` part désormais dans un cgroup à `MemoryMax` via
+[`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html).
+Le mode d’échec change de nature : au lieu de perdre la session, le
+calcul échoue avec le message du cœur — « The rest of the session was
+spared, only the job died. » La progression continue de passer par le
+disque, canal qui traverse un processus enfant sans changement, et un
+cœur antérieur à `nemeton 0.158.0` fait retomber proprement sur l’appel
+direct.
+
+#### Changed — Le plafond mémoire ne délègue plus au défaut du cœur
+
+Le défaut du cœur vaut 70 % de la RAM, soit **21,7 Go** sur la machine
+de l’incident — très au-dessus des 17,1 Go auxquels le système avait
+déjà tué la session. Un plafond qui ne se déclenche qu’après l’exécuteur
+n’est pas un plafond. Le défaut applicatif est à 50 % de `MemTotal`
+(plancher 4 Go), et `NEMETON_MEMORY_MAX` reste prioritaire dans les deux
+sens, `"none"` compris.
+
+Heuristique assumée : `systemd-oomd` agit sur la **pression** mémoire et
+non sur un seuil absolu, aucune fraction ne peut être prouvée correcte
+depuis l’application. `MemTotal` et non `MemAvailable`, pour que la
+limite ne dépende pas de ce qui est libre à l’instant du lancement —
+deux exécutions du même calcul doivent avoir la même chance d’aboutir.
+
 ## nemetonshiny 0.124.1 (2026-08-15)
 
 #### Fixed — L’étiquette d’un tronçon dit enfin ce qu’il est

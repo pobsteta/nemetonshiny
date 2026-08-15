@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.124.2\] - 2026-08-15
+
+### Fixed
+
+- Le calcul des 31 indicateurs tourne dans un processus enfant plafonné
+  en mémoire
+  ([`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html))
+  au lieu d’un worker `future` nu : un dépassement tue le calcul et non
+  la session. Il faisait jusqu’ici tuer RStudio par `systemd-oomd` (17,1
+  Go dans le périmètre de la session).
+
+### Changed
+
+- Le plafond mémoire du calcul ne délègue plus au défaut du cœur (70 %
+  de la RAM, au-dessus du seuil où le système intervient) : 50 % de
+  `MemTotal`, plancher 4 Go, `NEMETON_MEMORY_MAX` prioritaire.
+
 ## \[0.124.1\] - 2026-08-15
 
 ### Fixed

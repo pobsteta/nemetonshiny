@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.124.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.124.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.124.2" id="nemetonshiny-01242-2026-08-15">nemetonshiny 0.124.2 (2026-08-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01242-2026-08-15"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-calcul-des-indicateurs-nemporte-plus-la-session-0-124-2">Fixed — Le calcul des indicateurs n’emporte plus la session<a class="anchor" aria-label="anchor" href="#fixed--le-calcul-des-indicateurs-nemporte-plus-la-session-0-124-2"></a></h4>
+<p>Lancer le calcul des 31 indicateurs sur un projet avec R5 faisait tuer RStudio par <code>systemd-oomd</code> :</p>
+<pre><code>Killed .../app-gnome-rstudio-589155.scope due to memory pressure for
+user@1000.service being 77.22% &gt; 50.00% for &gt; 20s
+Current Memory Usage: 17.1G</code></pre>
+<p>Le calcul tournait dans un worker <code>future</code> <strong>nu</strong>, donc dans le périmètre de la session : un pic du calcul est un pic du périmètre, et le système choisit sa victime. FORDEAD (spec 008) et la reGénération avaient été isolés en processus enfant plafonné après le même incident en juillet 2025 ; ce chemin-ci ne l’était pas, alors que la desserte et la correction LiDAR ont chacune leur garde.</p>
+<p><code>start_computation()</code> part désormais dans un cgroup à <code>MemoryMax</code> via <code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code>. Le mode d’échec change de nature : au lieu de perdre la session, le calcul échoue avec le message du cœur — « The rest of the session was spared, only the job died. » La progression continue de passer par le disque, canal qui traverse un processus enfant sans changement, et un cœur antérieur à <code>nemeton 0.158.0</code> fait retomber proprement sur l’appel direct.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-plafond-mémoire-ne-délègue-plus-au-défaut-du-cœur-0-124-2">Changed — Le plafond mémoire ne délègue plus au défaut du cœur<a class="anchor" aria-label="anchor" href="#changed--le-plafond-m%C3%A9moire-ne-d%C3%A9l%C3%A8gue-plus-au-d%C3%A9faut-du-c%C5%93ur-0-124-2"></a></h4>
+<p>Le défaut du cœur vaut 70 % de la RAM, soit <strong>21,7 Go</strong> sur la machine de l’incident — très au-dessus des 17,1 Go auxquels le système avait déjà tué la session. Un plafond qui ne se déclenche qu’après l’exécuteur n’est pas un plafond. Le défaut applicatif est à 50 % de <code>MemTotal</code> (plancher 4 Go), et <code>NEMETON_MEMORY_MAX</code> reste prioritaire dans les deux sens, <code>"none"</code> compris.</p>
+<p>Heuristique assumée : <code>systemd-oomd</code> agit sur la <strong>pression</strong> mémoire et non sur un seuil absolu, aucune fraction ne peut être prouvée correcte depuis l’application. <code>MemTotal</code> et non <code>MemAvailable</code>, pour que la limite ne dépende pas de ce qui est libre à l’instant du lancement — deux exécutions du même calcul doivent avoir la même chance d’aboutir.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.124.1" id="nemetonshiny-01241-2026-08-15">nemetonshiny 0.124.1 (2026-08-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01241-2026-08-15"></a></h2>
 <div class="section level4">
@@ -4088,7 +4105,7 @@
 <div class="section level4">
 <h4 id="migration-0-69-0">Migration<a class="anchor" aria-label="anchor" href="#migration-0-69-0"></a></h4>
 <p><strong>Pas de migration automatique</strong> (décision UX consciente). Sur les projets existants ayant déjà préchauffé un <code>cache/layers/fast/</code>, l’ancien répertoire restera orphelin sur disque. Le nouveau code créera <code>cache/layers/fast_sampling/</code> à la prochaine demande de validation_sampling. Suppression manuelle de l’ancien recommandée pour récupérer l’espace disque :</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="détails-techniques-0-69-0">Détails techniques<a class="anchor" aria-label="anchor" href="#d%C3%A9tails-techniques-0-69-0"></a></h4>
@@ -4317,7 +4334,7 @@
 <div class="section level4">
 <h4 id="added--observabilité-rag-cli_inform-par-perspective-0-61-1">Added — Observabilité RAG (<code>cli_inform</code> par perspective)<a class="anchor" aria-label="anchor" href="#added--observabilit%C3%A9-rag-cli_inform-par-perspective-0-61-1"></a></h4>
 <p>Ajout d’une ligne de log par appel <code>rag_context()</code> réussi, dans <code>R/service_rag.R</code> juste après le retrieve cœur :</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_inform</a></span><span class="op">(</span><span class="st">"RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Pourquoi</strong> : sans ce log, un corpus muet (0 chunk au-dessus du seuil) ressemblait à un cas où <code>rag_context()</code> court-circuitait avant le retrieve (opt-out, corpus indisponible, situation_text vide…). Désormais on distingue :</p>
 <ul><li>
@@ -4404,7 +4421,7 @@
 <p>Le test <code>test-mod_monitoring.R::"register click invokes register_project_as_zone and persists zone_id in app_state"</code> failait sur ses 3 assertions (lignes 944-946) parce que l’observer du bouton « Enregistrer la zone » était passé d’un <code>observeEvent(input$register)</code> direct à un <code>observe() |&gt; bindEvent(input$register, input$register_inline, ignoreInit = TRUE)</code> lors de l’ajout du bouton inline (commit 3f1059d).</p>
 <p>En <code>testServer</code>, <code>session$setInputs(register = 1L)</code> posé directement est traité comme l’état d’init par <code>bindEvent(ignoreInit = TRUE)</code> — l’observer ne se déclenche pas, <code>register_project_as_zone</code> n’est jamais appelé, <code>captured_project</code> reste <code>NULL</code> et les 3 assertions cascadent.</p>
 <p><strong>Fix</strong> : matérialiser une transition d’input avant la vraie valeur :</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>  <span class="co"># init</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># vrai clic, fire l'observer</span></span></code></pre></div>
 <p>Identique au pattern qu’un <code>actionButton</code> réel suit (init à 0, incrément à chaque clic). Aucun changement de code de prod — c’est strictement un fix de fidélité du harness de test.</p>
@@ -4725,7 +4742,7 @@
    threshold_nbr = as.numeric(th$nbr))</code></pre>
 <p>La carte d’alertes FAST restait vide après chaque ingestion.</p>
 <p><strong>Cause</strong> : <code>nemeton@v0.55.0</code> (spec 017) a <strong>délibérément</strong> simplifié <code>read_fast_alert_raster()</code> en mono-index — la combinaison historique NDVI+NBR a été abandonnée. La nouvelle signature est :</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">read_fast_alert_raster</span><span class="op">(</span><span class="va">con</span>, <span class="va">zone_id</span>,</span>
 <span>                       index     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NDVI"</span>, <span class="st">"NBR"</span><span class="op">)</span>,   <span class="co"># un seul</span></span>
 <span>                       threshold <span class="op">=</span> <span class="cn">NULL</span>,               <span class="co"># un seul</span></span>
@@ -4742,7 +4759,7 @@
 <h4 id="fixed--plan-dactions--tableau-rendu-vide-régression-v05210-0-52-12">Fixed — Plan d’actions : tableau rendu VIDE (régression v0.52.10)<a class="anchor" aria-label="anchor" href="#fixed--plan-dactions--tableau-rendu-vide-r%C3%A9gression-v05210-0-52-12"></a></h4>
 <p><strong>Symptôme</strong> : sur la vue « Carte + Tableau » du Plan d’actions, le tableau ne contient AUCUNE ligne, alors que l’en-tête indique correctement « N action(s) après filtres » et que les KPI badges + sparkline cumulatif fonctionnent.</p>
 <p><strong>Cause (régression v0.52.10)</strong> : le JS callback ajouté pour le dblclick sur la cellule commentaire passait à <code>DT::datatable(callback = ...)</code> une fonction COMPLÈTE :</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
 <p>Or <code><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">DT::datatable</a></code> wrappe <strong>automatiquement</strong> le callback fourni dans <code>function(table) { … }</code>. Le résultat était une fonction-dans-une-fonction où : 1. Le handler <code>dblclick</code> est dans une fonction INTERNE jamais appelée → handler jamais enregistré. 2. La fonction externe ne fait <code>return table;</code> → DataTables casse silencieusement son pipeline d’initialisation → tableau RENDU SANS LIGNES alors que <code>data.frame</code> a bien N lignes.</p>
 <p><strong>Fix</strong> : le callback passe désormais juste le <strong>corps</strong> de fonction (pas de wrapper <code>function(table) { ... }</code>), avec un <code>return table;</code> final. DT applique son propre wrapper et le pipeline init reprend normalement.</p>
 <p><code>R/mod_action_plan.R</code>. Cycle dev <code>0.52.11</code> → <code>0.52.11.9001</code> → release stable <strong><code>v0.52.12</code></strong> (PATCH, fix régression urgent).</p>
@@ -6710,7 +6727,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>
