@@ -345,6 +345,32 @@ info_popover_in_label <- function(..., placement = "auto") {
 }
 
 
+#' Why there is no `info_popover_in_header()`
+#'
+#' @description
+#' An "i" placed inside a collapse toggle — an `accordion_panel()` title, a
+#' `data-bs-toggle="collapse"` card header — CANNOT be made safe. Measured in
+#' Chrome, three attempts, all of which still folded the panel:
+#'
+#' - inline `onclick="event.stopPropagation()"` on a wrapping `<span>`;
+#' - the same plus `preventDefault()`;
+#' - a document-level listener in the CAPTURE phase, instrumented to confirm it
+#'   fired and matched the target before calling `stopPropagation()`.
+#'
+#' Bootstrap registers its own handler first, so nothing added afterwards can
+#' get in front of it. Asking for help would collapse the panel being read.
+#'
+#' The pattern to use instead is a row holding the action and its "i" side by
+#' side inside the panel BODY — see `.dess_action_info()` in `mod_desserte.R`.
+#' Keep this note: the header placement looks obvious and has now cost three
+#' rounds of debugging.
+#'
+#' @name info_popover_header_note
+#' @keywords internal
+#' @noRd
+NULL
+
+
 #' Apply accessible styling to ggplot
 #'
 #' @description

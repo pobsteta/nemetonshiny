@@ -137,6 +137,63 @@ DESS_DETECT_COLS <- c(
 }
 
 
+#' Field label carrying its help text in an "i"
+#'
+#' The Desserte sidebar showed one `text-muted small` paragraph — sometimes a
+#' full `alert` — under nearly every input. Stacked, they pushed the « Lancer le
+#' calcul » button below the fold and turned the panel into a page of prose that
+#' is read once and skipped forever after.
+#'
+#' [info_popover_in_label()] and not [info_popover()]: a click inside a `<label>`
+#' activates its control, so the plain "i" would flip the radio on its way to
+#' opening the popover.
+#'
+#' @param label Character. The visible label.
+#' @param ... Popover content.
+#' @return A `tagList` usable as the `label` of a shiny input.
+#' @noRd
+.dess_label_info <- function(label, ...) {
+  htmltools::tagList(label, info_popover_in_label(...))
+}
+
+#' Warning content inside a popover
+#'
+#' Keeps the triangle that the `alert-warning` block carried: folding a caution
+#' away must not turn it into a neutral note.
+#'
+#' @param texte Character. The warning text.
+#' @return A `<div>` for popover content.
+#' @noRd
+.dess_alerte <- function(texte) {
+  htmltools::div(
+    class = "mb-0",
+    htmltools::tags$span(class = "text-warning me-1",
+                         shiny::icon("triangle-exclamation")),
+    texte)
+}
+
+#' An action button and its explanation, side by side
+#'
+#' Where the intro of a panel goes. NOT in the panel title: an accordion title
+#' is a collapse toggle, and an "i" placed there folds the panel one is reading.
+#' Verified in Chrome — `stopPropagation()`, `preventDefault()` and a
+#' capture-phase document listener all failed, Bootstrap having registered its
+#' handler first. See the note in `utils_theme.R`.
+#'
+#' The button keeps the width it had; the "i" takes the gutter next to it, right
+#' where the reader is deciding whether to press.
+#'
+#' @param bouton The action button.
+#' @param ... Popover content.
+#' @return A flex row.
+#' @noRd
+.dess_action_info <- function(bouton, ...) {
+  htmltools::div(
+    class = "d-flex align-items-center gap-2 mb-2",
+    bouton,
+    info_popover(..., placement = "left"))
+}
+
 #' @noRd
 mod_desserte_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -175,25 +232,24 @@ mod_desserte_ui <- function(id) {
           class = "collapse show",
           htmltools::tags$div(
             class = "card-body",
-          htmltools::tags$p(class = "text-muted small", i18n$t("dess_intro")),
-
+          # L'avertissement " calcul long " tient dans le " i " du choix de
+          # moteur : le glouton trace un A* par CELLULE de parcelle non
+          # desservie, donc le temps croit avec la surface de l'emprise et
+          # decroit avec `skidding_m`. Il reste signale par un triangle DANS le
+          # popover - la mise en garde n'est pas diluee, elle est repliee.
           shiny::radioButtons(
-            ns("engine"), i18n$t("dess_engine_label"),
+            ns("engine"),
+            .dess_label_info(i18n$t("dess_engine_label"),
+                             .dess_alerte(i18n$t("dess_slow_help"))),
             choices = stats::setNames(DESSERTE_ENGINES,
                                       c(i18n$t("dess_engine_glouton"),
                                         i18n$t("dess_engine_steiner"))),
             selected = DESSERTE_ENGINES[[1]]),
-          # Avertissement " calcul long " (parite cable) : le glouton trace un A*
-          # par CELLULE de parcelle non desservie, donc le temps croit avec la
-          # surface de l'emprise et decroit avec `skidding_m`.
-          htmltools::div(
-            class = "alert alert-warning py-2 small",
-            shiny::icon("triangle-exclamation"), " ", i18n$t("dess_slow_help")),
 
           shiny::numericInput(
-            ns("buffer_km"), i18n$t("dess_buffer"),
+            ns("buffer_km"),
+            .dess_label_info(i18n$t("dess_buffer"), i18n$t("dess_buffer_help")),
             value = 1, min = 0, max = 20, step = 1),
-          htmltools::tags$p(class = "text-muted small", i18n$t("dess_buffer_help")),
 
           # Distance de debardage : parametre METIER, pas un reglage de performance.
           # Il change le resultat - sur Dabo, 39 routes a 100 m contre aucune a
@@ -201,9 +257,9 @@ mod_desserte_ui <- function(id) {
           # inintelligible. Paliers repris de `foretaccess_config()$skidder$
           # classes_distance_m`.
           shiny::numericInput(
-            ns("skidding_m"), i18n$t("dess_skidding"),
+            ns("skidding_m"),
+            .dess_label_info(i18n$t("dess_skidding"), i18n$t("dess_skidding_help")),
             value = DESSERTE_SKIDDING_DEFAULT_M, min = 0, max = 2000, step = 50),
-          htmltools::tags$p(class = "text-muted small", i18n$t("dess_skidding_help")),
 
           # --- Tarification de la pente (foretaccess spec 029) ---------------------
           # Deux DECISIONS distinctes, et c'est pour cela qu'il y a deux entrees.
@@ -220,13 +276,13 @@ mod_desserte_ui <- function(id) {
           # de 60 % a 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
           # decider d'un seul geste.
           shiny::radioButtons(
-            ns("dess_methode_pente"), i18n$t("dess_methode_pente"),
+            ns("dess_methode_pente"),
+            .dess_label_info(i18n$t("dess_methode_pente"),
+                             i18n$t("dess_methode_pente_help")),
             choices = stats::setNames(c("bareme", "terrassement"),
                                       c(i18n$t("dess_methode_bareme"),
                                         i18n$t("dess_methode_terrassement"))),
             selected = "bareme", inline = TRUE),
-          htmltools::tags$p(class = "text-muted small",
-                            i18n$t("dess_methode_pente_help")),
 
           # La largeur n'a d'effet QU'EN terrassement -- le bareme y est aveugle,
           # alors que le volume croit comme son carre. On la masque plutot que de la
@@ -235,18 +291,15 @@ mod_desserte_ui <- function(id) {
             condition = sprintf("input['%s'] == 'terrassement'",
                                 ns("dess_methode_pente")),
             shiny::numericInput(
-              ns("dess_largeur"), i18n$t("dess_largeur"),
-              value = DESSERTE_LARGEUR_DEFAULT_M, min = 2.5, max = 6, step = 0.5),
-            htmltools::tags$p(class = "text-muted small",
-                              i18n$t("dess_largeur_help"))),
+              ns("dess_largeur"),
+              .dess_label_info(i18n$t("dess_largeur"), i18n$t("dess_largeur_help")),
+              value = DESSERTE_LARGEUR_DEFAULT_M, min = 2.5, max = 6, step = 0.5)),
 
           shiny::numericInput(
-            ns("dess_pente_max"), i18n$t("dess_pente_max"),
+            ns("dess_pente_max"),
+            .dess_label_info(i18n$t("dess_pente_max"),
+                             .dess_alerte(i18n$t("dess_pente_max_help"))),
             value = DESSERTE_PENTE_MAX_DEFAULT_PCT, min = 0, max = 100, step = 5),
-          htmltools::div(
-            class = "alert alert-warning py-2 small",
-            shiny::icon("triangle-exclamation"), " ",
-            i18n$t("dess_pente_max_help")),
 
           # Empreinte memoire estimee de l'emprise courante : le pic du glouton est
           # previsible a partir de la seule grille (cf. .desserte_memory_check), donc
@@ -254,11 +307,13 @@ mod_desserte_ui <- function(id) {
           # d'un quart d'heure de calcul.
           shiny::uiOutput(ns("mem_estimate")),
 
-          bslib::input_task_button(
-            ns("run"), i18n$t("dess_run"),
-            label_busy = i18n$t("dess_running"),
-            icon = bsicons::bs_icon("play-fill"),
-            type = "primary", class = "w-100 mb-3"),
+          .dess_action_info(
+            bslib::input_task_button(
+              ns("run"), i18n$t("dess_run"),
+              label_busy = i18n$t("dess_running"),
+              icon = bsicons::bs_icon("play-fill"),
+              type = "primary", class = "w-100"),
+            i18n$t("dess_intro")),
           shiny::uiOutput(ns("run_status"))
           )
         )
@@ -286,18 +341,25 @@ mod_desserte_ui <- function(id) {
             # tertiaire (nemeton::volume_mobilisable -> foretaccess::typer_desserte).
             bslib::accordion_panel(
               title = i18n$t("dess_typage_title"),
+              value = "typage",
               icon = bsicons::bs_icon("diagram-2"),
-              htmltools::tags$p(class = "text-muted small", i18n$t("dess_typage_intro")),
               shiny::numericInput(
                 ns("typage_taux"), i18n$t("dess_typage_taux"),
                 value = 0.5, min = 0, max = 5, step = 0.1),
               shiny::numericInput(
                 ns("typage_horizon"), i18n$t("dess_typage_horizon"),
                 value = 30, min = 1, max = 200, step = 1),
-              shiny::actionButton(
-                ns("run_typage"), i18n$t("dess_typage_run"),
-                icon = shiny::icon("diagram-project"),
-                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              # `actionButton` et non `input_task_button` : le typage est
+              # synchrone. Sa classe porte donc la couleur DIRECTEMENT - le
+              # `type =` de bslib n'existe pas ici, et deviendrait un attribut
+              # HTML `type="outline-primary"` sur le `<button>`, c'est-a-dire un
+              # type inconnu que le navigateur traite comme " submit ".
+              .dess_action_info(
+                shiny::actionButton(
+                  ns("run_typage"), i18n$t("dess_typage_run"),
+                  icon = shiny::icon("diagram-project"),
+                  class = "btn-outline-primary btn-sm w-100"),
+                i18n$t("dess_typage_intro")),
               shiny::uiOutput(ns("typage_result"))),
             # Integrite du reseau (spec 025). Action SEPAREE et non une etape du
             # calcul : mesure 376,8 s sur Dabo (3 122 troncons) contre 39,7 s
@@ -305,14 +367,15 @@ mod_desserte_ui <- function(id) {
             # desserte " dix fois plus lent.
             bslib::accordion_panel(
               title = i18n$t("dess_integrite_title"),
+              value = "integrite",
               icon = bsicons::bs_icon("diagram-3-fill"),
-              htmltools::tags$p(class = "text-muted small",
-                                i18n$t("dess_integrite_intro")),
-              bslib::input_task_button(
-                ns("run_integrite"), i18n$t("dess_integrite_run"),
-                label_busy = i18n$t("dess_integrite_running"),
-                icon = bsicons::bs_icon("check2-square"),
-                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              .dess_action_info(
+                bslib::input_task_button(
+                  ns("run_integrite"), i18n$t("dess_integrite_run"),
+                  label_busy = i18n$t("dess_integrite_running"),
+                  icon = bsicons::bs_icon("check2-square"),
+                  type = "outline-primary", class = "btn-sm w-100"),
+                i18n$t("dess_integrite_intro")),
               shiny::uiOutput(ns("integrite_status"))),
             # Optimisation du reseau cree. Action separee : chaque essai est une
             # construction gloutonne complete. Mesure sur Dabo - glouton 82,2 s /
@@ -320,8 +383,8 @@ mod_desserte_ui <- function(id) {
             # temps pour -10 % de cout.
             bslib::accordion_panel(
               title = i18n$t("dess_optim_title"),
+              value = "optim",
               icon = bsicons::bs_icon("stars"),
-              htmltools::tags$p(class = "text-muted small", i18n$t("dess_optim_intro")),
               shiny::selectInput(
                 ns("optim_strategie"), i18n$t("dess_optim_strategie"),
                 choices = stats::setNames(
@@ -331,22 +394,26 @@ mod_desserte_ui <- function(id) {
                 selected = DESSERTE_OPTIM_STRATEGIES[[1]]),
               shiny::numericInput(ns("optim_n_start"), i18n$t("dess_optim_n_start"),
                                   value = DESSERTE_OPTIM_N_START, min = 2, max = 32, step = 2),
-              bslib::input_task_button(
-                ns("run_optim"), i18n$t("dess_optim_run"),
-                label_busy = i18n$t("dess_optim_running"),
-                icon = bsicons::bs_icon("stars"),
-                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              .dess_action_info(
+                bslib::input_task_button(
+                  ns("run_optim"), i18n$t("dess_optim_run"),
+                  label_busy = i18n$t("dess_optim_running"),
+                  icon = bsicons::bs_icon("stars"),
+                  type = "outline-primary", class = "btn-sm w-100"),
+                i18n$t("dess_optim_intro")),
               shiny::uiOutput(ns("optim_result"))),
             # Complement OSM de la BD TOPO (spec 028).
             bslib::accordion_panel(
               title = i18n$t("dess_osm_title"),
+              value = "osm",
               icon = bsicons::bs_icon("signpost-2"),
-              htmltools::tags$p(class = "text-muted small", i18n$t("dess_osm_intro")),
-              bslib::input_task_button(
-                ns("run_osm"), i18n$t("dess_osm_run"),
-                label_busy = i18n$t("dess_osm_running"),
-                icon = bsicons::bs_icon("cloud-download"),
-                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              .dess_action_info(
+                bslib::input_task_button(
+                  ns("run_osm"), i18n$t("dess_osm_run"),
+                  label_busy = i18n$t("dess_osm_running"),
+                  icon = bsicons::bs_icon("cloud-download"),
+                  type = "outline-primary", class = "btn-sm w-100"),
+                i18n$t("dess_osm_intro")),
               shiny::uiOutput(ns("osm_result"))),
             # Detection de routes absentes de la BD TOPO (dessertR, spec 026).
             # La plus lourde du panneau : mesure 7,91 Go de pic et 189 s SANS
@@ -354,28 +421,31 @@ mod_desserte_ui <- function(id) {
             # memoire cote service et l'avertissement ci-dessous.
             bslib::accordion_panel(
               title = i18n$t("dess_detect_title"),
+              value = "detect",
               icon = bsicons::bs_icon("search"),
-              htmltools::tags$p(class = "text-muted small", i18n$t("dess_detect_intro")),
-              htmltools::div(
-                class = "alert alert-warning py-2 small",
-                shiny::icon("triangle-exclamation"), " ", i18n$t("dess_detect_warn")),
               shiny::checkboxInput(ns("detect_lidar"), i18n$t("dess_detect_lidar"),
                                    value = TRUE),
-              bslib::input_task_button(
-                ns("run_detect"), i18n$t("dess_detect_run"),
-                label_busy = i18n$t("dess_detect_running"),
-                icon = bsicons::bs_icon("search"),
-                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              .dess_action_info(
+                bslib::input_task_button(
+                  ns("run_detect"), i18n$t("dess_detect_run"),
+                  label_busy = i18n$t("dess_detect_running"),
+                  icon = bsicons::bs_icon("search"),
+                  type = "outline-primary", class = "btn-sm w-100"),
+                htmltools::tags$p(i18n$t("dess_detect_intro")),
+                .dess_alerte(i18n$t("dess_detect_warn"))),
               shiny::uiOutput(ns("detect_result"))),
             bslib::accordion_panel(
               title = i18n$t("action_plan_section_exports"),
+              value = "exports",
               icon = bsicons::bs_icon("box-arrow-up"),
-              shiny::downloadButton(
-                ns("export_gpkg"), i18n$t("dess_download_gpkg"),
-                icon = shiny::icon("database"),
-                class = "btn-outline-success btn-sm w-100"),
-              htmltools::tags$p(class = "text-muted small mt-2 mb-0",
-                                i18n$t("dess_download_gpkg_note")),
+              .dess_action_info(
+                shiny::downloadButton(
+                  ns("export_gpkg"), i18n$t("dess_download_gpkg"),
+                  icon = shiny::icon("database"),
+                  class = "btn-outline-success btn-sm w-100"),
+                i18n$t("dess_download_gpkg_note")),
+              # Le chemin du cache RESTE visible : ce n'est pas une explication
+              # qu'on lit une fois, c'est une valeur qu'on copie.
               shiny::uiOutput(ns("cache_path"))))
         ),
         leaflet::leafletOutput(ns("map"), height = "72vh")

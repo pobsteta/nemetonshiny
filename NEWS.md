@@ -23,6 +23,33 @@ spécificité — à égalité, la dernière chargée gagne. Le sélecteur desce
 `.leaflet-container .leaflet-tooltip` passe devant quel que soit l'ordre de
 chargement.
 
+### Fixed — Les boutons d'action de l'onglet Desserte étaient illisibles
+
+« Intégrité du réseau », « Optimisation », « Complément OpenStreetMap » et
+« Détection de routes » s'affichaient en **vert plein sans texte visible**.
+`bslib::input_task_button()` n'a pas d'argument `class` pour la couleur, il a
+`type` : passer `class = "btn-outline-primary"` *ajoutait* la classe sans retirer
+le `btn-primary` posé par défaut. Les deux présentes, `custom.css` donnait le
+fond vert (`.btn-primary`, `background-color` en direct) et Bootstrap la couleur
+de texte verte (`--bs-btn-color` de `.btn-outline-primary`) — vert sur vert. Ils
+ont désormais la même apparence que « Typage du réseau ».
+
+### Changed — La sidebar Desserte ne se lit plus comme une notice
+
+Un paragraphe d'aide, parfois un bloc d'avertissement entier, s'empilait sous
+presque chaque réglage, repoussant « Lancer le calcul » hors de l'écran. Toutes
+ces explications passent dans un « i » : sur le libellé du champ pour les
+réglages, à côté du bouton pour les actions. Rien n'est supprimé — les mises en
+garde gardent leur triangle *dans* le popover. Le chemin du cache, lui, reste
+visible : ce n'est pas une explication qu'on lit une fois, c'est une valeur
+qu'on copie.
+
+Le « i » n'est **pas** dans le titre du panneau, et c'est mesuré : dans un
+en-tête d'accordéon il replie le panneau qu'on est en train de lire.
+`stopPropagation()`, `preventDefault()` et un écouteur en phase de capture ont
+tous échoué — Bootstrap enregistre son gestionnaire en premier, rien d'ajouté
+ensuite ne peut passer devant.
+
 ### Changed — Les infobulles passent en demi-gras
 
 Après un quatrième signalement de lisibilité. La note précédente affirmait que
