@@ -52,10 +52,21 @@ test_that("la regle de lisibilite des infobulles de carte est presente", {
   # `.leaflet-container` : la règle doit exister ET viser plus grand que 12px.
   expect_match(css, "\\.leaflet-tooltip\\s*\\{")
   bloc <- regmatches(
-    css, regexpr("\\.leaflet-tooltip\\s*\\{[^}]*font-size:\\s*([0-9.]+)px", css))
+    css, regexpr("\\.leaflet-tooltip\\s*\\{[^}]*\\}", css))
   expect_length(bloc, 1L)
   px <- as.numeric(sub(".*font-size:\\s*([0-9.]+)px.*", "\\1", bloc))
   expect_gt(px, 12)
+
+  # SÉLECTEUR DESCENDANT obligatoire. `leaflet.css` est injectée par htmlwidgets
+  # APRÈS cette feuille et déclare `.leaflet-tooltip` à la même spécificité : à
+  # égalité, la dernière chargée gagne. La forme simple laissait donc passer la
+  # taille (leaflet n'en fixe pas) mais perdait le `padding` en silence — mesuré
+  # au `getComputedStyle`. La forme descendante gagne quel que soit l'ordre.
+  expect_match(css, "\\.leaflet-container\\s+\\.leaflet-tooltip\\s*\\{")
+
+  # Le gras : sur fond satellite, la taille seule ne suffisait pas — quatre
+  # signalements de lisibilité avant d'en tenir compte.
+  expect_match(bloc, "font-weight:\\s*[5-9]00")
 })
 
 test_that("aucune taille d'infobulle n'est fixee en dur dans R/", {
