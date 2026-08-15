@@ -4613,3 +4613,111 @@ get_computation_progress <- function(project_id) {
 # computed directly on the UGF geometries in a single pass by
 # compute_all_indicators() - there is nothing to aggregate post-hoc.
 
+
+
+# --- Calcul des indicateurs en process enfant plafonne -----------------------
+#
+# INCIDENT 2026-08-15 : le calcul des 31 indicateurs sur un projet avec R5 a
+# fait tuer RStudio par `systemd-oomd` -- 17,1 Go dans le scope, la limite de
+# pression du user slice depassee (77,22 % > 50,00 % pendant plus de 20 s).
+#
+# Le mode d'echec est celui deja rencontre en juillet 2025 sur la reGeneration
+# et sur FORDEAD : un worker `future` NU tourne DANS le scope de la session, si
+# bien qu'un pic dans le worker fait tuer l'IDE. Les deux autres chemins avaient
+# ete isoles en enfant plafonne ; le calcul des indicateurs, lui, etait reste
+# sans aucune garde -- contrairement a la desserte (`.desserte_memory_check`) et
+# a la correction LiDAR (`.lidar_memory_check`).
+#
+# `nemeton::run_memory_capped()` place le heavy dans un cgroup a `MemoryMax` :
+# c'est L'ENFANT qui meurt de sa propre limite, pas la session. Le coeur le dit
+# lui-meme dans son message d'echec -- " The rest of the session was spared,
+# only the job died ". Le progres continue de passer par le disque
+# (`use_file_progress = TRUE`), canal qui traverse un process enfant sans
+# changement, et la valeur de retour est bien relayee (`readRDS`).
+
+#' Memory ceiling for the capped indicator computation
+#'
+#' Honours `NEMETON_MEMORY_MAX` (same variable as FORDEAD, see
+#' `.capped_memory_max()`), and otherwise picks its OWN default rather than
+#' deferring to the core's.
+#'
+#' Why not the core default: it is 70 % of RAM — on the 31 GB workstation where
+#' the incident happened, **21.7 GB**, well ABOVE the 17.1 GB at which
+#' `systemd-oomd` had already killed the session. A ceiling that only trips
+#' after the executioner has acted is not a ceiling. 50 % leaves the IDE, the
+#' Shiny process and the idle workers of the pool enough room that the user
+#' slice never reaches sustained reclaim.
+#'
+#' This is a HEURISTIC, not a measurement: `systemd-oomd` acts on memory
+#' *pressure*, not on an absolute figure, so no fraction can be proven correct
+#' from here. It is deliberately conservative, and `NEMETON_MEMORY_MAX`
+#' overrides it in both directions — including `"none"` to disable the ceiling
+#' when a legitimate run needs the room.
+#'
+#' @return A length-1 character (`"12G"`), `FALSE` (no ceiling), or `NULL` when
+#'   the host's RAM cannot be read (then the core default applies).
+#' @noRd
+.compute_memory_max <- function() {
+  raw <- trimws(Sys.getenv("NEMETON_MEMORY_MAX", ""))
+  if (nzchar(raw)) {
+    if (tolower(raw) %in% c("none", "off", "false", "no", "0")) return(FALSE)
+    return(raw)
+  }
+  total <- .total_memory_bytes()
+  if (!is.finite(total) || total <= 0) return(NULL)
+  go <- max(4, floor(0.5 * total / 1024^3))   # plancher 4 Go : sous cela, rien ne passe
+  paste0(go, "G")
+}
+
+#' Total physical memory of the host, in bytes
+#'
+#' `MemTotal` and not `MemAvailable`: the ceiling must be stable from one run to
+#' the next. Sizing it on what happens to be free would give a different limit
+#' depending on which browser tabs are open.
+#'
+#' @return Total bytes (numeric) or `NA_real_` off Linux.
+#' @noRd
+.total_memory_bytes <- function() {
+  if (!file.exists("/proc/meminfo")) return(NA_real_)
+  lines <- tryCatch(readLines("/proc/meminfo", n = 5L), error = function(e) NULL)
+  if (is.null(lines)) return(NA_real_)
+  hit <- grep("^MemTotal:", lines, value = TRUE)
+  if (length(hit) == 0L) return(NA_real_)
+  kb <- suppressWarnings(as.numeric(gsub("[^0-9]", "", hit[1])))
+  if (!is.finite(kb)) return(NA_real_)
+  kb * 1024
+}
+
+#' Run the full indicator computation in a memory-capped child process
+#'
+#' Same shape as `.regen_run_engine_capped()`. Falls back to the direct call
+#' when the installed core predates the generalised `run_memory_capped()`
+#' (`package=` / `options=` arguments, nemeton >= 0.158.0), so the app never
+#' breaks on an older core — it merely loses the protection.
+#'
+#' `getOption("nemetonshiny.compute_capped")` forces the fallback, which is what
+#' the tests use and what a developer needs when the installed library lags
+#' behind the `pkgload` source.
+#'
+#' @param project_id Project identifier.
+#' @param app_opts App options to restore in the child.
+#' @return Whatever `start_computation()` returns.
+#' @noRd
+.compute_run_capped <- function(project_id, app_opts) {
+  options(nemeton.app_options = app_opts)
+  args <- list(project_id = project_id, indicators = "all",
+               progress_callback = NULL, use_file_progress = TRUE)
+  rmc <- if (requireNamespace("nemeton", quietly = TRUE)) {
+    nemeton::run_memory_capped
+  } else NULL
+  capped_ok <- isTRUE(getOption("nemetonshiny.compute_capped", TRUE)) &&
+    !is.null(rmc) &&
+    all(c("package", "options") %in% names(formals(rmc)))
+  if (!capped_ok) {
+    fn <- utils::getFromNamespace("start_computation", "nemetonshiny")
+    return(do.call(fn, args))
+  }
+  rmc(fun = "start_computation", package = "nemetonshiny",
+      args = args, options = list(nemeton.app_options = app_opts),
+      memory_max = .compute_memory_max(), quiet = FALSE)
+}

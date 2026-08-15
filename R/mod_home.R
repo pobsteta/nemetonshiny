@@ -950,15 +950,18 @@ mod_home_server <- function(id, app_state) {
         # (needed by get_project_path and other functions)
         options(nemeton.app_options = app_opts)
 
-        # This runs in a separate R process
-        # project_path is resolved internally by start_computation() via
-        # get_project_path(), which works because app_opts are restored above.
-        start_computation(
-          project_id = project_id,
-          indicators = "all",
-          progress_callback = NULL,
-          use_file_progress = TRUE
-        )
+        # Le calcul lui-meme part dans un ENFANT PLAFONNE, il ne tourne pas
+        # dans ce worker. Sans cela, un pic du calcul est un pic du scope de la
+        # session, et `systemd-oomd` tue RStudio - mesure le 2026-08-15 :
+        # 17,1 Go dans le scope, pression du user slice a 77,22 % contre une
+        # limite de 50 %. Le worker `future` reste le porteur de la promesse ;
+        # l'enfant porte la memoire, et meurt seul s'il deborde.
+        #
+        # `project_path` est resolu a l'interieur par `get_project_path()`,
+        # d'ou la restauration des options ci-dessus - et leur retransmission
+        # a l'enfant par `.compute_run_capped()`.
+        utils::getFromNamespace(".compute_run_capped", "nemetonshiny")(
+          project_id, app_opts)
       }, seed = TRUE)
     })
 
