@@ -7,6 +7,13 @@
 library(sf)
 
 # --- 3 mock cadastral parcels (simplified polygons near Couchey, Cote-d'Or) ---
+# INSEE code 21200. Corrected 2026-08-16: this fixture carried 21189, which is
+# Corberon, not Couchey. The geometry below is genuinely inside Couchey, so the
+# code contradicted it -- the kind of mock that bites the day someone joins it
+# to a real commune layer. Couchey is INSEE 21200, postal code 21160 (the two
+# share a numbering space and are easy to swap; 21200 is also Beaune's postal
+# code, which is a coincidence). Verified against geo.api.gouv.fr and IGN
+# ADMINEXPRESS.
 # Using EPSG:4326 (WGS84) for simplicity in the fixture
 p1 <- st_polygon(list(matrix(c(
   4.950, 47.270,
@@ -34,11 +41,11 @@ p3 <- st_polygon(list(matrix(c(
 
 parcels <- st_sf(
   id = c("couchey_54", "couchey_55", "couchey_56"),
-  geo_parcelle = c("21189000A0054", "21189000A0055", "21189000A0056"),
+  geo_parcelle = c("21200000A0054", "21200000A0055", "21200000A0056"),
   section = c("A", "A", "A"),
   numero = c("54", "55", "56"),
   contenance = c(25000, 18000, 32000),  # m2
-  code_insee = rep("21189", 3),
+  code_insee = rep("21200", 3),
   geometry = st_sfc(p1, p2, p3, crs = 4326)
 )
 

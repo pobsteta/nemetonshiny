@@ -12,7 +12,11 @@
 #' @return List with $parcels (sf), $indicators (data.frame), $metadata (list)
 #' @noRd
 create_couchey_mini_fixture <- function() {
-  # 3 mock cadastral parcels (simplified polygons near Couchey, Cote-d'Or)
+  # 3 mock cadastral parcels (simplified polygons near Couchey, Cote-d'Or).
+  # INSEE 21200. Corrected 2026-08-16 from 21189, which is Corberon: the
+  # polygons below fall inside Couchey, so the code contradicted the geometry.
+  # Couchey is INSEE 21200, postal code 21160. Verified against
+  # geo.api.gouv.fr and IGN ADMINEXPRESS.
   p1 <- sf::st_polygon(list(matrix(c(
     4.950, 47.270, 4.952, 47.270, 4.952, 47.272, 4.950, 47.272, 4.950, 47.270
   ), ncol = 2, byrow = TRUE)))
@@ -25,11 +29,11 @@ create_couchey_mini_fixture <- function() {
 
   parcels <- sf::st_sf(
     id = c("couchey_54", "couchey_55", "couchey_56"),
-    geo_parcelle = c("21189000A0054", "21189000A0055", "21189000A0056"),
+    geo_parcelle = c("21200000A0054", "21200000A0055", "21200000A0056"),
     section = c("A", "A", "A"),
     numero = c("54", "55", "56"),
     contenance = c(25000, 18000, 32000),
-    code_insee = rep("21189", 3),
+    code_insee = rep("21200", 3),
     geometry = sf::st_sfc(p1, p2, p3, crs = 4326)
   )
 
