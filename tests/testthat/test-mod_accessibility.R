@@ -387,11 +387,25 @@ test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
   vert_dess <- grep("bg-success", entetes(ui_dess), value = TRUE)
   expect_length(vert_acc, 1L)
   expect_length(vert_ref, 1L)
-  expect_length(vert_dess, 1L)
+  # La Desserte porte DEUX blocs verts, et c'est voulu : celui du CALCUL
+  # (sidebar gauche, « Lancer le calcul ») et le « Tableau des actions »
+  # (sidebar droite, pattern du Plan d'actions). Compter les en-tetes ne
+  # suffit donc plus - il faut designer celui qu'on compare, sinon le test
+  # dit « il y en a un » la ou la question est « lequel ressemble a quoi ».
+  expect_length(vert_dess, 2L)
+
+  cible <- function(x, id) {
+    grep(sprintf('data-bs-target="#%s"', id), x, value = TRUE, fixed = TRUE)
+  }
+  vert_dess_calcul <- cible(vert_dess, "dess-dess_collapse")
+  vert_dess_actions <- cible(vert_dess, "dess-dess_actions_collapse")
+  expect_length(vert_dess_calcul, 1L)
+  expect_length(vert_dess_actions, 1L)
+
   expect_identical(gabarit(vert_acc), gabarit(vert_ref))
-  # L'onglet Desserte porte le meme bloc : les trois sidebars de l'onglet
-  # Terrain se ressemblent, ou aucune ne le fait.
-  expect_identical(gabarit(vert_dess), gabarit(vert_ref))
+  # L'onglet Desserte porte le meme bloc de calcul : les trois sidebars de
+  # l'onglet Terrain se ressemblent, ou aucune ne le fait.
+  expect_identical(gabarit(vert_dess_calcul), gabarit(vert_ref))
   expect_match(ui_dess, "id=\"dess-dess_collapse\" class=\"collapse show\"",
                fixed = TRUE)
   expect_match(ui_dess, "dess-run", fixed = TRUE)

@@ -29,16 +29,23 @@ des indicateurs semble figé à 64 % : il ne l'est pas, il passe plus d'une heur
 dans `indicateur_r1_feu` à 51 % d'un cœur et **zéro I/O**.
 
 `get_dem_raster()` préfère `lidar_mnt` (0,50 m), `.dem_working_res()` le ramène
-au `.topo_target_res()` de 2 m, et `fireexposuR::fire_exp(t_dist = 500)` y pose
-un `terra::focal()` dont la fenêtre annulaire est exprimée en mètres mais
-matérialisée en cellules : ~501 × 501 sur 5 M cellules, soit ~1,25 × 10¹²
-opérations mono-thread. `fireexposuR` est calibré pour du ~30 m ; à 2 m le coût
-est ~52 000× celui prévu. Mesure de contrôle : le même `focal` sur un raster
-400 × 400 — 1/31 du vrai — n'a pas rendu la main en 300 s.
+au `.topo_target_res()` — que **l'app fixe à 1 m** (`APP_CONFIG$topo_target_res`,
+arbitrage mesuré sur Dabo, vérifié dans `/proc/<pid>/environ` du calcul en
+cours) — et `fireexposuR::fire_exp(t_dist = 500)` y pose un `terra::focal()`
+dont la fenêtre annulaire est exprimée en mètres mais matérialisée en cellules :
+1001 × 1001 sur 20 M cellules, soit ~1,6 × 10¹³ opérations mono-thread.
 
-Le correctif est **entièrement côté cœur** (borner la résolution du chemin
-`fire_exp` à 30 m sans toucher `.topo_target_res()`, dont R2/R3/W3 ont raison
-d'avoir besoin à 2 m). Rien à changer dans l'app.
+`fireexposuR` est calibré pour du ~30 m. Le coût total varie en `1/res⁴` : à
+1 m il est ~660 000× celui prévu. Mesure de contrôle : le même `focal` sur un
+raster 400 × 400 à 2 m — ~1/1900 du cas réel — n'a pas rendu la main en 300 s.
+R1 sur ce projet demande donc **des dizaines d'heures de CPU** : ce n'est pas un
+calcul lent, c'est un calcul qui ne rendra pas la main.
+
+Le correctif est **entièrement côté cœur**, et ne peut pas consister à remonter
+`.topo_target_res()` : sept autres indicateurs (R2, R3, W2, W3, F2, S1, S2) ont
+de bonnes raisons de travailler à 1 m. R1 est le seul à convoluer un voisinage
+de 500 m — un rayon métier, pas une finesse de terrain. Rien à changer dans
+l'app.
 
 
 # nemetonshiny 0.124.2.9001 (2026-08-16)
