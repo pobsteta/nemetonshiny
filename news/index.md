@@ -23,12 +23,12 @@ cœur, pas une phrase reconstituée depuis un
 [`conditionMessage()`](https://rdrr.io/r/base/conditions.html).
 
 - `theia_source_status_safe()` interroge
-  `nemeton::theia_source_status()` **sans télécharger**. Le cœur ne
-  l’expose pas encore : la fonction rend alors `NULL`, qui signifie « je
-  ne sais pas » et **jamais** « tout va bien » — l’app garde son
-  comportement précédent plutôt que d’afficher une cause inventée. Le
-  jour où le cœur la publie, le câblage s’active sans nouvelle
-  livraison.
+  [`nemeton::theia_source_status()`](https://pobsteta.github.io/nemeton/reference/theia_source_status.html)
+  **sans télécharger**. Le cœur ne l’expose pas encore : la fonction
+  rend alors `NULL`, qui signifie « je ne sais pas » et **jamais** «
+  tout va bien » — l’app garde son comportement précédent plutôt que
+  d’afficher une cause inventée. Le jour où le cœur la publie, le
+  câblage s’active sans nouvelle livraison.
 - `save_source_status()` / `load_source_status()` gardent la cause dans
   `data/source_status.json`, parce que « pourquoi A5 est vide ? » se
   pose longtemps après le calcul qui y a répondu.
@@ -75,13 +75,13 @@ Cinq clés i18n FR/EN : `lst_status_ok`, `lst_status_ok_nocount`,
 
 #### Known — Le critère `DESCRIPTION` du brief reste ouvert
 
-`nemeton::theia_source_status()` **n’est pas publié** : la dernière
-release du cœur (v0.173.0) ne l’exporte pas. Le plancher `Imports:` ne
-peut donc pas être relevé, et les deux critères d’acceptation qui en
-dépendent (projet rural affichant `lst_status_no_coverage`, projet
-couvert affichant le nombre de scènes) ne sont pas vérifiables contre le
-vrai cœur — ils le sont contre un cœur simulé, par 58 tests. Tout le
-reste est livré et actif dès maintenant.
+[`nemeton::theia_source_status()`](https://pobsteta.github.io/nemeton/reference/theia_source_status.html)
+**n’est pas publié** : la dernière release du cœur (v0.173.0) ne
+l’exporte pas. Le plancher `Imports:` ne peut donc pas être relevé, et
+les deux critères d’acceptation qui en dépendent (projet rural affichant
+`lst_status_no_coverage`, projet couvert affichant le nombre de scènes)
+ne sont pas vérifiables contre le vrai cœur — ils le sont contre un cœur
+simulé, par 58 tests. Tout le reste est livré et actif dès maintenant.
 
 ## nemetonshiny 0.125.1 (2026-08-16)
 
