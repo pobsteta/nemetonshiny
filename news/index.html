@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.125.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.126.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,39 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.126.0" id="nemetonshiny-01260-2026-08-16">nemetonshiny 0.126.0 (2026-08-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01260-2026-08-16"></a></h2>
+<div class="section level4">
+<h4 id="added--a5-dit-pourquoi-il-est-vide-au-lieu-de-rester-gris-0-126-0">Added — A5 dit <em>pourquoi</em> il est vide, au lieu de rester gris<a class="anchor" aria-label="anchor" href="#added--a5-dit-pourquoi-il-est-vide-au-lieu-de-rester-gris-0-126-0"></a></h4>
+<p>Implémente <code>specs/brief-nemetonshiny-a5-diagnostic.md</code>. La question « pourquoi <code>cache/layers/lst/</code> est-il vide ? » avait une réponse — <em>hors couverture Thermocity</em> — mais elle était introuvable depuis l’application : axe vide sur le radar, carte grise, « NA » dans le détail de famille, et un panneau des sources qui affirmait toujours « Rafraîchissement urbain : activé ». Littéralement <em>activé mais rien</em>.</p>
+<p>Quatre situations sortaient de <code>build_lst_layer()</code> par le même <code>NULL</code> : source désactivée, identifiants absents, <strong>emprise hors couverture</strong>, <strong>erreur réseau</strong>. Les deux dernières étaient indistinguables — or la troisième est le cas normal de la majorité des projets forestiers et la quatrième est une vraie panne. Les confondre fait passer une panne pour une normalité, et l’inverse.</p>
+<p>Nouveau <code>R/service_status.R</code> : la cause est une <strong>clé stable</strong> venue du cœur, pas une phrase reconstituée depuis un <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage()</a></code>.</p>
+<ul><li>
+<code>theia_source_status_safe()</code> interroge <code>nemeton::theia_source_status()</code> <strong>sans télécharger</strong>. Le cœur ne l’expose pas encore : la fonction rend alors <code>NULL</code>, qui signifie « je ne sais pas » et <strong>jamais</strong> « tout va bien » — l’app garde son comportement précédent plutôt que d’afficher une cause inventée. Le jour où le cœur la publie, le câblage s’active sans nouvelle livraison.</li>
+<li>
+<code>save_source_status()</code> / <code>load_source_status()</code> gardent la cause dans <code>data/source_status.json</code>, parce que « pourquoi A5 est vide ? » se pose longtemps après le calcul qui y a répondu.</li>
+<li>
+<code>build_lst_layer()</code> court-circuite le téléchargement quand la source est connue indisponible : on payait jusqu’ici une requête STAC, un échec et un <code>tryCatch</code> pour un résultat connu d’avance.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--un-statut-qui-dit-létat-réel-pas-lintention-0-126-0">Added — Un statut qui dit l’état réel, pas l’intention<a class="anchor" aria-label="anchor" href="#added--un-statut-qui-dit-l%C3%A9tat-r%C3%A9el-pas-lintention-0-126-0"></a></h4>
+<p>Le panneau des sources passe à trois états : <strong>couverture disponible</strong> (avec le nombre de scènes), <strong>activé mais aucune scène sur l’emprise</strong> — ton neutre, c’est une information et non un avertissement — et <strong>source injoignable</strong>, en avertissement. Sans statut enregistré, le libellé d’avant est conservé : on n’affirme pas une couverture qu’on n’a pas vérifiée.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--la-cause-nest-plus-jetée-juste-avant-linterface-0-126-0">Fixed — La cause n’est plus jetée juste avant l’interface<a class="anchor" aria-label="anchor" href="#fixed--la-cause-nest-plus-jet%C3%A9e-juste-avant-linterface-0-126-0"></a></h4>
+<p><code>service_r5.R</code> supprimait <code>r5_status</code> une ligne avant que la colonne n’atteigne l’UI — la seule qui distingue « pas de zone de suivi » de « pas de méthode ». Elle est désormais préfixée (<code>.r5_status</code>) plutôt que supprimée : textuelle et préfixée, elle ne peut polluer ni le radar ni les statistiques, puisque <code>create_family_index()</code> n’apparie que <code>indicateur_*</code> / <code>A[0-9]</code> et que <code>get_indicator_cols()</code> ne garde que le numérique.</p>
+<p>Même mécanique pour A5 : <code>extract_indicator_value()</code> ne rend que la valeur, donc <code>.capture_status_attr()</code> transporte <code>&lt;code&gt;_status</code> en attribut jusqu’à <code>compute_all_indicators()</code>, qui en fait une colonne <code>.</code> préfixée persistée dans le parquet. Le mécanisme est générique — il servira à T3 et R7 (§7 du brief) sans nouveau code.</p>
+</div>
+<div class="section level4">
+<h4 id="added--un-bandeau-sous-les-cartes-grises-0-126-0">Added — Un bandeau sous les cartes grises<a class="anchor" aria-label="anchor" href="#added--un-bandeau-sous-les-cartes-grises-0-126-0"></a></h4>
+<p><code>indicator_na_banner()</code> explique <strong>tout indicateur entièrement NA</strong>, avec la cause nommée quand le cœur l’a fournie et un message générique sinon. Une cause sans traduction retombe sur le générique : jamais de clé brute à l’écran. Rien à changer sur le radar, l’axe vide y était déjà géré.</p>
+<p>Cinq clés i18n FR/EN : <code>lst_status_ok</code>, <code>lst_status_ok_nocount</code>, <code>lst_status_no_coverage</code>, <code>lst_status_error</code>, <code>a5_skipped_no_lst</code>, <code>indicator_all_na</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="known--le-critère-description-du-brief-reste-ouvert-0-126-0">Known — Le critère <code>DESCRIPTION</code> du brief reste ouvert<a class="anchor" aria-label="anchor" href="#known--le-crit%C3%A8re-description-du-brief-reste-ouvert-0-126-0"></a></h4>
+<p><code>nemeton::theia_source_status()</code> <strong>n’est pas publié</strong> : la dernière release du cœur (v0.173.0) ne l’exporte pas. Le plancher <code>Imports:</code> ne peut donc pas être relevé, et les deux critères d’acceptation qui en dépendent (projet rural affichant <code>lst_status_no_coverage</code>, projet couvert affichant le nombre de scènes) ne sont pas vérifiables contre le vrai cœur — ils le sont contre un cœur simulé, par 58 tests. Tout le reste est livré et actif dès maintenant.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.125.1" id="nemetonshiny-01251-2026-08-16">nemetonshiny 0.125.1 (2026-08-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01251-2026-08-16"></a></h2>
 <div class="section level4">
