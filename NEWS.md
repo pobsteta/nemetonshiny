@@ -1,4 +1,4 @@
-# nemetonshiny 0.125.1.9000 (2026-08-16)
+# nemetonshiny 0.126.0 (2026-08-16)
 
 ### Added — A5 dit *pourquoi* il est vide, au lieu de rester gris
 
