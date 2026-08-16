@@ -561,40 +561,42 @@ mod_regeneration_ui <- function(id) {
                       i18n$t("regen_ai_send"),
                       icon = shiny::icon("paper-plane"),
                       class = "btn-sm btn-primary flex-fill"))))),
-            # --- Exports (sous le panneau IA) : regroupes dans un accordeon
-            # repliable " Exports " (replie par defaut). Memes boutons/toasts que
-            # le Plan d'actions ; Envoyer vers Terrain / Enregistrer en base =
-            # toast bas-droite au clic (onclick) + gel via .regen-calc-btn.
-            bslib::accordion(
-              open = FALSE, class = "mt-3",
-              bslib::accordion_panel(
-                title = i18n$t("action_plan_section_exports"),
-                icon = bsicons::bs_icon("box-arrow-up"),
-                htmltools::tagAppendAttributes(
-                  shiny::actionButton(ns("export_terrain"), i18n$t("regen_export_terrain"),
-                    icon = shiny::icon("crosshairs"),
-                    class = "btn-outline-success btn-sm w-100 mb-2 regen-calc-btn"),
-                  onclick = sprintf("nemetonShowDownloadToast(%s);",
-                    jsonlite::toJSON(i18n$t("send_to_field_busy"), auto_unbox = TRUE))),
-                htmltools::tagAppendAttributes(
-                  shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_download_gpkg"),
-                    icon = shiny::icon("database"),
-                    class = "btn-outline-success btn-sm w-100 mb-2"),
-                  onclick = sprintf("nemetonShowDownloadToast(%s);",
-                    jsonlite::toJSON(i18n$t("regen_export_gpkg_busy"), auto_unbox = TRUE))),
-                htmltools::tagAppendAttributes(
-                  shiny::downloadButton(ns("export_pdf"), i18n$t("regen_download_pdf"),
-                    icon = shiny::icon("file-pdf"),
-                    class = "btn-outline-success btn-sm w-100 mb-2"),
-                  onclick = sprintf("nemetonShowDownloadToast(%s);",
-                    jsonlite::toJSON(i18n$t("regen_export_pdf_busy"), auto_unbox = TRUE))),
-                htmltools::tags$hr(class = "my-2"),
-                htmltools::tagAppendAttributes(
-                  shiny::actionButton(ns("persist_db"), i18n$t("save_to_db_button"),
-                    icon = bsicons::bs_icon("database"),
-                    class = "btn-outline-secondary btn-sm w-100 regen-calc-btn"),
-                  onclick = sprintf("nemetonShowDownloadToast(%s);",
-                    jsonlite::toJSON(i18n$t("save_to_db_busy"), auto_unbox = TRUE)))))
+            # --- Exports (sous le panneau IA) : dans le bloc " Tableau des
+            # actions " du Plan d'actions, meme en-tete vert repliable et meme
+            # sous-titre " Exports " en h6. Memes boutons/toasts que le Plan
+            # d'actions ; Envoyer vers Terrain / Enregistrer en base = toast
+            # bas-droite au clic (onclick) + gel via .regen-calc-btn.
+            action_table_card(
+              ns("regen_actions_collapse"),
+              i18n$t("action_plan_actions_title"),
+              card_class = "card mt-3",
+              htmltools::tags$h6(class = "mt-1",
+                                 i18n$t("action_plan_section_exports")),
+              htmltools::tagAppendAttributes(
+                shiny::actionButton(ns("export_terrain"), i18n$t("regen_export_terrain"),
+                  icon = shiny::icon("crosshairs"),
+                  class = "btn-outline-success btn-sm w-100 mb-2 regen-calc-btn"),
+                onclick = sprintf("nemetonShowDownloadToast(%s);",
+                  jsonlite::toJSON(i18n$t("send_to_field_busy"), auto_unbox = TRUE))),
+              htmltools::tagAppendAttributes(
+                shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_download_gpkg"),
+                  icon = shiny::icon("database"),
+                  class = "btn-outline-success btn-sm w-100 mb-2"),
+                onclick = sprintf("nemetonShowDownloadToast(%s);",
+                  jsonlite::toJSON(i18n$t("regen_export_gpkg_busy"), auto_unbox = TRUE))),
+              htmltools::tagAppendAttributes(
+                shiny::downloadButton(ns("export_pdf"), i18n$t("regen_download_pdf"),
+                  icon = shiny::icon("file-pdf"),
+                  class = "btn-outline-success btn-sm w-100 mb-2"),
+                onclick = sprintf("nemetonShowDownloadToast(%s);",
+                  jsonlite::toJSON(i18n$t("regen_export_pdf_busy"), auto_unbox = TRUE))),
+              htmltools::tags$hr(class = "my-2"),
+              htmltools::tagAppendAttributes(
+                shiny::actionButton(ns("persist_db"), i18n$t("save_to_db_button"),
+                  icon = bsicons::bs_icon("database"),
+                  class = "btn-outline-secondary btn-sm w-100 regen-calc-btn"),
+                onclick = sprintf("nemetonShowDownloadToast(%s);",
+                  jsonlite::toJSON(i18n$t("save_to_db_busy"), auto_unbox = TRUE))))
           ),
         bslib::layout_columns(
           col_widths = c(6, 6), fillable = FALSE,

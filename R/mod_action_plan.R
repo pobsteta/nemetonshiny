@@ -41,32 +41,11 @@ mod_action_plan_ui <- function(id) {
   # chevron, body folds underneath). Drag-and-drop on the Kanban board
   # has replaced the bulk-status dropdown so that section is gone.
   action_panel_id <- ns("actions_collapse")
-  action_panel <- htmltools::tags$div(
-    class = "card mb-3",
-    # Header: clickable, collapses the body
-    htmltools::tags$div(
-      class = "card-header bg-success text-white py-2",
-      style = "cursor: pointer;",
-      `data-bs-toggle` = "collapse",
-      `data-bs-target` = paste0("#", action_panel_id),
-      `aria-expanded` = "true",
-      `aria-controls` = action_panel_id,
-      htmltools::div(
-        class = "d-flex align-items-center justify-content-between",
-        htmltools::div(
-          class = "d-flex align-items-center",
-          bsicons::bs_icon("clipboard-check", class = "me-2"),
-          i18n$t("action_plan_actions_title")
-        ),
-        bsicons::bs_icon("chevron-down", class = "collapse-icon")
-      )
-    ),
-    # Collapsible body
-    htmltools::tags$div(
-      id = action_panel_id,
-      class = "collapse show",
-      htmltools::tags$div(
-        class = "card-body p-3",
+  # `action_table_card()` (R/utils_ui.R) porte cet en-tete : c'est le bloc de
+  # reference, repris tel quel par la Desserte et la reGeneration.
+  action_panel <- action_table_card(
+    action_panel_id,
+    i18n$t("action_plan_actions_title"),
 
         # ---- Selection ---------------------------------------------
         htmltools::tags$h6(class = "mt-1",
@@ -155,8 +134,6 @@ mod_action_plan_ui <- function(id) {
             jsonlite::toJSON(i18n$t("save_to_db_busy"), auto_unbox = TRUE)
           )
         )
-      )
-    )
   )
 
   # Persistent Q/R chat panel. Lives in the right-hand sidebar

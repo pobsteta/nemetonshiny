@@ -1,3 +1,96 @@
+# nemetonshiny 0.125.0 (2026-08-16)
+
+### Changed — Les actions d'une vue sous un seul en-tête, partout
+
+Le panneau droit du Plan d'actions regroupe ses actions sous un en-tête vert
+repliable « Tableau des actions ». La Desserte et la reGénération avaient les
+leurs dispersées : un accordéon nu dans un cas, un accordéon « Exports » dans
+l'autre. Les trois vues partagent désormais le même bloc, extrait dans
+`action_table_card()` (`R/utils_ui.R`) — « comme celui du Plan d'actions » est
+maintenant vrai par construction, pas par copie.
+
+- **Desserte** : Typage, Intégrité, Optimisation, Complément OSM, Détection et
+  Exports passent sous le bloc. Le bilan du réseau et le curseur d'opacité
+  restent au-dessus : l'un rend compte, l'autre règle l'affichage — ce ne sont
+  pas des actions. L'accordéon interne reste replié, donc le panneau ne
+  s'allonge pas.
+- **reGénération, sous-onglet Carte + Tableau** : les exports (Envoyer vers
+  Terrain, GeoPackage, PDF, Enregistrer en base) quittent leur accordéon pour
+  le bloc, avec le sous-titre « Exports » en `h6` comme dans le Plan d'actions.
+
+Le Plan d'actions passe lui aussi par le helper. Le rendu HTML de son panneau
+a été diffé avant/après : identique aux identifiants aléatoires de `bslib`
+près. Le bloc de référence n'a pas bougé.
+
+### Added — Brief cœur : R1 feu coûte des heures sur un MNT LiDAR
+
+`specs/BRIEF-nemeton-r1-feu-resolution.md`. Sur le projet Fordead, le calcul
+des indicateurs semble figé à 64 % : il ne l'est pas, il passe plus d'une heure
+dans `indicateur_r1_feu` à 51 % d'un cœur et **zéro I/O**.
+
+`get_dem_raster()` préfère `lidar_mnt` (0,50 m), `.dem_working_res()` le ramène
+au `.topo_target_res()` — que **l'app fixe à 1 m** (`APP_CONFIG$topo_target_res`,
+arbitrage mesuré sur Dabo, vérifié dans `/proc/<pid>/environ` du calcul en
+cours) — et `fireexposuR::fire_exp(t_dist = 500)` y pose un `terra::focal()`
+dont la fenêtre annulaire est exprimée en mètres mais matérialisée en cellules :
+1001 × 1001 sur 20 M cellules, soit ~1,6 × 10¹³ opérations mono-thread.
+
+`fireexposuR` est calibré pour du ~30 m. Le coût total varie en `1/res⁴` : à
+1 m il est ~660 000× celui prévu. Mesure de contrôle : le même `focal` sur un
+raster 400 × 400 à 2 m — ~1/1900 du cas réel — n'a pas rendu la main en 300 s.
+R1 sur ce projet demande donc **des dizaines d'heures de CPU** : ce n'est pas un
+calcul lent, c'est un calcul qui ne rendra pas la main.
+
+Le correctif est **entièrement côté cœur**, et ne peut pas consister à remonter
+`.topo_target_res()` : sept autres indicateurs (R2, R3, W2, W3, F2, S1, S2) ont
+de bonnes raisons de travailler à 1 m. R1 est le seul à convoluer un voisinage
+de 500 m — un rayon métier, pas une finesse de terrain. Rien à changer dans
+l'app.
+
+### Changed — Les libellés de famille viennent du cœur, plus de l'app
+
+`nemeton` sait quels indicateurs chaque famille agrège ; c'est donc lui qui sait
+la phrase qui les énumère. L'app en gardait sa propre copie — 24 clés
+`famille_*` dans `TRANSLATIONS` — et cette copie avait dérivé. Onze des douze
+descriptions étaient périmées, l'une carrément fausse :
+
+| Famille | Ce que l'app affichait | Ce que l'app calcule vraiment |
+|---------|------------------------|-------------------------------|
+| S | « Densité de sentiers, accessibilité et proximité population » | S1 routes, S2 bâti, S3 population — **aucun sentier** |
+| R | « feu, tempête, sécheresse et abroutissement » | + R5 dépérissement, R6 microclimat, R7 gel tardif |
+| B | « Protection, diversité structurale et connectivité » | + B4 diversité spectrale |
+| W | « Régulation hydrique, zones humides et indice topographique » | + W4 déficit hydrique sous couvert |
+| A | « Couverture forestière tampon et qualité de l'air » | + A3 microclimat, A5 rafraîchissement urbain |
+| L | « Sylvosphère et fragmentation » | + L3 hétérogénéité spectrale |
+| T | « Ancienneté forestière et taux de changement » | + T3 pression de coupe rase |
+
+`get_i18n()` superpose désormais sur `TRANSLATIONS` ce que renvoie
+`nemeton::indicator_families()` (colonnes `name_fr`/`name_en`/`description_fr`/
+`description_en`, dont la clé `family_column` est déjà exactement la clé i18n de
+l'app). Le dictionnaire fusionné est mémoïsé pour la session — la liste des
+familles du cœur ne bouge pas en cours de route — et `export_translations_json()`
+exporte la version fusionnée, pour que le JSON remis aux traducteurs dise la
+même chose que l'écran.
+
+### Changed — Le repli statique devient un miroir gardé, pas un doublon
+
+Les 24 entrées `famille_*` restent en place comme **repli** : un cœur trop
+ancien pour exposer l'accesseur, ou un appel qui échoue, ne doit pas vider
+l'interface. Un `NA` ou une chaîne vide côté cœur ne les écrase pas non plus —
+mieux vaut une description datée qu'une case blanche.
+
+Ce qui change, c'est qu'elles ne peuvent plus dériver en silence :
+`test-utils_i18n_families.R` compare les 24 entrées à
+`nemeton::indicator_families()` et échoue si l'une s'en écarte. Le garde-fou a
+été vérifié par mutation — altérer une seule description fait bien tomber le
+test. Leur contenu a été resynchronisé sur le cœur au passage.
+
+### Changed — Plancher `nemeton` relevé à 0.170.0
+
+`indicator_families()` est exposé côté cœur depuis la v0.170.0. Le plancher
+`Imports:` l'exige désormais, ce que `@*release` satisfait déjà (v0.171.0).
+
+
 # nemetonshiny 0.124.2 (2026-08-15)
 
 ### Fixed — Le calcul des indicateurs n'emporte plus la session
