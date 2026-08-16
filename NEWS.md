@@ -1,4 +1,4 @@
-# nemetonshiny 0.124.2.9002 (2026-08-16)
+# nemetonshiny 0.125.0 (2026-08-16)
 
 ### Changed — Les actions d'une vue sous un seul en-tête, partout
 
@@ -46,9 +46,6 @@ Le correctif est **entièrement côté cœur**, et ne peut pas consister à remo
 de bonnes raisons de travailler à 1 m. R1 est le seul à convoluer un voisinage
 de 500 m — un rayon métier, pas une finesse de terrain. Rien à changer dans
 l'app.
-
-
-# nemetonshiny 0.124.2.9001 (2026-08-16)
 
 ### Changed — Les libellés de famille viennent du cœur, plus de l'app
 
