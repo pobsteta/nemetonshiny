@@ -1,3 +1,79 @@
+# nemetonshiny 0.126.0 (2026-08-16)
+
+### Added — A5 dit *pourquoi* il est vide, au lieu de rester gris
+
+Implémente `specs/brief-nemetonshiny-a5-diagnostic.md`. La question « pourquoi
+`cache/layers/lst/` est-il vide ? » avait une réponse — *hors couverture
+Thermocity* — mais elle était introuvable depuis l'application : axe vide sur le
+radar, carte grise, « NA » dans le détail de famille, et un panneau des sources
+qui affirmait toujours « Rafraîchissement urbain : activé ». Littéralement
+*activé mais rien*.
+
+Quatre situations sortaient de `build_lst_layer()` par le même `NULL` : source
+désactivée, identifiants absents, **emprise hors couverture**, **erreur
+réseau**. Les deux dernières étaient indistinguables — or la troisième est le
+cas normal de la majorité des projets forestiers et la quatrième est une vraie
+panne. Les confondre fait passer une panne pour une normalité, et l'inverse.
+
+Nouveau `R/service_status.R` : la cause est une **clé stable** venue du cœur,
+pas une phrase reconstituée depuis un `conditionMessage()`.
+
+- `theia_source_status_safe()` interroge `nemeton::theia_source_status()` **sans
+  télécharger**. Le cœur ne l'expose pas encore : la fonction rend alors `NULL`,
+  qui signifie « je ne sais pas » et **jamais** « tout va bien » — l'app garde
+  son comportement précédent plutôt que d'afficher une cause inventée. Le jour
+  où le cœur la publie, le câblage s'active sans nouvelle livraison.
+- `save_source_status()` / `load_source_status()` gardent la cause dans
+  `data/source_status.json`, parce que « pourquoi A5 est vide ? » se pose
+  longtemps après le calcul qui y a répondu.
+- `build_lst_layer()` court-circuite le téléchargement quand la source est
+  connue indisponible : on payait jusqu'ici une requête STAC, un échec et un
+  `tryCatch` pour un résultat connu d'avance.
+
+### Added — Un statut qui dit l'état réel, pas l'intention
+
+Le panneau des sources passe à trois états : **couverture disponible** (avec le
+nombre de scènes), **activé mais aucune scène sur l'emprise** — ton neutre,
+c'est une information et non un avertissement — et **source injoignable**, en
+avertissement. Sans statut enregistré, le libellé d'avant est conservé : on
+n'affirme pas une couverture qu'on n'a pas vérifiée.
+
+### Fixed — La cause n'est plus jetée juste avant l'interface
+
+`service_r5.R` supprimait `r5_status` une ligne avant que la colonne n'atteigne
+l'UI — la seule qui distingue « pas de zone de suivi » de « pas de méthode ».
+Elle est désormais préfixée (`.r5_status`) plutôt que supprimée : textuelle et
+préfixée, elle ne peut polluer ni le radar ni les statistiques, puisque
+`create_family_index()` n'apparie que `indicateur_*` / `A[0-9]` et que
+`get_indicator_cols()` ne garde que le numérique.
+
+Même mécanique pour A5 : `extract_indicator_value()` ne rend que la valeur, donc
+`.capture_status_attr()` transporte `<code>_status` en attribut jusqu'à
+`compute_all_indicators()`, qui en fait une colonne `.` préfixée persistée dans
+le parquet. Le mécanisme est générique — il servira à T3 et R7 (§7 du brief)
+sans nouveau code.
+
+### Added — Un bandeau sous les cartes grises
+
+`indicator_na_banner()` explique **tout indicateur entièrement NA**, avec la
+cause nommée quand le cœur l'a fournie et un message générique sinon. Une cause
+sans traduction retombe sur le générique : jamais de clé brute à l'écran. Rien à
+changer sur le radar, l'axe vide y était déjà géré.
+
+Cinq clés i18n FR/EN : `lst_status_ok`, `lst_status_ok_nocount`,
+`lst_status_no_coverage`, `lst_status_error`, `a5_skipped_no_lst`,
+`indicator_all_na`.
+
+### Known — Le critère `DESCRIPTION` du brief reste ouvert
+
+`nemeton::theia_source_status()` **n'est pas publié** : la dernière release du
+cœur (v0.173.0) ne l'exporte pas. Le plancher `Imports:` ne peut donc pas être
+relevé, et les deux critères d'acceptation qui en dépendent (projet rural
+affichant `lst_status_no_coverage`, projet couvert affichant le nombre de
+scènes) ne sont pas vérifiables contre le vrai cœur — ils le sont contre un
+cœur simulé, par 58 tests. Tout le reste est livré et actif dès maintenant.
+
+
 # nemetonshiny 0.125.1 (2026-08-16)
 
 ### Removed — La copie morte de `normalize_indicator()`

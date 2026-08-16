@@ -1401,7 +1401,26 @@ build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
   # Garde amont sur les cles (meme contrat que SUFOSAT).
   if (!theia_api_key_configured()) {
     cli::cli_warn("Rafra\u00eechissement urbain : cl\u00e9s Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
+    save_source_status(project_path, "theia_lst",
+                       list(reason = "no_credentials", available = FALSE, n_assets = 0L))
     return(NULL)
+  }
+
+  # Demander AVANT de telecharger pourquoi la source repondrait. Sur un projet
+  # rural, Thermocity n'a aucune scene : on payait jusqu'ici une requete STAC,
+  # un echec et un tryCatch pour un resultat connu d'avance, et surtout la cause
+  # se perdait dans un `cli_warn` que l'interface ne lit pas.
+  # `NULL` = le coeur ne sait pas repondre (version anterieure a
+  # `theia_source_status`) : on retombe alors sur le comportement d'avant, sans
+  # court-circuit et sans statut invente.
+  status <- theia_source_status_safe("theia_lst", aoi_2154)
+  if (!is.null(status)) {
+    save_source_status(project_path, "theia_lst", status)
+    if (!isTRUE(status$available)) {
+      cli::cli_alert_info(
+        "Rafra\u00eechissement urbain : source indisponible ({status$reason}) \u2014 A5 restera NA")
+      return(NULL)
+    }
   }
 
   lst <- tryCatch(
@@ -1411,7 +1430,16 @@ build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
       NULL
     })
   # Hors couverture urbaine (Thermocity = quelques metropoles) -> NULL, A5 = NA.
-  if (is.null(lst)) return(NULL)
+  if (is.null(lst)) {
+    # Le coeur n'a pas su nous prevenir en amont : la cause reste indistincte,
+    # on l'enregistre comme erreur plutot que de laisser le statut precedent
+    # affirmer une couverture qui n'a pas repondu.
+    if (is.null(status)) {
+      save_source_status(project_path, "theia_lst",
+                         list(reason = "error", available = FALSE, n_assets = 0L))
+    }
+    return(NULL)
+  }
 
   # Crop to the AOI (safety - load already reads by bbox) then cache.
   aoi_vect <- tryCatch(terra::vect(aoi_2154), error = function(e) NULL)
@@ -1422,6 +1450,14 @@ build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
   tryCatch(terra::writeRaster(lst, lst_tif, overwrite = TRUE),
            error = function(e) cli::cli_warn(
              "Rafra\u00eechissement urbain : cache non \u00e9crit : {conditionMessage(e)}"))
+
+  # Le telechargement a abouti : si le coeur ne sait pas repondre, on le note
+  # quand meme, sinon le panneau des sources resterait muet sur un projet qui
+  # marche.
+  if (is.null(status)) {
+    save_source_status(project_path, "theia_lst",
+                       list(reason = "ok", available = TRUE, n_assets = NA_integer_))
+  }
 
   cli::cli_alert_success("Rafra\u00eechissement urbain : LST acquise (Theia Thermocity)")
   lst
@@ -3967,8 +4003,19 @@ compute_all_indicators <- function(parcels,
       # Compute indicator
       values <- compute_single_indicator(ind, parcels, layers)
 
+      # La cause d'un NA voyage en attribut depuis compute_single_indicator() :
+      # on la materialise en colonne `.<code>_status` AVANT de depouiller les
+      # attributs. Prefixee et textuelle, elle traverse le parquet jusqu'a l'UI
+      # sans etre prise pour un indicateur.
+      st_name <- attr(values, "nemeton_status_name")
+      st_vals <- attr(values, "nemeton_status")
+
       # Add to results (raw values - normalization happens at family aggregation)
-      results[[ind]] <- values
+      results[[ind]] <- as.numeric(values)
+      if (!is.null(st_name) && !is.null(st_vals) &&
+          length(st_vals) == nrow(results)) {
+        results[[paste0(".", st_name)]] <- st_vals
+      }
       status[ind] <- "completed"
       completed <- completed + 1
 
@@ -4017,6 +4064,41 @@ compute_all_indicators <- function(parcels,
   results <- set_ndp_attributes(results, layers)
 
   results
+}
+
+
+#' Carry the core's status column alongside the indicator value
+#'
+#' @description
+#' Source-conditioned indicators return, next to their value, a
+#' `<code>_status` column that **names** why the value is `NA` (`a5_status`,
+#' spec 032; `r5_status`, spec 008). `nemeton::extract_indicator_value()`
+#' returns only the value, so the cause was lost here - and an indicator that is
+#' empty because the source does not cover the area looked exactly like one that
+#' is empty because the fetch broke.
+#'
+#' The cause travels as an attribute up to `compute_all_indicators()`, which
+#' turns it into a dot-prefixed column. An attribute rather than a second return
+#' value keeps every other caller of this function unchanged.
+#'
+#' @param vals Numeric vector from `extract_indicator_value()`.
+#' @param result The sf / data.frame the core indicator returned.
+#'
+#' @return `vals`, possibly carrying `nemeton_status` / `nemeton_status_name`.
+#'
+#' @noRd
+.capture_status_attr <- function(vals, result) {
+  status_col <- grep("^[a-z][0-9]+_status$", names(result), value = TRUE)
+
+  # Une seule colonne de statut attendue ; deux voudrait dire que la convention
+  # a change, et deviner laquelle serait pire que de ne rien transporter.
+  if (length(status_col) == 1L &&
+      length(result[[status_col]]) == length(vals)) {
+    attr(vals, "nemeton_status") <- as.character(result[[status_col]])
+    attr(vals, "nemeton_status_name") <- status_col
+  }
+
+  vals
 }
 
 
@@ -4219,8 +4301,10 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # so the two can never drift (nemeton >= 0.108.0). `exclude` passes the
     # pre-existing parcel columns so a freshly added value column wins.
     if (inherits(result, "sf") || inherits(result, "data.frame")) {
-      return(nemeton::extract_indicator_value(
-        result, indicator, exclude = names(parcels)))
+      vals <- nemeton::extract_indicator_value(
+        result, indicator, exclude = names(parcels))
+
+      return(.capture_status_attr(vals, result))
     }
 
     # If result is a vector, return it directly

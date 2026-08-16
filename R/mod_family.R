@@ -88,7 +88,19 @@ mod_family_server <- function(id, family_code, app_state) {
           "surface_m2", "surface_sig_m2", "n_tenements"),
         all_cols
       )
-      df[, c(meta_cols, matched), drop = FALSE]
+
+      # Les colonnes de cause (`.a5_status`, `.r5_status`) suivent leur
+      # indicateur jusqu'ici, sinon le bandeau qui explique un axe vide n'aurait
+      # rien a lire. Elles sont textuelles et prefixees : `get_indicator_cols()`
+      # ne les prend pas pour des indicateurs, ni le tableau, ni les stats.
+      status_cols <- intersect(
+        unique(vapply(matched,
+                      function(col) .indicator_status_col(col) %||% NA_character_,
+                      character(1), USE.NAMES = FALSE)),
+        all_cols
+      )
+
+      df[, c(meta_cols, matched, status_cols), drop = FALSE]
     })
 
     # ================================================================
@@ -162,7 +174,9 @@ mod_family_server <- function(id, family_code, app_state) {
           htmltools::div(
             class = "family-map-wrapper",
             leaflet::leafletOutput(ns(map_id), height = "400px")
-          )
+          ),
+          # Sous la carte grise : la raison, quand le coeur l'a nommee.
+          indicator_na_banner(sf_data, ind_cols[i], i18n)
         )
       })
 
@@ -715,6 +729,68 @@ get_llm_api_key_var <- function(provider) {
 strip_ansi <- function(text) {
   gsub("\033\\[[0-9;]*[a-zA-Z]", "", text, perl = TRUE)
 }
+
+#' Status column carried alongside an indicator
+#'
+#' @description
+#' `indicateur_a5_rafraichissement` -> `.a5_status`. The core names its status
+#' columns `<code>_status`; the app prefixes them with a dot so they cross the
+#' parquet without being mistaken for an indicator.
+#'
+#' @param ind_col Character. Indicator column name.
+#'
+#' @return Character column name, or `NULL` when the name does not follow the
+#'   `indicateur_<code>_` convention.
+#'
+#' @noRd
+.indicator_status_col <- function(ind_col) {
+  m <- regmatches(ind_col, regexec("^indicateur_([a-z][0-9]+)_", ind_col))[[1]]
+  if (length(m) < 2L) return(NULL)
+  paste0(".", m[2], "_status")
+}
+
+
+#' Explain an indicator that is entirely NA
+#'
+#' @description
+#' A blank axis on the radar and a grey map say *that* an indicator is empty,
+#' never *why*. When the core shipped a named cause (`a5_status`), translate it;
+#' otherwise say plainly that the value is unavailable, which is still more than
+#' silence. Returns `NULL` as soon as one value exists - a partially filled
+#' indicator needs no banner.
+#'
+#' @param sf_data sf. Indicator table for the family.
+#' @param ind_col Character. Indicator column name.
+#' @param i18n Translator object.
+#'
+#' @return A [htmltools::div] or `NULL`.
+#'
+#' @noRd
+indicator_na_banner <- function(sf_data, ind_col, i18n) {
+  vals <- sf_data[[ind_col]]
+  if (is.null(vals) || length(vals) == 0L || !all(is.na(vals))) return(NULL)
+
+  key <- NULL
+  status_col <- .indicator_status_col(ind_col)
+  if (!is.null(status_col) && status_col %in% names(sf_data)) {
+    st <- unique(as.character(sf_data[[status_col]]))
+    st <- st[!is.na(st) & nzchar(st)]
+    if (length(st) >= 1L) {
+      code <- sub("^\\.", "", sub("_status$", "", status_col))
+      candidate <- paste0(code, "_", st[1])
+      # Une cause sans traduction retombe sur le message generique : mieux vaut
+      # une phrase vague qu'une cle brute affichee a l'utilisateur.
+      if (isTRUE(i18n$has(candidate))) key <- candidate
+    }
+  }
+
+  htmltools::div(
+    class = "small text-muted fst-italic px-1 pb-1",
+    bsicons::bs_icon("info-circle", class = "me-1"),
+    i18n$t(key %||% "indicator_all_na")
+  )
+}
+
 
 #' Create a Leaflet choropleth map for an indicator column
 #' @param sf_data An sf object with indicator data and geometries.

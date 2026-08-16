@@ -205,14 +205,43 @@ mod_sources_config_server <- function(id, app_state) {
       proj    <- app_state$current_project
       lc      <- proj$metadata$lst_urbain
       enabled <- project_lst_enabled(proj$metadata)
-      status  <- if (enabled) {
+
+      # " Active " disait l'INTENTION, pas l'ETAT : sur un projet rural, la
+      # source restait annoncee active alors qu'aucune scene Thermocity ne
+      # couvre l'emprise et que A5 sortait vide. Quand un statut a ete
+      # enregistre a l'acquisition, il prime - c'est lui qui sait.
+      src_status <- tryCatch(
+        load_source_status(get_project_path(proj$id), "theia_lst"),
+        error = function(e) NULL)
+      msg <- if (enabled) source_status_message(src_status, i18n) else NULL
+
+      status <- if (!enabled) {
+        htmltools::div(class = "small text-muted mb-2 fst-italic",
+                       i18n$t("lst_none"))
+      } else if (is.null(msg)) {
+        # Rien d'enregistre (projet jamais calcule, ou coeur sans
+        # `theia_source_status`) : on garde le libelle d'avant plutot que
+        # d'affirmer une couverture qu'on n'a pas verifiee.
         htmltools::div(
           class = "small mb-2",
           bsicons::bs_icon("check-circle-fill", class = "text-success me-1"),
           i18n$t("lst_active"))
+      } else if (identical(msg$level, "ok")) {
+        htmltools::div(
+          class = "small mb-2",
+          bsicons::bs_icon("check-circle-fill", class = "text-success me-1"),
+          msg$text)
+      } else if (identical(msg$level, "info")) {
+        # Ton neutre et non alarmant : hors couverture n'est pas une panne.
+        htmltools::div(
+          class = "small text-muted mb-2",
+          bsicons::bs_icon("info-circle-fill", class = "text-info me-1"),
+          msg$text)
       } else {
-        htmltools::div(class = "small text-muted mb-2 fst-italic",
-                       i18n$t("lst_none"))
+        htmltools::div(
+          class = "small text-warning mb-2",
+          bsicons::bs_icon("exclamation-triangle-fill", class = "me-1"),
+          msg$text)
       }
 
       htmltools::div(
