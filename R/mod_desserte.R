@@ -335,6 +335,15 @@ mod_desserte_ui <- function(id) {
             ns("opacity"), i18n$t("dess_opacity"),
             min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE),
           htmltools::tags$hr(class = "my-2"),
+          # Toutes les actions de la vue sous UN seul en-tete " Tableau des
+          # actions ", comme l'onglet Plan d'actions - le bilan et l'opacite
+          # ci-dessus n'en sont pas : l'un rend compte, l'autre regle
+          # l'affichage. L'accordeon interne reste replie, donc le panneau ne
+          # s'allonge pas : on gagne un repere commun, pas six lignes de plus.
+          action_table_card(
+            ns("dess_actions_collapse"),
+            i18n$t("action_plan_actions_title"),
+            body_class = "card-body p-2",
           bslib::accordion(
             open = FALSE,
             # Typage du reseau : flux de bois mobilise -> primaire/secondaire/
@@ -446,7 +455,7 @@ mod_desserte_ui <- function(id) {
                 i18n$t("dess_download_gpkg_note")),
               # Le chemin du cache RESTE visible : ce n'est pas une explication
               # qu'on lit une fois, c'est une valeur qu'on copie.
-              shiny::uiOutput(ns("cache_path"))))
+              shiny::uiOutput(ns("cache_path")))))
         ),
         leaflet::leafletOutput(ns("map"), height = "72vh")
       )

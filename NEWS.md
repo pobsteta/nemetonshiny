@@ -1,3 +1,46 @@
+# nemetonshiny 0.124.2.9002 (2026-08-16)
+
+### Changed — Les actions d'une vue sous un seul en-tête, partout
+
+Le panneau droit du Plan d'actions regroupe ses actions sous un en-tête vert
+repliable « Tableau des actions ». La Desserte et la reGénération avaient les
+leurs dispersées : un accordéon nu dans un cas, un accordéon « Exports » dans
+l'autre. Les trois vues partagent désormais le même bloc, extrait dans
+`action_table_card()` (`R/utils_ui.R`) — « comme celui du Plan d'actions » est
+maintenant vrai par construction, pas par copie.
+
+- **Desserte** : Typage, Intégrité, Optimisation, Complément OSM, Détection et
+  Exports passent sous le bloc. Le bilan du réseau et le curseur d'opacité
+  restent au-dessus : l'un rend compte, l'autre règle l'affichage — ce ne sont
+  pas des actions. L'accordéon interne reste replié, donc le panneau ne
+  s'allonge pas.
+- **reGénération, sous-onglet Carte + Tableau** : les exports (Envoyer vers
+  Terrain, GeoPackage, PDF, Enregistrer en base) quittent leur accordéon pour
+  le bloc, avec le sous-titre « Exports » en `h6` comme dans le Plan d'actions.
+
+Le Plan d'actions passe lui aussi par le helper. Le rendu HTML de son panneau
+a été diffé avant/après : identique aux identifiants aléatoires de `bslib`
+près. Le bloc de référence n'a pas bougé.
+
+### Added — Brief cœur : R1 feu coûte des heures sur un MNT LiDAR
+
+`specs/BRIEF-nemeton-r1-feu-resolution.md`. Sur le projet Fordead, le calcul
+des indicateurs semble figé à 64 % : il ne l'est pas, il passe plus d'une heure
+dans `indicateur_r1_feu` à 51 % d'un cœur et **zéro I/O**.
+
+`get_dem_raster()` préfère `lidar_mnt` (0,50 m), `.dem_working_res()` le ramène
+au `.topo_target_res()` de 2 m, et `fireexposuR::fire_exp(t_dist = 500)` y pose
+un `terra::focal()` dont la fenêtre annulaire est exprimée en mètres mais
+matérialisée en cellules : ~501 × 501 sur 5 M cellules, soit ~1,25 × 10¹²
+opérations mono-thread. `fireexposuR` est calibré pour du ~30 m ; à 2 m le coût
+est ~52 000× celui prévu. Mesure de contrôle : le même `focal` sur un raster
+400 × 400 — 1/31 du vrai — n'a pas rendu la main en 300 s.
+
+Le correctif est **entièrement côté cœur** (borner la résolution du chemin
+`fire_exp` à 30 m sans toucher `.topo_target_res()`, dont R2/R3/W3 ont raison
+d'avoir besoin à 2 m). Rien à changer dans l'app.
+
+
 # nemetonshiny 0.124.2.9001 (2026-08-16)
 
 ### Changed — Les libellés de famille viennent du cœur, plus de l'app
