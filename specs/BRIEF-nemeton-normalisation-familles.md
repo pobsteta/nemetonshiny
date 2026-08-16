@@ -7,6 +7,26 @@
 famille **C = 0,90 / 100**. Reproduit à l'identique depuis
 `data/indicators.parquet`.
 
+**Ce brief est autoportant** : il couvre l'ensemble de ce qui reste à corriger
+côté cœur après la release v0.172.0 (borne R1, déjà livrée). Aucun autre brief
+n'est à passer pour ce sujet.
+
+## 0. Critères d'acceptation — récapitulatif
+
+| CA | Objet | Section | Priorité |
+|----|-------|---------|----------|
+| **CA-1** | `create_family_index()` normalise ce qu'il agrège | §4 | **bloquant** — 9 familles sur 12 sont fausses sans lui |
+| **CA-2** | Avertir au lieu de se taire sur une colonne hors `[0, 100]` | §4 | haute |
+| **CA-3** | Test de non-régression sur les valeurs Fordead | §4 | haute |
+| **CA-4** | C2 calculé depuis Sentinel-2 L2A, pas depuis une ortho WMS | §5.a | **haute** — plus gros gain de justesse |
+| **CA-5** | C1 : `zmean` sur la canopée, pas sur l'unité entière | §5.b | moyenne — facteur 10 à 14 |
+| **CA-6** | `sufosat` : déclarer la collection STAC | §6 | moyenne — T3 est tout NA |
+| **CA-7** | Vérifier `r1_feu` constant à 0,000 depuis la borne 30 m | §5.c | à investiguer |
+
+CA-1 conditionne la lecture de tout le reste : tant qu'il n'est pas livré,
+aucun score de famille n'est interprétable, et les autres correctifs ne se
+verront pas.
+
 ---
 
 ## 1. Le symptôme
@@ -198,9 +218,14 @@ n'est pas robuste aux peuplements hétérogènes, où elle écrase le signal des
 pas celle de l'unité entière, dès lors que `pzabove2` porte déjà la fraction.
 
 **5.c — `r1_feu` vaut exactement 0,000 sur les 30 UGF** depuis la borne à 30 m
-livrée en v0.172.0. Un indicateur déclaré natif 0–100 qui sort constant à zéro
-mérite vérification : soit `fire_exp()` produit une exposition nulle sur cette
-emprise, soit le `hazard` rasterisé à 30 m est vide.
+livrée en v0.172.0. **CA-7** : un indicateur déclaré natif 0–100 qui sort
+constant à zéro mérite vérification. Trois pistes : `fire_exp()` produit une
+exposition réellement nulle sur cette emprise ; le `hazard` rasterisé à 30 m est
+vide (`terra::rasterize(bdforet, dem)` sur une grille 60× plus grossière peut
+perdre des polygones étroits) ; ou l'anneau de 500 m déborde de l'emprise
+utile. À départager avant de conclure que la borne est neutre sur les valeurs —
+c'était le CA-4 du brief précédent (`BRIEF-nemeton-r1-feu-resolution.md`), qui
+demandait que la borne change le temps, pas le classement.
 
 ## 6. Sources de données indisponibles
 
@@ -211,7 +236,9 @@ ERREUR: Datasource "sufosat" has no confirmed STAC collection.
 ℹ Set access.stac_collection in the datasource JSON.
 ```
 Conséquence : `indicateur_t3_coupes_rases` est **entièrement NA**, le cache
-`cache/layers/sufosat/` reste vide. À corriger dans le JSON de datasource.
+`cache/layers/sufosat/` reste vide. **CA-6** : déclarer
+`access.stac_collection` dans le JSON de datasource, et vérifier que T3 sort des
+valeurs sur Fordead.
 
 **`theia_lst` — absence de couverture, comportement attendu.**
 ```
