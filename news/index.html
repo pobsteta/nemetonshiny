@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.125.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.125.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,25 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.125.1" id="nemetonshiny-01251-2026-08-16">nemetonshiny 0.125.1 (2026-08-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01251-2026-08-16"></a></h2>
+<div class="section level4">
+<h4 id="removed--la-copie-morte-de-normalize_indicator-0-125-1">Removed — La copie morte de <code>normalize_indicator()</code>
+<a class="anchor" aria-label="anchor" href="#removed--la-copie-morte-de-normalize_indicator-0-125-1"></a></h4>
+<p><code>R/service_compute.R</code> portait une réimplémentation de <code><a href="https://pobsteta.github.io/nemeton/reference/normalize_indicator.html" class="external-link">nemeton::normalize_indicator()</a></code> — 80 lignes de références écologiques (150 tC/ha pour C1, 800 m³/ha pour P1, seuils TWI…), c’est-à-dire de la logique métier, dans l’app. Elle n’était <strong>appelée nulle part</strong> : un <code>grep</code> sur tout <code>R/</code> ne trouvait que sa définition et des commentaires. Supprimée ; le nom résout désormais vers le cœur via <code>R/imports.R</code>, comme il aurait toujours dû.</p>
+<p>Cette copie n’était pas la cause du problème de scores de famille, contrairement à ce que je pensais d’abord : <code>create_family_index()</code> ignore de toute façon les colonnes normalisées (voir <code>specs/BRIEF-nemeton-normalisation-familles.md</code>).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-ndvi-dérivé-est-borné-à-plus-jamais-négatif-0-125-1">Fixed — Le NDVI dérivé est borné à 0, plus jamais négatif<a class="anchor" aria-label="anchor" href="#fixed--le-ndvi-d%C3%A9riv%C3%A9-est-born%C3%A9-%C3%A0-plus-jamais-n%C3%A9gatif-0-125-1"></a></h4>
+<p>Un NDVI négatif désigne de l’eau, de la neige ou du sol nu. Sur une emprise forestière c’est du bruit radiométrique, et il se propageait : C1 estime la biomasse par <code>pmax(0, ndvi) * 150</code> et le cœur normalise C2 par <code>pmax(0, values * 100)</code> — les deux écrasent le négatif à zéro, mais <strong>après</strong> l’avoir moyenné sur l’unité de gestion. Un pixel à −0,2 tirait donc la moyenne de la parcelle vers le bas avant d’être écrêté, ce qui est pire que de ne pas le compter. La borne passe de <code>[-1, 1]</code> à <code>[0, 1]</code> à la source.</p>
+<p>Le calcul est extrait dans <code>ndvi_from_irc()</code>, testable sans aller-retour WMS. Trois tests couvrent l’écrêtage, le traitement d’une division par zéro (→ <code>NA</code> et non 0 : une absence de mesure n’est pas une absence de végétation) et l’ordre des bandes IRC de l’IGN.</p>
+<p><strong>Ce correctif ne suffira pas.</strong> La source elle-même est en cause : le NDVI est dérivé d’une <strong>ortho IRC du WMS IGN</strong>, image 8 bits étirée pour l’affichage, pas de la réflectance calibrée. L’ordre des bandes est pourtant correct — les six paires possibles ont été testées, <code>(B1 − B2)/(B1 + B2)</code> est bien la seule plausible. Le projet dispose déjà de dizaines de scènes Sentinel-2 L2A en cache ; le brief cœur demande d’y basculer C2.</p>
+</div>
+<div class="section level4">
+<h4 id="added--brief-cœur--normalisation-et-scores-de-famille-0-125-1">Added — Brief cœur : normalisation et scores de famille<a class="anchor" aria-label="anchor" href="#added--brief-c%C5%93ur--normalisation-et-scores-de-famille-0-125-1"></a></h4>
+<p><code>specs/BRIEF-nemeton-normalisation-familles.md</code>. Le cœur sait normaliser les 41 colonnes (18 règles explicites + 23 déclarées natives 0-100, aucun orphelin), mais <code>create_family_index()</code> sélectionne les colonnes <strong>brutes</strong> via <code>INDICATOR_FAMILIES[[fam]]$column_names</code>, tandis que <code>normalize_indicators()</code> émet des colonnes suffixées <code>_norm</code>. Les deux fonctions ne composent pas : <code>famille_carbone</code> vaut 0,898 avec ou sans les <code>_norm</code> présentes.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.125.0" id="nemetonshiny-01250-2026-08-16">nemetonshiny 0.125.0 (2026-08-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01250-2026-08-16"></a></h2>
 <div class="section level4">
