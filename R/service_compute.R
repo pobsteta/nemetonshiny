@@ -3214,23 +3214,7 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
 
     cli::cli_alert_info("  Computing NDVI from IRC bands...")
 
-    # Extract NIR (band 1) and Red (band 2)
-    nir <- irc[[1]]
-    red <- irc[[2]]
-
-    # Compute NDVI = (NIR - Red) / (NIR + Red)
-    # Handle division by zero by setting those pixels to 0
-    ndvi <- (nir - red) / (nir + red)
-
-    # Replace NaN/Inf with NA (not 0, to avoid false biomass = 0)
-    ndvi[is.nan(terra::values(ndvi))] <- NA
-    ndvi[is.infinite(terra::values(ndvi))] <- NA
-
-    # Ensure NDVI is in valid range [-1, 1]
-    ndvi <- terra::clamp(ndvi, lower = -1, upper = 1)
-
-    # Set proper name
-    names(ndvi) <- "ndvi"
+    ndvi <- ndvi_from_irc(irc)
 
     # Save to cache
     terra::writeRaster(ndvi, cache_file, overwrite = TRUE)
@@ -3243,6 +3227,48 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
     cli::cli_warn("Failed to download/compute NDVI from IRC: {e$message}")
     return(create_synthetic_ndvi(bbox, cache_file))
   })
+}
+
+
+#' Derive NDVI from an IGN IRC orthophoto
+#'
+#' @description
+#' NDVI = (NIR - Red) / (NIR + Red) on the IRC band order served by the IGN WMS
+#' (band 1 = near infrared, band 2 = red, band 3 = green). Verified on the
+#' Fordead tile: of the six possible band pairs, `(B1 - B2) / (B1 + B2)` is the
+#' only one whose distribution reads as vegetation.
+#'
+#' Extracted from `download_ign_irc_ndvi()` so the arithmetic can be tested
+#' without a WMS round-trip.
+#'
+#' @param irc SpatRaster. At least three bands, IRC order.
+#'
+#' @return SpatRaster named `ndvi`, values in `[0, 1]`.
+#'
+#' @noRd
+ndvi_from_irc <- function(irc) {
+  nir <- irc[[1]]
+  red <- irc[[2]]
+
+  ndvi <- (nir - red) / (nir + red)
+
+  # NaN/Inf -> NA et non 0 : une division par zero est une absence de mesure,
+  # pas une absence de vegetation (elle vaudrait biomasse nulle en aval).
+  ndvi[is.nan(terra::values(ndvi))] <- NA
+  ndvi[is.infinite(terra::values(ndvi))] <- NA
+
+  # Borne basse a 0, pas a -1. Un NDVI negatif designe de l'eau, de la neige ou
+  # du sol nu : sur une emprise forestiere c'est du bruit radiometrique, et il
+  # se propage. C1 estime la biomasse par `pmax(0, ndvi) * 150` quand il n'a ni
+  # LiDAR ni BD Foret, et le coeur normalise C2 par `pmax(0, values * 100)` :
+  # les deux ecrasent deja le negatif a zero, mais APRES l'avoir moyenne sur
+  # l'unite de gestion. Un pixel a -0,2 tire donc la moyenne de la parcelle vers
+  # le bas avant d'etre ecrete, ce qui est pire que de ne pas le compter.
+  # Ecreter a la source rend la moyenne interpretable.
+  ndvi <- terra::clamp(ndvi, lower = 0, upper = 1)
+
+  names(ndvi) <- "ndvi"
+  ndvi
 }
 
 
@@ -3776,88 +3802,7 @@ mosaic_lidar_tiles <- function(tile_files, output_file) {
 }
 
 
-#' Normalize indicator values to 0-100 scale
-#'
-#' @description
-#' Converts raw indicator metrics to a standardized 0-100 score.
-#' Indicators that already return 0-100 scores pass through unchanged.
-#' Raw metrics (m3/ha, tC/ha, km/ha, etc.) are scaled using ecologically
-#' meaningful reference values for temperate forests.
-#'
-#' @param indicator Character. Indicator name.
-#' @param values Numeric vector. Raw indicator values.
-#'
-#' @return Numeric vector of normalized values in [0, 100].
-#'
-#' @noRd
-normalize_indicator <- function(indicator, values) {
-  # Reference maxima for indicators that return raw metrics
-  # Values beyond ref_max are capped at 100
-  #
-  # Indicators already returning 0-100 scores -> NULL (just clamp):
-  #   biodiversity (B1-B3), air (A1-A2), fertility (F1-F2),
-  #   landscape (L1-L2), temporal (T1-T2), risks (R1-R4),
-  #   naturalness (N1-N3), indicateur_p3_qualite_bois (P3)
-  ref_max <- switch(indicator,
-    # Carbon: biomass in tC/ha, typical temperate forest max ~150 tC/ha
-    "indicateur_c1_biomasse" = 150,
-    # Carbon: NDVI in 0-1 scale - special handling below
-    "indicateur_c2_ndvi" = NULL,
-    # Water: hydrographic network density in m/ha (50 m/ha = well-watered forest)
-    "indicateur_w1_reseau" = 50,
-    # Water: wetland/water surface coverage (%) - 5% coverage = max score
-    "indicateur_w2_zones_humides" = 5,
-    # Water: TWI - special handling below
-    "indicateur_w3_humidite" = NULL,
-    # Social: distance to roads (m) - special inverse handling below
-    "indicateur_s1_routes" = NULL,
-    # Social: distance to buildings (m) - special inverse handling below
-    "indicateur_s2_bati" = NULL,
-    # Social: population within buffers
-    "indicateur_s3_population" = 10000,
-    # Production: standing volume in m3/ha (tuto 02 formula range ~100-800)
-    "indicateur_p1_volume" = 800,
-    # Production: annual increment in m3/ha/yr
-    "indicateur_p2_station" = 15,
-    # Energy: fuelwood potential in tep/ha/yr
-    "indicateur_e1_bois_energie" = 0.3,
-    # Energy: CO2 avoidance in tCO2/ha/yr (E1 * 2.5 * 0.85)
-    "indicateur_e2_evitement" = 0.75,
-    # All other indicators already return 0-100 scores -> NULL
-    NULL
-  )
-
-  # Special handling: TWI rescale [2.5, 4.5] -> [0, 100]
-  # Calibrated on typical temperate forest TWI range (sandy/draining substrates ~3,
-  # clay/alluvial ~4-5). Tighter window gives meaningful differentiation.
-  if (indicator == "indicateur_w3_humidite") {
-    # Higher TWI = wetter = more water service
-    return(pmin(100, pmax(0, (values - 2.5) / 2 * 100)))
-  }
-
-  # Special handling: NDVI scale 0-1 -> 0-100
-  if (indicator == "indicateur_c2_ndvi") {
-    return(pmin(100, pmax(0, values * 100)))
-  }
-
-  # Special handling: distance indicators (inverse - closer = higher social value)
-  # 0m -> score 100 (very accessible), 2000m+ -> score 0 (very remote)
-  if (indicator %in% c("indicateur_s1_routes", "indicateur_s2_bati")) {
-    return(pmin(100, pmax(0, 100 * (1 - values / 2000))))
-  }
-
-  if (!is.null(ref_max)) {
-    # Linear normalization: value / ref_max * 100, clamped to [0, 100]
-    values <- pmin(100, pmax(0, values / ref_max * 100))
-  } else {
-    # Already 0-100 indicators: just clamp to be safe
-    values <- pmin(100, pmax(0, values))
-  }
-
-  values
-}
-
-
+#' Compute all indicators
 #'
 #' @description
 #' Computes all requested indicators on the parcels.

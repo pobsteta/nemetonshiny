@@ -1,3 +1,50 @@
+# nemetonshiny 0.125.0.9001 (2026-08-16)
+
+### Removed — La copie morte de `normalize_indicator()`
+
+`R/service_compute.R` portait une réimplémentation de
+`nemeton::normalize_indicator()` — 80 lignes de références écologiques (150
+tC/ha pour C1, 800 m³/ha pour P1, seuils TWI…), c'est-à-dire de la logique
+métier, dans l'app. Elle n'était **appelée nulle part** : un `grep` sur tout
+`R/` ne trouvait que sa définition et des commentaires. Supprimée ; le nom
+résout désormais vers le cœur via `R/imports.R`, comme il aurait toujours dû.
+
+Cette copie n'était pas la cause du problème de scores de famille, contrairement
+à ce que je pensais d'abord : `create_family_index()` ignore de toute façon les
+colonnes normalisées (voir `specs/BRIEF-nemeton-normalisation-familles.md`).
+
+### Fixed — Le NDVI dérivé est borné à 0, plus jamais négatif
+
+Un NDVI négatif désigne de l'eau, de la neige ou du sol nu. Sur une emprise
+forestière c'est du bruit radiométrique, et il se propageait : C1 estime la
+biomasse par `pmax(0, ndvi) * 150` et le cœur normalise C2 par
+`pmax(0, values * 100)` — les deux écrasent le négatif à zéro, mais **après**
+l'avoir moyenné sur l'unité de gestion. Un pixel à −0,2 tirait donc la moyenne
+de la parcelle vers le bas avant d'être écrêté, ce qui est pire que de ne pas le
+compter. La borne passe de `[-1, 1]` à `[0, 1]` à la source.
+
+Le calcul est extrait dans `ndvi_from_irc()`, testable sans aller-retour WMS.
+Trois tests couvrent l'écrêtage, le traitement d'une division par zéro (→ `NA`
+et non 0 : une absence de mesure n'est pas une absence de végétation) et
+l'ordre des bandes IRC de l'IGN.
+
+**Ce correctif ne suffira pas.** La source elle-même est en cause : le NDVI est
+dérivé d'une **ortho IRC du WMS IGN**, image 8 bits étirée pour l'affichage, pas
+de la réflectance calibrée. L'ordre des bandes est pourtant correct — les six
+paires possibles ont été testées, `(B1 − B2)/(B1 + B2)` est bien la seule
+plausible. Le projet dispose déjà de dizaines de scènes Sentinel-2 L2A en cache ;
+le brief cœur demande d'y basculer C2.
+
+### Added — Brief cœur : normalisation et scores de famille
+
+`specs/BRIEF-nemeton-normalisation-familles.md`. Le cœur sait normaliser les 41
+colonnes (18 règles explicites + 23 déclarées natives 0-100, aucun orphelin),
+mais `create_family_index()` sélectionne les colonnes **brutes** via
+`INDICATOR_FAMILIES[[fam]]$column_names`, tandis que `normalize_indicators()`
+émet des colonnes suffixées `_norm`. Les deux fonctions ne composent pas :
+`famille_carbone` vaut 0,898 avec ou sans les `_norm` présentes.
+
+
 # nemetonshiny 0.125.0 (2026-08-16)
 
 ### Changed — Les actions d'une vue sous un seul en-tête, partout

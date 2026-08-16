@@ -126,11 +126,25 @@ normalisation min-max qui « remonte » artificiellement les scores.
 
 Elles resteront après la correction de la normalisation.
 
-**5.a — `c2_ndvi` est négatif sur les 30 UGF.** Un NDVI négatif sous couvert
-forestier est physiquement impossible. Le `ndvi.tif` en cache (daté du
-2026-07-05) contient **33,7 % de pixels négatifs**, médiane 0,168, max 0,728 —
-signature d'une scène hivernale, neigeuse ou nuageuse. À tracer : quelle scène
-S2 alimente `ndvi.tif`, et selon quel critère elle est choisie.
+**5.a — `c2_ndvi` est négatif sur les 30 UGF, parce que sa source n'est pas un
+produit de réflectance.** Le `ndvi.tif` ne vient pas de Sentinel-2 : l'app le
+dérive de l'**orthophoto IRC du WMS IGN** (`download_ign_irc_ndvi`,
+`service_compute.R`). L'ordre des bandes est correct — j'ai testé les six paires
+possibles, `(B1 − B2)/(B1 + B2)` est bien la seule dont la distribution ressemble
+à de la végétation. Le problème est la nature de la source : une ortho WMS est
+une image **8 bits étirée pour l'affichage** (valeurs 9–247, compression JPEG),
+pas de la réflectance calibrée. Le NDVI qu'on en tire n'a pas de sens physique :
+33,7 % de pixels négatifs, médiane 0,168, seulement 32,5 % au-dessus de 0,3.
+
+Or le projet dispose déjà de **dizaines de scènes Sentinel-2 L2A en cache**
+(`cache/layers/sentinel2/`, série 2017→, utilisées par FORDEAD) — de la vraie
+réflectance de surface. **CA-4 : C2 doit être calculé depuis S2 L2A (B8/B4), pas
+depuis une ortho d'affichage.** Le cœur expose déjà `read_s2_band_raster()`, que
+l'app utilise pour B4/L3.
+
+Côté app, la borne basse du NDVI dérivé a été ramenée de −1 à 0 (v0.125.0.9001)
+— un négatif tirait la moyenne de l'unité vers le bas *avant* d'être écrêté en
+aval. C'est un correctif de propagation, pas un correctif de source.
 
 **5.b — `c1_biomasse` vaut 0,002 à 2,4 tC/ha** là où une forêt tempérée est à
 50–200. Le chemin emprunté est le MNH LiDAR :
@@ -149,13 +163,39 @@ main : elle redonne exactement les valeurs du `parquet` (0,14 / 0,06 / 0,02
 contre 0,138 / 0,056 / 0,018 stockés). **Le calcul est juste, son entrée ne
 l'est pas.**
 
-Deux hypothèses à départager côté cœur, je ne les ai pas tranchées :
-- le plancher à 0 de `sanitize_chm()` transforme en zéros une zone de non-donnée
-  ou de sous-sol, et 47 % d'une parcelle de 25 ha n'est pas un artefact
-  ponctuel ;
-- ou le dépérissement est réel et ces parcelles sont effectivement rases — mais
-  `indicateur_a1_couverture` annonce **98,8 à 99,7 % de couvert forestier** sur
-  les mêmes polygones. **A1 et C1 se contredisent** ; l'un des deux ment.
+**Ce n'est pas un artefact — la contradiction avec A1 est apparente.** J'avais
+d'abord opposé C1 à `indicateur_a1_couverture`, qui annonce 98,8 à 99,7 % sur
+les mêmes polygones. C'est une erreur de lecture de ma part : A1 lit le **FVC
+(fraction de couvert végétal, Theia s2_biophysical)**, pas le couvert *arboré*.
+Une coupe rase envahie de ronces affiche un FVC proche de 100 % et une hauteur
+de canopée nulle. Les deux indicateurs sont compatibles, et pour un projet de
+suivi du **dépérissement** c'est même le signal attendu.
+
+Le détail de la distribution le confirme : sur la parcelle 1, les zéros exacts
+ne sont pas un plancher appliqué aux négatifs (seulement 0,7 % des cellules
+sont entre −0,1 et 0, et deux cellules sous −0,5 : le négatif est donc
+**conservé**). Ils forment 1 505 taches, dont une contiguë de **4,86 ha** —
+signature d'un sol nu où le MNS égale exactement le MNT, faute de retour
+au-dessus du sol. **89 % de la parcelle est sous 2 m.** Ces parcelles sont
+réellement rases.
+
+**En revanche, un défaut de modélisation subsiste : les zéros sont comptés deux
+fois.** La formule multiplie par `pzabove2/100` *et* élève à la puissance 1,5 un
+`zmean` calculé sur **toutes** les cellules, zéros compris. La même surface nue
+pénalise donc le résultat deux fois. En calculant `zmean` sur les seules
+cellules de canopée (> 2 m), à `pzabove2` inchangé :
+
+| Parcelle | zmean (tout) | zmean (> 2 m) | % > 2 m | C1 actuel | C1 corrigé |
+|---|---|---|---|---|---|
+| 1 | 1,04 | 6,03 | 11,0 % | 0,138 | **1,91** |
+| 2 | 0,80 | 5,79 | 6,6 % | 0,056 | **1,09** |
+| 4 | 1,71 | 8,38 | 16,4 % | 0,433 | **4,69** |
+
+Un facteur ~10 à 14. Cela ne « répare » pas C1 — le peuplement reste très
+au-dessous d'une forêt sur pied, et c'est normal ici — mais la formule actuelle
+n'est pas robuste aux peuplements hétérogènes, où elle écrase le signal des
+îlots restants. **CA-5** : `zmean` doit être la hauteur moyenne *de la canopée*,
+pas celle de l'unité entière, dès lors que `pzabove2` porte déjà la fraction.
 
 **5.c — `r1_feu` vaut exactement 0,000 sur les 30 UGF** depuis la borne à 30 m
 livrée en v0.172.0. Un indicateur déclaré natif 0–100 qui sort constant à zéro
