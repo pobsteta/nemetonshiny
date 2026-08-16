@@ -5539,3 +5539,64 @@ test_that(".resolve_parallel_workers still respects a 1-core host", {
     })
   )
 })
+
+# ==============================================================================
+# ndvi_from_irc tests
+# ==============================================================================
+
+test_that("ndvi_from_irc floors NDVI at 0, never negative", {
+  skip_if_not_installed("terra")
+
+  # B1 = NIR, B2 = Rouge. Trois pixels : vegetation, sol nu (NDVI < 0), eau.
+  nir <- terra::rast(nrows = 1, ncols = 3, xmin = 0, xmax = 3, ymin = 0, ymax = 1)
+  red <- nir
+  terra::values(nir) <- c(200, 60, 20)
+  terra::values(red) <- c(50, 140, 90)
+  irc <- c(nir, red, red)
+
+  out <- nemetonshiny:::ndvi_from_irc(irc)
+  v <- as.numeric(terra::values(out))
+
+  expect_equal(names(out), "ndvi")
+  # (200-50)/250 = 0.6 conserve ; les deux suivants seraient -0.4 et -0.636.
+  expect_equal(v[1], 0.6, tolerance = 1e-6)
+  expect_equal(v[2], 0)
+  expect_equal(v[3], 0)
+  expect_true(all(v >= 0 & v <= 1, na.rm = TRUE))
+})
+
+
+test_that("ndvi_from_irc turns a zero-sum pixel into NA, not 0", {
+  skip_if_not_installed("terra")
+
+  # Une division par zero est une absence de mesure : la marquer 0 vaudrait
+  # « biomasse nulle » en aval, ce qui est une affirmation, pas une lacune.
+  nir <- terra::rast(nrows = 1, ncols = 2, xmin = 0, xmax = 2, ymin = 0, ymax = 1)
+  red <- nir
+  terra::values(nir) <- c(0, 180)
+  terra::values(red) <- c(0, 20)
+  irc <- c(nir, red, red)
+
+  v <- as.numeric(terra::values(nemetonshiny:::ndvi_from_irc(irc)))
+
+  expect_true(is.na(v[1]))
+  expect_equal(v[2], 0.8, tolerance = 1e-6)
+})
+
+
+test_that("ndvi_from_irc keeps the IGN IRC band order", {
+  skip_if_not_installed("terra")
+
+  # Inverser NIR et Rouge doit changer le resultat : si le test passait avec
+  # n'importe quel ordre, il ne garantirait rien sur la bande lue.
+  b1 <- terra::rast(nrows = 1, ncols = 1, xmin = 0, xmax = 1, ymin = 0, ymax = 1)
+  b2 <- b1
+  terra::values(b1) <- 200
+  terra::values(b2) <- 50
+
+  direct <- as.numeric(terra::values(nemetonshiny:::ndvi_from_irc(c(b1, b2, b2))))
+  inverse <- as.numeric(terra::values(nemetonshiny:::ndvi_from_irc(c(b2, b1, b1))))
+
+  expect_equal(direct, 0.6, tolerance = 1e-6)
+  expect_equal(inverse, 0)  # -0.6 ecrete a 0
+})
