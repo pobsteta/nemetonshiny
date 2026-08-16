@@ -1,4 +1,4 @@
-# nemetonshiny 0.125.0.9001 (2026-08-16)
+# nemetonshiny 0.125.1 (2026-08-16)
 
 ### Removed — La copie morte de `normalize_indicator()`
 
