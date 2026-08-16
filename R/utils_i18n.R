@@ -1322,48 +1322,81 @@ TRANSLATIONS <- list(
     en = "Carbon storage and vegetation vitality (biomass, NDVI)"
   ),
   famille_biodiversite_desc = list(
-    fr = "Protection, diversit\u00e9 structurale et connectivit\u00e9 \u00e9cologique",
-    en = "Protection, structural diversity and ecological connectivity"
+    fr = paste0(
+      "Protection r\u00e9glementaire, diversit\u00e9 structurale, ",
+      "connectivit\u00e9 \u00e9cologique et diversit\u00e9 spectrale"
+    ),
+    en = paste0(
+      "Regulatory protection, structural diversity, ",
+      "ecological connectivity and spectral diversity"
+    )
   ),
   famille_eau_desc = list(
-    fr = "R\u00e9gulation hydrique, zones humides et indice topographique",
-    en = "Water regulation, wetlands and topographic index"
+    fr = paste0(
+      "R\u00e9seau hydrographique, zones humides, indice topographique ",
+      "d'humidit\u00e9 et d\u00e9ficit hydrique sous couvert"
+    ),
+    en = paste0(
+      "Water network, wetlands, topographic wetness index ",
+      "and under-canopy water deficit"
+    )
   ),
   famille_air_desc = list(
-    fr = "Couverture foresti\u00e8re tampon et qualit\u00e9 de l'air",
-    en = "Forest cover buffer and air quality"
+    fr = paste0(
+      "Tampon forestier, qualit\u00e9 de l'air, microclimat sous couvert ",
+      "et rafra\u00eechissement urbain"
+    ),
+    en = paste0(
+      "Forest buffer, air quality, under-canopy microclimate ",
+      "and urban cooling"
+    )
   ),
   famille_sol_desc = list(
-    fr = "Classes de sol et risque d'\u00e9rosion",
-    en = "Soil classes and erosion risk"
+    fr = "Fertilit\u00e9 des sols et risque d'\u00e9rosion",
+    en = "Soil fertility and erosion risk"
   ),
   famille_paysage_desc = list(
-    fr = "Sylvosph\u00e8re (effet lisi\u00e8re) et fragmentation paysag\u00e8re",
-    en = "Sylvosphere (edge effect) and landscape fragmentation"
+    fr = paste0(
+      "Sylvosph\u00e8re (effet lisi\u00e8re), fragmentation paysag\u00e8re ",
+      "et h\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale"
+    ),
+    en = paste0(
+      "Sylvosphere (edge effect), landscape fragmentation ",
+      "and spectral heterogeneity"
+    )
   ),
   famille_temporel_desc = list(
-    fr = "Anciennet\u00e9 foresti\u00e8re et taux de changement",
-    en = "Forest age and change rate"
+    fr = "Anciennet\u00e9 foresti\u00e8re, taux de changement et pression de coupe rase",
+    en = "Forest age, change rate and clear-cut pressure"
   ),
   famille_risque_desc = list(
-    fr = "Risques feu, temp\u00eate, s\u00e9cheresse et abroutissement",
-    en = "Fire, storm, drought and browsing risks"
+    fr = paste0(
+      "Risques feu, temp\u00eate, s\u00e9cheresse, abroutissement, ",
+      "d\u00e9p\u00e9rissement, sensibilit\u00e9 microclimatique et gel tardif"
+    ),
+    en = paste0(
+      "Fire, storm, drought, browsing, dieback, ",
+      "microclimate sensitivity and late-frost risks"
+    )
   ),
   famille_social_desc = list(
-    fr = "Densit\u00e9 de sentiers, accessibilit\u00e9 et proximit\u00e9 population",
-    en = "Trail density, accessibility and population proximity"
+    fr = "Distance aux routes et aux b\u00e2timents, proximit\u00e9 de la population",
+    en = "Distance to roads and buildings, population proximity"
   ),
   famille_production_desc = list(
-    fr = "Volume de bois, productivit\u00e9 et qualit\u00e9",
-    en = "Timber volume, productivity and quality"
+    fr = "Volume de bois, productivit\u00e9 de la station et qualit\u00e9 du bois",
+    en = "Timber volume, site productivity and timber quality"
   ),
   famille_energie_desc = list(
-    fr = "Potentiel bois-\u00e9nergie et \u00e9vitement CO2",
+    fr = "Potentiel bois-\u00e9nergie et \u00e9vitement de CO2",
     en = "Wood energy potential and CO2 avoidance"
   ),
   famille_naturalite_desc = list(
-    fr = "Distance infrastructures, continuit\u00e9 et score de naturalit\u00e9",
-    en = "Infrastructure distance, continuity and naturalness score"
+    fr = paste0(
+      "\u00c9loignement des infrastructures, continuit\u00e9 foresti\u00e8re ",
+      "et score de naturalit\u00e9"
+    ),
+    en = "Infrastructure remoteness, forest continuity and naturalness score"
   ),
 
   # ============================================================
@@ -4885,6 +4918,107 @@ TRANSLATIONS <- list(
 )
 
 
+#' Cache for the merged runtime dictionary
+#'
+#' @noRd
+.i18n_cache <- new.env(parent = emptyenv())
+
+
+#' Family labels read back from the core package
+#'
+#' @description
+#' Family names and descriptions are core domain data, not app copy: `nemeton`
+#' owns which indicators a family aggregates, so it owns the sentence that
+#' enumerates them. Restating them here is how they went stale - the static
+#' `famille_*_desc` entries below still described four risks when the core had
+#' moved to seven, and credited S with "trail density" when S1/S2/S3 measure
+#' roads, buildings and population.
+#'
+#' The static entries survive as a **fallback** for a core too old to expose
+#' the accessor, or for a call that fails; `test-utils_i18n_families.R` asserts
+#' they still match the core, so a divergence fails CI instead of reaching a
+#' user's screen.
+#'
+#' @return Named list shaped like `TRANSLATIONS` (`list(fr = , en = )`).
+#'   Empty when the core cannot answer - the caller then keeps the fallback.
+#'
+#' @noRd
+.core_family_translations <- function() {
+  fams <- tryCatch(nemeton::indicator_families(), error = function(e) NULL)
+
+  if (!is.data.frame(fams) || nrow(fams) == 0L) {
+    return(list())
+  }
+
+  needed <- c(
+    "family_column", "name_fr", "name_en",
+    "description_fr", "description_en"
+  )
+  if (!all(needed %in% names(fams))) {
+    return(list())
+  }
+
+  # Un libelle vide ou NA cote coeur ne doit pas ecraser le repli : mieux vaut
+  # une description datee qu'une case blanche dans l'interface.
+  usable <- function(x) !is.na(x) && nzchar(x)
+
+  out <- list()
+  for (i in seq_len(nrow(fams))) {
+    key <- fams$family_column[i]
+    if (is.na(key) || !nzchar(key)) next
+
+    if (usable(fams$name_fr[i]) && usable(fams$name_en[i])) {
+      out[[key]] <- list(fr = fams$name_fr[i], en = fams$name_en[i])
+    }
+    if (usable(fams$description_fr[i]) && usable(fams$description_en[i])) {
+      out[[paste0(key, "_desc")]] <- list(
+        fr = fams$description_fr[i],
+        en = fams$description_en[i]
+      )
+    }
+  }
+
+  out
+}
+
+
+#' Runtime translation dictionary
+#'
+#' @description
+#' `TRANSLATIONS` overlaid with the family labels owned by the core. Memoised
+#' for the session: the core's family list is fixed once the package is loaded.
+#'
+#' @return Named list of `list(fr = , en = )` entries.
+#'
+#' @noRd
+.translations <- function() {
+  if (is.null(.i18n_cache$dict)) {
+    dict <- TRANSLATIONS
+    overlay <- .core_family_translations()
+    for (key in names(overlay)) {
+      dict[[key]] <- overlay[[key]]
+    }
+    .i18n_cache$dict <- dict
+  }
+
+  .i18n_cache$dict
+}
+
+
+#' Drop the memoised dictionary
+#'
+#' @description
+#' Only needed by tests that mock [nemeton::indicator_families()].
+#'
+#' @return Invisible NULL.
+#'
+#' @noRd
+.reset_i18n_cache <- function() {
+  .i18n_cache$dict <- NULL
+  invisible(NULL)
+}
+
+
 #' Get translation object
 #'
 #' @description
@@ -4897,6 +5031,7 @@ TRANSLATIONS <- list(
 #' @noRd
 get_i18n <- function(language = "fr") {
   lang <- match.arg(language, c("fr", "en"))
+  dict <- .translations()
 
   # Create translator object
   translator <- list(
@@ -4904,16 +5039,16 @@ get_i18n <- function(language = "fr") {
 
     # Translation function
     t = function(key, ...) {
-      if (!key %in% names(TRANSLATIONS)) {
+      if (!key %in% names(dict)) {
         cli::cli_warn("Translation key not found: {key}")
         return(key)
       }
 
-      text <- TRANSLATIONS[[key]][[lang]]
+      text <- dict[[key]][[lang]]
 
       if (is.null(text)) {
         # Fallback to English
-        text <- TRANSLATIONS[[key]][["en"]]
+        text <- dict[[key]][["en"]]
       }
 
       if (is.null(text)) {
@@ -4931,12 +5066,12 @@ get_i18n <- function(language = "fr") {
 
     # Get all keys
     keys = function() {
-      names(TRANSLATIONS)
+      names(dict)
     },
 
     # Check if key exists
     has = function(key) {
-      key %in% names(TRANSLATIONS)
+      key %in% names(dict)
     }
   )
 
@@ -4983,8 +5118,10 @@ export_translations_json <- function(output_dir = "inst/app/i18n") {
     dir.create(output_dir, recursive = TRUE)
   }
 
+  dict <- .translations()
+
   for (lang in get_available_languages()) {
-    translations <- lapply(TRANSLATIONS, function(t) t[[lang]])
+    translations <- lapply(dict, function(t) t[[lang]])
     json_path <- file.path(output_dir, paste0(lang, ".json"))
 
     jsonlite::write_json(

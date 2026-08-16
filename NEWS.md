@@ -1,3 +1,49 @@
+# nemetonshiny 0.124.2.9001 (2026-08-16)
+
+### Changed — Les libellés de famille viennent du cœur, plus de l'app
+
+`nemeton` sait quels indicateurs chaque famille agrège ; c'est donc lui qui sait
+la phrase qui les énumère. L'app en gardait sa propre copie — 24 clés
+`famille_*` dans `TRANSLATIONS` — et cette copie avait dérivé. Onze des douze
+descriptions étaient périmées, l'une carrément fausse :
+
+| Famille | Ce que l'app affichait | Ce que l'app calcule vraiment |
+|---------|------------------------|-------------------------------|
+| S | « Densité de sentiers, accessibilité et proximité population » | S1 routes, S2 bâti, S3 population — **aucun sentier** |
+| R | « feu, tempête, sécheresse et abroutissement » | + R5 dépérissement, R6 microclimat, R7 gel tardif |
+| B | « Protection, diversité structurale et connectivité » | + B4 diversité spectrale |
+| W | « Régulation hydrique, zones humides et indice topographique » | + W4 déficit hydrique sous couvert |
+| A | « Couverture forestière tampon et qualité de l'air » | + A3 microclimat, A5 rafraîchissement urbain |
+| L | « Sylvosphère et fragmentation » | + L3 hétérogénéité spectrale |
+| T | « Ancienneté forestière et taux de changement » | + T3 pression de coupe rase |
+
+`get_i18n()` superpose désormais sur `TRANSLATIONS` ce que renvoie
+`nemeton::indicator_families()` (colonnes `name_fr`/`name_en`/`description_fr`/
+`description_en`, dont la clé `family_column` est déjà exactement la clé i18n de
+l'app). Le dictionnaire fusionné est mémoïsé pour la session — la liste des
+familles du cœur ne bouge pas en cours de route — et `export_translations_json()`
+exporte la version fusionnée, pour que le JSON remis aux traducteurs dise la
+même chose que l'écran.
+
+### Changed — Le repli statique devient un miroir gardé, pas un doublon
+
+Les 24 entrées `famille_*` restent en place comme **repli** : un cœur trop
+ancien pour exposer l'accesseur, ou un appel qui échoue, ne doit pas vider
+l'interface. Un `NA` ou une chaîne vide côté cœur ne les écrase pas non plus —
+mieux vaut une description datée qu'une case blanche.
+
+Ce qui change, c'est qu'elles ne peuvent plus dériver en silence :
+`test-utils_i18n_families.R` compare les 24 entrées à
+`nemeton::indicator_families()` et échoue si l'une s'en écarte. Le garde-fou a
+été vérifié par mutation — altérer une seule description fait bien tomber le
+test. Leur contenu a été resynchronisé sur le cœur au passage.
+
+### Changed — Plancher `nemeton` relevé à 0.170.0
+
+`indicator_families()` est exposé côté cœur depuis la v0.170.0. Le plancher
+`Imports:` l'exige désormais, ce que `@*release` satisfait déjà (v0.171.0).
+
+
 # nemetonshiny 0.124.2 (2026-08-15)
 
 ### Fixed — Le calcul des indicateurs n'emporte plus la session
