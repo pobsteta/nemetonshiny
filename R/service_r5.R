@@ -81,9 +81,42 @@ add_r5_to_indicators <- function(base_sf, project) {
   # indicateur_r5_deperissement() adds column `R5`; rename to the canonical
   # long name (so create_family_index detects it like R1-R4) and drop the
   # temporary routing / diagnostic columns.
+  .r5_finalize(out)
+}
+
+
+#' Rename the core R5 output for the app, keeping the cause
+#'
+#' @description
+#' `indicateur_r5_deperissement()` adds `R5` plus `r5_status`. The value column
+#' takes its canonical long name so `create_family_index()` detects it like
+#' R1-R4; the routing columns go.
+#'
+#' `r5_status` (`calculated`, `calculated_reconfort`, `skipped_no_fordead`,
+#' `skipped_no_reconfort`, `skipped_no_method`) is the **only** column that says
+#' why R5 is empty, and it used to be deleted one line before reaching the
+#' interface - so "no monitoring zone" and "no method" looked identical to the
+#' user. It is prefixed rather than dropped: `create_family_index()` only
+#' matches `indicateur_*` / `A[0-9]` and keeps numeric columns, so a prefixed
+#' text column can poison neither the radar nor the statistics.
+#'
+#' Split out of `add_r5_to_indicators()` so it can be tested without a
+#' monitoring database.
+#'
+#' @param out sf returned by the core indicator.
+#'
+#' @return The same sf, renamed.
+#'
+#' @noRd
+.r5_finalize <- function(out) {
   out$indicateur_r5_deperissement <- out$R5
   out$R5 <- NULL
-  out$r5_status <- NULL
+
+  if (!is.null(out$r5_status)) {
+    out$.r5_status <- as.character(out$r5_status)
+    out$r5_status <- NULL
+  }
+
   out$.r5_resineux <- NULL
   out$.r5_feuillus <- NULL
   out

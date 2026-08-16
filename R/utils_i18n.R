@@ -852,6 +852,48 @@ TRANSLATIONS <- list(
     fr = "Non activ\u00e9 \u2014 famille A sur A1-A4",
     en = "Not enabled \u2014 A family on A1-A4"
   ),
+  # Statut r\u00e9el de la source LST (spec 032, brief A5). \u00ab Activ\u00e9 \u00bb disait
+  # l'intention ; ces trois cl\u00e9s disent l'\u00e9tat. Le %d est le nombre de sc\u00e8nes
+  # rendu par nemeton::theia_source_status(), le %s la cause technique.
+  lst_status_ok = list(
+    fr = "Couverture disponible (%d sc\u00e8ne\u00b7s sur l'emprise).",
+    en = "Coverage available (%d scene(s) over the area)."
+  ),
+  lst_status_ok_nocount = list(
+    fr = "Couverture disponible sur l'emprise.",
+    en = "Coverage available over the area."
+  ),
+  lst_status_no_coverage = list(
+    fr = paste0(
+      "Activ\u00e9, mais aucune sc\u00e8ne LST sur cette emprise : Thermocity ne couvre ",
+      "que quelques m\u00e9tropoles. A5 restera vide \u2014 ce n'est pas une erreur."
+    ),
+    en = paste0(
+      "Enabled, but no LST scene over this area: Thermocity only covers a few ",
+      "metropolitan areas. A5 will stay empty \u2014 this is not an error."
+    )
+  ),
+  lst_status_error = list(
+    fr = "La source LST n'a pas pu \u00eatre interrog\u00e9e (%s).",
+    en = "The LST source could not be queried (%s)."
+  ),
+  # Cause nomm\u00e9e d'un A5 vide, rendue par le c\u0153ur dans `a5_status`.
+  a5_skipped_no_lst = list(
+    fr = paste0(
+      "Aucune donn\u00e9e de temp\u00e9rature de surface sur cette emprise : ",
+      "Thermocity ne couvre que quelques m\u00e9tropoles."
+    ),
+    en = paste0(
+      "No land-surface-temperature data over this area: Thermocity only ",
+      "covers a few metropolitan areas."
+    )
+  ),
+  # Repli quand aucune cause n'est disponible : dire \u00ab indisponible \u00bb reste
+  # plus honn\u00eate qu'une carte grise sans l\u00e9gende.
+  indicator_all_na = list(
+    fr = "Indicateur non disponible sur cette emprise.",
+    en = "Indicator not available over this area."
+  ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
   project_path_label = list(fr = "R\u00e9pertoire de sauvegarde", en = "Storage directory"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),
