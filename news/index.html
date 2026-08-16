@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.124.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.125.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,64 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.125.0" id="nemetonshiny-01250-2026-08-16">nemetonshiny 0.125.0 (2026-08-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01250-2026-08-16"></a></h2>
+<div class="section level4">
+<h4 id="changed--les-actions-dune-vue-sous-un-seul-en-tête-partout-0-125-0">Changed — Les actions d’une vue sous un seul en-tête, partout<a class="anchor" aria-label="anchor" href="#changed--les-actions-dune-vue-sous-un-seul-en-t%C3%AAte-partout-0-125-0"></a></h4>
+<p>Le panneau droit du Plan d’actions regroupe ses actions sous un en-tête vert repliable « Tableau des actions ». La Desserte et la reGénération avaient les leurs dispersées : un accordéon nu dans un cas, un accordéon « Exports » dans l’autre. Les trois vues partagent désormais le même bloc, extrait dans <code>action_table_card()</code> (<code>R/utils_ui.R</code>) — « comme celui du Plan d’actions » est maintenant vrai par construction, pas par copie.</p>
+<ul><li>
+<strong>Desserte</strong> : Typage, Intégrité, Optimisation, Complément OSM, Détection et Exports passent sous le bloc. Le bilan du réseau et le curseur d’opacité restent au-dessus : l’un rend compte, l’autre règle l’affichage — ce ne sont pas des actions. L’accordéon interne reste replié, donc le panneau ne s’allonge pas.</li>
+<li>
+<strong>reGénération, sous-onglet Carte + Tableau</strong> : les exports (Envoyer vers Terrain, GeoPackage, PDF, Enregistrer en base) quittent leur accordéon pour le bloc, avec le sous-titre « Exports » en <code>h6</code> comme dans le Plan d’actions.</li>
+</ul><p>Le Plan d’actions passe lui aussi par le helper. Le rendu HTML de son panneau a été diffé avant/après : identique aux identifiants aléatoires de <code>bslib</code> près. Le bloc de référence n’a pas bougé.</p>
+</div>
+<div class="section level4">
+<h4 id="added--brief-cœur--r1-feu-coûte-des-heures-sur-un-mnt-lidar-0-125-0">Added — Brief cœur : R1 feu coûte des heures sur un MNT LiDAR<a class="anchor" aria-label="anchor" href="#added--brief-c%C5%93ur--r1-feu-co%C3%BBte-des-heures-sur-un-mnt-lidar-0-125-0"></a></h4>
+<p><code>specs/BRIEF-nemeton-r1-feu-resolution.md</code>. Sur le projet Fordead, le calcul des indicateurs semble figé à 64 % : il ne l’est pas, il passe plus d’une heure dans <code>indicateur_r1_feu</code> à 51 % d’un cœur et <strong>zéro I/O</strong>.</p>
+<p><code>get_dem_raster()</code> préfère <code>lidar_mnt</code> (0,50 m), <code>.dem_working_res()</code> le ramène au <code>.topo_target_res()</code> — que <strong>l’app fixe à 1 m</strong> (<code>APP_CONFIG$topo_target_res</code>, arbitrage mesuré sur Dabo, vérifié dans <code>/proc/&lt;pid&gt;/environ</code> du calcul en cours) — et <code>fireexposuR::fire_exp(t_dist = 500)</code> y pose un <code><a href="https://rspatial.github.io/terra/reference/focal.html" class="external-link">terra::focal()</a></code> dont la fenêtre annulaire est exprimée en mètres mais matérialisée en cellules : 1001 × 1001 sur 20 M cellules, soit ~1,6 × 10¹³ opérations mono-thread.</p>
+<p><code>fireexposuR</code> est calibré pour du ~30 m. Le coût total varie en <code>1/res⁴</code> : à 1 m il est ~660 000× celui prévu. Mesure de contrôle : le même <code>focal</code> sur un raster 400 × 400 à 2 m — ~1/1900 du cas réel — n’a pas rendu la main en 300 s. R1 sur ce projet demande donc <strong>des dizaines d’heures de CPU</strong> : ce n’est pas un calcul lent, c’est un calcul qui ne rendra pas la main.</p>
+<p>Le correctif est <strong>entièrement côté cœur</strong>, et ne peut pas consister à remonter <code>.topo_target_res()</code> : sept autres indicateurs (R2, R3, W2, W3, F2, S1, S2) ont de bonnes raisons de travailler à 1 m. R1 est le seul à convoluer un voisinage de 500 m — un rayon métier, pas une finesse de terrain. Rien à changer dans l’app.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--les-libellés-de-famille-viennent-du-cœur-plus-de-lapp-0-125-0">Changed — Les libellés de famille viennent du cœur, plus de l’app<a class="anchor" aria-label="anchor" href="#changed--les-libell%C3%A9s-de-famille-viennent-du-c%C5%93ur-plus-de-lapp-0-125-0"></a></h4>
+<p><code>nemeton</code> sait quels indicateurs chaque famille agrège ; c’est donc lui qui sait la phrase qui les énumère. L’app en gardait sa propre copie — 24 clés <code>famille_*</code> dans <code>TRANSLATIONS</code> — et cette copie avait dérivé. Onze des douze descriptions étaient périmées, l’une carrément fausse :</p>
+<table class="table"><colgroup><col width="14%"><col width="37%"><col width="48%"></colgroup><thead><tr><th>Famille</th>
+<th>Ce que l’app affichait</th>
+<th>Ce que l’app calcule vraiment</th>
+</tr></thead><tbody><tr><td>S</td>
+<td>« Densité de sentiers, accessibilité et proximité population »</td>
+<td>S1 routes, S2 bâti, S3 population — <strong>aucun sentier</strong>
+</td>
+</tr><tr><td>R</td>
+<td>« feu, tempête, sécheresse et abroutissement »</td>
+<td>+ R5 dépérissement, R6 microclimat, R7 gel tardif</td>
+</tr><tr><td>B</td>
+<td>« Protection, diversité structurale et connectivité »</td>
+<td>+ B4 diversité spectrale</td>
+</tr><tr><td>W</td>
+<td>« Régulation hydrique, zones humides et indice topographique »</td>
+<td>+ W4 déficit hydrique sous couvert</td>
+</tr><tr><td>A</td>
+<td>« Couverture forestière tampon et qualité de l’air »</td>
+<td>+ A3 microclimat, A5 rafraîchissement urbain</td>
+</tr><tr><td>L</td>
+<td>« Sylvosphère et fragmentation »</td>
+<td>+ L3 hétérogénéité spectrale</td>
+</tr><tr><td>T</td>
+<td>« Ancienneté forestière et taux de changement »</td>
+<td>+ T3 pression de coupe rase</td>
+</tr></tbody></table><p><code>get_i18n()</code> superpose désormais sur <code>TRANSLATIONS</code> ce que renvoie <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> (colonnes <code>name_fr</code>/<code>name_en</code>/<code>description_fr</code>/ <code>description_en</code>, dont la clé <code>family_column</code> est déjà exactement la clé i18n de l’app). Le dictionnaire fusionné est mémoïsé pour la session — la liste des familles du cœur ne bouge pas en cours de route — et <code>export_translations_json()</code> exporte la version fusionnée, pour que le JSON remis aux traducteurs dise la même chose que l’écran.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-repli-statique-devient-un-miroir-gardé-pas-un-doublon-0-125-0">Changed — Le repli statique devient un miroir gardé, pas un doublon<a class="anchor" aria-label="anchor" href="#changed--le-repli-statique-devient-un-miroir-gard%C3%A9-pas-un-doublon-0-125-0"></a></h4>
+<p>Les 24 entrées <code>famille_*</code> restent en place comme <strong>repli</strong> : un cœur trop ancien pour exposer l’accesseur, ou un appel qui échoue, ne doit pas vider l’interface. Un <code>NA</code> ou une chaîne vide côté cœur ne les écrase pas non plus — mieux vaut une description datée qu’une case blanche.</p>
+<p>Ce qui change, c’est qu’elles ne peuvent plus dériver en silence : <code>test-utils_i18n_families.R</code> compare les 24 entrées à <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> et échoue si l’une s’en écarte. Le garde-fou a été vérifié par mutation — altérer une seule description fait bien tomber le test. Leur contenu a été resynchronisé sur le cœur au passage.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--plancher-nemeton-relevé-à-0-125-0">Changed — Plancher <code>nemeton</code> relevé à 0.170.0<a class="anchor" aria-label="anchor" href="#changed--plancher-nemeton-relev%C3%A9-%C3%A0-0-125-0"></a></h4>
+<p><code>indicator_families()</code> est exposé côté cœur depuis la v0.170.0. Le plancher <code>Imports:</code> l’exige désormais, ce que <code>@*release</code> satisfait déjà (v0.171.0).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.124.2" id="nemetonshiny-01242-2026-08-15">nemetonshiny 0.124.2 (2026-08-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01242-2026-08-15"></a></h2>
 <div class="section level4">
