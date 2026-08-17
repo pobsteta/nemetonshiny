@@ -1,4 +1,4 @@
-# nemetonshiny 0.126.0.9001 (2026-08-17)
+# nemetonshiny 0.126.1 (2026-08-17)
 
 ### Fixed — C2 se calcule sur Sentinel-2, plus sur une image d'affichage
 
