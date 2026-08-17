@@ -1,3 +1,74 @@
+# nemetonshiny 0.126.0.9001 (2026-08-17)
+
+### Fixed — C2 se calcule sur Sentinel-2, plus sur une image d'affichage
+
+Implémente `specs/brief-nemetonshiny-c2-ndvi-sentinel2.md`. `indicateur_c2_ndvi`
+sortait **négatif sur les 30 UGF** de Fordead — physiquement impossible sous un
+couvert. Ni le calcul ni l'ordre des bandes n'étaient en cause : le NDVI était
+dérivé de l'**orthophoto IRC du WMS IGN**, une image 8 bits étirée pour
+l'affichage (valeurs 9–247, compression JPEG), pas de la réflectance.
+
+Chaque projet suivi cache pourtant des dizaines de scènes **Sentinel-2 L2A**
+(alimentées pour FORDEAD) — de la réflectance de surface corrigée. Nouveau
+`build_s2_ndvi_layer()` : il les compose et `download_ign_irc_ndvi()` ne sert
+plus que de repli.
+
+Mesuré sur Fordead, NDVI moyen par UGF :
+
+| Source | min | médiane | max | UGF négatives |
+|---|---|---|---|---|
+| ortho IRC WMS (avant) | −0,223 | **−0,109** | 0,093 | **20 / 30** |
+| Sentinel-2 L2A (après) | 0,558 | **0,584** | 0,616 | **0 / 30** |
+
+Trois choix, tous explicités dans le code :
+
+- **Composite médian de saison de végétation** (DOY 152–273) plutôt qu'une date
+  unique : une acquisition peut être voilée ou ombrée, la médiane de plusieurs
+  ne l'est pas. La médiane et non la moyenne, parce qu'un voile nuageux résiduel
+  est une valeur aberrante, pas un bruit centré.
+- **Plafond de 12 scènes**, les plus récentes. Empiler la série 2017+ entière
+  coûterait des dizaines de gigaoctets sans rien gagner.
+- **L'indice vient du cœur** (`nemeton::build_index_stack()`) : l'app compose des
+  dates, elle ne calcule pas d'indice (règle 1). Un test le verrouille.
+
+Le composite est mis en cache (`ndvi_s2.tif`) sous un nom distinct de l'ortho :
+un projet existant n'a pas à purger quoi que ce soit, et le repli reste
+disponible.
+
+### Added — La provenance du NDVI est dite, pas devinée
+
+Un NDVI ne se lit pas sans savoir d'où il vient. La provenance (`s2_l2a` ou
+`wms_irc`) traverse le calcul par le canal de statut ouvert en v0.126.0 et
+devient la colonne `.c2_status`. Le bandeau du détail de famille affiche
+désormais **deux motifs** au lieu d'un : l'absence de valeur (A5 hors
+couverture) et la **réserve sur une valeur présente** — un NDVI d'ortho se
+calcule très bien, il ne veut simplement pas dire la même chose. Une provenance
+nominale n'a pas de clé et n'affiche donc rien : on ne commente que ce qui
+mérite une réserve.
+
+### Added — A5 : les deux critères en suspens sont levés
+
+`nemeton::theia_source_status()` est publié depuis **v0.174.0**. Le plancher
+passe à `Imports: nemeton (>= 0.174.0)` et le câblage livré en v0.126.0
+s'active. Validé contre le vrai cœur, plus contre un cœur simulé :
+
+- **Fordead** (rural) → `no_asset_over_aoi`, rendu en information neutre
+  « aucune scène LST sur cette emprise ».
+- **Dabo** (couvert) → `ok`, **8 scènes** — le compte annoncé par le brief.
+
+Le champ `detail` du cœur est repris dans le message d'erreur : « no STAC API
+endpoint configured » se diagnostique, « error » ne se diagnostique pas.
+`.clean_detail()` réduit à `NULL` ses trois formes d'absence (`NA_character_`
+du cœur, `null` du JSON, champ manquant) — elles ne se comparent pas de la même
+façon, `is.na()` sur une liste rendant `NA`, qui n'est pas une condition.
+
+### Note — La dette §5 du brief était déjà soldée
+
+Le brief demandait de supprimer la copie morte de `normalize_indicator()`
+(`service_compute.R:3793`). C'était fait en **v0.125.1**, avant que le brief ne
+soit écrit. Rien à refaire.
+
+
 # nemetonshiny 0.126.0 (2026-08-16)
 
 ### Added — A5 dit *pourquoi* il est vide, au lieu de rester gris

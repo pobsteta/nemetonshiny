@@ -195,3 +195,45 @@ test_that(".capture_status_attr refuses an ambiguous or mismatched status", {
   expect_null(attr(nemetonshiny:::.capture_status_attr(c(1, 2, 3), bad),
                    "nemeton_status_name"))
 })
+
+
+# ==============================================================================
+# Provenance caveat, not only absence (brief C2)
+# ==============================================================================
+
+.mk_c2 <- function(vals, status = NULL) {
+  d <- data.frame(x = seq_along(vals), y = seq_along(vals))
+  d[["indicateur_c2_ndvi"]] <- vals
+  if (!is.null(status)) d[[".c2_status"]] <- status
+  sf::st_as_sf(d, coords = c("x", "y"), crs = 4326)
+}
+
+test_that("a calculated C2 from an uncalibrated source still carries a caveat", {
+  i18n <- get_i18n("fr")
+  # Valeurs presentes : l'indicateur se calcule tres bien, mais il ne veut pas
+  # dire la meme chose qu'un NDVI de reflectance. Le bandeau doit le dire.
+  b <- nemetonshiny:::indicator_na_banner(
+    .mk_c2(c(0.2, 0.3), status = rep("wms_irc", 2)),
+    "indicateur_c2_ndvi", i18n)
+
+  expect_false(is.null(b))
+  expect_true(grepl(i18n$t("c2_wms_irc"), as.character(b), fixed = TRUE))
+})
+
+
+test_that("a nominal provenance says nothing at all", {
+  i18n <- get_i18n("fr")
+  # `c2_s2_l2a` n'a pas de cle : on ne commente que ce qui merite une reserve.
+  expect_null(nemetonshiny:::indicator_na_banner(
+    .mk_c2(c(0.6, 0.7), status = rep("s2_l2a", 2)),
+    "indicateur_c2_ndvi", i18n))
+})
+
+
+test_that("an all-NA indicator without status still gets the generic message", {
+  i18n <- get_i18n("fr")
+  b <- nemetonshiny:::indicator_na_banner(
+    .mk_c2(c(NA_real_, NA_real_)), "indicateur_c2_ndvi", i18n)
+
+  expect_true(grepl(i18n$t("indicator_all_na"), as.character(b), fixed = TRUE))
+})

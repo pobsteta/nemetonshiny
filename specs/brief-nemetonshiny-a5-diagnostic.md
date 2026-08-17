@@ -49,12 +49,11 @@ une interface. Or 3 est **le cas normal** de la majorité des projets forestiers
 et 4 est une vraie panne : les confondre, c'est faire passer une panne pour une
 normalité et réciproquement.
 
-## 3. Ce que le cœur fournira
+## 3. Ce que le cœur fournit (livré)
 
-> **Statut : à livrer côté cœur.** Rien de ce qui suit n'est publié à la date de
-> ce brief. Ne pas commencer le câblage avant que la version soit annoncée ici.
-> Si tu veux commencer sans attendre, le point 3.2 est trivial à contourner
-> (colonne absente = comportement actuel), le 3.1 ne l'est pas.
+> **Statut : livré côté cœur en v0.173.1.** Les deux points ci-dessous sont
+> publiés et testés (dont deux tests contre le catalogue Theia réel). Exiger
+> `nemeton (>= 0.173.1)` dans `DESCRIPTION`.
 
 ### 3.1 `theia_source_status(source_key, aoi, country = "FR")`
 
@@ -71,7 +70,23 @@ theia_source_status("theia_lst", aoi)
 `reason` ∈ `{"ok", "unknown_source", "no_stac_collection", "no_credentials",
 "no_asset_over_aoi", "error"}`. C'est une **clé stable**, pas un message : la
 traduction est à toi, la cause est au cœur. L'app n'a ainsi ni à interpréter un
-`conditionMessage()`, ni à réimplémenter une requête STAC.
+`conditionMessage()`, ni à réimplémenter une requête STAC. Le vocabulaire est
+verrouillé par un test (`test-theia-source-status.R`) : il ne bougera pas sous
+tes clés i18n sans qu'un test rouge le signale.
+
+Retour complet : `list(available, reason, n_assets, collection, detail)`.
+`n_assets` sert au message « %d scène·s » du §4.3 ; `detail` est le message
+d'erreur amont — **pour les logs, jamais pour l'interface**.
+
+Trois précisions de comportement, vérifiées par les tests :
+
+- une source inconnue ou sans collection confirmée est nommée **sans requête
+  réseau** — pas de latence pour dire « mal configurée » ;
+- les clés `TLD_*` ne sont vérifiées **qu'après** avoir constaté qu'il existe des
+  données : sur une emprise sans couverture, la réponse reste
+  `no_asset_over_aoi`, car c'est l'information utile ;
+- un catalogue injoignable rend `error`, **jamais** `no_asset_over_aoi` : « je
+  n'ai pas pu demander » n'est pas « il n'y a rien ».
 
 Pourquoi côté cœur : la connaissance « quelle collection, quel service, quelle
 authentification » vit dans `inst/datasources/<pays>.json` et `R/theia_stac.R`.
@@ -80,9 +95,17 @@ c'est exactement ce qui vient d'arriver à SUFOSAT (cf. §6).
 
 ### 3.2 Colonne `a5_status`
 
-`indicateur_a5_rafraichissement()` rendra, à côté de `A5`, une colonne
-`a5_status` ∈ `{"calculated", "skipped_no_lst"}` — **même contrat que
-`r5_status`** (`R/indicators-deperissement.R`), qui existe depuis la spec 008.
+`indicateur_a5_rafraichissement()` rend, à côté de `A5`, une colonne
+`a5_status` ∈ `{"calculated", "skipped_no_lst", "skipped_no_reference"}` —
+**même contrat que `r5_status`** (`R/indicators-deperissement.R`), qui existe
+depuis la spec 008.
+
+Le statut est **par unité**, pas global : une UGF notée et une UGF hors emprise
+dans le même projet portent des statuts différents. `skipped_no_lst` = aucune
+source ; `skipped_no_reference` = raster fourni mais l'unité n'a pas pu être
+notée (emprises disjointes, pas de référence locale). Ces deux cas appellent des
+messages différents — le premier est une question de couverture, le second une
+question de géométrie.
 
 ## 4. Le travail côté app
 
@@ -130,11 +153,12 @@ est déjà géré.
 ### 4.5 Clés i18n (FR/EN, `utils_i18n.R`)
 
 `lst_status_ok`, `lst_status_no_coverage`, `lst_status_error`,
-`a5_skipped_no_lst`, `indicator_all_na`. Aucun littéral dans le code.
+`a5_skipped_no_lst`, `a5_skipped_no_reference`, `indicator_all_na`. Aucun
+littéral dans le code.
 
 ## 5. Critères d'acceptation
 
-- [ ] `DESCRIPTION` exige la version cœur qui publie `theia_source_status()`.
+- [ ] `DESCRIPTION` exige `nemeton (>= 0.173.1)`.
 - [ ] Projet **rural** (Fordead) : le panneau des sources affiche
       `lst_status_no_coverage`, **aucune** requête de téléchargement n'est
       lancée, et le détail de famille A explique l'axe vide.
