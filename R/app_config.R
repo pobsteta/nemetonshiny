@@ -118,374 +118,87 @@ get_app_config <- function(key, default = NULL) {
 }
 
 
+#' Build the indicator-families table from the core
+#'
+#' @description
+#' The 12 families, their indicators, labels and tooltips - **read from
+#' `nemeton`**, not restated here.
+#'
+#' This file used to carry its own copy of the table, and that copy had drifted
+#' in two ways that reached the screen:
+#'
+#'   * **A5 was missing from family A.** The indicator was computed by
+#'     `service_compute.R` then filtered out at display time, so everything
+#'     delivered for the urban-cooling indicator stayed invisible in the Air tab.
+#'   * **The code-to-column pairing is positional**, and it is crossed for F and
+#'     L (`F1` points at `indicateur_f2_erosion`). A local copy that compensated
+#'     in its own `indicator_labels` but not in the `indicator_<code>` i18n keys
+#'     produced a label that depended on which copy the reader hit - the erosion
+#'     map came out as "F1 - Fertilite des sols".
+#'
+#' The core pairs code, column and label **explicitly, row by row**
+#' (`nemeton::indicator_labels()`), so reading from it removes the class of bug
+#' rather than one instance of it.
+#'
+#' The returned shape is the one the former literal had, so the twelve consumers
+#' (`get_family_config()`, `mod_family`, `utils_theme`, `service_export`,
+#' `llm_prompts`, `mod_synthesis`...) need no change.
+#'
+#' @return Named list of 12 families, ordered as the core orders them.
+#'
+#' @noRd
+.build_indicator_families <- function() {
+  fam <- nemeton::indicator_families()
+  lab <- nemeton::indicator_labels()
+
+  pick <- function(df, col) {
+    if (col %in% names(df)) df[[col]] else rep(NA_character_, nrow(df))
+  }
+
+  out <- lapply(seq_len(nrow(fam)), function(i) {
+    code  <- fam$code[i]
+    codes <- unlist(fam$indicators[[i]], use.names = FALSE)
+    cols  <- unlist(fam$column_names[[i]], use.names = FALSE)
+
+    rows <- lab[lab$family == code, , drop = FALSE]
+    bilingual <- function(fr_col, en_col) {
+      vals <- lapply(codes, function(cd) {
+        r <- rows[rows$code == cd, , drop = FALSE]
+        if (nrow(r) == 0L) return(NULL)
+        list(fr = pick(r, fr_col)[1], en = pick(r, en_col)[1])
+      })
+      names(vals) <- codes
+      vals[!vapply(vals, is.null, logical(1))]
+    }
+
+    list(
+      code = code,
+      name_fr = fam$name_fr[i],
+      name_en = fam$name_en[i],
+      icon = fam$icon[i],
+      color = fam$color[i],
+      indicators = codes,
+      column_names = cols,
+      indicator_labels = bilingual("label_fr", "label_en"),
+      indicator_tooltips = bilingual("tooltip_fr", "tooltip_en")
+    )
+  })
+
+  names(out) <- fam$code
+  out
+}
+
+
 #' Indicator families configuration
 #'
 #' @description
-#' Configuration for the 12 indicator families used in nemeton.
+#' Assembled from the core on first use. `delayedAssign()` rather than an eager
+#' call: this file is evaluated while the package is being built, before
+#' `nemeton` is necessarily available, and every consumer uses the name as a
+#' plain variable - a promise keeps all of them unchanged.
 #'
 #' @noRd
-INDICATOR_FAMILIES <- list(
-  C = list(
-    code = "C",
-    name_fr = "Carbone & Vitalit\u00e9",
-    name_en = "Carbon & Vitality",
-    icon = "tree-fill",
-    color = "#228B22",
-    indicators = c("C1", "C2"),
-    column_names = c("indicateur_c1_biomasse", "indicateur_c2_ndvi"),
-    indicator_labels = list(
-      C1 = list(fr = "Biomasse carbone (tC/ha)", en = "Carbon Biomass (tC/ha)"),
-      C2 = list(fr = "NDVI - Vitalit\u00e9", en = "NDVI - Vitality")
-    ),
-    indicator_tooltips = list(
-      C1 = list(
-        fr = "Stock de carbone dans la biomasse a\u00e9rienne (troncs, branches, feuilles). Estim\u00e9 \u00e0 partir de donn\u00e9es LiDAR ou de mod\u00e8les forestiers. Valeurs typiques : 50-200 tC/ha.",
-        en = "Carbon stock in above-ground biomass (trunks, branches, leaves). Estimated from LiDAR data or forest models. Typical values: 50-200 tC/ha."
-      ),
-      C2 = list(
-        fr = "Indice de v\u00e9g\u00e9tation par diff\u00e9rence normalis\u00e9e (NDVI). Mesure la vitalit\u00e9 et l'activit\u00e9 photosynth\u00e9tique de la v\u00e9g\u00e9tation. Valeurs de 0 (sol nu) \u00e0 1 (v\u00e9g\u00e9tation dense).",
-        en = "Normalized Difference Vegetation Index (NDVI). Measures vegetation vitality and photosynthetic activity. Values from 0 (bare soil) to 1 (dense vegetation)."
-      )
-    )
-  ),
-  B = list(
-    code = "B",
-    name_fr = "Biodiversit\u00e9",
-    name_en = "Biodiversity",
-    icon = "bug-fill",
-    color = "#9932CC",
-    indicators = c("B1", "B2", "B3", "B4"),
-    column_names = c("indicateur_b1_protection", "indicateur_b2_structure", "indicateur_b3_connectivite", "indicateur_b4_div_spectrale"),
-    indicator_labels = list(
-      B1 = list(fr = "Protection biodiversit\u00e9", en = "Biodiversity Protection"),
-      B2 = list(fr = "Diversit\u00e9 structurale", en = "Structural Diversity"),
-      B3 = list(fr = "Connectivit\u00e9 \u00e9cologique", en = "Ecological Connectivity"),
-      B4 = list(fr = "Diversit\u00e9 spectrale (\u03b1)", en = "Spectral Diversity (\u03b1)")
-    ),
-    indicator_tooltips = list(
-      B1 = list(
-        fr = "Niveau de protection r\u00e9glementaire (ZNIEFF, Natura 2000, R\u00e9serves). Score de 0 (aucune protection) \u00e0 100 (protection maximale).",
-        en = "Level of regulatory protection (ZNIEFF, Natura 2000, Reserves). Score from 0 (no protection) to 100 (maximum protection)."
-      ),
-      B2 = list(
-        fr = "Diversit\u00e9 des strates verticales et horizontales du peuplement. Bas\u00e9 sur l'h\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 des hauteurs et des essences.",
-        en = "Diversity of vertical and horizontal stand structure. Based on height and species heterogeneity."
-      ),
-      B3 = list(
-        fr = "Capacit\u00e9 de la parcelle \u00e0 servir de corridor \u00e9cologique. Mesure la continuit\u00e9 foresti\u00e8re et la proximit\u00e9 d'autres habitats naturels.",
-        en = "Parcel's capacity to serve as an ecological corridor. Measures forest continuity and proximity to other natural habitats."
-      ),
-      B4 = list(
-        fr = "Diversit\u00e9 spectrale \u03b1 (Shannon) issue de biodivMapR sur imagerie Sentinel-2 : h\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 des \u00ab esp\u00e8ces spectrales \u00bb au sein de la parcelle. Proxy de biodiversit\u00e9 \u00e0 valider par relev\u00e9s terrain.",
-        en = "Spectral \u03b1-diversity (Shannon) from biodivMapR on Sentinel-2 imagery: heterogeneity of 'spectral species' within the parcel. Biodiversity proxy, to be validated with field surveys."
-      )
-    )
-  ),
-  W = list(
-    code = "W",
-    name_fr = "Eau",
-    name_en = "Water",
-    icon = "droplet-fill",
-    color = "#1E90FF",
-    indicators = c("W1", "W2", "W3", "W4"),
-    column_names = c("indicateur_w1_reseau", "indicateur_w2_zones_humides", "indicateur_w3_humidite",
-                     "indicateur_w4_vpd"),
-    indicator_labels = list(
-      W1 = list(fr = "R\u00e9seau hydrographique", en = "Water Network"),
-      W2 = list(fr = "Zones humides", en = "Wetlands"),
-      W3 = list(fr = "Indice topographique d'humidit\u00e9", en = "Topographic Wetness Index"),
-      W4 = list(fr = "D\u00e9ficit de pression (VPD)", en = "Vapour Pressure Deficit")
-    ),
-    indicator_tooltips = list(
-      W1 = list(
-        fr = "Densit\u00e9 et proximit\u00e9 du r\u00e9seau hydrographique (cours d'eau, lacs). Impact sur la biodiversit\u00e9 aquatique et la r\u00e9gulation hydrique.",
-        en = "Density and proximity of water network (streams, lakes). Impact on aquatic biodiversity and water regulation."
-      ),
-      W2 = list(
-        fr = "Pr\u00e9sence et proximit\u00e9 de zones humides inventori\u00e9es. Milieux \u00e0 forte valeur \u00e9cologique pour la biodiversit\u00e9 et le stockage de carbone.",
-        en = "Presence and proximity of inventoried wetlands. High ecological value habitats for biodiversity and carbon storage."
-      ),
-      W3 = list(
-        fr = "Indice topographique d'humidit\u00e9 (TWI). Pr\u00e9dit l'accumulation d'eau selon la topographie. Valeurs \u00e9lev\u00e9es = zones potentiellement humides.",
-        en = "Topographic Wetness Index (TWI). Predicts water accumulation based on topography. High values = potentially wet areas."
-      ),
-      W4 = list(
-        fr = "D\u00e9ficit de pression de vapeur estival sous couvert (demande \u00e9vaporative). Score \u00e9lev\u00e9 = faible stress atmosph\u00e9rique sous canop\u00e9e.",
-        en = "Summer sub-canopy vapour pressure deficit (evaporative demand). High score = low atmospheric stress beneath canopy."
-      )
-    )
-  ),
-  A = list(
-    code = "A",
-    name_fr = "Air & Microclimat",
-    name_en = "Air & Microclimate",
-    icon = "wind",
-    color = "#87CEEB",
-    indicators = c("A1", "A2", "A3", "A4"),
-    column_names = c("indicateur_a1_couverture", "indicateur_a2_qualite_air",
-                     "indicateur_a3_microclimat", "indicateur_a4_tamponnement"),
-    indicator_labels = list(
-      A1 = list(fr = "Tampon forestier", en = "Forest Buffer"),
-      A2 = list(fr = "Qualit\u00e9 de l'air", en = "Air Quality"),
-      A3 = list(fr = "Microclimat (T\u00b0max)", en = "Microclimate (T\u00b0max)"),
-      A4 = list(fr = "Tamponnement thermique", en = "Thermal buffering")
-    ),
-    indicator_tooltips = list(
-      A1 = list(
-        fr = "Couverture foresti\u00e8re dans un rayon de 500m. Mesure la capacit\u00e9 de la for\u00eat \u00e0 att\u00e9nuer les effets climatiques et filtrer l'air.",
-        en = "Forest cover within 500m radius. Measures the forest's capacity to mitigate climate effects and filter air."
-      ),
-      A2 = list(
-        fr = "Indice de qualit\u00e9 de l'air bas\u00e9 sur l'\u00e9loignement des sources de pollution et la densit\u00e9 foresti\u00e8re environnante.",
-        en = "Air quality index based on distance from pollution sources and surrounding forest density."
-      ),
-      A3 = list(
-        fr = "Temp\u00e9rature maximale de l'air sous couvert forestier en \u00e9t\u00e9 (microclimf). Score \u00e9lev\u00e9 = couvert tamponnant, air frais sous canop\u00e9e.",
-        en = "Summer maximum sub-canopy air temperature (microclimf). High score = buffering canopy, cool air beneath."
-      ),
-      A4 = list(
-        fr = "Capacit\u00e9 du couvert \u00e0 tamponner les extr\u00eames thermiques (\u00e9cart int\u00e9rieur/ext\u00e9rieur). Score \u00e9lev\u00e9 = fort tamponnement.",
-        en = "Canopy capacity to buffer thermal extremes (inside/outside gap). High score = strong buffering."
-      )
-    )
-  ),
-  F = list(
-    code = "F",
-    name_fr = "Fertilit\u00e9 des Sols",
-    name_en = "Soil Fertility",
-    icon = "globe-americas",
-    color = "#8B4513",
-    indicators = c("F1", "F2"),
-    column_names = c("indicateur_f2_erosion", "indicateur_f1_fertilite"),
-    indicator_labels = list(
-      F1 = list(fr = "Risque d'\u00e9rosion", en = "Erosion Risk"),
-      F2 = list(fr = "Fertilit\u00e9 des sols", en = "Soil Fertility")
-    ),
-    indicator_tooltips = list(
-      F1 = list(
-        fr = "Risque d'\u00e9rosion des sols bas\u00e9 sur la pente, le type de sol et la couverture v\u00e9g\u00e9tale. Score \u00e9lev\u00e9 = faible risque.",
-        en = "Soil erosion risk based on slope, soil type and vegetation cover. High score = low risk."
-      ),
-      F2 = list(
-        fr = "Potentiel de fertilit\u00e9 des sols bas\u00e9 sur les caract\u00e9ristiques p\u00e9dologiques (texture, profondeur, mati\u00e8re organique).",
-        en = "Soil fertility potential based on pedological characteristics (texture, depth, organic matter)."
-      )
-    )
-  ),
-  L = list(
-    code = "L",
-    name_fr = "Paysage",
-    name_en = "Landscape",
-    icon = "image-fill",
-    color = "#32CD32",
-    indicators = c("L1", "L2", "L3"),
-    column_names = c("indicateur_l2_fragmentation", "indicateur_l1_sylvosphere", "indicateur_l3_het_spectrale"),
-    indicator_labels = list(
-      L1 = list(fr = "Sylvosph\u00e8re (effet lisi\u00e8re)", en = "Sylvosphere (Edge Effect)"),
-      L2 = list(fr = "Fragmentation paysag\u00e8re", en = "Landscape Fragmentation"),
-      L3 = list(fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale (\u03b2)", en = "Spectral Heterogeneity (\u03b2)")
-    ),
-    indicator_tooltips = list(
-      L1 = list(
-        fr = "Proportion de la parcelle sous influence des lisi\u00e8res (sylvosph\u00e8re). Les lisi\u00e8res favorisent certaines esp\u00e8ces mais fragmentent l'habitat int\u00e9rieur.",
-        en = "Proportion of parcel under edge influence (sylvosphere). Edges favor some species but fragment interior habitat."
-      ),
-      L2 = list(
-        fr = "Niveau de fragmentation du paysage forestier environnant. Bas\u00e9 sur la taille et la connectivit\u00e9 des massifs forestiers proches.",
-        en = "Fragmentation level of surrounding forest landscape. Based on size and connectivity of nearby forest patches."
-      ),
-      L3 = list(
-        fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale \u03b2 (turnover Bray-Curtis) issue de biodivMapR sur Sentinel-2 : variation de composition des \u00ab esp\u00e8ces spectrales \u00bb entre fen\u00eatres, proxy de diversit\u00e9 paysag\u00e8re. Distinct de L2 (fragmentation structurale). \u00c0 valider terrain.",
-        en = "Spectral \u03b2-heterogeneity (Bray-Curtis turnover) from biodivMapR on Sentinel-2: compositional turnover of 'spectral species' between windows, a landscape-diversity proxy. Distinct from L2 (structural fragmentation). To be validated in the field."
-      )
-    )
-  ),
-  T = list(
-    code = "T",
-    name_fr = "Dynamique Temporelle",
-    name_en = "Temporal Dynamics",
-    icon = "clock-fill",
-    color = "#FFD700",
-    indicators = c("T1", "T2", "T3"),
-    column_names = c("indicateur_t1_anciennete", "indicateur_t2_changement",
-                     "indicateur_t3_coupes_rases"),
-    indicator_labels = list(
-      T1 = list(fr = "Anciennet\u00e9 foresti\u00e8re", en = "Forest Age"),
-      T2 = list(fr = "Taux de changement", en = "Change Rate"),
-      T3 = list(fr = "Coupes rases", en = "Clear-cuts")
-    ),
-    indicator_tooltips = list(
-      T1 = list(
-        fr = "Anciennet\u00e9 de l'\u00e9tat bois\u00e9 depuis les cartes de Cassini (XVIIIe si\u00e8cle). Les for\u00eats anciennes abritent une biodiversit\u00e9 sp\u00e9cifique.",
-        en = "Age of wooded state since Cassini maps (18th century). Ancient forests harbor specific biodiversity."
-      ),
-      T2 = list(
-        fr = "Taux de changement de la couverture foresti\u00e8re sur les 30 derni\u00e8res ann\u00e9es. Valeurs positives = extension, n\u00e9gatives = r\u00e9gression.",
-        en = "Rate of forest cover change over the last 30 years. Positive values = expansion, negative = regression."
-      ),
-      T3 = list(
-        fr = "Pression de coupe rase d\u00e9tect\u00e9e par radar Sentinel-1 (SUFOSAT, CNES/CESBIO). Indicateur invers\u00e9 : plus de coupe r\u00e9cente = score plus bas.",
-        en = "Clear-cut pressure detected by Sentinel-1 radar (SUFOSAT, CNES/CESBIO). Inverted indicator: more recent cutting = lower score."
-      )
-    )
-  ),
-  R = list(
-    code = "R",
-    name_fr = "Risques & R\u00e9silience",
-    name_en = "Risks & Resilience",
-    icon = "exclamation-triangle-fill",
-    color = "#DC143C",
-    indicators = c("R1", "R2", "R3", "R4", "R5", "R6", "R7"),
-    column_names = c("indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement", "indicateur_r5_deperissement",
-                     "indicateur_r6_sensibilite", "indicateur_r7_gel"),
-    indicator_labels = list(
-      R1 = list(fr = "Risque incendie", en = "Fire Risk"),
-      R2 = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
-      R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
-      R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
-      R5 = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback"),
-      R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
-      R7 = list(fr = "Risque de gel tardif", en = "Late-frost risk")
-    ),
-    indicator_tooltips = list(
-      R1 = list(
-        fr = "Susceptibilit\u00e9 au feu bas\u00e9e sur le climat, la v\u00e9g\u00e9tation inflammable et l'historique des incendies. Score \u00e9lev\u00e9 = faible risque.",
-        en = "Fire susceptibility based on climate, flammable vegetation and fire history. High score = low risk."
-      ),
-      R2 = list(
-        fr = "Vuln\u00e9rabilit\u00e9 aux temp\u00eates bas\u00e9e sur l'exposition, la hauteur des arbres et les vents dominants. Score \u00e9lev\u00e9 = faible risque.",
-        en = "Storm vulnerability based on exposure, tree height and prevailing winds. High score = low risk."
-      ),
-      R3 = list(
-        fr = "Sensibilit\u00e9 \u00e0 la s\u00e9cheresse (indice SPEI). Bas\u00e9 sur le bilan hydrique et les projections climatiques. Score \u00e9lev\u00e9 = faible risque.",
-        en = "Drought sensitivity (SPEI index). Based on water balance and climate projections. High score = low risk."
-      ),
-      R4 = list(
-        fr = "Pression de la faune sauvage (cervid\u00e9s) sur la r\u00e9g\u00e9n\u00e9ration foresti\u00e8re. Bas\u00e9 sur les donn\u00e9es cyn\u00e9g\u00e9tiques. Score \u00e9lev\u00e9 = faible pression.",
-        en = "Wildlife pressure (deer) on forest regeneration. Based on hunting data. High score = low pressure."
-      ),
-      R5 = list(
-        fr = "D\u00e9p\u00e9rissement d\u00e9tect\u00e9 par FORDEAD (r\u00e9sineux) ou RECONFORT (feuillus), pond\u00e9r\u00e9 par la fiabilit\u00e9 ONF/DSF 2024. NA hors zone de validit\u00e9 ou sans alerte. Score \u00e9lev\u00e9 = faible d\u00e9p\u00e9rissement.",
-        en = "Dieback detected by FORDEAD (conifers) or RECONFORT (broadleaves), weighted by ONF/DSF 2024 reliability. NA outside the validity zone or without alerts. High score = low dieback."
-      ),
-      R6 = list(
-        fr = "Sensibilit\u00e9 du microclimat \u00e0 la canicule (\u00e9cart ann\u00e9e moyenne / caniculaire, microclimf). Score \u00e9lev\u00e9 = microclimat robuste, peu sensible aux extr\u00eames.",
-        en = "Microclimate sensitivity to heatwaves (average vs heatwave year gap, microclimf). High score = robust microclimate, low sensitivity to extremes."
-      ),
-      R7 = list(
-        fr = "Risque de gel tardif apr\u00e8s d\u00e9bourrement (gel\u00e9es post-d\u00e9bourrement, Tmin meteoland/SAFRAN \u2192 MNT). Contexte r\u00e9gional NDP 1. Score \u00e9lev\u00e9 = FAIBLE risque de gel.",
-        en = "Late-frost risk after budburst (post-budburst frosts, Tmin meteoland/SAFRAN \u2192 DEM). Regional NDP-1 context. High score = LOW frost risk."
-      )
-    )
-  ),
-  S = list(
-    code = "S",
-    name_fr = "Social & R\u00e9cr\u00e9atif",
-    name_en = "Social & Recreational",
-    icon = "people-fill",
-    color = "#FF69B4",
-    indicators = c("S1", "S2", "S3"),
-    column_names = c("indicateur_s1_routes", "indicateur_s2_bati", "indicateur_s3_population"),
-    indicator_labels = list(
-      S1 = list(fr = "Distance aux routes", en = "Road Distance"),
-      S2 = list(fr = "Distance aux b\u00e2timents", en = "Building Distance"),
-      S3 = list(fr = "Proximit\u00e9 population", en = "Population Proximity")
-    ),
-    indicator_tooltips = list(
-      S1 = list(
-        fr = "Distance moyenne aux routes (BD TOPO). Une distance faible facilite l'acc\u00e8s mais peut augmenter les perturbations.",
-        en = "Average distance to roads (BD TOPO). Low distance facilitates access but may increase disturbance."
-      ),
-      S2 = list(
-        fr = "Distance moyenne aux b\u00e2timents (BD TOPO). Indicateur de proximit\u00e9 urbaine et de pression anthropique potentielle.",
-        en = "Average distance to buildings (BD TOPO). Indicator of urban proximity and potential human pressure."
-      ),
-      S3 = list(
-        fr = "Population dans un rayon de 10 km. Mesure le potentiel d'usage r\u00e9cr\u00e9atif et la pression sociale sur la for\u00eat.",
-        en = "Population within 10 km radius. Measures recreational use potential and social pressure on the forest."
-      )
-    )
-  ),
-  P = list(
-    code = "P",
-    name_fr = "Production",
-    name_en = "Production",
-    icon = "box-seam-fill",
-    color = "#006400",
-    indicators = c("P1", "P2", "P3"),
-    column_names = c("indicateur_p1_volume", "indicateur_p2_station", "indicateur_p3_qualite_bois"),
-    indicator_labels = list(
-      P1 = list(fr = "Volume de bois (m\u00b3/ha)", en = "Timber Volume (m\u00b3/ha)"),
-      P2 = list(fr = "Productivit\u00e9", en = "Productivity"),
-      P3 = list(fr = "Qualit\u00e9 du bois", en = "Timber Quality")
-    ),
-    indicator_tooltips = list(
-      P1 = list(
-        fr = "Volume de bois sur pied estim\u00e9 (m\u00b3/ha). Calcul\u00e9 \u00e0 partir de donn\u00e9es LiDAR ou de tarifs de cubage. Valeurs typiques : 100-400 m\u00b3/ha.",
-        en = "Estimated standing timber volume (m\u00b3/ha). Calculated from LiDAR data or volume tables. Typical values: 100-400 m\u00b3/ha."
-      ),
-      P2 = list(
-        fr = "Classe de fertilit\u00e9 de la station foresti\u00e8re. Bas\u00e9e sur le sol, le climat et la croissance potentielle des arbres.",
-        en = "Forest site fertility class. Based on soil, climate and potential tree growth."
-      ),
-      P3 = list(
-        fr = "Qualit\u00e9 potentielle du bois bas\u00e9e sur les essences pr\u00e9sentes et les conditions de croissance.",
-        en = "Potential timber quality based on species present and growing conditions."
-      )
-    )
-  ),
-  E = list(
-    code = "E",
-    name_fr = "\u00c9nergie & Climat",
-    name_en = "Energy & Climate",
-    icon = "lightning-fill",
-    color = "#FF8C00",
-    indicators = c("E1", "E2"),
-    column_names = c("indicateur_e1_bois_energie", "indicateur_e2_evitement"),
-    indicator_labels = list(
-      E1 = list(fr = "Bois-\u00e9nergie", en = "Wood Energy"),
-      E2 = list(fr = "\u00c9vitement CO2", en = "CO2 Avoidance")
-    ),
-    indicator_tooltips = list(
-      E1 = list(
-        fr = "Potentiel de production de bois-\u00e9nergie (MWh/ha/an). Bas\u00e9 sur la biomasse disponible et l'accessibilit\u00e9.",
-        en = "Wood energy production potential (MWh/ha/year). Based on available biomass and accessibility."
-      ),
-      E2 = list(
-        fr = "\u00c9missions de CO2 \u00e9vit\u00e9es par substitution aux \u00e9nergies fossiles (tCO2/ha/an). Contribution \u00e0 la transition \u00e9nerg\u00e9tique.",
-        en = "CO2 emissions avoided by substituting fossil fuels (tCO2/ha/year). Contribution to energy transition."
-      )
-    )
-  ),
-  N = list(
-    code = "N",
-    name_fr = "Naturalit\u00e9",
-    name_en = "Naturalness",
-    icon = "flower1",
-    color = "#2E8B57",
-    indicators = c("N1", "N2", "N3"),
-    column_names = c("indicateur_n1_distance", "indicateur_n2_continuite", "indicateur_n3_naturalite"),
-    indicator_labels = list(
-      N1 = list(fr = "Distance infrastructures", en = "Infrastructure Distance"),
-      N2 = list(fr = "Continuit\u00e9 foresti\u00e8re", en = "Forest Continuity"),
-      N3 = list(fr = "Score de naturalit\u00e9", en = "Naturalness Score")
-    ),
-    indicator_tooltips = list(
-      N1 = list(
-        fr = "\u00c9loignement des infrastructures humaines (routes, b\u00e2timents). Une grande distance indique un environnement plus naturel.",
-        en = "Distance from human infrastructure (roads, buildings). Greater distance indicates more natural environment."
-      ),
-      N2 = list(
-        fr = "Continuit\u00e9 spatio-temporelle du couvert forestier. Les for\u00eats continues depuis longtemps ont une plus grande naturalit\u00e9.",
-        en = "Spatio-temporal continuity of forest cover. Forests continuous for longer have greater naturalness."
-      ),
-      N3 = list(
-        fr = "Score composite de naturalit\u00e9 int\u00e9grant structure, continuit\u00e9, \u00e9loignement et perturbations anthropiques.",
-        en = "Composite naturalness score integrating structure, continuity, remoteness and human disturbance."
-      )
-    )
-  )
-)
+delayedAssign("INDICATOR_FAMILIES", .build_indicator_families())
 
 
 #' Get all indicator family codes

@@ -290,8 +290,12 @@ test_that("get_all_indicator_codes returns all 34 indicators", {
 
   expect_type(codes, "character")
   # 31 base + B4 + L3 (spec 028) + R5 + T3 (spec 030) + A3/A4/W4/R6 (microclimat,
-  # spec 027) + R7 gel tardif (spec 027 P4) = 40
-  expect_length(codes, 40)
+  # spec 027) + R7 gel tardif (spec 027 P4) + A5 rafraîchissement urbain
+  # (spec 032) = 41.
+  # A5 manquait tant que `app_config.R` portait sa propre copie de la table :
+  # l'indicateur était calculé puis filtré à l'affichage. Le compte vient
+  # désormais du cœur.
+  expect_length(codes, 41)
 })
 
 test_that("get_all_indicator_codes contains expected indicators", {
@@ -390,9 +394,9 @@ test_that("get_column_family_map maps short indicator codes to family codes", {
 test_that("get_column_family_map contains both long and short forms", {
   map <- nemetonshiny:::get_column_family_map()
 
-  # Should have 40 column names + 40 indicator codes = 80 entries
-  # (incl. B4/L3, R5, T3, A3/A4/W4/R6, R7)
-  expect_equal(length(map), 80)
+  # 41 column names + 41 indicator codes = 82 entries
+  # (incl. B4/L3, R5, T3, A3/A4/W4/R6, R7, et A5 depuis le dé-fork)
+  expect_equal(length(map), 82)
 })
 
 test_that("get_column_family_map values are valid family codes", {

@@ -1,3 +1,85 @@
+# nemetonshiny 0.126.2.9001 (2026-08-17)
+
+Implémente `specs/brief-nemetonshiny-trois-derniers-points.md`. Plancher relevé à
+`nemeton (>= 0.175.0)` et `foretaccess (>= 2.4.0)`.
+
+### Fixed — `INDICATOR_FAMILIES` n'est plus forké (le point bloquant)
+
+`app_config.R` portait sa propre copie de la table des 12 familles — 368 lignes.
+Cette copie avait dérivé de deux façons qui atteignaient l'écran :
+
+**A5 manquait de la famille A.** L'indicateur était calculé par
+`service_compute.R` puis **filtré à l'affichage** : tout ce qui avait été livré
+pour le rafraîchissement urbain, y compris son statut de cause, restait
+invisible dans l'onglet Air.
+
+**Le libellé de la carte d'érosion était « F1 - Fertilité des sols ».**
+L'appariement code ↔ colonne est **positionnel** et croisé pour F et L : `F1`
+pointe sur `indicateur_f2_erosion`. Il existait **trois** copies des libellés —
+le fork, ses `indicator_labels`, et les clés i18n `indicator_<code>` — et c'est
+la troisième qui gagnait, écrite selon la sémantique du *code* et non de la
+*colonne*. Le libellé affiché dépendait donc de la source lue.
+
+`.build_indicator_families()` assemble désormais la table depuis
+`nemeton::indicator_families()` et `nemeton::indicator_labels()`, qui apparient
+code, colonne et libellé **explicitement, ligne par ligne**. 368 lignes
+remplacées par 81, et un `delayedAssign()` garde les douze consommateurs
+inchangés — `get_family_config()`, `mod_family`, `utils_theme`, `service_export`,
+`llm_prompts`, `mod_synthesis`. Le seul delta structurel est l'ajout d'A5.
+
+`clean_indicator_label()` lit maintenant le libellé du cœur **avant** la clé
+i18n, qui devient un repli. `indicateur_f2_erosion` sort « F1 - Risque
+d'érosion » et A5 se résout au lieu de retomber sur son nom de colonne humanisé.
+
+`test-indicator-families-defork.R` (237 assertions) verrouille l'identité
+app ↔ cœur famille par famille et interdit qu'un littéral revienne.
+
+### Added — Les verdicts d'applicabilité, affichés avant le calcul
+
+`R/service_applicabilite.R` consomme `nemeton::r5_applicabilite()` et
+`nemeton::a5_applicabilite()` (cœur v0.175.0) et rend un badge à trois niveaux
+dans l'onglet « Sources & paramètres » — là où il sert, avant de lancer quoi que
+ce soit. Le calcul est court-circuité sur `not_applicable`, `no_species` et
+`no_coverage` : inutile d'ouvrir une connexion monitoring pour aboutir à une
+colonne de `NA`.
+
+**`eligible_fordead_out_of_calibration` n'est pas dans cette liste, et c'est
+délibéré.** La zone de validation de R5 est celle du rapport ONF/DSF 2024 ;
+aucun des projets locaux n'y est, alors que Fordead et Dabo sont à 100 % de
+sapin. Hors de cette zone un sapin pectiné reste un sapin pectiné : le calcul
+tourne, seules les classes de confiance sont extrapolées. Le verdict est rendu
+en **information neutre** et ne bloque rien — le contraire priverait
+l'utilisateur d'un signal exploitable.
+
+Un verdict inconnu (cœur sans l'accesseur) ne saute jamais rien : ne pas savoir
+n'est pas une raison de sauter, le coût d'un calcul inutile étant une colonne de
+`NA` quand celui d'un saut erroné est un indicateur perdu.
+
+`a5_applicabilite()` reçoit le raster LST du cache quand il existe : sans lui le
+cœur répond à l'échelle de l'emprise — une requête STAC connaît des bounding
+boxes, pas des pixels — et `eligible_partial` devient inatteignable.
+
+11 clés i18n FR/EN, plus un format de compte : « (7 UGF sur 30) » est
+actionnable là où « partiel » ne l'est pas.
+
+### Added — Un R5 vide dit pourquoi
+
+Trois clés (`r5_skipped_no_fordead`, `_no_reconfort`, `_no_method`) branchent le
+vocabulaire `r5_status` du cœur sur le bandeau partagé. Le point 2 du brief
+demandait de retirer `service_r5.R:117` (`out$r5_status <- NULL`) : **c'était
+déjà fait** en v0.126.0 — cette ligne est la seconde d'un renommage vers
+`.r5_status`, pas un rejet. La retirer aurait laissé les deux colonnes.
+
+### Known — Le cœur croise les libellés de la famille L
+
+Le dé-fork corrige F mais **hérite d'une incohérence du cœur sur L** :
+`indicator_labels()` apparie `L1` avec `indicateur_l2_fragmentation` et le
+libellé « Sylvosphère (effet lisière) ». La carte de fragmentation sort donc
+libellée « sylvosphère », et réciproquement. L'app affichait déjà ce
+croisement — il n'est pas introduit ici — mais il n'a plus qu'un seul endroit
+où être corrigé, côté cœur.
+
+
 # nemetonshiny 0.126.2 (2026-08-17)
 
 ### Changed — Les seuils du Suivi sanitaire passent dans les paramètres

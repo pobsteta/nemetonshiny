@@ -30,6 +30,36 @@ add_r5_to_indicators <- function(base_sf, project) {
   zone_id <- suppressWarnings(as.integer(project$metadata$monitoring_zone_id))
   if (length(zone_id) != 1L || is.na(zone_id)) return(base_sf)
 
+  # Court-circuit sur verdict d'applicabilite (coeur v0.175.0) : inutile
+  # d'ouvrir une connexion monitoring et de router des alertes pour aboutir a
+  # une colonne de NA.
+  #
+  # `skip = "not_applicable"` SEUL, et non le jeu generique. Deux exclusions
+  # deliberees :
+  #
+  #   * `no_species` - cette fonction route chaque UGF par le TYPE D'ALERTE qui
+  #     l'intersecte (une alerte FORDEAD = resineux, RECONFORT = feuillus), pas
+  #     par une colonne d'essence : elle marche donc tres bien sur des unites
+  #     dont l'essence est inconnue, ce qui est le cas par defaut. Sauter la
+  #     dessus desactivait en silence un chemin qui fonctionne - un test l'a
+  #     rattrape.
+  #   * `eligible_fordead_out_of_calibration` - hors zone de validation
+  #     ONF/DSF, un sapin pectine reste un sapin pectine : le calcul tourne,
+  #     seules les classes de confiance sont extrapolees.
+  #
+  # Un verdict inconnu (coeur sans l'accesseur) ne saute jamais rien.
+  verdict <- applicabilite_safe("r5_applicabilite", units = base_sf)
+  if (applicabilite_skip(verdict, skip = "not_applicable")) {
+    cli::cli_alert_info(
+      "R5 : non applicable ({verdict$status}) - calcul non lanc\u00e9")
+    # Prefixe `appl_` pour que la cle construite par `indicator_na_banner()`
+    # (`<code>_<status>`) tombe sur les traductions d'applicabilite deja
+    # ajoutees : `r5_appl_not_applicable`, `r5_appl_no_species`. Pas de
+    # vocabulaire parallele a maintenir.
+    base_sf$.r5_status <- rep(paste0("appl_", verdict$status), nrow(base_sf))
+    return(base_sf)
+  }
+
   con <- tryCatch(
     get_monitoring_db_connection(project = project, read_only = TRUE),
     error = function(e) NULL)

@@ -914,13 +914,33 @@ clean_indicator_label <- function(col_name, i18n) {
   # Strip _norm suffix for display
   base <- sub("_norm$", "", col_name)
 
-  # Try matching long-form name against INDICATOR_FAMILIES config first
-  # (maps column_names -> short codes -> i18n keys with richer labels)
+  # Resolution par la table des familles, qui vient du coeur depuis le de-fork
+  # (`.build_indicator_families()`). L'ordre des sources compte :
+  #
+  # 1. `fam$indicator_labels[[code]]` - le coeur apparie colonne, code et
+  #    libelle explicitement, ligne par ligne.
+  # 2. la cle i18n `indicator_<code>` - conservee en repli pour les codes que le
+  #    coeur ne documente pas.
+  #
+  # L'inverse (i18n d'abord) etait le bug : l'appariement code <-> colonne est
+  # POSITIONNEL et croise pour F et L, `F1` pointant sur
+  # `indicateur_f2_erosion`. Les cles i18n etant ecrites selon la semantique du
+  # CODE et non de la colonne, la carte d'erosion sortait libellee
+  # « F1 - Fertilite des sols ». Le libelle doit decrire la colonne qu'on
+  # affiche, pas le rang qu'elle occupe.
+  lang <- i18n$language %||% "fr"
   for (fam in INDICATOR_FAMILIES) {
     if (!is.null(fam$column_names) && base %in% fam$column_names) {
-      idx <- which(fam$column_names == base)
+      idx <- which(fam$column_names == base)[1]
       if (idx <= length(fam$indicators)) {
         code <- fam$indicators[idx]
+
+        lbl <- fam$indicator_labels[[code]]
+        txt <- lbl[[lang]] %||% lbl[["fr"]] %||% lbl[["en"]]
+        if (!is.null(txt) && !is.na(txt) && nzchar(txt)) {
+          return(paste0(code, " - ", txt))
+        }
+
         short_key <- paste0("indicator_", code)
         if (i18n$has(short_key)) {
           return(paste0(code, " - ", i18n$t(short_key)))

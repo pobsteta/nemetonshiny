@@ -894,6 +894,119 @@ TRANSLATIONS <- list(
     fr = "Indicateur non disponible sur cette emprise.",
     en = "Indicator not available over this area."
   ),
+  # Verdicts d'applicabilite (coeur v0.175.0). Cles stables cote coeur,
+  # traduction ici. `%d sur %d` est ajoute par `applicabilite_message()`.
+  appl_count_fmt = list(
+    fr = "(%d UGF sur %d)",
+    en = "(%d of %d units)"
+  ),
+  r5_appl_eligible_fordead = list(
+    fr = "D\u00e9p\u00e9rissement \u00e9valuable par FORDEAD sur ce peuplement.",
+    en = "Dieback assessable by FORDEAD on this stand."
+  ),
+  r5_appl_eligible_fordead_out_of_calibration = list(
+    fr = paste0(
+      "\u00c9valuable par FORDEAD, mais hors de la zone de validation ONF/DSF ",
+      "(Vosges, Jura, Ain, Savoie, Haute-Savoie) : le calcul tourne et le ",
+      "signal reste exploitable, seules les classes de confiance sont ",
+      "extrapol\u00e9es."
+    ),
+    en = paste0(
+      "Assessable by FORDEAD, but outside the ONF/DSF validation area ",
+      "(Vosges, Jura, Ain, Savoie, Haute-Savoie): the computation runs and the ",
+      "signal remains usable, only the confidence classes are extrapolated."
+    )
+  ),
+  r5_appl_eligible_reconfort = list(
+    fr = "D\u00e9p\u00e9rissement \u00e9valuable par RECONFORT (peuplement feuillu).",
+    en = "Dieback assessable by RECONFORT (broadleaf stand)."
+  ),
+  r5_appl_no_species = list(
+    fr = paste0(
+      "Essence inconnue sur ce peuplement : ni FORDEAD ni RECONFORT ne peut ",
+      "\u00eatre choisi. Renseignez l'essence ou activez la BD For\u00eat."
+    ),
+    en = paste0(
+      "Unknown species on this stand: neither FORDEAD nor RECONFORT can be ",
+      "selected. Set the species or enable BD For\u00eat."
+    )
+  ),
+  r5_appl_not_applicable = list(
+    fr = "R5 ne s'applique pas \u00e0 ce peuplement \u2014 ce n'est pas une erreur.",
+    en = "R5 does not apply to this stand \u2014 this is not an error."
+  ),
+  r5_appl_error = list(
+    fr = "L'applicabilit\u00e9 de R5 n'a pas pu \u00eatre \u00e9valu\u00e9e.",
+    en = "R5 applicability could not be assessed."
+  ),
+  a5_appl_eligible = list(
+    fr = "Couverture LST disponible sur l'emprise.",
+    en = "LST coverage available over the area."
+  ),
+  a5_appl_eligible_partial = list(
+    fr = "Couverture LST partielle : certaines UGF resteront sans valeur.",
+    en = "Partial LST coverage: some units will stay without a value."
+  ),
+  a5_appl_no_coverage = list(
+    fr = paste0(
+      "Aucune sc\u00e8ne LST sur cette emprise : Thermocity ne couvre que ",
+      "quelques m\u00e9tropoles. A5 restera vide \u2014 ce n'est pas une erreur."
+    ),
+    en = paste0(
+      "No LST scene over this area: Thermocity only covers a few metropolitan ",
+      "areas. A5 will stay empty \u2014 this is not an error."
+    )
+  ),
+  a5_appl_no_reference = list(
+    fr = paste0(
+      "Pas d'anneau de r\u00e9f\u00e9rence exploitable autour des UGF : A5 compare ",
+      "la temp\u00e9rature de l'unit\u00e9 \u00e0 son voisinage."
+    ),
+    en = paste0(
+      "No usable reference ring around the units: A5 compares a unit's ",
+      "temperature with its surroundings."
+    )
+  ),
+  a5_appl_no_credentials = list(
+    fr = "Configurez vos identifiants Theia pour \u00e9valuer la couverture LST.",
+    en = "Configure your Theia credentials to assess LST coverage."
+  ),
+  a5_appl_error = list(
+    fr = "L'applicabilit\u00e9 de A5 n'a pas pu \u00eatre \u00e9valu\u00e9e.",
+    en = "A5 applicability could not be assessed."
+  ),
+  # Causes nommees d'un R5 vide (`r5_status`, spec 008). Meme mecanique que
+  # `a5_skipped_no_lst` : la cle est `<code>_<status>`.
+  r5_skipped_no_fordead = list(
+    fr = paste0(
+      "Aucun diagnostic FORDEAD disponible : lancez-le depuis l'onglet Suivi ",
+      "sanitaire, ou rattachez une zone de suivi \u00e0 ce projet."
+    ),
+    en = paste0(
+      "No FORDEAD diagnosis available: run one from the Health monitoring tab, ",
+      "or attach a monitoring zone to this project."
+    )
+  ),
+  r5_skipped_no_reconfort = list(
+    fr = paste0(
+      "Aucune alerte RECONFORT sur cette emprise : le d\u00e9p\u00e9rissement des ",
+      "feuillus n'a pas pu \u00eatre \u00e9valu\u00e9."
+    ),
+    en = paste0(
+      "No RECONFORT alert over this area: broadleaf dieback could not be ",
+      "assessed."
+    )
+  ),
+  r5_skipped_no_method = list(
+    fr = paste0(
+      "Ni FORDEAD ni RECONFORT ne s'appliquent \u00e0 ce peuplement : R5 reste ",
+      "vide, ce n'est pas une erreur."
+    ),
+    en = paste0(
+      "Neither FORDEAD nor RECONFORT applies to this stand: R5 stays empty, ",
+      "this is not an error."
+    )
+  ),
   # Provenance du NDVI (brief C2). Seul le repli non calibr\u00e9 est comment\u00e9 : une
   # source nominale n'a pas \u00e0 s'annoncer.
   c2_wms_irc = list(

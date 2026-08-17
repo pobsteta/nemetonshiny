@@ -25,6 +25,101 @@
 NULL
 
 
+#' Render an applicability verdict as a one-line badge
+#'
+#' @description
+#' Three levels, same vocabulary as the source statuses: green when the
+#' indicator applies, neutral grey when it legitimately will not (or will with
+#' extrapolated confidence), amber when the question could not be answered.
+#'
+#' A legitimate non-applicability is **not** a warning: a forest outside
+#' Thermocity coverage has nothing to fix.
+#'
+#' @param msg List from [applicabilite_message()], or `NULL`.
+#'
+#' @return A `div`, or `NULL` when there is nothing to say.
+#'
+#' @noRd
+.applicabilite_badge <- function(msg) {
+  if (is.null(msg)) return(NULL)
+
+  spec <- switch(
+    msg$level,
+    ok    = list(cls = "small mb-2", icon = "check-circle-fill",
+                 icls = "text-success me-1"),
+    error = list(cls = "small text-warning mb-2",
+                 icon = "exclamation-triangle-fill", icls = "me-1"),
+    list(cls = "small text-muted mb-2", icon = "info-circle-fill",
+         icls = "text-info me-1")
+  )
+
+  htmltools::div(
+    class = spec$cls,
+    bsicons::bs_icon(spec$icon, class = spec$icls),
+    msg$text
+  )
+}
+
+
+#' Applicability verdict for R5 on the current project
+#'
+#' @description
+#' Best-effort: without loaded units, or with a core that does not expose the
+#' accessor, we say nothing rather than guess. `NULL` means "unknown", never
+#' "not applicable".
+#'
+#' @param app_state reactiveValues.
+#' @param i18n Translator object.
+#'
+#' @return List from [applicabilite_message()], or `NULL`.
+#'
+#' @noRd
+.applicabilite_msg_r5 <- function(app_state, i18n) {
+  units <- app_state$current_project$indicators_sf
+  if (is.null(units) || !inherits(units, "sf") || nrow(units) == 0L) return(NULL)
+
+  bd <- tryCatch({
+    pth <- file.path(app_state$current_project$path,
+                     "cache", "layers", "bdforet.gpkg")
+    if (file.exists(pth)) sf::st_read(pth, quiet = TRUE) else NULL
+  }, error = function(e) NULL)
+
+  v <- applicabilite_safe("r5_applicabilite", units = units, bdforet = bd)
+  applicabilite_message("r5", v, i18n)
+}
+
+
+#' Applicability verdict for A5 on the current project
+#'
+#' @description
+#' The cached LST raster is passed when it exists: without it the core answers
+#' at the scale of the AOI - a STAC query knows bounding boxes, not pixels - and
+#' `eligible_partial` becomes unreachable.
+#'
+#' @param app_state reactiveValues.
+#' @param i18n Translator object.
+#'
+#' @return List from [applicabilite_message()], or `NULL`.
+#'
+#' @noRd
+.applicabilite_msg_a5 <- function(app_state, i18n) {
+  units <- app_state$current_project$indicators_sf
+  if (is.null(units) || !inherits(units, "sf") || nrow(units) == 0L) return(NULL)
+
+  lst <- tryCatch({
+    dir <- file.path(app_state$current_project$path, "cache", "layers", "lst")
+    tifs <- if (dir.exists(dir)) list.files(dir, "\\.tif$", full.names = TRUE)
+            else character(0)
+    if (length(tifs)) terra::rast(tifs[1]) else NULL
+  }, error = function(e) NULL)
+
+  buffer <- app_state$current_project$metadata$lst_urbain$buffer_m %||% 500
+  v <- applicabilite_safe("a5_applicabilite", units = units, lst = lst,
+                          buffer_m = buffer)
+  applicabilite_message("a5", v, i18n)
+}
+
+
 #' Optional sources configuration UI
 #'
 #' @param id Character. Module namespace ID.
@@ -217,6 +312,11 @@ mod_sources_config_server <- function(id, app_state) {
       src_status <- tryCatch(
         load_source_status(get_project_path(proj$id), "theia_lst"),
         error = function(e) NULL)
+
+      # Verdict d'applicabilite A5, complementaire du statut de source : le
+      # statut dit si le catalogue repond, le verdict dit si l'indicateur a un
+      # sens sur CES unites.
+      a5_msg <- .applicabilite_msg_a5(app_state, i18n)
       msg <- if (enabled) source_status_message(src_status, i18n) else NULL
 
       status <- if (!enabled) {
@@ -251,6 +351,7 @@ mod_sources_config_server <- function(id, app_state) {
       htmltools::div(
         class = "mb-3 p-2 border rounded h-100",
         header, hint, status,
+        .applicabilite_badge(a5_msg),
         shiny::checkboxInput(ns("lst_enabled"), i18n$t("lst_enable"),
                              value = enabled),
         shiny::sliderInput(
@@ -312,9 +413,15 @@ mod_sources_config_server <- function(id, app_state) {
 
       fp <- project_fast_params(app_state$current_project$metadata)
 
+      # Verdict d'applicabilite de R5, AVANT calcul : c'est ici qu'il sert.
+      # Decouvrir apres coup qu'un peuplement n'est pas evaluable, c'est avoir
+      # lance FORDEAD pour rien.
+      r5_msg <- .applicabilite_msg_r5(app_state, i18n)
+
       htmltools::div(
         class = "mt-3 p-2 border rounded",
         header, hint,
+        .applicabilite_badge(r5_msg),
         bslib::layout_columns(
           col_widths = c(3, 3, 3, 3),
           shiny::sliderInput(
