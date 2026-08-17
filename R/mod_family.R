@@ -768,7 +768,9 @@ strip_ansi <- function(text) {
 #' @noRd
 indicator_na_banner <- function(sf_data, ind_col, i18n) {
   vals <- sf_data[[ind_col]]
-  if (is.null(vals) || length(vals) == 0L || !all(is.na(vals))) return(NULL)
+  if (is.null(vals) || length(vals) == 0L) return(NULL)
+
+  all_na <- all(is.na(vals))
 
   key <- NULL
   status_col <- .indicator_status_col(ind_col)
@@ -783,6 +785,14 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
       if (isTRUE(i18n$has(candidate))) key <- candidate
     }
   }
+
+  # Deux motifs d'affichage, pas un. Le premier est l'absence de valeur (A5 hors
+  # couverture). Le second est une valeur qu'il faut lire avec une reserve : un
+  # NDVI derive d'une ortho d'affichage se calcule tres bien, il ne veut
+  # simplement pas dire la meme chose qu'une reflectance calibree. Une
+  # provenance nominale (`c2_s2_l2a`) n'a pas de cle et n'affiche donc rien -
+  # on ne commente que ce qui merite une reserve.
+  if (is.null(key) && !all_na) return(NULL)
 
   htmltools::div(
     class = "small text-muted fst-italic px-1 pb-1",

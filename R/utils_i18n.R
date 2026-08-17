@@ -894,6 +894,20 @@ TRANSLATIONS <- list(
     fr = "Indicateur non disponible sur cette emprise.",
     en = "Indicator not available over this area."
   ),
+  # Provenance du NDVI (brief C2). Seul le repli non calibr\u00e9 est comment\u00e9 : une
+  # source nominale n'a pas \u00e0 s'annoncer.
+  c2_wms_irc = list(
+    fr = paste0(
+      "NDVI d\u00e9riv\u00e9 de l'orthophoto IRC (image d'affichage, non calibr\u00e9e) : ",
+      "aucune s\u00e9rie Sentinel-2 en cache pour ce projet. Valeur indicative, ",
+      "non comparable \u00e0 un NDVI de r\u00e9flectance."
+    ),
+    en = paste0(
+      "NDVI derived from the IRC orthophoto (display image, not calibrated): ",
+      "no Sentinel-2 series cached for this project. Indicative value, not ",
+      "comparable to a reflectance NDVI."
+    )
+  ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
   project_path_label = list(fr = "R\u00e9pertoire de sauvegarde", en = "Storage directory"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),

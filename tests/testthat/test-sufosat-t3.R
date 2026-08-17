@@ -75,13 +75,20 @@ test_that("build_sufosat_layer returns NULL when Theia or AOI is unusable", {
   expect_null(nemetonshiny:::build_sufosat_layer(
     list(enabled = TRUE), proj, aoi = .sufosat_aoi()[0, ]))
 
-  # theia_configure_s3 échoue → NULL (T3 restera NA)
+  # L'acquisition échoue → NULL (T3 restera NA).
+  #
+  # Le mock portait sur `theia_configure_s3()`, que le cœur a déprécié : depuis,
+  # `build_sufosat_layer()` ne l'appelle plus, le mock n'avait plus aucun effet
+  # et le test faisait un vrai appel réseau. Il passait tant que la collection
+  # STAC de `sufosat` était absente du catalogue ; le cœur l'ayant déclarée en
+  # v0.173.1, l'acquisition réussissait et le test tombait. On mocke désormais
+  # le point d'entrée réellement utilisé, ce qui rend le test hermétique.
   testthat::local_mocked_bindings(
-    theia_configure_s3 = function(...) stop("no S3 creds"),
+    load_theia_source = function(...) stop("source injoignable"),
     .package = "nemeton"
   )
-  expect_null(nemetonshiny:::build_sufosat_layer(
-    list(enabled = TRUE), proj, aoi = .sufosat_aoi()))
+  expect_null(suppressWarnings(nemetonshiny:::build_sufosat_layer(
+    list(enabled = TRUE), proj, aoi = .sufosat_aoi())))
 })
 
 # ---------------------------------------------------------------------------

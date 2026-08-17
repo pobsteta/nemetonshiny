@@ -45,6 +45,15 @@ test_that("build_lst_layer fetches via Theia, caches, and reuses cache", {
     },
     .package = "nemeton"
   )
+  # Depuis le brief A5, `build_lst_layer()` interroge le catalogue AVANT de
+  # telecharger et court-circuite quand la source est indisponible. Sans ce
+  # mock, le test partirait sur le reseau et l'AOI factice rendrait
+  # `no_asset_over_aoi` : le telechargement mocke ne serait jamais atteint.
+  testthat::local_mocked_bindings(
+    theia_source_status_safe = function(source_key, aoi) {
+      list(available = TRUE, reason = "ok", n_assets = 3L)
+    }
+  )
 
   # 1er appel : charge la LST + écrit le cache
   s1 <- nemetonshiny:::build_lst_layer(list(enabled = TRUE), proj, aoi = aoi)

@@ -99,7 +99,34 @@ theia_source_status_safe <- function(source_key, aoi) {
   st$available <- isTRUE(st$available)
   st$n_assets <- suppressWarnings(as.integer(st$n_assets %||% 0L))
   if (is.na(st$n_assets)) st$n_assets <- 0L
+
+  # `detail` (v0.174.0) porte le message technique de l'echec : "no STAC API
+  # endpoint configured", le `conditionMessage` de la recherche... C'est ce
+  # qu'un exploitant veut lire, la cause seule ne suffit pas a diagnostiquer.
+  st$detail <- .clean_detail(st$detail)
   st
+}
+
+
+#' Normalise the optional `detail` field
+#'
+#' @description
+#' `detail` arrives as `NA_character_` from the core, as JSON `null` from the
+#' status file, or absent altogether. All three mean "nothing to add" and must
+#' collapse to `NULL` - the caller then falls back to the bare reason. Written
+#' defensively because the three shapes do not compare alike: `is.na()` on a
+#' list returns `NA`, which is not a condition.
+#'
+#' @param detail Whatever was read.
+#'
+#' @return A non-empty character scalar, or `NULL`.
+#'
+#' @noRd
+.clean_detail <- function(detail) {
+  if (is.null(detail)) return(NULL)
+  d <- suppressWarnings(as.character(unlist(detail, use.names = FALSE)))
+  d <- d[!is.na(d) & nzchar(d) & d != "NA"]
+  if (length(d) == 0L) NULL else d[1]
 }
 
 
@@ -145,6 +172,7 @@ save_source_status <- function(project_path, source_key, status) {
     reason = status$reason,
     available = isTRUE(status$available),
     n_assets = suppressWarnings(as.integer(status$n_assets %||% NA_integer_)),
+    detail = status$detail %||% NA_character_,
     checked_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   )
 
@@ -180,6 +208,7 @@ load_source_status <- function(project_path, source_key) {
   st <- all[[source_key]]
   if (is.null(st$reason)) return(NULL)
   st$available <- isTRUE(st$available)
+  st$detail <- .clean_detail(st$detail)
   st
 }
 
@@ -224,7 +253,10 @@ source_status_message <- function(status, i18n) {
     no_credentials = NULL,
     list(
       level = "error",
-      text = sprintf(i18n$t("lst_status_error"), status$reason)
+      # Le `detail` du coeur quand il existe : "no STAC API endpoint
+      # configured" se diagnostique, "error" ne se diagnostique pas.
+      text = sprintf(i18n$t("lst_status_error"),
+                     status$detail %||% status$reason)
     )
   )
 }

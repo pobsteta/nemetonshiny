@@ -1503,6 +1503,9 @@ download_layers_for_parcels <- function(parcels,
   rasters <- list()
   vectors <- list()
   download_warnings <- list()  # Collect download warnings for UI display
+  # Provenance du NDVI : "s2_l2a" (reflectance calibree) ou "wms_irc" (ortho
+  # d'affichage). Un NDVI ne se lit pas sans savoir d'ou il vient.
+  ndvi_provenance <- NULL
 
   total_sources <- length(DATA_SOURCES$rasters) + length(DATA_SOURCES$vectors)
   completed <- 0
@@ -1542,13 +1545,31 @@ download_layers_for_parcels <- function(parcels,
     }
 
     tryCatch({
-      raster_data <- download_raster_source(
-        source_name = source_name,
-        source_config = source,
-        bbox = bbox_buffered,
-        cache_dir = cache_dir,
-        progress_callback = progress_callback
-      )
+      raster_data <- NULL
+
+      # C2 : la serie Sentinel-2 L2A du projet prime sur l'ortho IRC du WMS.
+      # L'ortho n'est pas *fausse*, elle est *non calibree* (8 bits etires pour
+      # l'affichage) - acceptable en repli, pas comme source de reference.
+      if (identical(source_name, "ndvi")) {
+        raster_data <- build_s2_ndvi_layer(cache_dir, aoi = parcels_buffered_wgs84)
+        ndvi_provenance <- if (!is.null(raster_data)) "s2_l2a" else NULL
+      }
+
+      if (is.null(raster_data)) {
+        raster_data <- download_raster_source(
+          source_name = source_name,
+          source_config = source,
+          bbox = bbox_buffered,
+          cache_dir = cache_dir,
+          progress_callback = progress_callback
+        )
+        if (identical(source_name, "ndvi") && !is.null(raster_data)) {
+          ndvi_provenance <- "wms_irc"
+          cli::cli_alert_warning(
+            "C2 : NDVI d\u00e9riv\u00e9 de l'ortho IRC WMS (non calibr\u00e9) - \\
+            aucune s\u00e9rie Sentinel-2 en cache pour ce projet")
+        }
+      }
 
       if (!is.null(raster_data)) {
         rasters[[source_name]] <- raster_data
@@ -1962,6 +1983,7 @@ download_layers_for_parcels <- function(parcels,
       cache_dir = cache_dir,
       chm_source = chm_source,
       chm_pct_masked = chm_pct_masked,
+      ndvi_provenance = ndvi_provenance,
       warnings = download_warnings  # Include download warnings for UI display
     ),
     class = "nemeton_layers"
@@ -3308,6 +3330,103 @@ ndvi_from_irc <- function(irc) {
 }
 
 
+#' Growing-season Sentinel-2 NDVI composite (brief C2)
+#'
+#' @description
+#' The NDVI that fed C2 came from the **IGN IRC orthophoto** served by WMS: an
+#' 8-bit, JPEG-compressed image stretched for *display*, not calibrated
+#' reflectance. On the Fordead project it produced 33.7 % negative pixels and a
+#' median of 0.168 - C2 came out negative on all 30 units, which is physically
+#' impossible under a canopy.
+#'
+#' Every monitored project already caches dozens of **Sentinel-2 L2A** scenes
+#' (fed for FORDEAD): actual atmospherically-corrected surface reflectance. This
+#' builds the index from them instead.
+#'
+#' A **median composite over the growing season** rather than a single date:
+#' one acquisition can be hazy, partly shadowed or simply unlucky, and the
+#' median of several is robust to that in a way a single scene never is. The
+#' index itself is computed by `nemeton::build_index_stack()` - the app composes
+#' dates, it does not compute vegetation indices (rule 1).
+#'
+#' @param cache_dir Character. `<project>/cache/layers`.
+#' @param aoi An sf area of interest, or `NULL`.
+#' @param max_scenes Integer. Cap on the number of scenes stacked, most recent
+#'   first. A whole 2017+ series would be tens of gigabytes for no gain: the
+#'   median stabilises well before that.
+#'
+#' @return A single-layer `SpatRaster` named `ndvi`, or `NULL` when the project
+#'   has no usable Sentinel-2 cache - the caller then falls back to the WMS
+#'   orthophoto.
+#'
+#' @noRd
+build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
+  if (is.null(cache_dir) || !nzchar(cache_dir)) return(NULL)
+
+  s2_dir <- file.path(cache_dir, "sentinel2")
+  scenes <- .scan_s2_cache_scenes(s2_dir)
+  if (is.null(scenes) || nrow(scenes) == 0L) return(NULL)
+
+  composite_path <- file.path(cache_dir, "ndvi_s2.tif")
+  if (file.exists(composite_path)) {
+    out <- tryCatch(terra::rast(composite_path), error = function(e) NULL)
+    if (!is.null(out)) {
+      names(out) <- "ndvi"
+      cli::cli_alert_info("C2 : NDVI Sentinel-2 lu depuis le cache")
+      return(out)
+    }
+  }
+
+  # Saison de vegetation (DOY 152-273, 1er juin - 30 sept), meme fenetre que
+  # `.pick_summer_s2_scene()`. Hors saison, le NDVI d'un feuillu decrit un
+  # houppier nu : ce n'est pas la meme grandeur.
+  doy <- as.integer(format(scenes$obs_date, "%j"))
+  in_season <- !is.na(doy) & doy >= 152L & doy <= 273L
+  sel <- if (any(in_season)) scenes[in_season, , drop = FALSE] else scenes
+
+  if (nrow(sel) > max_scenes) {
+    sel <- utils::tail(sel[order(sel$obs_date), , drop = FALSE], max_scenes)
+  }
+
+  stack <- tryCatch(
+    nemeton::build_index_stack(s2_dir, sel, index = "NDVI", mask_polygon = aoi),
+    error = function(e) {
+      cli::cli_warn("C2 : build_index_stack a \u00e9chou\u00e9 : {conditionMessage(e)}")
+      NULL
+    })
+  if (is.null(stack) || terra::nlyr(stack) == 0L) return(NULL)
+
+  ndvi <- if (terra::nlyr(stack) == 1L) {
+    stack[[1]]
+  } else {
+    # Mediane et non moyenne : un voile nuageux residuel est une valeur
+    # aberrante, pas un bruit centre.
+    tryCatch(terra::app(stack, fun = function(x) stats::median(x, na.rm = TRUE)),
+             error = function(e) {
+               cli::cli_warn("C2 : composite m\u00e9dian impossible : {conditionMessage(e)}")
+               NULL
+             })
+  }
+  if (is.null(ndvi)) return(NULL)
+
+  # Meme borne basse que le NDVI derive de l'ortho (v0.125.1) : un negatif
+  # designe de l'eau ou du sol nu, et il tirerait la moyenne de l'unite vers le
+  # bas avant d'etre ecrete en aval. Les deux sources restent comparables.
+  ndvi <- terra::clamp(ndvi, lower = 0, upper = 1)
+  names(ndvi) <- "ndvi"
+
+  tryCatch(terra::writeRaster(ndvi, composite_path, overwrite = TRUE),
+           error = function(e) cli::cli_warn(
+             "C2 : composite NDVI non mis en cache : {conditionMessage(e)}"))
+
+  cli::cli_alert_success(
+    "C2 : NDVI Sentinel-2 L2A ({nrow(sel)} sc\u00e8ne{?s}, \\
+    {format(min(sel$obs_date))} -> {format(max(sel$obs_date))})")
+
+  ndvi
+}
+
+
 #' Create synthetic NDVI raster (fallback)
 #'
 #' @description
@@ -4304,7 +4423,21 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       vals <- nemeton::extract_indicator_value(
         result, indicator, exclude = names(parcels))
 
-      return(.capture_status_attr(vals, result))
+      vals <- .capture_status_attr(vals, result)
+
+      # C2 n'a pas de colonne de statut au coeur : sa provenance se decide a
+      # l'acquisition, pas au calcul. On l'injecte dans le meme canal, pour que
+      # l'interface n'ait qu'un mecanisme a connaitre. Un NDVI issu d'une ortho
+      # d'affichage reste lisible, mais l'utilisateur doit savoir qu'il l'est.
+      if (identical(indicator, "indicateur_c2_ndvi") &&
+          !is.null(layers$ndvi_provenance) &&
+          is.null(attr(vals, "nemeton_status_name"))) {
+        attr(vals, "nemeton_status") <-
+          rep(as.character(layers$ndvi_provenance), length(vals))
+        attr(vals, "nemeton_status_name") <- "c2_status"
+      }
+
+      return(vals)
     }
 
     # If result is a vector, return it directly
