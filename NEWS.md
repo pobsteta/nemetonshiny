@@ -1,4 +1,4 @@
-# nemetonshiny 0.126.1.9001 (2026-08-17)
+# nemetonshiny 0.126.2 (2026-08-17)
 
 ### Changed — Les seuils du Suivi sanitaire passent dans les paramètres
 
