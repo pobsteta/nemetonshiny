@@ -15000,7 +15000,7 @@ détecte le scheme `duckdb://` et applique les migrations dans
   en v0.23.13 ne reviennent pas (puisqu’il n’y a plus de wrapper à mal
   sortir).
 - `debug(report)` —
-  [`quarto::quarto_render()`](https://quarto-dev.github.io/quarto-r/reference/quarto_render.html)
+  [`quarto::quarto_render()`](https://rdrr.io/pkg/quarto/man/quarto_render.html)
   passe en `quiet = FALSE` côté Plan d’actions (aligné avec la Synthèse
   qui était déjà verbose). La sortie quarto / xelatex est désormais
   streamée dans la console R, ce qui permet de diagnostiquer une vraie
