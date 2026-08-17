@@ -11,21 +11,57 @@ famille **C = 0,90 / 100**. Reproduit à l'identique depuis
 côté cœur après la release v0.172.0 (borne R1, déjà livrée). Aucun autre brief
 n'est à passer pour ce sujet.
 
+> ## ⚠️ CORRECTION 2026-08-17 — CA-1 et CA-2 sont sans objet
+>
+> **CA-1 était une erreur de diagnostic de ma part.** `create_family_index()`
+> **normalise déjà** ce qu'il agrège, et le faisait déjà en v0.172.0 : la
+> fonction appelle `normalize_indicator(col_name, raw)` sur chaque colonne
+> brute. Vérifié en rejouant le calcul sur Fordead avec `nemeton 0.174.0` :
+> `famille_carbone` vaut exactement `mean(normalize(C1), normalize(C2))`,
+> à la troisième décimale près, sur les 30 UGF.
+>
+> Ce qui m'avait induit en erreur : les colonnes `_norm` produites par
+> `normalize_indicators()` sont bien ignorées — mais parce que la
+> normalisation se fait **en interne**, pas parce qu'elle est sautée. Le test
+> « même résultat avec et sans les `_norm` » est compatible avec les deux
+> explications ; j'ai retenu la mauvaise sans la départager.
+>
+> **CA-2 est livré** en v0.174.0 : `create_family_index()` avertit désormais
+> sur une colonne hors `[0, 100]` sans règle de normalisation, et préfère la
+> colonne `_norm` quand elle existe.
+>
+> **La vraie cause du `famille_carbone` à 0,90 était la donnée, pas
+> l'agrégation** :
+>
+> | | C1 norm | C2 norm | famille C |
+> |---|---|---|---|
+> | NDVI ortho IRC WMS | 0,14 | 1,65 | **0,90** |
+> | NDVI Sentinel-2 L2A | 0,14 | **58,79** | **29,47** |
+>
+> C2 est corrigé côté app (`nemetonshiny` v0.126.0.9001, brief
+> `brief-nemetonshiny-c2-ndvi-sentinel2.md`). **C1 reste à 0,14/100** et c'est
+> le seul point qui subsiste : 0,062 tC/ha médian contre une référence de 150.
+> Voir §5.b — les parcelles sont réellement rases (89 % sous 2 m), mais la
+> formule compte les zéros deux fois (**CA-5**, facteur 10 à 14), et c'est
+> désormais le seul CA de ce brief qui porte encore sur l'agrégation.
+>
+> **Restent valides** : CA-4 (déjà livré côté app), CA-5, CA-6, CA-7.
+
 ## 0. Critères d'acceptation — récapitulatif
 
 | CA | Objet | Section | Priorité |
 |----|-------|---------|----------|
-| **CA-1** | `create_family_index()` normalise ce qu'il agrège | §4 | **bloquant** — 9 familles sur 12 sont fausses sans lui |
-| **CA-2** | Avertir au lieu de se taire sur une colonne hors `[0, 100]` | §4 | haute |
-| **CA-3** | Test de non-régression sur les valeurs Fordead | §4 | haute |
-| **CA-4** | C2 calculé depuis Sentinel-2 L2A, pas depuis une ortho WMS | §5.a | **haute** — plus gros gain de justesse |
+| ~~CA-1~~ | ~~`create_family_index()` normalise ce qu'il agrège~~ | §4 | **SANS OBJET** — déjà fait, cf. correction ci-dessus |
+| ~~CA-2~~ | ~~Avertir sur une colonne hors `[0, 100]`~~ | §4 | **LIVRÉ** en cœur v0.174.0 |
+| ~~CA-3~~ | ~~Test de non-régression sur les valeurs Fordead~~ | §4 | **SANS OBJET** (dépendait de CA-1) |
+| **CA-4** | C2 depuis Sentinel-2 L2A | §5.a | **LIVRÉ côté app** (v0.126.0.9001) : médiane −0,109 → 0,584 |
 | **CA-5** | C1 : `zmean` sur la canopée, pas sur l'unité entière | §5.b | moyenne — facteur 10 à 14 |
 | **CA-6** | `sufosat` : déclarer la collection STAC | §6 | moyenne — T3 est tout NA |
 | **CA-7** | Vérifier `r1_feu` constant à 0,000 depuis la borne 30 m | §5.c | à investiguer |
 
-CA-1 conditionne la lecture de tout le reste : tant qu'il n'est pas livré,
-aucun score de famille n'est interprétable, et les autres correctifs ne se
-verront pas.
+**Il ne reste donc que CA-5 (C1 compte les zéros deux fois), CA-6 (collection
+STAC de `sufosat`) et CA-7 (`r1_feu` constant à 0).** CA-5 est le seul qui
+touche encore un calcul de famille.
 
 ---
 
