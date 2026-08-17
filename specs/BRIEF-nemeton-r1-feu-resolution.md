@@ -1,5 +1,11 @@
 # BRIEF `nemeton` — R1 feu : borner la résolution de travail de `fire_exp()`
 
+> **✅ CLOS — livré en cœur `nemeton` v0.172.0** (PR #383, 2026-08-16). La borne
+> `fire_exp_res = 30` est en place : R1 passe de > 75 min à 3,2 s. Ne pas rouvrir.
+> Le CA-4 (« la borne change le temps, pas le classement ») a été repris et clos
+> dans `BRIEF-nemeton-normalisation-familles.md` (CA-7).
+
+
 **Dépôt cible** : `/home/pascal/dev/nemeton` (cœur). Session dédiée requise —
 `nemetonshiny` ne peut rien corriger ici, tout le chemin fautif est côté cœur.
 

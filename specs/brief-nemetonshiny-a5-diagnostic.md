@@ -1,5 +1,14 @@
 # Brief `nemetonshiny` — A5 : dire *pourquoi* l'indicateur est vide (spec 032, suite)
 
+> **✅ CLOS — livré en `nemetonshiny` v0.126.0 puis v0.126.1.** Les sept critères
+> sont satisfaits. Les deux derniers attendaient `nemeton::theia_source_status()`,
+> publié en cœur v0.174.0 ; validés contre le vrai cœur — Fordead (rural) rend
+> `no_asset_over_aoi` en information neutre, Dabo rend `ok` avec 8 scènes.
+> La dette §5 (copie morte de `normalize_indicator()`) était déjà soldée en
+> v0.125.1. L'extension §7 (T3, R7) reste un chantier distinct, non planifié.
+> Ne pas rouvrir.
+
+
 **Dépôt cible** : `nemetonshiny`. Suite du brief
 `specs/032-regulation-thermique-albedo-lst/brief-nemetonshiny.md`, dont le
 câblage est livré et fonctionne. Ce brief-ci ne remet rien en cause : il comble
