@@ -134,44 +134,22 @@ mod_monitoring_ui <- function(id) {
               # l'AFFICHAGE des deux indices, independamment du
               # telechargement). Le cablage de `bands` est desormais en
               # dur dans `fast_task$invoke()`.
-              # v0.36.1 / v0.42.0 - defauts et range alignes sur la
-              # semantique " seuil absolu " consommee par
-              # nemeton::read_fast_alert_raster() (spec 013, nemeton@v0.46.0).
-              # Un pixel est en alerte quand son NDVI (ou NBR) tombe SOUS
-              # la valeur du slider. NDVI forestier sain est typiquement
-              # 0.6-0.8, NBR sain 0.4-0.6, d'ou range 0.10-0.80. Defauts
-              # coeur : 0.40 / 0.30.
-              # v0.52.14 - Le radio " Indice FAST " a ete deplace du
-              # sidebar parent vers le sidebar DROIT de chaque onglet
-              # (Alertes FAST + Carte FAST, symetriques). Chaque onglet
-              # pilote son propre indice independamment. Les 2 sliders
-              # de seuil restent ici (un par indice) ; le module
-              # consommateur lit le seuil correspondant a l'indice
-              # selectionne dans son sidebar.
-              shiny::sliderInput(
-                ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
-                min = 0.10, max = 0.80, value = 0.40, step = 0.01
-              ),
-              shiny::sliderInput(
-                ns("threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
-                min = 0.10, max = 0.80, value = 0.30, step = 0.01
-              ),
-              # NDMI (humidite) : seuil minimum sous lequel un pixel est
-              # en alerte (NDMI baisse sous stress hydrique). NDMI sain
-              # est plus bas que NDVI/NBR, d'ou un defaut moindre.
-              # Consomme par l'onglet Alertes/Carte FAST quand l'indice
-              # NDMI est selectionne (nemeton >= 0.64.0).
-              shiny::sliderInput(
-                ns("threshold_ndmi"), i18n$t("monitoring_threshold_ndmi"),
-                min = 0.10, max = 0.80, value = 0.20, step = 0.01
-              ),
-              # v0.85.11 - NDRE reserve au mode Tendance (qui ignore les
-              # seuils : Theil-Sen / Mann-Kendall). Le slider " Seuil NDRE "
-              # n'avait plus de consommateur -> retire (v0.85.12).
-              shiny::numericInput(
-                ns("window_days"), i18n$t("monitoring_window_days"),
-                value = 30L, min = 7L, max = 90L, step = 1L
-              ),
+              # v0.126.2 - Les 3 seuils absolus (NDVI / NBR / NDMI) et la
+              # fenetre roulante ont quitte ce sidebar pour l'onglet
+              # " Sources & parametres " de la modale des reglages, ou ils
+              # sont persistes par projet (`metadata$fast_params`). Ce sont
+              # des CALIBRAGES, regles une fois par massif ; la periode
+              # d'observation ci-dessus est restee ici parce qu'elle est le
+              # geste courant d'un diagnostic. Les valeurs sont relues via
+              # `project_fast_params()` dans `thresholds_r` plus bas - un
+              # enregistrement dans la modale recharge le projet, donc les
+              # cartes se reactualisent sans intervention.
+              #
+              # Semantique inchangee (spec 013, nemeton@v0.46.0) : un pixel
+              # est en alerte quand son indice tombe SOUS le seuil. NDRE
+              # reste reserve au mode Tendance, qui ignore les seuils
+              # (Theil-Sen / Mann-Kendall).
+              shiny::uiOutput(ns("fast_params_recap")),
               # Checkbox + popover info icon (same pattern as the
               # "Tout" button popover in mod_synthesis): keeps the
               # sidebar tight while making the long explanation
@@ -509,6 +487,46 @@ mod_monitoring_server <- function(id, app_state) {
 
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
+    })
+
+    # ----- Calibrages FAST, lus dans les metadonnees du projet --------
+    # v0.126.2 - Les seuils NDVI/NBR/NDMI et la fenetre roulante etaient des
+    # sliders de ce sidebar ; ils vivent desormais dans l'onglet
+    # " Sources & parametres " de la modale des reglages et sont persistes par
+    # projet. Un enregistrement la-bas recharge `app_state$current_project`,
+    # donc ce reactive s'invalide et les cartes se reactualisent - sans que le
+    # sidebar ait a porter les widgets.
+    #
+    # Les noms de sortie (`ndvi` / `nbr` / `ndmi`) sont ceux que les
+    # sous-modules attendaient deja : le contrat aval ne change pas.
+    fast_params_r <- shiny::reactive({
+      fp <- project_fast_params(app_state$current_project$metadata)
+      list(
+        ndvi        = fp$threshold_ndvi,
+        nbr         = fp$threshold_nbr,
+        ndmi        = fp$threshold_ndmi,
+        window_days = fp$window_days
+      )
+    })
+
+    # Rappel des calibrages en vigueur, avec le chemin pour les changer. Sans
+    # lui, les valeurs deviendraient invisibles : on ne peut pas lire une carte
+    # d'alertes sans savoir sous quel seuil elle a ete produite.
+    output$fast_params_recap <- shiny::renderUI({
+      i18n <- i18n_r()
+      fp <- fast_params_r()
+      htmltools::div(
+        class = "small text-muted border rounded p-2 mb-3",
+        htmltools::div(
+          class = "fw-semibold mb-1",
+          bsicons::bs_icon("sliders", class = "me-1"),
+          i18n$t("fast_params_section")),
+        htmltools::tags$div(sprintf(
+          "NDVI %.2f \u00b7 NBR %.2f \u00b7 NDMI %.2f \u00b7 %d j",
+          fp$ndvi, fp$nbr, fp$ndmi, as.integer(fp$window_days))),
+        htmltools::tags$div(class = "fst-italic mt-1",
+                            i18n$t("fast_params_where"))
+      )
     })
 
     # ----- Connexion monitoring read-only MISE EN CACHE (perf) -------
@@ -2998,11 +3016,7 @@ mod_monitoring_server <- function(id, app_state) {
       # v0.52.14 - pixel_map a son propre `input$index` (radio dans son
       # sidebar droit) ; le `thresholds_r` parent ne porte plus
       # `index` (relicat de v0.52.13).
-      thresholds_r   = shiny::reactive(list(
-        ndvi = input$threshold_ndvi,
-        nbr  = input$threshold_nbr,
-        ndmi = input$threshold_ndmi
-      ))
+      thresholds_r   = fast_params_r
     )
 
     # v0.42.0 - Alertes FAST sub-tab. Spec 013 raster wiring : the
@@ -3021,12 +3035,7 @@ mod_monitoring_server <- function(id, app_state) {
       # v0.52.14 - fast_alerts a son propre `input$index` (radio dans
       # son sidebar droit) ; le `thresholds_r` parent ne porte plus
       # `index`.
-      thresholds_r = shiny::reactive(list(
-        ndvi        = input$threshold_ndvi,
-        nbr         = input$threshold_nbr,
-        ndmi        = input$threshold_ndmi,
-        window_days = input$window_days
-      )),
+      thresholds_r = fast_params_r,
       refresh_r    = shiny::reactive(fast_reload())
     )
 
@@ -3452,12 +3461,9 @@ mod_monitoring_server <- function(id, app_state) {
       # (via le reactive exporte `fast_alerts_ret$index_r`), pour que la
       # previsualisation validation_sampling FAST utilise le meme
       # indice que ce que l'utilisateur voit dans l'onglet Alertes FAST.
-      thresholds_r = shiny::reactive(list(
-        index       = fast_alerts_ret$index_r() %||% "NDVI",
-        ndvi        = input$threshold_ndvi,
-        nbr         = input$threshold_nbr,
-        ndmi        = input$threshold_ndmi,
-        window_days = input$window_days
+      thresholds_r = shiny::reactive(c(
+        list(index = fast_alerts_ret$index_r() %||% "NDVI"),
+        fast_params_r()
       )),
       date_range_r = shiny::reactive(input$date_range),
       # Reutilise la definition de tendance d'Alertes FAST (mois / annees
@@ -3475,13 +3481,7 @@ mod_monitoring_server <- function(id, app_state) {
       # `read_fast_alert_raster` (sa source de mask est FORDEAD sur
       # disque, pas FAST). On laisse `index = "NDVI"` en valeur par
       # defaut au cas ou le code aval y accede.
-      thresholds_r = shiny::reactive(list(
-        index       = "NDVI",
-        ndvi        = input$threshold_ndvi,
-        nbr         = input$threshold_nbr,
-        ndmi        = input$threshold_ndmi,
-        window_days = input$window_days
-      )),
+      thresholds_r = shiny::reactive(c(list(index = "NDVI"), fast_params_r())),
       # Le plan de validation FORDEAD doit utiliser la periode d'OBSERVATION
       # FORDEAD (`dates_observation`), pas le `date_range` du Diagnostic FAST.
       date_range_r = shiny::reactive(input$dates_observation),

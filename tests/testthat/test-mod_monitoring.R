@@ -23,9 +23,17 @@ test_that("mod_monitoring_ui returns valid Shiny UI with expected controls", {
       expect_true(grepl("monitoring-date_range",     html))
       # v0.61.0 — input `bands` retiré (NDVI + NBR câblés en dur).
       expect_false(grepl("monitoring-bands",         html))
-      expect_true(grepl("monitoring-threshold_ndvi", html))
-      expect_true(grepl("monitoring-threshold_nbr",  html))
-      expect_true(grepl("monitoring-window_days",    html))
+      # v0.126.2 — les 3 seuils absolus et la fenêtre roulante ont quitté ce
+      # sidebar pour l'onglet « Sources & paramètres » de la modale, où ils
+      # sont persistés par projet (`metadata$fast_params`). Les retrouver ici
+      # signifierait deux sources de vérité pour le même seuil.
+      expect_false(grepl("monitoring-threshold_ndvi", html))
+      expect_false(grepl("monitoring-threshold_nbr",  html))
+      expect_false(grepl("monitoring-threshold_ndmi", html))
+      expect_false(grepl("monitoring-window_days",    html))
+      # Un rappel des valeurs en vigueur prend leur place : on ne lit pas une
+      # carte d'alertes sans savoir sous quel seuil elle a été produite.
+      expect_true(grepl("monitoring-fast_params_recap", html))
       expect_true(grepl("monitoring-run",            html))
       expect_true(grepl("monitoring-db_status",      html))
 
