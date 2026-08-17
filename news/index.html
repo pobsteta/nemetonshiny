@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.126.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.126.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,55 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.126.1" id="nemetonshiny-01261-2026-08-17">nemetonshiny 0.126.1 (2026-08-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01261-2026-08-17"></a></h2>
+<div class="section level4">
+<h4 id="fixed--c2-se-calcule-sur-sentinel-plus-sur-une-image-daffichage-0-126-1">Fixed — C2 se calcule sur Sentinel-2, plus sur une image d’affichage<a class="anchor" aria-label="anchor" href="#fixed--c2-se-calcule-sur-sentinel-plus-sur-une-image-daffichage-0-126-1"></a></h4>
+<p>Implémente <code>specs/brief-nemetonshiny-c2-ndvi-sentinel2.md</code>. <code>indicateur_c2_ndvi</code> sortait <strong>négatif sur les 30 UGF</strong> de Fordead — physiquement impossible sous un couvert. Ni le calcul ni l’ordre des bandes n’étaient en cause : le NDVI était dérivé de l’<strong>orthophoto IRC du WMS IGN</strong>, une image 8 bits étirée pour l’affichage (valeurs 9–247, compression JPEG), pas de la réflectance.</p>
+<p>Chaque projet suivi cache pourtant des dizaines de scènes <strong>Sentinel-2 L2A</strong> (alimentées pour FORDEAD) — de la réflectance de surface corrigée. Nouveau <code>build_s2_ndvi_layer()</code> : il les compose et <code>download_ign_irc_ndvi()</code> ne sert plus que de repli.</p>
+<p>Mesuré sur Fordead, NDVI moyen par UGF :</p>
+<table class="table"><thead><tr><th>Source</th>
+<th>min</th>
+<th>médiane</th>
+<th>max</th>
+<th>UGF négatives</th>
+</tr></thead><tbody><tr><td>ortho IRC WMS (avant)</td>
+<td>−0,223</td>
+<td><strong>−0,109</strong></td>
+<td>0,093</td>
+<td><strong>20 / 30</strong></td>
+</tr><tr><td>Sentinel-2 L2A (après)</td>
+<td>0,558</td>
+<td><strong>0,584</strong></td>
+<td>0,616</td>
+<td><strong>0 / 30</strong></td>
+</tr></tbody></table><p>Trois choix, tous explicités dans le code :</p>
+<ul><li>
+<strong>Composite médian de saison de végétation</strong> (DOY 152–273) plutôt qu’une date unique : une acquisition peut être voilée ou ombrée, la médiane de plusieurs ne l’est pas. La médiane et non la moyenne, parce qu’un voile nuageux résiduel est une valeur aberrante, pas un bruit centré.</li>
+<li>
+<strong>Plafond de 12 scènes</strong>, les plus récentes. Empiler la série 2017+ entière coûterait des dizaines de gigaoctets sans rien gagner.</li>
+<li>
+<strong>L’indice vient du cœur</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/build_index_stack.html" class="external-link">nemeton::build_index_stack()</a></code>) : l’app compose des dates, elle ne calcule pas d’indice (règle 1). Un test le verrouille.</li>
+</ul><p>Le composite est mis en cache (<code>ndvi_s2.tif</code>) sous un nom distinct de l’ortho : un projet existant n’a pas à purger quoi que ce soit, et le repli reste disponible.</p>
+</div>
+<div class="section level4">
+<h4 id="added--la-provenance-du-ndvi-est-dite-pas-devinée-0-126-1">Added — La provenance du NDVI est dite, pas devinée<a class="anchor" aria-label="anchor" href="#added--la-provenance-du-ndvi-est-dite-pas-devin%C3%A9e-0-126-1"></a></h4>
+<p>Un NDVI ne se lit pas sans savoir d’où il vient. La provenance (<code>s2_l2a</code> ou <code>wms_irc</code>) traverse le calcul par le canal de statut ouvert en v0.126.0 et devient la colonne <code>.c2_status</code>. Le bandeau du détail de famille affiche désormais <strong>deux motifs</strong> au lieu d’un : l’absence de valeur (A5 hors couverture) et la <strong>réserve sur une valeur présente</strong> — un NDVI d’ortho se calcule très bien, il ne veut simplement pas dire la même chose. Une provenance nominale n’a pas de clé et n’affiche donc rien : on ne commente que ce qui mérite une réserve.</p>
+</div>
+<div class="section level4">
+<h4 id="added--a5--les-deux-critères-en-suspens-sont-levés-0-126-1">Added — A5 : les deux critères en suspens sont levés<a class="anchor" aria-label="anchor" href="#added--a5--les-deux-crit%C3%A8res-en-suspens-sont-lev%C3%A9s-0-126-1"></a></h4>
+<p><code><a href="https://pobsteta.github.io/nemeton/reference/theia_source_status.html" class="external-link">nemeton::theia_source_status()</a></code> est publié depuis <strong>v0.174.0</strong>. Le plancher passe à <code>Imports: nemeton (&gt;= 0.174.0)</code> et le câblage livré en v0.126.0 s’active. Validé contre le vrai cœur, plus contre un cœur simulé :</p>
+<ul><li>
+<strong>Fordead</strong> (rural) → <code>no_asset_over_aoi</code>, rendu en information neutre « aucune scène LST sur cette emprise ».</li>
+<li>
+<strong>Dabo</strong> (couvert) → <code>ok</code>, <strong>8 scènes</strong> — le compte annoncé par le brief.</li>
+</ul><p>Le champ <code>detail</code> du cœur est repris dans le message d’erreur : « no STAC API endpoint configured » se diagnostique, « error » ne se diagnostique pas. <code>.clean_detail()</code> réduit à <code>NULL</code> ses trois formes d’absence (<code>NA_character_</code> du cœur, <code>null</code> du JSON, champ manquant) — elles ne se comparent pas de la même façon, <code><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na()</a></code> sur une liste rendant <code>NA</code>, qui n’est pas une condition.</p>
+</div>
+<div class="section level4">
+<h4 id="note--la-dette-du-brief-était-déjà-soldée-0-126-1">Note — La dette §5 du brief était déjà soldée<a class="anchor" aria-label="anchor" href="#note--la-dette-du-brief-%C3%A9tait-d%C3%A9j%C3%A0-sold%C3%A9e-0-126-1"></a></h4>
+<p>Le brief demandait de supprimer la copie morte de <code>normalize_indicator()</code> (<code>service_compute.R:3793</code>). C’était fait en <strong>v0.125.1</strong>, avant que le brief ne soit écrit. Rien à refaire.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.126.0" id="nemetonshiny-01260-2026-08-16">nemetonshiny 0.126.0 (2026-08-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01260-2026-08-16"></a></h2>
 <div class="section level4">
