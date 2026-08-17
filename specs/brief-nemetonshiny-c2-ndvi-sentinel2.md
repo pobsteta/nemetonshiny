@@ -1,5 +1,13 @@
 # Brief `nemetonshiny` — C2 : calculer le NDVI depuis Sentinel-2, pas depuis une ortho WMS
 
+> **✅ CLOS — livré en `nemetonshiny` v0.126.1.** `build_s2_ndvi_layer()` compose
+> les scènes Sentinel-2 L2A du cache ; l'ortho IRC WMS n'est plus qu'un repli.
+> Mesuré sur les 30 UGF de Fordead : NDVI médian **−0,109 → 0,584**, aucune UGF
+> négative contre 20 avant, et `famille_carbone` **0,90 → 29,5**. La dette §5
+> (copie morte de `normalize_indicator()`) était déjà soldée en v0.125.1.
+> Ne pas rouvrir.
+
+
 **Dépôt cible** : `nemetonshiny`. Aucun développement côté cœur : tout ce qui
 est nécessaire est déjà exporté par `nemeton`.
 

@@ -1,53 +1,71 @@
-# BRIEF `nemeton` — les scores de famille agrègent des valeurs brutes
+# BRIEF `nemeton` — CLOS — les scores de famille agrègent des valeurs brutes
 
-**Dépôt cible** : `/home/pascal/dev/nemeton` (cœur). Session dédiée requise.
+> # ✅ BRIEF CLOS — 2026-08-17
+>
+> **Ne pas rouvrir. Aucune action n'est attendue côté cœur.** Les sept critères
+> sont soldés : deux étaient sans objet (erreur de diagnostic de ma part), cinq
+> sont livrés. Vérifié **par mesure sur le projet Fordead** avec
+> `nemeton 0.174.0` installé, pas sur la lecture d'un NEWS.
+>
+> | CA | Objet | Résolution |
+> |----|-------|------------|
+> | CA-1 | `create_family_index()` normalise ce qu'il agrège | **SANS OBJET** — il le faisait déjà en v0.172.0 |
+> | CA-2 | Avertir sur une colonne hors `[0, 100]` | **LIVRÉ** cœur v0.174.0 |
+> | CA-3 | Test de non-régression Fordead | **SANS OBJET** — dépendait de CA-1 |
+> | CA-4 | C2 depuis Sentinel-2 L2A | **LIVRÉ côté app** `nemetonshiny` v0.126.1 |
+> | CA-5 | C1 : `zmean` sur la canopée seule | **LIVRÉ** cœur v0.174.0 |
+> | CA-6 | `sufosat` : collection STAC déclarée | **LIVRÉ** cœur v0.173.1 |
+> | CA-7 | `r1_feu` constant à 0,000 | **LIVRÉ** cœur v0.174.0 |
+>
+> ## Les mesures qui closent le brief
+>
+> **CA-5** — le code calcule désormais la hauteur moyenne de la *canopée* et
+> non de l'unité entière :
+> ```r
+> mnh_canopy <- terra::ifel(mnh_raster > 2, mnh_raster, NA)
+> zmean <- safe_extract(mnh_canopy, units_sf, fun = "mean", ...)
+> ```
+> Sur les 30 UGF de Fordead, C1 en tC/ha :
+>
+> | | min | médiane | max |
+> |---|---|---|---|
+> | v0.172.0 (parquet d'origine) | 0,002 | **0,062** | 2,388 |
+> | v0.174.0 (recalcul) | 0,074 | **1,188** | 16,710 |
+>
+> Facteur ~19 sur la médiane, dans la fourchette 10–14 projetée par le brief.
+> C1 normalisé : 0,14 → 1,58 sur 100.
+>
+> **CA-7** — R1 n'est plus nul, par un changement que le brief n'avait pas
+> anticipé : le cœur mêle désormais `0,67 × exposure + 0,33 × slope`. Sur les
+> mêmes entrées, R1 rend **68,8 / 71,9 / 87,0** (min/méd/max) là où le parquet
+> d'origine portait 0,000 partout. Le `hazard` n'était pas en cause : il est à
+> 93,5 % de forêt sur la grille 30 m (134 × 167).
+>
+> **CA-1** — l'erreur à ne pas refaire. J'avais conclu que la normalisation
+> était sautée parce que `famille_carbone` valait pareil avec et sans les
+> colonnes `_norm`. Or c'est ce qu'on observe **aussi** quand la normalisation
+> se fait en interne : les deux explications étaient compatibles avec ma mesure,
+> et je n'ai pas cherché à les départager avant d'écrire le brief. La leçon :
+> lire le corps de la fonction avant d'accuser son comportement.
+>
+> **La vraie cause du `famille_carbone` à 0,90** était la donnée, pas
+> l'agrégation — un NDVI dérivé d'une ortho WMS d'affichage. Corrigé côté app.
+>
+> ## Ce qui suit est l'archive du diagnostic
+>
+> Conservé pour la traçabilité : il explique *pourquoi* chaque point avait été
+> soulevé et sur quelles mesures. Les priorités et les demandes d'action qui y
+> figurent sont **périmées** — le tableau ci-dessus fait autorité.
+
+---
+
+**Dépôt cible** : `/home/pascal/dev/nemeton` (cœur).
 
 **Origine** : diagnostic du 2026-08-16 sur le projet **Fordead** (30 UGF,
 `nemeton 0.172.0`, `nemetonshiny 0.125.0`). L'utilisateur constate un score de
-famille **C = 0,90 / 100**. Reproduit à l'identique depuis
-`data/indicators.parquet`.
+famille **C = 0,90 / 100**.
 
-**Ce brief est autoportant** : il couvre l'ensemble de ce qui reste à corriger
-côté cœur après la release v0.172.0 (borne R1, déjà livrée). Aucun autre brief
-n'est à passer pour ce sujet.
-
-> ## ⚠️ CORRECTION 2026-08-17 — CA-1 et CA-2 sont sans objet
->
-> **CA-1 était une erreur de diagnostic de ma part.** `create_family_index()`
-> **normalise déjà** ce qu'il agrège, et le faisait déjà en v0.172.0 : la
-> fonction appelle `normalize_indicator(col_name, raw)` sur chaque colonne
-> brute. Vérifié en rejouant le calcul sur Fordead avec `nemeton 0.174.0` :
-> `famille_carbone` vaut exactement `mean(normalize(C1), normalize(C2))`,
-> à la troisième décimale près, sur les 30 UGF.
->
-> Ce qui m'avait induit en erreur : les colonnes `_norm` produites par
-> `normalize_indicators()` sont bien ignorées — mais parce que la
-> normalisation se fait **en interne**, pas parce qu'elle est sautée. Le test
-> « même résultat avec et sans les `_norm` » est compatible avec les deux
-> explications ; j'ai retenu la mauvaise sans la départager.
->
-> **CA-2 est livré** en v0.174.0 : `create_family_index()` avertit désormais
-> sur une colonne hors `[0, 100]` sans règle de normalisation, et préfère la
-> colonne `_norm` quand elle existe.
->
-> **La vraie cause du `famille_carbone` à 0,90 était la donnée, pas
-> l'agrégation** :
->
-> | | C1 norm | C2 norm | famille C |
-> |---|---|---|---|
-> | NDVI ortho IRC WMS | 0,14 | 1,65 | **0,90** |
-> | NDVI Sentinel-2 L2A | 0,14 | **58,79** | **29,47** |
->
-> C2 est corrigé côté app (`nemetonshiny` v0.126.0.9001, brief
-> `brief-nemetonshiny-c2-ndvi-sentinel2.md`). **C1 reste à 0,14/100** et c'est
-> le seul point qui subsiste : 0,062 tC/ha médian contre une référence de 150.
-> Voir §5.b — les parcelles sont réellement rases (89 % sous 2 m), mais la
-> formule compte les zéros deux fois (**CA-5**, facteur 10 à 14), et c'est
-> désormais le seul CA de ce brief qui porte encore sur l'agrégation.
->
-> **Restent valides** : CA-4 (déjà livré côté app), CA-5, CA-6, CA-7.
-
-## 0. Critères d'acceptation — récapitulatif
+## 0. Critères d'acceptation — ARCHIVE (voir le tableau de clôture en tête)
 
 | CA | Objet | Section | Priorité |
 |----|-------|---------|----------|
