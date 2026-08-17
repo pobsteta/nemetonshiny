@@ -1909,9 +1909,41 @@ TRANSLATIONS <- list(
     fr = "Corpus RAG",
     en = "RAG corpus"
   ),
+  # v0.126.2 - "Sources optionnelles" devenait faux : l'onglet accueille
+  # aussi les calibrages du Suivi sanitaire, qui ne sont pas des sources.
   api_keys_tab_sources = list(
-    fr = "Sources optionnelles",
-    en = "Optional sources"
+    fr = "Sources & param\u00e8tres",
+    en = "Sources & settings"
+  ),
+  # Calibrages FAST (spec 013), deplaces du sidebar Suivi sanitaire.
+  fast_params_section = list(
+    fr = "Suivi sanitaire \u2014 seuils de d\u00e9tection",
+    en = "Health monitoring \u2014 detection thresholds"
+  ),
+  fast_params_hint = list(
+    fr = paste0(
+      "Un pixel est en alerte quand son indice tombe SOUS le seuil. ",
+      "Une for\u00eat saine a un NDVI de 0,6 \u00e0 0,8 et un NBR de 0,4 \u00e0 0,6 ; ",
+      "le NDMI est plus bas sous couvert. R\u00e9gl\u00e9s une fois par massif, ",
+      "conserv\u00e9s avec le projet."
+    ),
+    en = paste0(
+      "A pixel alerts when its index falls BELOW the threshold. A healthy ",
+      "forest has an NDVI of 0.6-0.8 and an NBR of 0.4-0.6; NDMI runs lower ",
+      "under canopy. Set once per forest, stored with the project."
+    )
+  ),
+  fast_params_save = list(
+    fr = "Enregistrer les seuils",
+    en = "Save thresholds"
+  ),
+  fast_params_saved = list(
+    fr = "Suivi sanitaire : seuils enregistr\u00e9s",
+    en = "Health monitoring: thresholds saved"
+  ),
+  fast_params_where = list(
+    fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
+    en = "Change them in Settings \u203a Sources & settings."
   ),
   sources_config_intro = list(
     fr = "Sources Theia optionnelles du projet courant, activ\u00e9es par d\u00e9faut. Elles n\u00e9cessitent des identifiants Theia valides ; hors couverture, l'indicateur correspondant reste vide sans faire \u00e9chouer le calcul.",

@@ -41,7 +41,11 @@ mod_sources_config_ui <- function(id) {
       col_widths = c(6, 6),
       shiny::uiOutput(ns("sufosat_block")),
       shiny::uiOutput(ns("lst_block"))
-    )
+    ),
+    # Calibrages du Suivi sanitaire (spec 013). Ce ne sont pas des sources,
+    # d'ou un bloc distinct sur toute la largeur plutot qu'une troisieme
+    # colonne : le lecteur ne doit pas croire qu'il active une donnee.
+    shiny::uiOutput(ns("fast_block"))
   )
 }
 
@@ -274,6 +278,85 @@ mod_sources_config_server <- function(id, app_state) {
           buffer_m = input$lst_buffer %||% 500)
         .refresh_project(pid)
         shiny::showNotification(i18n$t("lst_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Calibrages du Suivi sanitaire -> FAST (spec 013)
+    # ========================================
+    #
+    # Ces quatre reglages etaient des sliders du sidebar Suivi sanitaire. Ce
+    # sont des CALIBRAGES, qu'on regle une fois par massif et non a chaque
+    # lancement : leur place est ici, persistes par projet. La periode
+    # d'observation, elle, est restee dans le sidebar - c'est le geste courant
+    # d'un diagnostic, et l'enfouir aurait rallonge la boucle d'exploration.
+
+    output$fast_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh()
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("fast_params_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("fast_params_hint"))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+
+      fp <- project_fast_params(app_state$current_project$metadata)
+
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = c(3, 3, 3, 3),
+          shiny::sliderInput(
+            ns("fast_threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
+            min = 0.10, max = 0.80, value = fp$threshold_ndvi, step = 0.01,
+            width = "100%"),
+          shiny::sliderInput(
+            ns("fast_threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
+            min = 0.10, max = 0.80, value = fp$threshold_nbr, step = 0.01,
+            width = "100%"),
+          shiny::sliderInput(
+            ns("fast_threshold_ndmi"), i18n$t("monitoring_threshold_ndmi"),
+            min = 0.10, max = 0.80, value = fp$threshold_ndmi, step = 0.01,
+            width = "100%"),
+          shiny::numericInput(
+            ns("fast_window_days"), i18n$t("monitoring_window_days"),
+            value = fp$window_days, min = 7L, max = 90L, step = 1L,
+            width = "100%")
+        ),
+        shiny::actionButton(
+          ns("fast_save"), i18n$t("fast_params_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$fast_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_fast_params(
+          pid,
+          threshold_ndvi = input$fast_threshold_ndvi,
+          threshold_nbr  = input$fast_threshold_nbr,
+          threshold_ndmi = input$fast_threshold_ndmi,
+          window_days    = input$fast_window_days)
+        .refresh_project(pid)
+        shiny::showNotification(i18n$t("fast_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

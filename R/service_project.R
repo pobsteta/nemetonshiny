@@ -1779,6 +1779,105 @@ set_project_sufosat <- function(project_id, enabled,
 }
 
 
+#' Default FAST detection parameters
+#'
+#' @description
+#' Absolute thresholds and rolling window of the FAST health screening
+#' (spec 013). Kept in one place so the sidebar that used to hold them, the
+#' settings tab that holds them now, and the readers agree on the same values.
+#'
+#' The defaults are the core's: a healthy forest NDVI is typically 0.6-0.8 and a
+#' healthy NBR 0.4-0.6, so a pixel alerts below 0.40 / 0.30. NDMI runs lower
+#' under canopy, hence 0.20.
+#'
+#' @noRd
+FAST_PARAMS_DEFAULT <- list(
+  threshold_ndvi = 0.40,
+  threshold_nbr  = 0.30,
+  threshold_ndmi = 0.20,
+  window_days    = 30L
+)
+
+
+#' Read the FAST detection parameters of a project
+#'
+#' @description
+#' These four values were sliders in the Suivi sanitaire sidebar. They are
+#' **calibrations**, set once per massif rather than adjusted at each run, so
+#' they now live in the settings modal and persist per project - while the
+#' observation period, which *is* the recurring gesture of a diagnosis, stayed
+#' in the sidebar.
+#'
+#' Absent metadata yields the defaults: a project that never opened the settings
+#' behaves exactly as before.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#'
+#' @return List with `threshold_ndvi`, `threshold_nbr`, `threshold_ndmi`,
+#'   `window_days`.
+#'
+#' @noRd
+project_fast_params <- function(metadata) {
+  cfg <- metadata$fast_params
+  num <- function(x, default) {
+    v <- suppressWarnings(as.numeric(x %||% default))
+    if (length(v) != 1L || is.na(v)) default else v
+  }
+
+  list(
+    threshold_ndvi = num(cfg$threshold_ndvi, FAST_PARAMS_DEFAULT$threshold_ndvi),
+    threshold_nbr  = num(cfg$threshold_nbr,  FAST_PARAMS_DEFAULT$threshold_nbr),
+    threshold_ndmi = num(cfg$threshold_ndmi, FAST_PARAMS_DEFAULT$threshold_ndmi),
+    window_days    = as.integer(round(
+      num(cfg$window_days, FAST_PARAMS_DEFAULT$window_days)))
+  )
+}
+
+
+#' Persist the FAST detection parameters on a project
+#'
+#' @description
+#' Mirrors [set_project_sufosat()]. Unlike the two optional-source toggles, no
+#' cache is dropped here: the thresholds are applied when *reading* the alert
+#' raster, not when downloading it, so a re-calibration costs nothing to redo.
+#'
+#' @param project_id Character.
+#' @param threshold_ndvi,threshold_nbr,threshold_ndmi Numeric. Absolute
+#'   thresholds below which a pixel alerts.
+#' @param window_days Integer. Rolling window length in days.
+#'
+#' @return Invisible `TRUE`.
+#'
+#' @noRd
+set_project_fast_params <- function(project_id,
+                                    threshold_ndvi = NULL,
+                                    threshold_nbr = NULL,
+                                    threshold_ndmi = NULL,
+                                    window_days = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  # On passe par le lecteur pour que toute valeur absente ou aberrante retombe
+  # sur le defaut plutot que d'ecrire un NA dans les metadonnees.
+  cfg <- project_fast_params(list(fast_params = list(
+    threshold_ndvi = threshold_ndvi,
+    threshold_nbr  = threshold_nbr,
+    threshold_ndmi = threshold_ndmi,
+    window_days    = window_days
+  )))
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+
+  update_project_metadata(project_id, list(fast_params = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Suivi sanitaire : seuils NDVI={cfg$threshold_ndvi} / NBR={cfg$threshold_nbr} \\
+     / NDMI={cfg$threshold_ndmi}, fen\u00eatre {cfg$window_days} j")
+  invisible(TRUE)
+}
+
+
 #' Persist the urban-cooling (LST -> A5) source config on a project
 #'
 #' @description

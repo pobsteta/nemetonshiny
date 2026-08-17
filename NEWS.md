@@ -1,3 +1,44 @@
+# nemetonshiny 0.126.2 (2026-08-17)
+
+### Changed — Les seuils du Suivi sanitaire passent dans les paramètres
+
+Les trois seuils absolus (NDVI, NBR, NDMI) et la fenêtre roulante quittent le
+sidebar du Suivi sanitaire pour l'onglet **« Sources & paramètres »** de la
+modale des réglages, où ils sont **persistés par projet**
+(`metadata$fast_params`, patron de `set_project_sufosat()`).
+
+Le partage est délibéré : ce sont des **calibrages**, réglés une fois par massif,
+alors que la **période d'observation reste dans le sidebar** parce qu'elle est le
+geste courant d'un diagnostic. Tout déplacer aurait rallongé la boucle
+d'exploration — régler, enregistrer, fermer, regarder, réouvrir — pour le seul
+champ qu'on touche à chaque lancement.
+
+Un projet qui n'a jamais ouvert la modale se comporte **exactement** comme
+avant : `project_fast_params()` retombe sur les valeurs qui étaient codées dans
+les sliders (0,40 / 0,30 / 0,20 / 30 j), champ par champ — un enregistrement
+partiel ne fait pas perdre les autres, et une valeur inutilisable retombe sur le
+défaut plutôt que de propager un `NA` qui viderait le raster d'alerte en
+silence.
+
+Le sidebar gagne à leur place un **rappel des valeurs en vigueur** et le chemin
+pour les changer : on ne lit pas une carte d'alertes sans savoir sous quel seuil
+elle a été produite.
+
+Le contrat aval ne change pas. `thresholds_r` conserve les noms
+`ndvi`/`nbr`/`ndmi`/`window_days` que lisaient déjà `mod_monitoring_pixel_map`,
+`mod_monitoring_fast_alerts` et `mod_validation_sampling` ; seule sa source
+change. Un enregistrement dans la modale recharge le projet, donc les cartes se
+réactualisent sans intervention.
+
+### Changed — L'onglet s'appelle « Sources & paramètres »
+
+« Sources optionnelles » devenait faux : l'onglet accueille désormais des
+calibrages de détection, qui ne sont pas des sources. Le nom retenu reste juste
+si d'autres réglages externes y arrivent, sans nommer une famille en
+particulier — un « Suivi sanitaire & sources » aurait vieilli au premier
+paramètre venu d'ailleurs.
+
+
 # nemetonshiny 0.126.1 (2026-08-17)
 
 ### Fixed — C2 se calcule sur Sentinel-2, plus sur une image d'affichage
