@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.127.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.127.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,42 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.127.2" id="nemetonshiny-01272-2026-08-18">nemetonshiny 0.127.2 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01272-2026-08-18"></a></h2>
+<p>Implémente <code>specs/brief-nemetonshiny-renommage-famille-L.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.176.0)</code>.</p>
+<div class="section level4">
+<h4 id="changed--les-deux-colonnes-de-la-famille-l-sont-renommées-0-127-2">Changed — Les deux colonnes de la famille L sont renommées<a class="anchor" aria-label="anchor" href="#changed--les-deux-colonnes-de-la-famille-l-sont-renomm%C3%A9es-0-127-2"></a></h4>
+<p>Le cœur a renommé les deux fonctions de paysage (spec 045), qui portaient chacune le nom de la métrique de l’<strong>autre</strong> :</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Avant</th>
+<th>Après</th>
+<th>Ce que la colonne porte</th>
+</tr></thead><tbody><tr><td><code>indicateur_l2_fragmentation</code></td>
+<td><code>indicateur_l1_effet_lisiere</code></td>
+<td>sylvosphère / effet lisière</td>
+</tr><tr><td><code>indicateur_l1_sylvosphere</code></td>
+<td><code>indicateur_l2_morcellement</code></td>
+<td>fragmentation paysagère</td>
+</tr></tbody></table><p>Aucune valeur ne change, aucun libellé non plus — ils décrivaient déjà les valeurs. Ce sont les slugs qui cessent de mentir, et avec eux le croisement <code>code ↔︎ colonne</code> de la famille L. Celui de la famille F subsiste : <code>F1</code> pointe toujours sur <code>indicateur_f2_erosion</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--un-projet-calculé-avant-le-renommage-reste-lisible-0-127-2">Fixed — Un projet calculé avant le renommage reste lisible<a class="anchor" aria-label="anchor" href="#fixed--un-projet-calcul%C3%A9-avant-le-renommage-reste-lisible-0-127-2"></a></h4>
+<p>C’est le point qui comptait. Sans traitement, les deux cartes Paysage d’un ancien projet <strong>disparaissaient</strong> de l’onglet : la table des familles, lue depuis le cœur, ne connaît plus ces noms de colonnes. <code>load_indicators()</code> (parquet) et <code>db_load_indicators()</code> (PostGIS) passent désormais leur jeu par <code><a href="https://pobsteta.github.io/nemeton/reference/migrer_colonnes_l.html" class="external-link">nemeton::migrer_colonnes_l()</a></code> — renommage sans perte, variantes <code>_norm</code> comprises, sans effet sur un jeu déjà migré ou étranger. L’appel se pose une fois pour toutes dans le chemin de lecture.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-schéma-postgis-garde-les-anciens-noms-et-cest-délibéré-0-127-2">Changed — Le schéma PostGIS garde les anciens noms, et c’est délibéré<a class="anchor" aria-label="anchor" href="#changed--le-sch%C3%A9ma-postgis-garde-les-anciens-noms-et-cest-d%C3%A9lib%C3%A9r%C3%A9-0-127-2"></a></h4>
+<p>Renommer deux colonnes du schéma imposerait une migration à tous les déploiements pour un gain nul : ces noms ne sont pas exposés. La traduction se fait donc à la frontière — <code>.slugs_l_vers_schema()</code> à l’écriture, <code>migrer_colonnes_l()</code> à la lecture.</p>
+<p><strong>L’appariement s’y lit par valeur, pas par numéro.</strong> Le renommage du cœur croisait les deux slugs : les valeurs d’effet lisière (<code>l1_effet_lisiere</code>) sont stockées sous <code>l2_fragmentation</code>, celles de morcellement (<code>l2_morcellement</code>) sous <code>l1_sylvosphere</code>. Inverser l’un des deux seulement ferait relire toutes les lignes existantes à l’envers — un test vérifie que l’aller-retour app → schéma → app rend les valeurs d’origine.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--un-commentaire-de-la-v01271-décrivait-mal-rename_map-0-127-2">Fixed — Un commentaire de la v0.127.1 décrivait mal <code>rename_map</code>
+<a class="anchor" aria-label="anchor" href="#fixed--un-commentaire-de-la-v01271-d%C3%A9crivait-mal-rename_map-0-127-2"></a></h4>
+<p>J’y avais écrit que la table de <code>service_db.R</code> aliasait des colonnes DB avec un aller-retour lossless « parce que la même table sert à lire et à écrire ». Elle ne sert qu’à l’<strong>écriture</strong>, et seulement pour d’anciens noms anglais (<code>landscape_edge_ratio</code>) que plus rien ne produit dans le code actuel. L’aller-retour est bien sans perte, mais pour une autre raison : les deux côtés emploient directement les clés NMT. Commentaire corrigé.</p>
+</div>
+<div class="section level4">
+<h4 id="tests-0-127-2">Tests<a class="anchor" aria-label="anchor" href="#tests-0-127-2"></a></h4>
+<p><code>test-renommage-famille-L.R</code> — 26 assertions : la famille L de l’app porte les nouveaux slugs et son croisement a disparu (celui de F subsiste), un projet ancien relu rend les bonnes valeurs dans les bonnes colonnes, un projet déjà migré traverse inchangé, l’aller-retour vers le schéma est neutre.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.127.1" id="nemetonshiny-01271-2026-08-18">nemetonshiny 0.127.1 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01271-2026-08-18"></a></h2>
 <p>Réponse au contre-brief <code>specs/brief-nemetonshiny-libelles-famille-L.md</code>, émis par le cœur en réponse au nôtre.</p>
