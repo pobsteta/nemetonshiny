@@ -2433,7 +2433,7 @@ test_that("compute_single_indicator dispatches to correct function", {
   expect_true(exists("indicateur_c1_biomasse", mode = "function", envir = asNamespace("nemeton")))
   expect_true(exists("indicateur_c2_ndvi", mode = "function", envir = asNamespace("nemeton")))
   expect_true(exists("indicateur_w1_reseau", mode = "function", envir = asNamespace("nemeton")))
-  expect_true(exists("indicateur_l2_fragmentation", mode = "function", envir = asNamespace("nemeton")))
+  expect_true(exists("indicateur_l1_effet_lisiere", mode = "function", envir = asNamespace("nemeton")))
   expect_true(exists("indicateur_f2_erosion", mode = "function", envir = asNamespace("nemeton")))
   expect_true(exists("indicateur_e1_bois_energie", mode = "function", envir = asNamespace("nemeton")))
   expect_true(exists("indicateur_s3_population", mode = "function", envir = asNamespace("nemeton")))

@@ -5437,10 +5437,10 @@ translate_task_message <- function(task, i18n) {
   #
   # Le libelle vient du coeur, pas d'une table locale indexee par nom de
   # colonne : une colonne porte le nom de la FONCTION qui la remplit, et pour
-  # les familles F et L ce nom contredit le contenu
-  # (`indicateur_l2_fragmentation()` calcule l'effet lisiere). Une table locale
-  # suit le slug et s'inverse ; `indicator_labels()` apparie colonne et libelle
-  # ligne par ligne. Repli sur la cle i18n pour ce que le coeur ne connait pas.
+  # la famille F ce nom contredit encore le code (`F1` ->
+  # `indicateur_f2_erosion`). Une table locale suit le slug et s'inverse ;
+  # `indicator_labels()` apparie colonne et libelle ligne par ligne. Repli sur
+  # la cle i18n pour ce que le coeur ne connait pas.
   if (grepl("^compute:", task)) {
     indicator_key <- sub("^compute:", "", task)
     indicator_name <- indicator_label_by_column(indicator_key, i18n$language) %||%

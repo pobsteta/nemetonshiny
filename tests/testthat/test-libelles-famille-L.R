@@ -1,31 +1,33 @@
 # Les libelles d'indicateur suivent la COLONNE, pas le slug de la colonne.
 #
-# Une colonne porte le nom de la fonction qui la remplit, et pour les familles
-# F et L ce nom contredit le contenu : `indicateur_l2_fragmentation()` calcule
-# l'effet lisiere, `indicateur_l1_sylvosphere()` calcule la fragmentation. Une
-# table locale indexee par nom de colonne suit le slug et s'inverse - c'est
-# exactement ce que ces tests interdisent de reintroduire.
+# Une colonne porte le nom de la fonction qui la remplit. Le coeur a renomme
+# les deux fonctions L en v0.176.0 (spec 045), donc la famille L n'est PLUS
+# croisee : `indicateur_l1_effet_lisiere` porte bien l'effet lisiere. La
+# famille F l'est toujours (`F1` -> `indicateur_f2_erosion`), et c'est elle qui
+# garde ces tests utiles : une table locale indexee par nom de colonne suit le
+# slug et s'inverse.
 #
-# Reponse au brief `nemeton/specs/brief-nemetonshiny-libelles-famille-L.md`.
+# Suite de `specs/brief-nemetonshiny-libelles-famille-L.md` (livre v0.127.1)
+# puis de `specs/brief-nemetonshiny-renommage-famille-L.md`.
 
-test_that("indicator_label_by_column decrit la colonne, pas son slug (L)", {
-  # La colonne au slug « fragmentation » porte de la sylvosphere.
-  fr <- nemetonshiny:::indicator_label_by_column("indicateur_l2_fragmentation", "fr")
+test_that("les deux colonnes L portent desormais le bon slug", {
+  # Depuis v0.176.0 le slug et le contenu concordent.
+  fr <- nemetonshiny:::indicator_label_by_column("indicateur_l1_effet_lisiere", "fr")
   expect_true(grepl("[Ss]ylvosph", fr))
   expect_false(grepl("[Ff]ragmentation", fr))
 
   # ... et reciproquement.
-  fr2 <- nemetonshiny:::indicator_label_by_column("indicateur_l1_sylvosphere", "fr")
+  fr2 <- nemetonshiny:::indicator_label_by_column("indicateur_l2_morcellement", "fr")
   expect_true(grepl("[Ff]ragmentation", fr2))
   expect_false(grepl("[Ss]ylvosph", fr2))
 })
 
-test_that("le croisement L tient aussi en anglais", {
-  en <- nemetonshiny:::indicator_label_by_column("indicateur_l2_fragmentation", "en")
+test_that("la concordance L tient aussi en anglais", {
+  en <- nemetonshiny:::indicator_label_by_column("indicateur_l1_effet_lisiere", "en")
   expect_true(grepl("[Ss]ylvosphere", en))
   expect_false(grepl("[Ff]ragmentation", en))
 
-  en2 <- nemetonshiny:::indicator_label_by_column("indicateur_l1_sylvosphere", "en")
+  en2 <- nemetonshiny:::indicator_label_by_column("indicateur_l2_morcellement", "en")
   expect_true(grepl("[Ff]ragmentation", en2))
   expect_false(grepl("[Ss]ylvosphere", en2))
 })
@@ -42,12 +44,12 @@ test_that("la famille F, croisee elle aussi, suit la colonne", {
 
 test_that("with_family prefixe le nom de famille du coeur", {
   fr <- nemetonshiny:::indicator_label_by_column(
-    "indicateur_l2_fragmentation", "fr", with_family = TRUE)
+    "indicateur_l1_effet_lisiere", "fr", with_family = TRUE)
   expect_true(grepl(" - ", fr, fixed = TRUE))
   expect_true(grepl("[Ss]ylvosph", sub("^.* - ", "", fr)))
 
   en <- nemetonshiny:::indicator_label_by_column(
-    "indicateur_l2_fragmentation", "en", with_family = TRUE)
+    "indicateur_l1_effet_lisiere", "en", with_family = TRUE)
   expect_false(identical(sub(" - .*$", "", fr), sub(" - .*$", "", en)))
 })
 
@@ -69,8 +71,8 @@ test_that("les 41 colonnes du coeur se resolvent toutes", {
 
 test_that("le suffixe _norm est ignore, l'inconnu rend NULL", {
   expect_identical(
-    nemetonshiny:::indicator_label_by_column("indicateur_l2_fragmentation_norm", "fr"),
-    nemetonshiny:::indicator_label_by_column("indicateur_l2_fragmentation", "fr")
+    nemetonshiny:::indicator_label_by_column("indicateur_l1_effet_lisiere_norm", "fr"),
+    nemetonshiny:::indicator_label_by_column("indicateur_l1_effet_lisiere", "fr")
   )
   expect_null(nemetonshiny:::indicator_label_by_column("indicateur_zz_inexistant", "fr"))
   expect_null(nemetonshiny:::indicator_label_by_column(NULL, "fr"))
@@ -82,12 +84,12 @@ test_that("la ligne de progression annonce la grandeur calculee", {
   i18n_en <- nemetonshiny:::get_i18n("en")
 
   msg <- nemetonshiny:::translate_task_message(
-    "compute:indicateur_l2_fragmentation", i18n_fr)
+    "compute:indicateur_l1_effet_lisiere", i18n_fr)
   expect_true(grepl("[Ss]ylvosph", msg))
   expect_false(grepl("[Ff]ragmentation", msg))
 
   msg_en <- nemetonshiny:::translate_task_message(
-    "compute:indicateur_l1_sylvosphere", i18n_en)
+    "compute:indicateur_l2_morcellement", i18n_en)
   expect_true(grepl("[Ff]ragmentation", msg_en))
   expect_false(grepl("[Ss]ylvosphere", msg_en))
 
@@ -100,7 +102,8 @@ test_that("aucune table i18n indexee par nom de colonne ne revient", {
   # Ces cles etaient une troisieme copie des libelles, ecrite selon la
   # semantique du CODE alors qu'elle indexait des COLONNES.
   i18n <- nemetonshiny:::get_i18n("fr")
-  for (k in c("indicateur_l1_sylvosphere", "indicateur_l2_fragmentation",
+  for (k in c("indicateur_l2_morcellement", "indicateur_l1_effet_lisiere",
+              "indicateur_l1_sylvosphere", "indicateur_l2_fragmentation",
               "indicateur_f1_fertilite", "indicateur_f2_erosion",
               "indicateur_c1_biomasse")) {
     expect_false(i18n$has(k), info = k)

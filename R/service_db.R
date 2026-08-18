@@ -407,6 +407,47 @@ db_save_parcels <- function(con, project_id, parcels) {
 }
 
 
+#' Translate the renamed L slugs back to the PostGIS schema names
+#'
+#' @description
+#' The core renamed the two landscape columns in v0.176.0
+#' (`indicateur_l2_fragmentation` -> `indicateur_l1_effet_lisiere`,
+#' `indicateur_l1_sylvosphere` -> `indicateur_l2_morcellement`). The **schema**
+#' in `inst/sql/schema.sql` still carries the old names, and renaming its
+#' columns would force a migration on every deployment for no gain - these
+#' names are not exposed. So the translation happens at the boundary:
+#' here on write, and `nemeton::migrer_colonnes_l()` on read.
+#'
+#' The pairing reads **by value, not by number**: the core's rename crossed the
+#' two slugs, so edge-effect values (`l1_effet_lisiere`) live in the schema's
+#' `l2_fragmentation` column and fragmentation values (`l2_morcellement`) in
+#' `l1_sylvosphere`. Flipping only one of the two would make existing rows read
+#' back inverted.
+#'
+#' @param ind_df data.frame. Indicator frame carrying the post-0.176.0 names.
+#'
+#' @return The same frame with the two L columns (and their `_norm` variants)
+#'   renamed to the schema's names. A frame that carries neither is unchanged.
+#'
+#' @noRd
+.slugs_l_vers_schema <- function(ind_df) {
+  vers_schema <- c(
+    indicateur_l1_effet_lisiere = "indicateur_l2_fragmentation",
+    indicateur_l2_morcellement  = "indicateur_l1_sylvosphere"
+  )
+
+  for (nouveau in names(vers_schema)) {
+    for (suffixe in c("", "_norm")) {
+      de <- paste0(nouveau, suffixe)
+      if (de %in% names(ind_df)) {
+        names(ind_df)[names(ind_df) == de] <- paste0(vers_schema[[nouveau]], suffixe)
+      }
+    }
+  }
+  ind_df
+}
+
+
 #' Save indicators to database
 #'
 #' @param con DBI connection.
@@ -456,14 +497,13 @@ db_save_indicators <- function(con, project_id, indicators) {
     fertility_erosion         = "indicateur_f2_erosion",
     # L - Paysage
     #
-    # ATTENTION : ces deux alias sont inverses par rapport au CONTENU des
-    # colonnes - `indicateur_l1_sylvosphere` porte la fragmentation et
-    # `indicateur_l2_fragmentation` porte l'effet lisiere, parce qu'une colonne
-    # est nommee d'apres la fonction qui la remplit. On les laisse tels quels :
-    # la meme table sert a lire et a ecrire, donc l'aller-retour est SANS PERTE
-    # et aucune valeur n'est fausse. Les corriger imposerait une migration pour
-    # un gain nul tant que les noms DB ne sont pas exposes. Ne pas « reparer »
-    # une seule des deux directions.
+    # Cette table traduit d'ANCIENS NOMS ANGLAIS (jamais produits par le code
+    # actuel : `landscape_edge_ratio` n'apparait nulle part ailleurs) vers les
+    # cles NMT du schema. Elle ne concerne donc pas les slugs renommes en
+    # v0.176.0, qui sont traites plus bas, juste avant l'insertion.
+    #
+    # Les deux valeurs ci-dessous restent les anciens slugs L parce que ce sont
+    # les noms des COLONNES DU SCHEMA PostGIS, inchangees.
     landscape_edge_ratio      = "indicateur_l1_sylvosphere",
     landscape_fragmentation   = "indicateur_l2_fragmentation",
     # T - Temporel
@@ -520,6 +560,7 @@ db_save_indicators <- function(con, project_id, indicators) {
     "indicateur_w1_reseau", "indicateur_w2_zones_humides", "indicateur_w3_humidite",
     "indicateur_a1_couverture", "indicateur_a2_qualite_air",
     "indicateur_f1_fertilite", "indicateur_f2_erosion",
+    # Slugs L d'avant v0.176.0 : ce sont les colonnes reelles du schema PostGIS.
     "indicateur_l1_sylvosphere", "indicateur_l2_fragmentation",
     "indicateur_t1_anciennete", "indicateur_t2_changement",
     "indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement",
@@ -532,6 +573,9 @@ db_save_indicators <- function(con, project_id, indicators) {
     "famille_sol", "famille_paysage", "famille_temporel", "famille_risque",
     "famille_social", "famille_production", "famille_energie", "famille_naturalite"
   )
+
+  # Le schema PostGIS porte encore les anciens slugs L : on traduit a l'ecriture.
+  ind_df <- .slugs_l_vers_schema(ind_df)
 
   # Ne garder que les colonnes presentes dans les donnees ET dans le schema
   available_cols <- intersect(names(ind_df), db_cols)
@@ -698,12 +742,16 @@ db_load_parcels <- function(con, project_id) {
 #' @return data.frame, or NULL.
 #' @noRd
 db_load_indicators <- function(con, project_id) {
-  DBI::dbGetQuery(con,
+  out <- DBI::dbGetQuery(con,
     "SELECT i.* FROM nemeton.indicators i
      JOIN nemeton.projects pr ON i.project_id = pr.id
      WHERE pr.project_id = $1",
     params = list(project_id)
   )
+
+  # Le schema PostGIS porte encore les anciens slugs L (voir `db_cols` plus
+  # haut) : on les traduit a la sortie, comme le chemin parquet.
+  nemeton::migrer_colonnes_l(out, quiet = TRUE)
 }
 
 

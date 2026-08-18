@@ -128,7 +128,7 @@ DATA_SOURCES <- list(
       name = "Forest Cover (OSO)",
       type = "raster",
       source = "oso",
-      required_for = c("indicateur_c1_biomasse", "indicateur_l2_fragmentation")
+      required_for = c("indicateur_c1_biomasse", "indicateur_l1_effet_lisiere")
     ),
     lidar_mnh = list(
       name = "Canopy Height Model (LiDAR HD)",
@@ -304,8 +304,11 @@ list_available_indicators <- function(metadata = NULL) {
     "indicateur_a1_couverture", "indicateur_a2_qualite_air",
     # Fertility (F)
     "indicateur_f1_fertilite", "indicateur_f2_erosion",
-    # Landscape (L)
-    "indicateur_l2_fragmentation", "indicateur_l1_sylvosphere",
+    # Landscape (L) - slugs renommes par le coeur en v0.176.0 (spec 045) :
+    # `l2_fragmentation` -> `l1_effet_lisiere`, `l1_sylvosphere` -> `l2_morcellement`.
+    # Chaque fonction portait le nom de la metrique de l'AUTRE ; les valeurs sont
+    # inchangees, seuls les slugs cessent de mentir.
+    "indicateur_l1_effet_lisiere", "indicateur_l2_morcellement",
     "indicateur_l3_het_spectrale",
     # Temporal (T)
     "indicateur_t1_anciennete", "indicateur_t2_changement",

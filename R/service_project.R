@@ -638,6 +638,14 @@ load_indicators <- function(project_id) {
   tryCatch({
     results <- arrow::read_parquet(indicators_path)
 
+    # Migration des slugs L (coeur v0.176.0, spec 045). Tout projet calcule
+    # avant porte `indicateur_l1_sylvosphere` / `indicateur_l2_fragmentation` ;
+    # sans ce passage, ses deux cartes Paysage disparaissent de l'onglet, la
+    # table des familles ne connaissant plus ces noms. Le renommage est sans
+    # perte, prend les variantes `_norm`, et laisse intact un jeu deja migre -
+    # il se pose donc une fois pour toutes dans le chemin de lecture.
+    results <- nemeton::migrer_colonnes_l(results, quiet = TRUE)
+
     # Restaurer les attributs NDP depuis les metadonnees projet
     meta <- load_project_metadata(project_id)
     if (!is.null(meta$ndp_level)) {

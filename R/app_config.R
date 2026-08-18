@@ -241,14 +241,14 @@ get_all_column_names <- function() {
 #' Label an indicator column, read from the core
 #'
 #' @description
-#' Resolves a long-form column name (`indicateur_l2_fragmentation`) to the
-#' label of the quantity that column actually carries, in the requested
-#' language.
+#' Resolves a long-form column name (`indicateur_f2_erosion`) to the label of
+#' the quantity that column actually carries, in the requested language.
 #'
-#' A column is named after the **function that fills it**, and for families F
-#' and L that name contradicts the content: `indicateur_l2_fragmentation()`
-#' computes the edge effect and `indicateur_l1_sylvosphere()` computes
-#' fragmentation. The core pairs code, column and label explicitly row by row
+#' A column is named after the **function that fills it**, and for family F
+#' that name still contradicts the code: `F1` points at
+#' `indicateur_f2_erosion`, which carries erosion. (Family L was in the same
+#' state until the core renamed both functions in v0.176.0.) The core pairs
+#' code, column and label explicitly row by row
 #' (`nemeton::indicator_labels()`), so the label read from it describes the
 #' values on screen. A local table indexed by column name follows the *slug*
 #' instead, and inverts - which is what this helper replaces.
