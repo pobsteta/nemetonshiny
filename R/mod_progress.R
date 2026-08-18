@@ -297,44 +297,16 @@ mod_progress_server <- function(id, compute_state, app_state) {
     }
 
     # Helper: translate indicator name for the summary table
+    #
+    # Lu depuis le coeur (`indicator_label_by_column()`), pas depuis une table
+    # locale. L'ancienne table etait indexee par nom de colonne et suivait donc
+    # le slug : elle annoncait « Paysage - Fragmentation » pendant le calcul de
+    # la sylvosphere, parce qu'une colonne porte le nom de la fonction qui la
+    # remplit et que ce nom est croise pour F et L. Elle etait de surcroit
+    # monolingue et ignorait les huit indicateurs ajoutes depuis (W4, A3-A5,
+    # T3, R5-R7), qui sortaient en nom de colonne brut.
     translate_indicator_name <- function(key) {
-      # Map internal names to readable French labels grouped by family
-      indicator_labels <- list(
-        indicateur_c1_biomasse = "Carbone - Biomasse",
-        indicateur_c2_ndvi = "Carbone - NDVI",
-        indicateur_b1_protection = "Biodiversit\u00e9 - Protection",
-        indicateur_b2_structure = "Biodiversit\u00e9 - Structure",
-        indicateur_b3_connectivite = "Biodiversit\u00e9 - Connectivit\u00e9",
-        indicateur_b4_div_spectrale = "Biodiversit\u00e9 - Diversit\u00e9 spectrale",
-        indicateur_w1_reseau = "Eau - R\u00e9seau hydrographique",
-        indicateur_w2_zones_humides = "Eau - Zones humides",
-        indicateur_w3_humidite = "Eau - Indice topographique",
-        indicateur_a1_couverture = "Air - Couvert forestier tampon",
-        indicateur_a2_qualite_air = "Air - Qualit\u00e9 de l'air",
-        indicateur_f1_fertilite = "Fertilit\u00e9 - Sol",
-        indicateur_f2_erosion = "Fertilit\u00e9 - \u00c9rosion",
-        indicateur_l2_fragmentation = "Paysage - Fragmentation",
-        indicateur_l1_sylvosphere = "Paysage - Ratio bordure",
-        indicateur_l3_het_spectrale = "Paysage - H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale",
-        indicateur_t1_anciennete = "Temporel - Anciennet\u00e9",
-        indicateur_t2_changement = "Temporel - Changement",
-        indicateur_r1_feu = "Risque - Incendie",
-        indicateur_r2_tempete = "Risque - Temp\u00eate",
-        indicateur_r3_secheresse = "Risque - S\u00e9cheresse",
-        indicateur_r4_abroutissement = "Risque - Abroutissement",
-        indicateur_s1_routes = "Social - Sentiers",
-        indicateur_s2_bati = "Social - Accessibilit\u00e9",
-        indicateur_s3_population = "Social - Population",
-        indicateur_p1_volume = "Production - Volume",
-        indicateur_p2_station = "Production - Productivit\u00e9",
-        indicateur_p3_qualite_bois = "Production - Qualit\u00e9",
-        indicateur_e1_bois_energie = "Energie - Bois-\u00e9nergie",
-        indicateur_e2_evitement = "Energie - CO2 \u00e9vit\u00e9",
-        indicateur_n1_distance = "Naturalit\u00e9 - Distance",
-        indicateur_n2_continuite = "Naturalit\u00e9 - Continuit\u00e9",
-        indicateur_n3_naturalite = "Naturalit\u00e9 - Score"
-      )
-      indicator_labels[[key]] %||% key
+      indicator_label_by_column(key, i18n$language, with_family = TRUE) %||% key
     }
 
     # Helper: translate phase

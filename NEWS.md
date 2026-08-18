@@ -1,3 +1,57 @@
+# nemetonshiny 0.127.0.9001 (2026-08-18)
+
+Réponse au contre-brief `specs/brief-nemetonshiny-libelles-famille-L.md`,
+émis par le cœur en réponse au nôtre.
+
+### Fixed — Deux tables de libellés suivaient le slug de la colonne, pas son contenu
+
+**Le brief que j'avais envoyé au cœur était faux, et il a eu raison de le
+refuser.** Une colonne porte le nom de la **fonction qui la remplit**, et pour
+la famille L ce nom contredit ce que la fonction calcule :
+`indicateur_l2_fragmentation()` calcule l'effet lisière,
+`indicateur_l1_sylvosphere()` calcule la fragmentation. La colonne au slug
+« fragmentation » contient donc de la sylvosphère, et les libellés du cœur
+décrivaient correctement les valeurs affichées. **L'onglet Paysage n'avait rien
+à corriger** — échanger les libellés, comme je le demandais, aurait retitré les
+cartes à faux.
+
+Ce qui était bien inversé, c'est deux tables **locales** indistinctement
+indexées par nom de colonne :
+
+- `utils_i18n.R` — la ligne d'état annonçait « Calcul de Fragmentation
+  paysagère » pendant qu'elle calculait la sylvosphère.
+- `mod_progress.R` — le tableau récapitulatif annonçait
+  « Paysage - Fragmentation » dans le même cas.
+
+Aucune des deux n'est corrigée : elles sont **supprimées**.
+`indicator_label_by_column()` lit `nemeton::indicator_labels()` à travers
+`INDICATOR_FAMILIES`, qui apparie colonne et libellé ligne par ligne. C'est le
+même mouvement que le dé-fork d'`INDICATOR_FAMILIES` en v0.127.0 : une source,
+pas trois.
+
+Deux effets de bord du remplacement. La table de `mod_progress` était
+**monolingue** — du français en dur dans un module, contraire à la règle i18n ;
+elle est maintenant bilingue par construction. Et elle **ignorait les huit
+indicateurs ajoutés depuis** (W4, A3, A4, A5, T3, R5, R6, R7), qui sortaient en
+nom de colonne brut : les 41 colonnes du cœur se résolvent désormais, un test
+les balaie dans les deux langues.
+
+Les 34 clés i18n `indicateur_<colonne>` sont retirées de `TRANSLATIONS` — une
+troisième copie des libellés, écrite selon la sémantique du *code* alors
+qu'elle indexait des *colonnes*. `test-libelles-famille-L.R` (32 assertions)
+interdit qu'une table de ce genre revienne.
+
+### Known — Les alias DB de la famille L restent inversés, délibérément
+
+`service_db.R` aliase `landscape_edge_ratio` sur la colonne qui porte la
+fragmentation. La **même table sert à lire et à écrire** : l'aller-retour est
+sans perte, aucune valeur n'est fausse, seul quelqu'un qui interroge la base
+par ses propres noms serait induit en erreur. Les corriger imposerait une
+migration pour un gain nul tant que les noms DB ne sont pas exposés. Un
+commentaire sur place avertit de ne pas « réparer » une seule des deux
+directions.
+
+
 # nemetonshiny 0.127.0 (2026-08-18)
 
 Implémente `specs/brief-nemetonshiny-trois-derniers-points.md`. Plancher relevé à

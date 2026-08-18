@@ -2265,43 +2265,6 @@ TRANSLATIONS <- list(
     en = "Canopy height model (CHM) unavailable. The Production indicators (P1/P2/P3) and Wood energy (E1) require a CHM (Theia FORMSpoT, LiDAR HD or Open-Canopy). Configure the Theia API key via the settings menu."
   ),
 
-  # ============================================================
-  # Progress Messages - Indicator Names
-  # ============================================================
-  indicateur_c1_biomasse = list(fr = "Biomasse carbone", en = "Carbon Biomass"),
-  indicateur_c2_ndvi = list(fr = "NDVI - Vitalit\u00e9 v\u00e9g\u00e9tation", en = "NDVI - Vegetation Vitality"),
-  indicateur_b1_protection = list(fr = "Protection biodiversit\u00e9", en = "Biodiversity Protection"),
-  indicateur_b2_structure = list(fr = "Structure biodiversit\u00e9", en = "Biodiversity Structure"),
-  indicateur_b3_connectivite = list(fr = "Connectivit\u00e9 \u00e9cologique", en = "Ecological Connectivity"),
-  indicateur_b4_div_spectrale = list(fr = "Diversit\u00e9 spectrale (\u03b1)", en = "Spectral Diversity (\u03b1)"),
-  indicateur_w1_reseau = list(fr = "R\u00e9seau hydrographique", en = "Water Network"),
-  indicateur_w2_zones_humides = list(fr = "Zones humides", en = "Wetlands"),
-  indicateur_w3_humidite = list(fr = "Indice topographique d'humidit\u00e9", en = "Topographic Wetness Index"),
-  indicateur_a1_couverture = list(fr = "Tampon forestier", en = "Forest Buffer"),
-  indicateur_a2_qualite_air = list(fr = "Qualit\u00e9 de l'air", en = "Air Quality"),
-  indicateur_f2_erosion = list(fr = "Risque d'\u00e9rosion (RUSLE)", en = "Erosion Risk (RUSLE)"),
-  indicateur_f1_fertilite = list(fr = "Fertilit\u00e9 des sols (TWI+pente)", en = "Soil Fertility (TWI+slope)"),
-  indicateur_l1_sylvosphere = list(fr = "Sylvosph\u00e8re (effet lisi\u00e8re)", en = "Sylvosphere (Edge Effect)"),
-  indicateur_l2_fragmentation = list(fr = "Fragmentation paysag\u00e8re", en = "Landscape Fragmentation"),
-  indicateur_l3_het_spectrale = list(fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale (\u03b2)", en = "Spectral Heterogeneity (\u03b2)"),
-  indicateur_t1_anciennete = list(fr = "Anciennet\u00e9 foresti\u00e8re", en = "Forest Age"),
-  indicateur_t2_changement = list(fr = "Taux de changement", en = "Change Rate"),
-  indicateur_r1_feu = list(fr = "Risque incendie", en = "Fire Risk"),
-  indicateur_r2_tempete = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
-  indicateur_r3_secheresse = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
-  indicateur_r4_abroutissement = list(fr = "Risque abroutissement", en = "Browsing Risk"),
-  indicateur_r5_deperissement = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback"),
-  indicateur_s1_routes = list(fr = "Densit\u00e9 de sentiers", en = "Trail Density"),
-  indicateur_s2_bati = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
-  indicateur_s3_population = list(fr = "Proximit\u00e9 population", en = "Population Proximity"),
-  indicateur_p1_volume = list(fr = "Volume de bois", en = "Timber Volume"),
-  indicateur_p2_station = list(fr = "Productivit\u00e9", en = "Productivity"),
-  indicateur_p3_qualite_bois = list(fr = "Qualit\u00e9 du bois", en = "Timber Quality"),
-  indicateur_e1_bois_energie = list(fr = "Bois-\u00e9nergie", en = "Wood Energy"),
-  indicateur_e2_evitement = list(fr = "\u00c9vitement CO2", en = "CO2 Avoidance"),
-  indicateur_n1_distance = list(fr = "Distance infrastructures", en = "Infrastructure Distance"),
-  indicateur_n2_continuite = list(fr = "Continuit\u00e9 foresti\u00e8re", en = "Forest Continuity"),
-  indicateur_n3_naturalite = list(fr = "Score de naturalit\u00e9", en = "Naturalness Score"),
 
   # ============================================================
   # NDP (Niveau De Precision)
@@ -5471,9 +5434,17 @@ translate_task_message <- function(task, i18n) {
   }
 
   # Handle new format: "compute:indicator_key"
+  #
+  # Le libelle vient du coeur, pas d'une table locale indexee par nom de
+  # colonne : une colonne porte le nom de la FONCTION qui la remplit, et pour
+  # les familles F et L ce nom contredit le contenu
+  # (`indicateur_l2_fragmentation()` calcule l'effet lisiere). Une table locale
+  # suit le slug et s'inverse ; `indicator_labels()` apparie colonne et libelle
+  # ligne par ligne. Repli sur la cle i18n pour ce que le coeur ne connait pas.
   if (grepl("^compute:", task)) {
     indicator_key <- sub("^compute:", "", task)
-    indicator_name <- i18n$t(indicator_key)
+    indicator_name <- indicator_label_by_column(indicator_key, i18n$language) %||%
+      i18n$t(indicator_key)
     return(i18n$t("computing_indicator_name", indicator = indicator_name))
   }
 

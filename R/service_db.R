@@ -455,6 +455,15 @@ db_save_indicators <- function(con, project_id, indicators) {
     fertility_soil            = "indicateur_f1_fertilite",
     fertility_erosion         = "indicateur_f2_erosion",
     # L - Paysage
+    #
+    # ATTENTION : ces deux alias sont inverses par rapport au CONTENU des
+    # colonnes - `indicateur_l1_sylvosphere` porte la fragmentation et
+    # `indicateur_l2_fragmentation` porte l'effet lisiere, parce qu'une colonne
+    # est nommee d'apres la fonction qui la remplit. On les laisse tels quels :
+    # la meme table sert a lire et a ecrire, donc l'aller-retour est SANS PERTE
+    # et aucune valeur n'est fausse. Les corriger imposerait une migration pour
+    # un gain nul tant que les noms DB ne sont pas exposes. Ne pas « reparer »
+    # une seule des deux directions.
     landscape_edge_ratio      = "indicateur_l1_sylvosphere",
     landscape_fragmentation   = "indicateur_l2_fragmentation",
     # T - Temporel

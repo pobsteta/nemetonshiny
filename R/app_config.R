@@ -238,6 +238,51 @@ get_all_column_names <- function() {
 }
 
 
+#' Label an indicator column, read from the core
+#'
+#' @description
+#' Resolves a long-form column name (`indicateur_l2_fragmentation`) to the
+#' label of the quantity that column actually carries, in the requested
+#' language.
+#'
+#' A column is named after the **function that fills it**, and for families F
+#' and L that name contradicts the content: `indicateur_l2_fragmentation()`
+#' computes the edge effect and `indicateur_l1_sylvosphere()` computes
+#' fragmentation. The core pairs code, column and label explicitly row by row
+#' (`nemeton::indicator_labels()`), so the label read from it describes the
+#' values on screen. A local table indexed by column name follows the *slug*
+#' instead, and inverts - which is what this helper replaces.
+#'
+#' @param col_name Character. Column name, with or without the `_norm` suffix.
+#' @param lang Character. `"fr"` or `"en"`.
+#' @param with_family Logical. When `TRUE`, prefix with the family name
+#'   (`"Paysage - Sylvosphere (effet lisiere)"`).
+#'
+#' @return Character label, or `NULL` when the column is unknown to the core -
+#'   the caller decides what to fall back to.
+#'
+#' @noRd
+indicator_label_by_column <- function(col_name, lang = "fr", with_family = FALSE) {
+  if (is.null(col_name) || !nzchar(col_name)) return(NULL)
+  base <- sub("_norm$", "", col_name)
+  lang <- if (identical(lang, "en")) "en" else "fr"
+
+  for (fam in INDICATOR_FAMILIES) {
+    idx <- match(base, fam$column_names %||% character(0))
+    if (is.na(idx) || idx > length(fam$indicators)) next
+
+    lbl <- fam$indicator_labels[[fam$indicators[idx]]]
+    txt <- lbl[[lang]] %||% lbl[["fr"]] %||% lbl[["en"]]
+    if (is.null(txt) || is.na(txt) || !nzchar(txt)) return(NULL)
+
+    if (!isTRUE(with_family)) return(txt)
+    fam_name <- (if (identical(lang, "en")) fam$name_en else fam$name_fr) %||% fam$code
+    return(paste0(fam_name, " - ", txt))
+  }
+  NULL
+}
+
+
 #' Get column-to-family mapping
 #'
 #' @description
