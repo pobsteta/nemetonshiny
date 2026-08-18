@@ -799,6 +799,27 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     pente_max_pct = num(input$dess_pente_max, DESSERTE_PENTE_MAX_DEFAULT_PCT))
 }
 
+#' Current desserte parameters, from the project settings
+#'
+#' @description
+#' Since the five calibrations moved to the settings modal, the parameters no
+#' longer come from module inputs but from `project_desserte_params()`. This
+#' maps that list onto the input names [.desserte_params_courants()] expects, so
+#' the sanitising (defaults on absent / negative / non-numeric) stays in one
+#' place and the cache key keeps the same shape.
+#'
+#' @param params List from `project_desserte_params()`.
+#' @return Same shape as [.desserte_params_courants()].
+#' @noRd
+.desserte_params_projet <- function(params) {
+  .desserte_params_courants(list(
+    skidding_m         = params$skidding_m,
+    dess_methode_pente = params$methode_pente,
+    dess_largeur       = params$largeur_m,
+    dess_pente_max     = params$pente_max_pct))
+}
+
+
 .desserte_params_identiques <- function(meta, params) {
   for (nm in names(params)) {
     a <- meta[[nm]]

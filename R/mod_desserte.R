@@ -246,60 +246,22 @@ mod_desserte_ui <- function(id) {
                                         i18n$t("dess_engine_steiner"))),
             selected = DESSERTE_ENGINES[[1]]),
 
-          shiny::numericInput(
-            ns("buffer_km"),
-            .dess_label_info(i18n$t("dess_buffer"), i18n$t("dess_buffer_help")),
-            value = 1, min = 0, max = 20, step = 1),
-
-          # Distance de debardage : parametre METIER, pas un reglage de performance.
-          # Il change le resultat - sur Dabo, 39 routes a 100 m contre aucune a
-          # 300 m - donc il doit etre visible, sinon " rien a construire " est
-          # inintelligible. Paliers repris de `foretaccess_config()$skidder$
-          # classes_distance_m`.
-          shiny::numericInput(
-            ns("skidding_m"),
-            .dess_label_info(i18n$t("dess_skidding"), i18n$t("dess_skidding_help")),
-            value = DESSERTE_SKIDDING_DEFAULT_M, min = 0, max = 2000, step = 50),
-
-          # --- Tarification de la pente (foretaccess spec 029) ---------------------
-          # Deux DECISIONS distinctes, et c'est pour cela qu'il y a deux entrees.
+          # --- Calibrages deplaces vers " Sources & parametres " -----------------
+          # Le tampon d'emprise, la distance de debardage, la pente maximale
+          # constructible et la tarification de la pente (bareme / terrassement +
+          # largeur de plateforme) ont quitte ce sidebar pour l'onglet
+          # " Sources & parametres " de la modale des reglages, ou ils sont
+          # persistes par projet - meme mouvement que les seuils du Suivi
+          # sanitaire (v0.126.2). Ce sont des decisions de MASSIF : ce qu'on
+          # acquiert, ce qu'on considere desservi, jusqu'ou l'on construit et
+          # comment on chiffre la pente. Seul le choix du moteur reste ici,
+          # c'est lui qu'on fait varier d'un essai a l'autre.
           #
-          # `methode_pente` ne change que la facon de CHIFFRER : le bareme applique
-          # quatre classes, le terrassement calcule un volume de deblai/remblai. Sur
-          # le banc DABO du coeur, couts medians comparables (x 1,03) mais traces
-          # communs a 44 % seulement - personne n'a juge lequel est le plus
-          # plausible sur le terrain, d'ou un choix rendu a l'utilisateur plutot
-          # qu'un defaut impose.
-          #
-          # `pente_max_pct` decide JUSQU'OU l'on construit. Avant que le coeur ne le
-          # separe, choisir " terrassement " deplacait aussi ce plafond en silence,
-          # de 60 % a 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
-          # decider d'un seul geste.
-          shiny::radioButtons(
-            ns("dess_methode_pente"),
-            .dess_label_info(i18n$t("dess_methode_pente"),
-                             i18n$t("dess_methode_pente_help")),
-            choices = stats::setNames(c("bareme", "terrassement"),
-                                      c(i18n$t("dess_methode_bareme"),
-                                        i18n$t("dess_methode_terrassement"))),
-            selected = "bareme", inline = TRUE),
-
-          # La largeur n'a d'effet QU'EN terrassement -- le bareme y est aveugle,
-          # alors que le volume croit comme son carre. On la masque plutot que de la
-          # griser : pas de dependance a shinyjs pour si peu.
-          shiny::conditionalPanel(
-            condition = sprintf("input['%s'] == 'terrassement'",
-                                ns("dess_methode_pente")),
-            shiny::numericInput(
-              ns("dess_largeur"),
-              .dess_label_info(i18n$t("dess_largeur"), i18n$t("dess_largeur_help")),
-              value = DESSERTE_LARGEUR_DEFAULT_M, min = 2.5, max = 6, step = 0.5)),
-
-          shiny::numericInput(
-            ns("dess_pente_max"),
-            .dess_label_info(i18n$t("dess_pente_max"),
-                             .dess_alerte(i18n$t("dess_pente_max_help"))),
-            value = DESSERTE_PENTE_MAX_DEFAULT_PCT, min = 0, max = 100, step = 5),
+          # Le rappel ci-dessous garde les valeurs en vigueur sous les yeux :
+          # sans elles, " aucune route a construire " (mesure sur Dabo : 39
+          # routes a 100 m de debardage, aucune a 300 m) resterait
+          # inintelligible.
+          shiny::uiOutput(ns("params_recap")),
 
           # Empreinte memoire estimee de l'emprise courante : le pic du glouton est
           # previsible a partir de la seule grille (cf. .desserte_memory_check), donc
@@ -442,20 +404,26 @@ mod_desserte_ui <- function(id) {
                   type = "outline-primary", class = "btn-sm w-100"),
                 htmltools::tags$p(i18n$t("dess_detect_intro")),
                 .dess_alerte(i18n$t("dess_detect_warn"))),
-              shiny::uiOutput(ns("detect_result"))),
-            bslib::accordion_panel(
-              title = i18n$t("action_plan_section_exports"),
-              value = "exports",
-              icon = bsicons::bs_icon("box-arrow-up"),
-              .dess_action_info(
-                shiny::downloadButton(
-                  ns("export_gpkg"), i18n$t("dess_download_gpkg"),
-                  icon = shiny::icon("database"),
-                  class = "btn-outline-success btn-sm w-100"),
-                i18n$t("dess_download_gpkg_note")),
-              # Le chemin du cache RESTE visible : ce n'est pas une explication
-              # qu'on lit une fois, c'est une valeur qu'on copie.
-              shiny::uiOutput(ns("cache_path")))))
+              shiny::uiOutput(ns("detect_result")))),
+          # Exports SORTIS de l'accordeon (parite reGeneration) : un sous-titre
+          # " Exports " en h6 et un bouton pleine largeur, directement dans le
+          # bloc. Un panneau repliable pour un unique bouton coutait un clic de
+          # plus pour rien.
+          htmltools::tags$h6(class = "mt-2",
+                             i18n$t("action_plan_section_exports")),
+          .dess_action_info(
+            htmltools::tagAppendAttributes(
+              shiny::downloadButton(
+                ns("export_gpkg"), i18n$t("dess_download_gpkg"),
+                icon = shiny::icon("database"),
+                class = "btn-outline-success btn-sm w-100 mb-2"),
+              onclick = sprintf("nemetonShowDownloadToast(%s);",
+                jsonlite::toJSON(i18n$t("dess_export_gpkg_busy"),
+                                 auto_unbox = TRUE))),
+            i18n$t("dess_download_gpkg_note")),
+          # Le chemin du cache RESTE visible : ce n'est pas une explication
+          # qu'on lit une fois, c'est une valeur qu'on copie.
+          shiny::uiOutput(ns("cache_path")))
         ),
         leaflet::leafletOutput(ns("map"), height = "72vh")
       )
@@ -468,6 +436,42 @@ mod_desserte_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     i18n <- get_i18n(get_app_options()$language %||% "fr")
+
+    # ----- Calibrages lus dans les metadonnees du projet ---------------------
+    # Tampon, distance de debardage, pente maximale, tarification de la pente :
+    # tous regles dans " Sources & parametres ". Un enregistrement la-bas
+    # recharge `app_state$current_project`, donc ce reactive s'invalide et le
+    # rappel + l'estimation memoire suivent sans intervention.
+    dess_params_r <- shiny::reactive({
+      project_desserte_params(app_state$current_project$metadata)
+    })
+
+    # Rappel des valeurs en vigueur, avec le chemin pour les changer.
+    output$params_recap <- shiny::renderUI({
+      dp <- dess_params_r()
+      meth <- if (identical(dp$methode_pente, "terrassement")) {
+        i18n$t("dess_methode_terrassement")
+      } else i18n$t("dess_methode_bareme")
+      htmltools::div(
+        class = "small text-muted border rounded p-2 mb-3",
+        htmltools::div(
+          class = "fw-semibold mb-1",
+          bsicons::bs_icon("sliders", class = "me-1"),
+          i18n$t("dess_params_section")),
+        htmltools::tags$div(sprintf(
+          "%s : %s km \u00b7 %s : %s m \u00b7 %s : %s %%",
+          i18n$t("dess_buffer_short"), format(dp$buffer_km),
+          i18n$t("dess_skidding_short"), format(dp$skidding_m),
+          i18n$t("dess_pente_max_short"), format(dp$pente_max_pct))),
+        htmltools::tags$div(sprintf(
+          "%s : %s%s", i18n$t("dess_methode_pente"), meth,
+          if (identical(dp$methode_pente, "terrassement")) {
+            sprintf(" (%s m)", format(dp$largeur_m))
+          } else "")),
+        htmltools::tags$div(class = "fst-italic mt-1",
+                            i18n$t("dess_params_where"))
+      )
+    })
 
     rv <- shiny::reactiveValues(result = NULL, running = FALSE, start = NULL)
 
@@ -489,7 +493,7 @@ mod_desserte_server <- function(id, app_state) {
     output$mem_estimate <- shiny::renderUI({
       aoi <- units_sf()
       if (is.null(aoi)) return(NULL)
-      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      buffer_m <- dess_params_r()$buffer_km * 1000
       # Le tampon est applique a la BBOX, pas aux geometries : c'est la seule
       # chose dont depend la grille, et ca evite un st_buffer() a chaque frappe.
       mem <- .desserte_memory_check(aoi, res_m = 5, buffer_m = buffer_m)
@@ -581,12 +585,10 @@ mod_desserte_server <- function(id, app_state) {
       shiny::showNotification(
         .running_notif_content(i18n$t("dess_running"), rv$start),
         id = session$ns("dess_notif"), type = "message", duration = NULL)
-      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
-      skidding_m <- suppressWarnings(as.numeric(input$skidding_m))
-      if (!isTRUE(is.finite(skidding_m)) || skidding_m < 0) {
-        skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
-      }
-      params <- .desserte_params_courants(input, skidding_m)
+      dp <- dess_params_r()
+      buffer_m <- dp$buffer_km * 1000
+      params <- .desserte_params_projet(dp)
+      skidding_m <- params$skidding_m
       tryCatch(
         dess_task$invoke(aoi_path, engine, cache_dir, buffer_m, skidding_m,
                          params$methode_pente, params$largeur_m,
@@ -672,7 +674,7 @@ mod_desserte_server <- function(id, app_state) {
       # Recharger depuis le cache disque (chemins + sidecar de scalaires).
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
-      rv$result <- .load_cached_desserte(project_path, .desserte_params_courants(input)) %||% res
+      rv$result <- .load_cached_desserte(project_path, .desserte_params_projet(dess_params_r())) %||% res
       # Zero route creee est un SUCCES, pas un resultat vide : a `skidding_m`
       # realiste, une foret bien desservie n'a rien a construire (mesure sur
       # Dabo : 39 routes a 100 m, aucune a 300 m). Sans message dedie,
@@ -710,7 +712,7 @@ mod_desserte_server <- function(id, app_state) {
         }
         dess_loaded_for(key)
         cached <- tryCatch(
-          .load_cached_desserte(project_path, .desserte_params_courants(input)),
+          .load_cached_desserte(project_path, .desserte_params_projet(dess_params_r())),
           error = function(e) NULL)
         rv$result <- cached
         if (!is.null(cached)) {
@@ -1104,9 +1106,8 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("dess_need_project"), type = "warning"); return()
       }
       cd <- .desserte_cache_dir(pp)
-      bm <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
-      sk <- suppressWarnings(as.numeric(input$skidding_m))
-      if (!isTRUE(is.finite(sk)) || sk < 0) sk <- DESSERTE_SKIDDING_DEFAULT_M
+      bm <- dess_params_r()$buffer_km * 1000
+      sk <- dess_params_r()$skidding_m
       ns_ <- suppressWarnings(as.integer(input$optim_n_start))
       if (!isTRUE(is.finite(ns_)) || ns_ < 2L) ns_ <- DESSERTE_OPTIM_N_START
       optim_panel$start(Sys.time())
@@ -1151,7 +1152,7 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("dess_need_project"), type = "warning"); return()
       }
       cd <- .desserte_cache_dir(pp)
-      bm <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      bm <- dess_params_r()$buffer_km * 1000
       osm_panel$start(Sys.time())
       shiny::showNotification(
         .running_notif_content(i18n$t("dess_osm_running"), osm_panel$start()),
@@ -1203,7 +1204,7 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("dess_need_project"), type = "warning"); return()
       }
       cd <- .desserte_cache_dir(pp)
-      bm <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      bm <- dess_params_r()$buffer_km * 1000
       detect_panel$start(Sys.time())
       shiny::showNotification(
         .running_notif_content(i18n$t("dess_detect_running"), detect_panel$start()),

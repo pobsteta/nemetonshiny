@@ -1886,6 +1886,373 @@ set_project_fast_params <- function(project_id,
 }
 
 
+#' Default FORDEAD detection parameter
+#'
+#' @description
+#' Anomaly threshold of the FORDEAD diagnosis (CRSWIR), spec 008. Default 0.16
+#' is the ONF/DSF 2024 calibration. Kept next to [FAST_PARAMS_DEFAULT] so the
+#' settings tab that now holds the slider and the run that consumes it agree on
+#' one value.
+#'
+#' @noRd
+FORDEAD_PARAMS_DEFAULT <- list(threshold_anomaly = 0.16)
+
+
+#' Read the FORDEAD detection parameter of a project
+#'
+#' @description
+#' Like the FAST thresholds, the anomaly threshold is a **calibration** - set
+#' once per massif, not adjusted at each run - so it moved from the Suivi
+#' sanitaire sidebar to the settings modal. The storage key is unchanged
+#' (`metadata$monitoring_threshold_anomaly`), so projects calibrated before the
+#' move keep their value.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#'
+#' @return List with `threshold_anomaly`.
+#'
+#' @noRd
+project_fordead_params <- function(metadata) {
+  v <- suppressWarnings(as.numeric(
+    metadata$monitoring_threshold_anomaly %||%
+      FORDEAD_PARAMS_DEFAULT$threshold_anomaly))
+  if (length(v) != 1L || is.na(v)) {
+    v <- FORDEAD_PARAMS_DEFAULT$threshold_anomaly
+  }
+  list(threshold_anomaly = v)
+}
+
+
+#' Persist the FORDEAD detection parameter on a project
+#'
+#' @description
+#' Mirrors [set_project_fast_params()]. Nothing is invalidated: the threshold is
+#' applied by the *next* FORDEAD run, so a re-calibration costs only that run.
+#'
+#' @param project_id Character.
+#' @param threshold_anomaly Numeric. CRSWIR deviation above the modelled value
+#'   from which a pixel is flagged as an anomaly.
+#'
+#' @return Invisible `TRUE`.
+#'
+#' @noRd
+set_project_fordead_params <- function(project_id, threshold_anomaly = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  # Passage par le lecteur : une valeur absente ou aberrante retombe sur le
+  # defaut plutot que d'ecrire un NA dans les metadonnees.
+  cfg <- project_fordead_params(
+    list(monitoring_threshold_anomaly = threshold_anomaly))
+
+  update_project_metadata(
+    project_id,
+    list(monitoring_threshold_anomaly = cfg$threshold_anomaly),
+    project_path = project_path)
+  cli::cli_alert_success(
+    "Suivi sanitaire : seuil d'anomalie CRSWIR={cfg$threshold_anomaly}")
+  invisible(TRUE)
+}
+
+
+#' Default accessibility extent parameter
+#'
+#' @description
+#' Buffer (metres) added around the forest AOI before acquiring the DEM and the
+#' road network: access comes from the roads *outside* the stand. Default 250 m,
+#' the value the sidebar numeric input carried before the move.
+#'
+#' @noRd
+ACCESSIBILITY_PARAMS_DEFAULT <- list(buffer_m = 250)
+
+
+#' Read the accessibility extent parameter of a project
+#'
+#' @description
+#' The buffer sizes the acquired extent, so it is a per-massif calibration, not
+#' a per-run gesture: it lives in the settings modal and persists with the
+#' project. Absent metadata yields the default - a project that never opened the
+#' settings behaves exactly as before.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#'
+#' @return List with `buffer_m`.
+#'
+#' @noRd
+project_accessibility_params <- function(metadata) {
+  v <- suppressWarnings(as.numeric(
+    metadata$accessibility_params$buffer_m %||%
+      ACCESSIBILITY_PARAMS_DEFAULT$buffer_m))
+  if (length(v) != 1L || is.na(v)) {
+    v <- ACCESSIBILITY_PARAMS_DEFAULT$buffer_m
+  }
+  list(buffer_m = max(0, v))
+}
+
+
+#' Persist the accessibility extent parameter on a project
+#'
+#' @description
+#' Mirrors [set_project_fast_params()]. No cache is dropped: the accessibility
+#' service keys its cache on the buffered extent, so a widened buffer simply
+#' produces a new entry at the next run.
+#'
+#' @param project_id Character.
+#' @param buffer_m Numeric. Buffer around the forest, in metres.
+#'
+#' @return Invisible `TRUE`.
+#'
+#' @noRd
+set_project_accessibility_params <- function(project_id, buffer_m = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  cfg <- project_accessibility_params(
+    list(accessibility_params = list(buffer_m = buffer_m)))
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+
+  update_project_metadata(project_id, list(accessibility_params = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Accessibilit\u00e9 : zone tampon {cfg$buffer_m} m")
+  invisible(TRUE)
+}
+
+
+#' Default road-network (desserte) parameters
+#'
+#' @description
+#' The five values that size a desserte computation and price it: the buffer
+#' widening the acquired extent (km), the skidding distance beyond which a
+#' parcel is deemed unserved (m), the maximum buildable slope (%), the slope
+#' pricing method and the platform width it uses. Defaults mirror the sidebar
+#' values they replace - see `DESSERTE_SKIDDING_DEFAULT_M`,
+#' `DESSERTE_PENTE_MAX_DEFAULT_PCT` and `DESSERTE_LARGEUR_DEFAULT_M` in
+#' `service_desserte.R` - except `methode_pente`, now `"terrassement"`.
+#'
+#' @noRd
+DESSERTE_PARAMS_DEFAULT <- list(
+  buffer_km     = 1,
+  skidding_m    = DESSERTE_SKIDDING_DEFAULT_M,
+  pente_max_pct = DESSERTE_PENTE_MAX_DEFAULT_PCT,
+  # Tarification de la pente : le TERRASSEMENT est desormais le defaut. Il
+  # chiffre un volume de deblai/remblai plutot qu'un bareme de classes, donc il
+  # rend compte de la largeur de plateforme - que le bareme ignore.
+  methode_pente = "terrassement",
+  largeur_m     = DESSERTE_LARGEUR_DEFAULT_M
+)
+
+
+#' Read the desserte parameters of a project
+#'
+#' @description
+#' Like the FAST thresholds and the accessibility buffer, these are
+#' **calibrations** of a massif - the acquired extent, the machine reach, the
+#' slope one accepts to build on, how a slope is priced - not per-run gestures,
+#' so they live in the settings modal and persist with the project. Only the
+#' engine (glouton / Steiner) stayed in the sidebar: it is the choice one varies
+#' from run to run.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#'
+#' @return List with `buffer_km`, `skidding_m`, `pente_max_pct`,
+#'   `methode_pente`, `largeur_m`.
+#'
+#' @noRd
+project_desserte_params <- function(metadata) {
+  cfg <- metadata$desserte_params
+  num <- function(x, default) {
+    v <- suppressWarnings(as.numeric(x %||% default))
+    if (length(v) != 1L || is.na(v) || v < 0) default else v
+  }
+  mp <- as.character(cfg$methode_pente %||%
+                       DESSERTE_PARAMS_DEFAULT$methode_pente)[1]
+  if (!mp %in% c("bareme", "terrassement")) {
+    mp <- DESSERTE_PARAMS_DEFAULT$methode_pente
+  }
+
+  list(
+    buffer_km     = num(cfg$buffer_km, DESSERTE_PARAMS_DEFAULT$buffer_km),
+    skidding_m    = num(cfg$skidding_m, DESSERTE_PARAMS_DEFAULT$skidding_m),
+    pente_max_pct = num(cfg$pente_max_pct,
+                        DESSERTE_PARAMS_DEFAULT$pente_max_pct),
+    methode_pente = mp,
+    largeur_m     = num(cfg$largeur_m, DESSERTE_PARAMS_DEFAULT$largeur_m)
+  )
+}
+
+
+#' Persist the desserte parameters on a project
+#'
+#' @description
+#' Mirrors [set_project_fast_params()]. No cache is dropped: a desserte result
+#' is cached under a key that already carries these values, so changing them
+#' simply misses the cache and recomputes.
+#'
+#' @param project_id Character.
+#' @param buffer_km Numeric. Buffer around the parcels, in kilometres.
+#' @param skidding_m Numeric. Skidding distance, in metres.
+#' @param pente_max_pct Numeric. Maximum buildable slope, in percent.
+#' @param methode_pente Character. `"bareme"` or `"terrassement"`.
+#' @param largeur_m Numeric. Platform width, in metres (terrassement only).
+#'
+#' @return Invisible `TRUE`.
+#'
+#' @noRd
+set_project_desserte_params <- function(project_id,
+                                        buffer_km = NULL,
+                                        skidding_m = NULL,
+                                        pente_max_pct = NULL,
+                                        methode_pente = NULL,
+                                        largeur_m = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  cfg <- project_desserte_params(list(desserte_params = list(
+    buffer_km     = buffer_km,
+    skidding_m    = skidding_m,
+    pente_max_pct = pente_max_pct,
+    methode_pente = methode_pente,
+    largeur_m     = largeur_m
+  )))
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+
+  update_project_metadata(project_id, list(desserte_params = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Desserte : tampon {cfg$buffer_km} km / d\u00e9bardage {cfg$skidding_m} m \\
+     / pente max {cfg$pente_max_pct} %")
+  invisible(TRUE)
+}
+
+
+#' Default reGeneration engine parameters
+#'
+#' @description
+#' Phenology (budburst / leaf fall), the two expert overrides (`lai_max`,
+#' `ewm`), the SoilGrids integration depth, the meteorological forcing and the
+#' microclimate resolution. `lai_max` and `ewm` default to `NA`, which is not a
+#' missing value here but a **meaning**: derive it from the data (LiDAR PAI /
+#' SoilGrids) rather than force it.
+#'
+#' @noRd
+REGEN_PARAMS_DEFAULT <- list(
+  budburst         = 105,
+  leaf_fall        = 300,
+  lai_max          = NA_real_,
+  ewm              = NA_real_,
+  rooting_depth_cm = 100,
+  forcing          = "safran",
+  resolution       = "2"
+)
+
+
+#' Read the reGeneration engine parameters of a project
+#'
+#' @description
+#' Same reasoning as the FAST thresholds: phenology, expert overrides, forcing
+#' and resolution are set once for a massif and then left alone, so they live in
+#' the settings modal rather than in the sidebar where they invited reflex
+#' filling - typing a `lai_max` silently cancels a PAI computed in 57 minutes.
+#'
+#' The two overrides keep their `NA` = "derive it" semantics: an absent entry
+#' and an explicitly emptied field are the same thing.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#'
+#' @return List with `budburst`, `leaf_fall`, `lai_max`, `ewm`,
+#'   `rooting_depth_cm`, `forcing`, `resolution`.
+#'
+#' @noRd
+project_regen_params <- function(metadata) {
+  cfg <- metadata$regen_params
+  num <- function(x, default) {
+    v <- suppressWarnings(as.numeric(x %||% default))
+    if (length(v) != 1L) default else v
+  }
+  # Un override absent OU vide vaut " derive " : on ne retombe pas sur un
+  # scalaire par defaut, on retourne NA.
+  ovr <- function(x) {
+    v <- suppressWarnings(as.numeric(x %||% NA_real_))
+    if (length(v) != 1L || is.na(v)) NA_real_ else v
+  }
+  enum <- function(x, allowed, default) {
+    v <- as.character(x %||% default)[1]
+    if (is.na(v) || !v %in% allowed) default else v
+  }
+
+  list(
+    budburst         = num(cfg$budburst, REGEN_PARAMS_DEFAULT$budburst),
+    leaf_fall        = num(cfg$leaf_fall, REGEN_PARAMS_DEFAULT$leaf_fall),
+    lai_max          = ovr(cfg$lai_max),
+    ewm              = ovr(cfg$ewm),
+    rooting_depth_cm = num(cfg$rooting_depth_cm,
+                           REGEN_PARAMS_DEFAULT$rooting_depth_cm),
+    forcing          = enum(cfg$forcing, c("safran", "era5"),
+                            REGEN_PARAMS_DEFAULT$forcing),
+    resolution       = enum(cfg$resolution, c("2", "5"),
+                            REGEN_PARAMS_DEFAULT$resolution)
+  )
+}
+
+
+#' Persist the reGeneration engine parameters on a project
+#'
+#' @description
+#' Mirrors [set_project_fast_params()]. The cached engine outputs are NOT
+#' dropped: they are keyed by their own run, and a re-calibration is applied by
+#' the next run.
+#'
+#' @param project_id Character.
+#' @param budburst,leaf_fall Numeric. Day of year.
+#' @param lai_max,ewm Numeric or `NA`. `NA` means "derive from the data".
+#' @param rooting_depth_cm Numeric. SoilGrids integration depth, in cm.
+#' @param forcing Character. `"safran"` or `"era5"`.
+#' @param resolution Character. `"2"` or `"5"` (metres).
+#'
+#' @return Invisible `TRUE`.
+#'
+#' @noRd
+set_project_regen_params <- function(project_id,
+                                     budburst = NULL,
+                                     leaf_fall = NULL,
+                                     lai_max = NULL,
+                                     ewm = NULL,
+                                     rooting_depth_cm = NULL,
+                                     forcing = NULL,
+                                     resolution = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  cfg <- project_regen_params(list(regen_params = list(
+    budburst         = budburst,
+    leaf_fall        = leaf_fall,
+    lai_max          = lai_max,
+    ewm              = ewm,
+    rooting_depth_cm = rooting_depth_cm,
+    forcing          = forcing,
+    resolution       = resolution
+  )))
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+
+  update_project_metadata(project_id, list(regen_params = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "reG\u00e9n\u00e9ration : d\u00e9bourrement {cfg$budburst} / chute \\
+     {cfg$leaf_fall}, for\u00e7age {cfg$forcing}, r\u00e9solution \\
+     {cfg$resolution} m")
+  invisible(TRUE)
+}
+
+
 #' Persist the urban-cooling (LST -> A5) source config on a project
 #'
 #' @description

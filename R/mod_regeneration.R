@@ -432,57 +432,21 @@ mod_regeneration_ui <- function(id) {
         choices = stats::setNames(c("feuillu", "resineux"),
           c(i18n$t("regen_forest_feuillu"), i18n$t("regen_forest_resineux"))),
         selected = "feuillu", inline = TRUE),
-      # Debourrement / chute des feuilles = phenologie des feuillus caducs. Un
-      # resineux sempervirent n'a pas de cycle foliaire saisonnier (BILJOU mode
-      # coniferous, LAI permanent) : on masque ces deux champs hors " Feuillu ".
-      shiny::conditionalPanel(
-        condition = "input.forest_type == 'feuillu'", ns = ns,
-        shiny::fluidRow(
-          shiny::column(6, shiny::numericInput(ns("budburst"),
-            i18n$t("regen_budburst"), value = 105, min = 1, max = 200)),
-          shiny::column(6, shiny::numericInput(ns("leaf_fall"),
-            i18n$t("regen_leaf_fall"), value = 300, min = 200, max = 366))
-        )
-      ),
-      # --- Parametres experts (spec 035 B4.b) ----------------------------
-      # `lai_max` et `ewm` partagent la meme semantique : vide = derive de la
-      # donnee (PAI LiDAR / SoilGrids), rempli = force. Isoles dans la sidebar,
-      # ils invitaient au remplissage reflexe - saisir `lai_max` annule le
-      # benefice d'un PAI calcule en 57 min, sans aucun signal. Replies par defaut,
-      # avec une seule phrase portant la semantique commune.
-      # `rooting_depth_cm` n'est pas un override : c'est la profondeur sur laquelle
-      # SoilGrids integre la reserve utile. Il vit ici parce qu'il n'a de sens que
-      # pour qui touche a ces reglages, mais il garde une valeur par defaut.
-      bslib::accordion(
-        open = FALSE, class = "mb-2",
-        bslib::accordion_panel(
-          title = i18n$t("regen_expert_section"), icon = bsicons::bs_icon("sliders"),
-          htmltools::tags$p(class = "text-muted small", i18n$t("regen_expert_hint")),
-          shiny::numericInput(ns("lai_max"), label_tt(i18n$t("regen_lai_max"),
-              i18n$t("regen_lai_tip")),
-            value = NA, min = 0, max = 12, step = 0.1),
-          shiny::numericInput(ns("ewm"), label_tt(i18n$t("regen_ewm"),
-              i18n$t("regen_ewm_hint")),
-            value = NA, min = 10, max = 400, step = 5),
-          shiny::numericInput(ns("rooting_depth_cm"),
-            label_tt(i18n$t("regen_rooting_depth"), i18n$t("regen_rooting_depth_hint")),
-            value = 100, min = 20, max = 200, step = 10)
-        )
-      ),
-
-      # --- Forcage / resolution -----------------------------------------
-      # L'" Essence cible " vit desormais a droite de la carte (sous " Couche
-      # affichee ") car elle met a jour la choroplethe en direct ; le " Buffer
-      # contexte regional " vit dans l'onglet carte " Contexte regional (E-OBS) ".
-      shiny::radioButtons(ns("forcing"),
-        label_tt(i18n$t("regen_forcing"), i18n$t("regen_forcing_tip")),
-        choices = stats::setNames(c("safran", "era5"),
-          c(i18n$t("regen_forcing_safran"), i18n$t("regen_forcing_era5"))),
-        selected = "safran", inline = TRUE),
-      shiny::radioButtons(ns("resolution"), i18n$t("regen_resolution"),
-        choices = stats::setNames(c("2", "5"),
-          c(i18n$t("regen_res_2m"), i18n$t("regen_res_5m"))),
-        selected = "2", inline = TRUE),
+      # --- Calibrages deplaces vers " Sources & parametres " -------------
+      # La phenologie (debourrement / chute des feuilles), les deux overrides
+      # experts (`lai_max`, `ewm`), la profondeur d'integration SoilGrids, le
+      # forcage meteo et la resolution microclimat ont quitte ce sidebar pour
+      # l'onglet " Sources & parametres " de la modale des reglages, ou ils sont
+      # persistes par projet - meme mouvement que les seuils du Suivi sanitaire
+      # (v0.126.2). Ils y gagnent surtout de ne plus etre a portee de clic : un
+      # `lai_max` saisi par reflexe annule un PAI LiDAR calcule en 57 min, sans
+      # aucun signal. Le type de peuplement, l'essence cible et le mode de run
+      # restent ici : eux se changent d'un essai a l'autre.
+      #
+      # L'" Essence cible " vit a droite de la carte (sous " Couche affichee ")
+      # car elle met a jour la choroplethe en direct ; le " Buffer contexte
+      # regional " vit dans l'onglet carte " Contexte regional (E-OBS) ".
+      shiny::uiOutput(ns("params_recap")),
 
       shiny::checkboxInput(ns("hydric_only"), i18n$t("regen_run_hydric_only"),
         value = FALSE),
@@ -748,6 +712,45 @@ mod_regeneration_server <- function(id, app_state) {
     ns <- session$ns
     i18n <- get_i18n(get_app_options()$language %||% "fr")
 
+    # ----- Calibrages lus dans les metadonnees du projet ---------------------
+    # Phenologie, overrides experts, profondeur SoilGrids, forcage et resolution
+    # sont regles dans " Sources & parametres ". Un enregistrement la-bas
+    # recharge `app_state$current_project`, donc ce reactive s'invalide et le
+    # prochain run part avec les nouvelles valeurs.
+    regen_params_r <- shiny::reactive({
+      project_regen_params(app_state$current_project$metadata)
+    })
+
+    # Rappel des valeurs en vigueur. Les deux overrides s'affichent " derive "
+    # quand ils sont vides : c'est leur etat normal, et le confondre avec un
+    # zero ferait mal lire toutes les cartes qui en dependent.
+    output$params_recap <- shiny::renderUI({
+      rp <- regen_params_r()
+      ovr <- function(x) if (is.na(x)) i18n$t("regen_param_derived") else format(x)
+      forcage <- if (identical(rp$forcing, "era5")) {
+        i18n$t("regen_forcing_era5")
+      } else i18n$t("regen_forcing_safran")
+      htmltools::div(
+        class = "small text-muted border rounded p-2 mb-2",
+        htmltools::div(
+          class = "fw-semibold mb-1",
+          bsicons::bs_icon("sliders", class = "me-1"),
+          i18n$t("regen_params_section")),
+        htmltools::tags$div(sprintf(
+          "%s %s \u00b7 %s %s",
+          i18n$t("regen_budburst"), format(rp$budburst),
+          i18n$t("regen_leaf_fall"), format(rp$leaf_fall))),
+        htmltools::tags$div(sprintf(
+          "%s : %s \u00b7 %s : %s",
+          i18n$t("regen_lai_max"), ovr(rp$lai_max),
+          i18n$t("regen_ewm"), ovr(rp$ewm))),
+        htmltools::tags$div(sprintf(
+          "%s \u00b7 %s m", forcage, rp$resolution)),
+        htmltools::tags$div(class = "fst-italic mt-1",
+                            i18n$t("regen_params_where"))
+      )
+    })
+
     # Verrou projet (serveur multi-utilisateurs) : chaque action mutante est
     # gardee par `deny_if_readonly(app_state, i18n)` (helper partage, R/service_lock.R)
     # qui refuse l'action et previent l'utilisateur quand le projet est ouvert en
@@ -1005,7 +1008,7 @@ mod_regeneration_server <- function(id, app_state) {
         year_moyenne = na_null(input$year_moyenne),
         year_canicule = na_null(input$year_canicule),
         forest_type = input$forest_type %||% "feuillu",
-        lai_max = na_null(input$lai_max),
+        lai_max = na_null(regen_params_r()$lai_max),
         species = if (nzchar(input$species %||% "")) input$species else NULL,
         hydric_only = isTRUE(input$hydric_only)
       )
@@ -1625,7 +1628,8 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      forcing <- input$forcing %||% "safran"
+      rp <- regen_params_r()
+      forcing <- rp$forcing
       pre <- regen_engine_prereqs(project_path, forcing)
       if (!isTRUE(pre$ok)) {
         bslib::update_task_button("run_engine", state = "ready")
@@ -1639,11 +1643,11 @@ mod_regeneration_server <- function(id, app_state) {
         forest_type = input$forest_type %||% "feuillu",
         forcing = forcing,
         # ewm NULL => SoilGrids par UGF ; valeur saisie => sol uniforme force.
-        ewm = na_null(input$ewm),
-        rooting_depth_cm = na_null(input$rooting_depth_cm),
-        lai_max = na_null(input$lai_max),
-        budburst = na_null(input$budburst),
-        leaf_fall = na_null(input$leaf_fall)
+        ewm = na_null(rp$ewm),
+        rooting_depth_cm = na_null(rp$rooting_depth_cm),
+        lai_max = na_null(rp$lai_max),
+        budburst = na_null(rp$budburst),
+        leaf_fall = na_null(rp$leaf_fall)
       )
       # Supprimer un engine_status.json perime d'un run precedent : sans ca, le
       # poll afficherait une phase fantome du run anterieur au demarrage.
@@ -1695,7 +1699,7 @@ mod_regeneration_server <- function(id, app_state) {
             year_moyenne = na_null(input$year_moyenne),
             year_canicule = na_null(input$year_canicule),
             forest_type = input$forest_type %||% "feuillu",
-            lai_max = na_null(input$lai_max),
+            lai_max = na_null(regen_params_r()$lai_max),
             species = if (nzchar(input$species %||% "")) input$species else NULL,
             hydric_only = isTRUE(input$hydric_only))
           res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
@@ -1768,7 +1772,7 @@ mod_regeneration_server <- function(id, app_state) {
       }
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return(NULL)
-      pre <- regen_engine_prereqs(project_path, input$forcing %||% "safran")
+      pre <- regen_engine_prereqs(project_path, regen_params_r()$forcing)
       if (isTRUE(pre$reason == "regen_engine_prereq_core")) {
         return(htmltools::div(class = "small text-muted mt-1",
           bsicons::bs_icon("info-circle", class = "me-1"), i18n$t("regen_engine_prereq_core")))
@@ -1835,7 +1839,8 @@ mod_regeneration_server <- function(id, app_state) {
       note_line <- function(icon, body) htmltools::tags$div(
         class = "small text-muted mt-1", bsicons::bs_icon(icon, class = "me-1"), body)
 
-      lai <- if (!is.null(na_null(input$lai_max))) {
+      rp <- regen_params_r()
+      lai <- if (!is.null(na_null(rp$lai_max))) {
         note_line("sliders", htmltools::tagList(i18n$t("regen_lai_max"), forced_badge))
       } else {
         st <- .regen_derived_stats(rv$lai_max)
@@ -1844,7 +1849,7 @@ mod_regeneration_server <- function(id, app_state) {
                                        st$median, st$min, st$max, st$n))
       }
 
-      ewm <- if (!is.null(na_null(input$ewm))) {
+      ewm <- if (!is.null(na_null(rp$ewm))) {
         note_line("sliders", htmltools::tagList(i18n$t("regen_ewm"), forced_badge))
       } else if (identical(rv$ewm_source, "soilgrids_fallback")) {
         # Le seul endroit ou le repli silencieux devient visible sans lire le journal.

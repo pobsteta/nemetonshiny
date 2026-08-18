@@ -489,30 +489,41 @@ mod_accessibility_ui <- function(id) {
           # pseudo-couche " Desserte BD TOPO / corrigee " est selectionnee.
           shiny::uiOutput(ns("compare_hint_ui")),
           htmltools::tags$hr(class = "my-2"),
-          shiny::numericInput(
-            ns("buffer_m"), i18n$t("acc_buffer"),
-            value = 250, min = 0, max = 20000, step = 50),
-          htmltools::tags$p(class = "text-muted small", i18n$t("acc_buffer_help")),
+          # La zone tampon a quitte ce sidebar pour l'onglet " Sources &
+          # parametres " de la modale des reglages, ou elle est persistee par
+          # projet : elle dimensionne l'emprise ACQUISE (MNT + desserte), donc
+          # le cout et le cache du calcul - un calibrage de massif, pas un
+          # reglage d'affichage comme l'opacite ci-dessous. Le rappel ci-dessus
+          # garde la valeur en vigueur sous les yeux.
+          shiny::uiOutput(ns("buffer_recap")),
           shiny::sliderInput(
             ns("opacity"), i18n$t("acc_opacity"),
             min = 0, max = 1, value = 0.7, step = 0.05, ticks = FALSE),
           htmltools::tags$hr(class = "my-2"),
-          # Exports regroupes dans un accordeon repliable " Exports " (replie par
-          # defaut), meme presentation que l'onglet reGeneration.
           # Le panneau " Validation ACCESSFOR (IGN) " (table d'accord classe par
           # classe + taux global) a ete retire : il n'etait pas utilise. La
           # comparaison elle-meme RESTE - le raster ACCESSFOR est toujours calcule
           # par le worker et reste consultable en volet swipe via la couche
           # " Classes de debardage/ACCESSFOR (IGN) " du selecteur.
-          bslib::accordion(
-            open = FALSE,
-            bslib::accordion_panel(
-              title = i18n$t("action_plan_section_exports"),
-              icon = bsicons::bs_icon("box-arrow-up"),
+          # Meme bloc " Tableau des actions " que reGeneration et Desserte :
+          # en-tete vert repliable, sous-titre " Exports " en h6, boutons pleine
+          # largeur. L'accordeon precedent enfouissait un unique bouton derriere
+          # un second clic.
+          action_table_card(
+            ns("acc_actions_collapse"),
+            i18n$t("action_plan_actions_title"),
+            card_class = "card mt-3",
+            body_class = "card-body p-2",
+            htmltools::tags$h6(class = "mt-1",
+                               i18n$t("action_plan_section_exports")),
+            htmltools::tagAppendAttributes(
               shiny::downloadButton(
                 ns("export_gpkg"), i18n$t("acc_download_gpkg"),
                 icon = shiny::icon("database"),
-                class = "btn-outline-success btn-sm w-100")))
+                class = "btn-outline-success btn-sm w-100"),
+              onclick = sprintf("nemetonShowDownloadToast(%s);",
+                jsonlite::toJSON(i18n$t("acc_export_gpkg_busy"),
+                                 auto_unbox = TRUE))))
         ),
         # Badge de provenance DFCI (au-dessus de la carte) : n'apparait que
         # lorsque la couche " Camion DFCI " est affichee.
@@ -683,8 +694,31 @@ mod_accessibility_server <- function(id, app_state) {
     # agrandi peut rendre le CVAT existant trop court, il faut alors le recalculer
     # pour couvrir la nouvelle emprise. On NE lance PAS ce worker lourd au simple
     # chargement d'un projet depuis un autre onglet.
-    buffer_m_d <- shiny::debounce(
-      shiny::reactive(.acc_buffer_m(input$buffer_m)), 600)
+    # Zone tampon : lue dans les metadonnees du projet, plus dans un input de ce
+    # module. Un enregistrement dans " Sources & parametres " recharge
+    # `app_state$current_project`, donc ce reactive s'invalide et le pre-calcul
+    # CVAT ci-dessous se redeclenche exactement comme au temps du numericInput.
+    buffer_m_r <- shiny::reactive({
+      .acc_buffer_m(
+        project_accessibility_params(app_state$current_project$metadata)$buffer_m)
+    })
+
+    # Rappel de la valeur en vigueur + chemin pour la changer : sans lui, la
+    # taille de l'emprise acquise deviendrait invisible.
+    output$buffer_recap <- shiny::renderUI({
+      htmltools::div(
+        class = "small text-muted border rounded p-2 mb-2",
+        htmltools::div(
+          class = "fw-semibold mb-1",
+          bsicons::bs_icon("sliders", class = "me-1"),
+          i18n$t("acc_buffer")),
+        htmltools::tags$div(sprintf("%s m", format(buffer_m_r()))),
+        htmltools::tags$div(class = "fst-italic mt-1",
+                            i18n$t("acc_params_where"))
+      )
+    })
+
+    buffer_m_d <- shiny::debounce(buffer_m_r, 600)
     shiny::observeEvent(
       list(app_state$active_main_tab, app_state$active_terrain_tab,
            app_state$current_project, buffer_m_d()), {
@@ -809,7 +843,7 @@ mod_accessibility_server <- function(id, app_state) {
       shiny::showNotification(
         .running_notif_content(i18n$t("acc_correct_running"), correct_start()),
         id = session$ns("correct_notif"), type = "message", duration = NULL)
-      buffer_m <- .acc_buffer_m(input$buffer_m)
+      buffer_m <- buffer_m_r()
       tryCatch(
         correct_task$invoke(aoi_path, cache_dir, buffer_m, .dev_pkg_path,
                             get_app_options(), project_path),
@@ -955,7 +989,7 @@ mod_accessibility_server <- function(id, app_state) {
         id = session$ns("acc_notif"), type = "message", duration = NULL)
       # Garde-fou : un echec SYNCHRONE d'invoke (serialisation d'un argument) ne
       # doit pas laisser le bouton fige " busy " ni la notif collee.
-      buffer_m <- .acc_buffer_m(input$buffer_m)
+      buffer_m <- buffer_m_r()
       use_corrected <- isTRUE(input$use_corrected)
       tryCatch(
         acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,

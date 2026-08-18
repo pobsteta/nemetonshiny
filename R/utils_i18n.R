@@ -2058,6 +2058,118 @@ TRANSLATIONS <- list(
     fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
     en = "Change them in Settings \u203a Sources & settings."
   ),
+  # Seuil d'anomalie FORDEAD (spec 008), deplace du sidebar Suivi sanitaire
+  # vers " Sources & parametres " : meme nature de calibrage que les seuils
+  # FAST, mais semantique inverse (au-DESSUS du seuil = anomalie).
+  fordead_params_hint = list(
+    fr = paste0(
+      "Diagnostic FORDEAD : un pixel est en anomalie quand son CRSWIR ",
+      "d\u00e9passe la valeur mod\u00e9lis\u00e9e de plus que ce seuil. ",
+      "0,16 est le calibrage ONF/DSF 2024 ; baisser d\u00e9tecte plus t\u00f4t ",
+      "au prix de faux positifs. Appliqu\u00e9 au prochain diagnostic."
+    ),
+    en = paste0(
+      "FORDEAD diagnosis: a pixel is anomalous when its CRSWIR exceeds the ",
+      "modelled value by more than this threshold. 0.16 is the ONF/DSF 2024 ",
+      "calibration; lowering it detects earlier at the cost of false ",
+      "positives. Applied to the next diagnosis."
+    )
+  ),
+  # Zone tampon de l'Accessibilite, deplacee du sidebar droit de la carte.
+  acc_params_section = list(
+    fr = "Accessibilit\u00e9 \u2014 emprise acquise",
+    en = "Accessibility \u2014 acquired extent"
+  ),
+  acc_params_save = list(
+    fr = "Enregistrer l'emprise",
+    en = "Save extent"
+  ),
+  acc_params_saved = list(
+    fr = "Accessibilit\u00e9 : zone tampon enregistr\u00e9e",
+    en = "Accessibility: buffer saved"
+  ),
+  acc_params_where = list(
+    fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
+    en = "Change it in Settings \u203a Sources & settings."
+  ),
+  acc_export_gpkg_busy = list(
+    fr = "G\u00e9n\u00e9ration du GeoPackage\u2026",
+    en = "Generating the GeoPackage\u2026"
+  ),
+  # Calibrages de la Desserte, deplaces du sidebar de la Carte de desserte.
+  dess_params_section = list(
+    fr = "Desserte \u2014 emprise et co\u00fbt",
+    en = "Road network \u2014 extent and cost"
+  ),
+  dess_params_hint = list(
+    fr = paste0(
+      "Ce que l'on acquiert (tampon), ce que l'on consid\u00e8re desservi ",
+      "(distance de d\u00e9bardage) et jusqu'o\u00f9 l'on construit (pente ",
+      "maximale). R\u00e9gl\u00e9s une fois par massif, conserv\u00e9s avec ",
+      "le projet ; seul le choix du moteur reste dans l'onglet Desserte."
+    ),
+    en = paste0(
+      "What gets acquired (buffer), what counts as served (skidding ",
+      "distance) and how far one builds (maximum slope). Set once per forest ",
+      "and stored with the project; only the engine choice stays in the Road ",
+      "network tab."
+    )
+  ),
+  dess_params_save = list(
+    fr = "Enregistrer les param\u00e8tres",
+    en = "Save settings"
+  ),
+  dess_params_saved = list(
+    fr = "Desserte : param\u00e8tres enregistr\u00e9s",
+    en = "Road network: settings saved"
+  ),
+  dess_params_where = list(
+    fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
+    en = "Change them in Settings \u203a Sources & settings."
+  ),
+  dess_export_gpkg_busy = list(
+    fr = "G\u00e9n\u00e9ration du GeoPackage\u2026",
+    en = "Generating the GeoPackage\u2026"
+  ),
+  # Libelles courts du rappel de sidebar : les libelles complets portent leur
+  # unite entre parentheses, illisibles cote a cote sur une seule ligne.
+  dess_buffer_short = list(fr = "Tampon", en = "Buffer"),
+  dess_skidding_short = list(fr = "D\u00e9bardage", en = "Skidding"),
+  dess_pente_max_short = list(fr = "Pente max", en = "Max slope"),
+  # Calibrages de la reGeneration, deplaces du sidebar de l'onglet.
+  regen_params_section = list(
+    fr = "reG\u00e9n\u00e9ration \u2014 ph\u00e9nologie et for\u00e7age",
+    en = "reGeneration \u2014 phenology and forcing"
+  ),
+  regen_params_save = list(
+    fr = "Enregistrer les param\u00e8tres",
+    en = "Save settings"
+  ),
+  regen_params_saved = list(
+    fr = "reG\u00e9n\u00e9ration : param\u00e8tres enregistr\u00e9s",
+    en = "reGeneration: settings saved"
+  ),
+  regen_params_where = list(
+    fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
+    en = "Change them in Settings \u203a Sources & settings."
+  ),
+  # Etat normal d'un override vide : la valeur est DERIVEE de la donnee
+  # (PAI LiDAR / SoilGrids). Ne jamais l'afficher comme un blanc ou un zero.
+  regen_param_derived = list(fr = "d\u00e9riv\u00e9", en = "derived"),
+  regen_params_hint = list(
+    fr = paste0(
+      "Ph\u00e9nologie du massif, param\u00e8tres experts, for\u00e7age ",
+      "m\u00e9t\u00e9o et finesse du microclimat. R\u00e9gl\u00e9s une fois ",
+      "par massif, conserv\u00e9s avec le projet ; appliqu\u00e9s au prochain ",
+      "calcul. Le d\u00e9bourrement et la chute des feuilles ne concernent que ",
+      "les peuplements feuillus."
+    ),
+    en = paste0(
+      "Forest phenology, expert parameters, weather forcing and microclimate ",
+      "resolution. Set once per forest and stored with the project; applied to ",
+      "the next run. Budburst and leaf fall only concern deciduous stands."
+    )
+  ),
   sources_config_intro = list(
     fr = "Sources Theia optionnelles du projet courant, activ\u00e9es par d\u00e9faut. Elles n\u00e9cessitent des identifiants Theia valides ; hors couverture, l'indicateur correspondant reste vide sans faire \u00e9chouer le calcul.",
     en = "Optional Theia sources for the current project, enabled by default. They require valid Theia credentials; outside coverage the matching indicator stays empty without failing the computation."

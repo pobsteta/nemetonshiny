@@ -385,7 +385,11 @@ test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
   vert_acc <- grep("bg-success", entetes(ui_acc), value = TRUE)
   vert_ref <- grep("bg-success", entetes(ui_ref), value = TRUE)
   vert_dess <- grep("bg-success", entetes(ui_dess), value = TRUE)
-  expect_length(vert_acc, 1L)
+  # v0.127.2.9001 - l'Accessibilite porte desormais DEUX blocs verts, pour la
+  # meme raison que la Desserte : celui du CALCUL (sidebar gauche) et le
+  # « Tableau des actions » qui a remplace l'accordeon « Exports » (sidebar
+  # droite). On designe donc celui qu'on compare, comme pour la Desserte.
+  expect_length(vert_acc, 2L)
   expect_length(vert_ref, 1L)
   # La Desserte porte DEUX blocs verts, et c'est voulu : celui du CALCUL
   # (sidebar gauche, « Lancer le calcul ») et le « Tableau des actions »
@@ -402,7 +406,15 @@ test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
   expect_length(vert_dess_calcul, 1L)
   expect_length(vert_dess_actions, 1L)
 
-  expect_identical(gabarit(vert_acc), gabarit(vert_ref))
+  vert_acc_calcul <- cible(vert_acc, "acc-acc_collapse")
+  vert_acc_actions <- cible(vert_acc, "acc-acc_actions_collapse")
+  expect_length(vert_acc_calcul, 1L)
+  expect_length(vert_acc_actions, 1L)
+
+  expect_identical(gabarit(vert_acc_calcul), gabarit(vert_ref))
+  # Les trois « Tableau des actions » sont le MEME bloc : la Desserte et
+  # l'Accessibilite ne divergent que par la cible du collapse.
+  expect_identical(gabarit(vert_acc_actions), gabarit(vert_dess_actions))
   # L'onglet Desserte porte le meme bloc de calcul : les trois sidebars de
   # l'onglet Terrain se ressemblent, ou aucune ne le fait.
   expect_identical(gabarit(vert_dess_calcul), gabarit(vert_ref))

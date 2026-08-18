@@ -187,5 +187,8 @@ test_that("les explications sont repliees, plus etalees sous les champs", {
   expect_false(grepl("text-muted small", h, fixed = TRUE))
   expect_false(grepl("alert alert-warning", h, fixed = TRUE))
   # Ils ne sont pas SUPPRIMES pour autant : autant de " i " que d'explications.
-  expect_gte(length(regmatches(h, gregexpr("fa-circle-info", h))[[1]]), 10L)
+  # v0.127.2.9001 - le seuil descend de 10 a 8 : cinq reglages (tampon,
+  # debardage, pente max, tarification, largeur) et leurs " i " ont migre vers
+  # Parametres > Sources & parametres, ou ils portent les MEMES textes d'aide.
+  expect_gte(length(regmatches(h, gregexpr("fa-circle-info", h))[[1]]), 8L)
 })
