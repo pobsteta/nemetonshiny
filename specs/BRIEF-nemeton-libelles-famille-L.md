@@ -1,3 +1,28 @@
+> ## ❌ CLOS le 2026-08-18 — **ce brief a été refusé, et à raison**
+>
+> `nemeton` PR #396 n'a **pas** appliqué l'échange demandé : il aurait retitré
+> les cartes à faux. La prémisse du §1 est fausse.
+>
+> Une colonne porte le nom de la **fonction qui la remplit**, et pour la famille
+> L ce nom contredit ce que la fonction calcule : `indicateur_l2_fragmentation()`
+> calcule l'effet lisière, `indicateur_l1_sylvosphere()` calcule la
+> fragmentation. La colonne au slug « fragmentation » **contient donc de la
+> sylvosphère**, et le libellé du cœur décrivait correctement les valeurs
+> affichées. L'onglet Paysage n'avait rien de faux.
+>
+> **L'erreur de méthode** : j'ai déduit le croisement de la table des libellés
+> sans ouvrir le corps des fonctions. Quatre sources concordantes disaient le
+> contraire (corps des fonctions, titres roxygen, en-tête de
+> `test-indicators-landscape.R`, `R/i18n.R`).
+>
+> Le cœur a livré à la place : descriptions corrigées dans
+> `R/nemeton-package.R`, section *Column pairing* qui dit d'où vient le
+> croisement, et `test-indicator-labels-pairing.R` (125 assertions) qui
+> **interdit** l'échange réclamé ici.
+>
+> Suite côté app : [`brief-nemetonshiny-libelles-famille-L.md`](brief-nemetonshiny-libelles-famille-L.md),
+> livré en v0.127.0.9001.
+
 # BRIEF `nemeton` — les libellés de la famille L sont croisés
 
 **Dépôt cible** : `/home/pascal/dev/nemeton` (cœur). Session dédiée requise.
