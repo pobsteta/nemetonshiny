@@ -12,6 +12,35 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.127.1\] - 2026-08-18
+
+### Fixed
+
+- Les libellés d’indicateur ne sont plus lus dans des tables locales
+  indexées par nom de colonne, qui suivaient le *slug* et s’inversaient
+  pour la famille L : la barre de progression annonçait « Paysage -
+  Fragmentation » pendant qu’elle calculait la sylvosphère.
+  `indicator_label_by_column()` lit
+  [`nemeton::indicator_labels()`](https://pobsteta.github.io/nemeton/reference/indicator_labels.html)
+  à travers `INDICATOR_FAMILIES`.
+- Le tableau récapitulatif de progression était **monolingue** (français
+  en dur dans `mod_progress.R`) ; il est bilingue par construction.
+- Huit indicateurs ajoutés depuis (W4, A3, A4, A5, T3, R5, R6, R7)
+  sortaient en nom de colonne brut dans la progression ; les 41 colonnes
+  du cœur se résolvent désormais.
+
+### Removed
+
+- Les 34 clés i18n `indicateur_<colonne>` de `TRANSLATIONS` — troisième
+  copie des libellés, écrite selon la sémantique du *code* alors qu’elle
+  indexait des *colonnes*.
+
+### Changed
+
+- `service_db.R` : les alias DB de la famille L restent inversés
+  **délibérément** (aller-retour sans perte) ; un commentaire sur place
+  interdit d’en « réparer » une seule direction.
+
 ## \[0.127.0\] - 2026-08-18
 
 ### Fixed

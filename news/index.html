@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.127.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.127.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.127.1" id="nemetonshiny-01271-2026-08-18">nemetonshiny 0.127.1 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01271-2026-08-18"></a></h2>
+<p>Réponse au contre-brief <code>specs/brief-nemetonshiny-libelles-famille-L.md</code>, émis par le cœur en réponse au nôtre.</p>
+<div class="section level4">
+<h4 id="fixed--deux-tables-de-libellés-suivaient-le-slug-de-la-colonne-pas-son-contenu-0-127-1">Fixed — Deux tables de libellés suivaient le slug de la colonne, pas son contenu<a class="anchor" aria-label="anchor" href="#fixed--deux-tables-de-libell%C3%A9s-suivaient-le-slug-de-la-colonne-pas-son-contenu-0-127-1"></a></h4>
+<p><strong>Le brief que j’avais envoyé au cœur était faux, et il a eu raison de le refuser.</strong> Une colonne porte le nom de la <strong>fonction qui la remplit</strong>, et pour la famille L ce nom contredit ce que la fonction calcule : <code>indicateur_l2_fragmentation()</code> calcule l’effet lisière, <code>indicateur_l1_sylvosphere()</code> calcule la fragmentation. La colonne au slug « fragmentation » contient donc de la sylvosphère, et les libellés du cœur décrivaient correctement les valeurs affichées. <strong>L’onglet Paysage n’avait rien à corriger</strong> — échanger les libellés, comme je le demandais, aurait retitré les cartes à faux.</p>
+<p>Ce qui était bien inversé, c’est deux tables <strong>locales</strong> indistinctement indexées par nom de colonne :</p>
+<ul><li>
+<code>utils_i18n.R</code> — la ligne d’état annonçait « Calcul de Fragmentation paysagère » pendant qu’elle calculait la sylvosphère.</li>
+<li>
+<code>mod_progress.R</code> — le tableau récapitulatif annonçait « Paysage - Fragmentation » dans le même cas.</li>
+</ul><p>Aucune des deux n’est corrigée : elles sont <strong>supprimées</strong>. <code>indicator_label_by_column()</code> lit <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_labels.html" class="external-link">nemeton::indicator_labels()</a></code> à travers <code>INDICATOR_FAMILIES</code>, qui apparie colonne et libellé ligne par ligne. C’est le même mouvement que le dé-fork d’<code>INDICATOR_FAMILIES</code> en v0.127.0 : une source, pas trois.</p>
+<p>Deux effets de bord du remplacement. La table de <code>mod_progress</code> était <strong>monolingue</strong> — du français en dur dans un module, contraire à la règle i18n ; elle est maintenant bilingue par construction. Et elle <strong>ignorait les huit indicateurs ajoutés depuis</strong> (W4, A3, A4, A5, T3, R5, R6, R7), qui sortaient en nom de colonne brut : les 41 colonnes du cœur se résolvent désormais, un test les balaie dans les deux langues.</p>
+<p>Les 34 clés i18n <code>indicateur_&lt;colonne&gt;</code> sont retirées de <code>TRANSLATIONS</code> — une troisième copie des libellés, écrite selon la sémantique du <em>code</em> alors qu’elle indexait des <em>colonnes</em>. <code>test-libelles-famille-L.R</code> (32 assertions) interdit qu’une table de ce genre revienne.</p>
+</div>
+<div class="section level4">
+<h4 id="known--les-alias-db-de-la-famille-l-restent-inversés-délibérément-0-127-1">Known — Les alias DB de la famille L restent inversés, délibérément<a class="anchor" aria-label="anchor" href="#known--les-alias-db-de-la-famille-l-restent-invers%C3%A9s-d%C3%A9lib%C3%A9r%C3%A9ment-0-127-1"></a></h4>
+<p><code>service_db.R</code> aliase <code>landscape_edge_ratio</code> sur la colonne qui porte la fragmentation. La <strong>même table sert à lire et à écrire</strong> : l’aller-retour est sans perte, aucune valeur n’est fausse, seul quelqu’un qui interroge la base par ses propres noms serait induit en erreur. Les corriger imposerait une migration pour un gain nul tant que les noms DB ne sont pas exposés. Un commentaire sur place avertit de ne pas « réparer » une seule des deux directions.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.127.0" id="nemetonshiny-01270-2026-08-18">nemetonshiny 0.127.0 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01270-2026-08-18"></a></h2>
 <p>Implémente <code>specs/brief-nemetonshiny-trois-derniers-points.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.175.0)</code> et <code>foretaccess (&gt;= 2.4.0)</code>.</p>
