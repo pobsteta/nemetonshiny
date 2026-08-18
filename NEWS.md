@@ -1,4 +1,4 @@
-# nemetonshiny 0.127.1.9001 (2026-08-18)
+# nemetonshiny 0.127.2 (2026-08-18)
 
 Implémente `specs/brief-nemetonshiny-renommage-famille-L.md`. Plancher relevé à
 `nemeton (>= 0.176.0)`.

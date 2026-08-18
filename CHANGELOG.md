@@ -10,6 +10,35 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.127.2] - 2026-08-18
+
+### Changed
+
+- Les deux colonnes de la famille L sont renommées, en suivi du cœur v0.176.0
+  (spec 045) : `indicateur_l2_fragmentation` → `indicateur_l1_effet_lisiere`
+  (effet lisière) et `indicateur_l1_sylvosphere` → `indicateur_l2_morcellement`
+  (fragmentation). Chaque fonction portait le nom de la métrique de l'autre ;
+  aucune valeur ni aucun libellé ne change.
+- Le schéma PostGIS garde délibérément les anciens noms de colonnes : la
+  traduction se fait à la frontière (`.slugs_l_vers_schema()` à l'écriture,
+  `nemeton::migrer_colonnes_l()` à la lecture). Les renommer imposerait une
+  migration à tous les déploiements pour un gain nul.
+- Plancher relevé à `nemeton (>= 0.176.0)`.
+
+### Fixed
+
+- Un projet calculé avant le renommage reste lisible : sans passage par
+  `migrer_colonnes_l()` dans `load_indicators()` et `db_load_indicators()`, ses
+  deux cartes Paysage disparaissaient de l'onglet.
+- Les colonnes L n'étaient plus écrites en base : `db_cols` est une liste
+  blanche sur les noms du schéma, donc les nouveaux slugs y auraient été
+  silencieusement écartés à chaque sauvegarde.
+- `service_compute.R` : la dépendance `forest_cover` référençait l'ancien slug
+  dans son `required_for`.
+- Commentaire de `service_db.R` corrigé — il décrivait `rename_map` comme un
+  alias de colonnes DB lu à l'écriture *et* à la lecture, alors qu'elle ne sert
+  qu'à l'écriture, pour d'anciens noms anglais que plus rien ne produit.
+
 ## [0.127.1] - 2026-08-18
 
 ### Fixed
