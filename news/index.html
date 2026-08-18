@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.126.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.127.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,35 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.127.0" id="nemetonshiny-01270-2026-08-18">nemetonshiny 0.127.0 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01270-2026-08-18"></a></h2>
+<p>Implémente <code>specs/brief-nemetonshiny-trois-derniers-points.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.175.0)</code> et <code>foretaccess (&gt;= 2.4.0)</code>.</p>
+<div class="section level4">
+<h4 id="fixed--indicator_families-nest-plus-forké-le-point-bloquant-0-127-0">Fixed — <code>INDICATOR_FAMILIES</code> n’est plus forké (le point bloquant)<a class="anchor" aria-label="anchor" href="#fixed--indicator_families-nest-plus-fork%C3%A9-le-point-bloquant-0-127-0"></a></h4>
+<p><code>app_config.R</code> portait sa propre copie de la table des 12 familles — 368 lignes. Cette copie avait dérivé de deux façons qui atteignaient l’écran :</p>
+<p><strong>A5 manquait de la famille A.</strong> L’indicateur était calculé par <code>service_compute.R</code> puis <strong>filtré à l’affichage</strong> : tout ce qui avait été livré pour le rafraîchissement urbain, y compris son statut de cause, restait invisible dans l’onglet Air.</p>
+<p><strong>Le libellé de la carte d’érosion était « F1 - Fertilité des sols ».</strong> L’appariement code ↔︎ colonne est <strong>positionnel</strong> et croisé pour F et L : <code>F1</code> pointe sur <code>indicateur_f2_erosion</code>. Il existait <strong>trois</strong> copies des libellés — le fork, ses <code>indicator_labels</code>, et les clés i18n <code>indicator_&lt;code&gt;</code> — et c’est la troisième qui gagnait, écrite selon la sémantique du <em>code</em> et non de la <em>colonne</em>. Le libellé affiché dépendait donc de la source lue.</p>
+<p><code>.build_indicator_families()</code> assemble désormais la table depuis <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> et <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_labels.html" class="external-link">nemeton::indicator_labels()</a></code>, qui apparient code, colonne et libellé <strong>explicitement, ligne par ligne</strong>. 368 lignes remplacées par 81, et un <code><a href="https://rdrr.io/r/base/delayedAssign.html" class="external-link">delayedAssign()</a></code> garde les douze consommateurs inchangés — <code>get_family_config()</code>, <code>mod_family</code>, <code>utils_theme</code>, <code>service_export</code>, <code>llm_prompts</code>, <code>mod_synthesis</code>. Le seul delta structurel est l’ajout d’A5.</p>
+<p><code>clean_indicator_label()</code> lit maintenant le libellé du cœur <strong>avant</strong> la clé i18n, qui devient un repli. <code>indicateur_f2_erosion</code> sort « F1 - Risque d’érosion » et A5 se résout au lieu de retomber sur son nom de colonne humanisé.</p>
+<p><code>test-indicator-families-defork.R</code> (237 assertions) verrouille l’identité app ↔︎ cœur famille par famille et interdit qu’un littéral revienne.</p>
+</div>
+<div class="section level4">
+<h4 id="added--les-verdicts-dapplicabilité-affichés-avant-le-calcul-0-127-0">Added — Les verdicts d’applicabilité, affichés avant le calcul<a class="anchor" aria-label="anchor" href="#added--les-verdicts-dapplicabilit%C3%A9-affich%C3%A9s-avant-le-calcul-0-127-0"></a></h4>
+<p><code>R/service_applicabilite.R</code> consomme <code><a href="https://pobsteta.github.io/nemeton/reference/r5_applicabilite.html" class="external-link">nemeton::r5_applicabilite()</a></code> et <code><a href="https://pobsteta.github.io/nemeton/reference/a5_applicabilite.html" class="external-link">nemeton::a5_applicabilite()</a></code> (cœur v0.175.0) et rend un badge à trois niveaux dans l’onglet « Sources &amp; paramètres » — là où il sert, avant de lancer quoi que ce soit. Le calcul est court-circuité sur <code>not_applicable</code>, <code>no_species</code> et <code>no_coverage</code> : inutile d’ouvrir une connexion monitoring pour aboutir à une colonne de <code>NA</code>.</p>
+<p><strong><code>eligible_fordead_out_of_calibration</code> n’est pas dans cette liste, et c’est délibéré.</strong> La zone de validation de R5 est celle du rapport ONF/DSF 2024 ; aucun des projets locaux n’y est, alors que Fordead et Dabo sont à 100 % de sapin. Hors de cette zone un sapin pectiné reste un sapin pectiné : le calcul tourne, seules les classes de confiance sont extrapolées. Le verdict est rendu en <strong>information neutre</strong> et ne bloque rien — le contraire priverait l’utilisateur d’un signal exploitable.</p>
+<p>Un verdict inconnu (cœur sans l’accesseur) ne saute jamais rien : ne pas savoir n’est pas une raison de sauter, le coût d’un calcul inutile étant une colonne de <code>NA</code> quand celui d’un saut erroné est un indicateur perdu.</p>
+<p><code>a5_applicabilite()</code> reçoit le raster LST du cache quand il existe : sans lui le cœur répond à l’échelle de l’emprise — une requête STAC connaît des bounding boxes, pas des pixels — et <code>eligible_partial</code> devient inatteignable.</p>
+<p>11 clés i18n FR/EN, plus un format de compte : « (7 UGF sur 30) » est actionnable là où « partiel » ne l’est pas.</p>
+</div>
+<div class="section level4">
+<h4 id="added--un-r5-vide-dit-pourquoi-0-127-0">Added — Un R5 vide dit pourquoi<a class="anchor" aria-label="anchor" href="#added--un-r5-vide-dit-pourquoi-0-127-0"></a></h4>
+<p>Trois clés (<code>r5_skipped_no_fordead</code>, <code>_no_reconfort</code>, <code>_no_method</code>) branchent le vocabulaire <code>r5_status</code> du cœur sur le bandeau partagé. Le point 2 du brief demandait de retirer <code>service_r5.R:117</code> (<code>out$r5_status &lt;- NULL</code>) : <strong>c’était déjà fait</strong> en v0.126.0 — cette ligne est la seconde d’un renommage vers <code>.r5_status</code>, pas un rejet. La retirer aurait laissé les deux colonnes.</p>
+</div>
+<div class="section level4">
+<h4 id="known--le-cœur-croise-les-libellés-de-la-famille-l-0-127-0">Known — Le cœur croise les libellés de la famille L<a class="anchor" aria-label="anchor" href="#known--le-c%C5%93ur-croise-les-libell%C3%A9s-de-la-famille-l-0-127-0"></a></h4>
+<p>Le dé-fork corrige F mais <strong>hérite d’une incohérence du cœur sur L</strong> : <code>indicator_labels()</code> apparie <code>L1</code> avec <code>indicateur_l2_fragmentation</code> et le libellé « Sylvosphère (effet lisière) ». La carte de fragmentation sort donc libellée « sylvosphère », et réciproquement. L’app affichait déjà ce croisement — il n’est pas introduit ici — mais il n’a plus qu’un seul endroit où être corrigé, côté cœur.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.126.2" id="nemetonshiny-01262-2026-08-17">nemetonshiny 0.126.2 (2026-08-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01262-2026-08-17"></a></h2>
 <div class="section level4">
@@ -7180,7 +7209,7 @@ le tableau remplacé en a 337</code></pre>
 <ul><li>
 <code>fix(report)</code> — l’export PDF échouait encore avec une erreur générique <code>"Error running quarto CLI from R"</code> même quand toutes les UGF tombaient en fallback géométrie-seule (tuiles OSM inaccessibles côté serveur, ce qui est légitime et géré). Cause probable : la déclaration <code>\small</code> placée en v0.23.13 dans <code>inst/quarto/action_plan_template.qmd</code> entre <code>\begin{longtable}{...}</code> et <code>\toprule</code> — booktabs + longtable peuvent mal traiter une déclaration de taille à cet endroit sur certaines toolchains xelatex et faire planter tout le rendu. Désormais le template <strong>ne wrappe plus le longtable</strong> dans un changement de taille ; il utilise la taille par défaut qui compile de manière fiable. Les <code>{</code> <code>}</code> parasites corrigés en v0.23.13 ne reviennent pas (puisqu’il n’y a plus de wrapper à mal sortir).</li>
 <li>
-<code>debug(report)</code> — <code><a href="https://rdrr.io/pkg/quarto/man/quarto_render.html" class="external-link">quarto::quarto_render()</a></code> passe en <code>quiet = FALSE</code> côté Plan d’actions (aligné avec la Synthèse qui était déjà verbose). La sortie quarto / xelatex est désormais streamée dans la console R, ce qui permet de diagnostiquer une vraie erreur LaTeX (package manquant, <code>\includegraphics</code> malformé, etc.) au lieu du seul “Error running quarto CLI from R” générique.</li>
+<code>debug(report)</code> — <code><a href="https://quarto-dev.github.io/quarto-r/reference/quarto_render.html" class="external-link">quarto::quarto_render()</a></code> passe en <code>quiet = FALSE</code> côté Plan d’actions (aligné avec la Synthèse qui était déjà verbose). La sortie quarto / xelatex est désormais streamée dans la console R, ce qui permet de diagnostiquer une vraie erreur LaTeX (package manquant, <code>\includegraphics</code> malformé, etc.) au lieu du seul “Error running quarto CLI from R” générique.</li>
 </ul></div>
 </div>
     <div class="section level2">

@@ -12,6 +12,42 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.127.0\] - 2026-08-18
+
+### Fixed
+
+- `INDICATOR_FAMILIES` n’est plus forké dans `app_config.R` : la table
+  est assemblée depuis
+  [`nemeton::indicator_families()`](https://pobsteta.github.io/nemeton/reference/indicator_families.html)
+  et
+  [`nemeton::indicator_labels()`](https://pobsteta.github.io/nemeton/reference/indicator_labels.html),
+  qui apparient code, colonne et libellé explicitement (368 lignes
+  remplacées par 81).
+- L’onglet Air affiche **A5** : l’indicateur était calculé puis filtré à
+  l’affichage parce que le fork ne le déclarait pas.
+- Le libellé de la carte d’érosion n’est plus « F1 - Fertilité des sols
+  » : `clean_indicator_label()` lit le libellé du cœur avant la clé
+  i18n, qui devient un repli.
+
+### Added
+
+- Les verdicts d’applicabilité R5 et A5
+  ([`nemeton::r5_applicabilite()`](https://pobsteta.github.io/nemeton/reference/r5_applicabilite.html),
+  [`nemeton::a5_applicabilite()`](https://pobsteta.github.io/nemeton/reference/a5_applicabilite.html))
+  sont rendus en badge à trois niveaux dans l’onglet « Sources &
+  paramètres », avant le calcul. Le calcul est court-circuité sur
+  `not_applicable`, `no_species` et `no_coverage` ;
+  `eligible_fordead_out_of_calibration` est une information neutre et ne
+  bloque rien.
+- Un R5 vide dit pourquoi : le vocabulaire `r5_status` du cœur est
+  branché sur le bandeau partagé (`r5_skipped_no_fordead`,
+  `_no_reconfort`, `_no_method`).
+- 11 clés i18n FR/EN pour les verdicts d’applicabilité.
+
+### Changed
+
+- Plancher relevé à `nemeton (>= 0.175.0)` et `foretaccess (>= 2.4.0)`.
+
 ## \[0.124.2\] - 2026-08-15
 
 ### Fixed
