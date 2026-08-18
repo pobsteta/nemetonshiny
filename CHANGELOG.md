@@ -12,6 +12,40 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.128.0\] - 2026-08-18
+
+### Changed
+
+- Les calibrages de quatre onglets quittent leurs sidebars pour
+  **Paramètres › Sources & paramètres**, où ils sont persistés par
+  projet : seuil d’anomalie CRSWIR (Suivi sanitaire) ; zone tampon
+  (Accessibilité) ; tampon, distance de débardage, pente maximale
+  constructible, tarification de la pente et largeur de plateforme
+  (Desserte) ; débourrement, chute des feuilles, `lai_max`, `ewm`,
+  profondeur d’enracinement, forçage météo et résolution microclimat
+  (reGénération).
+- Chaque sidebar concerné affiche un rappel des valeurs en vigueur et le
+  chemin pour les changer : une carte d’alertes ou un réseau de desserte
+  reste illisible si l’on ignore sous quels seuils il a été produit.
+- La tarification de la pente de la Desserte vaut désormais
+  `terrassement` par défaut (au lieu de `bareme`) : elle chiffre un
+  volume de déblai/remblai, donc tient compte de la largeur de
+  plateforme que le barème ignore. Le plafond de pente reste une entrée
+  séparée.
+- Les boutons Exports d’Accessibilité et de Desserte adoptent le bloc «
+  Tableau des actions » de reGénération : en-tête vert repliable,
+  sous-titre « Exports » en h6, bouton pleine largeur, toast de
+  téléchargement au clic.
+
+### Added
+
+- `project_fordead_params()`, `project_accessibility_params()`,
+  `project_desserte_params()`, `project_regen_params()` et leurs
+  setters, qui lisent et écrivent ces calibrages dans les métadonnées du
+  projet. Les valeurs absentes retombent sur les défauts historiques ;
+  `lai_max` et `ewm` gardent leur sémantique « vide = dérivé de la
+  donnée ».
+
 ## \[0.127.2\] - 2026-08-18
 
 ### Changed

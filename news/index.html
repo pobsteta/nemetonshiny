@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.127.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.128.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,33 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.128.0" id="nemetonshiny-01280-2026-08-18">nemetonshiny 0.128.0 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01280-2026-08-18"></a></h2>
+<div class="section level4">
+<h4 id="changed--les-calibrages-quittent-les-sidebars-pour--sources--paramètres--0-128-0">Changed — Les calibrages quittent les sidebars pour « Sources &amp; paramètres »<a class="anchor" aria-label="anchor" href="#changed--les-calibrages-quittent-les-sidebars-pour--sources--param%C3%A8tres--0-128-0"></a></h4>
+<p>Quatre onglets portaient dans leur sidebar des réglages qu’on ne touche qu’une fois par massif, à côté des gestes qu’on répète à chaque essai. Ils rejoignent l’onglet <strong>Paramètres › Sources &amp; paramètres</strong>, où ils sont <strong>persistés par projet</strong> — même mouvement que les seuils FAST en v0.126.2. Chaque sidebar garde un <strong>rappel</strong> des valeurs en vigueur et le chemin pour les changer : une carte d’alertes ou un réseau de desserte reste illisible si l’on ignore sous quels seuils il a été produit.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Onglet</th>
+<th>Réglages déplacés</th>
+</tr></thead><tbody><tr><td>Suivi sanitaire</td>
+<td>Seuil d’anomalie (CRSWIR)</td>
+</tr><tr><td>Accessibilité</td>
+<td>Zone tampon autour de la forêt (m)</td>
+</tr><tr><td>Desserte</td>
+<td>Zone tampon (km), distance de débardage, pente maximale constructible, tarification de la pente + largeur de plateforme</td>
+</tr><tr><td>reGénération</td>
+<td>Débourrement, chute des feuilles, <code>lai_max</code>, <code>ewm</code>, profondeur d’enracinement, forçage météo, résolution microclimat</td>
+</tr></tbody></table><p>Ce qui <strong>reste</strong> dans les sidebars est ce qui varie d’un essai à l’autre : les périodes d’observation et d’entraînement, le choix du moteur (glouton/Steiner), le type de peuplement, l’essence cible, le mode « bilan hydrique seul ».</p>
+<p>Les clés de stockage sont neuves (<code>accessibility_params</code>, <code>desserte_params</code>, <code>regen_params</code>) sauf pour le seuil d’anomalie, qui garde <code>monitoring_threshold_anomaly</code> : un projet déjà calibré conserve sa valeur. <code>lai_max</code> et <code>ewm</code> gardent leur sémantique <strong>vide = dérivé de la donnée</strong> (PAI LiDAR / SoilGrids) — le rappel affiche « dérivé » et non un blanc.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--la-tarification-de-la-pente-passe-au-terrassement-par-défaut-0-128-0">Changed — La tarification de la pente passe au terrassement par défaut<a class="anchor" aria-label="anchor" href="#changed--la-tarification-de-la-pente-passe-au-terrassement-par-d%C3%A9faut-0-128-0"></a></h4>
+<p><code>methode_pente</code> vaut désormais <code>terrassement</code> et non plus <code>bareme</code>. Le terrassement chiffre un volume de déblai/remblai, donc il tient compte de la largeur de plateforme, que le barème ignore.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-bouton-exports-daccessibilité-et-de-desserte-suit-regénération-0-128-0">Changed — Le bouton Exports d’Accessibilité et de Desserte suit reGénération<a class="anchor" aria-label="anchor" href="#changed--le-bouton-exports-daccessibilit%C3%A9-et-de-desserte-suit-reg%C3%A9n%C3%A9ration-0-128-0"></a></h4>
+<p>Les deux vues enfouissaient un unique bouton d’export derrière un accordéon. Elles adoptent le bloc <strong>« Tableau des actions »</strong> de reGénération : en-tête vert repliable, sous-titre « Exports » en h6, bouton pleine largeur, toast de téléchargement au clic.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.127.2" id="nemetonshiny-01272-2026-08-18">nemetonshiny 0.127.2 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01272-2026-08-18"></a></h2>
 <p>Implémente <code>specs/brief-nemetonshiny-renommage-famille-L.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.176.0)</code>.</p>
