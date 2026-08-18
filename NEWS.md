@@ -1,3 +1,64 @@
+# nemetonshiny 0.127.2 (2026-08-18)
+
+Implémente `specs/brief-nemetonshiny-renommage-famille-L.md`. Plancher relevé à
+`nemeton (>= 0.176.0)`.
+
+### Changed — Les deux colonnes de la famille L sont renommées
+
+Le cœur a renommé les deux fonctions de paysage (spec 045), qui portaient
+chacune le nom de la métrique de l'**autre** :
+
+| Avant | Après | Ce que la colonne porte |
+|---|---|---|
+| `indicateur_l2_fragmentation` | `indicateur_l1_effet_lisiere` | sylvosphère / effet lisière |
+| `indicateur_l1_sylvosphere` | `indicateur_l2_morcellement` | fragmentation paysagère |
+
+Aucune valeur ne change, aucun libellé non plus — ils décrivaient déjà les
+valeurs. Ce sont les slugs qui cessent de mentir, et avec eux le croisement
+`code ↔ colonne` de la famille L. Celui de la famille F subsiste : `F1` pointe
+toujours sur `indicateur_f2_erosion`.
+
+### Fixed — Un projet calculé avant le renommage reste lisible
+
+C'est le point qui comptait. Sans traitement, les deux cartes Paysage d'un
+ancien projet **disparaissaient** de l'onglet : la table des familles, lue
+depuis le cœur, ne connaît plus ces noms de colonnes. `load_indicators()`
+(parquet) et `db_load_indicators()` (PostGIS) passent désormais leur jeu par
+`nemeton::migrer_colonnes_l()` — renommage sans perte, variantes `_norm`
+comprises, sans effet sur un jeu déjà migré ou étranger. L'appel se pose une
+fois pour toutes dans le chemin de lecture.
+
+### Changed — Le schéma PostGIS garde les anciens noms, et c'est délibéré
+
+Renommer deux colonnes du schéma imposerait une migration à tous les
+déploiements pour un gain nul : ces noms ne sont pas exposés. La traduction se
+fait donc à la frontière — `.slugs_l_vers_schema()` à l'écriture,
+`migrer_colonnes_l()` à la lecture.
+
+**L'appariement s'y lit par valeur, pas par numéro.** Le renommage du cœur
+croisait les deux slugs : les valeurs d'effet lisière (`l1_effet_lisiere`) sont
+stockées sous `l2_fragmentation`, celles de morcellement (`l2_morcellement`)
+sous `l1_sylvosphere`. Inverser l'un des deux seulement ferait relire toutes les
+lignes existantes à l'envers — un test vérifie que l'aller-retour
+app → schéma → app rend les valeurs d'origine.
+
+### Fixed — Un commentaire de la v0.127.1 décrivait mal `rename_map`
+
+J'y avais écrit que la table de `service_db.R` aliasait des colonnes DB avec un
+aller-retour lossless « parce que la même table sert à lire et à écrire ». Elle
+ne sert qu'à l'**écriture**, et seulement pour d'anciens noms anglais
+(`landscape_edge_ratio`) que plus rien ne produit dans le code actuel.
+L'aller-retour est bien sans perte, mais pour une autre raison : les deux côtés
+emploient directement les clés NMT. Commentaire corrigé.
+
+### Tests
+
+`test-renommage-famille-L.R` — 26 assertions : la famille L de l'app porte les
+nouveaux slugs et son croisement a disparu (celui de F subsiste), un projet
+ancien relu rend les bonnes valeurs dans les bonnes colonnes, un projet déjà
+migré traverse inchangé, l'aller-retour vers le schéma est neutre.
+
+
 # nemetonshiny 0.127.1 (2026-08-18)
 
 Réponse au contre-brief `specs/brief-nemetonshiny-libelles-famille-L.md`,
