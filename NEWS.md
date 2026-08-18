@@ -1,4 +1,4 @@
-# nemetonshiny 0.127.2.9001 (dev)
+# nemetonshiny 0.128.0 (2026-08-18)
 
 ### Changed — Les calibrages quittent les sidebars pour « Sources & paramètres »
 
