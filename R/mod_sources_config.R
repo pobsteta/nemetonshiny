@@ -15,6 +15,14 @@
 #' other external-service settings, next to the Theia credentials they depend
 #' on - hence this module, mounted as a tab of `mod_theia_config`'s modal.
 #'
+#' The tab then grew four **calibration** blocks that are not sources at all -
+#' Suivi sanitaire (FAST thresholds + FORDEAD anomaly threshold), Accessibilite
+#' (buffer), Desserte (buffer, skidding, max slope, slope pricing) and
+#' reGeneration (phenology, expert overrides, forcing, resolution). They share
+#' one property: they are set once per massif and then left alone, whereas the
+#' sidebars they came from are where one varies a run. Each persists on the
+#' project metadata and each block owns its save button.
+#'
 #' Both sources are **enabled by default** (see `project_sufosat_enabled()` /
 #' `project_lst_enabled()`): a project that never visited this tab still gets
 #' T3 and A5. The Theia fetch stays gated on credentials being configured, and
@@ -140,7 +148,16 @@ mod_sources_config_ui <- function(id) {
     # Calibrages du Suivi sanitaire (spec 013). Ce ne sont pas des sources,
     # d'ou un bloc distinct sur toute la largeur plutot qu'une troisieme
     # colonne : le lecteur ne doit pas croire qu'il active une donnee.
-    shiny::uiOutput(ns("fast_block"))
+    shiny::uiOutput(ns("fast_block")),
+    # Meme raison pour la zone tampon de l'Accessibilite : un calibrage
+    # d'emprise, regle une fois par massif, pas une source a activer.
+    shiny::uiOutput(ns("acc_block")),
+    # Idem pour les calibrages de la Desserte (emprise, portee machine, pente
+    # constructible, tarification de la pente).
+    shiny::uiOutput(ns("desserte_block")),
+    # Idem pour la reGeneration (phenologie, overrides experts, forcage,
+    # resolution microclimat).
+    shiny::uiOutput(ns("regen_block"))
   )
 }
 
@@ -411,7 +428,8 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      fp <- project_fast_params(app_state$current_project$metadata)
+      fp  <- project_fast_params(app_state$current_project$metadata)
+      fdp <- project_fordead_params(app_state$current_project$metadata)
 
       # Verdict d'applicabilite de R5, AVANT calcul : c'est ici qu'il sert.
       # Decouvrir apres coup qu'un peuplement n'est pas evaluable, c'est avoir
@@ -441,6 +459,20 @@ mod_sources_config_server <- function(id, app_state) {
             value = fp$window_days, min = 7L, max = 90L, step = 1L,
             width = "100%")
         ),
+        # Seuil d'anomalie FORDEAD (CRSWIR) : meme nature de calibrage que les
+        # trois seuils FAST ci-dessus - il etait le dernier slider du sidebar
+        # Suivi sanitaire. Semantique INVERSE, d'ou sa propre ligne d'aide : un
+        # pixel est en anomalie quand son CRSWIR depasse la valeur modelisee de
+        # plus que ce seuil.
+        htmltools::tags$small(
+          class = "text-muted d-block mt-2 mb-2", i18n$t("fordead_params_hint")),
+        bslib::layout_columns(
+          col_widths = 3,
+          shiny::sliderInput(
+            ns("fordead_threshold_anomaly"), i18n$t("monitoring_threshold_anomaly"),
+            min = 0.05, max = 0.50, value = fdp$threshold_anomaly, step = 0.01,
+            width = "100%")
+        ),
         shiny::actionButton(
           ns("fast_save"), i18n$t("fast_params_save"),
           class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
@@ -462,8 +494,305 @@ mod_sources_config_server <- function(id, app_state) {
           threshold_nbr  = input$fast_threshold_nbr,
           threshold_ndmi = input$fast_threshold_ndmi,
           window_days    = input$fast_window_days)
+        # Un seul bouton pour toute la section " seuils de detection " : FAST et
+        # FORDEAD se reglent d'un meme geste.
+        set_project_fordead_params(
+          pid, threshold_anomaly = input$fordead_threshold_anomaly)
         .refresh_project(pid)
         shiny::showNotification(i18n$t("fast_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Accessibilite - zone tampon d'emprise
+    # ========================================
+    #
+    # La zone tampon etait un `numericInput` du sidebar droit de la Carte
+    # d'accessibilite. Elle dimensionne l'emprise ACQUISE (MNT + desserte), donc
+    # le cout et le cache du calcul : c'est un calibrage de massif, regle une
+    # fois, pas un reglage d'affichage. Sa place est ici, persistee par projet.
+
+    output$acc_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh()
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("acc_params_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("acc_buffer_help"))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+
+      ap <- project_accessibility_params(app_state$current_project$metadata)
+
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = 3,
+          shiny::numericInput(
+            ns("acc_buffer_m"), i18n$t("acc_buffer"),
+            value = ap$buffer_m, min = 0, max = 20000, step = 50,
+            width = "100%")
+        ),
+        shiny::actionButton(
+          ns("acc_save"), i18n$t("acc_params_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$acc_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_accessibility_params(pid, buffer_m = input$acc_buffer_m)
+        .refresh_project(pid)
+        shiny::showNotification(i18n$t("acc_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Desserte - calibrages d'emprise et de cout
+    # ========================================
+    #
+    # Ces cinq reglages etaient des inputs du sidebar gauche de la Carte de
+    # desserte. Ils definissent CE QU'ON ACQUIERT (tampon), CE QU'ON CONSIDERE
+    # desservi (distance de debardage), JUSQU'OU l'on construit (pente max) et
+    # COMMENT on chiffre la pente (bareme / terrassement + largeur) : autant de
+    # decisions de massif, prises une fois. Seul le choix du moteur
+    # (glouton / Steiner) reste dans le sidebar - c'est lui qu'on fait varier
+    # d'un essai a l'autre.
+    #
+    # `methode_pente` et `pente_max_pct` restent DEUX entrees distinctes, et ce
+    # n'est pas un detail de presentation : avant que le coeur ne les separe,
+    # choisir " terrassement " deplacait aussi le plafond de pente en silence,
+    # de 60 % a 100 %, ouvrant 5 % du massif. Le terrassement est desormais le
+    # defaut (il chiffre un volume de deblai/remblai, donc il tient compte de la
+    # largeur de plateforme que le bareme ignore) - raison de plus pour que le
+    # plafond se decide a part.
+
+    output$desserte_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh()
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("dess_params_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("dess_params_hint"))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+
+      dp <- project_desserte_params(app_state$current_project$metadata)
+
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = c(4, 4, 4),
+          # Les explications de chaque reglage suivent le champ, portees par le
+          # meme " i " que dans le sidebar d'origine - on deplace le widget, pas
+          # son mode d'emploi.
+          shiny::numericInput(
+            ns("dess_buffer_km"),
+            htmltools::tagList(i18n$t("dess_buffer"),
+                               info_popover_in_label(i18n$t("dess_buffer_help"))),
+            value = dp$buffer_km, min = 0, max = 20, step = 1, width = "100%"),
+          shiny::numericInput(
+            ns("dess_skidding_m"),
+            htmltools::tagList(i18n$t("dess_skidding"),
+                               info_popover_in_label(i18n$t("dess_skidding_help"))),
+            value = dp$skidding_m, min = 0, max = 2000, step = 50,
+            width = "100%"),
+          shiny::numericInput(
+            ns("dess_pente_max_pct"),
+            htmltools::tagList(i18n$t("dess_pente_max"),
+                               info_popover_in_label(i18n$t("dess_pente_max_help"))),
+            value = dp$pente_max_pct, min = 0, max = 100, step = 5,
+            width = "100%")
+        ),
+        htmltools::tags$small(
+          class = "text-muted d-block mb-2", i18n$t("dess_methode_pente_help")),
+        bslib::layout_columns(
+          col_widths = c(8, 4),
+          shiny::radioButtons(
+            ns("dess_methode_pente_cfg"), i18n$t("dess_methode_pente"),
+            choices = stats::setNames(
+              c("bareme", "terrassement"),
+              c(i18n$t("dess_methode_bareme"),
+                i18n$t("dess_methode_terrassement"))),
+            selected = dp$methode_pente, inline = TRUE, width = "100%"),
+          # La largeur n'a d'effet QU'EN terrassement (le bareme y est aveugle) :
+          # masquee autrement, comme dans le sidebar d'origine.
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] == 'terrassement'",
+                                ns("dess_methode_pente_cfg")),
+            shiny::numericInput(
+              ns("dess_largeur_m"),
+              htmltools::tagList(i18n$t("dess_largeur"),
+                                 info_popover_in_label(i18n$t("dess_largeur_help"))),
+              value = dp$largeur_m, min = 2.5, max = 6, step = 0.5,
+              width = "100%"))
+        ),
+        shiny::actionButton(
+          ns("desserte_save"), i18n$t("dess_params_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$desserte_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_desserte_params(
+          pid,
+          buffer_km     = input$dess_buffer_km,
+          skidding_m    = input$dess_skidding_m,
+          pente_max_pct = input$dess_pente_max_pct,
+          methode_pente = input$dess_methode_pente_cfg,
+          largeur_m     = input$dess_largeur_m)
+        .refresh_project(pid)
+        shiny::showNotification(i18n$t("dess_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # reGeneration - phenologie, experts, forcage
+    # ========================================
+    #
+    # Le debourrement et la chute des feuilles decrivent le cycle foliaire du
+    # massif ; `lai_max` et `ewm` sont des OVERRIDES (vides = derives de la
+    # donnee) ; le forcage et la resolution decident du jeu meteo et de la
+    # finesse du microclimat. Rien la-dedans ne se regle d'un run a l'autre :
+    # dans le sidebar, `lai_max` et `ewm` invitaient meme au remplissage
+    # reflexe - saisir `lai_max` annule un PAI LiDAR calcule en 57 min sans
+    # aucun signal. Ils sont donc ici, persistes par projet.
+
+    output$regen_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh()
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("regen_params_section"))
+      hint <- htmltools::tagList(
+        htmltools::tags$small(
+          class = "text-muted d-block", i18n$t("regen_params_hint")),
+        # La semantique " vide = derive " des deux overrides est portee a part :
+        # c'est la seule phrase du bloc dont l'oubli change un resultat.
+        htmltools::tags$small(
+          class = "text-muted d-block mb-2 fst-italic",
+          i18n$t("regen_expert_hint")))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+
+      rp <- project_regen_params(app_state$current_project$metadata)
+
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = c(3, 3, 3, 3),
+          shiny::numericInput(
+            ns("regen_budburst"), i18n$t("regen_budburst"),
+            value = rp$budburst, min = 1, max = 200, width = "100%"),
+          shiny::numericInput(
+            ns("regen_leaf_fall"), i18n$t("regen_leaf_fall"),
+            value = rp$leaf_fall, min = 200, max = 366, width = "100%"),
+          shiny::numericInput(
+            ns("regen_lai_max"),
+            htmltools::tagList(i18n$t("regen_lai_max"),
+                               info_popover_in_label(i18n$t("regen_lai_tip"))),
+            value = rp$lai_max, min = 0, max = 12, step = 0.1, width = "100%"),
+          shiny::numericInput(
+            ns("regen_ewm"),
+            htmltools::tagList(i18n$t("regen_ewm"),
+                               info_popover_in_label(i18n$t("regen_ewm_hint"))),
+            value = rp$ewm, min = 10, max = 400, step = 5, width = "100%")
+        ),
+        bslib::layout_columns(
+          col_widths = c(3, 4, 5),
+          shiny::numericInput(
+            ns("regen_rooting_depth_cm"),
+            htmltools::tagList(i18n$t("regen_rooting_depth"),
+                               info_popover_in_label(
+                                 i18n$t("regen_rooting_depth_hint"))),
+            value = rp$rooting_depth_cm, min = 20, max = 200, step = 10,
+            width = "100%"),
+          shiny::radioButtons(
+            ns("regen_forcing"),
+            htmltools::tagList(i18n$t("regen_forcing"),
+                               info_popover_in_label(i18n$t("regen_forcing_tip"))),
+            choices = stats::setNames(
+              c("safran", "era5"),
+              c(i18n$t("regen_forcing_safran"), i18n$t("regen_forcing_era5"))),
+            selected = rp$forcing, inline = TRUE, width = "100%"),
+          shiny::radioButtons(
+            ns("regen_resolution"), i18n$t("regen_resolution"),
+            choices = stats::setNames(
+              c("2", "5"), c(i18n$t("regen_res_2m"), i18n$t("regen_res_5m"))),
+            selected = rp$resolution, inline = TRUE, width = "100%")
+        ),
+        shiny::actionButton(
+          ns("regen_save"), i18n$t("regen_params_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$regen_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_regen_params(
+          pid,
+          budburst         = input$regen_budburst,
+          leaf_fall        = input$regen_leaf_fall,
+          # Un champ vide reste vide : c'est le signal " derive de la donnee ",
+          # pas une valeur manquante a remplacer par un defaut.
+          lai_max          = input$regen_lai_max,
+          ewm              = input$regen_ewm,
+          rooting_depth_cm = input$regen_rooting_depth_cm,
+          forcing          = input$regen_forcing,
+          resolution       = input$regen_resolution)
+        .refresh_project(pid)
+        shiny::showNotification(i18n$t("regen_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

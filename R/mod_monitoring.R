@@ -230,11 +230,14 @@ mod_monitoring_ui <- function(id) {
               # FORDEAD, parite avec Diagnostic FAST). FORDEAD ne modelise
               # que le CRSWIR cote coeur ; le radio d'affichage n'expose
               # donc que CRSWIR (NDVI/NDWI retires car non calcules).
-              shiny::sliderInput(
-                ns("threshold_anomaly"),
-                i18n$t("monitoring_threshold_anomaly"),
-                min = 0.05, max = 0.50, value = 0.16, step = 0.01
-              ),
+              #
+              # Le slider " Seuil d'anomalie (CRSWIR) " a quitte ce sidebar pour
+              # l'onglet " Sources & parametres " de la modale des reglages, ou
+              # il est persiste par projet - meme raison que les trois seuils
+              # FAST (v0.126.2) : c'est un CALIBRAGE regle une fois par massif,
+              # pas le geste courant d'un diagnostic. Les periodes
+              # d'entrainement / d'observation, elles, restent ici.
+              shiny::uiOutput(ns("fordead_params_recap")),
               shiny::actionButton(
                 ns("run_health"), i18n$t("monitoring_run_health_btn"),
                 icon  = bsicons::bs_icon("activity"),
@@ -529,6 +532,34 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
+    # ----- Calibrage FORDEAD, lu dans les metadonnees du projet -------
+    # Meme mouvement que les seuils FAST : le slider " Seuil d'anomalie " vit
+    # desormais dans " Sources & parametres ". La cle de stockage est inchangee
+    # (`monitoring_threshold_anomaly`), donc les projets deja calibres gardent
+    # leur valeur.
+    fordead_params_r <- shiny::reactive({
+      project_fordead_params(app_state$current_project$metadata)
+    })
+
+    # Meme rappel que pour FAST : on ne lit pas une carte de deperissement sans
+    # savoir sous quel seuil elle a ete produite.
+    output$fordead_params_recap <- shiny::renderUI({
+      i18n <- i18n_r()
+      fdp <- fordead_params_r()
+      htmltools::div(
+        class = "small text-muted border rounded p-2 mb-3",
+        htmltools::div(
+          class = "fw-semibold mb-1",
+          bsicons::bs_icon("sliders", class = "me-1"),
+          i18n$t("fast_params_section")),
+        htmltools::tags$div(sprintf(
+          "%s : %.2f", i18n$t("monitoring_threshold_anomaly"),
+          fdp$threshold_anomaly)),
+        htmltools::tags$div(class = "fst-italic mt-1",
+                            i18n$t("fast_params_where"))
+      )
+    })
+
     # ----- Connexion monitoring read-only MISE EN CACHE (perf) -------
     # Ouvrir une connexion PostGIS distante coute ~0,4-1,2 s. Les
     # reactives du mode sante (zones, validity, masque...) en ouvraient
@@ -781,10 +812,9 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       m <- app_state$current_project$metadata
       if (is.null(m)) return()
-      if (!is.null(m$monitoring_threshold_anomaly)) {
-        shiny::updateSliderInput(session, "threshold_anomaly",
-                                 value = as.numeric(m$monitoring_threshold_anomaly))
-      }
+      # v0.127.2.9001 - Plus rien a restaurer pour le seuil d'anomalie : il n'est
+      # plus un input de ce sidebar mais une valeur lue a la volee dans les
+      # metadonnees par `fordead_params_r()`.
       # v0.90.x - `vegetation_index` n'est plus un input (CRSWIR seul,
       # affiche en radio a droite des cartes) : plus rien a restaurer.
       if (!is.null(m$monitoring_dates_training)) {
@@ -2719,7 +2749,7 @@ mod_monitoring_server <- function(id, app_state) {
       fordead_task$invoke(
         dates_training    = as.character(input$dates_training),
         dates_monitoring  = as.character(input$dates_observation),
-        threshold_anomaly = as.numeric(input$threshold_anomaly),
+        threshold_anomaly = as.numeric(fordead_params_r()$threshold_anomaly),
         # v0.90.x - FORDEAD ne modelise que le CRSWIR (NDVI/NDWI non
         # calcules). L'indice n'est plus un input run mais un affichage.
         vegetation_index  = "CRSWIR",
@@ -2760,7 +2790,6 @@ mod_monitoring_server <- function(id, app_state) {
       tryCatch(
         update_project_metadata(project_id, list(
           monitoring_mode               = input$mode,
-          monitoring_threshold_anomaly  = as.numeric(input$threshold_anomaly),
           monitoring_vegetation_index   = "CRSWIR",
           monitoring_dates_training     = as.character(input$dates_training),
           monitoring_dates_observation  = as.character(input$dates_observation),

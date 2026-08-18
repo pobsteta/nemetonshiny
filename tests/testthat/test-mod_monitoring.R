@@ -473,7 +473,10 @@ test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
       # Carte FORDEAD) : `fordead_index_alerts` / `alerts_opacity` retirés.
       expect_true(grepl("monitoring-fordead_index_cm",     html))
       expect_true(grepl("monitoring-fordead_opacity",      html))
-      expect_true(grepl("monitoring-threshold_anomaly", html))
+      # v0.127.2.9001 — le slider « Seuil d'anomalie » a migré vers
+      # Paramètres › Sources & paramètres ; le sidebar n'en garde qu'un rappel.
+      expect_false(grepl("monitoring-threshold_anomaly", html))
+      expect_true(grepl("monitoring-fordead_params_recap", html))
       expect_true(grepl("monitoring-run_health",        html))
       expect_true(grepl("monitoring-validity_banners",  html))
       # v0.90.x — case `include_low` retirée (inerte depuis la Phase A).

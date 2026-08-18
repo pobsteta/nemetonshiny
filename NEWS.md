@@ -1,3 +1,45 @@
+# nemetonshiny 0.127.2.9001 (dev)
+
+### Changed — Les calibrages quittent les sidebars pour « Sources & paramètres »
+
+Quatre onglets portaient dans leur sidebar des réglages qu'on ne touche qu'une
+fois par massif, à côté des gestes qu'on répète à chaque essai. Ils rejoignent
+l'onglet **Paramètres › Sources & paramètres**, où ils sont **persistés par
+projet** — même mouvement que les seuils FAST en v0.126.2. Chaque sidebar garde
+un **rappel** des valeurs en vigueur et le chemin pour les changer : une carte
+d'alertes ou un réseau de desserte reste illisible si l'on ignore sous quels
+seuils il a été produit.
+
+| Onglet | Réglages déplacés |
+|---|---|
+| Suivi sanitaire | Seuil d'anomalie (CRSWIR) |
+| Accessibilité | Zone tampon autour de la forêt (m) |
+| Desserte | Zone tampon (km), distance de débardage, pente maximale constructible, tarification de la pente + largeur de plateforme |
+| reGénération | Débourrement, chute des feuilles, `lai_max`, `ewm`, profondeur d'enracinement, forçage météo, résolution microclimat |
+
+Ce qui **reste** dans les sidebars est ce qui varie d'un essai à l'autre : les
+périodes d'observation et d'entraînement, le choix du moteur (glouton/Steiner),
+le type de peuplement, l'essence cible, le mode « bilan hydrique seul ».
+
+Les clés de stockage sont neuves (`accessibility_params`, `desserte_params`,
+`regen_params`) sauf pour le seuil d'anomalie, qui garde
+`monitoring_threshold_anomaly` : un projet déjà calibré conserve sa valeur.
+`lai_max` et `ewm` gardent leur sémantique **vide = dérivé de la donnée** (PAI
+LiDAR / SoilGrids) — le rappel affiche « dérivé » et non un blanc.
+
+### Changed — La tarification de la pente passe au terrassement par défaut
+
+`methode_pente` vaut désormais `terrassement` et non plus `bareme`. Le
+terrassement chiffre un volume de déblai/remblai, donc il tient compte de la
+largeur de plateforme, que le barème ignore.
+
+### Changed — Le bouton Exports d'Accessibilité et de Desserte suit reGénération
+
+Les deux vues enfouissaient un unique bouton d'export derrière un accordéon.
+Elles adoptent le bloc **« Tableau des actions »** de reGénération : en-tête
+vert repliable, sous-titre « Exports » en h6, bouton pleine largeur, toast de
+téléchargement au clic.
+
 # nemetonshiny 0.127.2 (2026-08-18)
 
 Implémente `specs/brief-nemetonshiny-renommage-famille-L.md`. Plancher relevé à

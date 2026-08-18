@@ -1944,3 +1944,133 @@ test_that("save_comments persists and load_comments restores synthesis_sources",
     )
   })
 })
+
+# ---- Calibrages deplaces vers « Sources & parametres » (v0.127.2.9001) ----
+#
+# Quatre familles de reglages ont quitte leurs sidebars pour la modale des
+# reglages, ou elles sont persistees par projet. Le contrat teste ici est celui
+# dont depend TOUT le reste : un projet qui n'a jamais ouvert la modale doit se
+# comporter exactement comme avant le deplacement, donc lire les defauts.
+
+test_that("project_fordead_params lit la cle historique et son defaut", {
+  expect_equal(nemetonshiny:::project_fordead_params(NULL)$threshold_anomaly,
+               0.16)
+  expect_equal(nemetonshiny:::project_fordead_params(list())$threshold_anomaly,
+               0.16)
+  # Cle inchangee depuis le sidebar : un projet deja calibre garde sa valeur.
+  expect_equal(
+    nemetonshiny:::project_fordead_params(
+      list(monitoring_threshold_anomaly = 0.22))$threshold_anomaly, 0.22)
+  # Valeur illisible -> defaut, jamais un NA propage jusqu'au worker.
+  expect_equal(
+    nemetonshiny:::project_fordead_params(
+      list(monitoring_threshold_anomaly = "abc"))$threshold_anomaly, 0.16)
+})
+
+test_that("project_accessibility_params borne le tampon a zero", {
+  expect_equal(nemetonshiny:::project_accessibility_params(NULL)$buffer_m, 250)
+  expect_equal(
+    nemetonshiny:::project_accessibility_params(
+      list(accessibility_params = list(buffer_m = 800)))$buffer_m, 800)
+  # Un tampon negatif est ramene a 0 - pas au defaut : c'est la meme regle que
+  # `.acc_buffer_m()`, qui la portait quand le champ vivait dans le sidebar.
+  expect_equal(
+    nemetonshiny:::project_accessibility_params(
+      list(accessibility_params = list(buffer_m = -5)))$buffer_m, 0)
+})
+
+test_that("project_desserte_params defaut terrassement + valeurs relues", {
+  d <- nemetonshiny:::project_desserte_params(NULL)
+  expect_equal(d$buffer_km, 1)
+  expect_equal(d$skidding_m, nemetonshiny:::DESSERTE_SKIDDING_DEFAULT_M)
+  expect_equal(d$pente_max_pct, nemetonshiny:::DESSERTE_PENTE_MAX_DEFAULT_PCT)
+  # Le defaut de tarification passe de « bareme » a « terrassement ».
+  expect_equal(d$methode_pente, "terrassement")
+  expect_equal(d$largeur_m, nemetonshiny:::DESSERTE_LARGEUR_DEFAULT_M)
+
+  d2 <- nemetonshiny:::project_desserte_params(list(desserte_params = list(
+    buffer_km = 3, skidding_m = 100, pente_max_pct = 80,
+    methode_pente = "bareme", largeur_m = 5)))
+  expect_equal(d2$buffer_km, 3)
+  expect_equal(d2$skidding_m, 100)
+  expect_equal(d2$pente_max_pct, 80)
+  expect_equal(d2$methode_pente, "bareme")
+  expect_equal(d2$largeur_m, 5)
+
+  # Methode inconnue -> defaut, pas une valeur transmise telle quelle au coeur.
+  expect_equal(
+    nemetonshiny:::project_desserte_params(
+      list(desserte_params = list(methode_pente = "magie")))$methode_pente,
+    "terrassement")
+})
+
+test_that("project_regen_params garde la semantique NA = derive", {
+  r <- nemetonshiny:::project_regen_params(NULL)
+  expect_equal(r$budburst, 105)
+  expect_equal(r$leaf_fall, 300)
+  # lai_max / ewm vides = « derive de la donnee » (PAI LiDAR / SoilGrids), et
+  # PAS un scalaire par defaut : c'est toute la difference entre laisser le
+  # moteur calculer et lui imposer une valeur.
+  expect_true(is.na(r$lai_max))
+  expect_true(is.na(r$ewm))
+  expect_equal(r$rooting_depth_cm, 100)
+  expect_equal(r$forcing, "safran")
+  expect_equal(r$resolution, "2")
+
+  r2 <- nemetonshiny:::project_regen_params(list(regen_params = list(
+    lai_max = 6.5, ewm = 120, forcing = "era5", resolution = "5")))
+  expect_equal(r2$lai_max, 6.5)
+  expect_equal(r2$ewm, 120)
+  expect_equal(r2$forcing, "era5")
+  expect_equal(r2$resolution, "5")
+
+  # Forcage inconnu -> defaut SAFRAN.
+  expect_equal(
+    nemetonshiny:::project_regen_params(
+      list(regen_params = list(forcing = "meteo-france-2050")))$forcing,
+    "safran")
+})
+
+test_that("les setters ecrivent puis relisent les memes valeurs", {
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        pid <- nemetonshiny:::create_project(name = "Calibrages",
+                                             parcels = NULL)$id
+
+        nemetonshiny:::set_project_fordead_params(pid, threshold_anomaly = 0.3)
+        nemetonshiny:::set_project_accessibility_params(pid, buffer_m = 1200)
+        nemetonshiny:::set_project_desserte_params(
+          pid, buffer_km = 2, skidding_m = 150, pente_max_pct = 75,
+          methode_pente = "bareme", largeur_m = 3.5)
+        nemetonshiny:::set_project_regen_params(
+          pid, budburst = 110, leaf_fall = 290, lai_max = 5.5,
+          rooting_depth_cm = 80, forcing = "era5", resolution = "5")
+
+        m <- nemetonshiny:::load_project_metadata(pid)
+        expect_equal(
+          nemetonshiny:::project_fordead_params(m)$threshold_anomaly, 0.3)
+        expect_equal(
+          nemetonshiny:::project_accessibility_params(m)$buffer_m, 1200)
+
+        d <- nemetonshiny:::project_desserte_params(m)
+        expect_equal(d$buffer_km, 2)
+        expect_equal(d$skidding_m, 150)
+        expect_equal(d$pente_max_pct, 75)
+        expect_equal(d$methode_pente, "bareme")
+        expect_equal(d$largeur_m, 3.5)
+
+        r <- nemetonshiny:::project_regen_params(m)
+        expect_equal(r$budburst, 110)
+        expect_equal(r$leaf_fall, 290)
+        expect_equal(r$lai_max, 5.5)
+        # `ewm` non transmis : il reste « derive », il ne devient pas 0.
+        expect_true(is.na(r$ewm))
+        expect_equal(r$rooting_depth_cm, 80)
+        expect_equal(r$forcing, "era5")
+        expect_equal(r$resolution, "5")
+      }
+    )
+  })
+})
