@@ -1,4 +1,4 @@
-# nemetonshiny 0.126.2.9001 (2026-08-17)
+# nemetonshiny 0.127.0 (2026-08-18)
 
 Implémente `specs/brief-nemetonshiny-trois-derniers-points.md`. Plancher relevé à
 `nemeton (>= 0.175.0)` et `foretaccess (>= 2.4.0)`.
