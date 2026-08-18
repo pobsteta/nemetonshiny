@@ -1,4 +1,4 @@
-# nemetonshiny 0.127.0.9001 (2026-08-18)
+# nemetonshiny 0.127.1 (2026-08-18)
 
 Réponse au contre-brief `specs/brief-nemetonshiny-libelles-famille-L.md`,
 émis par le cœur en réponse au nôtre.
