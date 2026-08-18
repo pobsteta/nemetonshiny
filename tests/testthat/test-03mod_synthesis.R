@@ -373,10 +373,28 @@ test_that("i18n keys for indicator codes exist", {
 
   all_codes <- nemetonshiny:::get_all_indicator_codes()
 
-  for (code in all_codes) {
-    key <- paste0("indicator_", code)
-    expect_true(fr$has(key), info = paste("FR missing:", key))
-    expect_true(en$has(key), info = paste("EN missing:", key))
+  # Depuis le dé-fork, les libellés d'indicateur viennent de
+  # `nemeton::indicator_labels()` ; les clés `indicator_<code>` ne sont plus
+  # qu'un repli. Exiger une clé par code reviendrait à réimposer la copie locale
+  # qu'on vient de supprimer — et A5 n'en a jamais eu.
+  #
+  # Ce qui compte pour l'utilisateur, c'est qu'aucun indicateur ne s'affiche
+  # sous son nom de colonne brut. On l'exige donc du résolveur, quelle que soit
+  # la source qui répond.
+  cfg <- nemetonshiny:::INDICATOR_FAMILIES
+  for (fam in cfg) {
+    for (i in seq_along(fam$indicators)) {
+      code <- fam$indicators[i]
+      col <- fam$column_names[i]
+      for (i18n in list(fr, en)) {
+        lbl <- nemetonshiny:::clean_indicator_label(col, i18n)
+        expect_true(nzchar(lbl), info = paste(code, col))
+        # Un repli humanisé (« indicateur a5 rafraichissement ») signalerait
+        # qu'aucune source ne connaît ce code.
+        expect_true(startsWith(lbl, paste0(code, " - ")),
+                    info = paste(code, col, "->", lbl))
+      }
+    }
   }
 })
 
