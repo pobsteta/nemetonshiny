@@ -158,7 +158,12 @@ test_that("la barre d'actions carte porte l'action ONF, et une seule", {
   # destructif. Le test le verrouille pour qu'il ne revienne pas par mégarde.
   expect_false(grepl("ug-btn_onf_import", h, fixed = TRUE))
   expect_true(grepl("ug-onf_domanialite", h, fixed = TRUE))
-  expect_true(grepl("ug-onf_caler", h, fixed = TRUE))
+  # v0.130.1.9001 — le calage sur les limites cadastrales est SYSTÉMATIQUE, la
+  # coche est retirée. Il reste annoncé en clair : une UGF dont le bord suit le
+  # cadastre plutôt que le tracé ONF serait incompréhensible sans cette phrase.
+  expect_false(grepl("ug-onf_caler", h, fixed = TRUE))
+  expect_true(grepl(i18n_note <- nemetonshiny:::get_i18n("fr")$t("onf_caler_note"),
+                    h, fixed = TRUE))
 
   i18n <- nemetonshiny:::get_i18n("fr")
   # La note de grain est permanente, pas repliée : lire une UGF comme un
@@ -168,17 +173,15 @@ test_that("la barre d'actions carte porte l'action ONF, et une seule", {
   expect_true(grepl(i18n$t("onf_source_note"), h, fixed = TRUE))
 })
 
-test_that("le calage cadastral est DECOCHE par defaut", {
-  skip_if_not_installed("bslib")
-  # C'est une correction volontaire des limites ONF : cochée par défaut, elle
-  # modifierait des limites sans que l'utilisateur l'ait demandé.
-  h <- with_mocked_bindings(
-    get_app_options = function() list(language = "fr"),
-    as.character(nemetonshiny:::mod_ug_map_actions_bar("ug"))
-  )
-  bloc <- regmatches(h, regexpr('id="ug-onf_caler"[^>]*>', h))
-  expect_length(bloc, 1L)
-  expect_false(grepl("checked", bloc, fixed = TRUE))
+test_that("le calage cadastral est systematique cote service", {
+  # Le réglage n'est plus exposé à l'utilisateur : il doit donc être actif par
+  # DÉFAUT dans la signature, sinon un appel sans argument produirait des UGF
+  # aux bords ONF bruts, en contradiction avec ce que la note annonce à l'écran.
+  expect_true(isTRUE(
+    formals(nemetonshiny:::onf_projet_croise)$caler_sur_cadastre))
+  # Le paramètre SUBSISTE : le comportement brut reste joignable et testable.
+  expect_true("caler_sur_cadastre" %in%
+                names(formals(nemetonshiny:::onf_projet_croise)))
 })
 
 test_that("les actions ONF refusent un projet sans donnees UGF", {

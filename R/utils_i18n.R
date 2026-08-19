@@ -2469,8 +2469,8 @@ TRANSLATIONS <- list(
   # projet. Un " Importer " qui les remplacait a existe jusqu'en v0.130.0.9001 -
   # meme emprise, memes UGF, mais la composition cadastrale etait perdue.
   onf_croise_btn = list(
-    fr = "Croiser avec le parcellaire ONF",
-    en = "Cross with the ONF forest parcels"
+    fr = "Cr\u00e9er les UGF avec le parcellaire ONF",
+    en = "Create the UGF from the ONF forest parcels"
   ),
   onf_section = list(
     fr = "Parcellaire forestier ONF",
@@ -2498,18 +2498,19 @@ TRANSLATIONS <- list(
       "several stands."
     )
   ),
-  onf_caler = list(
-    fr = "Caler les UGF sur les limites cadastrales",
-    en = "Snap UGF onto cadastral boundaries"
-  ),
-  onf_caler_tip = list(
+  # Le calage sur les limites cadastrales n'est plus une coche : il est
+  # systematique depuis v0.130.1.9001. Reste a le DIRE, sans quoi une UGF dont
+  # le bord suit le cadastre plutot que le trace ONF serait incomprehensible.
+  onf_caler_note = list(
     fr = paste0(
-      "Les limites foresti\u00e8res ONF sont approximatives au bord ; cochez ",
-      "pour qu'elles suivent exactement vos parcelles."
+      "Les UGF sont cal\u00e9es sur les limites cadastrales : une parcelle ",
+      "couverte \u00e0 90 % ou plus par une UGF lui revient enti\u00e8rement. ",
+      "Les limites foresti\u00e8res ONF sont approximatives au bord."
     ),
     en = paste0(
-      "ONF forest boundaries are approximate at the edge; tick this so they ",
-      "follow your parcels exactly."
+      "UGF are snapped onto cadastral boundaries: a parcel covered 90 % or ",
+      "more by one UGF is given to it whole. ONF forest boundaries are ",
+      "approximate at the edge."
     )
   ),
   onf_need_aoi = list(

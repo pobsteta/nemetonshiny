@@ -237,17 +237,18 @@ mod_ug_map_actions_bar <- function(id) {
         ),
         selected = "toutes"
       ),
-      # Decochee par defaut : caler est une correction VOLONTAIRE des limites
-      # ONF, pas un reglage par defaut (cf. brief spec 046 sect. 10).
-      htmltools::div(
-        class = "d-flex align-items-center mb-2",
-        shiny::checkboxInput(
-          ns("onf_caler"),
-          label = i18n$t("onf_caler"),
-          value = FALSE,
-          width = "100%"
-        ),
-        info_popover_in_label(i18n$t("onf_caler_tip"))
+      # v0.130.1.9001 - le calage sur les limites cadastrales etait une coche,
+      # decochee par defaut. Il est desormais SYSTEMATIQUE, et la coche est
+      # retiree : les limites foresti\u00e8res ONF sont approximatives au bord,
+      # et une UGF dont le bord ne suit pas la parcelle qu'elle recouvre a 90 %
+      # ou plus est un artefact de numerisation, pas une decision de gestion.
+      # Mesure sur La-Vieille-Loye : 170 -> 124 tenements, 13 -> 41 bords
+      # exactement cadastraux. Le garde-fou du coeur reste entier - une parcelle
+      # reellement partagee entre deux UGF n'est PAS calee, et le " hors UGF "
+      # ne peut jamais prendre une parcelle.
+      htmltools::tags$p(
+        class = "text-muted small mb-2",
+        i18n$t("onf_caler_note")
       ),
       shiny::actionButton(
         ns("btn_onf_croise"),
@@ -2184,7 +2185,6 @@ mod_ug_server <- function(id, app_state) {
 
       i18n_snap <- shiny::isolate(i18n())
       dom       <- shiny::isolate(input$onf_domanialite) %||% "toutes"
-      caler     <- isTRUE(shiny::isolate(input$onf_caler))
       .onf_spinner_on(i18n_snap)
 
       later::later(function() {
@@ -2202,9 +2202,9 @@ mod_ug_server <- function(id, app_state) {
           # produit le decoupage, pas seulement son resultat.
           rv$onf_preview <- res$parcelles
 
+          # Calage systematique (cf. UI ci-dessus) : plus de choix a lire.
           out <- onf_projet_croise(
             projet, res$parcelles,
-            caler_sur_cadastre = caler,
             label_hors = .onf_label_hors_ugf(i18n_snap)
           )
           if (!identical(out$status, "ok")) {
