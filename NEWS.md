@@ -41,29 +41,52 @@ identifiants uniques, invariants verts et surtout un **pavage exact des
 parcelles cadastrales à 0,000000 %** — l'invariant qui se serait cassé en
 silence.
 
-### Non validé — le calage cadastral demande un cadastre réel
+### Changed — Le calage cadastral, validé sur cadastre réel
 
-La case « caler les UGF sur les limites cadastrales » n'a **pas** pu être
-vérifiée. Le paramètre est bien transmis et le cœur l'applique, mais aucune
-parcelle d'un cadastre *synthétique* n'atteint jamais le seuil : sur 144 mailles
-de 11,1 ha confrontées à des parcelles forestières de 8,9 ha de médiane, le
-résultat est identique avec et sans calage (820 tènements, 0 bord calé).
+La case « caler les UGF sur les limites cadastrales » reproduit **exactement**
+les mesures du brief, sur le vrai cadastre de La-Vieille-Loye (1 271 parcelles
+cadastrales × 94 parcelles forestières) :
 
-Mesuré pour ne pas conclure à l'aveugle : l'UGF dominante détient au maximum
-**30,1 %** d'une maille (médiane 21,4 %), là où le calage exige **90 %**. Une
-grille régulière est par construction désalignée du parcellaire forestier ; un
-vrai cadastre, lui, suit souvent les limites forestières — la forêt ayant été
-découpée le long des limites de propriété — et c'est là que le réglage mord,
-comme le documente le brief (La-Vieille-Loye : 170 → 124 tènements).
+| | Brief (cœur) | Mesuré (app) |
+|---|---|---|
+| Tènements forestiers sans calage | 170 | **170** |
+| Tènements forestiers avec calage | 124 | **124** |
+| Bords cadastraux sans calage | 13 | **13** |
+| Bords cadastraux avec calage | 41 | **41** |
 
-Ce volet reste donc à valider sur un projet réel avec son cadastre.
+Le réglage était resté non vérifiable tant qu'on l'éprouvait sur un cadastre
+*synthétique* : une grille régulière est par construction désalignée du
+parcellaire forestier, l'UGF dominante n'y détenait jamais plus de **30,1 %**
+d'une maille, contre les **90 %** qu'exige le calage. Sur cadastre réel la
+médiane monte à **0,95**, et 41 parcelles sur 64 franchissent le seuil.
 
-### Performance observée
+Au niveau du projet : 1 422 → 1 365 tènements et 87 → 86 UGF — une UGF
+forestière disparaît, ne tenant que des échardes absorbées par l'UGF dominante.
 
-Le croisement coûte ~145 s pour 144 parcelles cadastrales × 213 parcelles
-forestières (201 s avec calage). Il tourne sous `later::later` avec un
-indicateur d'activité, donc l'interface ne gèle pas, mais l'attente est réelle
-sur les emprises denses.
+### Fixed — Le croisement était 95 fois plus lent que nécessaire
+
+`tenement_import_replace()` pesait **628,9 s** sur ce même croisement, contre
+24,9 s pour tout le calcul du cœur : 96 % du coût. Deux causes, toutes deux
+dans l'app :
+
+- pour **chacun** des 1 422 fragments, la fonction intersectait la totalité des
+  1 271 parcelles — et n'utilisait jamais le résultat. Du calcul intégralement
+  mort. Le `st_intersects()` qui suivait était lui aussi refait par fragment,
+  au lieu d'être calculé une fois via l'index spatial ;
+- surtout, les comparaisons d'aires appelaient `st_area()` sur des géométries
+  portant un CRS. `sf` en relit alors les paramètres à chaque appel pour
+  attacher une unité : `CPL_crs_parameters` représentait **76,8 %** du temps,
+  quand les intersections GEOS elles-mêmes n'en prenaient que 1,14 s. Ces aires
+  ne servent qu'à départager des candidates — l'unité n'y joue aucun rôle.
+
+Corrigé : index calculé une fois, calcul mort supprimé, court-circuit quand un
+fragment ne touche qu'une parcelle, et comparaisons d'aires sur des copies sans
+CRS (les géométries stockées gardent le leur).
+
+**628,9 s → 6,6 s**, à résultat *strictement identique* — mêmes tènements,
+mêmes parents, mêmes UGF, même répartition, surfaces au centième près,
+invariants verts. Un croisement complet passe de 654 s à 31,5 s. Le gain
+profite aussi à l'import de découpage QGIS, qui emprunte la même fonction.
 
 # nemetonshiny 0.129.0 (2026-08-19)
 

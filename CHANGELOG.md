@@ -29,10 +29,16 @@ For a narrative, per-feature description of each release, see
   de domanialité exact ; « aucune forêt publique » et « service indisponible »
   distingués. Bout-en-bout : 586 tènements / 423 UGF, identifiants uniques,
   invariants verts, pavage cadastral exact à 0,000000 %.
-- Le calage cadastral reste **non validé** : un cadastre synthétique n'atteint
-  jamais le seuil de 90 % (maximum mesuré 30,1 %), une grille régulière étant
-  par construction désalignée du parcellaire forestier. À vérifier sur un projet
-  réel.
+- Calage cadastral **validé** sur le vrai cadastre de La-Vieille-Loye : 170 →
+  124 tènements et 13 → 41 bords cadastraux, reproduisant exactement les mesures
+  du cœur. Il n'était pas vérifiable sur cadastre synthétique, une grille
+  régulière étant par construction désalignée du parcellaire forestier.
+- `tenement_import_replace()` accélérée **95×** (628,9 s → 6,6 s sur 1 422
+  fragments × 1 271 parcelles), à résultat strictement identique : index spatial
+  calculé une fois au lieu d'être refait par fragment, suppression d'une
+  intersection dont le résultat n'était jamais utilisé, et comparaisons d'aires
+  sur géométries sans CRS (`st_area()` relisait les paramètres du CRS à chaque
+  appel — 76,8 % du temps). Bénéficie aussi à l'import de découpage QGIS.
 
 ## [0.129.0] - 2026-08-19
 

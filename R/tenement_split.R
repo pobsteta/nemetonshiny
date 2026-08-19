@@ -1083,21 +1083,46 @@ tenement_import_replace <- function(projet, imported_sf) {
     cli::cli_abort("Parcels layer has no id / nemeton_id / geo_parcelle column.")
   }
 
+  # Candidats calcules EN UNE PASSE, via l'index spatial de `st_intersects()`.
+  #
+  # Avant : la boucle intersectait chaque fragment avec la TOTALITE des
+  # parcelles (`st_intersection(st_geometry(parcels_m), f)`) - un calcul dont le
+  # resultat n'etait meme jamais utilise - puis rappelait `st_intersects()` sur
+  # toutes les parcelles, fragment par fragment. Mesure sur la commune de
+  # La-Vieille-Loye (1 422 fragments x 1 271 parcelles) : 628,9 s pour cette
+  # seule fonction, contre 24,9 s pour tout le croisement cote coeur. C'etait
+  # 96 % du cout d'un croisement ONF.
+  cand <- sf::st_intersects(sf::st_geometry(imported_m),
+                            sf::st_geometry(parcels_m))
+
+  # Geometries SANS CRS pour les comparaisons d'aires ci-dessous.
+  #
+  # `st_area()` relit les parametres du CRS a CHAQUE appel pour attacher une
+  # unite : profile sur La-Vieille-Loye, `CPL_crs_parameters` pesait 77 % du
+  # temps de cette fonction. Or ces aires ne servent qu'a departager des
+  # candidates entre elles - l'unite n'a aucun role. Sur une geometrie sans
+  # CRS, `st_area()` rend un numeric brut. Mesure : 300 appels passent de
+  # 4,53 s a 0,06 s.
+  #
+  # Les geometries STOCKEES gardent evidemment leur CRS : seules ces copies de
+  # travail le perdent.
+  parcels_nc  <- sf::st_set_crs(sf::st_geometry(parcels_m), NA)
+  imported_nc <- sf::st_set_crs(sf::st_geometry(imported_m), NA)
+
   parent_ids <- vapply(seq_len(nrow(imported_m)), function(i) {
-    f <- sf::st_geometry(imported_m)[i]
-    inter <- tryCatch(
-      sf::st_intersection(sf::st_geometry(parcels_m), f),
-      error = function(e) NULL
-    )
-    if (is.null(inter) || length(inter) == 0) return(NA_character_)
-    a <- as.numeric(sf::st_area(inter))
-    hit_rows <- which(lengths(sf::st_intersects(
-      sf::st_geometry(parcels_m), f)) > 0)
+    hit_rows <- cand[[i]]
     if (length(hit_rows) == 0) return(NA_character_)
-    # Use the parcel with the largest intersection area
+    # Cas de loin le plus frequent : un fragment tombe dans UNE parcelle. Aucune
+    # aire a comparer, donc aucune intersection a calculer.
+    if (length(hit_rows) == 1L) {
+      return(as.character(parcels_m[[parcel_id_col]][hit_rows]))
+    }
+    # Fragment a cheval : on garde la parcelle de plus grande intersection, et
+    # on n'intersecte QUE les candidates.
+    f <- imported_nc[i]
     areas <- vapply(hit_rows, function(k) {
       ii <- tryCatch(
-        sf::st_intersection(sf::st_geometry(parcels_m)[k], f),
+        sf::st_intersection(parcels_nc[k], f),
         error = function(e) NULL
       )
       if (is.null(ii) || length(ii) == 0) 0 else as.numeric(sum(sf::st_area(ii)))
@@ -1158,23 +1183,35 @@ tenement_import_replace <- function(projet, imported_sf) {
   # if a new feature has zero overlap with any existing tenement
   # (shouldn't happen if tiling is preserved), fall back to the first
   # UGF of the parent parcel.
+  # Meme optimisation que pour les parcelles. Non calcule quand tous les
+  # fragments portent un label_ugf : l'heritage geometrique n'est alors jamais
+  # consulte, et l'index couterait pour rien.
+  cand_ten <- if (all(!is.na(label_ugf_vec))) {
+    vector("list", nrow(imported_m))
+  } else {
+    sf::st_intersects(sf::st_geometry(imported_m), sf::st_geometry(tenements_m))
+  }
+  tenements_nc <- sf::st_set_crs(sf::st_geometry(tenements_m), NA)
+
   ug_ids <- vapply(seq_len(nrow(imported_m)), function(i) {
     # Explicit label_ugf takes precedence over geometric inheritance
     if (!is.na(label_ugf_vec[i])) {
       return(label_to_ug[[label_ugf_vec[i]]])
     }
-    f <- sf::st_geometry(imported_m)[i]
-    hit_rows <- which(lengths(sf::st_intersects(
-      sf::st_geometry(tenements_m), f)) > 0)
+    hit_rows <- cand_ten[[i]]
     if (length(hit_rows) == 0) {
       # Fallback: any existing tenement of the parent parcel
       cand <- which(tenements_m$parent_parcelle_id == parent_ids[i])
       if (length(cand) == 0) return(NA_character_)
       return(as.character(tenements_m$ug_id[cand[1]]))
     }
+    if (length(hit_rows) == 1L) {
+      return(as.character(tenements_m$ug_id[hit_rows]))
+    }
+    f <- imported_nc[i]
     areas <- vapply(hit_rows, function(k) {
       ii <- tryCatch(
-        sf::st_intersection(sf::st_geometry(tenements_m)[k], f),
+        sf::st_intersection(tenements_nc[k], f),
         error = function(e) NULL
       )
       if (is.null(ii) || length(ii) == 0) 0 else as.numeric(sum(sf::st_area(ii)))
