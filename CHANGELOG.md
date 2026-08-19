@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.2] - 2026-08-19
+
+### Changed
+
+- Le calage des UGF sur les limites cadastrales devient **systématique** ; la
+  coche correspondante est retirée. Les limites forestières ONF sont
+  approximatives au bord : une UGF dont le tracé ne suit pas la parcelle qu'elle
+  recouvre à 90 % ou plus est un artefact de numérisation. Mesuré sur
+  La-Vieille-Loye : 170 → 124 tènements, 13 → 41 bords exactement cadastraux.
+  Une note permanente l'annonce ; les garde-fous du cœur restent entiers ;
+  `caler_sur_cadastre` passe à `TRUE` par défaut mais subsiste comme paramètre.
+- Le bouton « Croiser avec le parcellaire ONF » devient « Créer les UGF avec le
+  parcellaire ONF » : le croisement est le moyen, créer les UGF est le but.
+
 ## [0.130.1] - 2026-08-19
 
 ### Removed

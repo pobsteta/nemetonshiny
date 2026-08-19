@@ -1,4 +1,4 @@
-# nemetonshiny 0.130.1.9001 (dev)
+# nemetonshiny 0.130.2 (2026-08-19)
 
 ### Changed — Le calage sur les limites cadastrales devient systématique
 
