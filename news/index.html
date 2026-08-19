@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.128.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.129.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,30 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.129.0" id="nemetonshiny-01290-2026-08-19">nemetonshiny 0.129.0 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01290-2026-08-19"></a></h2>
+<p>Implémente <code>specs/046-parcellaire-onf/brief-nemetonshiny.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.179.0)</code>.</p>
+<div class="section level4">
+<h4 id="added--créer-les-ugf-depuis-le-parcellaire-forestier-onf-0-129-0">Added — Créer les UGF depuis le parcellaire forestier ONF<a class="anchor" aria-label="anchor" href="#added--cr%C3%A9er-les-ugf-depuis-le-parcellaire-forestier-onf-0-129-0"></a></h4>
+<p>En forêt publique, la parcelle <strong>cadastrale</strong> n’est pas l’unité de gestion : la parcelle <strong>forestière</strong> l’est. L’onglet Carte UGF offre désormais deux actions, et la distinction entre elles est tout le sujet :</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Action</th>
+<th>Ce qu’elle fait</th>
+</tr></thead><tbody><tr><td><strong>Croiser avec le parcellaire ONF</strong></td>
+<td>
+<strong>garde</strong> vos parcelles cadastrales et dit, pour chaque UGF, de quels morceaux de parcelles elle est faite</td>
+</tr><tr><td><strong>Importer le parcellaire ONF</strong></td>
+<td>
+<strong>remplace</strong> les parcelles du projet par les parcelles forestières (une parcelle = une UGF)</td>
+</tr></tbody></table><p>Le croisement est l’action courante (bouton vert) ; l’import est destructif — il emporte le découpage et invalide les indicateurs — donc il passe par une prévisualisation cartographique puis une confirmation explicite.</p>
+<p>Autour : un sélecteur de domanialité (toutes / domaniales / communales), une case « caler les UGF sur les limites cadastrales » <strong>décochée par défaut</strong> (le calage est une correction volontaire des limites ONF, pas un défaut), une surcouche « Parcellaire ONF » colorée par domanialité avec <code>nom_ugf</code> et surface au clic, et la mention du producteur (ONF, diffusion publique).</p>
+<p>Toute l’acquisition et toute l’arithmétique du croisement restent dans le cœur (<code>load_onf_parcelles_source()</code>, <code>croiser_parcelles_onf()</code>) ; l’app n’ajoute que <code>R/service_onf.R</code>. Le WFS n’étant joignable qu’en HTTP, l’appel est exclusivement serveur.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--deux-découpages-dans-la-même-seconde-produisaient-des-tenement_id-en-double-0-129-0">Fixed — Deux découpages dans la même seconde produisaient des <code>tenement_id</code> en double<a class="anchor" aria-label="anchor" href="#fixed--deux-d%C3%A9coupages-dans-la-m%C3%AAme-seconde-produisaient-des-tenement_id-en-double-0-129-0"></a></h4>
+<p><code>tenement_split_by_import()</code> forgeait ses identifiants depuis <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code> à la seconde : deux parcelles découpées dans la même seconde recevaient les <strong>mêmes</strong> <code>tnm_&lt;horodatage&gt;_1</code>, <code>_2</code>… des deux côtés. <code>projet_validate()</code> ne contrôlant pas l’unicité, la corruption passait en silence — mesuré : 2 découpes, 4 tènements, <strong>2 identifiants distincts</strong>, validation verte. Toute opération désignant un tènement par son id (affectation à une UGF, sélection sur la carte, annulation) devenait alors ambiguë. L’identifiant de la parcelle parente entre désormais dans l’id.</p>
+<p>Ce bug était latent ; la boucle par parcelle esquissée dans le brief l’aurait déclenché systématiquement.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.128.1" id="nemetonshiny-01281-2026-08-19">nemetonshiny 0.128.1 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01281-2026-08-19"></a></h2>
 <div class="section level4">
