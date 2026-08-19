@@ -1,4 +1,4 @@
-# nemetonshiny 0.130.0.9001 (dev)
+# nemetonshiny 0.130.1 (2026-08-19)
 
 ### Removed — Le bouton « Importer le parcellaire ONF »
 
