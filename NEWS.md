@@ -1,4 +1,4 @@
-# nemetonshiny 0.128.1.9001 (dev)
+# nemetonshiny 0.129.0 (2026-08-19)
 
 Implémente `specs/046-parcellaire-onf/brief-nemetonshiny.md`. Plancher relevé à
 `nemeton (>= 0.179.0)`.

@@ -10,6 +10,36 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.129.0] - 2026-08-19
+
+### Added
+
+- Créer les UGF depuis le **parcellaire forestier ONF** (spec 046, cœur
+  v0.179.0). Deux actions distinctes dans Carte UGF : « Croiser avec le
+  parcellaire ONF » garde les parcelles cadastrales et décrit chaque UGF comme
+  les morceaux dont elle est faite ; « Importer le parcellaire ONF » remplace
+  les parcelles (une parcelle forestière = une UGF), après prévisualisation
+  cartographique et confirmation.
+- Sélecteur de domanialité (toutes / domaniales / communales et autres), case
+  « caler les UGF sur les limites cadastrales » décochée par défaut, surcouche
+  « Parcellaire ONF » colorée par domanialité avec `nom_ugf` et surface au clic,
+  mention du producteur (ONF, diffusion publique).
+- `R/service_onf.R` : `onf_load_parcelles()`, `onf_projet_from_parcelles()`,
+  `onf_projet_croise()`, `onf_croise_resume()`. Toute l'acquisition et toute
+  l'arithmétique du croisement restent dans le cœur.
+
+### Fixed
+
+- `tenement_split_by_import()` forgeait ses `tenement_id` depuis `Sys.time()` à
+  la seconde : deux parcelles découpées dans la même seconde recevaient les
+  mêmes identifiants, sans que `projet_validate()` (qui ne contrôle pas
+  l'unicité) le détecte. L'identifiant de la parcelle parente entre désormais
+  dans l'id.
+
+### Changed
+
+- Plancher relevé à `nemeton (>= 0.179.0)`.
+
 ## [0.128.1] - 2026-08-19
 
 ### Fixed
