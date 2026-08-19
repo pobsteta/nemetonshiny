@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.0] - 2026-08-19
+
+### Fixed
+
+- `onf_projet_from_parcelles()` échouait dès que le parcellaire forestier
+  n'avait pas le même nombre de lignes que les parcelles du projet
+  (« replacement has 427 rows, data has 1 »). L'idiome
+  `utils::modifyList(projet, list(parcels = ...))`, repris de l'esquisse du
+  brief, récurse dans les listes — et un `data.frame` en est une : il fusionnait
+  les colonnes au lieu de remplacer l'objet. Remplacé par une affectation
+  directe, avec un test de régression à tailles différentes.
+
+### Changed
+
+- Recette §6 de la spec 046 exécutée contre le **vrai** WFS ONF (forêt domaniale
+  de Chaux) : les quatre cas passent. 213 parcelles / 2 114 ha en 1,1 s ; filtre
+  de domanialité exact ; « aucune forêt publique » et « service indisponible »
+  distingués. Bout-en-bout : 586 tènements / 423 UGF, identifiants uniques,
+  invariants verts, pavage cadastral exact à 0,000000 %.
+- Le calage cadastral reste **non validé** : un cadastre synthétique n'atteint
+  jamais le seuil de 90 % (maximum mesuré 30,1 %), une grille régulière étant
+  par construction désalignée du parcellaire forestier. À vérifier sur un projet
+  réel.
+
 ## [0.129.0] - 2026-08-19
 
 ### Added

@@ -1,3 +1,70 @@
+# nemetonshiny 0.130.0 (2026-08-19)
+
+Recette de la spec 046 exécutée contre le **vrai** service WFS ONF (forêt
+domaniale de Chaux), et correction du défaut qu'elle a révélé.
+
+### Fixed — L'import du parcellaire ONF échouait sur données réelles
+
+`onf_projet_from_parcelles()` plantait dès que le parcellaire forestier n'avait
+pas exactement le même nombre de lignes que les parcelles du projet :
+
+```
+Error in `[[<-.data.frame` : replacement has 427 rows, data has 1
+```
+
+La cause est l'idiome `utils::modifyList(projet, list(parcels = parcelles))`,
+repris de l'esquisse du brief. `modifyList()` **récurse dans les listes** — et
+un `data.frame` en est une : au lieu de remplacer l'objet `parcels`, il fusionne
+les colonnes de l'ancien parcellaire avec celles du nouveau. Erreur immédiate à
+tailles différentes, et fusion **silencieuse** à tailles égales, ce qui est
+pire. Remplacé par une affectation directe.
+
+Les tests unitaires ne pouvaient pas le voir : leurs fixtures avaient 2
+parcelles cadastrales et 2 parcelles forestières, donc la fusion « marchait »
+par accident. C'est exactement la configuration qui ne se produit jamais en
+vrai, où une poignée de parcelles cadastrales rencontre des centaines de
+parcelles forestières. Un test de régression fixe désormais des tailles
+volontairement différentes.
+
+### Changed — Recette §6 validée contre le service réel
+
+| Cas | Attendu par le brief | Mesuré |
+|---|---|---|
+| Chaux, emprise 4×4 km | ~200 UGF ; 217 parcelles / 2 105 ha / 5,8 s | **213 parcelles / 2 114 ha / 1,1 s** — 189 « Forêt domaniale de Chaux » + 24 « Forêt communale de La-Vieille-Loye » |
+| filtre `domaniale` | seules les domaniales subsistent | 394 / 394 ; `autre` → 33, aucune domaniale |
+| plaine agricole | « aucune forêt publique » | `status = empty` en 0,4 s |
+| service coupé | message d'indisponibilité, repli cadastral | `status = unavailable` en 0,1 s, `NULL` rendu |
+
+Bout-en-bout sur les 427 parcelles réelles : import en 0,1 s (427 UGF,
+invariants verts) ; croisement produisant 586 tènements pour 423 UGF, avec
+identifiants uniques, invariants verts et surtout un **pavage exact des
+parcelles cadastrales à 0,000000 %** — l'invariant qui se serait cassé en
+silence.
+
+### Non validé — le calage cadastral demande un cadastre réel
+
+La case « caler les UGF sur les limites cadastrales » n'a **pas** pu être
+vérifiée. Le paramètre est bien transmis et le cœur l'applique, mais aucune
+parcelle d'un cadastre *synthétique* n'atteint jamais le seuil : sur 144 mailles
+de 11,1 ha confrontées à des parcelles forestières de 8,9 ha de médiane, le
+résultat est identique avec et sans calage (820 tènements, 0 bord calé).
+
+Mesuré pour ne pas conclure à l'aveugle : l'UGF dominante détient au maximum
+**30,1 %** d'une maille (médiane 21,4 %), là où le calage exige **90 %**. Une
+grille régulière est par construction désalignée du parcellaire forestier ; un
+vrai cadastre, lui, suit souvent les limites forestières — la forêt ayant été
+découpée le long des limites de propriété — et c'est là que le réglage mord,
+comme le documente le brief (La-Vieille-Loye : 170 → 124 tènements).
+
+Ce volet reste donc à valider sur un projet réel avec son cadastre.
+
+### Performance observée
+
+Le croisement coûte ~145 s pour 144 parcelles cadastrales × 213 parcelles
+forestières (201 s avec calage). Il tourne sous `later::later` avec un
+indicateur d'activité, donc l'interface ne gèle pas, mais l'attente est réelle
+sur les emprises denses.
+
 # nemetonshiny 0.129.0 (2026-08-19)
 
 Implémente `specs/046-parcellaire-onf/brief-nemetonshiny.md`. Plancher relevé à
