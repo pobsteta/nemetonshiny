@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.128.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.128.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.128.1" id="nemetonshiny-01281-2026-08-19">nemetonshiny 0.128.1 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01281-2026-08-19"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-résolution-microclimat-était-décorative-0-128-1">Fixed — La résolution microclimat était décorative<a class="anchor" aria-label="anchor" href="#fixed--la-r%C3%A9solution-microclimat-%C3%A9tait-d%C3%A9corative-0-128-1"></a></h4>
+<p>Le radio « Résolution microclimat » (2 m / 5 m) de reGénération n’entrait dans <strong>aucune</strong> <code>cfg</code> : <code><a href="https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html" class="external-link">nemeton::regen_sensibilite()</a></code> recevait toujours son défaut de <code>res = 2</code>, quel que soit le choix affiché. Choisir 5 m ne changeait donc rien — ni la finesse de la grille, ni le temps de calcul.</p>
+<p>Le réglage est désormais transmis, avec la coercition qui manquait : le radio porte une <strong>chaîne</strong> (<code>"5"</code>), le cœur attend un <strong>numérique</strong> (<code>5</code>). Une valeur absente, nulle ou négative retombe sur le défaut du cœur (2 m).</p>
+<p>Le paramètre n’a d’effet que sur le <strong>chemin moteur</strong> (microclimf réel). Les deux autres appels à <code>regen_sensibilite()</code> passent par <code>precomputed =</code> : ils relisent une sortie existante, dont la grille est déjà fixée par le run qui l’a produite.</p>
+<p><strong>Conséquence sur les projets existants</strong> : les sorties microclimf déjà en cache ont toutes été produites à 2 m, y compris celles d’un projet réglé sur 5 m. Les caches ne sont <strong>pas</strong> invalidés — un projet rouvert continue d’afficher ses résultats tels quels. Il faut <strong>relancer le moteur</strong> pour que le réglage prenne effet, et un run à 5 m donnera des valeurs différentes de celles affichées jusqu’ici.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.128.0" id="nemetonshiny-01280-2026-08-18">nemetonshiny 0.128.0 (2026-08-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01280-2026-08-18"></a></h2>
 <div class="section level4">
