@@ -127,6 +127,32 @@ test_that("onf_projet_from_parcelles nomme les UGF avec nom_ugf", {
   expect_silent(nemetonshiny:::projet_validate(p))
 })
 
+test_that("onf_projet_from_parcelles remplace un parcellaire de taille differente", {
+  skip_if_not_installed("sf")
+  # Régression trouvée par la recette sur données réelles (forêt domaniale de
+  # Chaux) : l'esquisse du brief passait par `utils::modifyList()`, qui RECURSE
+  # dans les listes — et un data.frame en est une. Au lieu de remplacer l'objet
+  # `parcels`, il fusionnait les colonnes de l'ancien parcellaire avec celles du
+  # nouveau : erreur immédiate dès que les deux n'ont pas le même nombre de
+  # lignes (« replacement has 427 rows, data has 1 »).
+  #
+  # Les tests précédents ne le voyaient PAS parce que cadastre et parcellaire y
+  # avaient tous deux 2 lignes : la fusion « marchait » par accident. D'où ce
+  # test avec des tailles VOLONTAIREMENT différentes — c'est le cas normal en
+  # vrai, où une emprise de quelques parcelles cadastrales rencontre des
+  # centaines de parcelles forestières.
+  aoi <- .onf_test_cadastre()[1, ]                 # 1 parcelle
+  projet <- nemetonshiny:::ug_init_default(list(parcels = aoi))
+  expect_equal(nrow(projet$parcels), 1L)
+
+  p <- nemetonshiny:::onf_projet_from_parcelles(projet, .onf_test_parcelles())
+  expect_equal(nrow(p$parcels), 2L)                # 2 parcelles forestières
+  expect_setequal(as.character(p$parcels$id), c("F001-1", "F001-2"))
+  expect_equal(nrow(p$tenements), 2L)
+  expect_equal(nrow(p$ugs), 2L)
+  expect_silent(nemetonshiny:::projet_validate(p))
+})
+
 test_that("onf_projet_from_parcelles refuse un parcellaire vide", {
   skip_if_not_installed("sf")
   projet <- .onf_test_projet()

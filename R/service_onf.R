@@ -101,7 +101,15 @@ onf_projet_from_parcelles <- function(projet, parcelles) {
     cli::cli_abort("onf_projet_from_parcelles: `parcelles` must be a non-empty sf")
   }
   parcelles$geo_parcelle <- as.character(parcelles$nom_ugf)
-  ug_init_default(utils::modifyList(projet, list(parcels = parcelles)))
+  # Affectation DIRECTE, surtout pas `utils::modifyList()` (que l'esquisse du
+  # brief emploie) : modifyList RECURSE dans les listes, et un data.frame en
+  # est une. Il fusionnerait donc les colonnes de l'ancien parcellaire avec
+  # celles du nouveau au lieu de remplacer l'objet - erreur immediate des que
+  # les deux n'ont pas le meme nombre de lignes (" replacement has 427 rows,
+  # data has 1 " sur la foret domaniale de Chaux), et fusion SILENCIEUSE quand
+  # ils l'ont, ce qui est pire.
+  projet$parcels <- parcelles
+  ug_init_default(projet)
 }
 
 

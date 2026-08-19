@@ -1,3 +1,93 @@
+# nemetonshiny 0.130.0 (2026-08-19)
+
+Recette de la spec 046 exécutée contre le **vrai** service WFS ONF (forêt
+domaniale de Chaux), et correction du défaut qu'elle a révélé.
+
+### Fixed — L'import du parcellaire ONF échouait sur données réelles
+
+`onf_projet_from_parcelles()` plantait dès que le parcellaire forestier n'avait
+pas exactement le même nombre de lignes que les parcelles du projet :
+
+```
+Error in `[[<-.data.frame` : replacement has 427 rows, data has 1
+```
+
+La cause est l'idiome `utils::modifyList(projet, list(parcels = parcelles))`,
+repris de l'esquisse du brief. `modifyList()` **récurse dans les listes** — et
+un `data.frame` en est une : au lieu de remplacer l'objet `parcels`, il fusionne
+les colonnes de l'ancien parcellaire avec celles du nouveau. Erreur immédiate à
+tailles différentes, et fusion **silencieuse** à tailles égales, ce qui est
+pire. Remplacé par une affectation directe.
+
+Les tests unitaires ne pouvaient pas le voir : leurs fixtures avaient 2
+parcelles cadastrales et 2 parcelles forestières, donc la fusion « marchait »
+par accident. C'est exactement la configuration qui ne se produit jamais en
+vrai, où une poignée de parcelles cadastrales rencontre des centaines de
+parcelles forestières. Un test de régression fixe désormais des tailles
+volontairement différentes.
+
+### Changed — Recette §6 validée contre le service réel
+
+| Cas | Attendu par le brief | Mesuré |
+|---|---|---|
+| Chaux, emprise 4×4 km | ~200 UGF ; 217 parcelles / 2 105 ha / 5,8 s | **213 parcelles / 2 114 ha / 1,1 s** — 189 « Forêt domaniale de Chaux » + 24 « Forêt communale de La-Vieille-Loye » |
+| filtre `domaniale` | seules les domaniales subsistent | 394 / 394 ; `autre` → 33, aucune domaniale |
+| plaine agricole | « aucune forêt publique » | `status = empty` en 0,4 s |
+| service coupé | message d'indisponibilité, repli cadastral | `status = unavailable` en 0,1 s, `NULL` rendu |
+
+Bout-en-bout sur les 427 parcelles réelles : import en 0,1 s (427 UGF,
+invariants verts) ; croisement produisant 586 tènements pour 423 UGF, avec
+identifiants uniques, invariants verts et surtout un **pavage exact des
+parcelles cadastrales à 0,000000 %** — l'invariant qui se serait cassé en
+silence.
+
+### Changed — Le calage cadastral, validé sur cadastre réel
+
+La case « caler les UGF sur les limites cadastrales » reproduit **exactement**
+les mesures du brief, sur le vrai cadastre de La-Vieille-Loye (1 271 parcelles
+cadastrales × 94 parcelles forestières) :
+
+| | Brief (cœur) | Mesuré (app) |
+|---|---|---|
+| Tènements forestiers sans calage | 170 | **170** |
+| Tènements forestiers avec calage | 124 | **124** |
+| Bords cadastraux sans calage | 13 | **13** |
+| Bords cadastraux avec calage | 41 | **41** |
+
+Le réglage était resté non vérifiable tant qu'on l'éprouvait sur un cadastre
+*synthétique* : une grille régulière est par construction désalignée du
+parcellaire forestier, l'UGF dominante n'y détenait jamais plus de **30,1 %**
+d'une maille, contre les **90 %** qu'exige le calage. Sur cadastre réel la
+médiane monte à **0,95**, et 41 parcelles sur 64 franchissent le seuil.
+
+Au niveau du projet : 1 422 → 1 365 tènements et 87 → 86 UGF — une UGF
+forestière disparaît, ne tenant que des échardes absorbées par l'UGF dominante.
+
+### Fixed — Le croisement était 95 fois plus lent que nécessaire
+
+`tenement_import_replace()` pesait **628,9 s** sur ce même croisement, contre
+24,9 s pour tout le calcul du cœur : 96 % du coût. Deux causes, toutes deux
+dans l'app :
+
+- pour **chacun** des 1 422 fragments, la fonction intersectait la totalité des
+  1 271 parcelles — et n'utilisait jamais le résultat. Du calcul intégralement
+  mort. Le `st_intersects()` qui suivait était lui aussi refait par fragment,
+  au lieu d'être calculé une fois via l'index spatial ;
+- surtout, les comparaisons d'aires appelaient `st_area()` sur des géométries
+  portant un CRS. `sf` en relit alors les paramètres à chaque appel pour
+  attacher une unité : `CPL_crs_parameters` représentait **76,8 %** du temps,
+  quand les intersections GEOS elles-mêmes n'en prenaient que 1,14 s. Ces aires
+  ne servent qu'à départager des candidates — l'unité n'y joue aucun rôle.
+
+Corrigé : index calculé une fois, calcul mort supprimé, court-circuit quand un
+fragment ne touche qu'une parcelle, et comparaisons d'aires sur des copies sans
+CRS (les géométries stockées gardent le leur).
+
+**628,9 s → 6,6 s**, à résultat *strictement identique* — mêmes tènements,
+mêmes parents, mêmes UGF, même répartition, surfaces au centième près,
+invariants verts. Un croisement complet passe de 654 s à 31,5 s. Le gain
+profite aussi à l'import de découpage QGIS, qui emprunte la même fonction.
+
 # nemetonshiny 0.129.0 (2026-08-19)
 
 Implémente `specs/046-parcellaire-onf/brief-nemetonshiny.md`. Plancher relevé à
