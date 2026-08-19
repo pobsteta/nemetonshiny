@@ -1,3 +1,35 @@
+# nemetonshiny 0.130.2 (2026-08-19)
+
+### Changed — Le calage sur les limites cadastrales devient systématique
+
+La coche « Caler les UGF sur les limites cadastrales » est retirée : le calage
+s'applique désormais toujours. Une parcelle cadastrale couverte à 90 % ou plus
+par une UGF lui revient entière.
+
+Le raisonnement : les limites forestières ONF sont **approximatives au bord**.
+Une UGF dont le tracé ne suit pas la parcelle qu'elle recouvre presque
+entièrement est un artefact de numérisation, pas une décision de gestion — et
+laisser le choix à l'utilisateur revenait à lui demander d'arbitrer une question
+technique qui n'a qu'une bonne réponse. Mesuré sur La-Vieille-Loye :
+**170 → 124 tènements** et **13 → 41 bords exactement cadastraux**.
+
+Les deux garde-fous du cœur restent entiers : une parcelle réellement partagée
+entre deux UGF **n'est pas** calée, et le reliquat « hors UGF » ne peut jamais
+prendre une parcelle — supprimer de la forêt ne serait pas une correction.
+
+Le calage n'est pas silencieux pour autant : une note permanente l'annonce sous
+le sélecteur de domanialité. Sans elle, une UGF dont le bord suit le cadastre
+plutôt que le tracé ONF serait incompréhensible.
+
+Côté service, `caler_sur_cadastre` passe à `TRUE` par défaut mais **subsiste
+comme paramètre** : le comportement brut reste joignable et testable.
+
+### Changed — Le bouton dit ce qu'il fait
+
+« Croiser avec le parcellaire ONF » devient **« Créer les UGF avec le
+parcellaire ONF »**. Le croisement est le moyen ; créer les UGF est le but, et
+c'est ce que l'utilisateur cherche dans cette barre d'actions.
+
 # nemetonshiny 0.130.1 (2026-08-19)
 
 ### Removed — Le bouton « Importer le parcellaire ONF »

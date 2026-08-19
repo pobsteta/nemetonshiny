@@ -123,11 +123,17 @@ onf_load_parcelles <- function(aoi,
 #' empty and validates the invariants.
 #'
 #' Nothing is filtered or recomputed here: `min_surface_ha` absorption and the
-#' optional cadastral snapping both happen in the core.
+#' cadastral snapping both happen in the core. The core's two guards stay
+#' whole - a parcel genuinely shared between two UGF is NOT snapped, and the
+#' "outside UGF" remainder can never take a parcel.
 #'
 #' @param projet List. Project holding `$parcels`, `$tenements`, `$ugs`.
 #' @param onf `sf` of forest parcels from [onf_load_parcelles()].
 #' @param caler_sur_cadastre Logical. Snap UGF boundaries onto cadastral ones.
+#'   `TRUE` by default since v0.130.1.9001: the ONF boundaries are approximate
+#'   at the edge, so a UGF whose border does not follow a parcel it covers at
+#'   90 % or more is a digitising artefact, not a management decision. The
+#'   parameter stays, so the raw behaviour remains reachable and testable.
 #' @param seuil_calage Numeric. Share above which a parcel is taken whole.
 #' @param label_hors Character. Label for the non-forest remainder.
 #'
@@ -137,7 +143,7 @@ onf_load_parcelles <- function(aoi,
 #' @noRd
 onf_projet_croise <- function(projet,
                               onf,
-                              caler_sur_cadastre = FALSE,
+                              caler_sur_cadastre = TRUE,
                               seuil_calage = 0.9,
                               label_hors = .onf_label_hors_ugf()) {
   if (!has_ug_data(projet)) {
