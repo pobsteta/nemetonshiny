@@ -206,6 +206,72 @@ mod_ug_map_actions_bar <- function(id) {
 
     shiny::hr(),
 
+    # ---- Parcellaire forestier ONF (spec 046) ---------------------------
+    # En foret publique la parcelle CADASTRALE n'est pas l'unite de gestion :
+    # la parcelle FORESTIERE l'est. Deux actions, volontairement separees et
+    # de couleurs differentes parce qu'elles ne font pas la meme chose :
+    #
+    #   - " Croiser " GARDE les parcelles du projet (le bien de l'utilisateur)
+    #     et decrit chaque UGF comme les morceaux de parcelles dont elle est
+    #     faite. C'est l'action courante -> btn-primary.
+    #   - " Importer " REMPLACE les parcelles par le parcellaire ONF. C'est
+    #     destructif (le decoupage et les indicateurs partent) -> outline, et
+    #     une modale de confirmation cote serveur.
+    htmltools::div(
+      class = "mb-2",
+      htmltools::tags$strong(i18n$t("onf_section")),
+      htmltools::tags$p(
+        class = "text-muted small mb-2",
+        i18n$t("onf_grain_parcelle")
+      ),
+      shiny::radioButtons(
+        ns("onf_domanialite"),
+        label = i18n$t("onf_domanialite"),
+        choices = stats::setNames(
+          c("toutes", "domaniale", "autre"),
+          c(i18n$t("onf_domanialite_toutes"),
+            i18n$t("onf_domanialite_domaniale"),
+            i18n$t("onf_domanialite_autre"))
+        ),
+        selected = "toutes"
+      ),
+      # Decochee par defaut : caler est une correction VOLONTAIRE des limites
+      # ONF, pas un reglage par defaut (cf. brief spec 046 sect. 10).
+      htmltools::div(
+        class = "d-flex align-items-center mb-2",
+        shiny::checkboxInput(
+          ns("onf_caler"),
+          label = i18n$t("onf_caler"),
+          value = FALSE,
+          width = "100%"
+        ),
+        info_popover_in_label(i18n$t("onf_caler_tip"))
+      ),
+      htmltools::div(
+        class = "d-grid gap-2",
+        shiny::actionButton(
+          ns("btn_onf_croise"),
+          label = i18n$t("onf_croise_btn"),
+          icon = shiny::icon("code-branch"),
+          class = "btn-primary",
+          width = "100%"
+        ),
+        shiny::actionButton(
+          ns("btn_onf_import"),
+          label = i18n$t("onf_import_btn"),
+          icon = shiny::icon("tree"),
+          class = "btn-outline-secondary",
+          width = "100%"
+        )
+      ),
+      htmltools::tags$p(
+        class = "text-muted small fst-italic mt-1 mb-0",
+        i18n$t("onf_source_note")
+      )
+    ),
+
+    shiny::hr(),
+
     # Map selection info
     shiny::uiOutput(ns("map_selection_info"))
   )
@@ -331,7 +397,8 @@ mod_ug_server <- function(id, app_state) {
       selected_tenement_ids = character(0),  # tenements selected on the map
       map_needs_zoom = FALSE,    # flag: zoom to bounds on next map update
       pending_bbox = NULL,       # stored bbox for deferred zoom
-      redraw_counter = 0L        # incremented to force map polygon redraw
+      redraw_counter = 0L,       # incremented to force map polygon redraw
+      onf_preview = NULL         # parcellaire ONF affiche en surcouche
     )
 
     # Current classification profile (ONF / CRPF / OFB / ...) driven by the
@@ -1989,6 +2056,302 @@ mod_ug_server <- function(id, app_state) {
           )
         })
       }, delay = 0.05)
+    })
+
+    # ================================================================
+    # ACTION: parcellaire forestier ONF (spec 046)
+    # ================================================================
+    #
+    # Les deux actions partagent le meme squelette : appel reseau au coeur
+    # (~6 s mesurees sur la foret domaniale de Chaux), donc spinner immediat
+    # + `later::later()` pour que Shiny le peigne AVANT de bloquer, exactement
+    # comme l'import de decoupage ci-dessus. Le callback `later` tourne HORS
+    # contexte reactif : tout ce qui vient du reactif est capture avant.
+    #
+    # Toute la logique metier vit dans `R/service_onf.R` (regle #2).
+
+    # Ecrit le projet issu d'une action ONF : disque, cache d'indicateurs,
+    # etat du module, carte, et miroir dans `app_state$current_project`.
+    # `with_parcels = TRUE` quand les PARCELLES elles-memes ont change
+    # (import ONF), pas seulement le decoupage.
+    .onf_commit <- function(projet, with_parcels = FALSE) {
+      if (!is.null(projet$metadata$id)) {
+        save_ug_data(projet$metadata$id, projet)
+        # Les ug_id sont neufs : un indicators.parquet cache pointerait sur les
+        # ANCIENS, et compute_all_indicators() sauterait tout en croyant avoir
+        # deja calcule. Meme raisonnement que l'import de decoupage.
+        invalidate_indicators(projet$metadata$id)
+      }
+      rv$projet_ug <- projet
+      rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+
+      leaflet::leafletProxy("ug_map", session = session) |>
+        leaflet::clearGroup("Selection")
+      rv$selected_tenement_ids <- character(0)
+
+      cur_proj <- shiny::isolate(app_state$current_project)
+      if (!is.null(cur_proj)) {
+        if (isTRUE(with_parcels)) cur_proj$parcels <- projet$parcels
+        cur_proj$tenements <- projet$tenements
+        cur_proj$ugs       <- projet$ugs
+        cur_proj$indicators <- NULL
+        cur_proj$indicators_sf <- NULL
+        if (!is.null(cur_proj$metadata)) {
+          cur_proj$metadata$indicators_computed <- FALSE
+          cur_proj$metadata$status <- "draft"
+        }
+        app_state$current_project <- cur_proj
+      }
+      invisible(TRUE)
+    }
+
+    # Spinner persistant pendant l'appel WFS + le croisement.
+    .onf_notif_id <- "ug_onf_loading"
+    .onf_spinner_on <- function(i18n_snap) {
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          sprintf("%s...", i18n_snap$t("onf_running"))
+        ),
+        type = "message", duration = NULL, closeButton = FALSE,
+        id = .onf_notif_id, session = session
+      )
+    }
+
+    # Traduit les deux issues " non-erreur " du service en message adapte :
+    # service muet (NULL) et emprise sans foret publique (0 ligne) ne sont pas
+    # le meme evenement, et aucun des deux n'est une erreur.
+    .onf_notify_status <- function(status, i18n_snap) {
+      key <- switch(status,
+        unavailable = "onf_unavailable",
+        empty       = "onf_no_public_forest",
+        no_aoi      = "onf_need_aoi",
+        no_overlap  = "onf_no_overlap",
+        NULL)
+      if (is.null(key)) return(FALSE)
+      shiny::showNotification(
+        i18n_snap$t(key),
+        type = if (identical(status, "unavailable")) "error" else "warning",
+        session = session
+      )
+      TRUE
+    }
+
+    # Surcouche " Parcellaire ONF " : montre CE QUI VA ETRE IMPORTE avant de
+    # toucher au projet. Sans elle, l'utilisateur valide un remplacement de ses
+    # parcelles sans avoir vu ce qui les remplace.
+    #
+    # Rendu volontairement leger : sur une emprise large la couche peut compter
+    # plusieurs centaines de polygones, donc pas de label permanent - le
+    # `nom_ugf` et la surface vivent dans un popup, au clic.
+    shiny::observeEvent(rv$onf_preview, ignoreNULL = FALSE, {
+      proxy <- leaflet::leafletProxy("ug_map", session = session)
+      proxy |> leaflet::clearGroup("Parcellaire ONF")
+
+      pv <- rv$onf_preview
+      if (is.null(pv) || !inherits(pv, "sf") || nrow(pv) == 0L) return()
+
+      pv <- tryCatch(sf::st_transform(pv, 4326), error = function(e) NULL)
+      if (is.null(pv)) return()
+
+      # La couleur encode la DOMANIALITE : domaniale et communale ne relevent
+      # pas du meme gestionnaire, et c'est la premiere lecture qu'on en fait.
+      dom <- .isTRUE_vec(pv$domaniale)
+      couleur <- ifelse(dom, "#1B6B1B", "#B8860B")
+      surface <- suppressWarnings(as.numeric(pv$surface_ha))
+      popup <- sprintf(
+        "<strong>%s</strong><br/>%.2f ha",
+        htmltools::htmlEscape(as.character(pv$nom_ugf)),
+        ifelse(is.finite(surface), surface, NA_real_)
+      )
+
+      proxy |>
+        leaflet::addPolygons(
+          data = pv,
+          group = "Parcellaire ONF",
+          color = couleur, weight = 2, opacity = 0.9,
+          fillColor = couleur, fillOpacity = 0.15,
+          popup = popup,
+          options = leaflet::pathOptions(pane = "overlayPane")
+        ) |>
+        leaflet::showGroup("Parcellaire ONF")
+    })
+
+    # ---- Croiser : GARDE les parcelles du projet -----------------------
+    shiny::observeEvent(input$btn_onf_croise, {
+      if (deny_if_readonly(app_state)) return()
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) {
+        shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
+        return()
+      }
+      if (is.null(projet$parcels) || nrow(projet$parcels) == 0L) {
+        shiny::showNotification(i18n()$t("onf_need_selection"), type = "warning")
+        return()
+      }
+
+      i18n_snap <- shiny::isolate(i18n())
+      dom       <- shiny::isolate(input$onf_domanialite) %||% "toutes"
+      caler     <- isTRUE(shiny::isolate(input$onf_caler))
+      .onf_spinner_on(i18n_snap)
+
+      later::later(function() {
+        tryCatch({
+          # UN SEUL appel WFS, sur l'emprise de toute la selection (le brief
+          # interdit explicitement un appel par parcelle).
+          res <- onf_load_parcelles(projet$parcels, domanialite = dom)
+          if (!identical(res$status, "ok")) {
+            shiny::removeNotification(.onf_notif_id, session = session)
+            .onf_notify_status(res$status, i18n_snap)
+            return()
+          }
+
+          # Meme surcouche que pour l'import : voir le parcellaire qui a
+          # produit le decoupage, pas seulement son resultat.
+          rv$onf_preview <- res$parcelles
+
+          out <- onf_projet_croise(
+            projet, res$parcelles,
+            caler_sur_cadastre = caler,
+            label_hors = .onf_label_hors_ugf(i18n_snap)
+          )
+          if (!identical(out$status, "ok")) {
+            shiny::removeNotification(.onf_notif_id, session = session)
+            .onf_notify_status(out$status, i18n_snap)
+            return()
+          }
+
+          .onf_commit(out$projet)
+          shiny::removeNotification(.onf_notif_id, session = session)
+
+          # Tout est lu dans le retour du coeur, rien n'est recalcule.
+          r <- onf_croise_resume(out$tenements)
+          shiny::showNotification(
+            sprintf(i18n_snap$t("onf_croise_success_fmt"), r$n_ugf, r$n_parcelles),
+            type = "message", duration = 10, session = session
+          )
+          if (r$n_multi > 0L) {
+            shiny::showNotification(
+              sprintf(i18n_snap$t("onf_croise_multi_fmt"), r$n_multi),
+              type = "message", duration = 10, session = session)
+          }
+          if (length(r$partielles) > 0L) {
+            shiny::showNotification(
+              sprintf(i18n_snap$t("onf_croise_partielle_fmt"), length(r$partielles)),
+              type = "warning", duration = 10, session = session)
+          }
+          if (r$surface_hors_ha > 0) {
+            shiny::showNotification(
+              sprintf(i18n_snap$t("onf_croise_hors_fmt"), r$surface_hors_ha),
+              type = "message", duration = 10, session = session)
+          }
+        }, error = function(e) {
+          shiny::removeNotification(.onf_notif_id, session = session)
+          shiny::showNotification(
+            paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
+            type = "error", duration = 10, session = session)
+        })
+      }, delay = 0.05)
+    })
+
+    # ---- Importer : REMPLACE les parcelles ----------------------------
+    # Destructif (parcelles + decoupage + indicateurs), d'ou la confirmation
+    # explicite AVANT l'appel reseau.
+    shiny::observeEvent(input$btn_onf_import, {
+      if (deny_if_readonly(app_state)) return()
+      projet <- rv$projet_ug
+      if (is.null(projet) || is.null(projet$parcels) ||
+          nrow(projet$parcels) == 0L) {
+        shiny::showNotification(i18n()$t("onf_need_aoi"), type = "warning")
+        return()
+      }
+      # On INTERROGE d'abord, on confirme ensuite : la modale peut alors dire
+      # combien d'UGF et quelle surface vont remplacer les parcelles, et la
+      # surcouche montre lesquelles. Confirmer avant d'avoir vu reviendrait a
+      # signer une page blanche.
+      i18n_snap <- shiny::isolate(i18n())
+      dom       <- shiny::isolate(input$onf_domanialite) %||% "toutes"
+      .onf_spinner_on(i18n_snap)
+
+      later::later(function() {
+        tryCatch({
+          res <- onf_load_parcelles(projet$parcels, domanialite = dom)
+          shiny::removeNotification(.onf_notif_id, session = session)
+          if (!identical(res$status, "ok")) {
+            .onf_notify_status(res$status, i18n_snap)
+            return()
+          }
+          rv$onf_preview <- res$parcelles
+
+          surface <- sum(as.numeric(res$parcelles$surface_ha), na.rm = TRUE)
+          shiny::showModal(shiny::modalDialog(
+            title = i18n_snap$t("onf_import_confirm_title"),
+            size = "l",
+            shiny::p(sprintf(i18n_snap$t("onf_preview_fmt"),
+                             nrow(res$parcelles), surface)),
+            shiny::p(i18n_snap$t("onf_import_confirm_body")),
+            shiny::p(class = "text-muted small",
+                     i18n_snap$t("onf_grain_parcelle")),
+            footer = htmltools::tagList(
+              shiny::modalButton(i18n_snap$t("cancel")),
+              shiny::actionButton(
+                ns("confirm_onf_import"),
+                i18n_snap$t("onf_import_confirm_apply"),
+                class = "btn-danger",
+                icon = shiny::icon("tree")
+              )
+            )
+          ), session = session)
+        }, error = function(e) {
+          shiny::removeNotification(.onf_notif_id, session = session)
+          shiny::showNotification(
+            paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
+            type = "error", duration = 10, session = session)
+        })
+      }, delay = 0.05)
+    })
+
+    shiny::observeEvent(input$confirm_onf_import, {
+      if (deny_if_readonly(app_state)) return()
+      projet <- rv$projet_ug
+      if (is.null(projet) || is.null(projet$parcels) ||
+          nrow(projet$parcels) == 0L) {
+        shiny::showNotification(i18n()$t("onf_need_aoi"), type = "warning")
+        return()
+      }
+      shiny::removeModal()
+
+      # On applique EXACTEMENT ce qui a ete previsualise. Re-interroger le WFS
+      # ici rouvrirait une fenetre entre ce que l'utilisateur a vu et ce qu'il
+      # obtient (filtre change entre-temps, service devenu muet), en plus de
+      # payer un second appel de ~6 s.
+      parcelles <- shiny::isolate(rv$onf_preview)
+      if (is.null(parcelles) || !inherits(parcelles, "sf") ||
+          nrow(parcelles) == 0L) {
+        shiny::showNotification(i18n()$t("onf_no_public_forest"), type = "warning")
+        return()
+      }
+
+      i18n_snap <- shiny::isolate(i18n())
+      tryCatch({
+        nouveau <- onf_projet_from_parcelles(projet, parcelles)
+        .onf_commit(nouveau, with_parcels = TRUE)
+        # La surcouche a joue son role : la garder ferait doublon avec les
+        # UGF qu'elle vient de devenir.
+        rv$onf_preview <- NULL
+
+        # `surface_ha` vient du coeur : aucune surface n'est recalculee ici.
+        surface <- sum(as.numeric(parcelles$surface_ha), na.rm = TRUE)
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_import_success_fmt"),
+                  nrow(parcelles), surface),
+          type = "message", duration = 10, session = session
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
+          type = "error", duration = 10, session = session)
+      })
     })
 
     # ================================================================

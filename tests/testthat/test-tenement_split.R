@@ -299,3 +299,50 @@ test_that("tenement_import_replace treats empty/NA label_ugf as fallback", {
   expect_true(nrow(result$ugs) >= 1)
   expect_true(nemetonshiny:::projet_validate(result))
 })
+
+# ---- Unicite des tenement_id (regression) ----------------------------------
+
+test_that("deux decoupes dans la meme seconde ne collisionnent pas", {
+  skip_if_not_installed("sf")
+  # Régression : les ids étaient `tnm_<horodatage a la seconde>_<index>`, donc
+  # deux parcelles découpées dans la même seconde produisaient les MÊMES ids
+  # des deux côtés. `projet_validate()` ne contrôle pas l'unicité, la
+  # corruption passait donc en silence — et toute opération désignant un
+  # tènement par son id (affectation à une UGF, sélection carte, undo) devenait
+  # ambiguë. Mesuré avant correctif : 4 tènements, 2 ids distincts.
+  prev <- sf::sf_use_s2(); sf::sf_use_s2(FALSE)
+  on.exit(sf::sf_use_s2(prev), add = TRUE)
+
+  carre <- function(i) sf::st_polygon(list(rbind(
+    c(i * 100, 0), c(i * 100 + 100, 0), c(i * 100 + 100, 100),
+    c(i * 100, 100), c(i * 100, 0))))
+  parcels <- sf::st_sf(
+    id = c("P1", "P2"), contenance = c(10000, 10000),
+    geometry = sf::st_sfc(carre(0), carre(1), crs = 2154))
+  projet <- nemetonshiny:::ug_init_default(list(parcels = parcels))
+
+  moities <- function(i) sf::st_sf(geometry = sf::st_sfc(
+    sf::st_polygon(list(rbind(c(i * 100, 0), c(i * 100 + 50, 0),
+                              c(i * 100 + 50, 100), c(i * 100, 100), c(i * 100, 0)))),
+    sf::st_polygon(list(rbind(c(i * 100 + 50, 0), c(i * 100 + 100, 0),
+                              c(i * 100 + 100, 100), c(i * 100 + 50, 100),
+                              c(i * 100 + 50, 0)))),
+    crs = 2154))
+
+  projet <- nemetonshiny:::tenement_split_by_import(projet, "P1", moities(0))
+  projet <- nemetonshiny:::tenement_split_by_import(projet, "P2", moities(1))
+
+  ids <- projet$tenements$tenement_id
+  expect_equal(length(ids), 4L)
+  expect_equal(length(unique(ids)), 4L)
+})
+
+test_that(".tenement_id_slug rend un fragment sur d'identifiant", {
+  # Les identifiants cadastraux réels portent des caractères que l'on ne veut
+  # pas voir apparaître tels quels dans un id de tènement.
+  expect_equal(nemetonshiny:::.tenement_id_slug("250010000A0001"), "250010000A0001")
+  expect_equal(nemetonshiny:::.tenement_id_slug("A-12 / B"), "A_12_B")
+  # Un id vide ou uniquement séparateurs ne doit pas produire un id vide.
+  expect_true(nzchar(nemetonshiny:::.tenement_id_slug("///")))
+  expect_true(nzchar(nemetonshiny:::.tenement_id_slug("")))
+})

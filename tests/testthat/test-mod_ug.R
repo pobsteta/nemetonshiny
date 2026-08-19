@@ -142,3 +142,64 @@ test_that("UG translation keys exist in English", {
     )
   }
 })
+
+# ---- Parcellaire forestier ONF (spec 046) ----------------------------------
+
+test_that("la barre d'actions carte porte les deux actions ONF", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_ug_map_actions_bar("ug"))
+  )
+  # Deux actions DISTINCTES : « croiser » garde les parcelles, « importer » les
+  # remplace. Les confondre ferait perdre le parcellaire de l'utilisateur.
+  expect_true(grepl("ug-btn_onf_croise", h, fixed = TRUE))
+  expect_true(grepl("ug-btn_onf_import", h, fixed = TRUE))
+  expect_true(grepl("ug-onf_domanialite", h, fixed = TRUE))
+  expect_true(grepl("ug-onf_caler", h, fixed = TRUE))
+
+  i18n <- nemetonshiny:::get_i18n("fr")
+  # La note de grain est permanente, pas repliée : lire une UGF comme un
+  # peuplement homogène est l'erreur que la spec veut éviter.
+  expect_true(grepl(i18n$t("onf_grain_parcelle"), h, fixed = TRUE))
+  # Producteur mentionné (ONF, diffusion publique).
+  expect_true(grepl(i18n$t("onf_source_note"), h, fixed = TRUE))
+})
+
+test_that("le calage cadastral est DECOCHE par defaut", {
+  skip_if_not_installed("bslib")
+  # C'est une correction volontaire des limites ONF : cochée par défaut, elle
+  # modifierait des limites sans que l'utilisateur l'ait demandé.
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_ug_map_actions_bar("ug"))
+  )
+  bloc <- regmatches(h, regexpr('id="ug-onf_caler"[^>]*>', h))
+  expect_length(bloc, 1L)
+  expect_false(grepl("checked", bloc, fixed = TRUE))
+})
+
+test_that("les actions ONF refusent un projet sans donnees UGF", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .package = "nemetonshiny")
+
+  app_state <- shiny::reactiveValues(language = "fr", current_project = NULL)
+  shiny::testServer(
+    nemetonshiny:::mod_ug_server,
+    args = list(app_state = app_state),
+    {
+      # Sans projet chargé, aucune des deux actions ne doit appeler le WFS :
+      # le garde est en amont de l'appel réseau, pas après.
+      appele <- FALSE
+      testthat::with_mocked_bindings(
+        onf_load_parcelles = function(...) { appele <<- TRUE; list(status = "ok") },
+        .package = "nemetonshiny",
+        {
+          session$setInputs(btn_onf_croise = 1L)
+          session$setInputs(btn_onf_import = 1L)
+        })
+      expect_false(appele)
+    })
+})

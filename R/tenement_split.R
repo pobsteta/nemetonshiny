@@ -29,6 +29,25 @@ NULL
 #'
 #' @return Updated projet with new tenements replacing the original parcel tenement.
 #' @noRd
+#' Parcel id reduced to an id-safe slug
+#'
+#' @description
+#' Used to disambiguate generated `tenement_id`s by parent parcel. Only the
+#' characters that are safe in an identifier are kept; anything else collapses
+#' to `_`. Two different parcels can in principle collapse to the same slug,
+#' which is why the slug SUPPLEMENTS the timestamp and the index rather than
+#' replacing them.
+#'
+#' @param parcelle_id Character scalar.
+#' @return Character scalar.
+#' @noRd
+.tenement_id_slug <- function(parcelle_id) {
+  slug <- gsub("[^A-Za-z0-9]+", "_", as.character(parcelle_id)[1])
+  slug <- gsub("^_+|_+$", "", slug)
+  if (!nzchar(slug)) "p" else slug
+}
+
+
 tenement_split_by_import <- function(projet,
                                   parcelle_id,
                                   sf_polygones,
@@ -159,8 +178,20 @@ tenement_split_by_import <- function(projet,
   # Remove old tenements for this parcel
   tenements <- tenements[tenements$parent_parcelle_id != parcelle_id, , drop = FALSE]
 
-  # Create new tenements
-  new_tenement_ids <- paste0("tnm_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", seq_len(n_fragments))
+  # Create new tenements.
+  #
+  # L'horodatage seul ne suffit PAS a rendre ces ids uniques : il est a la
+  # seconde, donc deux parcelles decoupees dans la meme seconde produisaient
+  # `tnm_<ts>_1`, `tnm_<ts>_2`... des DEUX cotes - des tenement_id en double
+  # que `projet_validate()` ne controle pas (mesure : 2 decoupes -> 4 tenements,
+  # 2 ids distincts, validation verte). Un doublon casse ensuite toute
+  # operation qui designe un tenement par son id (assignation a une UGF,
+  # selection sur la carte, undo). L'id de la parcelle parente desambigue par
+  # construction, puisque ces fragments lui appartiennent tous.
+  ts <- format(Sys.time(), "%Y%m%d%H%M%S")
+  new_tenement_ids <- paste0("tnm_", ts, "_",
+                             .tenement_id_slug(parcelle_id), "_",
+                             seq_len(n_fragments))
 
   # Match the geometry column name of the existing tenements (could be "geom"
   # if loaded from GPKG or "geometry" by default).

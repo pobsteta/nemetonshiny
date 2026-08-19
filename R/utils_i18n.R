@@ -2462,6 +2462,139 @@ TRANSLATIONS <- list(
   ug_import_split = list(fr = "Importer un d\u00e9coupage", en = "Import subdivision"),
   ug_export_split = list(fr = "Exporter le d\u00e9coupage", en = "Export subdivision"),
   ug_undo_split = list(fr = "Annuler le d\u00e9coupage", en = "Undo subdivision"),
+
+  # ---- Parcellaire forestier ONF (spec 046) --------------------------------
+  # En foret publique, la parcelle CADASTRALE n'est pas l'unite de gestion : la
+  # parcelle FORESTIERE l'est. Deux actions distinctes, d'ou deux libelles qu'il
+  # ne faut pas confondre : l'une REMPLACE le cadastre, l'autre le CROISE.
+  onf_import_btn = list(
+    fr = "Importer le parcellaire ONF",
+    en = "Import the ONF forest parcels"
+  ),
+  onf_croise_btn = list(
+    fr = "Croiser avec le parcellaire ONF",
+    en = "Cross with the ONF forest parcels"
+  ),
+  onf_section = list(
+    fr = "Parcellaire forestier ONF",
+    en = "ONF forest parcels"
+  ),
+  onf_domanialite = list(
+    fr = "Domanialit\u00e9",
+    en = "Ownership"
+  ),
+  onf_domanialite_toutes = list(fr = "Toutes", en = "All"),
+  onf_domanialite_domaniale = list(fr = "Domaniales", en = "State-owned"),
+  onf_domanialite_autre = list(
+    fr = "Communales et autres",
+    en = "Municipal and other"
+  ),
+  # Le grain est la parcelle, PAS la sous-parcelle : le dire evite de lire une
+  # UGF comme un peuplement homogene.
+  onf_grain_parcelle = list(
+    fr = paste0(
+      "Grain = parcelle foresti\u00e8re ONF, pas sous-parcelle : une parcelle ",
+      "peut m\u00e9langer plusieurs peuplements."
+    ),
+    en = paste0(
+      "Granularity = ONF forest parcel, not sub-parcel: one parcel may mix ",
+      "several stands."
+    )
+  ),
+  onf_caler = list(
+    fr = "Caler les UGF sur les limites cadastrales",
+    en = "Snap UGF onto cadastral boundaries"
+  ),
+  onf_caler_tip = list(
+    fr = paste0(
+      "Les limites foresti\u00e8res ONF sont approximatives au bord ; cochez ",
+      "pour qu'elles suivent exactement vos parcelles."
+    ),
+    en = paste0(
+      "ONF forest boundaries are approximate at the edge; tick this so they ",
+      "follow your parcels exactly."
+    )
+  ),
+  onf_need_aoi = list(
+    fr = "Ouvrez un projet avec des parcelles pour d\u00e9finir l'emprise.",
+    en = "Open a project with parcels to define the area."
+  ),
+  onf_need_selection = list(
+    fr = "Aucune parcelle cadastrale dans le projet.",
+    en = "No cadastral parcel in the project."
+  ),
+  onf_no_public_forest = list(
+    fr = "Aucune for\u00eat publique sur cette emprise.",
+    en = "No public forest in this area."
+  ),
+  onf_unavailable = list(
+    fr = "Service ONF indisponible \u2014 utiliser la s\u00e9lection cadastrale.",
+    en = "ONF service unavailable - use the cadastral selection instead."
+  ),
+  onf_no_overlap = list(
+    fr = "Aucun recoupement entre le parcellaire ONF et vos parcelles.",
+    en = "No overlap between the ONF parcels and your parcels."
+  ),
+  onf_running = list(
+    fr = "Interrogation du parcellaire ONF",
+    en = "Querying the ONF forest parcels"
+  ),
+  # Les tenements que ne couvre aucune parcelle forestiere. Ils EXISTENT (ils
+  # portent le pavage exact des parcelles cadastrales) et doivent donc porter
+  # une UGF : sans libelle, ce seraient des tenements sans UGF.
+  onf_hors_ugf_label = list(
+    fr = "Hors for\u00eat publique",
+    en = "Outside public forest"
+  ),
+  onf_import_success_fmt = list(
+    fr = "%d UGF cr\u00e9\u00e9es depuis le parcellaire ONF (%.1f ha).",
+    en = "%d UGF created from the ONF forest parcels (%.1f ha)."
+  ),
+  onf_croise_success_fmt = list(
+    fr = "%d UGF cr\u00e9\u00e9es \u00e0 partir de %d parcelles cadastrales.",
+    en = "%d UGF created from %d cadastral parcels."
+  ),
+  onf_croise_multi_fmt = list(
+    fr = "%d UGF \u00e0 cheval sur plusieurs de vos parcelles.",
+    en = "%d UGF straddle several of your parcels."
+  ),
+  onf_croise_partielle_fmt = list(
+    fr = "%d parcelle(s) foresti\u00e8re(s) d\u00e9tenue(s) en partie seulement.",
+    en = "%d forest parcel(s) only partly held."
+  ),
+  onf_croise_hors_fmt = list(
+    fr = "%.1f ha de votre s\u00e9lection hors for\u00eat publique.",
+    en = "%.1f ha of your selection outside public forest."
+  ),
+  # Le premier bouton REMPLACE les parcelles du projet : le dire avant, pas apres.
+  onf_import_confirm_title = list(
+    fr = "Remplacer les parcelles par le parcellaire ONF ?",
+    en = "Replace the parcels with the ONF forest parcels?"
+  ),
+  onf_import_confirm_body = list(
+    fr = paste0(
+      "Les parcelles cadastrales du projet et le d\u00e9coupage en UGF actuel ",
+      "seront remplac\u00e9s par les parcelles foresti\u00e8res ONF de ",
+      "l'emprise. Les indicateurs d\u00e9j\u00e0 calcul\u00e9s seront ",
+      "invalid\u00e9s. Pour conserver vos parcelles, utilisez plut\u00f4t ",
+      "\u00ab Croiser avec le parcellaire ONF \u00bb."
+    ),
+    en = paste0(
+      "The project's cadastral parcels and the current UGF layout will be ",
+      "replaced by the ONF forest parcels of the area. Computed indicators ",
+      "will be invalidated. To keep your parcels, use \"Cross with the ONF ",
+      "forest parcels\" instead."
+    )
+  ),
+  onf_import_confirm_apply = list(fr = "Remplacer", en = "Replace"),
+  onf_source_note = list(
+    fr = "Parcellaire forestier : ONF (diffusion publique).",
+    en = "Forest parcels: ONF (public distribution)."
+  ),
+  onf_preview_fmt = list(
+    fr = "%d parcelles foresti\u00e8res trouv\u00e9es (%.1f ha), affich\u00e9es sur la carte.",
+    en = "%d forest parcels found (%.1f ha), shown on the map."
+  ),
   ug_split_select_parcel = list(fr = "Parcelle \u00e0 d\u00e9couper", en = "Parcel to subdivide"),
   ug_split_file = list(fr = "Fichier de d\u00e9coupage", en = "Subdivision file"),
   ug_split_hint = list(fr = "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones du d\u00e9coupage. Ajoutez une colonne <code>label_ugf</code> pour nommer chaque UGF ; les polygones partageant la m\u00eame valeur sont regroup\u00e9s dans la m\u00eame UGF (les valeurs vides retombent sur le comportement par recouvrement).", en = "Import a GeoJSON, Shapefile or GeoPackage containing the layout polygons. Add a <code>label_ugf</code> column to name each UGF; polygons sharing the same value are grouped into the same UGF (blank values fall back to overlap-inherited UGF)."),

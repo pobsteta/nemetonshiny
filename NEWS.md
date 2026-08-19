@@ -1,3 +1,48 @@
+# nemetonshiny 0.129.0 (2026-08-19)
+
+Implémente `specs/046-parcellaire-onf/brief-nemetonshiny.md`. Plancher relevé à
+`nemeton (>= 0.179.0)`.
+
+### Added — Créer les UGF depuis le parcellaire forestier ONF
+
+En forêt publique, la parcelle **cadastrale** n'est pas l'unité de gestion : la
+parcelle **forestière** l'est. L'onglet Carte UGF offre désormais deux actions,
+et la distinction entre elles est tout le sujet :
+
+| Action | Ce qu'elle fait |
+|---|---|
+| **Croiser avec le parcellaire ONF** | **garde** vos parcelles cadastrales et dit, pour chaque UGF, de quels morceaux de parcelles elle est faite |
+| **Importer le parcellaire ONF** | **remplace** les parcelles du projet par les parcelles forestières (une parcelle = une UGF) |
+
+Le croisement est l'action courante (bouton vert) ; l'import est destructif —
+il emporte le découpage et invalide les indicateurs — donc il passe par une
+prévisualisation cartographique puis une confirmation explicite.
+
+Autour : un sélecteur de domanialité (toutes / domaniales / communales), une
+case « caler les UGF sur les limites cadastrales » **décochée par défaut** (le
+calage est une correction volontaire des limites ONF, pas un défaut), une
+surcouche « Parcellaire ONF » colorée par domanialité avec `nom_ugf` et surface
+au clic, et la mention du producteur (ONF, diffusion publique).
+
+Toute l'acquisition et toute l'arithmétique du croisement restent dans le cœur
+(`load_onf_parcelles_source()`, `croiser_parcelles_onf()`) ; l'app n'ajoute que
+`R/service_onf.R`. Le WFS n'étant joignable qu'en HTTP, l'appel est
+exclusivement serveur.
+
+### Fixed — Deux découpages dans la même seconde produisaient des `tenement_id` en double
+
+`tenement_split_by_import()` forgeait ses identifiants depuis `Sys.time()` à la
+seconde : deux parcelles découpées dans la même seconde recevaient les **mêmes**
+`tnm_<horodatage>_1`, `_2`… des deux côtés. `projet_validate()` ne contrôlant
+pas l'unicité, la corruption passait en silence — mesuré : 2 découpes, 4
+tènements, **2 identifiants distincts**, validation verte. Toute opération
+désignant un tènement par son id (affectation à une UGF, sélection sur la
+carte, annulation) devenait alors ambiguë. L'identifiant de la parcelle parente
+entre désormais dans l'id.
+
+Ce bug était latent ; la boucle par parcelle esquissée dans le brief l'aurait
+déclenché systématiquement.
+
 # nemetonshiny 0.128.1 (2026-08-19)
 
 ### Fixed — La résolution microclimat était décorative
