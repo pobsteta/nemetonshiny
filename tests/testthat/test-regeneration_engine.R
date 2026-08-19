@@ -1038,3 +1038,87 @@ test_that(".regen_run_engine_capped falls back when the core lacks package=/opti
   expect_equal(seen$capped, 0L)
   expect_equal(seen$direct, 1L)
 })
+
+# ---- Resolution microclimat transmise au coeur (v0.128.0.9001) ----
+#
+# Le radio « Resolution microclimat » (2 m / 5 m) existait depuis longtemps mais
+# n'entrait dans AUCUNE cfg : `regen_sensibilite()` recevait donc toujours son
+# defaut de 2 m, quel que soit le choix affiche. Ces tests verrouillent le
+# cablage, y compris la coercition chaine -> numerique (le radio porte "5", le
+# coeur attend 5).
+
+test_that("run_regeneration_engine transmet la resolution au coeur", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p)
+    seen <- new.env()
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, mnt = NULL, mnh = NULL, las = NULL,
+                                   res = 2, ...) {
+        seen$res <- res; units$sensibilite <- 55; units },
+      load_biljou_forcing = function(aoi, years, source = NULL, ...) {
+        data.frame(year = years %||% 2018) },
+      build_biljou_soil = function(units = NULL, ewm = 150, ...) list(ewm = ewm),
+      regen_bilan_hydrique = function(units, ...) { units$njstress <- 12; units },
+      .package = "nemeton")
+
+    # Le radio porte une CHAINE : sans coercition le coeur recevrait "5".
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(forcing = "safran", resolution = "5"))
+    expect_identical(seen$res, 5)
+    expect_type(seen$res, "double")
+  })
+})
+
+test_that("une resolution absente ou aberrante retombe sur le defaut coeur", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p)
+    seen <- new.env()
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, mnt = NULL, mnh = NULL, las = NULL,
+                                   res = 2, ...) {
+        seen$res <- res; units$sensibilite <- 55; units },
+      load_biljou_forcing = function(aoi, years, source = NULL, ...) {
+        data.frame(year = years %||% 2018) },
+      build_biljou_soil = function(units = NULL, ewm = 150, ...) list(ewm = ewm),
+      regen_bilan_hydrique = function(units, ...) { units$njstress <- 12; units },
+      .package = "nemeton")
+
+    for (bad in list(NULL, "abc", 0, -3)) {
+      seen$res <- NA
+      nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+        cfg = list(forcing = "safran", resolution = bad))
+      expect_identical(seen$res, 2)
+    }
+  })
+})
+
+test_that("les unites traversent le pipeline malgre la variable locale res", {
+  skip_if_not_installed("sf")
+  # Regression : `res` designe les UNITES (sf) dans run_regeneration_engine ;
+  # reutiliser ce nom pour la resolution les ecraserait par un scalaire des le
+  # premier appel moteur, et le run rendrait un nombre au lieu d'un sf.
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p)
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 55; units },
+      load_biljou_forcing = function(aoi, years, source = NULL, ...) {
+        data.frame(year = years %||% 2018) },
+      build_biljou_soil = function(units = NULL, ewm = 150, ...) list(ewm = ewm),
+      regen_bilan_hydrique = function(units, ...) { units$njstress <- 12; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(3), p,
+      cfg = list(forcing = "safran", resolution = "5"))
+    expect_s3_class(out$units, "sf")
+    expect_equal(nrow(out$units), 3L)
+    expect_true(all(c("sensibilite", "njstress") %in% names(out$units)))
+  })
+})

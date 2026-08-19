@@ -1647,7 +1647,12 @@ mod_regeneration_server <- function(id, app_state) {
         rooting_depth_cm = na_null(rp$rooting_depth_cm),
         lai_max = na_null(rp$lai_max),
         budburst = na_null(rp$budburst),
-        leaf_fall = na_null(rp$leaf_fall)
+        leaf_fall = na_null(rp$leaf_fall),
+        # Resolution de la grille microclimf. Le radio existait depuis longtemps
+        # mais n'entrait dans AUCUNE cfg : le moteur tournait donc toujours au
+        # defaut coeur (2 m), quel que soit le choix affiche. Le service la
+        # coerce en numerique avant de la passer a `regen_sensibilite(res=)`.
+        resolution = rp$resolution
       )
       # Supprimer un engine_status.json perime d'un run precedent : sans ca, le
       # poll afficherait une phase fantome du run anterieur au demarrage.

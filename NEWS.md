@@ -1,3 +1,21 @@
+# nemetonshiny 0.128.0.9001 (dev)
+
+### Fixed — La résolution microclimat était décorative
+
+Le radio « Résolution microclimat » (2 m / 5 m) de reGénération n'entrait dans
+**aucune** `cfg` : `nemeton::regen_sensibilite()` recevait toujours son défaut
+de `res = 2`, quel que soit le choix affiché. Choisir 5 m ne changeait donc rien
+— ni la finesse de la grille, ni le temps de calcul.
+
+Le réglage est désormais transmis, avec la coercition qui manquait : le radio
+porte une **chaîne** (`"5"`), le cœur attend un **numérique** (`5`). Une valeur
+absente, nulle ou négative retombe sur le défaut du cœur (2 m).
+
+Le paramètre n'a d'effet que sur le **chemin moteur** (microclimf réel). Les
+deux autres appels à `regen_sensibilite()` passent par `precomputed =` : ils
+relisent une sortie existante, dont la grille est déjà fixée par le run qui l'a
+produite.
+
 # nemetonshiny 0.128.0 (2026-08-18)
 
 ### Changed — Les calibrages quittent les sidebars pour « Sources & paramètres »
