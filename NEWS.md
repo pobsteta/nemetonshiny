@@ -1,4 +1,4 @@
-# nemetonshiny 0.128.0.9001 (dev)
+# nemetonshiny 0.128.1 (2026-08-19)
 
 ### Fixed — La résolution microclimat était décorative
 
@@ -15,6 +15,13 @@ Le paramètre n'a d'effet que sur le **chemin moteur** (microclimf réel). Les
 deux autres appels à `regen_sensibilite()` passent par `precomputed =` : ils
 relisent une sortie existante, dont la grille est déjà fixée par le run qui l'a
 produite.
+
+**Conséquence sur les projets existants** : les sorties microclimf déjà en cache
+ont toutes été produites à 2 m, y compris celles d'un projet réglé sur 5 m. Les
+caches ne sont **pas** invalidés — un projet rouvert continue d'afficher ses
+résultats tels quels. Il faut **relancer le moteur** pour que le réglage prenne
+effet, et un run à 5 m donnera des valeurs différentes de celles affichées
+jusqu'ici.
 
 # nemetonshiny 0.128.0 (2026-08-18)
 
