@@ -1,3 +1,33 @@
+# nemetonshiny 0.130.1 (2026-08-19)
+
+### Removed — Le bouton « Importer le parcellaire ONF »
+
+Carte UGF n'offre plus qu'**une** action ONF : « Croiser avec le parcellaire
+ONF ». Le second bouton, qui *remplaçait* les parcelles du projet par les
+parcelles forestières, est retiré.
+
+Les deux partaient de la **même emprise** — la sélection cadastrale du projet —
+et produisaient les **mêmes UGF**, avec les mêmes libellés. La seule différence
+tenait à ce qu'« Importer » jetait au passage :
+
+| | Croiser | Importer |
+|---|---|---|
+| Parcelles cadastrales | conservées | écrasées |
+| Composition d'une UGF | traçable | perdue |
+| `part_ugf` (« vous ne détenez que 40 % de cette parcelle forestière ») | disponible | indisponible |
+
+C'était donc un cas **dégradé** du croisement, destructif de surcroît, qui
+coûtait un bouton, une modale de confirmation et une prévisualisation dédiée.
+
+Ce qu'on perd : obtenir les parcelles forestières *entières*, y compris leurs
+parties hors de la sélection. C'est le comportement voulu pour un propriétaire —
+une parcelle forestière qui déborde de son bien ne doit pas entrer entière dans
+son plan de gestion, et `part_ugf` dit précisément quelle fraction il détient.
+
+Retirés avec lui : `onf_projet_from_parcelles()` et ses tests, six clés i18n
+devenues orphelines. Un test verrouille l'absence du bouton pour qu'il ne
+revienne pas par mégarde.
+
 # nemetonshiny 0.130.0 (2026-08-19)
 
 Recette de la spec 046 exécutée contre le **vrai** service WFS ONF (forêt

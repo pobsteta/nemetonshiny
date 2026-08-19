@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.1] - 2026-08-19
+
+### Removed
+
+- Le bouton « Importer le parcellaire ONF », qui remplaçait les parcelles du
+  projet par les parcelles forestières. Il partait de la même emprise et
+  produisait les mêmes UGF que « Croiser », en jetant la composition cadastrale
+  (donc `part_ugf`) — un cas dégradé du croisement, destructif de surcroît.
+  Retirés avec lui : `onf_projet_from_parcelles()`, ses tests, et six clés i18n
+  orphelines.
+
 ## [0.130.0] - 2026-08-19
 
 ### Fixed

@@ -2465,12 +2465,9 @@ TRANSLATIONS <- list(
 
   # ---- Parcellaire forestier ONF (spec 046) --------------------------------
   # En foret publique, la parcelle CADASTRALE n'est pas l'unite de gestion : la
-  # parcelle FORESTIERE l'est. Deux actions distinctes, d'ou deux libelles qu'il
-  # ne faut pas confondre : l'une REMPLACE le cadastre, l'autre le CROISE.
-  onf_import_btn = list(
-    fr = "Importer le parcellaire ONF",
-    en = "Import the ONF forest parcels"
-  ),
+  # parcelle FORESTIERE l'est. UNE action : croiser, qui GARDE les parcelles du
+  # projet. Un " Importer " qui les remplacait a existe jusqu'en v0.130.0.9001 -
+  # meme emprise, memes UGF, mais la composition cadastrale etait perdue.
   onf_croise_btn = list(
     fr = "Croiser avec le parcellaire ONF",
     en = "Cross with the ONF forest parcels"
@@ -2546,10 +2543,6 @@ TRANSLATIONS <- list(
     fr = "Hors for\u00eat publique",
     en = "Outside public forest"
   ),
-  onf_import_success_fmt = list(
-    fr = "%d UGF cr\u00e9\u00e9es depuis le parcellaire ONF (%.1f ha).",
-    en = "%d UGF created from the ONF forest parcels (%.1f ha)."
-  ),
   onf_croise_success_fmt = list(
     fr = "%d UGF cr\u00e9\u00e9es \u00e0 partir de %d parcelles cadastrales.",
     en = "%d UGF created from %d cadastral parcels."
@@ -2567,33 +2560,9 @@ TRANSLATIONS <- list(
     en = "%.1f ha of your selection outside public forest."
   ),
   # Le premier bouton REMPLACE les parcelles du projet : le dire avant, pas apres.
-  onf_import_confirm_title = list(
-    fr = "Remplacer les parcelles par le parcellaire ONF ?",
-    en = "Replace the parcels with the ONF forest parcels?"
-  ),
-  onf_import_confirm_body = list(
-    fr = paste0(
-      "Les parcelles cadastrales du projet et le d\u00e9coupage en UGF actuel ",
-      "seront remplac\u00e9s par les parcelles foresti\u00e8res ONF de ",
-      "l'emprise. Les indicateurs d\u00e9j\u00e0 calcul\u00e9s seront ",
-      "invalid\u00e9s. Pour conserver vos parcelles, utilisez plut\u00f4t ",
-      "\u00ab Croiser avec le parcellaire ONF \u00bb."
-    ),
-    en = paste0(
-      "The project's cadastral parcels and the current UGF layout will be ",
-      "replaced by the ONF forest parcels of the area. Computed indicators ",
-      "will be invalidated. To keep your parcels, use \"Cross with the ONF ",
-      "forest parcels\" instead."
-    )
-  ),
-  onf_import_confirm_apply = list(fr = "Remplacer", en = "Replace"),
   onf_source_note = list(
     fr = "Parcellaire forestier : ONF (diffusion publique).",
     en = "Forest parcels: ONF (public distribution)."
-  ),
-  onf_preview_fmt = list(
-    fr = "%d parcelles foresti\u00e8res trouv\u00e9es (%.1f ha), affich\u00e9es sur la carte.",
-    en = "%d forest parcels found (%.1f ha), shown on the map."
   ),
   ug_split_select_parcel = list(fr = "Parcelle \u00e0 d\u00e9couper", en = "Parcel to subdivide"),
   ug_split_file = list(fr = "Fichier de d\u00e9coupage", en = "Subdivision file"),

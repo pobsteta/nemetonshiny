@@ -208,15 +208,17 @@ mod_ug_map_actions_bar <- function(id) {
 
     # ---- Parcellaire forestier ONF (spec 046) ---------------------------
     # En foret publique la parcelle CADASTRALE n'est pas l'unite de gestion :
-    # la parcelle FORESTIERE l'est. Deux actions, volontairement separees et
-    # de couleurs differentes parce qu'elles ne font pas la meme chose :
+    # la parcelle FORESTIERE l'est. UNE seule action : croiser le parcellaire
+    # forestier avec les parcelles du projet, ce qui GARDE ces dernieres (le
+    # bien de l'utilisateur) et decrit chaque UGF comme les morceaux de
+    # parcelles dont elle est faite.
     #
-    #   - " Croiser " GARDE les parcelles du projet (le bien de l'utilisateur)
-    #     et decrit chaque UGF comme les morceaux de parcelles dont elle est
-    #     faite. C'est l'action courante -> btn-primary.
-    #   - " Importer " REMPLACE les parcelles par le parcellaire ONF. C'est
-    #     destructif (le decoupage et les indicateurs partent) -> outline, et
-    #     une modale de confirmation cote serveur.
+    # v0.130.0.9001 - un second bouton " Importer le parcellaire ONF " a
+    # existe, qui REMPLACAIT les parcelles du projet. Retire : il partait de la
+    # MEME emprise et produisait les MEMES UGF, en jetant la composition
+    # cadastrale (donc `part_ugf`, le " vous ne detenez que 40 % de cette
+    # parcelle forestiere "). Un cas degrade du croisement, destructif de
+    # surcroit, qui coutait un bouton et une modale de confirmation.
     htmltools::div(
       class = "mb-2",
       htmltools::tags$strong(i18n$t("onf_section")),
@@ -247,22 +249,12 @@ mod_ug_map_actions_bar <- function(id) {
         ),
         info_popover_in_label(i18n$t("onf_caler_tip"))
       ),
-      htmltools::div(
-        class = "d-grid gap-2",
-        shiny::actionButton(
-          ns("btn_onf_croise"),
-          label = i18n$t("onf_croise_btn"),
-          icon = shiny::icon("code-branch"),
-          class = "btn-primary",
-          width = "100%"
-        ),
-        shiny::actionButton(
-          ns("btn_onf_import"),
-          label = i18n$t("onf_import_btn"),
-          icon = shiny::icon("tree"),
-          class = "btn-outline-secondary",
-          width = "100%"
-        )
+      shiny::actionButton(
+        ns("btn_onf_croise"),
+        label = i18n$t("onf_croise_btn"),
+        icon = shiny::icon("code-branch"),
+        class = "btn-primary",
+        width = "100%"
       ),
       htmltools::tags$p(
         class = "text-muted small fst-italic mt-1 mb-0",
@@ -2252,106 +2244,6 @@ mod_ug_server <- function(id, app_state) {
             type = "error", duration = 10, session = session)
         })
       }, delay = 0.05)
-    })
-
-    # ---- Importer : REMPLACE les parcelles ----------------------------
-    # Destructif (parcelles + decoupage + indicateurs), d'ou la confirmation
-    # explicite AVANT l'appel reseau.
-    shiny::observeEvent(input$btn_onf_import, {
-      if (deny_if_readonly(app_state)) return()
-      projet <- rv$projet_ug
-      if (is.null(projet) || is.null(projet$parcels) ||
-          nrow(projet$parcels) == 0L) {
-        shiny::showNotification(i18n()$t("onf_need_aoi"), type = "warning")
-        return()
-      }
-      # On INTERROGE d'abord, on confirme ensuite : la modale peut alors dire
-      # combien d'UGF et quelle surface vont remplacer les parcelles, et la
-      # surcouche montre lesquelles. Confirmer avant d'avoir vu reviendrait a
-      # signer une page blanche.
-      i18n_snap <- shiny::isolate(i18n())
-      dom       <- shiny::isolate(input$onf_domanialite) %||% "toutes"
-      .onf_spinner_on(i18n_snap)
-
-      later::later(function() {
-        tryCatch({
-          res <- onf_load_parcelles(projet$parcels, domanialite = dom)
-          shiny::removeNotification(.onf_notif_id, session = session)
-          if (!identical(res$status, "ok")) {
-            .onf_notify_status(res$status, i18n_snap)
-            return()
-          }
-          rv$onf_preview <- res$parcelles
-
-          surface <- sum(as.numeric(res$parcelles$surface_ha), na.rm = TRUE)
-          shiny::showModal(shiny::modalDialog(
-            title = i18n_snap$t("onf_import_confirm_title"),
-            size = "l",
-            shiny::p(sprintf(i18n_snap$t("onf_preview_fmt"),
-                             nrow(res$parcelles), surface)),
-            shiny::p(i18n_snap$t("onf_import_confirm_body")),
-            shiny::p(class = "text-muted small",
-                     i18n_snap$t("onf_grain_parcelle")),
-            footer = htmltools::tagList(
-              shiny::modalButton(i18n_snap$t("cancel")),
-              shiny::actionButton(
-                ns("confirm_onf_import"),
-                i18n_snap$t("onf_import_confirm_apply"),
-                class = "btn-danger",
-                icon = shiny::icon("tree")
-              )
-            )
-          ), session = session)
-        }, error = function(e) {
-          shiny::removeNotification(.onf_notif_id, session = session)
-          shiny::showNotification(
-            paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
-            type = "error", duration = 10, session = session)
-        })
-      }, delay = 0.05)
-    })
-
-    shiny::observeEvent(input$confirm_onf_import, {
-      if (deny_if_readonly(app_state)) return()
-      projet <- rv$projet_ug
-      if (is.null(projet) || is.null(projet$parcels) ||
-          nrow(projet$parcels) == 0L) {
-        shiny::showNotification(i18n()$t("onf_need_aoi"), type = "warning")
-        return()
-      }
-      shiny::removeModal()
-
-      # On applique EXACTEMENT ce qui a ete previsualise. Re-interroger le WFS
-      # ici rouvrirait une fenetre entre ce que l'utilisateur a vu et ce qu'il
-      # obtient (filtre change entre-temps, service devenu muet), en plus de
-      # payer un second appel de ~6 s.
-      parcelles <- shiny::isolate(rv$onf_preview)
-      if (is.null(parcelles) || !inherits(parcelles, "sf") ||
-          nrow(parcelles) == 0L) {
-        shiny::showNotification(i18n()$t("onf_no_public_forest"), type = "warning")
-        return()
-      }
-
-      i18n_snap <- shiny::isolate(i18n())
-      tryCatch({
-        nouveau <- onf_projet_from_parcelles(projet, parcelles)
-        .onf_commit(nouveau, with_parcels = TRUE)
-        # La surcouche a joue son role : la garder ferait doublon avec les
-        # UGF qu'elle vient de devenir.
-        rv$onf_preview <- NULL
-
-        # `surface_ha` vient du coeur : aucune surface n'est recalculee ici.
-        surface <- sum(as.numeric(parcelles$surface_ha), na.rm = TRUE)
-        shiny::showNotification(
-          sprintf(i18n_snap$t("onf_import_success_fmt"),
-                  nrow(parcelles), surface),
-          type = "message", duration = 10, session = session
-        )
-      }, error = function(e) {
-        shiny::showNotification(
-          paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
-          type = "error", duration = 10, session = session)
-      })
     })
 
     # ================================================================
