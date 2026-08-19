@@ -9,14 +9,16 @@
 #' file only turns their output into a project, so `mod_ug` stays free of
 #' business logic (rules #1 and #2).
 #'
-#' Two paths, deliberately distinct:
+#' One path: [onf_projet_croise()]. The cadastral selection is **kept** (it is
+#' the user's property) and each UGF is described as the pieces of cadastral
+#' parcels it is made of.
 #'
-#' * [onf_projet_from_parcelles()] - the forest parcels **replace** the
-#'   cadastral ones. One forest parcel = one UGF. Used when the cadastre is not
-#'   the frame of reference at all.
-#' * [onf_projet_croise()] - the cadastral selection is **kept** (it is the
-#'   user's property) and each UGF is described as the pieces of cadastral
-#'   parcels it is made of.
+#' A second path existed until v0.130.0.9001 - `onf_projet_from_parcelles()`,
+#' which had the forest parcels *replace* the cadastral ones. It was removed
+#' rather than kept: fed the same area, it produced the same UGF while throwing
+#' away the cadastral composition (hence `part_ugf`, the "you only hold 40 % of
+#' that forest parcel"). A lossy special case of the crossing, and a destructive
+#' one.
 #'
 #' The WFS is reachable over **HTTP only**; every call therefore happens
 #' server-side, never from the browser (mixed content would be blocked).
@@ -75,41 +77,6 @@ onf_load_parcelles <- function(aoi,
   if (nrow(parcelles) == 0L) return(list(status = "empty", parcelles = parcelles))
 
   list(status = "ok", parcelles = parcelles)
-}
-
-
-#' Build a project whose UGF are the ONF forest parcels
-#'
-#' @description
-#' One forest parcel = one tenement = one UGF, through the existing
-#' `ug_init_default()` path. The forest parcels **replace** `projet$parcels`.
-#'
-#' `geo_parcelle` is set to `nom_ugf` because `ug_init_default()` takes the UG
-#' label from `geo_parcelle` when present and from the id otherwise: without
-#' this the UGF would be called `F06831S-400` instead of " Foret domaniale de
-#' Chaux - parcelle 400 ". `contenance` is already carried by the core, so no
-#' surface is recomputed here.
-#'
-#' @param projet List. Current project.
-#' @param parcelles `sf` from [onf_load_parcelles()].
-#'
-#' @return The updated project.
-#'
-#' @noRd
-onf_projet_from_parcelles <- function(projet, parcelles) {
-  if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) {
-    cli::cli_abort("onf_projet_from_parcelles: `parcelles` must be a non-empty sf")
-  }
-  parcelles$geo_parcelle <- as.character(parcelles$nom_ugf)
-  # Affectation DIRECTE, surtout pas `utils::modifyList()` (que l'esquisse du
-  # brief emploie) : modifyList RECURSE dans les listes, et un data.frame en
-  # est une. Il fusionnerait donc les colonnes de l'ancien parcellaire avec
-  # celles du nouveau au lieu de remplacer l'objet - erreur immediate des que
-  # les deux n'ont pas le meme nombre de lignes (" replacement has 427 rows,
-  # data has 1 " sur la foret domaniale de Chaux), et fusion SILENCIEUSE quand
-  # ils l'ont, ce qui est pire.
-  projet$parcels <- parcelles
-  ug_init_default(projet)
 }
 
 

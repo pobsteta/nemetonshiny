@@ -145,16 +145,18 @@ test_that("UG translation keys exist in English", {
 
 # ---- Parcellaire forestier ONF (spec 046) ----------------------------------
 
-test_that("la barre d'actions carte porte les deux actions ONF", {
+test_that("la barre d'actions carte porte l'action ONF, et une seule", {
   skip_if_not_installed("bslib")
   h <- with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     as.character(nemetonshiny:::mod_ug_map_actions_bar("ug"))
   )
-  # Deux actions DISTINCTES : « croiser » garde les parcelles, « importer » les
-  # remplace. Les confondre ferait perdre le parcellaire de l'utilisateur.
   expect_true(grepl("ug-btn_onf_croise", h, fixed = TRUE))
-  expect_true(grepl("ug-btn_onf_import", h, fixed = TRUE))
+  # v0.130.0.9001 — un « Importer le parcellaire ONF » a existé, qui REMPLAÇAIT
+  # les parcelles du projet. Retiré : même emprise, mêmes UGF, mais la
+  # composition cadastrale était perdue — un cas dégradé du croisement, et
+  # destructif. Le test le verrouille pour qu'il ne revienne pas par mégarde.
+  expect_false(grepl("ug-btn_onf_import", h, fixed = TRUE))
   expect_true(grepl("ug-onf_domanialite", h, fixed = TRUE))
   expect_true(grepl("ug-onf_caler", h, fixed = TRUE))
 
@@ -196,10 +198,7 @@ test_that("les actions ONF refusent un projet sans donnees UGF", {
       testthat::with_mocked_bindings(
         onf_load_parcelles = function(...) { appele <<- TRUE; list(status = "ok") },
         .package = "nemetonshiny",
-        {
-          session$setInputs(btn_onf_croise = 1L)
-          session$setInputs(btn_onf_import = 1L)
-        })
+        session$setInputs(btn_onf_croise = 1L))
       expect_false(appele)
     })
 })
