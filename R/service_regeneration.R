@@ -808,6 +808,18 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   # Initialise ici (et pas seulement dans la branche BILJOU) : la valeur de retour
   # le lit meme quand cette branche est sautee (ERA5 sans cle CDS).
   lai_max <- cfg$lai_max
+  # Resolution microclimat (m) demandee par l'utilisateur, reglee dans
+  # " Sources & parametres ". Le coeur l'attend en NUMERIQUE (`regen_sensibilite`
+  # a `res = 2` par defaut) alors que le radio la porte en chaine ("2" / "5") :
+  # on coerce ici plutot que de lui passer un type qu'il ne documente pas.
+  # Toute valeur illisible retombe sur le defaut coeur.
+  micro_res <- suppressWarnings(as.numeric(cfg$resolution %||% 2))
+  if (length(micro_res) != 1L || !is.finite(micro_res) || micro_res <= 0) {
+    micro_res <- 2
+  }
+  # ATTENTION : `res` designe ici les UNITES (sf) qui traversent le pipeline, pas
+  # une resolution. D'ou `micro_res` ci-dessus - reutiliser `res` ecraserait les
+  # unites au premier appel moteur.
   res <- units
   years <- c(cfg$year_moyenne, cfg$year_canicule)  # c() drops NULLs
   years <- if (length(years)) years else NULL
@@ -914,6 +926,10 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
         do.call(nemeton::regen_sensibilite, c(list(res,
           mnt = grid$mnt_dir, mnh = grid$mnh_dir,
           annees_moy = cfg$year_moyenne, annees_canic = cfg$year_canicule,
+          # Resolution de la grille microclimf : 2 m (fin, defaut) ou 5 m (plus
+          # rapide, moins de cellules). Le radio existait depuis longtemps mais
+          # n'etait transmis a personne - le moteur tournait donc toujours a 2 m.
+          res = micro_res,
           cache_dir = micro_cache, progress_callback = on_prog), pai_arg, veg_args)),
         error = function(e) {
           msg <- conditionMessage(e)

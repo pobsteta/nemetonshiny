@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.128.1] - 2026-08-19
+
+### Fixed
+
+- La « Résolution microclimat » (2 m / 5 m) de reGénération n'entrait dans
+  aucune `cfg` : `nemeton::regen_sensibilite()` recevait toujours son défaut
+  `res = 2`, quel que soit le choix affiché. Le réglage est désormais transmis,
+  avec la coercition chaîne → numérique qui manquait ; une valeur absente, nulle
+  ou négative retombe sur le défaut du cœur.
+- Effet limité au chemin **moteur** (microclimf réel). Les caches existants ne
+  sont pas invalidés : ils ont tous été produits à 2 m, et il faut relancer le
+  moteur pour que le réglage prenne effet.
+
 ## [0.128.0] - 2026-08-18
 
 ### Changed
