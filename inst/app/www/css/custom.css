@@ -22,6 +22,13 @@ html, body {
   --nemeton-warning: #9B7510;
   --nemeton-danger: #B01030;
 
+  /* Accent IA : suggestions, predictions, analyses automatiques.
+     Volontairement HORS de la palette semantique des boutons (vert = action
+     principale, brun = secondaire, rouge = destructif) : l'ambre ne dit pas un
+     niveau d'action, il dit une PROVENANCE - ce contenu est genere. */
+  --nemeton-ia: #E8A33D;
+  --nemeton-ia-dark: #C9871F;
+
   /* Neutral colors */
   --nemeton-bg: #f0f0f0;
   --nemeton-fg: #2C3E50;
@@ -223,6 +230,21 @@ html, body {
 .btn-success {
   background-color: var(--nemeton-success);
   border-color: var(--nemeton-success);
+}
+
+/* Bouton d'action IA. Le texte reste sombre : sur cet ambre, du blanc tombe
+   sous le seuil de contraste AA, alors que #2C3E50 le passe largement. */
+.btn-ia {
+  background-color: var(--nemeton-ia);
+  border-color: var(--nemeton-ia);
+  color: var(--nemeton-fg);
+}
+
+.btn-ia:hover,
+.btn-ia:focus {
+  background-color: var(--nemeton-ia-dark);
+  border-color: var(--nemeton-ia-dark);
+  color: var(--nemeton-fg);
 }
 
 .btn-outline-secondary.active {

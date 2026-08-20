@@ -1,3 +1,27 @@
+# nemetonshiny 0.130.9 (2026-08-20)
+
+### Changed — Le bouton « Générer par IA » de la Synthèse prend l'accent ambre
+
+Fond **ambre `#E8A33D`** et icône **trois étoiles** (`bs_icon("stars")`), à la
+place du contour vert et de l'icône robot.
+
+Cette couleur ne suit **pas** la palette sémantique des boutons — vert = action
+principale, brun = secondaire, rouge = destructif — et c'est délibéré : elle ne
+dit pas un *niveau d'action*, elle dit une **provenance**. Ce que ce bouton
+produit est généré, pas mesuré. Un accent réservé aux suggestions, prédictions
+et analyses automatiques.
+
+Deux jetons entrent dans la palette, `--nemeton-ia` et `--nemeton-ia-dark`, plus
+une classe `.btn-ia`.
+
+**Le texte reste sombre**, et c'est mesuré : `#2C3E50` sur cet ambre donne
+**5,09:1**, au-dessus du seuil AA de 4,5 ; du blanc tomberait à **2,16:1**. Un
+bouton d'accent illisible n'accentue rien. Un test verrouille ce choix.
+
+Seul le bouton de la **Synthèse** est changé. Le même bouton existe dans la vue
+**Famille** et garde pour l'instant son apparence : aligner les deux relève
+d'une décision de cohérence, pas de ce lot.
+
 # nemetonshiny 0.130.8 (2026-08-20)
 
 ### Fixed — Une couche orange restait affichée sur la Carte UGF, impossible à masquer
