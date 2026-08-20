@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.4] - 2026-08-20
+
+### Removed
+
+- `.onf_parcelles_concernees()` et la réinjection des parcelles écartées :
+  `nemeton 0.180.0` fait ce tri lui-même et expose le compteur via l'attribut
+  `parcelles_concernees`. `onf_projet_croise()` redevient un appel direct.
+  Plancher relevé à `nemeton (>= 0.180.0)`. Résultat identique.
+
+### Fixed
+
+- Le bloc roxygen d'`onf_projet_croise()` était détaché de sa fonction depuis
+  v0.130.3, un helper s'étant inséré entre les deux. Sans effet au build
+  (`@noRd`), corrigé par le retrait.
+
 ## [0.130.3] - 2026-08-20
 
 ### Changed

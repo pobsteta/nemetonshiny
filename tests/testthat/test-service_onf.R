@@ -331,46 +331,16 @@ test_that("les deux coches se traduisent en 'toutes' pour le coeur", {
 
 # ---- Auto-sélection des parcelles concernées (v0.130.2.9001) ---------------
 
-test_that(".onf_parcelles_concernees ne retient que ce qui touche la foret", {
+test_that("les parcelles sans foret sont couvertes et comptees par le coeur", {
   skip_if_not_installed("sf")
-  cad <- .onf_test_cadastre()
-  # Une troisième parcelle, loin de tout : elle ne doit pas être retenue.
-  loin <- sf::st_sf(
-    id = "C3", contenance = 1e4,
-    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
-      c(10000, 10000), c(10100, 10000), c(10100, 10100),
-      c(10000, 10100), c(10000, 10000)))), crs = 2154))
-  cad3 <- rbind(cad, loin)
-
-  sel <- nemetonshiny:::.onf_parcelles_concernees(cad3, .onf_test_parcelles())
-  expect_equal(sel, c(TRUE, TRUE, FALSE))
-})
-
-test_that(".onf_parcelles_concernees gere les CRS differents", {
-  skip_if_not_installed("sf")
-  # Cas réel : le cadastre IGN arrive en 4326, le parcellaire ONF en 2154.
-  # Sans reprojection, `st_intersects()` lève une erreur — et une auto-sélection
-  # qui échoue silencieusement retiendrait zéro parcelle.
-  cad_4326 <- sf::st_transform(.onf_test_cadastre(), 4326)
-  sel <- nemetonshiny:::.onf_parcelles_concernees(cad_4326, .onf_test_parcelles())
-  expect_equal(sel, c(TRUE, TRUE))
-})
-
-test_that(".onf_parcelles_concernees ne retient rien sans parcellaire", {
-  skip_if_not_installed("sf")
-  cad <- .onf_test_cadastre()
-  expect_equal(nemetonshiny:::.onf_parcelles_concernees(cad, NULL),
-               c(FALSE, FALSE))
-  expect_equal(nemetonshiny:::.onf_parcelles_concernees(
-    cad, .onf_test_parcelles()[0, ]), c(FALSE, FALSE))
-})
-
-test_that("l'auto-selection donne le MEME resultat que le croisement complet", {
-  skip_if_not_installed("sf")
-  # C'est le test qui autorise l'optimisation. Les parcelles écartées sont
-  # réinjectées ENTIÈRES sous « hors forêt » — mot pour mot ce que le croisement
-  # complet en aurait fait. Si ce test tombe, l'auto-sélection change le
-  # résultat et n'est plus une optimisation mais un bug.
+  # Depuis `nemeton 0.180.0` c'est le CŒUR qui écarte les parcelles qu'aucune
+  # parcelle forestière ne rencontre, et qui expose le compteur via l'attribut
+  # `parcelles_concernees`. L'app ne fait plus ce tri (elle le faisait en
+  # v0.130.3, avec une réinjection maison désormais supprimée).
+  #
+  # Ce que ce test verrouille du côté app : une parcelle écartée n'est PAS
+  # perdue — elle porte un tènement, rattaché à « hors forêt » — et le compteur
+  # affiché à l'utilisateur vient bien du cœur, sans recalcul.
   cad <- .onf_test_cadastre()
   loin <- sf::st_sf(
     id = "C3", contenance = 1e4,
