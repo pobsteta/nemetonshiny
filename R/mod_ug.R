@@ -550,7 +550,7 @@ mod_ug_server <- function(id, app_state) {
           # wipe it with clearGroup("Selection"), but it doesn't belong
           # in the user-facing layers control (toggling it off wouldn't
           # actually deselect tenements -- the IDs live in rv$selected_tenement_ids).
-          overlayGroups = c("UGF", "Tenements", "Dessin"),
+          overlayGroups = c("UGF", "Tenements", "Dessin", "Parcellaire ONF"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -827,7 +827,7 @@ mod_ug_server <- function(id, app_state) {
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Tenements", "Dessin"),
+          overlayGroups = c("UGF", "Tenements", "Dessin", "Parcellaire ONF"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::showGroup("UGF") |>
@@ -2249,8 +2249,8 @@ mod_ug_server <- function(id, app_state) {
             return()
           }
 
-          # Meme surcouche que pour l'import : voir le parcellaire qui a
-          # produit le decoupage, pas seulement son resultat.
+          # Surcouche montrant le parcellaire interroge, AVANT que le
+          # croisement n'ait produit les UGF.
           rv$onf_preview <- res$parcelles
 
           # Calage systematique (cf. UI ci-dessus) : plus de choix a lire.
@@ -2279,6 +2279,14 @@ mod_ug_server <- function(id, app_state) {
           # donc les persister ET les refleter dans app_state, sinon l'onglet
           # Selection continuerait d'afficher des parcelles disparues.
           .onf_commit(projet_final, with_parcels = purger)
+
+          # La surcouche a joue son role : les UGF qui viennent d'etre creees
+          # SONT ce parcellaire. La laisser superposait un calque orange
+          # permanent au resultat - d'autant plus trompeur apres une purge,
+          # puisqu'elle continue de montrer un parcellaire que le projet ne
+          # contient plus.
+          rv$onf_preview <- NULL
+
           shiny::removeNotification(.onf_notif_id, session = session)
 
           # Tout est lu dans le retour du coeur, rien n'est recalcule.

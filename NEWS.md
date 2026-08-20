@@ -1,3 +1,28 @@
+# nemetonshiny 0.130.8 (2026-08-20)
+
+### Fixed — Une couche orange restait affichée sur la Carte UGF, impossible à masquer
+
+Deux défauts se combinaient pour laisser un calque de polygones orange en
+permanence sur la carte, y compris après la purge des parcelles hors forêt —
+au point de faire croire que la couche « Dessin » peignait le cadastre.
+
+**La couche « Parcellaire ONF » n'avait pas de case.** Elle était ajoutée par
+`addPolygons(group = "Parcellaire ONF")` mais absente des `overlayGroups` des
+**deux** contrôles de couches (le rendu initial, et celui recréé après
+`clearControls()` à chaque redessin). Sans case, impossible de la décocher :
+elle restait visible quoi qu'on fasse. Décocher « UGF » et « Tenements » ne
+changeait rien, ce qui laissait « Dessin » — seule case encore cochée — comme
+coupable apparent.
+
+**La prévisualisation n'était jamais effacée.** `rv$onf_preview` était posé
+avant le croisement et jamais remis à `NULL` après. La surcouche restait donc
+superposée au résultat indéfiniment, et affichait un parcellaire forestier
+indépendant de ce que le projet contenait réellement — trompeur en particulier
+après une purge.
+
+Les UGF créées **sont** ce parcellaire : une fois le croisement fait, la
+surcouche n'a plus rien à montrer que le résultat ne montre déjà.
+
 # nemetonshiny 0.130.7 (2026-08-20)
 
 Implémente `specs/001-rafraichir-selection-parcelles.md`.
