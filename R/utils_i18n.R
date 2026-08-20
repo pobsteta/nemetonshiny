@@ -2503,6 +2503,38 @@ TRANSLATIONS <- list(
       "project's cadastral parcels that meet the retained forest parcels."
     )
   ),
+  # Purge optionnelle, DECOCHEE par defaut : elle retire des parcelles du projet,
+  # ce qui oblige a repasser par Selection pour les recuperer.
+  onf_purge_hors = list(
+    fr = "Supprimer les parcelles hors for\u00eat publique (< 10 %)",
+    en = "Remove parcels outside public forest (< 10 %)"
+  ),
+  onf_purge_hors_tip = list(
+    fr = paste0(
+      "Retire du projet les parcelles cadastrales que la for\u00eat publique ",
+      "ne couvre pas, ou couvre \u00e0 moins de 10 % \u2014 parcelles ET ",
+      "t\u00e8nements. Une parcelle foresti\u00e8re \u00e0 10 % ou plus est ",
+      "conserv\u00e9e ENTI\u00c8RE, avec sa part hors for\u00eat : la ",
+      "supprimer seule trouerait une parcelle que vous poss\u00e9dez. Pour ",
+      "r\u00e9cup\u00e9rer les parcelles retir\u00e9es, il faut repasser par ",
+      "l'onglet S\u00e9lection."
+    ),
+    en = paste0(
+      "Removes from the project the cadastral parcels the public forest does ",
+      "not cover, or covers by less than 10 % - parcels AND tenements. A ",
+      "parcel forested at 10 % or more is kept WHOLE, non-forest share ",
+      "included: dropping that share alone would punch a hole in a parcel you ",
+      "own. Recovering removed parcels means going back to the Selection tab."
+    )
+  ),
+  onf_purge_hors_fmt = list(
+    fr = "%d parcelle(s) sous 10 %% de for\u00eat publique retir\u00e9e(s) du projet.",
+    en = "%d parcel(s) under 10 %% public forest removed from the project."
+  ),
+  onf_purge_hors_aucune = list(
+    fr = "Aucune parcelle sous 10 % de for\u00eat publique \u00e0 retirer.",
+    en = "No parcel under 10 % public forest to remove."
+  ),
   onf_auto_select_fmt = list(
     fr = "%d parcelle(s) cadastrale(s) sur %d touchent la for\u00eat publique retenue.",
     en = "%d of %d cadastral parcels meet the retained public forest."

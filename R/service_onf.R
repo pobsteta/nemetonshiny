@@ -240,6 +240,100 @@ onf_projet_croise <- function(projet,
 }
 
 
+#' Drop the parcels that hold little or no public forest
+#'
+#' @description
+#' Optional last step of the crossing, off by default: remove from the project
+#' the cadastral parcels the public forest barely touches.
+#'
+#' **The test is on the PARCEL, never on the tenement.** A parcel that is partly
+#' forest also carries a `hors_ugf` fragment - the share the forest does not
+#' cover - and that fragment must stay: it is what makes the parcel exactly
+#' tiled. Dropping it alone would leave a hole inside a parcel the user still
+#' owns. Either the whole parcel goes, or none of it does.
+#'
+#' **Which parcels go**: those whose forest share is below `seuil_foret`,
+#' 10 % by default. That subsumes the parcels with no forest at all (share 0)
+#' and adds those the forest only grazes - a parcel 3 % forested is a
+#' digitising edge effect, not a stand to manage, and carrying it into the plan
+#' dilutes every per-unit indicator computed on it.
+#'
+#' The share is read from `surface_m2`, the cadastral surface the split already
+#' distributed across tenements. No geometry is touched: comparing shares inside
+#' one parcel needs no area recomputation, and `st_area()` on a CRS-bearing
+#' geometry is the expensive call this codebase learned to avoid.
+#'
+#' The parcels are removed from `$parcels` as well as from `$tenements`. Keeping
+#' them in `$parcels` would leave parcels with no tenement at all - visible in
+#' the Selection tab, absent from the UGF map, and belonging to no unit of
+#' management. That state is not one the rest of the app expects.
+#'
+#' @param projet List. Project already re-tiled by the crossing.
+#' @param label_hors Character. Label of the "outside public forest" UGF.
+#' @param seuil_foret Numeric in 0..1. Forest share below which the parcel is
+#'   dropped. `0` keeps every parcel holding the least bit of forest.
+#'
+#' @return List with `projet` and `n_supprimees` (parcels dropped).
+#'
+#' @noRd
+onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
+                                  seuil_foret = 0.10) {
+  ugs <- projet$ugs
+  ten <- projet$tenements
+  vide <- list(projet = projet, n_supprimees = 0L)
+  if (is.null(ugs) || is.null(ten) || nrow(ten) == 0L) return(vide)
+
+  ug_hors <- ugs$ug_id[!is.na(ugs$label) & ugs$label == label_hors]
+  if (length(ug_hors) == 0L) return(vide)
+
+  seuil_foret <- suppressWarnings(as.numeric(seuil_foret))
+  if (length(seuil_foret) != 1L || is.na(seuil_foret)) seuil_foret <- 0.10
+  seuil_foret <- max(0, min(1, seuil_foret))
+
+  # Part FORESTIERE de chaque parcelle, lue sur `surface_m2` (la surface
+  # cadastrale que le decoupage a deja repartie entre tenements). Aucune
+  # geometrie n'est touchee : comparer des parts a l'interieur d'une meme
+  # parcelle ne demande aucun recalcul d'aire.
+  est_hors <- ten$ug_id %in% ug_hors
+  surf <- suppressWarnings(as.numeric(ten$surface_m2))
+  surf[is.na(surf)] <- 0
+  pid <- as.character(ten$parent_parcelle_id)
+  tot  <- tapply(surf, pid, sum)
+  foret <- tapply(surf * !est_hors, pid, sum)
+
+  # Une parcelle de surface nulle n'a pas de part definie : on la laisse, la
+  # supprimer sur une division par zero serait arbitraire.
+  part <- ifelse(tot > 0, foret / tot, NA_real_)
+  # `<` et non `<=` : au seuil exact, la parcelle est conservee.
+  a_supprimer <- names(part)[!is.na(part) & part < seuil_foret]
+  if (length(a_supprimer) == 0L) return(vide)
+
+  projet$tenements <- ten[!as.character(ten$parent_parcelle_id) %in% a_supprimer,
+                          , drop = FALSE]
+
+  parcels <- projet$parcels
+  if (!is.null(parcels) && inherits(parcels, "sf")) {
+    id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
+    if (length(id_col)) {
+      garder <- !as.character(parcels[[id_col[1]]]) %in% a_supprimer
+      projet$parcels <- parcels[garder, , drop = FALSE]
+    }
+  }
+
+  # Une UGF que plus aucun tenement ne porte violerait l'invariant 3. C'est le
+  # cas de " hors foret " des lors qu'aucune parcelle mi-forestiere ne subsiste.
+  actives <- unique(projet$tenements$ug_id)
+  projet$ugs <- ugs[ugs$ug_id %in% actives, , drop = FALSE]
+
+  projet_validate(projet)
+  cli::cli_alert_success(
+    "Parcellaire ONF : {length(a_supprimer)} parcelle{?s} sous {round(100 * seuil_foret)} % \\
+     de for\u00eat publique retir\u00e9e{?s} du projet")
+
+  list(projet = projet, n_supprimees = length(a_supprimer))
+}
+
+
 #' Summarise a crossing for the user
 #'
 #' @description
