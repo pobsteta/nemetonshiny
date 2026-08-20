@@ -232,6 +232,15 @@ html, body {
   border-color: var(--nemeton-success);
 }
 
+/* En-tete de panneau IA. Meme jeton que le bouton, meme raison de texte sombre.
+   Remplace `bg-info text-white` (Plan d'actions) et `bg-success text-white`
+   (reGeneration) : ces panneaux ne sont ni une information ni un succes, ce
+   sont des espaces de dialogue avec le modele. */
+.bg-ia {
+  background-color: var(--nemeton-ia) !important;
+  color: var(--nemeton-fg) !important;
+}
+
 /* Bouton d'action IA. Le texte reste sombre : sur cet ambre, du blanc tombe
    sous le seuil de contraste AA, alors que #2C3E50 le passe largement. */
 .btn-ia {

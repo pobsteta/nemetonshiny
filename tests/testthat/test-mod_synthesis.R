@@ -29,3 +29,37 @@ test_that("la classe btn-ia existe dans le CSS, avec un texte lisible", {
   expect_match(bloc, "color: var(--nemeton-fg)", fixed = TRUE)
   expect_false(grepl("color:\\s*white", bloc))
 })
+
+test_that("les trois surfaces IA partagent le meme accent", {
+  skip_if_not_installed("bslib")
+  # Une charte d'accent qui ne vaut que pour un écran n'est pas une charte.
+  # Ces trois surfaces produisent toutes du contenu généré : le bouton de la
+  # Synthèse, le panneau de dialogue du Plan d'actions, celui de reGénération.
+  opts <- function(expr) with_mocked_bindings(
+    get_app_options = function() list(language = "fr"), expr)
+
+  syn <- opts(as.character(nemetonshiny:::mod_synthesis_ui("syn")))
+  ap  <- opts(as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  rg  <- opts(as.character(nemetonshiny:::mod_regeneration_ui("rg")))
+
+  expect_true(grepl("btn-ia", syn, fixed = TRUE))
+  expect_true(grepl("bg-ia", ap, fixed = TRUE))
+  expect_true(grepl("bg-ia", rg, fixed = TRUE))
+  # Toutes portent les trois étoiles.
+  for (h in list(syn, ap, rg)) expect_true(grepl("stars", h, fixed = TRUE))
+
+  # Les couleurs qu'elles portaient avant ont disparu de CES panneaux : le bleu
+  # « information » du Plan d'actions et le vert « succès » de reGénération.
+  # Un panneau de dialogue avec un modèle n'est ni l'un ni l'autre.
+  expect_false(grepl("card-header bg-info", ap, fixed = TRUE))
+  expect_false(grepl("bi-chat-dots", ap, fixed = TRUE))
+  expect_false(grepl("bi-robot", rg, fixed = TRUE))
+})
+
+test_that("le vert du bloc Tableau des actions n'est PAS touche", {
+  skip_if_not_installed("bslib")
+  # `action_table_card()` reste vert : c'est un bloc d'actions de l'utilisateur,
+  # pas une surface IA. Confondre les deux viderait l'accent de son sens.
+  css <- readLines(testthat::test_path("..", "..", "R", "utils_ui.R"), warn = FALSE)
+  expect_true(any(grepl("card-header bg-success", css, fixed = TRUE)))
+})

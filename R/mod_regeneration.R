@@ -483,7 +483,10 @@ mod_regeneration_ui <- function(id) {
             htmltools::tags$div(
               class = "card",
               htmltools::tags$div(
-                class = "card-header bg-success text-white py-2",
+                # Accent IA : ce panneau est un espace de dialogue avec le
+                # modele, pas un succes (`bg-success`). Meme jeton que le
+                # bouton de la Synthese et que le panneau du Plan d'actions.
+                class = "card-header bg-ia py-2",
                 style = "cursor: pointer;",
                 `data-bs-toggle` = "collapse",
                 `data-bs-target` = paste0("#", ns("regen_ai_collapse")),
@@ -492,7 +495,7 @@ mod_regeneration_ui <- function(id) {
                 htmltools::div(
                   class = "d-flex align-items-center justify-content-between",
                   htmltools::div(class = "d-flex align-items-center",
-                    bsicons::bs_icon("robot", class = "me-2"),
+                    bsicons::bs_icon("stars", class = "me-2"),
                     i18n$t("regen_ai_panel_title")),
                   bsicons::bs_icon("chevron-down", class = "collapse-icon"))),
               htmltools::tags$div(
