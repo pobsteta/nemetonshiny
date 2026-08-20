@@ -1,3 +1,42 @@
+# nemetonshiny 0.130.7 (2026-08-20)
+
+Implémente `specs/001-rafraichir-selection-parcelles.md`.
+
+### Fixed — L'onglet Sélection affichait des parcelles supprimées
+
+Depuis la v0.130.6, la purge « hors forêt publique » retire réellement des
+parcelles du projet. L'onglet **Sélection** continuait pourtant de les afficher,
+et de les compter comme sélectionnées.
+
+La raison : cet onglet ne lit pas `app_state$current_project`. Sa carte tient son
+propre état, alimenté par un signal unique — `app_state$restore_project` — que
+`mod_home` pose **au chargement d'un projet**. Rien ne le reposait ensuite.
+
+Un signal étroit est ajouté, **`app_state$parcels_changed`**, posé par tout
+module qui modifie `projet$parcels` et écouté par la carte seule. Elle redessine
+la couche et **restreint** la sélection aux parcelles encore présentes — sans
+jamais en ajouter : le signal annonce une modification, pas une sélection neuve.
+
+**Pourquoi pas simplement reposter `restore_project`** — la solution évidente,
+écartée pour deux raisons :
+
+- il est aussi écouté par `mod_search`, qui peut relancer un appel à
+  `geo.api.gouv.fr` : un rafraîchissement purement local déclencherait une
+  requête réseau ;
+- il exige `commune_code` et `department_code`, dérivés des parcelles par une
+  logique propre à `mod_home` — les reconstruire ailleurs dupliquerait ce code,
+  les omettre produirait une restauration partielle.
+
+Un signal qui en dit plus que nécessaire finit par déclencher plus que
+nécessaire.
+
+Garde-fous : idempotence par horodatage (comme `restore_project`), et un signal
+mal formé — sans `parcels`, à 0 ligne, ou sans colonne `id` — laisse la carte
+intacte plutôt que de la vider. Mieux vaut un affichage périmé qu'un affichage
+vide.
+
+Sans purge, aucun signal n'est posé et rien ne change.
+
 # nemetonshiny 0.130.6 (2026-08-20)
 
 ### Added — Supprimer les parcelles que la forêt publique ne couvre pas
