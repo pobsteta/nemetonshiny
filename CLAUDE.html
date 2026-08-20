@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -359,7 +359,17 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 <td><code>btn-danger</code></td>
 <td><strong>Destructif</strong></td>
 <td>Supprimer, réinitialiser des données.</td>
+</tr><tr><td>🟠 <strong>Ambre</strong>
+</td>
+<td>
+<code>btn-ia</code> / <code>bg-ia</code> (<code>#E8A33D</code>)</td>
+<td><strong>Aucun — c’est une <em>provenance</em></strong></td>
+<td>Surfaces produisant du contenu <strong>généré</strong> : suggestions, prédictions, analyses automatiques. Icône trois étoiles (<code>bsicons::bs_icon("stars")</code>).</td>
 </tr></tbody></table><ul><li>
+<strong>L’ambre est la seule exception à la hiérarchie ci-dessus, et n’en est pas une contradiction.</strong> Les cinq autres fonds répondent à « quel est le niveau d’action de ce bouton ? ». L’ambre répond à une autre question — « d’où vient ce contenu ? » — et c’est ce qui l’autorise à échapper à l’échelle plutôt qu’à la rompre. Ne <strong>jamais</strong> l’employer pour une action de l’utilisateur : il perdrait son pouvoir de signalement et deviendrait une décoration. Le vert du bloc « Tableau des actions » reste vert pour cette raison.</li>
+<li>
+<strong>Texte sombre obligatoire sur l’ambre</strong> (<code>color: var(--nemeton-fg)</code>) : mesuré à 5,09:1 contre 2,16:1 en blanc, qui échouerait au seuil AA de 4,5. Un test verrouille ce choix (<code>test-mod_synthesis.R</code>).</li>
+<li>
 <strong>Toujours une classe explicite</strong> : un <code>actionButton</code>/<code>modalButton</code> sans classe retombe sur le défaut (brun) — ne pas créer de brun <em>par accident</em>, expliciter l’intention (<code>btn-primary</code> / <code>btn-secondary</code> / <code>btn-outline-*</code>).</li>
 <li>
 <strong><code>primary</code> et <code>success</code> partagent le même vert</strong> (<code>#1B6B1B</code>, fusionnés pour lever l’ambiguïté des deux verts). Préférer <code>btn-primary</code> pour un CTA.</li>

@@ -309,7 +309,19 @@ un fond pour des raisons esthétiques :
 | ⚪ **Blanc** | `btn-outline-*` | **Action tertiaire / auxiliaire** | Emphase faible ; la *bordure* porte l’intention (`outline-secondary` neutre, `outline-primary` positif léger, `outline-danger` prudence). Icônes inline (plein écran, options). |
 | 🟡 Goldenrod | `btn-warning` | **Prudence** | Action à conséquence réversible mais notable. |
 | 🔴 Crimson | `btn-danger` | **Destructif** | Supprimer, réinitialiser des données. |
+| 🟠 **Ambre** | `btn-ia` / `bg-ia` (`#E8A33D`) | **Aucun — c’est une *provenance*** | Surfaces produisant du contenu **généré** : suggestions, prédictions, analyses automatiques. Icône trois étoiles (`bsicons::bs_icon("stars")`). |
 
+- **L’ambre est la seule exception à la hiérarchie ci-dessus, et n’en
+  est pas une contradiction.** Les cinq autres fonds répondent à « quel
+  est le niveau d’action de ce bouton ? ». L’ambre répond à une autre
+  question — « d’où vient ce contenu ? » — et c’est ce qui l’autorise à
+  échapper à l’échelle plutôt qu’à la rompre. Ne **jamais** l’employer
+  pour une action de l’utilisateur : il perdrait son pouvoir de
+  signalement et deviendrait une décoration. Le vert du bloc « Tableau
+  des actions » reste vert pour cette raison.
+- **Texte sombre obligatoire sur l’ambre** (`color: var(--nemeton-fg)`)
+  : mesuré à 5,09:1 contre 2,16:1 en blanc, qui échouerait au seuil AA
+  de 4,5. Un test verrouille ce choix (`test-mod_synthesis.R`).
 - **Toujours une classe explicite** : un `actionButton`/`modalButton`
   sans classe retombe sur le défaut (brun) — ne pas créer de brun *par
   accident*, expliciter l’intention (`btn-primary` / `btn-secondary` /

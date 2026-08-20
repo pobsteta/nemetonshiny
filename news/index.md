@@ -1,5 +1,40 @@
 # Changelog
 
+## nemetonshiny 0.130.10 (2026-08-20)
+
+#### Changed — L’accent IA couvre toute l’app, et entre dans la règle
+
+Le bouton « Générer par IA » des vues **Famille** rejoint l’accent ambre
+et les trois étoiles. Les quatre surfaces qui produisent du contenu
+généré partagent désormais la même signalétique : Synthèse, Plan
+d’actions, reGénération, Famille.
+
+**Une ligne « Ambre » entre dans le tableau des couleurs de bouton du
+`CLAUDE.md`.** Sans elle, la règle décrivait une hiérarchie — vert,
+brun, blanc, goldenrod, rouge — où `btn-ia` n’existait pas : une
+relecture y aurait vu une entorse esthétique, ce que la règle interdit
+explicitement, et l’aurait « corrigée » en repassant le bouton en vert.
+
+La ligne dit aussi **pourquoi** l’ambre échappe à la hiérarchie sans la
+rompre : les cinq autres fonds répondent à « quel est le niveau d’action
+? », l’ambre répond à « d’où vient ce contenu ? ». Et elle interdit de
+l’employer pour une action de l’utilisateur — il perdrait son pouvoir de
+signalement.
+
+#### Fixed — L’accent se défaisait dès la première génération
+
+`updateActionButton()` restaurait l’icône **robot** après chaque
+génération, dans la Synthèse comme dans les vues Famille. L’accent posé
+en v0.130.9 tenait donc jusqu’au premier clic, puis disparaissait.
+
+Aucun test d’interface ne pouvait le voir : ces appels ne s’exécutent
+qu’en session. Un test lit désormais les sources et exige qu’**aucune**
+icône `robot` ne subsiste — c’est la seule façon d’attraper ce genre de
+restauration.
+
+Le bouton « insérer le conseil IA » de reGénération, qui avait échappé
+au lot précédent, prend également l’accent.
+
 ## nemetonshiny 0.130.9 (2026-08-20)
 
 #### Changed — Le bouton « Générer par IA » de la Synthèse prend l’accent ambre

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.10" id="nemetonshiny-013010-2026-08-20">nemetonshiny 0.130.10 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-013010-2026-08-20"></a></h2>
+<div class="section level4">
+<h4 id="changed--laccent-ia-couvre-toute-lapp-et-entre-dans-la-règle-0-130-10">Changed — L’accent IA couvre toute l’app, et entre dans la règle<a class="anchor" aria-label="anchor" href="#changed--laccent-ia-couvre-toute-lapp-et-entre-dans-la-r%C3%A8gle-0-130-10"></a></h4>
+<p>Le bouton « Générer par IA » des vues <strong>Famille</strong> rejoint l’accent ambre et les trois étoiles. Les quatre surfaces qui produisent du contenu généré partagent désormais la même signalétique : Synthèse, Plan d’actions, reGénération, Famille.</p>
+<p><strong>Une ligne « Ambre » entre dans le tableau des couleurs de bouton du <code>CLAUDE.md</code>.</strong> Sans elle, la règle décrivait une hiérarchie — vert, brun, blanc, goldenrod, rouge — où <code>btn-ia</code> n’existait pas : une relecture y aurait vu une entorse esthétique, ce que la règle interdit explicitement, et l’aurait « corrigée » en repassant le bouton en vert.</p>
+<p>La ligne dit aussi <strong>pourquoi</strong> l’ambre échappe à la hiérarchie sans la rompre : les cinq autres fonds répondent à « quel est le niveau d’action ? », l’ambre répond à « d’où vient ce contenu ? ». Et elle interdit de l’employer pour une action de l’utilisateur — il perdrait son pouvoir de signalement.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--laccent-se-défaisait-dès-la-première-génération-0-130-10">Fixed — L’accent se défaisait dès la première génération<a class="anchor" aria-label="anchor" href="#fixed--laccent-se-d%C3%A9faisait-d%C3%A8s-la-premi%C3%A8re-g%C3%A9n%C3%A9ration-0-130-10"></a></h4>
+<p><code>updateActionButton()</code> restaurait l’icône <strong>robot</strong> après chaque génération, dans la Synthèse comme dans les vues Famille. L’accent posé en v0.130.9 tenait donc jusqu’au premier clic, puis disparaissait.</p>
+<p>Aucun test d’interface ne pouvait le voir : ces appels ne s’exécutent qu’en session. Un test lit désormais les sources et exige qu’<strong>aucune</strong> icône <code>robot</code> ne subsiste — c’est la seule façon d’attraper ce genre de restauration.</p>
+<p>Le bouton « insérer le conseil IA » de reGénération, qui avait échappé au lot précédent, prend également l’accent.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.9" id="nemetonshiny-01309-2026-08-20">nemetonshiny 0.130.9 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01309-2026-08-20"></a></h2>
 <div class="section level4">
