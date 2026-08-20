@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.9] - 2026-08-20
+
+### Changed
+
+- Le bouton « Générer par IA » de la Synthèse prend l'accent ambre `#E8A33D` et
+  l'icône trois étoiles. Nouveaux jetons `--nemeton-ia` / `--nemeton-ia-dark` et
+  classe `.btn-ia`. Cette couleur sort de la palette sémantique des boutons à
+  dessein : elle marque une provenance (contenu généré), pas un niveau d'action.
+  Texte sombre conservé — 5,09:1 de contraste, contre 2,16:1 en blanc.
+- Les panneaux IA du Plan d'actions et de reGénération prennent le même accent
+  (classe `.bg-ia`), à la place du bleu « information » et du vert « succès ».
+  Le vert du bloc « Tableau des actions » n'est pas touché.
+
 ## [0.130.8] - 2026-08-20
 
 ### Fixed

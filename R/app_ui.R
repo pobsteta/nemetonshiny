@@ -700,11 +700,15 @@ mod_synthesis_ui <- function(id) {
                 width = "auto"
               )
             ),
+            # Accent IA : ambre + trois etoiles. Cette couleur ne suit PAS la
+            # palette semantique des boutons (vert = action principale, brun =
+            # secondaire) parce qu'elle ne dit pas un niveau d'action : elle dit
+            # une PROVENANCE - ce que ce bouton produit est genere, pas mesure.
             shiny::actionButton(
               ns("ai_generate"),
               label = i18n$t("ai_generate"),
-              icon = shiny::icon("robot"),
-              class = "btn-outline-primary btn-sm"
+              icon = bsicons::bs_icon("stars"),
+              class = "btn-ia btn-sm"
             )
           )
         ),

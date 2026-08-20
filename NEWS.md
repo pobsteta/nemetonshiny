@@ -1,3 +1,41 @@
+# nemetonshiny 0.130.9 (2026-08-20)
+
+### Changed — Le bouton « Générer par IA » de la Synthèse prend l'accent ambre
+
+Fond **ambre `#E8A33D`** et icône **trois étoiles** (`bs_icon("stars")`), à la
+place du contour vert et de l'icône robot.
+
+Cette couleur ne suit **pas** la palette sémantique des boutons — vert = action
+principale, brun = secondaire, rouge = destructif — et c'est délibéré : elle ne
+dit pas un *niveau d'action*, elle dit une **provenance**. Ce que ce bouton
+produit est généré, pas mesuré. Un accent réservé aux suggestions, prédictions
+et analyses automatiques.
+
+Deux jetons entrent dans la palette, `--nemeton-ia` et `--nemeton-ia-dark`, plus
+une classe `.btn-ia`.
+
+**Le texte reste sombre**, et c'est mesuré : `#2C3E50` sur cet ambre donne
+**5,09:1**, au-dessus du seuil AA de 4,5 ; du blanc tomberait à **2,16:1**. Un
+bouton d'accent illisible n'accentue rien. Un test verrouille ce choix.
+
+### Changed — Les panneaux IA du Plan d'actions et de reGénération suivent
+
+Même accent sur les deux panneaux de dialogue : fond ambre et trois étoiles, à
+la place du **bleu « information »** (Plan d'actions) et du **vert « succès »**
+(reGénération). Un espace de conversation avec un modèle n'est ni une
+information ni un succès.
+
+Une classe `.bg-ia` accompagne `.btn-ia`, sur le même jeton. Trois surfaces
+partagent désormais l'accent — le bouton de génération de la Synthèse et ces
+deux panneaux — et un test vérifie qu'elles restent alignées : une charte
+d'accent qui ne vaut que pour un écran n'est pas une charte.
+
+Le vert du bloc **« Tableau des actions »** n'est pas touché, et un test le
+verrouille : c'est un bloc d'actions de l'utilisateur, pas une surface IA.
+Confondre les deux viderait l'accent de son sens.
+
+Reste inchangé pour l'instant : le bouton IA de la vue **Famille**.
+
 # nemetonshiny 0.130.8 (2026-08-20)
 
 ### Fixed — Une couche orange restait affichée sur la Carte UGF, impossible à masquer

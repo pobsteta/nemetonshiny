@@ -149,7 +149,9 @@ mod_action_plan_ui <- function(id) {
   chat_panel <- htmltools::tags$div(
     class = "card mb-3",
     htmltools::tags$div(
-      class = "card-header bg-info text-white py-2",
+      # Accent IA : ce panneau est un espace de dialogue avec le modele, pas
+      # une information (`bg-info`). Meme jeton que le bouton de la Synthese.
+      class = "card-header bg-ia py-2",
       style = "cursor: pointer;",
       `data-bs-toggle` = "collapse",
       `data-bs-target` = paste0("#", chat_panel_id),
@@ -159,7 +161,7 @@ mod_action_plan_ui <- function(id) {
         class = "d-flex align-items-center justify-content-between",
         htmltools::div(
           class = "d-flex align-items-center",
-          bsicons::bs_icon("chat-dots", class = "me-2"),
+          bsicons::bs_icon("stars", class = "me-2"),
           i18n$t("action_plan_chat_title")
         ),
         bsicons::bs_icon("chevron-down", class = "collapse-icon")
