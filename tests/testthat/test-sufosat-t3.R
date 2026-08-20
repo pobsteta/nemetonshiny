@@ -190,3 +190,74 @@ test_that("set_project_sufosat persists the toggle + params and drops cache on d
     }
   )
 })
+
+# ---------------------------------------------------------------------------
+# reference_year : la fenêtre s'ancre sur l'année courante (brief 2026-08-20)
+# ---------------------------------------------------------------------------
+
+test_that("compute_single_indicator propage reference_year au coeur", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+
+  # Sans ce relais, le cœur laisse `reference_year = NULL` et déduit l'ancrage
+  # de la coupe la PLUS RÉCENTE trouvée dans les UGF. La fenêtre garde alors sa
+  # largeur mais flotte : un massif dont les dernières coupes datent de 2021 est
+  # jugé sur 2017-2021, et deux projets cessent d'être comparables dès que leur
+  # coupe la plus récente diffère.
+  captured <- new.env()
+  assign("indicateur_test_t3_ref",
+         function(units, sufosat_dates = NULL, window_years = 5,
+                  reference_year = NULL) {
+           captured$ref <- reference_year
+           rep(1, nrow(units))
+         },
+         envir = globalenv())
+  withr::defer(rm("indicateur_test_t3_ref", envir = globalenv()))
+
+  parcels <- .sufosat_aoi()
+  layers <- structure(
+    list(rasters = list(), vectors = list(),
+         sufosat = list(dates = .sufosat_rast(18001),
+                        window_years = 5L, reference_year = 2026L)),
+    class = "nemeton_layers")
+
+  nemetonshiny:::compute_single_indicator("indicateur_test_t3_ref",
+                                          parcels, layers)
+  expect_equal(captured$ref, 2026L)
+})
+
+test_that("reference_year absent laisse le defaut du coeur", {
+  skip_if_not_installed("sf")
+
+  # Source désactivée ou fetch Theia échoué : rien n'est mis en scène, et le
+  # cœur doit retrouver son comportement d'origine plutôt qu'une année forcée.
+  captured <- new.env()
+  assign("indicateur_test_t3_ref2",
+         function(units, sufosat_dates = NULL, reference_year = "defaut") {
+           captured$ref <- reference_year
+           rep(NA_real_, nrow(units))
+         },
+         envir = globalenv())
+  withr::defer(rm("indicateur_test_t3_ref2", envir = globalenv()))
+
+  layers <- structure(list(rasters = list(), vectors = list()),
+                      class = "nemeton_layers")
+  nemetonshiny:::compute_single_indicator("indicateur_test_t3_ref2",
+                                          .sufosat_aoi(), layers)
+  expect_equal(captured$ref, "defaut")
+})
+
+test_that("l'annee d'ancrage est bien l'annee COURANTE, pas une constante", {
+  # Le brief demande l'année courante. Une valeur figée en dur passerait le test
+  # précédent tout en se périmant au 1er janvier — d'où cette vérification du
+  # calcul lui-même, telle que `start_computation()` le pose.
+  attendu <- as.integer(format(Sys.Date(), "%Y"))
+  expect_true(attendu >= 2026L)
+  expect_type(attendu, "integer")
+  # Et le code de staging emploie bien cette expression, pas un littéral.
+  src <- readLines(testthat::test_path("..", "..", "R", "service_compute.R"),
+                   warn = FALSE)
+  pose <- grep("sufosat_layer\\$reference_year", src, value = TRUE)
+  expect_length(pose, 1L)
+  expect_match(pose, "format\\(Sys.Date\\(\\)")
+})

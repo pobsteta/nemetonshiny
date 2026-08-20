@@ -1,3 +1,40 @@
+# nemetonshiny 0.130.5 (2026-08-20)
+
+Implémente `briefs/vers-nemetonshiny/2026-08-20-t3-reference-year.md` (§8).
+Aucun changement de plancher : `reference_year` existe dans le cœur depuis
+l'origine.
+
+### Fixed — « Les 5 dernières années » veut enfin dire les 5 dernières années
+
+L'indicateur **T3 (coupes rases)** recevait bien `window_years` et `min_proba`
+depuis les réglages, mais **jamais `reference_year`**. Laissé à `NULL`, le cœur
+déduisait alors l'ancrage de la fenêtre de **la coupe la plus récente trouvée
+dans les UGF analysées**.
+
+La fenêtre avait donc la bonne largeur, mais un point d'appui flottant :
+
+- un massif dont les dernières coupes datent de 2021 était jugé sur
+  **2017-2021** — une coupe de 2018 y comptait comme « récente » ;
+- deux projets n'étaient **pas comparables** dès lors que leur coupe la plus
+  récente différait, même réglés sur la même fenêtre.
+
+Mesuré côté cœur sur les 94 UGF de La-Vieille-Loye / Chaux : `reference_year`
+valait 2025 et excluait **565 des 1 260** pixels détectés. Cohérent pour « la
+pression récente », mais ce 2025 venait des données, pas d'un choix.
+
+La fenêtre s'ancre désormais sur l'**année courante**. Un massif sans coupe
+récente descend vers 0 au lieu d'être jugé sur une fenêtre ancienne — ce qui est
+le résultat attendu : pas de coupe récente, pas de pression.
+
+**À prévoir** : les scores T3 déjà calculés peuvent changer sur les projets dont
+la dernière coupe est antérieure à l'année courante. Ce n'est pas une
+régression, c'est la correction ; mais si un banc compare des sorties T3 d'avant
+et d'après, c'est le premier facteur à regarder.
+
+Pas de troisième réglage exposé : ce serait faire arbitrer par l'utilisateur une
+question qui n'a qu'une bonne réponse par défaut. Le paramètre reste joignable
+par le code pour une analyse rétrospective.
+
 # nemetonshiny 0.130.4 (2026-08-20)
 
 ### Removed — Le tri des parcelles remonte dans le cœur

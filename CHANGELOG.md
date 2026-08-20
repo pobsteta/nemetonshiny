@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.5] - 2026-08-20
+
+### Fixed
+
+- L'indicateur T3 (coupes rases) ne recevait pas `reference_year` : la fenêtre
+  de récence s'ancrait sur la coupe la plus récente des UGF analysées, et non
+  sur l'année courante. « Les 5 dernières années » pouvait donc désigner
+  2017-2021, et deux projets n'étaient pas comparables si leur dernière coupe
+  différait. La fenêtre s'ancre désormais sur l'année courante. Les scores T3
+  déjà calculés peuvent changer sur les projets sans coupe récente.
+
 ## [0.130.4] - 2026-08-20
 
 ### Removed
