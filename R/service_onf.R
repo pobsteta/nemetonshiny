@@ -273,14 +273,16 @@ onf_projet_croise <- function(projet,
 #' @param seuil_foret Numeric in 0..1. Forest share below which the parcel is
 #'   dropped. `0` keeps every parcel holding the least bit of forest.
 #'
-#' @return List with `projet` and `n_supprimees` (parcels dropped).
+#' @return List with `projet`, `n_supprimees` (parcels dropped) and
+#'   `n_partielles` (parcels KEPT that still hold a non-forest share - they are
+#'   why the "outside public forest" UGF survives a purge).
 #'
 #' @noRd
 onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
                                   seuil_foret = 0.10) {
   ugs <- projet$ugs
   ten <- projet$tenements
-  vide <- list(projet = projet, n_supprimees = 0L)
+  vide <- list(projet = projet, n_supprimees = 0L, n_partielles = 0L)
   if (is.null(ugs) || is.null(ten) || nrow(ten) == 0L) return(vide)
 
   ug_hors <- ugs$ug_id[!is.na(ugs$label) & ugs$label == label_hors]
@@ -326,11 +328,21 @@ onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
   projet$ugs <- ugs[ugs$ug_id %in% actives, , drop = FALSE]
 
   projet_validate(projet)
+
+  # Parcelles CONSERVEES qui gardent une part hors foret : ce sont elles qui
+  # font survivre l'UGF " hors foret publique " a une purge. Sans ce chiffre,
+  # l'utilisateur voit une ligne " Hors foret publique " subsister apres avoir
+  # demande la suppression, et croit la purge incomplete.
+  reste_hors <- projet$tenements$ug_id %in% ug_hors
+  n_partielles <- length(unique(
+    as.character(projet$tenements$parent_parcelle_id)[reste_hors]))
+
   cli::cli_alert_success(
     "Parcellaire ONF : {length(a_supprimer)} parcelle{?s} sous {round(100 * seuil_foret)} % \\
      de for\u00eat publique retir\u00e9e{?s} du projet")
 
-  list(projet = projet, n_supprimees = length(a_supprimer))
+  list(projet = projet, n_supprimees = length(a_supprimer),
+       n_partielles = n_partielles)
 }
 
 

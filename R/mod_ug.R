@@ -2268,11 +2268,13 @@ mod_ug_server <- function(id, app_state) {
           # savoir quelles parcelles sont entierement hors foret.
           projet_final <- out$projet
           n_purgees <- 0L
+          n_partielles <- 0L
           if (purger) {
             purge <- onf_purger_hors_foret(projet_final,
                                            .onf_label_hors_ugf(i18n_snap))
             projet_final <- purge$projet
             n_purgees <- purge$n_supprimees
+            n_partielles <- purge$n_partielles %||% 0L
           }
 
           # `with_parcels` : la purge retire des parcelles du projet, il faut
@@ -2325,6 +2327,15 @@ mod_ug_server <- function(id, app_state) {
               } else i18n_snap$t("onf_purge_hors_aucune"),
               type = if (n_purgees > 0L) "warning" else "message",
               duration = 10, session = session)
+            # Message SEPARE : il n'explique pas la suppression, il explique ce
+            # qui RESTE. Une ligne " Hors foret publique " qui subsiste apres
+            # une purge se lit comme un echec tant qu'on ignore qu'elle porte
+            # des fragments de parcelles mi-forestieres.
+            if (n_partielles > 0L) {
+              shiny::showNotification(
+                sprintf(i18n_snap$t("onf_purge_partielles_fmt"), n_partielles),
+                type = "message", duration = 12, session = session)
+            }
           }
         }, error = function(e) {
           shiny::removeNotification(.onf_notif_id, session = session)

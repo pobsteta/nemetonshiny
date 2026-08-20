@@ -21,6 +21,12 @@ For a narrative, per-feature description of each release, see
   après le croisement : la surcouche restait superposée au résultat, affichant
   un parcellaire que le projet ne contenait plus après une purge.
 
+### Added
+
+- Un second message après la purge indique combien de parcelles restent
+  partiellement forestières, et pourquoi cela maintient l'UGF « Hors forêt
+  publique » — sans quoi sa survie se lit comme un échec de la suppression.
+
 ## [0.130.7] - 2026-08-20
 
 ### Fixed

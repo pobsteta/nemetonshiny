@@ -23,6 +23,21 @@ après une purge.
 Les UGF créées **sont** ce parcellaire : une fois le croisement fait, la
 surcouche n'a plus rien à montrer que le résultat ne montre déjà.
 
+### Added — Dire pourquoi « Hors forêt publique » survit à une purge
+
+Un second message suit désormais celui du nombre de parcelles supprimées :
+
+> N parcelle(s) rest(e/ent) partiellement forestière(s) : leur part hors forêt
+> est conservée, sinon la parcelle serait trouée. C'est ce qui maintient l'UGF
+> « Hors forêt publique ».
+
+Le premier message rend compte de l'action demandée ; celui-ci désamorce une
+lecture erronée du résultat. Une ligne « Hors forêt publique » qui subsiste
+après avoir explicitement demandé la suppression se lit comme un échec, tant
+qu'on ignore qu'elle porte les fragments des parcelles mi-forestières.
+
+Il ne s'affiche que s'il y a effectivement des parcelles partielles.
+
 # nemetonshiny 0.130.7 (2026-08-20)
 
 Implémente `specs/001-rafraichir-selection-parcelles.md`.
