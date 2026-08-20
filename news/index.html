@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.8.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.9" id="nemetonshiny-01309-2026-08-20">nemetonshiny 0.130.9 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01309-2026-08-20"></a></h2>
+<div class="section level4">
+<h4 id="changed--le-bouton--générer-par-ia--de-la-synthèse-prend-laccent-ambre-0-130-9">Changed — Le bouton « Générer par IA » de la Synthèse prend l’accent ambre<a class="anchor" aria-label="anchor" href="#changed--le-bouton--g%C3%A9n%C3%A9rer-par-ia--de-la-synth%C3%A8se-prend-laccent-ambre-0-130-9"></a></h4>
+<p>Fond <strong>ambre <code>#E8A33D</code></strong> et icône <strong>trois étoiles</strong> (<code>bs_icon("stars")</code>), à la place du contour vert et de l’icône robot.</p>
+<p>Cette couleur ne suit <strong>pas</strong> la palette sémantique des boutons — vert = action principale, brun = secondaire, rouge = destructif — et c’est délibéré : elle ne dit pas un <em>niveau d’action</em>, elle dit une <strong>provenance</strong>. Ce que ce bouton produit est généré, pas mesuré. Un accent réservé aux suggestions, prédictions et analyses automatiques.</p>
+<p>Deux jetons entrent dans la palette, <code>--nemeton-ia</code> et <code>--nemeton-ia-dark</code>, plus une classe <code>.btn-ia</code>.</p>
+<p><strong>Le texte reste sombre</strong>, et c’est mesuré : <code>#2C3E50</code> sur cet ambre donne <strong>5,09:1</strong>, au-dessus du seuil AA de 4,5 ; du blanc tomberait à <strong>2,16:1</strong>. Un bouton d’accent illisible n’accentue rien. Un test verrouille ce choix.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--les-panneaux-ia-du-plan-dactions-et-de-regénération-suivent-0-130-9">Changed — Les panneaux IA du Plan d’actions et de reGénération suivent<a class="anchor" aria-label="anchor" href="#changed--les-panneaux-ia-du-plan-dactions-et-de-reg%C3%A9n%C3%A9ration-suivent-0-130-9"></a></h4>
+<p>Même accent sur les deux panneaux de dialogue : fond ambre et trois étoiles, à la place du <strong>bleu « information »</strong> (Plan d’actions) et du <strong>vert « succès »</strong> (reGénération). Un espace de conversation avec un modèle n’est ni une information ni un succès.</p>
+<p>Une classe <code>.bg-ia</code> accompagne <code>.btn-ia</code>, sur le même jeton. Trois surfaces partagent désormais l’accent — le bouton de génération de la Synthèse et ces deux panneaux — et un test vérifie qu’elles restent alignées : une charte d’accent qui ne vaut que pour un écran n’est pas une charte.</p>
+<p>Le vert du bloc <strong>« Tableau des actions »</strong> n’est pas touché, et un test le verrouille : c’est un bloc d’actions de l’utilisateur, pas une surface IA. Confondre les deux viderait l’accent de son sens.</p>
+<p>Reste inchangé pour l’instant : le bouton IA de la vue <strong>Famille</strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.8" id="nemetonshiny-01308-2026-08-20">nemetonshiny 0.130.8 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01308-2026-08-20"></a></h2>
 <div class="section level4">
