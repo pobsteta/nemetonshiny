@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.5" id="nemetonshiny-01305-2026-08-20">nemetonshiny 0.130.5 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01305-2026-08-20"></a></h2>
+<p>Implémente <code>briefs/vers-nemetonshiny/2026-08-20-t3-reference-year.md</code> (§8). Aucun changement de plancher : <code>reference_year</code> existe dans le cœur depuis l’origine.</p>
+<div class="section level4">
+<h4 id="fixed---les-dernières-années--veut-enfin-dire-les-dernières-années-0-130-5">Fixed — « Les 5 dernières années » veut enfin dire les 5 dernières années<a class="anchor" aria-label="anchor" href="#fixed---les-derni%C3%A8res-ann%C3%A9es--veut-enfin-dire-les-derni%C3%A8res-ann%C3%A9es-0-130-5"></a></h4>
+<p>L’indicateur <strong>T3 (coupes rases)</strong> recevait bien <code>window_years</code> et <code>min_proba</code> depuis les réglages, mais <strong>jamais <code>reference_year</code></strong>. Laissé à <code>NULL</code>, le cœur déduisait alors l’ancrage de la fenêtre de <strong>la coupe la plus récente trouvée dans les UGF analysées</strong>.</p>
+<p>La fenêtre avait donc la bonne largeur, mais un point d’appui flottant :</p>
+<ul><li>un massif dont les dernières coupes datent de 2021 était jugé sur <strong>2017-2021</strong> — une coupe de 2018 y comptait comme « récente » ;</li>
+<li>deux projets n’étaient <strong>pas comparables</strong> dès lors que leur coupe la plus récente différait, même réglés sur la même fenêtre.</li>
+</ul><p>Mesuré côté cœur sur les 94 UGF de La-Vieille-Loye / Chaux : <code>reference_year</code> valait 2025 et excluait <strong>565 des 1 260</strong> pixels détectés. Cohérent pour « la pression récente », mais ce 2025 venait des données, pas d’un choix.</p>
+<p>La fenêtre s’ancre désormais sur l’<strong>année courante</strong>. Un massif sans coupe récente descend vers 0 au lieu d’être jugé sur une fenêtre ancienne — ce qui est le résultat attendu : pas de coupe récente, pas de pression.</p>
+<p><strong>À prévoir</strong> : les scores T3 déjà calculés peuvent changer sur les projets dont la dernière coupe est antérieure à l’année courante. Ce n’est pas une régression, c’est la correction ; mais si un banc compare des sorties T3 d’avant et d’après, c’est le premier facteur à regarder.</p>
+<p>Pas de troisième réglage exposé : ce serait faire arbitrer par l’utilisateur une question qui n’a qu’une bonne réponse par défaut. Le paramètre reste joignable par le code pour une analyse rétrospective.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.4" id="nemetonshiny-01304-2026-08-20">nemetonshiny 0.130.4 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01304-2026-08-20"></a></h2>
 <div class="section level4">
