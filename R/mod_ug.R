@@ -2120,7 +2120,18 @@ mod_ug_server <- function(id, app_state) {
 
       cur_proj <- shiny::isolate(app_state$current_project)
       if (!is.null(cur_proj)) {
-        if (isTRUE(with_parcels)) cur_proj$parcels <- projet$parcels
+        if (isTRUE(with_parcels)) {
+          cur_proj$parcels <- projet$parcels
+          # Signale a l'onglet Selection que les parcelles ont change
+          # (spec 001-app). Sans lui, la Selection continuerait d'afficher -
+          # et de compter comme selectionnees - des parcelles retirees du
+          # projet : elle ne lit pas `current_project`, elle tient son propre
+          # etat, alimente par un signal.
+          app_state$parcels_changed <- list(
+            parcels   = projet$parcels,
+            timestamp = Sys.time()
+          )
+        }
         cur_proj$tenements <- projet$tenements
         cur_proj$ugs       <- projet$ugs
         cur_proj$indicators <- NULL

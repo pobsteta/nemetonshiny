@@ -189,7 +189,8 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
       selected_ids = character(0),
       basemap = "osm",
       parcels_zoomed = FALSE,  # Flag to zoom only once per commune
-      last_restore_timestamp = NULL  # Track last processed restore request
+      last_restore_timestamp = NULL, # Track last processed restore request
+      last_parcels_change = NULL     # Idem pour app_state$parcels_changed
     )
 
 
@@ -589,6 +590,51 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
     # ========================================
 
     # Renders base parcel polygons to the map.
+    # ========================================
+    # Parcelles modifiees ailleurs dans l'app (spec 001-app)
+    # ========================================
+    #
+    # Un module qui RETIRE ou AJOUTE des parcelles au projet pose
+    # `app_state$parcels_changed`. Sans ce signal, la Selection continuerait
+    # d'afficher des parcelles qui ne sont plus dans le projet - elle ne lit pas
+    # `current_project`, elle tient son propre etat.
+    #
+    # Pourquoi PAS `restore_project` : ce signal-la dit " charge ce projet ",
+    # il est aussi ecoute par `mod_search` qui peut relancer un appel a
+    # geo.api.gouv.fr, et il exige `commune_code` / `department_code` qu'un
+    # module comme mod_ug n'a pas sous la main. Un signal qui en dit plus que
+    # necessaire finit par declencher plus que necessaire.
+    shiny::observeEvent(app_state$parcels_changed, {
+      chg <- app_state$parcels_changed
+      if (is.null(chg)) return()
+      # Garde d'idempotence, comme pour restore_project : toute invalidation de
+      # app_state rejouerait sinon le redessin.
+      if (!is.null(rv$last_parcels_change) &&
+          identical(rv$last_parcels_change, chg$timestamp)) {
+        return()
+      }
+      pd <- chg$parcels
+      # Un signal mal forme ne doit pas vider la carte.
+      if (!inherits(pd, "sf") || nrow(pd) == 0L || !"id" %in% names(pd)) {
+        cli::cli_warn("parcels_changed: signal sans parcelles exploitables, ignore")
+        return()
+      }
+      rv$last_parcels_change <- chg$timestamp
+
+      render_parcels_to_map(pd)
+
+      # On RESTREINT la selection aux parcelles encore la, sans jamais en
+      # ajouter : le signal annonce une modification, pas une selection neuve.
+      restants <- intersect(rv$selected_ids, as.character(pd$id))
+      rv$selected_ids <- restants
+      for (pid in restants) update_parcel_style(pid, selected = TRUE)
+
+      # Ni fond de carte, ni zoom, ni commune : rien de tout cela n'a change.
+      cli::cli_alert_info(
+        "Selection rafraichie : {nrow(pd)} parcelle{?s}, {length(restants)} selectionnee{?s}")
+    }, ignoreNULL = TRUE)
+
+
     render_parcels_to_map <- function(parcel_data) {
       # Filter to keep only polygon geometries (defensive check)
       geom_types <- sf::st_geometry_type(parcel_data)
