@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.7" id="nemetonshiny-01307-2026-08-20">nemetonshiny 0.130.7 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01307-2026-08-20"></a></h2>
+<p>Implémente <code>specs/001-rafraichir-selection-parcelles.md</code>.</p>
+<div class="section level4">
+<h4 id="fixed--longlet-sélection-affichait-des-parcelles-supprimées-0-130-7">Fixed — L’onglet Sélection affichait des parcelles supprimées<a class="anchor" aria-label="anchor" href="#fixed--longlet-s%C3%A9lection-affichait-des-parcelles-supprim%C3%A9es-0-130-7"></a></h4>
+<p>Depuis la v0.130.6, la purge « hors forêt publique » retire réellement des parcelles du projet. L’onglet <strong>Sélection</strong> continuait pourtant de les afficher, et de les compter comme sélectionnées.</p>
+<p>La raison : cet onglet ne lit pas <code>app_state$current_project</code>. Sa carte tient son propre état, alimenté par un signal unique — <code>app_state$restore_project</code> — que <code>mod_home</code> pose <strong>au chargement d’un projet</strong>. Rien ne le reposait ensuite.</p>
+<p>Un signal étroit est ajouté, <strong><code>app_state$parcels_changed</code></strong>, posé par tout module qui modifie <code>projet$parcels</code> et écouté par la carte seule. Elle redessine la couche et <strong>restreint</strong> la sélection aux parcelles encore présentes — sans jamais en ajouter : le signal annonce une modification, pas une sélection neuve.</p>
+<p><strong>Pourquoi pas simplement reposter <code>restore_project</code></strong> — la solution évidente, écartée pour deux raisons :</p>
+<ul><li>il est aussi écouté par <code>mod_search</code>, qui peut relancer un appel à <code>geo.api.gouv.fr</code> : un rafraîchissement purement local déclencherait une requête réseau ;</li>
+<li>il exige <code>commune_code</code> et <code>department_code</code>, dérivés des parcelles par une logique propre à <code>mod_home</code> — les reconstruire ailleurs dupliquerait ce code, les omettre produirait une restauration partielle.</li>
+</ul><p>Un signal qui en dit plus que nécessaire finit par déclencher plus que nécessaire.</p>
+<p>Garde-fous : idempotence par horodatage (comme <code>restore_project</code>), et un signal mal formé — sans <code>parcels</code>, à 0 ligne, ou sans colonne <code>id</code> — laisse la carte intacte plutôt que de la vider. Mieux vaut un affichage périmé qu’un affichage vide.</p>
+<p>Sans purge, aucun signal n’est posé et rien ne change.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.6" id="nemetonshiny-01306-2026-08-20">nemetonshiny 0.130.6 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01306-2026-08-20"></a></h2>
 <div class="section level4">

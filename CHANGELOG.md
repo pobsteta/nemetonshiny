@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.130.7\] - 2026-08-20
+
+### Fixed
+
+- L’onglet Sélection continuait d’afficher les parcelles retirées par la
+  purge « hors forêt publique » : il ne lit pas `current_project`, sa
+  carte tient son propre état. Nouveau signal étroit
+  `app_state$parcels_changed`, posé par les modules qui modifient
+  `projet$parcels` et écouté par la carte seule — elle redessine et
+  restreint la sélection, sans jamais l’élargir. `restore_project` a été
+  écarté : il réveille `mod_search` (appel réseau) et exige des données
+  que les autres modules n’ont pas.
+
+### Added
+
+- `specs/001-rafraichir-selection-parcelles.md` — première spec
+  applicative du dépôt.
+
 ## \[0.130.6\] - 2026-08-20
 
 ### Added
