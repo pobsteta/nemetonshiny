@@ -2531,6 +2531,22 @@ TRANSLATIONS <- list(
     fr = "%d parcelle(s) sous 10 %% de for\u00eat publique retir\u00e9e(s) du projet.",
     en = "%d parcel(s) under 10 %% public forest removed from the project."
   ),
+  # Pourquoi une ligne " Hors foret publique " subsiste malgre la purge : les
+  # parcelles MI-forestieres gardent leur part hors foret. Sans cette phrase,
+  # l'utilisateur croit la suppression incomplete.
+  onf_purge_partielles_fmt = list(
+    fr = paste0(
+      "%d parcelle(s) rest(e/ent) partiellement foresti\u00e8re(s) : leur ",
+      "part hors for\u00eat est conserv\u00e9e, sinon la parcelle serait ",
+      "trou\u00e9e. C'est ce qui maintient l'UGF \u00ab Hors for\u00eat ",
+      "publique \u00bb."
+    ),
+    en = paste0(
+      "%d parcel(s) remain partly forested: their non-forest share is kept, ",
+      "otherwise the parcel would be punched through. That is what keeps the ",
+      "\"Outside public forest\" UGF alive."
+    )
+  ),
   onf_purge_hors_aucune = list(
     fr = "Aucune parcelle sous 10 % de for\u00eat publique \u00e0 retirer.",
     en = "No parcel under 10 % public forest to remove."

@@ -205,3 +205,36 @@ test_that("les actions ONF refusent un projet sans donnees UGF", {
       expect_false(appele)
     })
 })
+
+test_that("la couche Parcellaire ONF a une case dans TOUS les controles", {
+  skip_if_not_installed("bslib")
+  # Régression v0.130.7.9001 : la surcouche était ajoutée par `addPolygons(group
+  # = "Parcellaire ONF")` mais absente des `overlayGroups`. Sans case dans le
+  # contrôle de couches, elle ne pouvait pas être décochée — elle restait
+  # affichée quoi qu'on fasse, et donnait l'impression que la couche « Dessin »
+  # peignait des parcelles.
+  #
+  # Il y a DEUX contrôles (rendu initial + re-création après `clearControls()`
+  # à chaque redessin) : en oublier un suffit à faire réapparaître le bug.
+  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"), warn = FALSE)
+  ctrl <- grep("overlayGroups = ", src, value = TRUE)
+  expect_length(ctrl, 2L)
+  expect_true(all(grepl("Parcellaire ONF", ctrl, fixed = TRUE)))
+})
+
+test_that("la previsualisation ONF est effacee apres le croisement", {
+  # Régression v0.130.7.9001 : `rv$onf_preview` était posé avant le calcul et
+  # jamais remis à NULL. La surcouche restait superposée au résultat — d'autant
+  # plus trompeuse après une purge, puisqu'elle continuait d'afficher un
+  # parcellaire que le projet ne contenait plus.
+  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"), warn = FALSE)
+  pose <- grep("rv\\$onf_preview <- res\\$parcelles", src)
+  efface <- grep("rv\\$onf_preview <- NULL", src)
+  expect_length(pose, 1L)
+  expect_length(efface, 1L)
+  # L'effacement vient APRÈS la pose, et après le commit du projet.
+  expect_gt(efface, pose)
+  commit <- grep("\\.onf_commit\\(projet_final", src)
+  expect_length(commit, 1L)
+  expect_gt(efface, commit)
+})

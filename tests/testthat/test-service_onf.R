@@ -543,3 +543,68 @@ test_that("le seuil de purge est parametrable et exclusif au bord", {
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
     projet, "Hors foret publique", seuil_foret = NA)$n_supprimees, 0L)
 })
+
+test_that("la purge compte les parcelles restees partiellement forestieres", {
+  skip_if_not_installed("sf")
+  # Ce chiffre existe pour une raison d'interface : une ligne « Hors forêt
+  # publique » qui subsiste après une purge se lit comme un échec, tant qu'on
+  # ignore qu'elle porte les fragments des parcelles mi-forestières.
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  projet <- list(
+    parcels = sf::st_sf(
+      id = c("P60", "P05"), contenance = c(1e4, 1e4),
+      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
+    tenements = sf::st_sf(
+      tenement_id = c("t1", "t2", "t3", "t4"),
+      parent_parcelle_id = c("P60", "P60", "P05", "P05"),
+      ug_id = c("ug_f", "ug_h", "ug_f", "ug_h"),
+      surface_m2 = c(6000, 4000, 500, 9500),
+      surface_sig_m2 = c(6000, 4000, 500, 9500),
+      geometry = sf::st_sfc(carre(0, 60), carre(60, 100),
+                            carre(100, 105), carre(105, 200), crs = 2154)),
+    ugs = data.frame(ug_id = c("ug_f", "ug_h"),
+                     label = c("Foret domaniale X", "Hors foret publique"),
+                     groupe = NA_character_, stringsAsFactors = FALSE))
+
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  expect_equal(out$n_supprimees, 1L)     # P05, forestière à 5 %
+  expect_equal(out$n_partielles, 1L)     # P60 garde sa part hors forêt
+  # Et c'est bien elle qui maintient l'UGF « hors forêt » en vie.
+  expect_true("Hors foret publique" %in% out$projet$ugs$label)
+})
+
+test_that("n_partielles vaut 0 quand la purge ne laisse que du forestier", {
+  skip_if_not_installed("sf")
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  projet <- list(
+    parcels = sf::st_sf(
+      id = c("PF", "P00"), contenance = c(1e4, 1e4),
+      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
+    tenements = sf::st_sf(
+      tenement_id = c("t1", "t2"),
+      parent_parcelle_id = c("PF", "P00"),
+      ug_id = c("ug_f", "ug_h"),
+      surface_m2 = c(1e4, 1e4), surface_sig_m2 = c(1e4, 1e4),
+      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
+    ugs = data.frame(ug_id = c("ug_f", "ug_h"),
+                     label = c("Foret domaniale X", "Hors foret publique"),
+                     groupe = NA_character_, stringsAsFactors = FALSE))
+
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  expect_equal(out$n_supprimees, 1L)
+  expect_equal(out$n_partielles, 0L)
+  # Plus aucun fragment hors forêt : l'UGF disparaît (invariant 3).
+  expect_false("Hors foret publique" %in% out$projet$ugs$label)
+})
+
+test_that("n_partielles est present meme quand la purge ne fait rien", {
+  skip_if_not_installed("sf")
+  projet <- .onf_test_projet()
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  expect_equal(out$n_supprimees, 0L)
+  # Le champ doit exister quoi qu'il arrive : le module lit `%||% 0L`, mais un
+  # champ manquant signalerait un chemin de retour oublié.
+  expect_false(is.null(out$n_partielles))
+})

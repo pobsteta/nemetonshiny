@@ -550,7 +550,7 @@ mod_ug_server <- function(id, app_state) {
           # wipe it with clearGroup("Selection"), but it doesn't belong
           # in the user-facing layers control (toggling it off wouldn't
           # actually deselect tenements -- the IDs live in rv$selected_tenement_ids).
-          overlayGroups = c("UGF", "Tenements", "Dessin"),
+          overlayGroups = c("UGF", "Tenements", "Dessin", "Parcellaire ONF"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -827,7 +827,7 @@ mod_ug_server <- function(id, app_state) {
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Tenements", "Dessin"),
+          overlayGroups = c("UGF", "Tenements", "Dessin", "Parcellaire ONF"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::showGroup("UGF") |>
@@ -2249,8 +2249,8 @@ mod_ug_server <- function(id, app_state) {
             return()
           }
 
-          # Meme surcouche que pour l'import : voir le parcellaire qui a
-          # produit le decoupage, pas seulement son resultat.
+          # Surcouche montrant le parcellaire interroge, AVANT que le
+          # croisement n'ait produit les UGF.
           rv$onf_preview <- res$parcelles
 
           # Calage systematique (cf. UI ci-dessus) : plus de choix a lire.
@@ -2268,17 +2268,27 @@ mod_ug_server <- function(id, app_state) {
           # savoir quelles parcelles sont entierement hors foret.
           projet_final <- out$projet
           n_purgees <- 0L
+          n_partielles <- 0L
           if (purger) {
             purge <- onf_purger_hors_foret(projet_final,
                                            .onf_label_hors_ugf(i18n_snap))
             projet_final <- purge$projet
             n_purgees <- purge$n_supprimees
+            n_partielles <- purge$n_partielles %||% 0L
           }
 
           # `with_parcels` : la purge retire des parcelles du projet, il faut
           # donc les persister ET les refleter dans app_state, sinon l'onglet
           # Selection continuerait d'afficher des parcelles disparues.
           .onf_commit(projet_final, with_parcels = purger)
+
+          # La surcouche a joue son role : les UGF qui viennent d'etre creees
+          # SONT ce parcellaire. La laisser superposait un calque orange
+          # permanent au resultat - d'autant plus trompeur apres une purge,
+          # puisqu'elle continue de montrer un parcellaire que le projet ne
+          # contient plus.
+          rv$onf_preview <- NULL
+
           shiny::removeNotification(.onf_notif_id, session = session)
 
           # Tout est lu dans le retour du coeur, rien n'est recalcule.
@@ -2317,6 +2327,15 @@ mod_ug_server <- function(id, app_state) {
               } else i18n_snap$t("onf_purge_hors_aucune"),
               type = if (n_purgees > 0L) "warning" else "message",
               duration = 10, session = session)
+            # Message SEPARE : il n'explique pas la suppression, il explique ce
+            # qui RESTE. Une ligne " Hors foret publique " qui subsiste apres
+            # une purge se lit comme un echec tant qu'on ignore qu'elle porte
+            # des fragments de parcelles mi-forestieres.
+            if (n_partielles > 0L) {
+              shiny::showNotification(
+                sprintf(i18n_snap$t("onf_purge_partielles_fmt"), n_partielles),
+                type = "message", duration = 12, session = session)
+            }
           }
         }, error = function(e) {
           shiny::removeNotification(.onf_notif_id, session = session)
