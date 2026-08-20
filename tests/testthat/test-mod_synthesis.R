@@ -54,6 +54,40 @@ test_that("les trois surfaces IA partagent le meme accent", {
   expect_false(grepl("card-header bg-info", ap, fixed = TRUE))
   expect_false(grepl("bi-chat-dots", ap, fixed = TRUE))
   expect_false(grepl("bi-robot", rg, fixed = TRUE))
+
+  # La vue Famille a rejoint la charte (v0.130.9.9001).
+  fam <- opts(as.character(nemetonshiny:::mod_family_ui("fam", "W")))
+  expect_true(grepl("btn-ia", fam, fixed = TRUE))
+  expect_true(grepl("stars", fam, fixed = TRUE))
+})
+
+test_that("plus aucune icone robot ne subsiste dans les sources", {
+  # L'accent ne tient que si le robot disparaît PARTOUT — y compris des
+  # `updateActionButton()` qui restaurent l'icône après une génération. Ceux-là
+  # défaisaient l'accent dès la première utilisation du bouton, sans qu'aucun
+  # test d'UI ne le voie : ils ne s'exécutent qu'en session.
+  src <- list.files(testthat::test_path("..", "..", "R"), pattern = "\\.R$",
+                    full.names = TRUE)
+  restants <- unlist(lapply(src, function(f) {
+    l <- readLines(f, warn = FALSE)
+    hit <- grep('icon\\("robot"\\)', l)
+    if (length(hit)) sprintf("%s:%d", basename(f), hit) else NULL
+  }))
+  expect_equal(restants, NULL)
+})
+
+test_that("le CLAUDE.md documente l'accent ambre", {
+  # Sans cette ligne, la règle normative des couleurs de bouton décrit une
+  # hiérarchie où l'ambre n'existe pas : une prochaine relecture y verrait une
+  # entorse esthétique — ce que la règle interdit explicitement — et la
+  # « corrigerait » en repassant le bouton en vert.
+  md <- readLines(testthat::test_path("..", "..", "CLAUDE.md"), warn = FALSE)
+  txt <- paste(md, collapse = "\n")
+  expect_match(txt, "btn-ia", fixed = TRUE)
+  expect_match(txt, "#E8A33D", fixed = TRUE)
+  # Et il dit POURQUOI elle échappe à la hiérarchie, sinon la ligne se lit
+  # comme un sixième niveau d'action.
+  expect_match(txt, "provenance", fixed = TRUE)
 })
 
 test_that("le vert du bloc Tableau des actions n'est PAS touche", {

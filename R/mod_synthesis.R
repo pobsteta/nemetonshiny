@@ -869,10 +869,11 @@ mod_synthesis_server <- function(id, app_state) {
         cli::cli_warn("Cannot save comments: project_id is NULL")
       }
 
-      # Restore button
+      # Restore button. L'icone doit etre celle de l'accent IA : la restaurer
+      # en " robot " reviendrait a defaire l'accent des la premiere generation.
       shiny::updateActionButton(session, "ai_generate",
                                 label = i18n$t("ai_generate"),
-                                icon = shiny::icon("robot"))
+                                icon = bsicons::bs_icon("stars"))
     })
 
     # ================================================================

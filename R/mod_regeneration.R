@@ -2644,8 +2644,9 @@ mod_regeneration_server <- function(id, app_state) {
       insert_btn <- htmltools::div(class = "mb-2",
         shiny::actionButton(ns("regen_comment_insert_ai"),
           i18n$t("regen_comment_insert_ai"),
-          icon = shiny::icon("robot"),
-          class = "btn-sm btn-outline-primary"))
+          # Insere un conseil GENERE : meme accent que les autres surfaces IA.
+          icon = bsicons::bs_icon("stars"),
+          class = "btn-sm btn-ia"))
       htmltools::tagList(insert_btn,
         htmltools::div(class = "row",
           lapply(rows, function(i) htmltools::div(class = "col-md-6",

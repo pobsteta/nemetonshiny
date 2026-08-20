@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.10] - 2026-08-20
+
+### Changed
+
+- Le bouton IA des vues Famille rejoint l'accent ambre : les quatre surfaces de
+  génération partagent désormais la même signalétique.
+- Une ligne « Ambre » entre dans le tableau des couleurs de bouton du
+  `CLAUDE.md`, avec la raison pour laquelle elle échappe à la hiérarchie
+  sémantique (elle encode une provenance, pas un niveau d'action) et
+  l'interdiction de l'employer pour une action de l'utilisateur.
+
+### Fixed
+
+- `updateActionButton()` restaurait l'icône robot après chaque génération
+  (Synthèse et Famille) : l'accent se défaisait au premier clic. Un test lit
+  désormais les sources et exige qu'aucune icône `robot` ne subsiste — ces
+  appels ne s'exécutant qu'en session, aucun test d'UI ne pouvait les voir.
+- Le bouton « insérer le conseil IA » de reGénération avait échappé au lot
+  précédent.
+
 ## [0.130.9] - 2026-08-20
 
 ### Changed
