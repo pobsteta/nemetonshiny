@@ -970,6 +970,22 @@ start_computation <- function(project_id,
       if (!is.null(sufosat_layer)) {
         sufosat_layer$window_years <- sufosat_cfg$window_years %||% 5
         sufosat_layer$min_proba    <- sufosat_cfg$min_proba %||% 0.9
+        # Ancrage de la fenetre sur l'ANNEE COURANTE (brief 2026-08-20).
+        #
+        # Sans cet argument le coeur laisse `reference_year = NULL` et deduit
+        # l'ancrage de la coupe la PLUS RECENTE trouvee dans les UGF analysees.
+        # La fenetre a alors la bonne largeur mais un point d'appui flottant :
+        # un massif dont les dernieres coupes datent de 2021 est juge sur
+        # 2017-2021, donc une coupe de 2018 y compte comme " recente ". Et deux
+        # projets cessent d'etre comparables des lors que leur coupe la plus
+        # recente differe, meme regles sur la meme fenetre.
+        #
+        # Le slider annonce " fenetre en annees " : l'utilisateur suppose
+        # legitimement qu'elle se termine aujourd'hui. On ne l'expose pas en
+        # troisieme reglage - ce serait lui faire arbitrer une question qui n'a
+        # qu'une bonne reponse par defaut ; le parametre reste joignable par le
+        # code pour une analyse retrospective.
+        sufosat_layer$reference_year <- as.integer(format(Sys.Date(), "%Y"))
         layers$sufosat <- sufosat_layer
       }
     }
@@ -4319,6 +4335,13 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     }
     if ("min_proba" %in% func_args && !is.null(layers$sufosat$min_proba)) {
       args$min_proba <- layers$sufosat$min_proba
+    }
+    # Sans ce relais, `reference_year` reste NULL cote coeur et la fenetre se
+    # rancre sur la derniere coupe detectee au lieu de l'annee courante
+    # (cf. le commentaire de start_computation()).
+    if ("reference_year" %in% func_args &&
+        !is.null(layers$sufosat$reference_year)) {
+      args$reference_year <- layers$sufosat$reference_year
     }
 
     # Rafraichissement urbain (spec 032) -> A5. La LST Theia est stagee dans
