@@ -2477,10 +2477,36 @@ TRANSLATIONS <- list(
     en = "ONF forest parcels"
   ),
   onf_domanialite = list(
-    fr = "Domanialit\u00e9",
-    en = "Ownership"
+    fr = "Domanialit\u00e9 retenue",
+    en = "Ownership retained"
   ),
-  onf_domanialite_toutes = list(fr = "Toutes", en = "All"),
+  # Aucune des deux cochee : le calcul n'a pas d'objet. On le dit plutot que de
+  # lancer une requete qui ne rendrait rien.
+  onf_need_domanialite = list(
+    fr = "Cochez au moins une domanialit\u00e9.",
+    en = "Tick at least one ownership type."
+  ),
+  # Retour de l'auto-selection : combien de parcelles du projet touchent
+  # reellement la foret publique retenue. Sans ce chiffre, l'utilisateur ne sait
+  # pas sur quoi le calcul a porte.
+  # Le bouton n'exige AUCUNE selection prealable : il determine lui-meme les
+  # parcelles concernees. Le dire, sinon l'utilisateur cherche une etape qui
+  # n'existe pas (la note du bas de sidebar, elle, parle de l'autre bouton).
+  onf_auto_select_note = list(
+    fr = paste0(
+      "Aucune s\u00e9lection pr\u00e9alable n'est n\u00e9cessaire : le calcul ",
+      "retient lui-m\u00eame les parcelles cadastrales du projet qui touchent ",
+      "le parcellaire forestier retenu."
+    ),
+    en = paste0(
+      "No prior selection is needed: the computation itself retains the ",
+      "project's cadastral parcels that meet the retained forest parcels."
+    )
+  ),
+  onf_auto_select_fmt = list(
+    fr = "%d parcelle(s) cadastrale(s) sur %d touchent la for\u00eat publique retenue.",
+    en = "%d of %d cadastral parcels meet the retained public forest."
+  ),
   onf_domanialite_domaniale = list(fr = "Domaniales", en = "State-owned"),
   onf_domanialite_autre = list(
     fr = "Communales et autres",

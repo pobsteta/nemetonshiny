@@ -93,8 +93,10 @@ test_that("onf_load_parcelles refuse une emprise absente et borne la domanialite
   expect_equal(nemetonshiny:::onf_load_parcelles(NULL)$status, "no_aoi")
   expect_equal(nemetonshiny:::onf_load_parcelles("pas un sf")$status, "no_aoi")
 
-  # Une valeur inattendue retombe sur "toutes" plutôt que d'être transmise au
-  # cœur, qui la rejetterait.
+  # v0.130.2.9001 — une valeur inattendue ne retombe PLUS sur « toutes » : elle
+  # rend `no_domanialite`. Retomber sur « toutes » revenait à rapatrier un
+  # parcellaire que personne n'a demandé, en silence ; mieux vaut dire que la
+  # question n'a pas d'objet.
   vu <- new.env()
   testthat::with_mocked_bindings(
     load_onf_parcelles_source = function(aoi, domanialite, ...) {
@@ -102,8 +104,11 @@ test_that("onf_load_parcelles refuse une emprise absente et borne la domanialite
     },
     .package = "nemeton",
     {
-      nemetonshiny:::onf_load_parcelles(.onf_test_cadastre(), domanialite = "magie")
-      expect_equal(vu$dom, "toutes")
+      vu$dom <- "non appele"
+      r <- nemetonshiny:::onf_load_parcelles(.onf_test_cadastre(),
+                                             domanialite = "magie")
+      expect_equal(r$status, "no_domanialite")
+      expect_equal(vu$dom, "non appele")
       nemetonshiny:::onf_load_parcelles(.onf_test_cadastre(), domanialite = "domaniale")
       expect_equal(vu$dom, "domaniale")
     })
@@ -265,4 +270,149 @@ test_that(".onf_label_hors_ugf passe par i18n quand il est fourni", {
   expect_true(nzchar(nemetonshiny:::.onf_label_hors_ugf(NULL)))
   expect_false(identical(nemetonshiny:::.onf_label_hors_ugf(NULL),
                          "onf_hors_ugf_label"))
+})
+
+# ---- Domanialité : deux coches, plus de « Toutes » (v0.130.2.9001) ---------
+
+test_that(".onf_domanialite traduit les coches vers l'argument du coeur", {
+  # « Toutes » a disparu de l'UI parce qu'elle n'était que la conjonction des
+  # deux autres. Le cœur, lui, attend toujours une chaîne unique.
+  expect_equal(nemetonshiny:::.onf_domanialite(c("domaniale", "autre")), "toutes")
+  expect_equal(nemetonshiny:::.onf_domanialite("domaniale"), "domaniale")
+  expect_equal(nemetonshiny:::.onf_domanialite("autre"), "autre")
+  # Ordre indifférent : ce sont des coches, pas une séquence.
+  expect_equal(nemetonshiny:::.onf_domanialite(c("autre", "domaniale")), "toutes")
+
+  # Aucune cochée n'est PAS « tout » : c'est une question sans objet.
+  expect_null(nemetonshiny:::.onf_domanialite(character(0)))
+  expect_null(nemetonshiny:::.onf_domanialite(NULL))
+  expect_null(nemetonshiny:::.onf_domanialite(c("", NA)))
+
+  # Une valeur déjà résolue passe telle quelle (appel direct au service, tests).
+  expect_equal(nemetonshiny:::.onf_domanialite("toutes"), "toutes")
+  # Une valeur inconnue ne doit pas être transmise au cœur.
+  expect_null(nemetonshiny:::.onf_domanialite("magie"))
+})
+
+test_that("onf_load_parcelles rend no_domanialite sans appeler le coeur", {
+  skip_if_not_installed("sf")
+  appele <- FALSE
+  testthat::with_mocked_bindings(
+    load_onf_parcelles_source = function(...) { appele <<- TRUE; NULL },
+    .package = "nemeton",
+    {
+      r <- nemetonshiny:::onf_load_parcelles(.onf_test_cadastre(),
+                                             domanialite = character(0))
+      expect_equal(r$status, "no_domanialite")
+      expect_null(r$parcelles)
+    })
+  # Le garde est EN AMONT : pas de requête réseau pour une question sans objet.
+  expect_false(appele)
+})
+
+test_that("les deux coches se traduisent en 'toutes' pour le coeur", {
+  skip_if_not_installed("sf")
+  vu <- new.env()
+  testthat::with_mocked_bindings(
+    load_onf_parcelles_source = function(aoi, domanialite, ...) {
+      vu$dom <- domanialite; .onf_test_parcelles()
+    },
+    .package = "nemeton",
+    {
+      nemetonshiny:::onf_load_parcelles(.onf_test_cadastre(),
+                                        domanialite = c("domaniale", "autre"))
+      expect_equal(vu$dom, "toutes")
+      nemetonshiny:::onf_load_parcelles(.onf_test_cadastre(),
+                                        domanialite = "domaniale")
+      expect_equal(vu$dom, "domaniale")
+    })
+})
+
+
+# ---- Auto-sélection des parcelles concernées (v0.130.2.9001) ---------------
+
+test_that(".onf_parcelles_concernees ne retient que ce qui touche la foret", {
+  skip_if_not_installed("sf")
+  cad <- .onf_test_cadastre()
+  # Une troisième parcelle, loin de tout : elle ne doit pas être retenue.
+  loin <- sf::st_sf(
+    id = "C3", contenance = 1e4,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(10000, 10000), c(10100, 10000), c(10100, 10100),
+      c(10000, 10100), c(10000, 10000)))), crs = 2154))
+  cad3 <- rbind(cad, loin)
+
+  sel <- nemetonshiny:::.onf_parcelles_concernees(cad3, .onf_test_parcelles())
+  expect_equal(sel, c(TRUE, TRUE, FALSE))
+})
+
+test_that(".onf_parcelles_concernees gere les CRS differents", {
+  skip_if_not_installed("sf")
+  # Cas réel : le cadastre IGN arrive en 4326, le parcellaire ONF en 2154.
+  # Sans reprojection, `st_intersects()` lève une erreur — et une auto-sélection
+  # qui échoue silencieusement retiendrait zéro parcelle.
+  cad_4326 <- sf::st_transform(.onf_test_cadastre(), 4326)
+  sel <- nemetonshiny:::.onf_parcelles_concernees(cad_4326, .onf_test_parcelles())
+  expect_equal(sel, c(TRUE, TRUE))
+})
+
+test_that(".onf_parcelles_concernees ne retient rien sans parcellaire", {
+  skip_if_not_installed("sf")
+  cad <- .onf_test_cadastre()
+  expect_equal(nemetonshiny:::.onf_parcelles_concernees(cad, NULL),
+               c(FALSE, FALSE))
+  expect_equal(nemetonshiny:::.onf_parcelles_concernees(
+    cad, .onf_test_parcelles()[0, ]), c(FALSE, FALSE))
+})
+
+test_that("l'auto-selection donne le MEME resultat que le croisement complet", {
+  skip_if_not_installed("sf")
+  # C'est le test qui autorise l'optimisation. Les parcelles écartées sont
+  # réinjectées ENTIÈRES sous « hors forêt » — mot pour mot ce que le croisement
+  # complet en aurait fait. Si ce test tombe, l'auto-sélection change le
+  # résultat et n'est plus une optimisation mais un bug.
+  cad <- .onf_test_cadastre()
+  loin <- sf::st_sf(
+    id = "C3", contenance = 1e4,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(10000, 10000), c(10100, 10000), c(10100, 10100),
+      c(10000, 10100), c(10000, 10000)))), crs = 2154))
+  cad3 <- rbind(cad, loin)
+  projet <- nemetonshiny:::ug_init_default(list(parcels = cad3))
+
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
+                                          label_hors = "Hors foret publique")
+  expect_equal(out$status, "ok")
+  expect_equal(out$n_retenues, 2L)      # C1 et C2, pas C3
+  expect_equal(out$n_total, 3L)
+
+  p <- out$projet
+  # C3 n'a pas disparu : elle porte un tènement, rattaché à « hors forêt ».
+  expect_true("C3" %in% p$tenements$parent_parcelle_id)
+  ug_hors <- p$ugs$ug_id[p$ugs$label == "Hors foret publique"]
+  expect_length(ug_hors, 1L)
+  expect_true(all(p$tenements$ug_id[p$tenements$parent_parcelle_id == "C3"]
+                  %in% ug_hors))
+  expect_silent(nemetonshiny:::projet_validate(p))
+
+  # Pavage de C3 : la parcelle écartée est couverte en entier.
+  a <- sum(as.numeric(sf::st_area(
+    p$tenements[p$tenements$parent_parcelle_id == "C3", ])))
+  b <- as.numeric(sf::st_area(cad3[cad3$id == "C3", ]))
+  expect_equal(a, b, tolerance = 1e-4)
+})
+
+test_that("aucune parcelle concernee rend no_overlap et n'altere pas le projet", {
+  skip_if_not_installed("sf")
+  projet <- .onf_test_projet()
+  loin <- .onf_test_parcelles()
+  sf::st_geometry(loin) <- sf::st_geometry(loin) + c(10000, 10000)
+  sf::st_crs(loin) <- 2154
+
+  out <- nemetonshiny:::onf_projet_croise(projet, loin,
+                                          label_hors = "Hors foret publique")
+  expect_equal(out$status, "no_overlap")
+  expect_equal(out$n_retenues, 0L)
+  # Le projet ressort intact — aucune UGF « hors forêt » n'apparaît.
+  expect_equal(out$projet$ugs$label, projet$ugs$label)
 })

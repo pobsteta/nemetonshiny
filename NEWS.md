@@ -1,3 +1,54 @@
+# nemetonshiny 0.130.3 (2026-08-20)
+
+### Changed — Le bouton ONF ne demande plus de sélection préalable
+
+« Créer les UGF avec le parcellaire ONF » détermine désormais lui-même les
+parcelles cadastrales concernées : celles du projet qui rencontrent le
+parcellaire forestier retenu. Un toast dit lesquelles — « N parcelles
+cadastrales sur M touchent la forêt publique retenue ».
+
+Le croisement ne porte plus que sur elles ; les autres sont réinjectées
+entières sous « Hors forêt publique », ce qui est **mot pour mot** ce que le
+croisement complet en aurait fait — une ligne, la parcelle entière,
+`hors_ugf = TRUE` — obtenu sans calcul géométrique. Mesuré sur La-Vieille-Loye :
+**181 parcelles retenues sur 1 271**, et le calcul passe de **31,5 s à 11,1 s**.
+
+Résultat vérifié identique au croisement complet : mêmes tènements (1 365),
+mêmes UGF (86), même répartition, mêmes surfaces (9 028 796 m²), toutes les
+parcelles couvertes.
+
+**Une nuance mesurée** : le pavage passe de 0,000000 % à **0,001231 %** d'écart
+maximal — la réinjection impose un aller-retour de projection, qui arrondit.
+C'est 40 fois sous la tolérance de `validate_tiling()` (0,05 %), laquelle existe
+précisément pour absorber ce genre d'arrondi. Le correctif propre est côté cœur
+(voir ci-dessous).
+
+### Changed — Domanialité : deux cases au lieu de trois choix
+
+Le radio *Toutes / Domaniales / Communales et autres* devient deux cases,
+**Domaniales** et **Communales et autres**, cochées toutes deux par défaut.
+« Toutes » n'était que leur conjonction — une troisième façon de dire la même
+chose, qui invitait à se demander en quoi elle différait.
+
+Le filtre agit **en amont** du croisement : ne cocher que « Domaniales » restreint
+aussi les parcelles cadastrales auto-sélectionnées. Ne rien cocher n'est pas
+« tout » mais une question sans objet, et le dit — sans lancer de requête.
+
+### Changed — La note de calage passe dans un « i »
+
+Le paragraphe permanent sous le sélecteur devient un popover à droite du bouton,
+qui porte les deux explications : l'absence de sélection préalable et le calage
+cadastral. Ce sont des explications qu'on lit une fois, pas des valeurs qu'on
+surveille — et le paragraphe repoussait le bouton vers le bas.
+
+### Dette identifiée — le tri des parcelles appartient au cœur
+
+`.onf_parcelles_concernees()` répond à une question géométrique sur le domaine,
+pas de présentation : sa place est dans `nemeton`, idéalement **absorbée dans
+`croiser_parcelles_onf()`**. Le cœur pourrait alors émettre directement les
+lignes `hors_ugf` des parcelles écartées, dans le bon CRS — récupérant le gain
+de vitesse **et** le pavage exact, pour tous ses consommateurs. Brief à suivre.
+
 # nemetonshiny 0.130.2 (2026-08-19)
 
 ### Changed — Le calage sur les limites cadastrales devient systématique

@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.130.3] - 2026-08-20
+
+### Changed
+
+- Le bouton « Créer les UGF avec le parcellaire ONF » ne demande plus de
+  sélection préalable : il retient lui-même les parcelles cadastrales qui
+  rencontrent le parcellaire forestier, et l'annonce. Mesuré sur
+  La-Vieille-Loye : 181 parcelles sur 1 271, calcul de 31,5 s à 11,1 s, résultat
+  identique au croisement complet (le pavage passe toutefois de 0,000000 % à
+  0,001231 % d'écart, 40× sous la tolérance).
+- La domanialité passe de trois choix exclusifs à deux cases cochables
+  ensemble ; « Toutes » n'était que leur conjonction. Le filtre agit en amont du
+  croisement, donc sur l'auto-sélection. Ne rien cocher rend un message dédié
+  sans lancer de requête.
+- La note de calage passe du paragraphe permanent à un « i » à côté du bouton.
+
 ## [0.130.2] - 2026-08-19
 
 ### Changed

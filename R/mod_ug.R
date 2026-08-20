@@ -226,16 +226,20 @@ mod_ug_map_actions_bar <- function(id) {
         class = "text-muted small mb-2",
         i18n$t("onf_grain_parcelle")
       ),
-      shiny::radioButtons(
+      # Deux coches plutot qu'un radio a trois branches : " Toutes " n'etait que
+      # la conjonction des deux autres, donc une troisieme facon de dire la meme
+      # chose. Les deux cochees = tout le parcellaire public, ce qui reste le
+      # defaut. Ce choix filtre le parcellaire AVANT le croisement, donc il
+      # determine aussi quelles parcelles cadastrales sont retenues.
+      shiny::checkboxGroupInput(
         ns("onf_domanialite"),
         label = i18n$t("onf_domanialite"),
         choices = stats::setNames(
-          c("toutes", "domaniale", "autre"),
-          c(i18n$t("onf_domanialite_toutes"),
-            i18n$t("onf_domanialite_domaniale"),
+          c("domaniale", "autre"),
+          c(i18n$t("onf_domanialite_domaniale"),
             i18n$t("onf_domanialite_autre"))
         ),
-        selected = "toutes"
+        selected = c("domaniale", "autre")
       ),
       # v0.130.1.9001 - le calage sur les limites cadastrales etait une coche,
       # decochee par defaut. Il est desormais SYSTEMATIQUE, et la coche est
@@ -246,16 +250,28 @@ mod_ug_map_actions_bar <- function(id) {
       # exactement cadastraux. Le garde-fou du coeur reste entier - une parcelle
       # reellement partagee entre deux UGF n'est PAS calee, et le " hors UGF "
       # ne peut jamais prendre une parcelle.
-      htmltools::tags$p(
-        class = "text-muted small mb-2",
-        i18n$t("onf_caler_note")
-      ),
-      shiny::actionButton(
-        ns("btn_onf_croise"),
-        label = i18n$t("onf_croise_btn"),
-        icon = shiny::icon("code-branch"),
-        class = "btn-primary",
-        width = "100%"
+      # La note de calage vit dans un " i " a cote du bouton plutot qu'en
+      # paragraphe permanent : c'est une explication qu'on lit une fois, pas une
+      # valeur qu'on surveille. Le paragraphe repoussait le bouton vers le bas.
+      htmltools::div(
+        class = "d-flex align-items-center gap-2 mb-2",
+        htmltools::div(
+          class = "flex-grow-1",
+          shiny::actionButton(
+            ns("btn_onf_croise"),
+            label = i18n$t("onf_croise_btn"),
+            icon = shiny::icon("code-branch"),
+            class = "btn-primary",
+            width = "100%"
+          )
+        ),
+        info_popover(
+          htmltools::tagList(
+            htmltools::tags$p(i18n$t("onf_auto_select_note")),
+            htmltools::tags$p(class = "mb-0", i18n$t("onf_caler_note"))
+          ),
+          placement = "left"
+        )
       ),
       htmltools::tags$p(
         class = "text-muted small fst-italic mt-1 mb-0",
@@ -2116,10 +2132,11 @@ mod_ug_server <- function(id, app_state) {
     # le meme evenement, et aucun des deux n'est une erreur.
     .onf_notify_status <- function(status, i18n_snap) {
       key <- switch(status,
-        unavailable = "onf_unavailable",
-        empty       = "onf_no_public_forest",
-        no_aoi      = "onf_need_aoi",
-        no_overlap  = "onf_no_overlap",
+        unavailable     = "onf_unavailable",
+        empty           = "onf_no_public_forest",
+        no_aoi          = "onf_need_aoi",
+        no_overlap      = "onf_no_overlap",
+        no_domanialite  = "onf_need_domanialite",
         NULL)
       if (is.null(key)) return(FALSE)
       shiny::showNotification(
@@ -2184,7 +2201,9 @@ mod_ug_server <- function(id, app_state) {
       }
 
       i18n_snap <- shiny::isolate(i18n())
-      dom       <- shiny::isolate(input$onf_domanialite) %||% "toutes"
+      # Vecteur des coches. `onf_load_parcelles()` le traduit en argument coeur
+      # et rend le statut " no_domanialite " si aucune n'est cochee.
+      dom       <- shiny::isolate(input$onf_domanialite)
       .onf_spinner_on(i18n_snap)
 
       later::later(function() {
@@ -2222,6 +2241,14 @@ mod_ug_server <- function(id, app_state) {
             sprintf(i18n_snap$t("onf_croise_success_fmt"), r$n_ugf, r$n_parcelles),
             type = "message", duration = 10, session = session
           )
+          # Ce que l'auto-selection a retenu : sans ce chiffre, l'utilisateur ne
+          # sait pas sur quelle part de son cadastre le calcul a porte.
+          if (!is.null(out$n_total) && out$n_total > 0L) {
+            shiny::showNotification(
+              sprintf(i18n_snap$t("onf_auto_select_fmt"),
+                      out$n_retenues, out$n_total),
+              type = "message", duration = 10, session = session)
+          }
           if (r$n_multi > 0L) {
             shiny::showNotification(
               sprintf(i18n_snap$t("onf_croise_multi_fmt"), r$n_multi),
