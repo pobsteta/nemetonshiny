@@ -507,10 +507,11 @@ mod_family_server <- function(id, family_code, app_state) {
         )
       })
 
-      # Restore button
+      # Restore button. L'icone doit etre celle de l'accent IA : la restaurer
+      # en " robot " reviendrait a defaire l'accent des la premiere generation.
       shiny::updateActionButton(session, "ai_generate",
                                 label = i18n$t("ai_generate"),
-                                icon = shiny::icon("robot"))
+                                icon = bsicons::bs_icon("stars"))
     })
 
     # ================================================================

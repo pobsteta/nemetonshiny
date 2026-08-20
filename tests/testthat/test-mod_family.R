@@ -102,7 +102,12 @@ test_that("mod_family_ui contains AI generate button", {
 
   # Should contain AI generate button
   expect_true(grepl("famille_carbone-ai_generate", ui_html))
-  expect_true(grepl("robot", ui_html))
+  # v0.130.9.9001 — accent IA : ambre + trois étoiles, à la place du robot.
+  # La couleur y dit une PROVENANCE (contenu généré), pas un niveau d'action ;
+  # cf. la ligne « Ambre » du tableau des couleurs de bouton dans CLAUDE.md.
+  expect_true(grepl("btn-ia", ui_html, fixed = TRUE))
+  expect_true(grepl("stars", ui_html, fixed = TRUE))
+  expect_false(grepl("robot", ui_html, fixed = TRUE))
 })
 
 test_that("build_analysis_prompt returns valid prompt string", {

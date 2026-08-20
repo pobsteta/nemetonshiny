@@ -798,11 +798,13 @@ mod_family_ui <- function(id, family_code) {
                 width = "auto"
               )
             ),
+            # Accent IA, comme la Synthese : ce bouton produit du contenu
+            # GENERE, la couleur dit une provenance et non un niveau d'action.
             shiny::actionButton(
               ns("ai_generate"),
               label = i18n$t("ai_generate"),
-              icon = shiny::icon("robot"),
-              class = "btn-outline-primary btn-sm"
+              icon = bsicons::bs_icon("stars"),
+              class = "btn-ia btn-sm"
             )
           )
         ),
