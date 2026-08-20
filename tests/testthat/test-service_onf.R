@@ -386,3 +386,160 @@ test_that("aucune parcelle concernee rend no_overlap et n'altere pas le projet",
   # Le projet ressort intact — aucune UGF « hors forêt » n'apparaît.
   expect_equal(out$projet$ugs$label, projet$ugs$label)
 })
+
+# ---- Purge des parcelles hors foret publique (v0.130.5.9001) ---------------
+
+test_that("onf_purger_hors_foret raisonne par PARCELLE, jamais par tenement", {
+  skip_if_not_installed("sf")
+  # C'est la subtilité du lot. Une parcelle seulement EN PARTIE forestière porte
+  # aussi un fragment « hors forêt » — la part que la forêt ne couvre pas. Ce
+  # fragment est ce qui rend la parcelle exactement pavée : le supprimer
+  # trouerait une parcelle que l'utilisateur possède. Le test porte donc sur la
+  # PARCELLE, pas sur le tènement.
+  cad <- .onf_test_cadastre()
+  loin <- sf::st_sf(
+    id = "C3", contenance = 1e4,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(10000, 10000), c(10100, 10000), c(10100, 10100),
+      c(10000, 10100), c(10000, 10000)))), crs = 2154))
+  cad3 <- rbind(cad, loin)
+  projet <- nemetonshiny:::ug_init_default(list(parcels = cad3))
+
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
+                                          label_hors = "Hors foret publique")
+  avant <- out$projet
+  # C2 est mi-forestière : elle porte un tènement forestier ET un hors-forêt.
+  expect_true("C2" %in% avant$tenements$parent_parcelle_id)
+  expect_true("C3" %in% avant$tenements$parent_parcelle_id)
+
+  purge <- nemetonshiny:::onf_purger_hors_foret(avant, "Hors foret publique")
+  p <- purge$projet
+
+  # Seule C3, entièrement hors forêt, disparaît.
+  expect_equal(purge$n_supprimees, 1L)
+  expect_false("C3" %in% p$tenements$parent_parcelle_id)
+  expect_false("C3" %in% as.character(p$parcels$id))
+  # C2 reste, AVEC son fragment hors forêt : sa surface est intacte.
+  expect_true("C2" %in% p$tenements$parent_parcelle_id)
+  a <- sum(as.numeric(sf::st_area(
+    p$tenements[p$tenements$parent_parcelle_id == "C2", ])))
+  b <- as.numeric(sf::st_area(cad3[cad3$id == "C2", ]))
+  expect_equal(a, b, tolerance = 1e-4)
+  expect_silent(nemetonshiny:::projet_validate(p))
+})
+
+test_that("la purge retire les parcelles de $parcels, pas seulement des tenements", {
+  skip_if_not_installed("sf")
+  # Les laisser dans $parcels produirait des parcelles SANS tènement : visibles
+  # dans l'onglet Sélection, absentes de la carte UGF, rattachées à aucune unité
+  # de gestion. Un état que le reste de l'app n'attend pas.
+  cad <- .onf_test_cadastre()
+  loin <- sf::st_sf(
+    id = "C3", contenance = 1e4,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(10000, 10000), c(10100, 10000), c(10100, 10100),
+      c(10000, 10100), c(10000, 10000)))), crs = 2154))
+  projet <- nemetonshiny:::ug_init_default(list(parcels = rbind(cad, loin)))
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
+                                          label_hors = "Hors foret publique")
+  p <- nemetonshiny:::onf_purger_hors_foret(out$projet, "Hors foret publique")$projet
+
+  expect_equal(nrow(p$parcels), 2L)
+  # Aucune parcelle orpheline : toute parcelle restante porte au moins un tènement.
+  expect_setequal(as.character(p$parcels$id),
+                  unique(as.character(p$tenements$parent_parcelle_id)))
+})
+
+test_that("la purge supprime l'UGF hors foret devenue vide", {
+  skip_if_not_installed("sf")
+  # Une UGF que plus aucun tènement ne porte violerait l'invariant 3.
+  cad <- .onf_test_cadastre()
+  # Ici les deux parcelles touchent la forêt, mais C2 déborde : son fragment
+  # hors forêt subsiste, donc l'UGF « hors » doit RESTER.
+  projet <- nemetonshiny:::ug_init_default(list(parcels = cad))
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
+                                          label_hors = "Hors foret publique")
+  purge <- nemetonshiny:::onf_purger_hors_foret(out$projet, "Hors foret publique")
+  expect_equal(purge$n_supprimees, 0L)
+  expect_true("Hors foret publique" %in% purge$projet$ugs$label)
+  expect_silent(nemetonshiny:::projet_validate(purge$projet))
+})
+
+test_that("la purge est un no-op quand il n'y a pas d'UGF hors foret", {
+  skip_if_not_installed("sf")
+  projet <- .onf_test_projet()
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  expect_equal(out$n_supprimees, 0L)
+  expect_equal(nrow(out$projet$tenements), nrow(projet$tenements))
+  expect_equal(out$projet$ugs$label, projet$ugs$label)
+})
+
+test_that("la purge retire aussi les parcelles forestieres a moins de 10 %", {
+  skip_if_not_installed("sf")
+  # Une parcelle que la forêt ne fait qu'effleurer est un effet de bord de
+  # numérisation, pas un peuplement à gérer — et la porter dans le plan dilue
+  # tous les indicateurs calculés par unité. Le seuil de 10 % englobe le cas
+  # « aucune forêt » (part 0) et y ajoute ces parcelles-là.
+  #
+  # Projet construit à la main pour maîtriser les parts exactement : la
+  # parcelle P90 est forestière à 90 %, P05 à 5 %.
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  parcels <- sf::st_sf(
+    id = c("P90", "P05"), contenance = c(1e4, 1e4),
+    geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154))
+
+  tenements <- sf::st_sf(
+    tenement_id = c("t1", "t2", "t3", "t4"),
+    parent_parcelle_id = c("P90", "P90", "P05", "P05"),
+    ug_id = c("ug_f", "ug_h", "ug_f", "ug_h"),
+    surface_m2 = c(9000, 1000, 500, 9500),
+    surface_sig_m2 = c(9000, 1000, 500, 9500),
+    geometry = sf::st_sfc(carre(0, 90), carre(90, 100),
+                          carre(100, 105), carre(105, 200), crs = 2154))
+  ugs <- data.frame(
+    ug_id = c("ug_f", "ug_h"),
+    label = c("Foret domaniale X", "Hors foret publique"),
+    groupe = NA_character_, stringsAsFactors = FALSE)
+  projet <- list(parcels = parcels, tenements = tenements, ugs = ugs)
+
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  expect_equal(out$n_supprimees, 1L)
+  # P05 (5 % de forêt) part ENTIÈRE, y compris son tènement forestier.
+  expect_false("P05" %in% out$projet$tenements$parent_parcelle_id)
+  expect_false("P05" %in% as.character(out$projet$parcels$id))
+  # P90 reste entière, part hors forêt comprise.
+  expect_setequal(out$projet$tenements$parent_parcelle_id, c("P90", "P90"))
+  expect_silent(nemetonshiny:::projet_validate(out$projet))
+})
+
+test_that("le seuil de purge est parametrable et exclusif au bord", {
+  skip_if_not_installed("sf")
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  # Parcelle forestière à EXACTEMENT 10 %.
+  projet <- list(
+    parcels = sf::st_sf(id = "P10", contenance = 1e4,
+                        geometry = sf::st_sfc(carre(0, 100), crs = 2154)),
+    tenements = sf::st_sf(
+      tenement_id = c("t1", "t2"), parent_parcelle_id = c("P10", "P10"),
+      ug_id = c("ug_f", "ug_h"), surface_m2 = c(1000, 9000),
+      surface_sig_m2 = c(1000, 9000),
+      geometry = sf::st_sfc(carre(0, 10), carre(10, 100), crs = 2154)),
+    ugs = data.frame(ug_id = c("ug_f", "ug_h"),
+                     label = c("Foret domaniale X", "Hors foret publique"),
+                     groupe = NA_character_, stringsAsFactors = FALSE))
+
+  # Au seuil exact, la parcelle est CONSERVÉE (`<`, pas `<=`).
+  expect_equal(nemetonshiny:::onf_purger_hors_foret(
+    projet, "Hors foret publique", seuil_foret = 0.10)$n_supprimees, 0L)
+  # Un seuil plus haut l'emporte.
+  expect_equal(nemetonshiny:::onf_purger_hors_foret(
+    projet, "Hors foret publique", seuil_foret = 0.20)$n_supprimees, 1L)
+  # Seuil 0 : seules les parcelles SANS la moindre forêt partiraient.
+  expect_equal(nemetonshiny:::onf_purger_hors_foret(
+    projet, "Hors foret publique", seuil_foret = 0)$n_supprimees, 0L)
+  # Seuil aberrant -> défaut 10 %.
+  expect_equal(nemetonshiny:::onf_purger_hors_foret(
+    projet, "Hors foret publique", seuil_foret = NA)$n_supprimees, 0L)
+})

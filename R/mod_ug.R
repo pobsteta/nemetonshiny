@@ -250,6 +250,19 @@ mod_ug_map_actions_bar <- function(id) {
       # exactement cadastraux. Le garde-fou du coeur reste entier - une parcelle
       # reellement partagee entre deux UGF n'est PAS calee, et le " hors UGF "
       # ne peut jamais prendre une parcelle.
+      # Purge optionnelle, DECOCHEE par defaut : elle retire des parcelles du
+      # projet, ce qui oblige a repasser par Selection pour les recuperer. Un
+      # defaut destructif serait indefendable.
+      htmltools::div(
+        class = "d-flex align-items-center mb-2",
+        shiny::checkboxInput(
+          ns("onf_purge_hors"),
+          label = i18n$t("onf_purge_hors"),
+          value = FALSE,
+          width = "100%"
+        ),
+        info_popover_in_label(i18n$t("onf_purge_hors_tip"))
+      ),
       # La note de calage vit dans un " i " a cote du bouton plutot qu'en
       # paragraphe permanent : c'est une explication qu'on lit une fois, pas une
       # valeur qu'on surveille. Le paragraphe repoussait le bouton vers le bas.
@@ -2085,6 +2098,13 @@ mod_ug_server <- function(id, app_state) {
     # (import ONF), pas seulement le decoupage.
     .onf_commit <- function(projet, with_parcels = FALSE) {
       if (!is.null(projet$metadata$id)) {
+        # `save_ug_data()` n'ecrit QUE tenements.gpkg et ugs.json. Quand les
+        # PARCELLES elles-memes ont change (purge des parcelles hors foret),
+        # il faut aussi reecrire parcels.gpkg - sinon elles reapparaitraient au
+        # prochain chargement du projet, sans leurs tenements.
+        if (isTRUE(with_parcels) && !is.null(projet$parcels)) {
+          save_parcels(projet$metadata$id, projet$parcels)
+        }
         save_ug_data(projet$metadata$id, projet)
         # Les ug_id sont neufs : un indicators.parquet cache pointerait sur les
         # ANCIENS, et compute_all_indicators() sauterait tout en croyant avoir
@@ -2204,6 +2224,7 @@ mod_ug_server <- function(id, app_state) {
       # Vecteur des coches. `onf_load_parcelles()` le traduit en argument coeur
       # et rend le statut " no_domanialite " si aucune n'est cochee.
       dom       <- shiny::isolate(input$onf_domanialite)
+      purger    <- isTRUE(shiny::isolate(input$onf_purge_hors))
       .onf_spinner_on(i18n_snap)
 
       later::later(function() {
@@ -2232,7 +2253,21 @@ mod_ug_server <- function(id, app_state) {
             return()
           }
 
-          .onf_commit(out$projet)
+          # Purge optionnelle, APRES le croisement : elle a besoin des UGF pour
+          # savoir quelles parcelles sont entierement hors foret.
+          projet_final <- out$projet
+          n_purgees <- 0L
+          if (purger) {
+            purge <- onf_purger_hors_foret(projet_final,
+                                           .onf_label_hors_ugf(i18n_snap))
+            projet_final <- purge$projet
+            n_purgees <- purge$n_supprimees
+          }
+
+          # `with_parcels` : la purge retire des parcelles du projet, il faut
+          # donc les persister ET les refleter dans app_state, sinon l'onglet
+          # Selection continuerait d'afficher des parcelles disparues.
+          .onf_commit(projet_final, with_parcels = purger)
           shiny::removeNotification(.onf_notif_id, session = session)
 
           # Tout est lu dans le retour du coeur, rien n'est recalcule.
@@ -2259,10 +2294,18 @@ mod_ug_server <- function(id, app_state) {
               sprintf(i18n_snap$t("onf_croise_partielle_fmt"), length(r$partielles)),
               type = "warning", duration = 10, session = session)
           }
-          if (r$surface_hors_ha > 0) {
+          if (r$surface_hors_ha > 0 && !purger) {
             shiny::showNotification(
               sprintf(i18n_snap$t("onf_croise_hors_fmt"), r$surface_hors_ha),
               type = "message", duration = 10, session = session)
+          }
+          if (purger) {
+            shiny::showNotification(
+              if (n_purgees > 0L) {
+                sprintf(i18n_snap$t("onf_purge_hors_fmt"), n_purgees)
+              } else i18n_snap$t("onf_purge_hors_aucune"),
+              type = if (n_purgees > 0L) "warning" else "message",
+              duration = 10, session = session)
           }
         }, error = function(e) {
           shiny::removeNotification(.onf_notif_id, session = session)
