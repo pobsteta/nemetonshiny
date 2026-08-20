@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,25 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.8" id="nemetonshiny-01308-2026-08-20">nemetonshiny 0.130.8 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01308-2026-08-20"></a></h2>
+<div class="section level4">
+<h4 id="fixed--une-couche-orange-restait-affichée-sur-la-carte-ugf-impossible-à-masquer-0-130-8">Fixed — Une couche orange restait affichée sur la Carte UGF, impossible à masquer<a class="anchor" aria-label="anchor" href="#fixed--une-couche-orange-restait-affich%C3%A9e-sur-la-carte-ugf-impossible-%C3%A0-masquer-0-130-8"></a></h4>
+<p>Deux défauts se combinaient pour laisser un calque de polygones orange en permanence sur la carte, y compris après la purge des parcelles hors forêt — au point de faire croire que la couche « Dessin » peignait le cadastre.</p>
+<p><strong>La couche « Parcellaire ONF » n’avait pas de case.</strong> Elle était ajoutée par <code>addPolygons(group = "Parcellaire ONF")</code> mais absente des <code>overlayGroups</code> des <strong>deux</strong> contrôles de couches (le rendu initial, et celui recréé après <code>clearControls()</code> à chaque redessin). Sans case, impossible de la décocher : elle restait visible quoi qu’on fasse. Décocher « UGF » et « Tenements » ne changeait rien, ce qui laissait « Dessin » — seule case encore cochée — comme coupable apparent.</p>
+<p><strong>La prévisualisation n’était jamais effacée.</strong> <code>rv$onf_preview</code> était posé avant le croisement et jamais remis à <code>NULL</code> après. La surcouche restait donc superposée au résultat indéfiniment, et affichait un parcellaire forestier indépendant de ce que le projet contenait réellement — trompeur en particulier après une purge.</p>
+<p>Les UGF créées <strong>sont</strong> ce parcellaire : une fois le croisement fait, la surcouche n’a plus rien à montrer que le résultat ne montre déjà.</p>
+</div>
+<div class="section level4">
+<h4 id="added--dire-pourquoi--hors-forêt-publique--survit-à-une-purge-0-130-8">Added — Dire pourquoi « Hors forêt publique » survit à une purge<a class="anchor" aria-label="anchor" href="#added--dire-pourquoi--hors-for%C3%AAt-publique--survit-%C3%A0-une-purge-0-130-8"></a></h4>
+<p>Un second message suit désormais celui du nombre de parcelles supprimées :</p>
+<blockquote>
+<p>N parcelle(s) rest(e/ent) partiellement forestière(s) : leur part hors forêt est conservée, sinon la parcelle serait trouée. C’est ce qui maintient l’UGF « Hors forêt publique ».</p>
+</blockquote>
+<p>Le premier message rend compte de l’action demandée ; celui-ci désamorce une lecture erronée du résultat. Une ligne « Hors forêt publique » qui subsiste après avoir explicitement demandé la suppression se lit comme un échec, tant qu’on ignore qu’elle porte les fragments des parcelles mi-forestières.</p>
+<p>Il ne s’affiche que s’il y a effectivement des parcelles partielles.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.7" id="nemetonshiny-01307-2026-08-20">nemetonshiny 0.130.7 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01307-2026-08-20"></a></h2>
 <p>Implémente <code>specs/001-rafraichir-selection-parcelles.md</code>.</p>

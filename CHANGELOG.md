@@ -12,6 +12,25 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.130.8\] - 2026-08-20
+
+### Fixed
+
+- La couche « Parcellaire ONF » de la Carte UGF n’était déclarée dans
+  aucun des deux `overlayGroups` : sans case dans le contrôle de
+  couches, elle restait affichée et ne pouvait pas être masquée.
+- La prévisualisation ONF (`rv$onf_preview`) n’était jamais remise à
+  `NULL` après le croisement : la surcouche restait superposée au
+  résultat, affichant un parcellaire que le projet ne contenait plus
+  après une purge.
+
+### Added
+
+- Un second message après la purge indique combien de parcelles restent
+  partiellement forestières, et pourquoi cela maintient l’UGF « Hors
+  forêt publique » — sans quoi sa survie se lit comme un échec de la
+  suppression.
+
 ## \[0.130.7\] - 2026-08-20
 
 ### Fixed
