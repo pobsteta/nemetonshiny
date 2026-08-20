@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.130.6\] - 2026-08-20
+
+### Added
+
+- Coche « Supprimer les parcelles hors forêt publique (\< 10 %) » dans
+  Carte UGF, décochée par défaut : retire du projet les parcelles que la
+  forêt publique ne couvre pas ou couvre à moins de 10 %. Le
+  raisonnement porte sur la parcelle, jamais sur le tènement — une
+  parcelle forestière à 10 % ou plus est conservée entière, part hors
+  forêt comprise. Les parcelles retirées quittent `$parcels` et
+  `$tenements`, et `parcels.gpkg` est réécrit.
+
 ## \[0.130.5\] - 2026-08-20
 
 ### Fixed

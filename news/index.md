@@ -1,5 +1,44 @@
 # Changelog
 
+## nemetonshiny 0.130.6 (2026-08-20)
+
+#### Added — Supprimer les parcelles que la forêt publique ne couvre pas
+
+Une coche apparaît dans Carte UGF, sous le sélecteur de domanialité :
+**« Supprimer les parcelles hors forêt publique (\< 10 %) »**,
+**décochée par défaut**. Elle retire du projet, à l’issue du croisement,
+les parcelles cadastrales que la forêt publique ne couvre pas ou couvre
+à moins de 10 %.
+
+Une parcelle que la forêt effleure à 3 % est un effet de bord de
+numérisation, pas un peuplement à gérer — et la porter dans le plan
+dilue tous les indicateurs calculés par unité.
+
+**Le raisonnement porte sur la PARCELLE, jamais sur le tènement.** Une
+parcelle forestière à 10 % ou plus est conservée **entière**, sa part
+hors forêt comprise : supprimer cette part seule trouerait une parcelle
+que l’utilisateur possède, et romprait le pavage. Ou la parcelle entière
+part, ou rien.
+
+Trois points de conception :
+
+- **La part se lit sur `surface_m2`**, la surface cadastrale déjà
+  répartie entre tènements par le découpage. Aucune géométrie n’est
+  touchée — comparer des parts dans une même parcelle ne demande aucun
+  recalcul d’aire.
+- **Au seuil exact, la parcelle reste** (`<`, pas `<=`).
+- **Pas de réglage exposé** : le seuil est un paramètre du service, 10 %
+  par défaut, joignable par le code. L’exposer ferait arbitrer par
+  l’utilisateur une question qui a une bonne réponse par défaut.
+
+Les parcelles retirées le sont de `$parcels` **et** de `$tenements`, et
+`parcels.gpkg` est réécrit — sans quoi elles reviendraient au prochain
+chargement du projet, cette fois sans tènements.
+`app_state$current_project$parcels` est mis à jour dans la foulée.
+
+Décochée, la coche ne change rien : le comportement antérieur est
+intact.
+
 ## nemetonshiny 0.130.5 (2026-08-20)
 
 Implémente `briefs/vers-nemetonshiny/2026-08-20-t3-reference-year.md`

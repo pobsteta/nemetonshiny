@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.6" id="nemetonshiny-01306-2026-08-20">nemetonshiny 0.130.6 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01306-2026-08-20"></a></h2>
+<div class="section level4">
+<h4 id="added--supprimer-les-parcelles-que-la-forêt-publique-ne-couvre-pas-0-130-6">Added — Supprimer les parcelles que la forêt publique ne couvre pas<a class="anchor" aria-label="anchor" href="#added--supprimer-les-parcelles-que-la-for%C3%AAt-publique-ne-couvre-pas-0-130-6"></a></h4>
+<p>Une coche apparaît dans Carte UGF, sous le sélecteur de domanialité : <strong>« Supprimer les parcelles hors forêt publique (&lt; 10 %) »</strong>, <strong>décochée par défaut</strong>. Elle retire du projet, à l’issue du croisement, les parcelles cadastrales que la forêt publique ne couvre pas ou couvre à moins de 10 %.</p>
+<p>Une parcelle que la forêt effleure à 3 % est un effet de bord de numérisation, pas un peuplement à gérer — et la porter dans le plan dilue tous les indicateurs calculés par unité.</p>
+<p><strong>Le raisonnement porte sur la PARCELLE, jamais sur le tènement.</strong> Une parcelle forestière à 10 % ou plus est conservée <strong>entière</strong>, sa part hors forêt comprise : supprimer cette part seule trouerait une parcelle que l’utilisateur possède, et romprait le pavage. Ou la parcelle entière part, ou rien.</p>
+<p>Trois points de conception :</p>
+<ul><li>
+<strong>La part se lit sur <code>surface_m2</code></strong>, la surface cadastrale déjà répartie entre tènements par le découpage. Aucune géométrie n’est touchée — comparer des parts dans une même parcelle ne demande aucun recalcul d’aire.</li>
+<li>
+<strong>Au seuil exact, la parcelle reste</strong> (<code>&lt;</code>, pas <code>&lt;=</code>).</li>
+<li>
+<strong>Pas de réglage exposé</strong> : le seuil est un paramètre du service, 10 % par défaut, joignable par le code. L’exposer ferait arbitrer par l’utilisateur une question qui a une bonne réponse par défaut.</li>
+</ul><p>Les parcelles retirées le sont de <code>$parcels</code> <strong>et</strong> de <code>$tenements</code>, et <code>parcels.gpkg</code> est réécrit — sans quoi elles reviendraient au prochain chargement du projet, cette fois sans tènements. <code>app_state$current_project$parcels</code> est mis à jour dans la foulée.</p>
+<p>Décochée, la coche ne change rien : le comportement antérieur est intact.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.5" id="nemetonshiny-01305-2026-08-20">nemetonshiny 0.130.5 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01305-2026-08-20"></a></h2>
 <p>Implémente <code>briefs/vers-nemetonshiny/2026-08-20-t3-reference-year.md</code> (§8). Aucun changement de plancher : <code>reference_year</code> existe dans le cœur depuis l’origine.</p>
