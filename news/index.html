@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.4" id="nemetonshiny-01304-2026-08-20">nemetonshiny 0.130.4 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01304-2026-08-20"></a></h2>
+<div class="section level4">
+<h4 id="removed--le-tri-des-parcelles-remonte-dans-le-cœur-0-130-4">Removed — Le tri des parcelles remonte dans le cœur<a class="anchor" aria-label="anchor" href="#removed--le-tri-des-parcelles-remonte-dans-le-c%C5%93ur-0-130-4"></a></h4>
+<p><code>nemeton 0.180.0</code> écarte lui-même les parcelles cadastrales qu’aucune parcelle forestière ne rencontre, et expose le compteur via un attribut <code>parcelles_concernees</code>. L’app cesse donc de le faire : <code>.onf_parcelles_concernees()</code> et la réinjection maison sont supprimées, <code>onf_projet_croise()</code> redevient un appel direct, et le compteur « N parcelles sur M » est <strong>lu</strong> plutôt que recalculé. Plancher relevé à <code>nemeton (&gt;= 0.180.0)</code>.</p>
+<p>Le résultat reste identique : 1 365 tènements, 86 UGF, même répartition, mêmes surfaces (9 028 796 m²), 1 271/1 271 parcelles couvertes, invariants verts.</p>
+<p><strong>Une prédiction démentie, à consigner.</strong> Le brief adressé au cœur affirmait que déplacer ce tri restaurerait le pavage exact — les 0,001231 % d’écart introduits en v0.130.3 étant attribués à l’aller-retour de projection qu’imposait la réinjection côté app. C’est faux : le cœur émet bien les parcelles écartées sans aucune reprojection, et l’écart reste <strong>0,001231 %</strong>.</p>
+<p>La cause n’est donc pas identifiée. Une hypothèse non vérifiée : la mesure somme des aires <em>géodésiques</em> (le cadastre IGN arrive en 4326) des morceaux et les compare à l’aire du tout — or en géodésique la somme des parts n’égale pas exactement le tout, et l’écart serait alors un artefact de mesure plutôt que du calcul. À trancher si la question ressort.</p>
+<p>Le changement reste justifié par ses autres motifs : la question « quelles parcelles rencontrent la forêt » est géométrique, donc métier (règle 1), et l’app y perd 46 lignes plus une réinjection. Mais l’argument présenté comme décisif dans le brief ne tenait pas.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.3" id="nemetonshiny-01303-2026-08-20">nemetonshiny 0.130.3 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01303-2026-08-20"></a></h2>
 <div class="section level4">
