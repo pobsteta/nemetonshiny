@@ -1,3 +1,35 @@
+# nemetonshiny 0.130.4 (2026-08-20)
+
+### Removed — Le tri des parcelles remonte dans le cœur
+
+`nemeton 0.180.0` écarte lui-même les parcelles cadastrales qu'aucune parcelle
+forestière ne rencontre, et expose le compteur via un attribut
+`parcelles_concernees`. L'app cesse donc de le faire :
+`.onf_parcelles_concernees()` et la réinjection maison sont supprimées,
+`onf_projet_croise()` redevient un appel direct, et le compteur « N parcelles
+sur M » est **lu** plutôt que recalculé. Plancher relevé à
+`nemeton (>= 0.180.0)`.
+
+Le résultat reste identique : 1 365 tènements, 86 UGF, même répartition, mêmes
+surfaces (9 028 796 m²), 1 271/1 271 parcelles couvertes, invariants verts.
+
+**Une prédiction démentie, à consigner.** Le brief adressé au cœur affirmait que
+déplacer ce tri restaurerait le pavage exact — les 0,001231 % d'écart introduits
+en v0.130.3 étant attribués à l'aller-retour de projection qu'imposait la
+réinjection côté app. C'est faux : le cœur émet bien les parcelles écartées sans
+aucune reprojection, et l'écart reste **0,001231 %**.
+
+La cause n'est donc pas identifiée. Une hypothèse non vérifiée : la mesure somme
+des aires *géodésiques* (le cadastre IGN arrive en 4326) des morceaux et les
+compare à l'aire du tout — or en géodésique la somme des parts n'égale pas
+exactement le tout, et l'écart serait alors un artefact de mesure plutôt que du
+calcul. À trancher si la question ressort.
+
+Le changement reste justifié par ses autres motifs : la question « quelles
+parcelles rencontrent la forêt » est géométrique, donc métier (règle 1), et
+l'app y perd 46 lignes plus une réinjection. Mais l'argument présenté comme
+décisif dans le brief ne tenait pas.
+
 # nemetonshiny 0.130.3 (2026-08-20)
 
 ### Changed — Le bouton ONF ne demande plus de sélection préalable

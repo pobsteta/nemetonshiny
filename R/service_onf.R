@@ -154,8 +154,9 @@ onf_load_parcelles <- function(aoi,
 #' `groupe` survives), mints ids once for the whole set, drops the UGF left
 #' empty and validates the invariants.
 #'
-#' Nothing is filtered or recomputed here: `min_surface_ha` absorption and the
-#' cadastral snapping both happen in the core. The core's two guards stay
+#' Nothing is filtered or recomputed here: `min_surface_ha` absorption, the
+#' cadastral snapping AND the discarding of parcels that meet no forest parcel
+#' all happen in the core (the last one since `nemeton 0.180.0`). The core's two guards stay
 #' whole - a parcel genuinely shared between two UGF is NOT snapped, and the
 #' "outside UGF" remainder can never take a parcel.
 #'
@@ -173,53 +174,6 @@ onf_load_parcelles <- function(aoi,
 #'   crossing table `tenements` (for the user-facing summary).
 #'
 #' @noRd
-#' Cadastral parcels that actually meet the forest parcels
-#'
-#' @description
-#' The button asks for no prior selection: it works out itself which of the
-#' project's cadastral parcels are concerned. This is that step - a plain
-#' `st_intersects()` against the union of the forest parcels, measured at 0.2 s
-#' for 1 271 parcels, so it costs nothing next to the crossing it narrows.
-#'
-#' Narrowing matters: on La-Vieille-Loye only **181 of 1 271** parcels meet the
-#' public forest. Crossing the other 1 090 asks the core to compute intersections
-#' that are known in advance to be empty - measured 24,9 s against 11,5 s.
-#'
-#' Those 1 090 are not dropped. A parcel that meets no forest parcel yields, in
-#' the full crossing, exactly one row: itself, whole, flagged `hors_ugf`. It is
-#' rebuilt as such by [onf_projet_croise()] without any geometric work - same
-#' result, no computation.
-#'
-#' @param parcelles `sf` of cadastral parcels.
-#' @param onf `sf` of forest parcels.
-#'
-#' @return Logical vector along `parcelles`.
-#'
-#' @noRd
-.onf_parcelles_concernees <- function(parcelles, onf) {
-  if (is.null(onf) || !inherits(onf, "sf") || nrow(onf) == 0L) {
-    return(rep(FALSE, nrow(parcelles)))
-  }
-  # `croiser_parcelles_onf()` gere les CRS en interne ; ce test-ci, non.
-  if (sf::st_crs(parcelles) != sf::st_crs(onf)) {
-    parcelles <- sf::st_transform(parcelles, sf::st_crs(onf))
-  }
-  prev <- sf::sf_use_s2()
-  sf::sf_use_s2(FALSE)
-  on.exit(sf::sf_use_s2(prev), add = TRUE)
-
-  hit <- tryCatch(
-    lengths(sf::st_intersects(parcelles, sf::st_union(sf::st_geometry(onf)))) > 0,
-    error = function(e) {
-      cli::cli_alert_warning(
-        "Auto-selection des parcelles impossible ({conditionMessage(e)}) : \\
-         on croise la totalite du cadastre.")
-      rep(TRUE, nrow(parcelles))
-    })
-  if (length(hit) != nrow(parcelles)) rep(TRUE, nrow(parcelles)) else hit
-}
-
-
 onf_projet_croise <- function(projet,
                               onf,
                               caler_sur_cadastre = TRUE,
@@ -233,27 +187,28 @@ onf_projet_croise <- function(projet,
     cli::cli_abort("Project must have non-empty parcels sf object")
   }
 
-  # Auto-selection : on ne croise QUE les parcelles qui touchent la foret. Les
-  # autres sont reinjectees plus bas telles quelles, ce qui donne exactement le
-  # meme resultat sans demander au coeur des intersections vides.
-  concernees <- .onf_parcelles_concernees(parcelles, onf)
-  n_total <- nrow(parcelles)
-  n_retenues <- sum(concernees)
-
-  if (n_retenues == 0L) {
-    return(list(status = "no_overlap", projet = projet, tenements = NULL,
-                n_retenues = 0L, n_total = n_total))
-  }
-
+  # Le COEUR ecarte lui-meme (>= 0.180.0) les parcelles cadastrales qu'aucune
+  # parcelle forestiere ne rencontre, et emet directement leur ligne `hors_ugf`.
+  # L'app faisait ce tri en v0.130.3, avec une reinjection qui imposait un
+  # aller-retour de projection - d'ou 0,001231 % d'ecart de pavage. Fait dans le
+  # coeur, ou les deux couches partagent deja un CRS, le pavage redevient exact.
   ten <- nemeton::croiser_parcelles_onf(
     onf,
-    parcelles[concernees, , drop = FALSE],
+    parcelles,
     caler_sur_cadastre = isTRUE(caler_sur_cadastre),
     seuil_calage       = seuil_calage,
     # Cf. la doc ci-dessus : le reliquat porte le pavage exact, il n'est pas
     # une option d'affichage.
     inclure_reste      = TRUE
   )
+
+  # Compteur " N parcelles sur M " LU sur l'attribut plutot que recalcule : le
+  # coeur l'expose precisement pour eviter un st_intersects() de plus.
+  pc <- attr(ten, "parcelles_concernees")
+  n_retenues <- suppressWarnings(as.integer(pc[["concernees"]]))
+  n_total    <- suppressWarnings(as.integer(pc[["total"]]))
+  if (length(n_total) != 1L || is.na(n_total)) n_total <- nrow(parcelles)
+  if (length(n_retenues) != 1L) n_retenues <- NA_integer_
 
   # " Aucun recoupement " ne peut PAS se lire sur nrow(ten) : avec
   # `inclure_reste = TRUE`, une emprise sans la moindre foret publique rend
@@ -278,27 +233,7 @@ onf_projet_croise <- function(projet,
   label[is.na(label) | !nzchar(label)] <- label_hors
   ten$label_ugf <- label
 
-  # `tenement_import_replace()` ne lit que la geometrie et `label_ugf` : on lui
-  # passe donc un sf minimal, ou les parcelles ecartees reviennent ENTIERES sous
-  # le meme libelle " hors foret ". C'est mot pour mot ce que le croisement
-  # complet en aurait fait - une ligne par parcelle, la parcelle entiere,
-  # `hors_ugf = TRUE` - obtenu sans calcul geometrique.
-  import_sf <- sf::st_sf(
-    label_ugf = ten$label_ugf,
-    geometry  = sf::st_geometry(ten)
-  )
-  if (n_retenues < n_total) {
-    ecartees <- parcelles[!concernees, , drop = FALSE]
-    if (sf::st_crs(ecartees) != sf::st_crs(import_sf)) {
-      ecartees <- sf::st_transform(ecartees, sf::st_crs(import_sf))
-    }
-    import_sf <- rbind(import_sf, sf::st_sf(
-      label_ugf = rep(label_hors, nrow(ecartees)),
-      geometry  = sf::st_geometry(ecartees)
-    ))
-  }
-
-  projet <- tenement_import_replace(projet, import_sf)
+  projet <- tenement_import_replace(projet, ten)
 
   list(status = "ok", projet = projet, tenements = ten,
        n_retenues = n_retenues, n_total = n_total)
