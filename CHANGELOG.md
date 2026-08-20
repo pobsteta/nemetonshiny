@@ -12,6 +12,83 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.130.3\] - 2026-08-20
+
+### Changed
+
+- Le bouton « Créer les UGF avec le parcellaire ONF » ne demande plus de
+  sélection préalable : il retient lui-même les parcelles cadastrales
+  qui rencontrent le parcellaire forestier, et l’annonce. Mesuré sur
+  La-Vieille-Loye : 181 parcelles sur 1 271, calcul de 31,5 s à 11,1 s,
+  résultat identique au croisement complet (le pavage passe toutefois de
+  0,000000 % à 0,001231 % d’écart, 40× sous la tolérance).
+- La domanialité passe de trois choix exclusifs à deux cases cochables
+  ensemble ; « Toutes » n’était que leur conjonction. Le filtre agit en
+  amont du croisement, donc sur l’auto-sélection. Ne rien cocher rend un
+  message dédié sans lancer de requête.
+- La note de calage passe du paragraphe permanent à un « i » à côté du
+  bouton.
+
+## \[0.130.2\] - 2026-08-19
+
+### Changed
+
+- Le calage des UGF sur les limites cadastrales devient **systématique**
+  ; la coche correspondante est retirée. Les limites forestières ONF
+  sont approximatives au bord : une UGF dont le tracé ne suit pas la
+  parcelle qu’elle recouvre à 90 % ou plus est un artefact de
+  numérisation. Mesuré sur La-Vieille-Loye : 170 → 124 tènements, 13 →
+  41 bords exactement cadastraux. Une note permanente l’annonce ; les
+  garde-fous du cœur restent entiers ; `caler_sur_cadastre` passe à
+  `TRUE` par défaut mais subsiste comme paramètre.
+- Le bouton « Croiser avec le parcellaire ONF » devient « Créer les UGF
+  avec le parcellaire ONF » : le croisement est le moyen, créer les UGF
+  est le but.
+
+## \[0.130.1\] - 2026-08-19
+
+### Removed
+
+- Le bouton « Importer le parcellaire ONF », qui remplaçait les
+  parcelles du projet par les parcelles forestières. Il partait de la
+  même emprise et produisait les mêmes UGF que « Croiser », en jetant la
+  composition cadastrale (donc `part_ugf`) — un cas dégradé du
+  croisement, destructif de surcroît. Retirés avec lui :
+  `onf_projet_from_parcelles()`, ses tests, et six clés i18n orphelines.
+
+## \[0.130.0\] - 2026-08-19
+
+### Fixed
+
+- `onf_projet_from_parcelles()` échouait dès que le parcellaire
+  forestier n’avait pas le même nombre de lignes que les parcelles du
+  projet (« replacement has 427 rows, data has 1 »). L’idiome
+  `utils::modifyList(projet, list(parcels = ...))`, repris de l’esquisse
+  du brief, récurse dans les listes — et un `data.frame` en est une : il
+  fusionnait les colonnes au lieu de remplacer l’objet. Remplacé par une
+  affectation directe, avec un test de régression à tailles différentes.
+
+### Changed
+
+- Recette §6 de la spec 046 exécutée contre le **vrai** WFS ONF (forêt
+  domaniale de Chaux) : les quatre cas passent. 213 parcelles / 2 114 ha
+  en 1,1 s ; filtre de domanialité exact ; « aucune forêt publique » et
+  « service indisponible » distingués. Bout-en-bout : 586 tènements /
+  423 UGF, identifiants uniques, invariants verts, pavage cadastral
+  exact à 0,000000 %.
+- Calage cadastral **validé** sur le vrai cadastre de La-Vieille-Loye :
+  170 → 124 tènements et 13 → 41 bords cadastraux, reproduisant
+  exactement les mesures du cœur. Il n’était pas vérifiable sur cadastre
+  synthétique, une grille régulière étant par construction désalignée du
+  parcellaire forestier.
+- `tenement_import_replace()` accélérée **95×** (628,9 s → 6,6 s sur 1
+  422 fragments × 1 271 parcelles), à résultat strictement identique :
+  index spatial calculé une fois au lieu d’être refait par fragment,
+  suppression d’une intersection dont le résultat n’était jamais
+  utilisé, et comparaisons d’aires sur géométries sans CRS (`st_area()`
+  relisait les paramètres du CRS à chaque appel — 76,8 % du temps).
+  Bénéficie aussi à l’import de découpage QGIS.
+
 ## \[0.129.0\] - 2026-08-19
 
 ### Added

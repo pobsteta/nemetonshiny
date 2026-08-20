@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.129.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,131 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.3" id="nemetonshiny-01303-2026-08-20">nemetonshiny 0.130.3 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01303-2026-08-20"></a></h2>
+<div class="section level4">
+<h4 id="changed--le-bouton-onf-ne-demande-plus-de-sélection-préalable-0-130-3">Changed — Le bouton ONF ne demande plus de sélection préalable<a class="anchor" aria-label="anchor" href="#changed--le-bouton-onf-ne-demande-plus-de-s%C3%A9lection-pr%C3%A9alable-0-130-3"></a></h4>
+<p>« Créer les UGF avec le parcellaire ONF » détermine désormais lui-même les parcelles cadastrales concernées : celles du projet qui rencontrent le parcellaire forestier retenu. Un toast dit lesquelles — « N parcelles cadastrales sur M touchent la forêt publique retenue ».</p>
+<p>Le croisement ne porte plus que sur elles ; les autres sont réinjectées entières sous « Hors forêt publique », ce qui est <strong>mot pour mot</strong> ce que le croisement complet en aurait fait — une ligne, la parcelle entière, <code>hors_ugf = TRUE</code> — obtenu sans calcul géométrique. Mesuré sur La-Vieille-Loye : <strong>181 parcelles retenues sur 1 271</strong>, et le calcul passe de <strong>31,5 s à 11,1 s</strong>.</p>
+<p>Résultat vérifié identique au croisement complet : mêmes tènements (1 365), mêmes UGF (86), même répartition, mêmes surfaces (9 028 796 m²), toutes les parcelles couvertes.</p>
+<p><strong>Une nuance mesurée</strong> : le pavage passe de 0,000000 % à <strong>0,001231 %</strong> d’écart maximal — la réinjection impose un aller-retour de projection, qui arrondit. C’est 40 fois sous la tolérance de <code>validate_tiling()</code> (0,05 %), laquelle existe précisément pour absorber ce genre d’arrondi. Le correctif propre est côté cœur (voir ci-dessous).</p>
+</div>
+<div class="section level4">
+<h4 id="changed--domanialité--deux-cases-au-lieu-de-trois-choix-0-130-3">Changed — Domanialité : deux cases au lieu de trois choix<a class="anchor" aria-label="anchor" href="#changed--domanialit%C3%A9--deux-cases-au-lieu-de-trois-choix-0-130-3"></a></h4>
+<p>Le radio <em>Toutes / Domaniales / Communales et autres</em> devient deux cases, <strong>Domaniales</strong> et <strong>Communales et autres</strong>, cochées toutes deux par défaut. « Toutes » n’était que leur conjonction — une troisième façon de dire la même chose, qui invitait à se demander en quoi elle différait.</p>
+<p>Le filtre agit <strong>en amont</strong> du croisement : ne cocher que « Domaniales » restreint aussi les parcelles cadastrales auto-sélectionnées. Ne rien cocher n’est pas « tout » mais une question sans objet, et le dit — sans lancer de requête.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--la-note-de-calage-passe-dans-un--i--0-130-3">Changed — La note de calage passe dans un « i »<a class="anchor" aria-label="anchor" href="#changed--la-note-de-calage-passe-dans-un--i--0-130-3"></a></h4>
+<p>Le paragraphe permanent sous le sélecteur devient un popover à droite du bouton, qui porte les deux explications : l’absence de sélection préalable et le calage cadastral. Ce sont des explications qu’on lit une fois, pas des valeurs qu’on surveille — et le paragraphe repoussait le bouton vers le bas.</p>
+</div>
+<div class="section level4">
+<h4 id="dette-identifiée--le-tri-des-parcelles-appartient-au-cœur-0-130-3">Dette identifiée — le tri des parcelles appartient au cœur<a class="anchor" aria-label="anchor" href="#dette-identifi%C3%A9e--le-tri-des-parcelles-appartient-au-c%C5%93ur-0-130-3"></a></h4>
+<p><code>.onf_parcelles_concernees()</code> répond à une question géométrique sur le domaine, pas de présentation : sa place est dans <code>nemeton</code>, idéalement <strong>absorbée dans <code>croiser_parcelles_onf()</code></strong>. Le cœur pourrait alors émettre directement les lignes <code>hors_ugf</code> des parcelles écartées, dans le bon CRS — récupérant le gain de vitesse <strong>et</strong> le pavage exact, pour tous ses consommateurs. Brief à suivre.</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.2" id="nemetonshiny-01302-2026-08-19">nemetonshiny 0.130.2 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01302-2026-08-19"></a></h2>
+<div class="section level4">
+<h4 id="changed--le-calage-sur-les-limites-cadastrales-devient-systématique-0-130-2">Changed — Le calage sur les limites cadastrales devient systématique<a class="anchor" aria-label="anchor" href="#changed--le-calage-sur-les-limites-cadastrales-devient-syst%C3%A9matique-0-130-2"></a></h4>
+<p>La coche « Caler les UGF sur les limites cadastrales » est retirée : le calage s’applique désormais toujours. Une parcelle cadastrale couverte à 90 % ou plus par une UGF lui revient entière.</p>
+<p>Le raisonnement : les limites forestières ONF sont <strong>approximatives au bord</strong>. Une UGF dont le tracé ne suit pas la parcelle qu’elle recouvre presque entièrement est un artefact de numérisation, pas une décision de gestion — et laisser le choix à l’utilisateur revenait à lui demander d’arbitrer une question technique qui n’a qu’une bonne réponse. Mesuré sur La-Vieille-Loye : <strong>170 → 124 tènements</strong> et <strong>13 → 41 bords exactement cadastraux</strong>.</p>
+<p>Les deux garde-fous du cœur restent entiers : une parcelle réellement partagée entre deux UGF <strong>n’est pas</strong> calée, et le reliquat « hors UGF » ne peut jamais prendre une parcelle — supprimer de la forêt ne serait pas une correction.</p>
+<p>Le calage n’est pas silencieux pour autant : une note permanente l’annonce sous le sélecteur de domanialité. Sans elle, une UGF dont le bord suit le cadastre plutôt que le tracé ONF serait incompréhensible.</p>
+<p>Côté service, <code>caler_sur_cadastre</code> passe à <code>TRUE</code> par défaut mais <strong>subsiste comme paramètre</strong> : le comportement brut reste joignable et testable.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-bouton-dit-ce-quil-fait-0-130-2">Changed — Le bouton dit ce qu’il fait<a class="anchor" aria-label="anchor" href="#changed--le-bouton-dit-ce-quil-fait-0-130-2"></a></h4>
+<p>« Croiser avec le parcellaire ONF » devient <strong>« Créer les UGF avec le parcellaire ONF »</strong>. Le croisement est le moyen ; créer les UGF est le but, et c’est ce que l’utilisateur cherche dans cette barre d’actions.</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.1" id="nemetonshiny-01301-2026-08-19">nemetonshiny 0.130.1 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01301-2026-08-19"></a></h2>
+<div class="section level4">
+<h4 id="removed--le-bouton--importer-le-parcellaire-onf--0-130-1">Removed — Le bouton « Importer le parcellaire ONF »<a class="anchor" aria-label="anchor" href="#removed--le-bouton--importer-le-parcellaire-onf--0-130-1"></a></h4>
+<p>Carte UGF n’offre plus qu’<strong>une</strong> action ONF : « Croiser avec le parcellaire ONF ». Le second bouton, qui <em>remplaçait</em> les parcelles du projet par les parcelles forestières, est retiré.</p>
+<p>Les deux partaient de la <strong>même emprise</strong> — la sélection cadastrale du projet — et produisaient les <strong>mêmes UGF</strong>, avec les mêmes libellés. La seule différence tenait à ce qu’« Importer » jetait au passage :</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th></th>
+<th>Croiser</th>
+<th>Importer</th>
+</tr></thead><tbody><tr><td>Parcelles cadastrales</td>
+<td>conservées</td>
+<td>écrasées</td>
+</tr><tr><td>Composition d’une UGF</td>
+<td>traçable</td>
+<td>perdue</td>
+</tr><tr><td>
+<code>part_ugf</code> (« vous ne détenez que 40 % de cette parcelle forestière »)</td>
+<td>disponible</td>
+<td>indisponible</td>
+</tr></tbody></table><p>C’était donc un cas <strong>dégradé</strong> du croisement, destructif de surcroît, qui coûtait un bouton, une modale de confirmation et une prévisualisation dédiée.</p>
+<p>Ce qu’on perd : obtenir les parcelles forestières <em>entières</em>, y compris leurs parties hors de la sélection. C’est le comportement voulu pour un propriétaire — une parcelle forestière qui déborde de son bien ne doit pas entrer entière dans son plan de gestion, et <code>part_ugf</code> dit précisément quelle fraction il détient.</p>
+<p>Retirés avec lui : <code>onf_projet_from_parcelles()</code> et ses tests, six clés i18n devenues orphelines. Un test verrouille l’absence du bouton pour qu’il ne revienne pas par mégarde.</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.130.0" id="nemetonshiny-01300-2026-08-19">nemetonshiny 0.130.0 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01300-2026-08-19"></a></h2>
+<p>Recette de la spec 046 exécutée contre le <strong>vrai</strong> service WFS ONF (forêt domaniale de Chaux), et correction du défaut qu’elle a révélé.</p>
+<div class="section level4">
+<h4 id="fixed--limport-du-parcellaire-onf-échouait-sur-données-réelles-0-130-0">Fixed — L’import du parcellaire ONF échouait sur données réelles<a class="anchor" aria-label="anchor" href="#fixed--limport-du-parcellaire-onf-%C3%A9chouait-sur-donn%C3%A9es-r%C3%A9elles-0-130-0"></a></h4>
+<p><code>onf_projet_from_parcelles()</code> plantait dès que le parcellaire forestier n’avait pas exactement le même nombre de lignes que les parcelles du projet :</p>
+<pre><code>Error in `[[&lt;-.data.frame` : replacement has 427 rows, data has 1</code></pre>
+<p>La cause est l’idiome <code>utils::modifyList(projet, list(parcels = parcelles))</code>, repris de l’esquisse du brief. <code><a href="https://rdrr.io/r/utils/modifyList.html" class="external-link">modifyList()</a></code> <strong>récurse dans les listes</strong> — et un <code>data.frame</code> en est une : au lieu de remplacer l’objet <code>parcels</code>, il fusionne les colonnes de l’ancien parcellaire avec celles du nouveau. Erreur immédiate à tailles différentes, et fusion <strong>silencieuse</strong> à tailles égales, ce qui est pire. Remplacé par une affectation directe.</p>
+<p>Les tests unitaires ne pouvaient pas le voir : leurs fixtures avaient 2 parcelles cadastrales et 2 parcelles forestières, donc la fusion « marchait » par accident. C’est exactement la configuration qui ne se produit jamais en vrai, où une poignée de parcelles cadastrales rencontre des centaines de parcelles forestières. Un test de régression fixe désormais des tailles volontairement différentes.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--recette-validée-contre-le-service-réel-0-130-0">Changed — Recette §6 validée contre le service réel<a class="anchor" aria-label="anchor" href="#changed--recette-valid%C3%A9e-contre-le-service-r%C3%A9el-0-130-0"></a></h4>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Cas</th>
+<th>Attendu par le brief</th>
+<th>Mesuré</th>
+</tr></thead><tbody><tr><td>Chaux, emprise 4×4 km</td>
+<td>~200 UGF ; 217 parcelles / 2 105 ha / 5,8 s</td>
+<td>
+<strong>213 parcelles / 2 114 ha / 1,1 s</strong> — 189 « Forêt domaniale de Chaux » + 24 « Forêt communale de La-Vieille-Loye »</td>
+</tr><tr><td>filtre <code>domaniale</code>
+</td>
+<td>seules les domaniales subsistent</td>
+<td>394 / 394 ; <code>autre</code> → 33, aucune domaniale</td>
+</tr><tr><td>plaine agricole</td>
+<td>« aucune forêt publique »</td>
+<td>
+<code>status = empty</code> en 0,4 s</td>
+</tr><tr><td>service coupé</td>
+<td>message d’indisponibilité, repli cadastral</td>
+<td>
+<code>status = unavailable</code> en 0,1 s, <code>NULL</code> rendu</td>
+</tr></tbody></table><p>Bout-en-bout sur les 427 parcelles réelles : import en 0,1 s (427 UGF, invariants verts) ; croisement produisant 586 tènements pour 423 UGF, avec identifiants uniques, invariants verts et surtout un <strong>pavage exact des parcelles cadastrales à 0,000000 %</strong> — l’invariant qui se serait cassé en silence.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-calage-cadastral-validé-sur-cadastre-réel-0-130-0">Changed — Le calage cadastral, validé sur cadastre réel<a class="anchor" aria-label="anchor" href="#changed--le-calage-cadastral-valid%C3%A9-sur-cadastre-r%C3%A9el-0-130-0"></a></h4>
+<p>La case « caler les UGF sur les limites cadastrales » reproduit <strong>exactement</strong> les mesures du brief, sur le vrai cadastre de La-Vieille-Loye (1 271 parcelles cadastrales × 94 parcelles forestières) :</p>
+<table class="table"><thead><tr><th></th>
+<th>Brief (cœur)</th>
+<th>Mesuré (app)</th>
+</tr></thead><tbody><tr><td>Tènements forestiers sans calage</td>
+<td>170</td>
+<td><strong>170</strong></td>
+</tr><tr><td>Tènements forestiers avec calage</td>
+<td>124</td>
+<td><strong>124</strong></td>
+</tr><tr><td>Bords cadastraux sans calage</td>
+<td>13</td>
+<td><strong>13</strong></td>
+</tr><tr><td>Bords cadastraux avec calage</td>
+<td>41</td>
+<td><strong>41</strong></td>
+</tr></tbody></table><p>Le réglage était resté non vérifiable tant qu’on l’éprouvait sur un cadastre <em>synthétique</em> : une grille régulière est par construction désalignée du parcellaire forestier, l’UGF dominante n’y détenait jamais plus de <strong>30,1 %</strong> d’une maille, contre les <strong>90 %</strong> qu’exige le calage. Sur cadastre réel la médiane monte à <strong>0,95</strong>, et 41 parcelles sur 64 franchissent le seuil.</p>
+<p>Au niveau du projet : 1 422 → 1 365 tènements et 87 → 86 UGF — une UGF forestière disparaît, ne tenant que des échardes absorbées par l’UGF dominante.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-croisement-était-fois-plus-lent-que-nécessaire-0-130-0">Fixed — Le croisement était 95 fois plus lent que nécessaire<a class="anchor" aria-label="anchor" href="#fixed--le-croisement-%C3%A9tait-fois-plus-lent-que-n%C3%A9cessaire-0-130-0"></a></h4>
+<p><code>tenement_import_replace()</code> pesait <strong>628,9 s</strong> sur ce même croisement, contre 24,9 s pour tout le calcul du cœur : 96 % du coût. Deux causes, toutes deux dans l’app :</p>
+<ul><li>pour <strong>chacun</strong> des 1 422 fragments, la fonction intersectait la totalité des 1 271 parcelles — et n’utilisait jamais le résultat. Du calcul intégralement mort. Le <code>st_intersects()</code> qui suivait était lui aussi refait par fragment, au lieu d’être calculé une fois via l’index spatial ;</li>
+<li>surtout, les comparaisons d’aires appelaient <code>st_area()</code> sur des géométries portant un CRS. <code>sf</code> en relit alors les paramètres à chaque appel pour attacher une unité : <code>CPL_crs_parameters</code> représentait <strong>76,8 %</strong> du temps, quand les intersections GEOS elles-mêmes n’en prenaient que 1,14 s. Ces aires ne servent qu’à départager des candidates — l’unité n’y joue aucun rôle.</li>
+</ul><p>Corrigé : index calculé une fois, calcul mort supprimé, court-circuit quand un fragment ne touche qu’une parcelle, et comparaisons d’aires sur des copies sans CRS (les géométries stockées gardent le leur).</p>
+<p><strong>628,9 s → 6,6 s</strong>, à résultat <em>strictement identique</em> — mêmes tènements, mêmes parents, mêmes UGF, même répartition, surfaces au centième près, invariants verts. Un croisement complet passe de 654 s à 31,5 s. Le gain profite aussi à l’import de découpage QGIS, qui emprunte la même fonction.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.129.0" id="nemetonshiny-01290-2026-08-19">nemetonshiny 0.129.0 (2026-08-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01290-2026-08-19"></a></h2>
 <p>Implémente <code>specs/046-parcellaire-onf/brief-nemetonshiny.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.179.0)</code>.</p>
@@ -4425,7 +4550,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="migration-0-69-0">Migration<a class="anchor" aria-label="anchor" href="#migration-0-69-0"></a></h4>
 <p><strong>Pas de migration automatique</strong> (décision UX consciente). Sur les projets existants ayant déjà préchauffé un <code>cache/layers/fast/</code>, l’ancien répertoire restera orphelin sur disque. Le nouveau code créera <code>cache/layers/fast_sampling/</code> à la prochaine demande de validation_sampling. Suppression manuelle de l’ancien recommandée pour récupérer l’espace disque :</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="détails-techniques-0-69-0">Détails techniques<a class="anchor" aria-label="anchor" href="#d%C3%A9tails-techniques-0-69-0"></a></h4>
@@ -4654,7 +4779,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="added--observabilité-rag-cli_inform-par-perspective-0-61-1">Added — Observabilité RAG (<code>cli_inform</code> par perspective)<a class="anchor" aria-label="anchor" href="#added--observabilit%C3%A9-rag-cli_inform-par-perspective-0-61-1"></a></h4>
 <p>Ajout d’une ligne de log par appel <code>rag_context()</code> réussi, dans <code>R/service_rag.R</code> juste après le retrieve cœur :</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_inform</a></span><span class="op">(</span><span class="st">"RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Pourquoi</strong> : sans ce log, un corpus muet (0 chunk au-dessus du seuil) ressemblait à un cas où <code>rag_context()</code> court-circuitait avant le retrieve (opt-out, corpus indisponible, situation_text vide…). Désormais on distingue :</p>
 <ul><li>
@@ -4741,7 +4866,7 @@ Current Memory Usage: 17.1G</code></pre>
 <p>Le test <code>test-mod_monitoring.R::"register click invokes register_project_as_zone and persists zone_id in app_state"</code> failait sur ses 3 assertions (lignes 944-946) parce que l’observer du bouton « Enregistrer la zone » était passé d’un <code>observeEvent(input$register)</code> direct à un <code>observe() |&gt; bindEvent(input$register, input$register_inline, ignoreInit = TRUE)</code> lors de l’ajout du bouton inline (commit 3f1059d).</p>
 <p>En <code>testServer</code>, <code>session$setInputs(register = 1L)</code> posé directement est traité comme l’état d’init par <code>bindEvent(ignoreInit = TRUE)</code> — l’observer ne se déclenche pas, <code>register_project_as_zone</code> n’est jamais appelé, <code>captured_project</code> reste <code>NULL</code> et les 3 assertions cascadent.</p>
 <p><strong>Fix</strong> : matérialiser une transition d’input avant la vraie valeur :</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>  <span class="co"># init</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># vrai clic, fire l'observer</span></span></code></pre></div>
 <p>Identique au pattern qu’un <code>actionButton</code> réel suit (init à 0, incrément à chaque clic). Aucun changement de code de prod — c’est strictement un fix de fidélité du harness de test.</p>
@@ -5062,7 +5187,7 @@ Current Memory Usage: 17.1G</code></pre>
    threshold_nbr = as.numeric(th$nbr))</code></pre>
 <p>La carte d’alertes FAST restait vide après chaque ingestion.</p>
 <p><strong>Cause</strong> : <code>nemeton@v0.55.0</code> (spec 017) a <strong>délibérément</strong> simplifié <code>read_fast_alert_raster()</code> en mono-index — la combinaison historique NDVI+NBR a été abandonnée. La nouvelle signature est :</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">read_fast_alert_raster</span><span class="op">(</span><span class="va">con</span>, <span class="va">zone_id</span>,</span>
 <span>                       index     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NDVI"</span>, <span class="st">"NBR"</span><span class="op">)</span>,   <span class="co"># un seul</span></span>
 <span>                       threshold <span class="op">=</span> <span class="cn">NULL</span>,               <span class="co"># un seul</span></span>
@@ -5079,7 +5204,7 @@ Current Memory Usage: 17.1G</code></pre>
 <h4 id="fixed--plan-dactions--tableau-rendu-vide-régression-v05210-0-52-12">Fixed — Plan d’actions : tableau rendu VIDE (régression v0.52.10)<a class="anchor" aria-label="anchor" href="#fixed--plan-dactions--tableau-rendu-vide-r%C3%A9gression-v05210-0-52-12"></a></h4>
 <p><strong>Symptôme</strong> : sur la vue « Carte + Tableau » du Plan d’actions, le tableau ne contient AUCUNE ligne, alors que l’en-tête indique correctement « N action(s) après filtres » et que les KPI badges + sparkline cumulatif fonctionnent.</p>
 <p><strong>Cause (régression v0.52.10)</strong> : le JS callback ajouté pour le dblclick sur la cellule commentaire passait à <code>DT::datatable(callback = ...)</code> une fonction COMPLÈTE :</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
 <p>Or <code><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">DT::datatable</a></code> wrappe <strong>automatiquement</strong> le callback fourni dans <code>function(table) { … }</code>. Le résultat était une fonction-dans-une-fonction où : 1. Le handler <code>dblclick</code> est dans une fonction INTERNE jamais appelée → handler jamais enregistré. 2. La fonction externe ne fait <code>return table;</code> → DataTables casse silencieusement son pipeline d’initialisation → tableau RENDU SANS LIGNES alors que <code>data.frame</code> a bien N lignes.</p>
 <p><strong>Fix</strong> : le callback passe désormais juste le <strong>corps</strong> de fonction (pas de wrapper <code>function(table) { ... }</code>), avec un <code>return table;</code> final. DT applique son propre wrapper et le pipeline init reprend normalement.</p>
 <p><code>R/mod_action_plan.R</code>. Cycle dev <code>0.52.11</code> → <code>0.52.11.9001</code> → release stable <strong><code>v0.52.12</code></strong> (PATCH, fix régression urgent).</p>
@@ -7047,7 +7172,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>

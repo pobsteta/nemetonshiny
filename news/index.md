@@ -1,5 +1,226 @@
 # Changelog
 
+## nemetonshiny 0.130.3 (2026-08-20)
+
+#### Changed — Le bouton ONF ne demande plus de sélection préalable
+
+« Créer les UGF avec le parcellaire ONF » détermine désormais lui-même
+les parcelles cadastrales concernées : celles du projet qui rencontrent
+le parcellaire forestier retenu. Un toast dit lesquelles — « N parcelles
+cadastrales sur M touchent la forêt publique retenue ».
+
+Le croisement ne porte plus que sur elles ; les autres sont réinjectées
+entières sous « Hors forêt publique », ce qui est **mot pour mot** ce
+que le croisement complet en aurait fait — une ligne, la parcelle
+entière, `hors_ugf = TRUE` — obtenu sans calcul géométrique. Mesuré sur
+La-Vieille-Loye : **181 parcelles retenues sur 1 271**, et le calcul
+passe de **31,5 s à 11,1 s**.
+
+Résultat vérifié identique au croisement complet : mêmes tènements (1
+365), mêmes UGF (86), même répartition, mêmes surfaces (9 028 796 m²),
+toutes les parcelles couvertes.
+
+**Une nuance mesurée** : le pavage passe de 0,000000 % à **0,001231 %**
+d’écart maximal — la réinjection impose un aller-retour de projection,
+qui arrondit. C’est 40 fois sous la tolérance de `validate_tiling()`
+(0,05 %), laquelle existe précisément pour absorber ce genre d’arrondi.
+Le correctif propre est côté cœur (voir ci-dessous).
+
+#### Changed — Domanialité : deux cases au lieu de trois choix
+
+Le radio *Toutes / Domaniales / Communales et autres* devient deux
+cases, **Domaniales** et **Communales et autres**, cochées toutes deux
+par défaut. « Toutes » n’était que leur conjonction — une troisième
+façon de dire la même chose, qui invitait à se demander en quoi elle
+différait.
+
+Le filtre agit **en amont** du croisement : ne cocher que « Domaniales »
+restreint aussi les parcelles cadastrales auto-sélectionnées. Ne rien
+cocher n’est pas « tout » mais une question sans objet, et le dit — sans
+lancer de requête.
+
+#### Changed — La note de calage passe dans un « i »
+
+Le paragraphe permanent sous le sélecteur devient un popover à droite du
+bouton, qui porte les deux explications : l’absence de sélection
+préalable et le calage cadastral. Ce sont des explications qu’on lit une
+fois, pas des valeurs qu’on surveille — et le paragraphe repoussait le
+bouton vers le bas.
+
+#### Dette identifiée — le tri des parcelles appartient au cœur
+
+`.onf_parcelles_concernees()` répond à une question géométrique sur le
+domaine, pas de présentation : sa place est dans `nemeton`, idéalement
+**absorbée dans `croiser_parcelles_onf()`**. Le cœur pourrait alors
+émettre directement les lignes `hors_ugf` des parcelles écartées, dans
+le bon CRS — récupérant le gain de vitesse **et** le pavage exact, pour
+tous ses consommateurs. Brief à suivre.
+
+## nemetonshiny 0.130.2 (2026-08-19)
+
+#### Changed — Le calage sur les limites cadastrales devient systématique
+
+La coche « Caler les UGF sur les limites cadastrales » est retirée : le
+calage s’applique désormais toujours. Une parcelle cadastrale couverte à
+90 % ou plus par une UGF lui revient entière.
+
+Le raisonnement : les limites forestières ONF sont **approximatives au
+bord**. Une UGF dont le tracé ne suit pas la parcelle qu’elle recouvre
+presque entièrement est un artefact de numérisation, pas une décision de
+gestion — et laisser le choix à l’utilisateur revenait à lui demander
+d’arbitrer une question technique qui n’a qu’une bonne réponse. Mesuré
+sur La-Vieille-Loye : **170 → 124 tènements** et **13 → 41 bords
+exactement cadastraux**.
+
+Les deux garde-fous du cœur restent entiers : une parcelle réellement
+partagée entre deux UGF **n’est pas** calée, et le reliquat « hors UGF »
+ne peut jamais prendre une parcelle — supprimer de la forêt ne serait
+pas une correction.
+
+Le calage n’est pas silencieux pour autant : une note permanente
+l’annonce sous le sélecteur de domanialité. Sans elle, une UGF dont le
+bord suit le cadastre plutôt que le tracé ONF serait incompréhensible.
+
+Côté service, `caler_sur_cadastre` passe à `TRUE` par défaut mais
+**subsiste comme paramètre** : le comportement brut reste joignable et
+testable.
+
+#### Changed — Le bouton dit ce qu’il fait
+
+« Croiser avec le parcellaire ONF » devient **« Créer les UGF avec le
+parcellaire ONF »**. Le croisement est le moyen ; créer les UGF est le
+but, et c’est ce que l’utilisateur cherche dans cette barre d’actions.
+
+## nemetonshiny 0.130.1 (2026-08-19)
+
+#### Removed — Le bouton « Importer le parcellaire ONF »
+
+Carte UGF n’offre plus qu’**une** action ONF : « Croiser avec le
+parcellaire ONF ». Le second bouton, qui *remplaçait* les parcelles du
+projet par les parcelles forestières, est retiré.
+
+Les deux partaient de la **même emprise** — la sélection cadastrale du
+projet — et produisaient les **mêmes UGF**, avec les mêmes libellés. La
+seule différence tenait à ce qu’« Importer » jetait au passage :
+
+|  | Croiser | Importer |
+|----|----|----|
+| Parcelles cadastrales | conservées | écrasées |
+| Composition d’une UGF | traçable | perdue |
+| `part_ugf` (« vous ne détenez que 40 % de cette parcelle forestière ») | disponible | indisponible |
+
+C’était donc un cas **dégradé** du croisement, destructif de surcroît,
+qui coûtait un bouton, une modale de confirmation et une
+prévisualisation dédiée.
+
+Ce qu’on perd : obtenir les parcelles forestières *entières*, y compris
+leurs parties hors de la sélection. C’est le comportement voulu pour un
+propriétaire — une parcelle forestière qui déborde de son bien ne doit
+pas entrer entière dans son plan de gestion, et `part_ugf` dit
+précisément quelle fraction il détient.
+
+Retirés avec lui : `onf_projet_from_parcelles()` et ses tests, six clés
+i18n devenues orphelines. Un test verrouille l’absence du bouton pour
+qu’il ne revienne pas par mégarde.
+
+## nemetonshiny 0.130.0 (2026-08-19)
+
+Recette de la spec 046 exécutée contre le **vrai** service WFS ONF
+(forêt domaniale de Chaux), et correction du défaut qu’elle a révélé.
+
+#### Fixed — L’import du parcellaire ONF échouait sur données réelles
+
+`onf_projet_from_parcelles()` plantait dès que le parcellaire forestier
+n’avait pas exactement le même nombre de lignes que les parcelles du
+projet :
+
+    Error in `[[<-.data.frame` : replacement has 427 rows, data has 1
+
+La cause est l’idiome
+`utils::modifyList(projet, list(parcels = parcelles))`, repris de
+l’esquisse du brief.
+[`modifyList()`](https://rdrr.io/r/utils/modifyList.html) **récurse dans
+les listes** — et un `data.frame` en est une : au lieu de remplacer
+l’objet `parcels`, il fusionne les colonnes de l’ancien parcellaire avec
+celles du nouveau. Erreur immédiate à tailles différentes, et fusion
+**silencieuse** à tailles égales, ce qui est pire. Remplacé par une
+affectation directe.
+
+Les tests unitaires ne pouvaient pas le voir : leurs fixtures avaient 2
+parcelles cadastrales et 2 parcelles forestières, donc la fusion «
+marchait » par accident. C’est exactement la configuration qui ne se
+produit jamais en vrai, où une poignée de parcelles cadastrales
+rencontre des centaines de parcelles forestières. Un test de régression
+fixe désormais des tailles volontairement différentes.
+
+#### Changed — Recette §6 validée contre le service réel
+
+| Cas | Attendu par le brief | Mesuré |
+|----|----|----|
+| Chaux, emprise 4×4 km | ~200 UGF ; 217 parcelles / 2 105 ha / 5,8 s | **213 parcelles / 2 114 ha / 1,1 s** — 189 « Forêt domaniale de Chaux » + 24 « Forêt communale de La-Vieille-Loye » |
+| filtre `domaniale` | seules les domaniales subsistent | 394 / 394 ; `autre` → 33, aucune domaniale |
+| plaine agricole | « aucune forêt publique » | `status = empty` en 0,4 s |
+| service coupé | message d’indisponibilité, repli cadastral | `status = unavailable` en 0,1 s, `NULL` rendu |
+
+Bout-en-bout sur les 427 parcelles réelles : import en 0,1 s (427 UGF,
+invariants verts) ; croisement produisant 586 tènements pour 423 UGF,
+avec identifiants uniques, invariants verts et surtout un **pavage exact
+des parcelles cadastrales à 0,000000 %** — l’invariant qui se serait
+cassé en silence.
+
+#### Changed — Le calage cadastral, validé sur cadastre réel
+
+La case « caler les UGF sur les limites cadastrales » reproduit
+**exactement** les mesures du brief, sur le vrai cadastre de
+La-Vieille-Loye (1 271 parcelles cadastrales × 94 parcelles forestières)
+:
+
+|                                  | Brief (cœur) | Mesuré (app) |
+|----------------------------------|--------------|--------------|
+| Tènements forestiers sans calage | 170          | **170**      |
+| Tènements forestiers avec calage | 124          | **124**      |
+| Bords cadastraux sans calage     | 13           | **13**       |
+| Bords cadastraux avec calage     | 41           | **41**       |
+
+Le réglage était resté non vérifiable tant qu’on l’éprouvait sur un
+cadastre *synthétique* : une grille régulière est par construction
+désalignée du parcellaire forestier, l’UGF dominante n’y détenait jamais
+plus de **30,1 %** d’une maille, contre les **90 %** qu’exige le calage.
+Sur cadastre réel la médiane monte à **0,95**, et 41 parcelles sur 64
+franchissent le seuil.
+
+Au niveau du projet : 1 422 → 1 365 tènements et 87 → 86 UGF — une UGF
+forestière disparaît, ne tenant que des échardes absorbées par l’UGF
+dominante.
+
+#### Fixed — Le croisement était 95 fois plus lent que nécessaire
+
+`tenement_import_replace()` pesait **628,9 s** sur ce même croisement,
+contre 24,9 s pour tout le calcul du cœur : 96 % du coût. Deux causes,
+toutes deux dans l’app :
+
+- pour **chacun** des 1 422 fragments, la fonction intersectait la
+  totalité des 1 271 parcelles — et n’utilisait jamais le résultat. Du
+  calcul intégralement mort. Le `st_intersects()` qui suivait était lui
+  aussi refait par fragment, au lieu d’être calculé une fois via l’index
+  spatial ;
+- surtout, les comparaisons d’aires appelaient `st_area()` sur des
+  géométries portant un CRS. `sf` en relit alors les paramètres à chaque
+  appel pour attacher une unité : `CPL_crs_parameters` représentait
+  **76,8 %** du temps, quand les intersections GEOS elles-mêmes n’en
+  prenaient que 1,14 s. Ces aires ne servent qu’à départager des
+  candidates — l’unité n’y joue aucun rôle.
+
+Corrigé : index calculé une fois, calcul mort supprimé, court-circuit
+quand un fragment ne touche qu’une parcelle, et comparaisons d’aires sur
+des copies sans CRS (les géométries stockées gardent le leur).
+
+**628,9 s → 6,6 s**, à résultat *strictement identique* — mêmes
+tènements, mêmes parents, mêmes UGF, même répartition, surfaces au
+centième près, invariants verts. Un croisement complet passe de 654 s à
+31,5 s. Le gain profite aussi à l’import de découpage QGIS, qui emprunte
+la même fonction.
+
 ## nemetonshiny 0.129.0 (2026-08-19)
 
 Implémente `specs/046-parcellaire-onf/brief-nemetonshiny.md`. Plancher

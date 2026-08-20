@@ -626,27 +626,37 @@ une nouvelle confirmation.
 
 1.  **Aucune logique métier** dans `nemetonshiny` (indicateurs,
     familles, NDP). Tout passe par `nemeton`.
+
 2.  Aucune logique métier dans `R/mod_*.R` non plus — les modules
     consomment `R/service_*.R`.
+
 3.  **i18n obligatoire** : `i18n$t("clé")` partout, jamais de littéral.
+
 4.  **Encodage `\uXXXX`** pour les caractères accentués dans les sources
     R (`utils_i18n.R` notamment).
+
 5.  Chaque nouvelle fonction exportée a un test dans `tests/testthat/`.
+
 6.  Les rasters et le LiDAR ne sont JAMAIS stockés en DB (ADR-002) —
     seulement les agrégats.
+
 7.  Pas de dépendance inverse : `nemeton` n’importe JAMAIS
     `nemetonshiny`.
+
 8.  Pas de secret en dur : OAuth, API LLM, DB → variables
     d’environnement (`.Renviron` gitignore).
+
 9.  Pas de [`print()`](https://rdrr.io/r/base/print.html) /
     [`cat()`](https://rdrr.io/r/base/cat.html) /
     [`message()`](https://rdrr.io/r/base/message.html) en code de prod :
     passer par `cli::cli_*` ou
     [`shiny::showNotification`](https://rdrr.io/pkg/shiny/man/showNotification.html)
     selon contexte.
+
 10. Quand je travaille sur une tâche longue, maintenir le `PLAN.md` du
     repo `nemeton` à jour à chaque étape terminée (chantier en cours +
     journal).
+
 11. **Push branche dev = automatique ; merge `main` + tag + release =
     autorisation explicite**. Après chaque push réussi sur la branche
     dev, Claude doit systématiquement demander s’il faut merger sur
@@ -654,18 +664,36 @@ une nouvelle confirmation.
     (branche dev → main)*. Sans autorisation explicite, jamais de
     `git push origin main`, jamais de tag, jamais de
     `gh release create`, jamais de merge.
-12. **Ne jamais basculer dans le repo `nemeton` (cœur) depuis cette
+
+12. **Ne jamais MODIFIER le repo `nemeton` (cœur) depuis cette
     session.** Cette session de développement est dédiée à
     `nemetonshiny` (`/home/pascal/dev/nemetonshiny`). Si une
     modification cœur (`nemeton`) est nécessaire — nouvelle fonction
     exportée, fix d’un helper interne, bump cycle dev cœur, mise à jour
-    du `PLAN.md` cœur, etc. — Claude doit **s’arrêter et demander à
-    l’utilisateur d’ouvrir une nouvelle instance de dev sur le dépôt
-    `/home/pascal/dev/nemeton`** avec les instructions précises
-    (signature de fonction, contenu attendu, tests, NEWS, PLAN). Pas de
-    `cd /home/pascal/dev/nemeton`, pas de `git checkout` côté cœur, pas
-    de `Read`/`Edit`/`Write` sur des fichiers
-    `/home/pascal/dev/nemeton/**`. Raison : opérer sur deux repos en
-    parallèle dans la même session brouille l’état du shell,
-    désynchronise le suivi des branches, et rend les récap de push
-    ambigus pour l’utilisateur. Garder une session = un repo.
+    du `PLAN.md` cœur, correction d’une spec, etc. — Claude doit
+    **s’arrêter et demander à l’utilisateur d’ouvrir une nouvelle
+    instance de dev sur le dépôt `/home/pascal/dev/nemeton`** avec les
+    instructions précises (signature de fonction, contenu attendu,
+    tests, NEWS, PLAN).
+
+    **Interdit** : `Edit` / `Write` sur `/home/pascal/dev/nemeton/**`,
+    `cd /home/pascal/dev/nemeton`, toute commande `git` côté cœur
+    (`checkout`, `add`, `commit`, `push`, `branch`…), et toute commande
+    shell qui écrit dans l’arbre cœur (`sed -i`, `mv`, `rm`, redirection
+    `>`).
+
+    **Autorisé, en lecture seule** : `Read` / `cat` / `grep` / `ls` sur
+    `/home/pascal/dev/nemeton/**`, et la **copie SORTANTE** d’un fichier
+    cœur vers ce repo ou vers le scratchpad
+    (`cp /home/pascal/dev/nemeton/... → ici`). C’est ce qui permet de
+    lire les briefs d’intégration (cf. *Briefs d’intégration*) et de
+    rapatrier une spec pour la consulter. La copie ENTRANTE (vers
+    l’arbre cœur) reste interdite : elle écrit côté cœur.
+
+    Raison de la restriction : **modifier** deux repos en parallèle dans
+    la même session brouille l’état du shell, désynchronise le suivi des
+    branches, et rend les récap de push ambigus pour l’utilisateur. Lire
+    n’a aucun de ces effets — et l’interdire contredisait la section
+    *Briefs d’intégration*, qui demande justement de lire
+    `nemeton/specs/**/brief-nemetonshiny*.md`. Garder une session = un
+    repo **qu’on écrit**.

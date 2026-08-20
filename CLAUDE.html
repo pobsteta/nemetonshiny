@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.129.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -566,23 +566,23 @@ keycloak/                     → Compose dev + realms pour auth locale
 </div>
 <div class="section level2">
 <h2 id="règles-strictes">Règles strictes<a class="anchor" aria-label="anchor" href="#r%C3%A8gles-strictes"></a></h2>
-<ol style="list-style-type: decimal"><li>
-<strong>Aucune logique métier</strong> dans <code>nemetonshiny</code> (indicateurs, familles, NDP). Tout passe par <code>nemeton</code>.</li>
-<li>Aucune logique métier dans <code>R/mod_*.R</code> non plus — les modules consomment <code>R/service_*.R</code>.</li>
+<ol style="list-style-type: decimal"><li><p><strong>Aucune logique métier</strong> dans <code>nemetonshiny</code> (indicateurs, familles, NDP). Tout passe par <code>nemeton</code>.</p></li>
+<li><p>Aucune logique métier dans <code>R/mod_*.R</code> non plus — les modules consomment <code>R/service_*.R</code>.</p></li>
+<li><p><strong>i18n obligatoire</strong> : <code>i18n$t("clé")</code> partout, jamais de littéral.</p></li>
+<li><p><strong>Encodage <code>\uXXXX</code></strong> pour les caractères accentués dans les sources R (<code>utils_i18n.R</code> notamment).</p></li>
+<li><p>Chaque nouvelle fonction exportée a un test dans <code>tests/testthat/</code>.</p></li>
+<li><p>Les rasters et le LiDAR ne sont JAMAIS stockés en DB (ADR-002) — seulement les agrégats.</p></li>
+<li><p>Pas de dépendance inverse : <code>nemeton</code> n’importe JAMAIS <code>nemetonshiny</code>.</p></li>
+<li><p>Pas de secret en dur : OAuth, API LLM, DB → variables d’environnement (<code>.Renviron</code> gitignore).</p></li>
+<li><p>Pas de <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> / <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> / <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> en code de prod : passer par <code>cli::cli_*</code> ou <code><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">shiny::showNotification</a></code> selon contexte.</p></li>
+<li><p>Quand je travaille sur une tâche longue, maintenir le <code>PLAN.md</code> du repo <code>nemeton</code> à jour à chaque étape terminée (chantier en cours + journal).</p></li>
+<li><p><strong>Push branche dev = automatique ; merge <code>main</code> + tag + release = autorisation explicite</strong>. Après chaque push réussi sur la branche dev, Claude doit systématiquement demander s’il faut merger sur <code>main</code> en présentant le récapitulatif décrit dans <em>Workflow de push (branche dev → main)</em>. Sans autorisation explicite, jamais de <code>git push origin main</code>, jamais de tag, jamais de <code>gh release create</code>, jamais de merge.</p></li>
 <li>
-<strong>i18n obligatoire</strong> : <code>i18n$t("clé")</code> partout, jamais de littéral.</li>
-<li>
-<strong>Encodage <code>\uXXXX</code></strong> pour les caractères accentués dans les sources R (<code>utils_i18n.R</code> notamment).</li>
-<li>Chaque nouvelle fonction exportée a un test dans <code>tests/testthat/</code>.</li>
-<li>Les rasters et le LiDAR ne sont JAMAIS stockés en DB (ADR-002) — seulement les agrégats.</li>
-<li>Pas de dépendance inverse : <code>nemeton</code> n’importe JAMAIS <code>nemetonshiny</code>.</li>
-<li>Pas de secret en dur : OAuth, API LLM, DB → variables d’environnement (<code>.Renviron</code> gitignore).</li>
-<li>Pas de <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> / <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> / <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> en code de prod : passer par <code>cli::cli_*</code> ou <code><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">shiny::showNotification</a></code> selon contexte.</li>
-<li>Quand je travaille sur une tâche longue, maintenir le <code>PLAN.md</code> du repo <code>nemeton</code> à jour à chaque étape terminée (chantier en cours + journal).</li>
-<li>
-<strong>Push branche dev = automatique ; merge <code>main</code> + tag + release = autorisation explicite</strong>. Après chaque push réussi sur la branche dev, Claude doit systématiquement demander s’il faut merger sur <code>main</code> en présentant le récapitulatif décrit dans <em>Workflow de push (branche dev → main)</em>. Sans autorisation explicite, jamais de <code>git push origin main</code>, jamais de tag, jamais de <code>gh release create</code>, jamais de merge.</li>
-<li>
-<strong>Ne jamais basculer dans le repo <code>nemeton</code> (cœur) depuis cette session.</strong> Cette session de développement est dédiée à <code>nemetonshiny</code> (<code>/home/pascal/dev/nemetonshiny</code>). Si une modification cœur (<code>nemeton</code>) est nécessaire — nouvelle fonction exportée, fix d’un helper interne, bump cycle dev cœur, mise à jour du <code>PLAN.md</code> cœur, etc. — Claude doit <strong>s’arrêter et demander à l’utilisateur d’ouvrir une nouvelle instance de dev sur le dépôt <code>/home/pascal/dev/nemeton</code></strong> avec les instructions précises (signature de fonction, contenu attendu, tests, NEWS, PLAN). Pas de <code>cd /home/pascal/dev/nemeton</code>, pas de <code>git checkout</code> côté cœur, pas de <code>Read</code>/<code>Edit</code>/<code>Write</code> sur des fichiers <code>/home/pascal/dev/nemeton/**</code>. Raison : opérer sur deux repos en parallèle dans la même session brouille l’état du shell, désynchronise le suivi des branches, et rend les récap de push ambigus pour l’utilisateur. Garder une session = un repo.</li>
+<p><strong>Ne jamais MODIFIER le repo <code>nemeton</code> (cœur) depuis cette session.</strong> Cette session de développement est dédiée à <code>nemetonshiny</code> (<code>/home/pascal/dev/nemetonshiny</code>). Si une modification cœur (<code>nemeton</code>) est nécessaire — nouvelle fonction exportée, fix d’un helper interne, bump cycle dev cœur, mise à jour du <code>PLAN.md</code> cœur, correction d’une spec, etc. — Claude doit <strong>s’arrêter et demander à l’utilisateur d’ouvrir une nouvelle instance de dev sur le dépôt <code>/home/pascal/dev/nemeton</code></strong> avec les instructions précises (signature de fonction, contenu attendu, tests, NEWS, PLAN).</p>
+<p><strong>Interdit</strong> : <code>Edit</code> / <code>Write</code> sur <code>/home/pascal/dev/nemeton/**</code>, <code>cd /home/pascal/dev/nemeton</code>, toute commande <code>git</code> côté cœur (<code>checkout</code>, <code>add</code>, <code>commit</code>, <code>push</code>, <code>branch</code>…), et toute commande shell qui écrit dans l’arbre cœur (<code>sed -i</code>, <code>mv</code>, <code>rm</code>, redirection <code>&gt;</code>).</p>
+<p><strong>Autorisé, en lecture seule</strong> : <code>Read</code> / <code>cat</code> / <code>grep</code> / <code>ls</code> sur <code>/home/pascal/dev/nemeton/**</code>, et la <strong>copie SORTANTE</strong> d’un fichier cœur vers ce repo ou vers le scratchpad (<code>cp /home/pascal/dev/nemeton/... → ici</code>). C’est ce qui permet de lire les briefs d’intégration (cf. <em>Briefs d’intégration</em>) et de rapatrier une spec pour la consulter. La copie ENTRANTE (vers l’arbre cœur) reste interdite : elle écrit côté cœur.</p>
+<p>Raison de la restriction : <strong>modifier</strong> deux repos en parallèle dans la même session brouille l’état du shell, désynchronise le suivi des branches, et rend les récap de push ambigus pour l’utilisateur. Lire n’a aucun de ces effets — et l’interdire contredisait la section <em>Briefs d’intégration</em>, qui demande justement de lire <code>nemeton/specs/**/brief-nemetonshiny*.md</code>. Garder une session = un repo <strong>qu’on écrit</strong>.</p>
+</li>
 </ol></div>
 </div>
 
