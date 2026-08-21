@@ -1,5 +1,54 @@
 # Changelog
 
+## nemetonshiny 0.131.0 (2026-08-21)
+
+Implémente `briefs/vers-nemetonshiny/2026-08-20-sens-famille-risque.md`
+(spec 048). Plancher relevé à `nemeton (>= 0.181.0)`.
+
+#### Fixed — La famille R disait l’inverse de la vérité
+
+`nemeton 0.181.0` inverse **R1** (feu), **R2** (tempête), **R3**
+(sécheresse) et **R4** (abroutissement) à la normalisation, comme R5
+depuis 0.99.1. Leur grandeur brute est « haut = mauvais » et passait
+telle quelle sur le radar : une UGF très exposée obtenait un
+`famille_risque` **élevé**, donc flatteur — et R5 pointait à l’opposé
+des quatre autres dans sa propre famille.
+
+L’app n’a **aucun calcul** à changer : le cœur rend désormais la valeur
+dans le bon sens, et toute inversion applicative annulerait la
+correction. Un test parcourt les sources pour s’assurer qu’aucune
+n’apparaît — elle passerait inaperçue, le radar remontant sur les
+massifs exposés sans qu’aucun test ne tombe.
+
+Deux choses relevaient en revanche de l’app.
+
+**Les indicateurs déjà calculés sont faux.** Un `indicators.parquet`
+produit sous l’ancien sens reste parfaitement **lisible** : mêmes
+colonnes, mêmes types, aucune erreur au chargement.
+`compute_all_indicators()` le relirait donc, constaterait que le travail
+est fait, et sauterait le recalcul en propageant des `famille_risque`
+faux. Un marqueur `indicator_sense_version` déclenche une invalidation
+**unique**, à la première ouverture du projet après la montée de
+version. Il est posé même quand il n’y a rien à invalider, sinon le test
+se rejouerait à chaque ouverture.
+
+**La palette de la carte se retournait toute seule.** `famille_risque`
+était peint en YlOrRd (jaune → rouge), ce qui convenait tant que « haut
+= plus de risque ». Orienté « haut = bon », il aurait coloré en **rouge
+les UGF les moins à risque**. Le brief annonçait que les couleurs ne
+changeaient pas : c’est vrai du radar, pas de cette palette.
+`famille_risque` en sort ; les codes bruts R1..R4 la gardent, leur sens
+n’ayant pas bougé.
+
+#### À savoir avant de comparer des scores
+
+Un projet rouvert affichera un `famille_risque` **différent**, souvent
+nettement plus bas sur les massifs exposés. Ce n’est pas une régression
+: c’est la première fois que le radar dit vrai sur cette famille.
+
+**Une comparaison de scores d’avant et d’après le 2026-08-21 n’a aucun
+sens.**
+
 ## nemetonshiny 0.130.10 (2026-08-20)
 
 #### Changed — L’accent IA couvre toute l’app, et entre dans la règle

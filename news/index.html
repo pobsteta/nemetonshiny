@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.130.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.131.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.131.0" id="nemetonshiny-01310-2026-08-21">nemetonshiny 0.131.0 (2026-08-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01310-2026-08-21"></a></h2>
+<p>Implémente <code>briefs/vers-nemetonshiny/2026-08-20-sens-famille-risque.md</code> (spec 048). Plancher relevé à <code>nemeton (&gt;= 0.181.0)</code>.</p>
+<div class="section level4">
+<h4 id="fixed--la-famille-r-disait-linverse-de-la-vérité-0-131-0">Fixed — La famille R disait l’inverse de la vérité<a class="anchor" aria-label="anchor" href="#fixed--la-famille-r-disait-linverse-de-la-v%C3%A9rit%C3%A9-0-131-0"></a></h4>
+<p><code>nemeton 0.181.0</code> inverse <strong>R1</strong> (feu), <strong>R2</strong> (tempête), <strong>R3</strong> (sécheresse) et <strong>R4</strong> (abroutissement) à la normalisation, comme R5 depuis 0.99.1. Leur grandeur brute est « haut = mauvais » et passait telle quelle sur le radar : une UGF très exposée obtenait un <code>famille_risque</code> <strong>élevé</strong>, donc flatteur — et R5 pointait à l’opposé des quatre autres dans sa propre famille.</p>
+<p>L’app n’a <strong>aucun calcul</strong> à changer : le cœur rend désormais la valeur dans le bon sens, et toute inversion applicative annulerait la correction. Un test parcourt les sources pour s’assurer qu’aucune n’apparaît — elle passerait inaperçue, le radar remontant sur les massifs exposés sans qu’aucun test ne tombe.</p>
+<p>Deux choses relevaient en revanche de l’app.</p>
+<p><strong>Les indicateurs déjà calculés sont faux.</strong> Un <code>indicators.parquet</code> produit sous l’ancien sens reste parfaitement <strong>lisible</strong> : mêmes colonnes, mêmes types, aucune erreur au chargement. <code>compute_all_indicators()</code> le relirait donc, constaterait que le travail est fait, et sauterait le recalcul en propageant des <code>famille_risque</code> faux. Un marqueur <code>indicator_sense_version</code> déclenche une invalidation <strong>unique</strong>, à la première ouverture du projet après la montée de version. Il est posé même quand il n’y a rien à invalider, sinon le test se rejouerait à chaque ouverture.</p>
+<p><strong>La palette de la carte se retournait toute seule.</strong> <code>famille_risque</code> était peint en YlOrRd (jaune → rouge), ce qui convenait tant que « haut = plus de risque ». Orienté « haut = bon », il aurait coloré en <strong>rouge les UGF les moins à risque</strong>. Le brief annonçait que les couleurs ne changeaient pas : c’est vrai du radar, pas de cette palette. <code>famille_risque</code> en sort ; les codes bruts R1..R4 la gardent, leur sens n’ayant pas bougé.</p>
+</div>
+<div class="section level4">
+<h4 id="à-savoir-avant-de-comparer-des-scores-0-131-0">À savoir avant de comparer des scores<a class="anchor" aria-label="anchor" href="#%C3%A0-savoir-avant-de-comparer-des-scores-0-131-0"></a></h4>
+<p>Un projet rouvert affichera un <code>famille_risque</code> <strong>différent</strong>, souvent nettement plus bas sur les massifs exposés. Ce n’est pas une régression : c’est la première fois que le radar dit vrai sur cette famille.</p>
+<p><strong>Une comparaison de scores d’avant et d’après le 2026-08-21 n’a aucun sens.</strong></p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.130.10" id="nemetonshiny-013010-2026-08-20">nemetonshiny 0.130.10 (2026-08-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-013010-2026-08-20"></a></h2>
 <div class="section level4">
