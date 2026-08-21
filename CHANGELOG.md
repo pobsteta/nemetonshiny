@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.131.1\] - 2026-08-21
+
+### Added
+
+- Une note sous le tableau de synthèse indique le sens de lecture de la
+  colonne `Score` : haut = favorable, pour les douze familles, R
+  comprise. L’inversion de R1–R4 a rendu visible un manque plus ancien —
+  aucune colonne `Score` ne disait sa direction. Le nom de la famille R
+  n’est pas renommé : il reste juste dans l’onglet Famille, où l’on voit
+  les grandeurs brutes.
+
 ## \[0.131.0\] - 2026-08-21
 
 ### Fixed

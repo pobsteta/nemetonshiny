@@ -1,5 +1,33 @@
 # Changelog
 
+## nemetonshiny 0.131.1 (2026-08-21)
+
+#### Added — Le tableau de synthèse dit enfin dans quel sens se lit son Score
+
+Une note sous le tableau : *« Score : plus il est élevé, plus la
+situation est favorable — pour les douze familles. La famille R comprise
+: un score haut y signifie une bonne résilience, donc peu de risque. »*
+
+L’inversion de R1–R4 (v0.131.0) a rendu visible un manque plus ancien :
+**aucune colonne `Score` ne disait sa direction**. Tant que « Risques &
+Résilience » se lisait « haut = beaucoup de risque », l’intuition
+suffisait. Elle donne maintenant le contraire de la vérité.
+
+**Deux options ont été écartées.** Renommer l’axe du radar : il n’y en a
+pas à renommer, le radar ne porte que des **lettres** (B, W, A, F, L, T,
+R…), et non des noms de famille. Renommer la famille en « Résilience » :
+son nom vient du cœur et reste **juste** dans l’onglet Famille, où l’on
+voit les grandeurs brutes — `R1 = 100` y signifie bien un fort risque
+incendie. Le renommer aurait rendu cet onglet faux à son tour.
+
+Le partage retenu : **on compare des scores dans la Synthèse, on examine
+des mesures dans l’onglet Famille.** Le risque reste le risque là où on
+l’examine, et devient résilience là où on le compare — la note fait la
+jonction.
+
+Elle est placée **sous le tableau**, pas repliée dans un « i » : c’est
+la clé de lecture des douze lignes, pas une précision facultative.
+
 ## nemetonshiny 0.131.0 (2026-08-21)
 
 Implémente `briefs/vers-nemetonshiny/2026-08-20-sens-famille-risque.md`

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.131.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.131.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.131.1" id="nemetonshiny-01311-2026-08-21">nemetonshiny 0.131.1 (2026-08-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01311-2026-08-21"></a></h2>
+<div class="section level4">
+<h4 id="added--le-tableau-de-synthèse-dit-enfin-dans-quel-sens-se-lit-son-score-0-131-1">Added — Le tableau de synthèse dit enfin dans quel sens se lit son Score<a class="anchor" aria-label="anchor" href="#added--le-tableau-de-synth%C3%A8se-dit-enfin-dans-quel-sens-se-lit-son-score-0-131-1"></a></h4>
+<p>Une note sous le tableau : <em>« Score : plus il est élevé, plus la situation est favorable — pour les douze familles. La famille R comprise : un score haut y signifie une bonne résilience, donc peu de risque. »</em></p>
+<p>L’inversion de R1–R4 (v0.131.0) a rendu visible un manque plus ancien : <strong>aucune colonne <code>Score</code> ne disait sa direction</strong>. Tant que « Risques &amp; Résilience » se lisait « haut = beaucoup de risque », l’intuition suffisait. Elle donne maintenant le contraire de la vérité.</p>
+<p><strong>Deux options ont été écartées.</strong> Renommer l’axe du radar : il n’y en a pas à renommer, le radar ne porte que des <strong>lettres</strong> (B, W, A, F, L, T, R…), et non des noms de famille. Renommer la famille en « Résilience » : son nom vient du cœur et reste <strong>juste</strong> dans l’onglet Famille, où l’on voit les grandeurs brutes — <code>R1 = 100</code> y signifie bien un fort risque incendie. Le renommer aurait rendu cet onglet faux à son tour.</p>
+<p>Le partage retenu : <strong>on compare des scores dans la Synthèse, on examine des mesures dans l’onglet Famille.</strong> Le risque reste le risque là où on l’examine, et devient résilience là où on le compare — la note fait la jonction.</p>
+<p>Elle est placée <strong>sous le tableau</strong>, pas repliée dans un « i » : c’est la clé de lecture des douze lignes, pas une précision facultative.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.131.0" id="nemetonshiny-01310-2026-08-21">nemetonshiny 0.131.0 (2026-08-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01310-2026-08-21"></a></h2>
 <p>Implémente <code>briefs/vers-nemetonshiny/2026-08-20-sens-famille-risque.md</code> (spec 048). Plancher relevé à <code>nemeton (&gt;= 0.181.0)</code>.</p>
