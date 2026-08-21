@@ -121,3 +121,84 @@ ensure_project_migrated <- function(project_id, projet = NULL) {
   # No UG data found - run migration
   migrate_project_v1_to_v2(project_id, projet)
 }
+
+# ==============================================================================
+# Sens des indicateurs de risque (spec 048, nemeton >= 0.181.0)
+# ==============================================================================
+
+#' Version du SENS des indicateurs, pas du schema
+#'
+#' @description
+#' A incrementer chaque fois que le coeur change l'ORIENTATION d'un indicateur
+#' - ce qui rend faux tout `indicators.parquet` calcule avant, sans rien changer
+#' a sa structure. C'est precisement ce que `schema_version` ne sait pas dire :
+#' le fichier reste lisible, ses colonnes sont les memes, seules les VALEURS
+#' normalisees ont bascule.
+#'
+#' Historique :
+#'
+#' * `1` - etat initial (aucun marqueur : projets anterieurs au 2026-08-21).
+#' * `2` - `nemeton 0.181.0` (spec 048) inverse R1 (feu), R2 (tempete),
+#'   R3 (secheresse) et R4 (abroutissement) a la normalisation, comme R5 depuis
+#'   0.99.1. Leur grandeur brute est " haut = mauvais " et passait telle quelle
+#'   sur le radar : une UGF tres exposee obtenait un `famille_risque` ELEVE,
+#'   donc flatteur, et R5 pointait a l'oppose des quatre autres dans sa propre
+#'   famille.
+#'
+#' @noRd
+INDICATOR_SENSE_VERSION <- 2L
+
+
+#' Invalidate indicators computed before an indicator changed direction
+#'
+#' @description
+#' Un `indicators.parquet` calcule avant un changement de sens reste
+#' parfaitement LISIBLE : memes colonnes, memes types, aucune erreur au
+#' chargement. `compute_all_indicators()` le relit donc, constate que le travail
+#' est fait, et saute le recalcul - en propageant des `famille_risque` faux.
+#'
+#' D'ou cette invalidation unique, declenchee a la premiere ouverture du projet
+#' apres la montee de version. Elle passe par `invalidate_indicators()`, le meme
+#' mecanisme que le croisement ONF : le parquet est supprime, le projet repasse
+#' en `draft`, et l'app rend a nouveau visible le bouton de calcul.
+#'
+#' Le marqueur est ecrit MEME quand il n'y a rien a invalider (projet jamais
+#' calcule) : sans cela, le test se rejouerait a chaque ouverture.
+#'
+#' @param project_id Character.
+#' @param metadata List. Metadonnees deja chargees, pour eviter une relecture.
+#'
+#' @return Logical. `TRUE` si des indicateurs ont ete invalides.
+#'
+#' @noRd
+ensure_indicator_sense_current <- function(project_id, metadata = NULL) {
+  metadata <- metadata %||% load_project_metadata(project_id)
+  if (is.null(metadata)) return(FALSE)
+
+  vue <- suppressWarnings(as.integer(metadata$indicator_sense_version %||% 1L))
+  if (length(vue) != 1L || is.na(vue)) vue <- 1L
+  if (vue >= INDICATOR_SENSE_VERSION) return(FALSE)
+
+  # Rien de calcule : il n'y a rien a jeter, on pose seulement le marqueur.
+  a_invalider <- isTRUE(metadata$indicators_computed) ||
+    file.exists(file.path(get_project_path(project_id) %||% "",
+                          "data", "indicators.parquet"))
+
+  if (a_invalider) {
+    cli::cli_alert_warning(
+      "Projet {project_id} : indicateurs calcul\u00e9s avant l'inversion des \\
+       risques (spec 048), invalid\u00e9s - un recalcul est n\u00e9cessaire.")
+    tryCatch(invalidate_indicators(project_id),
+             error = function(e) cli::cli_warn(
+               "Invalidation impossible : {conditionMessage(e)}"))
+  }
+
+  tryCatch(
+    update_project_metadata(
+      project_id,
+      list(indicator_sense_version = INDICATOR_SENSE_VERSION)),
+    error = function(e) cli::cli_warn(
+      "Marqueur de sens non ecrit : {conditionMessage(e)}"))
+
+  isTRUE(a_invalider)
+}

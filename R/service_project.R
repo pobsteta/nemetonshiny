@@ -1028,6 +1028,19 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
     return(NULL)
   }
 
+  # Sens des indicateurs (spec 048) : un parquet calcule avant une inversion
+  # reste lisible, donc `compute_all_indicators()` le relirait et sauterait le
+  # recalcul en propageant des `famille_risque` faux. L'invalidation a lieu ICI,
+  # avant `load_indicators()` ci-dessous - sinon on chargerait les valeurs
+  # perimees qu'on vient de supprimer du disque.
+  .perf_time("indicator_sense", tryCatch(
+    ensure_indicator_sense_current(project_id, metadata),
+    error = function(e) {
+      cli::cli_warn("Verification du sens des indicateurs impossible : {conditionMessage(e)}")
+      FALSE
+    }))
+  metadata <- load_project_metadata(project_id) %||% metadata
+
   project <- list(
     id = project_id,
     path = project_path,

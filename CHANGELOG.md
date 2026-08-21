@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.131.0] - 2026-08-21
+
+### Fixed
+
+- Suivi de `nemeton 0.181.0` (spec 048) : R1 à R4 sont désormais inversés à la
+  normalisation comme R5, une UGF très exposée n'obtient plus un
+  `famille_risque` flatteur. L'app n'inverse rien elle-même — un test le
+  vérifie sur les sources.
+- Les indicateurs calculés sous l'ancien sens sont invalidés une fois, via un
+  marqueur `indicator_sense_version` : le parquet restait lisible, donc
+  `compute_all_indicators()` aurait sauté le recalcul.
+- `famille_risque` sort de la palette YlOrRd : orienté « haut = bon », il aurait
+  coloré en rouge les UGF les moins à risque.
+
+### Changed
+
+- Plancher relevé à `nemeton (>= 0.181.0)`.
+
 ## [0.130.10] - 2026-08-20
 
 ### Changed
