@@ -658,7 +658,15 @@ mod_synthesis_ui <- function(id) {
           )
         ),
         bslib::card_body(
-          shiny::tableOutput(ns("summary_table"))
+          shiny::tableOutput(ns("summary_table")),
+          # Sens de lecture de la colonne Score, sous le tableau et non dans un
+          # " i " : c'est la cle de lecture des douze lignes. Depuis l'inversion
+          # de R1-R4 (spec 048), " Risques & Resilience " avec un score eleve se
+          # lit spontanement " beaucoup de risque " - c'est l'inverse.
+          htmltools::tags$p(
+            class = "text-muted small fst-italic mb-0 mt-2",
+            i18n$t("summary_score_direction")
+          )
         )
       ),
       bslib::card(
