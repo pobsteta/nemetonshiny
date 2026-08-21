@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.132.0\] - 2026-08-21
+
+### Added
+
+- Bouton « Importer un CSV de parcelles » dans le bloc *Tableau UGF* de
+  l’onglet Sélection : crée un projet depuis un fichier
+  `commune-code_insee.csv` listant les références cadastrales
+  (`A1;A2;AO212`), croise avec le parcellaire ONF, et rafraîchit tous
+  les sous-onglets. La commune vient du **nom** du fichier ; un nom hors
+  convention est refusé plutôt que deviné. L’appariement porte sur le
+  couple (section, numéro entier), pour que `A1` retrouve `A0001`.
+- `R/service_parcelles_csv.R` : `parse_parcelles_csv()`,
+  `resolve_parcelles_refs()`, `importer_parcelles_csv()`.
+
 ## \[0.131.1\] - 2026-08-21
 
 ### Added

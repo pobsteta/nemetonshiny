@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.131.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.132.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.132.0" id="nemetonshiny-01320-2026-08-21">nemetonshiny 0.132.0 (2026-08-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01320-2026-08-21"></a></h2>
+<div class="section level4">
+<h4 id="added--créer-un-projet-depuis-une-liste-csv-de-parcelles-cadastrales-0-132-0">Added — Créer un projet depuis une liste CSV de parcelles cadastrales<a class="anchor" aria-label="anchor" href="#added--cr%C3%A9er-un-projet-depuis-une-liste-csv-de-parcelles-cadastrales-0-132-0"></a></h4>
+<p>Un bouton <strong>« Importer un CSV de parcelles »</strong> apparaît dans le bloc <em>Tableau UGF</em> du sous-onglet du même nom, dans l’onglet Sélection. Il crée un projet entier à partir d’un fichier, croise avec le parcellaire ONF, et rafraîchit tous les sous-onglets de Sélection.</p>
+<p><strong>Le format.</strong> Un fichier <code>commune-code_insee.csv</code> — par exemple <code>couchey-21200.csv</code> — contenant les références cadastrales séparées par des points-virgules : <code>A1;A2;A3;…;AO212;AO220</code>.</p>
+<p><strong>La commune est lue dans le NOM du fichier</strong>, et c’est le point sensible : son contenu n’en porte aucune trace, et <code>A1</code> existe dans presque toutes les communes de France. Un nom hors convention est donc <strong>refusé</strong>, jamais deviné — un INSEE erroné irait chercher le cadastre d’une autre commune, où quelques références s’apparieraient par pure coïncidence.</p>
+<p><strong>L’appariement porte sur le couple (section, numéro entier).</strong> Le forestier écrit <code>A1</code>, le cadastre stocke <code>numero = "0001"</code> : comparer les chaînes brutes ferait échouer toute la liste. Les sections à deux caractères (<code>AO</code>, <code>ZB</code>, <code>0A</code>) sont prises en compte — le découpage lit les <strong>chiffres de fin</strong>, il ne suppose pas une forme « lettres puis chiffres ».</p>
+<p><strong>Une liste partiellement résolue est un succès</strong>, avec son rapport : une parcelle a pu être fusionnée ou renumérotée depuis. Refuser l’import serait excessif ; se taire serait pire — la surface obtenue passerait pour la surface demandée. Les références introuvables sont listées.</p>
+<p>Quatre échecs sont distingués — nom hors convention, fichier sans référence, cadastre indisponible, aucune référence dans la commune — parce qu’ils n’appellent pas le même geste. Le dernier signale presque toujours un code INSEE qui ne correspond pas à la liste.</p>
+<p>Le croisement ONF est <strong>optionnel</strong> (coché par défaut) et ses échecs n’annulent pas l’import : le projet existe, simplement sans UGF forestières.</p>
+<p>Vérifié sur <code>couchey-21200.csv</code> : <strong>23 références, 23 parcelles, 535,6 ha</strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.131.1" id="nemetonshiny-01311-2026-08-21">nemetonshiny 0.131.1 (2026-08-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01311-2026-08-21"></a></h2>
 <div class="section level4">
