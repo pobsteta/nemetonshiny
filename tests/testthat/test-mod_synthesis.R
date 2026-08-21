@@ -97,3 +97,47 @@ test_that("le vert du bloc Tableau des actions n'est PAS touche", {
   css <- readLines(testthat::test_path("..", "..", "R", "utils_ui.R"), warn = FALSE)
   expect_true(any(grepl("card-header bg-success", css, fixed = TRUE)))
 })
+
+test_that("le sens de lecture du Score est ecrit sous le tableau", {
+  skip_if_not_installed("bslib")
+  # Depuis l'inversion de R1-R4 (spec 048), « Risques & Résilience » avec un
+  # score élevé se lit spontanément « beaucoup de risque » — c'est l'inverse.
+  # La note vaut pour les douze familles : aucune colonne Score ne disait sa
+  # direction, R n'a fait que rendre le manque visible.
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_synthesis_ui("syn"))
+  )
+  i18n <- nemetonshiny:::get_i18n("fr")
+  note <- i18n$t("summary_score_direction")
+  expect_true(nzchar(note))
+  expect_true(grepl(note, h, fixed = TRUE))
+
+  # Elle est VISIBLE, pas repliée dans un « i » : c'est la clé de lecture du
+  # tableau, pas une précision facultative.
+  expect_true(grepl("summary_table", h, fixed = TRUE))
+  pos_tab <- regexpr("summary_table", h, fixed = TRUE)
+  pos_note <- regexpr(note, h, fixed = TRUE)
+  expect_gt(pos_note, pos_tab)
+})
+
+test_that("la note nomme explicitement la famille R", {
+  # Sans la mention de R, la note resterait une generalite que personne ne
+  # rapporterait au cas qui pose probleme.
+  for (lg in c("fr", "en")) {
+    note <- nemetonshiny:::get_i18n(lg)$t("summary_score_direction")
+    expect_true(grepl("R", note, fixed = TRUE))
+    expect_false(identical(note, "summary_score_direction"))
+  }
+})
+
+test_that("le nom de famille du coeur n'est PAS renomme cote app", {
+  # Option écartée : renommer « Risques & Résilience » en « Résilience ». Le nom
+  # vient du cœur et reste JUSTE dans l'onglet Famille, où l'on voit les
+  # grandeurs brutes (R1 = 100 = fort risque incendie). Le renommer aurait rendu
+  # cet onglet faux à son tour — on compare des scores ici, on examine des
+  # mesures là-bas.
+  fam <- nemetonshiny:::get_family_config("R")
+  expect_match(fam$name_fr, "Risques", fixed = TRUE)
+  expect_match(fam$name_en, "Risks", fixed = TRUE)
+})

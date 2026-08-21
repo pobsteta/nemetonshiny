@@ -1480,6 +1480,30 @@ TRANSLATIONS <- list(
   famille_paysage = list(fr = "Paysage", en = "Landscape"),
   famille_temporel = list(fr = "Dynamique Temporelle", en = "Temporal Dynamics"),
   famille_risque = list(fr = "Risques & R\u00e9silience", en = "Risks & Resilience"),
+  # Sens de lecture de la colonne Score du tableau de synthese. Ecrit sous le
+  # tableau, pas dans un " i " : c'est la cle de lecture des douze lignes, pas
+  # une precision facultative.
+  #
+  # Il devient indispensable depuis que R1-R4 sont inverses a la normalisation
+  # (spec 048, nemeton 0.181.0). " Risques & Resilience " avec un score eleve
+  # se lit spontanement " beaucoup de risque " ; c'est l'inverse. Le nom de la
+  # famille vient du coeur et reste juste dans l'onglet Famille, ou l'on voit
+  # les grandeurs BRUTES (R1 = 100 = fort risque incendie). Ici on compare des
+  # scores, la-bas on examine des mesures - d'ou cette note plutot qu'un
+  # renommage qui aurait rendu l'onglet Famille faux a son tour.
+  summary_score_direction = list(
+    fr = paste0(
+      "Score : plus il est \u00e9lev\u00e9, plus la situation est favorable ",
+      "\u2014 pour les douze familles. La famille R comprise : un score haut ",
+      "y signifie une bonne r\u00e9silience, donc peu de risque."
+    ),
+    en = paste0(
+      "Score: the higher, the more favourable the situation - for all twelve ",
+      "families. Family R included: a high score there means good resilience, ",
+      "hence low risk."
+    )
+  ),
+
   famille_social = list(fr = "Social & R\u00e9cr\u00e9atif", en = "Social & Recreational"),
   famille_production = list(fr = "Production", en = "Production"),
   famille_energie = list(fr = "\u00c9nergie & Climat", en = "Energy & Climate"),
