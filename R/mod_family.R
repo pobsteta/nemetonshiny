@@ -831,8 +831,20 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
     mid <- val_range[1]
     val_range <- c(max(0, mid - 1), mid + 1)
   }
-  # Use YlOrRd palette for risk indicators, viridis otherwise
-  is_risk <- grepl("^R[1-4]|^famille_risque|^risk_", ind_col)
+  # Palette : YlOrRd (jaune -> rouge) pour les grandeurs de risque BRUTES, ou
+  # " haut = plus de risque " ; viridis ailleurs.
+  #
+  # v0.130.10.9001 (spec 048) - `famille_risque` en est SORTI. Depuis
+  # `nemeton 0.181.0`, R1 a R4 sont inverses a la normalisation comme R5 : la
+  # valeur agregee de la famille est desormais orientee " haut = bon ". La
+  # peindre en YlOrRd colorerait en ROUGE les UGF les MOINS a risque - la carte
+  # dirait l'exact inverse de la donnee. Le brief 048 annoncait que les couleurs
+  # ne changeaient pas : c'est vrai du radar, pas de cette palette, que
+  # l'inversion des valeurs retourne sans que personne y touche.
+  #
+  # Les codes courts R1..R4 gardent YlOrRd : ce sont les grandeurs brutes, dont
+  # le sens n'a pas bouge.
+  is_risk <- grepl("^R[1-4]|^risk_", ind_col)
   pal_name <- if (is_risk) "YlOrRd" else "viridis"
   pal <- leaflet::colorNumeric(pal_name, domain = val_range, na.color = "#cccccc")
 
