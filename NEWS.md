@@ -1,3 +1,43 @@
+# nemetonshiny 0.132.0 (2026-08-21)
+
+### Added — Créer un projet depuis une liste CSV de parcelles cadastrales
+
+Un bouton **« Importer un CSV de parcelles »** apparaît dans le bloc *Tableau
+UGF* du sous-onglet du même nom, dans l'onglet Sélection. Il crée un projet
+entier à partir d'un fichier, croise avec le parcellaire ONF, et rafraîchit
+tous les sous-onglets de Sélection.
+
+**Le format.** Un fichier `commune-code_insee.csv` — par exemple
+`couchey-21200.csv` — contenant les références cadastrales séparées par des
+points-virgules : `A1;A2;A3;…;AO212;AO220`.
+
+**La commune est lue dans le NOM du fichier**, et c'est le point sensible : son
+contenu n'en porte aucune trace, et `A1` existe dans presque toutes les communes
+de France. Un nom hors convention est donc **refusé**, jamais deviné — un INSEE
+erroné irait chercher le cadastre d'une autre commune, où quelques références
+s'apparieraient par pure coïncidence.
+
+**L'appariement porte sur le couple (section, numéro entier).** Le forestier
+écrit `A1`, le cadastre stocke `numero = "0001"` : comparer les chaînes brutes
+ferait échouer toute la liste. Les sections à deux caractères (`AO`, `ZB`, `0A`)
+sont prises en compte — le découpage lit les **chiffres de fin**, il ne suppose
+pas une forme « lettres puis chiffres ».
+
+**Une liste partiellement résolue est un succès**, avec son rapport : une
+parcelle a pu être fusionnée ou renumérotée depuis. Refuser l'import serait
+excessif ; se taire serait pire — la surface obtenue passerait pour la surface
+demandée. Les références introuvables sont listées.
+
+Quatre échecs sont distingués — nom hors convention, fichier sans référence,
+cadastre indisponible, aucune référence dans la commune — parce qu'ils
+n'appellent pas le même geste. Le dernier signale presque toujours un code INSEE
+qui ne correspond pas à la liste.
+
+Le croisement ONF est **optionnel** (coché par défaut) et ses échecs
+n'annulent pas l'import : le projet existe, simplement sans UGF forestières.
+
+Vérifié sur `couchey-21200.csv` : **23 références, 23 parcelles, 535,6 ha**.
+
 # nemetonshiny 0.131.1 (2026-08-21)
 
 ### Added — Le tableau de synthèse dit enfin dans quel sens se lit son Score

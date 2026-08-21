@@ -138,7 +138,19 @@ mod_ug_table_panel <- function(id) {
     htmltools::div(
       class = "d-flex justify-content-between align-items-center mb-2",
       shiny::h5(i18n$t("ug_table_title"), class = "mb-0"),
-      shiny::textOutput(ns("ug_summary"), inline = TRUE)
+      htmltools::div(
+        class = "d-flex align-items-center gap-2",
+        # Import d'une liste de parcelles cadastrales (CSV). Pose ICI plutot que
+        # dans une barre d'actions : le geste cree un PROJET entier a partir
+        # d'un fichier, il n'agit pas sur la selection courante du tableau.
+        shiny::actionButton(
+          ns("btn_import_csv"),
+          label = i18n$t("csv_import_btn"),
+          icon = bsicons::bs_icon("filetype-csv"),
+          class = "btn-outline-primary btn-sm"
+        ),
+        shiny::textOutput(ns("ug_summary"), inline = TRUE)
+      )
     ),
     DT::dataTableOutput(ns("ug_table"))
   )
@@ -2342,6 +2354,170 @@ mod_ug_server <- function(id, app_state) {
           shiny::showNotification(
             paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
             type = "error", duration = 10, session = session)
+        })
+      }, delay = 0.05)
+    })
+
+    # ================================================================
+    # ACTION: import d'une liste de parcelles cadastrales (CSV)
+    # ================================================================
+    #
+    # Cree un PROJET ENTIER a partir d'un fichier : lecture du CSV, resolution
+    # des references contre le cadastre de la commune, creation du projet,
+    # croisement ONF optionnel, puis rafraichissement de TOUS les sous-onglets
+    # de Selection.
+    #
+    # Le rafraichissement passe par `app_state$restore_project` - et cette fois
+    # c'est le bon signal, contrairement au cas de la purge (spec 001-app) :
+    # on charge REELLEMENT un nouveau projet, donc `mod_search` doit bien
+    # recuperer la geometrie de la commune. C'est exactement ce que ce signal
+    # existe pour faire.
+
+    shiny::observeEvent(input$btn_import_csv, {
+      if (deny_if_readonly(app_state)) return()
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("csv_import_title"),
+        size = "l",
+        shiny::fileInput(ns("csv_file"), i18n()$t("csv_import_file"),
+                         accept = c(".csv", "text/csv"),
+                         placeholder = "commune-code_insee.csv"),
+        shiny::p(class = "text-muted small",
+                 htmltools::HTML(i18n()$t("csv_import_help"))),
+        shiny::checkboxInput(ns("csv_cross_onf"),
+                             i18n()$t("csv_import_cross"), value = TRUE),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(ns("confirm_import_csv"),
+                              i18n()$t("csv_import_apply"),
+                              class = "btn-primary",
+                              icon = bsicons::bs_icon("filetype-csv"))
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_import_csv, {
+      if (deny_if_readonly(app_state)) return()
+      fi <- input$csv_file
+      if (is.null(fi)) {
+        shiny::showNotification(i18n()$t("csv_import_no_file"), type = "warning")
+        return()
+      }
+      shiny::removeModal()
+
+      # `fileInput` renomme le fichier telecharge (`0.csv`) : la convention de
+      # nommage vit dans `fi$name`, pas dans `fi$datapath`. On recopie sous le
+      # vrai nom, sans quoi la commune serait illisible.
+      tmp_dir <- file.path(tempdir(), paste0("csv_", as.integer(Sys.time())))
+      dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+      chemin <- file.path(tmp_dir, basename(fi$name))
+      ok_copie <- tryCatch(file.copy(fi$datapath, chemin, overwrite = TRUE),
+                           error = function(e) FALSE)
+      if (!isTRUE(ok_copie)) chemin <- fi$datapath
+
+      i18n_snap <- shiny::isolate(i18n())
+      croiser <- isTRUE(shiny::isolate(input$csv_cross_onf))
+      notif_id <- "csv_import_loading"
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          sprintf("%s...", i18n_snap$t("csv_import_running"))),
+        type = "message", duration = NULL, closeButton = FALSE,
+        id = notif_id, session = session)
+
+      later::later(function() {
+        tryCatch({
+          res <- importer_parcelles_csv(chemin)
+          shiny::removeNotification(notif_id, session = session)
+
+          if (!identical(res$status, "ok")) {
+            msg <- switch(res$status,
+              bad_name  = i18n_snap$t("csv_err_bad_name"),
+              no_refs   = i18n_snap$t("csv_err_no_refs"),
+              cadastre  = sprintf(i18n_snap$t("csv_err_cadastre"), res$code_insee),
+              no_match  = sprintf(i18n_snap$t("csv_err_no_match"),
+                                  res$commune, res$code_insee),
+              i18n_snap$t("error"))
+            shiny::showNotification(msg, type = "error", duration = 12,
+                                    session = session)
+            return()
+          }
+
+          # Le cadastre rend `id`, `section`, `numero`, `contenance` : le
+          # contrat qu'attendent `create_project()` et `ug_init_default()`.
+          projet <- create_project(name = res$commune, parcels = res$parcelles)
+          pid <- projet$id
+
+          charge <- load_project(pid)
+          if (is.null(charge)) {
+            shiny::showNotification(i18n_snap$t("error"), type = "error",
+                                    session = session)
+            return()
+          }
+
+          # Croisement ONF optionnel, sur le projet frais. Les echecs du service
+          # (pas de foret publique, WFS muet) ne doivent PAS annuler l'import :
+          # le projet existe, il est simplement sans UGF forestieres.
+          if (croiser) {
+            onf <- onf_load_parcelles(charge$parcels)
+            if (identical(onf$status, "ok")) {
+              out <- tryCatch(
+                onf_projet_croise(charge, onf$parcelles,
+                                  label_hors = .onf_label_hors_ugf(i18n_snap)),
+                error = function(e) {
+                  cli::cli_warn("Croisement ONF apres import CSV : {conditionMessage(e)}")
+                  NULL
+                })
+              if (!is.null(out) && identical(out$status, "ok")) {
+                save_ug_data(pid, out$projet)
+                charge <- load_project(pid)
+              } else {
+                .onf_notify_status(out$status %||% "no_overlap", i18n_snap)
+              }
+            } else {
+              .onf_notify_status(onf$status, i18n_snap)
+            }
+          }
+
+          # Etat du module + projet courant.
+          rv$projet_ug <- charge
+          rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+          rv$selected_tenement_ids <- character(0)
+          rv$map_needs_zoom <- TRUE
+          app_state$current_project <- charge
+
+          # Rafraichit TOUS les sous-onglets de Selection : la carte cadastrale
+          # (via mod_map), la recherche de commune (via mod_search, qui rapatrie
+          # la geometrie), et par ricochet la carte UGF et ce tableau.
+          app_state$restore_project <- list(
+            commune_code    = res$code_insee,
+            department_code = substr(res$code_insee, 1, 2),
+            parcels         = charge$parcels,
+            geometry        = charge$commune_geometry,
+            selected_ids    = charge$parcels$id,
+            timestamp       = Sys.time()
+          )
+
+          surface <- sum(as.numeric(res$parcelles$contenance), na.rm = TRUE) / 1e4
+          shiny::showNotification(
+            sprintf(i18n_snap$t("csv_import_ok_fmt"), res$commune,
+                    nrow(res$parcelles), surface),
+            type = "message", duration = 10, session = session)
+
+          # Une liste partiellement resolue reste un succes - une parcelle a pu
+          # etre fusionnee ou renumerotee depuis. Mais il faut le DIRE, sinon la
+          # surface obtenue passe pour la surface demandee.
+          if (length(res$absentes) > 0L) {
+            shiny::showNotification(
+              sprintf(i18n_snap$t("csv_import_absentes_fmt"),
+                      length(res$absentes),
+                      paste(utils::head(res$absentes, 10), collapse = ", ")),
+              type = "warning", duration = 15, session = session)
+          }
+        }, error = function(e) {
+          shiny::removeNotification(notif_id, session = session)
+          shiny::showNotification(
+            paste(i18n_snap$t("error"), conditionMessage(e)),
+            type = "error", duration = 12, session = session)
         })
       }, delay = 0.05)
     })

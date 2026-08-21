@@ -2487,6 +2487,85 @@ TRANSLATIONS <- list(
   ug_export_split = list(fr = "Exporter le d\u00e9coupage", en = "Export subdivision"),
   ug_undo_split = list(fr = "Annuler le d\u00e9coupage", en = "Undo subdivision"),
 
+  # ---- Import d'une liste de parcelles cadastrales (CSV) --------------------
+  csv_import_btn = list(
+    fr = "Importer un CSV de parcelles",
+    en = "Import a parcel CSV"
+  ),
+  csv_import_title = list(
+    fr = "Cr\u00e9er un projet depuis une liste de parcelles",
+    en = "Create a project from a parcel list"
+  ),
+  csv_import_help = list(
+    fr = paste0(
+      "Fichier <code>commune-code_insee.csv</code> (ex. ",
+      "<code>couchey-21200.csv</code>) contenant les r\u00e9f\u00e9rences ",
+      "cadastrales s\u00e9par\u00e9es par des points-virgules : ",
+      "<code>A1;A2;AO212</code>. La commune est lue dans le NOM du fichier \u2014 ",
+      "son contenu n'en porte aucune trace, et <code>A1</code> existe dans ",
+      "presque toutes les communes de France."
+    ),
+    en = paste0(
+      "A <code>commune-insee_code.csv</code> file (e.g. ",
+      "<code>couchey-21200.csv</code>) holding semicolon-separated cadastral ",
+      "references: <code>A1;A2;AO212</code>. The commune is read from the FILE ",
+      "NAME - the content carries none, and <code>A1</code> exists in almost ",
+      "every French commune."
+    )
+  ),
+  csv_import_file = list(fr = "Fichier CSV", en = "CSV file"),
+  csv_import_apply = list(fr = "Cr\u00e9er le projet", en = "Create the project"),
+  csv_import_cross = list(
+    fr = "Croiser avec le parcellaire ONF apr\u00e8s cr\u00e9ation",
+    en = "Cross with the ONF forest parcels after creation"
+  ),
+  csv_import_running = list(
+    fr = "Import du CSV et cr\u00e9ation du projet",
+    en = "Importing the CSV and creating the project"
+  ),
+  csv_import_no_file = list(
+    fr = "S\u00e9lectionnez un fichier CSV.",
+    en = "Select a CSV file."
+  ),
+  # Quatre echecs distincts : les confondre laisserait l'utilisateur sans piste.
+  csv_err_bad_name = list(
+    fr = paste0(
+      "Nom de fichier hors convention. Attendu : ",
+      "commune-code_insee.csv (ex. couchey-21200.csv)."
+    ),
+    en = paste0(
+      "File name does not follow the convention. Expected: ",
+      "commune-insee_code.csv (e.g. couchey-21200.csv)."
+    )
+  ),
+  csv_err_no_refs = list(
+    fr = "Le fichier ne contient aucune r\u00e9f\u00e9rence cadastrale.",
+    en = "The file holds no cadastral reference."
+  ),
+  csv_err_cadastre = list(
+    fr = "Cadastre indisponible pour le code INSEE %s.",
+    en = "Cadastre unavailable for INSEE code %s."
+  ),
+  csv_err_no_match = list(
+    fr = paste0(
+      "Aucune des r\u00e9f\u00e9rences n'existe dans la commune %s (%s). ",
+      "V\u00e9rifiez que le code INSEE du nom de fichier correspond bien \u00e0 ",
+      "la liste."
+    ),
+    en = paste0(
+      "None of the references exists in commune %s (%s). Check that the INSEE ",
+      "code in the file name matches the list."
+    )
+  ),
+  csv_import_ok_fmt = list(
+    fr = "Projet %s cr\u00e9\u00e9 : %d parcelle(s), %.1f ha.",
+    en = "Project %s created: %d parcel(s), %.1f ha."
+  ),
+  csv_import_absentes_fmt = list(
+    fr = "%d r\u00e9f\u00e9rence(s) introuvable(s) dans la commune : %s",
+    en = "%d reference(s) not found in the commune: %s"
+  ),
+
   # ---- Parcellaire forestier ONF (spec 046) --------------------------------
   # En foret publique, la parcelle CADASTRALE n'est pas l'unite de gestion : la
   # parcelle FORESTIERE l'est. UNE action : croiser, qui GARDE les parcelles du
