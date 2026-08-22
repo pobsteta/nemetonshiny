@@ -12,6 +12,43 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.132.1\] - 2026-08-22
+
+### Changed
+
+- Suivi de `nemeton 0.182.0` (spec 049) : la famille F est décroisée
+  côté cœur (`F1` = fertilité, `F2` = érosion). **Aucun changement de
+  code applicatif requis** — l’app lit l’appariement code ↔︎ colonne ↔︎
+  libellé depuis
+  [`nemeton::indicator_families()`](https://pobsteta.github.io/nemeton/reference/indicator_families.html)
+  / `indicator_labels()` depuis le dé-fork, et n’écrit aucune lettre
+  d’axe en dur. Les quatre contrôles du brief sont vérifiés (libellés
+  F1/F2, infobulle F2 topographique, `famille_fertilite` inchangée).
+- Commentaires remis d’aplomb dans `R/app_config.R` (×2),
+  `R/mod_family.R`, `R/utils_i18n.R`,
+  `tests/testthat/test-indicator-families-defork.R` et
+  `tests/testthat/test-libelles-famille-L.R` : ils présentaient le
+  croisement de F comme un fait présent. Plus aucune famille n’est
+  croisée (L en v0.176.0, F en v0.182.0), ce qui change ce que ces tests
+  gardent — la concordance, non plus la distinction colonne/slug.
+- Plancher relevé à `nemeton (>= 0.182.0)`.
+- `tests/testthat/test-03mod_synthesis.R` : le test du bouton « Générer
+  par IA » cherchait encore l’icône `robot`, remplacée par les trois
+  étoiles et `btn-ia` en v0.130.9. Il était rouge sur `main` — sans
+  rapport avec la famille F, corrigé au passage.
+- `tests/testthat/test-info_popover.R` : le compte de « i » de la vue
+  reGénération (14) datait d’avant le déplacement de quatre calibrages
+  vers *Sources & paramètres* (v0.128.0). Compte corrigé à 10, **et**
+  nouveau test qui retrouve les quatre « i » déplacés dans
+  `output$regen_block` — rendu côté serveur, ils n’étaient plus couverts
+  par aucune assertion.
+
+### Added
+
+- `specs/BRIEF-nemeton-plan-md-0.125-0.132.md` : brief de mise à jour du
+  `PLAN.md` partagé du cœur, dont le journal s’arrête à v0.124.0 alors
+  que 25 releases app se sont accumulées depuis.
+
 ## \[0.132.0\] - 2026-08-21
 
 ### Added

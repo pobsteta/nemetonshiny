@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.132.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.132.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.132.1" id="nemetonshiny-01321-2026-08-22">nemetonshiny 0.132.1 (2026-08-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01321-2026-08-22"></a></h2>
+<div class="section level4">
+<h4 id="changed--la-famille-f-est-décroisée-dans-le-cœur-et-lapp-navait-rien-à-corriger-0-132-1">Changed — La famille F est décroisée dans le cœur, et l’app n’avait rien à corriger<a class="anchor" aria-label="anchor" href="#changed--la-famille-f-est-d%C3%A9crois%C3%A9e-dans-le-c%C5%93ur-et-lapp-navait-rien-%C3%A0-corriger-0-132-1"></a></h4>
+<p><code>nemeton 0.182.0</code> (spec 049) remet la famille F d’aplomb : le créneau <strong>F1</strong> portait le libellé « Risque d’érosion » et la colonne <code>indicateur_f2_erosion</code>, et réciproquement. Les deux erreurs s’annulaient à l’affichage — c’est décroisé, <strong>F1 = fertilité, F2 = érosion</strong>.</p>
+<p><strong>Aucune valeur ne bouge, aucun recalcul n’est nécessaire</strong> — rien à voir avec l’inversion de la famille R (v0.131.0), qui imposait, elle, de tout recalculer. Les noms de colonnes étaient déjà justes et sont inchangés.</p>
+<p><strong>L’app a traversé le changement sans une ligne de code.</strong> C’est le bénéfice du dé-fork : depuis que <code>.build_indicator_families()</code> lit <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> / <code>indicator_labels()</code> au lieu de porter sa copie, l’appariement code ↔︎ colonne ↔︎ libellé arrive du cœur ligne par ligne. Aucun axe n’écrit « F1 » en dur, aucune table locale ne suit le slug. Vérifié sur les quatre contrôles du brief : axe F1 « Fertilité des sols » sur <code>indicateur_f1_fertilite</code>, axe F2 « Risque d’érosion » sur <code>indicateur_f2_erosion</code>, infobulle F2 qui parle bien de TWI, de pente et de texture, et <code>famille_fertilite</code> inchangée — c’est une moyenne, l’ordre des colonnes n’y entre pas.</p>
+<p>Ce qui restait, ce sont <strong>les commentaires</strong>. Quatre blocs expliquaient le choix de lire le cœur en s’appuyant sur le croisement de F comme sur un fait présent (<code>app_config.R</code> ×2, <code>mod_family.R</code>, <code>utils_i18n.R</code>), et deux fichiers de test en faisaient autant. Ils décrivaient la raison d’être du code ; ils la contredisaient depuis hier. Réécrits au passé, avec la conséquence dite : plus aucune famille n’est croisée (L décroisée en v0.176.0, F en v0.182.0), donc ces tests ne peuvent plus <strong>distinguer</strong> une lecture par colonne d’une lecture par slug — les deux répondent pareil. Ce qu’ils verrouillent désormais, c’est la concordance elle-même, et le principe qui survivra au prochain renommage : le libellé décrit la colonne affichée, jamais le rang qu’elle occupe.</p>
+<p>Un test <strong>figeait le croisement comme fixture</strong> : <code>test-renommage-famille-L.R</code> affirmait <code>F1 -&gt; indicateur_f2_erosion</code> pour montrer, par contraste, que L ne l’était plus. Il tombait depuis la publication du cœur — c’est le seul effet réel du décroisement de ce côté, et le brief ne l’annonçait pas.</p>
+<p>Plancher relevé à <code>nemeton (&gt;= 0.182.0)</code> : aucune API nouvelle n’est consommée, mais 0.182.0 est un correctif de justesse — une app qui tourne sur un cœur plus ancien affiche une table F croisée.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--deux-tests-rouges-sur-main-sans-rapport-avec-la-famille-f-0-132-1">Fixed — Deux tests rouges sur <code>main</code>, sans rapport avec la famille F<a class="anchor" aria-label="anchor" href="#fixed--deux-tests-rouges-sur-main-sans-rapport-avec-la-famille-f-0-132-1"></a></h4>
+<p>La suite complète en a révélé deux autres, tous deux figeant une UI qui a bougé depuis.</p>
+<p><code>test-03mod_synthesis.R</code> cherchait l’icône <code>robot</code> du bouton « Générer par IA ». Elle a laissé place aux trois étoiles et à <code>btn-ia</code> en v0.130.9, quand l’accent ambre est devenu la marque du contenu généré. Le test vérifie maintenant l’accent réel — les étoiles <strong>et</strong> la classe, puisque c’est le couple qui porte la convention.</p>
+<p><code>test-info_popover.R</code> comptait <strong>14</strong> « i » d’information dans la vue reGénération. Il en reste <strong>10</strong> : quatre ont suivi leurs réglages dans <em>Paramètres › Sources &amp; paramètres</em> en v0.128.0. Baisser le chiffre aurait suffi à faire passer le test — et aurait perdu ce qu’il garantissait. Les quatre « i » déplacés sont rendus <strong>côté serveur</strong> (<code>output$regen_block</code>), donc hors de portée de <code>mod_sources_config_ui()</code> : ils pouvaient disparaître sans qu’aucune assertion ne bouge. Un second test les y retrouve désormais.</p>
+</div>
+<div class="section level4">
+<h4 id="added--brief-de-rattrapage-du-planmd-cœur-0-132-1">Added — Brief de rattrapage du <code>PLAN.md</code> cœur<a class="anchor" aria-label="anchor" href="#added--brief-de-rattrapage-du-planmd-c%C5%93ur-0-132-1"></a></h4>
+<p><code>specs/BRIEF-nemeton-plan-md-0.125-0.132.md</code>. Le journal du <code>PLAN.md</code> partagé s’arrête au 2026-08-14 (v0.124.0) ; <strong>25 releases</strong> se sont accumulées depuis. La règle 12 interdit à cette session d’écrire dans le dépôt cœur : le brief livre le texte à coller, les SHA, les cycles dev, et cinq chantiers à faire correspondre aux cases réelles.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.132.0" id="nemetonshiny-01320-2026-08-21">nemetonshiny 0.132.0 (2026-08-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01320-2026-08-21"></a></h2>
 <div class="section level4">

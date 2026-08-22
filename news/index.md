@@ -1,5 +1,82 @@
 # Changelog
 
+## nemetonshiny 0.132.1 (2026-08-22)
+
+#### Changed — La famille F est décroisée dans le cœur, et l’app n’avait rien à corriger
+
+`nemeton 0.182.0` (spec 049) remet la famille F d’aplomb : le créneau
+**F1** portait le libellé « Risque d’érosion » et la colonne
+`indicateur_f2_erosion`, et réciproquement. Les deux erreurs
+s’annulaient à l’affichage — c’est décroisé, **F1 = fertilité, F2 =
+érosion**.
+
+**Aucune valeur ne bouge, aucun recalcul n’est nécessaire** — rien à
+voir avec l’inversion de la famille R (v0.131.0), qui imposait, elle, de
+tout recalculer. Les noms de colonnes étaient déjà justes et sont
+inchangés.
+
+**L’app a traversé le changement sans une ligne de code.** C’est le
+bénéfice du dé-fork : depuis que `.build_indicator_families()` lit
+[`nemeton::indicator_families()`](https://pobsteta.github.io/nemeton/reference/indicator_families.html)
+/ `indicator_labels()` au lieu de porter sa copie, l’appariement code ↔︎
+colonne ↔︎ libellé arrive du cœur ligne par ligne. Aucun axe n’écrit « F1
+» en dur, aucune table locale ne suit le slug. Vérifié sur les quatre
+contrôles du brief : axe F1 « Fertilité des sols » sur
+`indicateur_f1_fertilite`, axe F2 « Risque d’érosion » sur
+`indicateur_f2_erosion`, infobulle F2 qui parle bien de TWI, de pente et
+de texture, et `famille_fertilite` inchangée — c’est une moyenne,
+l’ordre des colonnes n’y entre pas.
+
+Ce qui restait, ce sont **les commentaires**. Quatre blocs expliquaient
+le choix de lire le cœur en s’appuyant sur le croisement de F comme sur
+un fait présent (`app_config.R` ×2, `mod_family.R`, `utils_i18n.R`), et
+deux fichiers de test en faisaient autant. Ils décrivaient la raison
+d’être du code ; ils la contredisaient depuis hier. Réécrits au passé,
+avec la conséquence dite : plus aucune famille n’est croisée (L
+décroisée en v0.176.0, F en v0.182.0), donc ces tests ne peuvent plus
+**distinguer** une lecture par colonne d’une lecture par slug — les deux
+répondent pareil. Ce qu’ils verrouillent désormais, c’est la concordance
+elle-même, et le principe qui survivra au prochain renommage : le
+libellé décrit la colonne affichée, jamais le rang qu’elle occupe.
+
+Un test **figeait le croisement comme fixture** :
+`test-renommage-famille-L.R` affirmait `F1 -> indicateur_f2_erosion`
+pour montrer, par contraste, que L ne l’était plus. Il tombait depuis la
+publication du cœur — c’est le seul effet réel du décroisement de ce
+côté, et le brief ne l’annonçait pas.
+
+Plancher relevé à `nemeton (>= 0.182.0)` : aucune API nouvelle n’est
+consommée, mais 0.182.0 est un correctif de justesse — une app qui
+tourne sur un cœur plus ancien affiche une table F croisée.
+
+#### Fixed — Deux tests rouges sur `main`, sans rapport avec la famille F
+
+La suite complète en a révélé deux autres, tous deux figeant une UI qui
+a bougé depuis.
+
+`test-03mod_synthesis.R` cherchait l’icône `robot` du bouton « Générer
+par IA ». Elle a laissé place aux trois étoiles et à `btn-ia` en
+v0.130.9, quand l’accent ambre est devenu la marque du contenu généré.
+Le test vérifie maintenant l’accent réel — les étoiles **et** la classe,
+puisque c’est le couple qui porte la convention.
+
+`test-info_popover.R` comptait **14** « i » d’information dans la vue
+reGénération. Il en reste **10** : quatre ont suivi leurs réglages dans
+*Paramètres › Sources & paramètres* en v0.128.0. Baisser le chiffre
+aurait suffi à faire passer le test — et aurait perdu ce qu’il
+garantissait. Les quatre « i » déplacés sont rendus **côté serveur**
+(`output$regen_block`), donc hors de portée de `mod_sources_config_ui()`
+: ils pouvaient disparaître sans qu’aucune assertion ne bouge. Un second
+test les y retrouve désormais.
+
+#### Added — Brief de rattrapage du `PLAN.md` cœur
+
+`specs/BRIEF-nemeton-plan-md-0.125-0.132.md`. Le journal du `PLAN.md`
+partagé s’arrête au 2026-08-14 (v0.124.0) ; **25 releases** se sont
+accumulées depuis. La règle 12 interdit à cette session d’écrire dans le
+dépôt cœur : le brief livre le texte à coller, les SHA, les cycles dev,
+et cinq chantiers à faire correspondre aux cases réelles.
+
 ## nemetonshiny 0.132.0 (2026-08-21)
 
 #### Added — Créer un projet depuis une liste CSV de parcelles cadastrales
