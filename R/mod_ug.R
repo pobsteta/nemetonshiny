@@ -124,6 +124,60 @@ mod_ug_map_panel <- function(id) {
 }
 
 
+#' Replace the current project with a freshly built one
+#'
+#' @description
+#' An import REPLACES: the previous project is deleted with all its
+#' components - parcels, UGFs, indicators, comments, exports - and the new one
+#' takes its place in `app_state`.
+#'
+#' Two invariants live here rather than in the caller.
+#'
+#' **Nothing is destroyed without a replacement.** The guard returns early on a
+#' project that carries no id, so a half-finished import can never leave the
+#' user with nothing. The caller reinforces it by calling this only once the
+#' new project is created, loaded and crossed.
+#'
+#' **`project_id` moves with `current_project`.** It carries the project-lock
+#' life cycle (`app_server.R` observes it) and it is what `save_comments()`
+#' reads in `mod_synthesis` / `mod_family`. Setting one without the other left
+#' the previous project locked and wrote the new project's comments into the
+#' old project's directory.
+#'
+#' @param app_state Reactive values. Application state.
+#' @param charge List. The freshly loaded project that takes over.
+#'
+#' @return The new project id, invisibly; `NULL` when nothing was done.
+#' @noRd
+.remplacer_projet_courant <- function(app_state, charge) {
+  pid <- charge$id %||% charge$metadata$id
+  if (is.null(pid) || !nzchar(pid)) return(invisible(NULL))
+
+  ancien <- shiny::isolate(app_state$project_id) %||%
+    shiny::isolate(app_state$current_project$id)
+  if (!is.null(ancien) && nzchar(ancien) && !identical(ancien, pid)) {
+    try(delete_project(ancien), silent = TRUE)
+  }
+
+  app_state$project_id <- pid
+  app_state$current_project <- charge
+
+  # Les composantes de session qui appartenaient au projet detruit. Sans cela
+  # ses commentaires seraient re-sauves dans le nouveau a la premiere edition.
+  app_state$family_comments <- list()
+  app_state$clear_all_comments <- Sys.time()
+  app_state$comments_refresh <-
+    (shiny::isolate(app_state$comments_refresh) %||% 0L) + 1L
+
+  # Calcul en cours, minuteur, cartes de progression : locaux a mod_home, d'ou
+  # ce signal plutot qu'un appel direct.
+  app_state$project_replaced <- Sys.time()
+  app_state$refresh_projects <- Sys.time()
+
+  invisible(pid)
+}
+
+
 #' UG table panel (DT output)
 #'
 #' @param id Character. Module namespace ID.
@@ -138,19 +192,7 @@ mod_ug_table_panel <- function(id) {
     htmltools::div(
       class = "d-flex justify-content-between align-items-center mb-2",
       shiny::h5(i18n$t("ug_table_title"), class = "mb-0"),
-      htmltools::div(
-        class = "d-flex align-items-center gap-2",
-        # Import d'une liste de parcelles cadastrales (CSV). Pose ICI plutot que
-        # dans une barre d'actions : le geste cree un PROJET entier a partir
-        # d'un fichier, il n'agit pas sur la selection courante du tableau.
-        shiny::actionButton(
-          ns("btn_import_csv"),
-          label = i18n$t("csv_import_btn"),
-          icon = bsicons::bs_icon("filetype-csv"),
-          class = "btn-outline-primary btn-sm"
-        ),
-        shiny::textOutput(ns("ug_summary"), inline = TRUE)
-      )
+      shiny::textOutput(ns("ug_summary"), inline = TRUE)
     ),
     DT::dataTableOutput(ns("ug_table"))
   )
@@ -327,6 +369,28 @@ mod_ug_table_actions_bar <- function(id) {
   i18n <- get_i18n(opts$language %||% "fr")
 
   htmltools::tagList(
+    # Import d'une liste de parcelles cadastrales (CSV). En TETE, et separe des
+    # trois actions qui suivent : celles-la operent sur les lignes SELECTIONNEES
+    # du tableau, celle-ci cree un PROJET entier et remplace le courant. Le
+    # separateur et la mention de portee disent cette difference - sans quoi le
+    # bouton se lit comme une quatrieme action de selection.
+    htmltools::div(
+      class = "d-grid gap-1 mb-2",
+      shiny::actionButton(
+        ns("btn_import_csv"),
+        label = i18n$t("csv_import_btn"),
+        icon = bsicons::bs_icon("filetype-csv"),
+        class = "btn-outline-primary",
+        width = "100%"
+      ),
+      htmltools::div(
+        class = "text-muted small",
+        i18n$t("csv_import_scope_hint")
+      )
+    ),
+
+    shiny::hr(),
+
     htmltools::div(
       class = "d-grid gap-2 mb-3",
 
@@ -2375,21 +2439,41 @@ mod_ug_server <- function(id, app_state) {
 
     shiny::observeEvent(input$btn_import_csv, {
       if (deny_if_readonly(app_state)) return()
+
+      # L'import REMPLACE le projet courant : l'ancien est supprime, toutes
+      # composantes comprises. Un geste destructif se dit AVANT, dans la
+      # modale, et son bouton passe au rouge - la regle des couleurs reserve
+      # `btn-danger` a ce qui detruit des donnees. Sans projet ouvert il n'y a
+      # rien a detruire : ni avertissement, ni rouge, sinon l'alerte crie au
+      # loup des le premier import et cesse d'etre lue.
+      remplace <- !is.null(shiny::isolate(app_state$current_project))
+      i18n_m <- i18n()
+
       shiny::showModal(shiny::modalDialog(
-        title = i18n()$t("csv_import_title"),
+        title = i18n_m$t("csv_import_title"),
         size = "l",
-        shiny::fileInput(ns("csv_file"), i18n()$t("csv_import_file"),
+        shiny::fileInput(ns("csv_file"), i18n_m$t("csv_import_file"),
                          accept = c(".csv", "text/csv"),
                          placeholder = "commune-code_insee.csv"),
         shiny::p(class = "text-muted small",
-                 htmltools::HTML(i18n()$t("csv_import_help"))),
+                 htmltools::HTML(i18n_m$t("csv_import_help"))),
         shiny::checkboxInput(ns("csv_cross_onf"),
-                             i18n()$t("csv_import_cross"), value = TRUE),
+                             i18n_m$t("csv_import_cross"), value = TRUE),
+        if (remplace) {
+          htmltools::div(
+            class = "alert alert-danger py-2 mb-0 small",
+            bsicons::bs_icon("exclamation-triangle-fill", class = "me-2"),
+            htmltools::HTML(sprintf(
+              i18n_m$t("csv_import_replace_warn"),
+              shiny::isolate(app_state$current_project$metadata$name) %||%
+                shiny::isolate(app_state$current_project$id)))
+          )
+        },
         footer = htmltools::tagList(
-          shiny::modalButton(i18n()$t("cancel")),
+          shiny::modalButton(i18n_m$t("cancel")),
           shiny::actionButton(ns("confirm_import_csv"),
-                              i18n()$t("csv_import_apply"),
-                              class = "btn-primary",
+                              i18n_m$t("csv_import_apply"),
+                              class = if (remplace) "btn-danger" else "btn-primary",
                               icon = bsicons::bs_icon("filetype-csv"))
         )
       ))
@@ -2478,12 +2562,16 @@ mod_ug_server <- function(id, app_state) {
             }
           }
 
-          # Etat du module + projet courant.
+          # Etat du module.
           rv$projet_ug <- charge
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
           rv$selected_tenement_ids <- character(0)
           rv$map_needs_zoom <- TRUE
-          app_state$current_project <- charge
+
+          # Remplacement : l'ancien projet n'est detruit QU'ICI, une fois le
+          # nouveau complet (cree, charge, croise). Tous les chemins d'echec
+          # ci-dessus repartent avant ce point, projet courant intact.
+          .remplacer_projet_courant(app_state, charge)
 
           # Rafraichit TOUS les sous-onglets de Selection : la carte cadastrale
           # (via mod_map), la recherche de commune (via mod_search, qui rapatrie

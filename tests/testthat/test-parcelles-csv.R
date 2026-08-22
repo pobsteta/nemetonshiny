@@ -167,11 +167,121 @@ test_that("une liste partiellement resolue est un SUCCES, avec son rapport", {
   })
 })
 
-test_that("le bouton d'import figure dans le bloc Tableau UGF", {
+test_that("le bouton d'import est dans le bloc Tableau UGF du sidebar", {
+  # Deux surfaces portent le nom " Tableau UGF " : le bloc repliable du sidebar
+  # gauche et l'onglet du panneau principal. Le bouton est dans le SIDEBAR,
+  # c'est la qu'on le cherche. Il y a ete deplace apres qu'on l'a cherche en
+  # vain dans le sidebar alors qu'il vivait en en-tete du tableau.
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_ug_table_actions_bar("ug"))
+  )
+  expect_true(grepl("ug-btn_import_csv", h, fixed = TRUE))
+  # La portee est dite : le geste ne suit pas la selection du tableau, contrairement
+  # aux trois actions qui le suivent dans ce meme bloc.
+  expect_true(grepl(get_i18n("fr")$t("csv_import_scope_hint"), h, fixed = TRUE))
+})
+
+test_that("le bouton d'import n'est PAS duplique dans l'en-tete du tableau", {
+  # Un second point d'entree serait deux fois l'occasion de declencher par
+  # erreur un geste qui remplace le projet courant.
   skip_if_not_installed("bslib")
   h <- with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     as.character(nemetonshiny:::mod_ug_table_panel("ug"))
   )
-  expect_true(grepl("ug-btn_import_csv", h, fixed = TRUE))
+  expect_false(grepl("btn_import_csv", h, fixed = TRUE))
+})
+
+# ---------------------------------------------------------------------------
+# Remplacement du projet courant
+#
+# Un import REMPLACE : l'ancien projet est supprime, toutes composantes
+# comprises. Ce qui se teste ici est la frontiere entre « remplacer » et
+# « detruire sans rien mettre a la place ».
+# ---------------------------------------------------------------------------
+
+test_that("l'import supprime l'ancien projet et prend sa place", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        poly <- sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1),
+                                          c(0, 1), c(0, 0))))
+        parcels <- sf::st_sf(id = "P1", contenance = 1e4,
+                             geometry = sf::st_sfc(poly, crs = 2154))
+
+        ancien <- nemetonshiny:::create_project(name = "Ancien",
+                                                parcels = parcels)$id
+        nouveau <- nemetonshiny:::create_project(name = "Nouveau",
+                                                 parcels = parcels)$id
+        chemin_ancien <- nemetonshiny:::get_project_path(ancien)
+        expect_true(dir.exists(chemin_ancien))
+
+        app_state <- shiny::reactiveValues(
+          project_id = ancien,
+          current_project = nemetonshiny:::load_project(ancien),
+          family_comments = list(B = "un commentaire de l'ancien projet"))
+
+        charge <- nemetonshiny:::load_project(nouveau)
+        out <- nemetonshiny:::.remplacer_projet_courant(app_state, charge)
+
+        expect_identical(out, nouveau)
+        # L'ancien est parti, repertoire compris.
+        expect_false(dir.exists(chemin_ancien))
+        # `project_id` suit `current_project` : c'est lui que lit
+        # `save_comments()` et lui qui porte le verrou.
+        expect_identical(shiny::isolate(app_state$project_id), nouveau)
+        expect_identical(shiny::isolate(app_state$current_project$id), nouveau)
+        # Les commentaires du projet detruit ne suivent pas dans le nouveau.
+        expect_length(shiny::isolate(app_state$family_comments), 0L)
+        # Le calcul en cours parlait du projet detruit.
+        expect_false(is.null(shiny::isolate(app_state$project_replaced)))
+      }
+    )
+  })
+})
+
+test_that("sans projet de remplacement valide, RIEN n'est detruit", {
+  # L'invariant qui compte : un import a mi-chemin ne doit jamais laisser
+  # l'utilisateur sans rien. Le garde porte sur l'id du remplacant.
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        poly <- sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1),
+                                          c(0, 1), c(0, 0))))
+        parcels <- sf::st_sf(id = "P1", contenance = 1e4,
+                             geometry = sf::st_sfc(poly, crs = 2154))
+        ancien <- nemetonshiny:::create_project(name = "Ancien",
+                                                parcels = parcels)$id
+        chemin <- nemetonshiny:::get_project_path(ancien)
+
+        app_state <- shiny::reactiveValues(
+          project_id = ancien,
+          current_project = nemetonshiny:::load_project(ancien))
+
+        for (charge in list(NULL, list(), list(id = ""), list(metadata = list()))) {
+          expect_null(nemetonshiny:::.remplacer_projet_courant(app_state, charge))
+        }
+
+        expect_true(dir.exists(chemin))
+        expect_identical(shiny::isolate(app_state$project_id), ancien)
+      }
+    )
+  })
+})
+
+test_that("la modale previent AVANT de detruire, et son bouton passe au rouge", {
+  skip_if_not_installed("bslib")
+  i18n <- get_i18n("fr")
+  # Le texte porte le nom du projet detruit et le mot qui compte.
+  msg <- sprintf(i18n$t("csv_import_replace_warn"), "Chaux")
+  expect_true(grepl("Chaux", msg, fixed = TRUE))
+  expect_true(grepl("supprim", msg, fixed = TRUE))
+  # Et la mention sous le bouton dit la portee du geste.
+  expect_true(grepl("[Rr]emplace", i18n$t("csv_import_scope_hint")))
 })

@@ -2492,6 +2492,25 @@ TRANSLATIONS <- list(
     fr = "Importer un CSV de parcelles",
     en = "Import a parcel CSV"
   ),
+  csv_import_replace_warn = list(
+    fr = paste0(
+      "Le projet courant \u00ab %s \u00bb sera <strong>supprim\u00e9</strong> ",
+      "et remplac\u00e9 : parcelles, UGF, indicateurs, commentaires et exports. ",
+      "Cette action est irr\u00e9versible."
+    ),
+    en = paste0(
+      "The current project \u00ab %s \u00bb will be <strong>deleted</strong> ",
+      "and replaced: parcels, UGFs, indicators, comments and exports. This ",
+      "cannot be undone."
+    )
+  ),
+  csv_import_scope_hint = list(
+    fr = paste0(
+      "Remplace le projet courant \u2014 n'agit pas sur la s\u00e9lection ",
+      "du tableau."
+    ),
+    en = "Replaces the current project \u2014 not tied to the table selection."
+  ),
   csv_import_title = list(
     fr = "Cr\u00e9er un projet depuis une liste de parcelles",
     en = "Create a project from a parcel list"
