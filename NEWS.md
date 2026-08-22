@@ -1,3 +1,78 @@
+# nemetonshiny 0.133.0 (2026-08-22)
+
+### Changed — Un import CSV remplace le projet courant, et le dit avant
+
+L'import créait un projet **à côté** : rien n'était écrasé sur le disque
+(`create_project()` forge toujours un id neuf), mais l'ancien projet restait là,
+orphelin. Il est désormais **supprimé et remplacé dans toutes ses
+composantes** — parcelles, UGF, indicateurs, commentaires, exports.
+
+**L'ordre n'est pas négociable, et c'est la partie qui compte.** Le nouveau
+projet est créé, chargé, croisé avec l'ONF — *puis* l'ancien est détruit. Tous
+les chemins d'échec (nom hors convention, cadastre muet, aucune référence
+appariée, chargement raté) repartent **avant** ce point, projet courant intact.
+Détruire d'abord aurait laissé l'utilisateur sans rien sur un import à
+mi-chemin. Un garde porte l'invariant plutôt qu'un commentaire :
+`.remplacer_projet_courant()` ne détruit rien si le remplaçant n'a pas d'id, et
+un test le vérifie sur quatre formes de remplaçant invalide.
+
+**Le geste se dit avant de partir.** La modale affiche le nom du projet qui va
+disparaître et ce qu'il emporte, et son bouton de confirmation passe au
+**rouge** — la règle des couleurs réserve `btn-danger` à ce qui détruit des
+données. Sans projet ouvert, ni bandeau ni rouge : il n'y a rien à détruire, et
+une alerte qui crie au loup dès le premier import cesse d'être lue.
+
+### Fixed — `project_id` ne suivait pas le projet importé
+
+Trouvé en répondant à la question « l'import écrase-t-il un projet ? ». Le
+handler posait `current_project` mais **jamais `app_state$project_id`** — alors
+que l'autre créateur de projet (`mod_project.R`) et le chemin d'ouverture normal
+(`mod_home.R`) posent les deux. Trois conséquences, toutes silencieuses :
+
+- **Les commentaires partaient dans le mauvais projet.** `save_comments()` lit
+  `app_state$project_id` (`mod_synthesis.R:845` et `:883`, `mod_family.R:599`) :
+  après un import, la perspective IA et les commentaires de famille du nouveau
+  projet s'écrivaient dans le répertoire du **précédent**.
+- **Le verrou ne suivait pas.** Tout son cycle de vie est branché sur
+  `observeEvent(app_state$project_id)` (`app_server.R:364`) : l'ancien projet
+  restait verrouillé en base, le nouveau ne l'était pas, et `readonly`
+  continuait de décrire l'ancien.
+- Les gardes qui comparent `project_id` (`mod_home.R:369`, `:490`,
+  `mod_search.R:613`) raisonnaient sur le projet précédent.
+
+Les deux valeurs bougent maintenant ensemble, dans le même helper — c'est leur
+désynchronisation qui était le défaut, pas l'oubli d'une ligne en particulier.
+`reset_project_state()` de `mod_home` est scindé pour cela :
+`reset_computation_state()` remet à zéro le calcul, le minuteur et les cartes de
+progression **sans toucher au projet courant**, puisque le nouveau vient d'y
+être posé.
+
+### Changed — Le bouton d'import CSV rejoint le bloc « Tableau UGF » du sidebar
+
+Il vivait en en-tête du tableau, dans le panneau principal, sur la même ligne
+que le titre. Il est maintenant dans le **bloc repliable « Tableau UGF » du
+sidebar gauche**, en tête, séparé par un filet des trois actions qui le suivent.
+
+**C'est un défaut de nommage qui l'a fait chercher au mauvais endroit.** Deux
+surfaces portent le nom « Tableau UGF » : le bloc du sidebar et l'onglet du
+panneau principal. L'entrée de la v0.132.0 disait « dans le bloc *Tableau UGF*
+du sous-onglet du même nom » — une phrase qui ne tranche pas entre les deux, et
+qui se lit spontanément comme le sidebar. C'est là qu'on le cherche.
+
+Le placement d'origine avait sa raison, et elle reste vraie : les trois actions
+du sidebar (Fusionner, Diviser, Renommer) opèrent sur les **lignes
+sélectionnées** du tableau, alors que l'import **crée un projet entier** et
+remplace le courant. Mettre le bouton parmi elles risquait de le faire lire
+comme une quatrième action de sélection. Cette différence est donc **dite**
+plutôt que traduite par un éloignement : un filet le sépare du groupe, et une
+mention sous le bouton — *« Crée un projet entier — n'agit pas sur la sélection
+du tableau »* — porte la portée là où le geste se déclenche.
+
+Le bouton n'est **pas dupliqué** : deux points d'entrée pour un geste qui
+remplace le projet courant, ce serait deux fois l'occasion de le déclencher par
+erreur. Un test l'interdit explicitement, en plus de celui qui vérifie sa
+présence dans le sidebar.
+
 # nemetonshiny 0.132.1 (2026-08-22)
 
 ### Changed — La famille F est décroisée dans le cœur, et l'app n'avait rien à corriger

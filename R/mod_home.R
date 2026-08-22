@@ -859,15 +859,11 @@ mod_home_server <- function(id, app_state) {
       if (length(cc)) as.character(cc[1]) else NULL
     }
 
-    reset_project_state <- function() {
-      # Clear current project
-      app_state$current_project <- NULL
-      app_state$project_id <- NULL
-
-      # Clear all comments (synthesis + families)
-      app_state$family_comments <- list()
-      app_state$clear_all_comments <- Sys.time()
-
+    # Etat de CALCUL seul - sans toucher au projet courant. Extrait de
+    # `reset_project_state()` parce qu'un remplacement de projet (import CSV) a
+    # besoin de cette moitie-la et surtout PAS de l'autre : le nouveau projet
+    # vient d'etre pose dans `app_state`, l'effacer le detruirait.
+    reset_computation_state <- function() {
       # Reset computation state (setting computing_project_id to NULL
       # also stops the later::later polling loop)
       compute_state(NULL)
@@ -893,6 +889,26 @@ mod_home_server <- function(id, app_state) {
       # Clear map selection
       app_state$clear_map_selection <- Sys.time()
     }
+
+    reset_project_state <- function() {
+      # Clear current project
+      app_state$current_project <- NULL
+      app_state$project_id <- NULL
+
+      # Clear all comments (synthesis + families)
+      app_state$family_comments <- list()
+      app_state$clear_all_comments <- Sys.time()
+
+      reset_computation_state()
+    }
+
+    # Un projet en remplace un autre (import CSV) : le calcul, le minuteur et
+    # les cartes de progression parlaient du projet detruit. Le projet courant,
+    # lui, est deja le NOUVEAU - d'ou `reset_computation_state()` et non
+    # `reset_project_state()`.
+    shiny::observeEvent(app_state$project_replaced, {
+      reset_computation_state()
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     # When the user selects a different commune, reset project state.
     # No need for a department_changed observer: when the department
