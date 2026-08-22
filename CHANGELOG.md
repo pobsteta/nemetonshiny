@@ -10,7 +10,7 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
-## [0.132.2] - 2026-08-22
+## [0.133.0] - 2026-08-22
 
 ### Fixed
 

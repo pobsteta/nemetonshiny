@@ -1,4 +1,4 @@
-# nemetonshiny 0.132.2 (2026-08-22)
+# nemetonshiny 0.133.0 (2026-08-22)
 
 ### Changed — Un import CSV remplace le projet courant, et le dit avant
 
