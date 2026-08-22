@@ -1,11 +1,15 @@
 # Les libelles d'indicateur suivent la COLONNE, pas le slug de la colonne.
 #
 # Une colonne porte le nom de la fonction qui la remplit. Le coeur a renomme
-# les deux fonctions L en v0.176.0 (spec 045), donc la famille L n'est PLUS
-# croisee : `indicateur_l1_effet_lisiere` porte bien l'effet lisiere. La
-# famille F l'est toujours (`F1` -> `indicateur_f2_erosion`), et c'est elle qui
-# garde ces tests utiles : une table locale indexee par nom de colonne suit le
-# slug et s'inverse.
+# les deux fonctions L en v0.176.0 (spec 045) puis decroise la famille F en
+# v0.182.0 (spec 049) : plus AUCUNE famille n'est croisee aujourd'hui, code,
+# colonne et slug concordent partout.
+#
+# Ces tests gardent leur sens sans ce croisement, mais il faut voir lequel : ils
+# ne peuvent plus distinguer une lecture par colonne d'une lecture par slug -
+# les deux donnent la meme reponse. Ce qu'ils verrouillent desormais, c'est la
+# concordance elle-meme : si le coeur recroise ou renomme, ils tombent, et le
+# helper devra rester indexe sur la COLONNE.
 #
 # Suite de `specs/brief-nemetonshiny-libelles-famille-L.md` (livre v0.127.1)
 # puis de `specs/brief-nemetonshiny-renommage-famille-L.md`.
@@ -32,7 +36,7 @@ test_that("la concordance L tient aussi en anglais", {
   expect_false(grepl("[Ss]ylvosphere", en2))
 })
 
-test_that("la famille F, croisee elle aussi, suit la colonne", {
+test_that("la famille F, decroisee en v0.182.0, concorde", {
   ero <- nemetonshiny:::indicator_label_by_column("indicateur_f2_erosion", "fr")
   expect_true(grepl("rosion", ero))
   expect_false(grepl("[Ff]ertilit", ero))

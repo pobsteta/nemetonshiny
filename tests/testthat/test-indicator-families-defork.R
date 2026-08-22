@@ -73,10 +73,14 @@ test_that("every indicator carries a bilingual label", {
 test_that("the label describes the column, not its rank", {
   i18n <- get_i18n("fr")
 
-  # LE bug corrigé. L'appariement code <-> colonne est positionnel et croisé
-  # pour F : `F1` pointe sur `indicateur_f2_erosion`. Les clés i18n
+  # LE bug corrigé. L'appariement code <-> colonne est positionnel, et il était
+  # croisé pour F : `F1` pointait sur `indicateur_f2_erosion`. Les clés i18n
   # `indicator_<code>` étant écrites selon la sémantique du CODE, la carte
-  # d'érosion sortait « F1 - Fertilité des sols ».
+  # d'érosion sortait « F1 - Fertilité des sols ». Le cœur a décroisé F en
+  # v0.182.0 (spec 049) : ces assertions passent désormais des deux façons, et
+  # ne gardent plus que le principe — le libellé décrit la colonne, pas son
+  # rang. C'est le fork local qu'elles surveillent maintenant, pas le
+  # croisement.
   erosion <- nemetonshiny:::clean_indicator_label("indicateur_f2_erosion", i18n)
   expect_true(grepl("rosion", erosion, fixed = TRUE), info = erosion)
   expect_false(grepl("Fertilit", erosion, fixed = TRUE), info = erosion)

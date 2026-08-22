@@ -20,13 +20,15 @@ test_that("la famille L de l'app porte les nouveaux slugs", {
   expect_false("indicateur_l1_sylvosphere" %in% fam$column_names)
 
   # Le croisement code <-> colonne de la famille L a disparu : L1 pointe
-  # desormais sur le slug l1. Celui de la famille F, lui, subsiste.
+  # desormais sur le slug l1. Celui de la famille F a suivi en v0.182.0
+  # (spec 049) - cette assertion figeait le croisement comme fixture et
+  # tombait des que le coeur l'a corrige.
   expect_identical(fam$column_names[match("L1", fam$indicators)],
                    "indicateur_l1_effet_lisiere")
   expect_identical(
     nemetonshiny:::get_family_config("F")$column_names[
       match("F1", nemetonshiny:::get_family_config("F")$indicators)],
-    "indicateur_f2_erosion")
+    "indicateur_f1_fertilite")
 })
 
 test_that("les nouvelles fonctions existent dans le coeur", {

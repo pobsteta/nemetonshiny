@@ -5828,11 +5828,11 @@ translate_task_message <- function(task, i18n) {
   # Handle new format: "compute:indicator_key"
   #
   # Le libelle vient du coeur, pas d'une table locale indexee par nom de
-  # colonne : une colonne porte le nom de la FONCTION qui la remplit, et pour
-  # la famille F ce nom contredit encore le code (`F1` ->
-  # `indicateur_f2_erosion`). Une table locale suit le slug et s'inverse ;
-  # `indicator_labels()` apparie colonne et libelle ligne par ligne. Repli sur
-  # la cle i18n pour ce que le coeur ne connait pas.
+  # colonne : une colonne porte le nom de la FONCTION qui la remplit, et ce nom
+  # a contredit le code (`F1` -> `indicateur_f2_erosion`) jusqu'au decroisement
+  # de F en v0.182.0. Une table locale suit le slug et s'inverse au premier
+  # renommage ; `indicator_labels()` apparie colonne et libelle ligne par
+  # ligne. Repli sur la cle i18n pour ce que le coeur ne connait pas.
   if (grepl("^compute:", task)) {
     indicator_key <- sub("^compute:", "", task)
     indicator_name <- indicator_label_by_column(indicator_key, i18n$language) %||%
