@@ -12,6 +12,46 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.133.0\] - 2026-08-22
+
+### Fixed
+
+- L’import CSV ne posait pas `app_state$project_id` : les commentaires
+  du nouveau projet s’écrivaient dans le répertoire du précédent
+  (`save_comments()` le lit dans `mod_synthesis` et `mod_family`), le
+  verrou restait sur l’ancien projet (cycle de vie branché sur
+  `project_id` dans `app_server.R`), et les gardes qui comparent
+  `project_id` raisonnaient sur le projet précédent. Les deux valeurs
+  bougent désormais ensemble.
+
+### Changed
+
+- **Un import CSV remplace le projet courant** : l’ancien est supprimé
+  avec toutes ses composantes (parcelles, UGF, indicateurs,
+  commentaires, exports). La destruction n’intervient qu’une fois le
+  nouveau projet créé, chargé et croisé ; tous les chemins d’échec
+  repartent avant, projet intact. Garde `.remplacer_projet_courant()` :
+  rien n’est détruit sans remplaçant valide.
+- La modale d’import nomme le projet qui va disparaître et passe son
+  bouton de confirmation en `btn-danger`. Sans projet ouvert : ni
+  bandeau ni rouge.
+- Nouvelle clé i18n `csv_import_replace_warn` (FR/EN).
+- `reset_project_state()` (`mod_home`) est scindé :
+  `reset_computation_state()` remet à zéro calcul, minuteur et cartes de
+  progression sans toucher au projet courant. Nouveau signal
+  `app_state$project_replaced`.
+- Le bouton « Importer un CSV de parcelles » passe de l’en-tête du
+  tableau (`mod_ug_table_panel()`) au **bloc « Tableau UGF » du sidebar
+  gauche** (`mod_ug_table_actions_bar()`), en tête et séparé par un
+  `hr()` des trois actions de sélection. Deux surfaces portent le même
+  nom ; c’est dans le sidebar qu’on cherchait le bouton.
+- Nouvelle clé i18n `csv_import_scope_hint` (FR/EN) : la portée du geste
+  — crée un projet entier, ne suit pas la sélection du tableau — est
+  affichée sous le bouton, à l’endroit où il se déclenche.
+- `tests/testthat/test-parcelles-csv.R` : le test de présence vise
+  désormais le sidebar, et un second test **interdit la duplication** du
+  bouton dans l’en-tête du tableau.
+
 ## \[0.132.1\] - 2026-08-22
 
 ### Changed

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.132.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.133.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,32 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.133.0" id="nemetonshiny-01330-2026-08-22">nemetonshiny 0.133.0 (2026-08-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01330-2026-08-22"></a></h2>
+<div class="section level4">
+<h4 id="changed--un-import-csv-remplace-le-projet-courant-et-le-dit-avant-0-133-0">Changed — Un import CSV remplace le projet courant, et le dit avant<a class="anchor" aria-label="anchor" href="#changed--un-import-csv-remplace-le-projet-courant-et-le-dit-avant-0-133-0"></a></h4>
+<p>L’import créait un projet <strong>à côté</strong> : rien n’était écrasé sur le disque (<code>create_project()</code> forge toujours un id neuf), mais l’ancien projet restait là, orphelin. Il est désormais <strong>supprimé et remplacé dans toutes ses composantes</strong> — parcelles, UGF, indicateurs, commentaires, exports.</p>
+<p><strong>L’ordre n’est pas négociable, et c’est la partie qui compte.</strong> Le nouveau projet est créé, chargé, croisé avec l’ONF — <em>puis</em> l’ancien est détruit. Tous les chemins d’échec (nom hors convention, cadastre muet, aucune référence appariée, chargement raté) repartent <strong>avant</strong> ce point, projet courant intact. Détruire d’abord aurait laissé l’utilisateur sans rien sur un import à mi-chemin. Un garde porte l’invariant plutôt qu’un commentaire : <code>.remplacer_projet_courant()</code> ne détruit rien si le remplaçant n’a pas d’id, et un test le vérifie sur quatre formes de remplaçant invalide.</p>
+<p><strong>Le geste se dit avant de partir.</strong> La modale affiche le nom du projet qui va disparaître et ce qu’il emporte, et son bouton de confirmation passe au <strong>rouge</strong> — la règle des couleurs réserve <code>btn-danger</code> à ce qui détruit des données. Sans projet ouvert, ni bandeau ni rouge : il n’y a rien à détruire, et une alerte qui crie au loup dès le premier import cesse d’être lue.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--project_id-ne-suivait-pas-le-projet-importé-0-133-0">Fixed — <code>project_id</code> ne suivait pas le projet importé<a class="anchor" aria-label="anchor" href="#fixed--project_id-ne-suivait-pas-le-projet-import%C3%A9-0-133-0"></a></h4>
+<p>Trouvé en répondant à la question « l’import écrase-t-il un projet ? ». Le handler posait <code>current_project</code> mais <strong>jamais <code>app_state$project_id</code></strong> — alors que l’autre créateur de projet (<code>mod_project.R</code>) et le chemin d’ouverture normal (<code>mod_home.R</code>) posent les deux. Trois conséquences, toutes silencieuses :</p>
+<ul><li>
+<strong>Les commentaires partaient dans le mauvais projet.</strong> <code>save_comments()</code> lit <code>app_state$project_id</code> (<code>mod_synthesis.R:845</code> et <code>:883</code>, <code>mod_family.R:599</code>) : après un import, la perspective IA et les commentaires de famille du nouveau projet s’écrivaient dans le répertoire du <strong>précédent</strong>.</li>
+<li>
+<strong>Le verrou ne suivait pas.</strong> Tout son cycle de vie est branché sur <code>observeEvent(app_state$project_id)</code> (<code>app_server.R:364</code>) : l’ancien projet restait verrouillé en base, le nouveau ne l’était pas, et <code>readonly</code> continuait de décrire l’ancien.</li>
+<li>Les gardes qui comparent <code>project_id</code> (<code>mod_home.R:369</code>, <code>:490</code>, <code>mod_search.R:613</code>) raisonnaient sur le projet précédent.</li>
+</ul><p>Les deux valeurs bougent maintenant ensemble, dans le même helper — c’est leur désynchronisation qui était le défaut, pas l’oubli d’une ligne en particulier. <code>reset_project_state()</code> de <code>mod_home</code> est scindé pour cela : <code>reset_computation_state()</code> remet à zéro le calcul, le minuteur et les cartes de progression <strong>sans toucher au projet courant</strong>, puisque le nouveau vient d’y être posé.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-bouton-dimport-csv-rejoint-le-bloc--tableau-ugf--du-sidebar-0-133-0">Changed — Le bouton d’import CSV rejoint le bloc « Tableau UGF » du sidebar<a class="anchor" aria-label="anchor" href="#changed--le-bouton-dimport-csv-rejoint-le-bloc--tableau-ugf--du-sidebar-0-133-0"></a></h4>
+<p>Il vivait en en-tête du tableau, dans le panneau principal, sur la même ligne que le titre. Il est maintenant dans le <strong>bloc repliable « Tableau UGF » du sidebar gauche</strong>, en tête, séparé par un filet des trois actions qui le suivent.</p>
+<p><strong>C’est un défaut de nommage qui l’a fait chercher au mauvais endroit.</strong> Deux surfaces portent le nom « Tableau UGF » : le bloc du sidebar et l’onglet du panneau principal. L’entrée de la v0.132.0 disait « dans le bloc <em>Tableau UGF</em> du sous-onglet du même nom » — une phrase qui ne tranche pas entre les deux, et qui se lit spontanément comme le sidebar. C’est là qu’on le cherche.</p>
+<p>Le placement d’origine avait sa raison, et elle reste vraie : les trois actions du sidebar (Fusionner, Diviser, Renommer) opèrent sur les <strong>lignes sélectionnées</strong> du tableau, alors que l’import <strong>crée un projet entier</strong> et remplace le courant. Mettre le bouton parmi elles risquait de le faire lire comme une quatrième action de sélection. Cette différence est donc <strong>dite</strong> plutôt que traduite par un éloignement : un filet le sépare du groupe, et une mention sous le bouton — <em>« Crée un projet entier — n’agit pas sur la sélection du tableau »</em> — porte la portée là où le geste se déclenche.</p>
+<p>Le bouton n’est <strong>pas dupliqué</strong> : deux points d’entrée pour un geste qui remplace le projet courant, ce serait deux fois l’occasion de le déclencher par erreur. Un test l’interdit explicitement, en plus de celui qui vérifie sa présence dans le sidebar.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.132.1" id="nemetonshiny-01321-2026-08-22">nemetonshiny 0.132.1 (2026-08-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01321-2026-08-22"></a></h2>
 <div class="section level4">
