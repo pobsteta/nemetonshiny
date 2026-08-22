@@ -238,10 +238,14 @@ la ligne suivante pourra être ajoutée une fois `v0.132.1` publiée :
 
 ## 4. À vérifier côté cœur (non vérifié depuis l'app)
 
-1. **Le brief 049 sous-estimait sa portée.** Il annonce « une vérification, pas
-   forcément du code ». Il y avait du code : un test app figeait le croisement.
-   Si d'autres consommateurs du cœur ont fait de même, ils sont rouges depuis
-   v0.182.0. Vaut peut-être un mot dans la spec.
+1. ~~**Le brief 049 sous-estimait sa portée.**~~ **Traité côté cœur le
+   2026-08-22** : `specs/049-famille-f-decroisee/brief-nemetonshiny.md` porte
+   désormais une section « Portée réelle — amendement du 2026-08-22 » qui dit
+   ce qui manquait — les quatre contrôles passent sans toucher au code de
+   production, mais **les tests et les fixtures** d'un consommateur doivent être
+   vérifiés eux aussi : toute assertion qui encode `F1 = érosion` est rouge
+   depuis v0.182.0, et c'est le comportement voulu. Rien à faire de plus ici,
+   la ligne est conservée pour la trace.
 2. **`reference_year` de T3** (§2.4) : l'ancrage par défaut sur « la coupe la plus
    récente trouvée dans les UGF analysées » est un comportement cœur qui surprend.
    L'app le contourne en passant toujours la valeur ; à arbitrer côté cœur si le
