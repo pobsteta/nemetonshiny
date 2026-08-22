@@ -90,9 +90,12 @@ test_that("mod_synthesis_ui contains AI generate button", {
       ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
-      # Should contain AI generate button
+      # Should contain AI generate button, carrying the amber AI accent:
+      # three stars + `btn-ia`, not the "robot" icon it wore before the
+      # accent became the app-wide mark of generated content (v0.130.10).
       expect_true(grepl("synthesis-ai_generate", ui_html))
-      expect_true(grepl("robot", ui_html))
+      expect_true(grepl("stars", ui_html))
+      expect_true(grepl("btn-ia", ui_html))
     }
   )
 })

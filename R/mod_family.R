@@ -936,11 +936,13 @@ clean_indicator_label <- function(col_name, i18n) {
   #    coeur ne documente pas.
   #
   # L'inverse (i18n d'abord) etait le bug : l'appariement code <-> colonne est
-  # POSITIONNEL et croise pour F et L, `F1` pointant sur
+  # POSITIONNEL, et il etait croise pour F et L - `F1` pointait sur
   # `indicateur_f2_erosion`. Les cles i18n etant ecrites selon la semantique du
   # CODE et non de la colonne, la carte d'erosion sortait libellee
-  # « F1 - Fertilite des sols ». Le libelle doit decrire la colonne qu'on
-  # affiche, pas le rang qu'elle occupe.
+  # « F1 - Fertilite des sols ». Le coeur a depuis decroise les deux familles
+  # (L en v0.176.0, F en v0.182.0), mais l'ordre des sources reste celui-ci :
+  # le libelle doit decrire la colonne qu'on affiche, pas le rang qu'elle
+  # occupe - sans quoi le prochain renommage coeur rejoue le meme bug.
   lang <- i18n$language %||% "fr"
   for (fam in INDICATOR_FAMILIES) {
     if (!is.null(fam$column_names) && base %in% fam$column_names) {

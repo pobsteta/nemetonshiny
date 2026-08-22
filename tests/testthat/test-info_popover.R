@@ -55,9 +55,32 @@ test_that("reGeneration n'utilise plus l'ancien « i » bsicons", {
   )
   h <- as.character(ui)
   expect_false(grepl("bi-info-circle", h, fixed = TRUE))
-  # 6 labels de paramètres + 8 entrées de couches/vues raster.
-  expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 14L)
+  # 8 entrées de couches/vues raster + les 2 paramètres restés dans le sidebar.
+  # Le compte était de 14 : quatre « i » de calibrage ont suivi leurs réglages
+  # dans Paramètres › Sources & paramètres en v0.128.0. Ils ne sont pas perdus,
+  # le test suivant les y retrouve — c'est tout l'objet de le vérifier là-bas
+  # plutôt que de baisser un chiffre.
+  expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 10L)
   # Le « i » d'une couche ne doit PAS sélectionner le radio qui le contient :
   # s'informer n'est pas choisir (la vue « rr » déclencherait 800 Mo de E-OBS).
   expect_match(h, "event.preventDefault()", fixed = TRUE)
+})
+
+
+test_that("les « i » des calibrages reGeneration ont suivi dans les parametres", {
+  # Contrepartie du compte ci-dessus. Les quatre reglages deplaces en v0.128.0
+  # sont rendus cote serveur (`output$regen_block`), donc invisibles a
+  # `mod_sources_config_ui()` : sans ce test, leur « i » pourrait disparaitre
+  # sans qu'aucune assertion ne bouge.
+  skip_if_not_installed("bslib")
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    h <- paste(as.character(output$regen_block), collapse = " ")
+    expect_false(grepl("bi-info-circle", h, fixed = TRUE))
+    expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 4L)
+  })
 })

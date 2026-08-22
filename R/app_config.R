@@ -130,11 +130,15 @@ get_app_config <- function(key, default = NULL) {
 #'   * **A5 was missing from family A.** The indicator was computed by
 #'     `service_compute.R` then filtered out at display time, so everything
 #'     delivered for the urban-cooling indicator stayed invisible in the Air tab.
-#'   * **The code-to-column pairing is positional**, and it is crossed for F and
-#'     L (`F1` points at `indicateur_f2_erosion`). A local copy that compensated
-#'     in its own `indicator_labels` but not in the `indicator_<code>` i18n keys
-#'     produced a label that depended on which copy the reader hit - the erosion
-#'     map came out as "F1 - Fertilite des sols".
+#'   * **The code-to-column pairing is positional**, and it used to be crossed
+#'     for F and L (`F1` pointed at `indicateur_f2_erosion`). A local copy that
+#'     compensated in its own `indicator_labels` but not in the
+#'     `indicator_<code>` i18n keys produced a label that depended on which copy
+#'     the reader hit - the erosion map came out as "F1 - Fertilite des sols".
+#'     The core has since uncrossed both families - L in v0.176.0 (spec 045), F
+#'     in v0.182.0 (spec 049) - so nothing is crossed today. What reading from
+#'     the core prevents is the *drift*, not that one crossing: the next rename
+#'     lands here for free.
 #'
 #' The core pairs code, column and label **explicitly, row by row**
 #' (`nemeton::indicator_labels()`), so reading from it removes the class of bug
@@ -244,14 +248,16 @@ get_all_column_names <- function() {
 #' Resolves a long-form column name (`indicateur_f2_erosion`) to the label of
 #' the quantity that column actually carries, in the requested language.
 #'
-#' A column is named after the **function that fills it**, and for family F
-#' that name still contradicts the code: `F1` points at
-#' `indicateur_f2_erosion`, which carries erosion. (Family L was in the same
-#' state until the core renamed both functions in v0.176.0.) The core pairs
-#' code, column and label explicitly row by row
-#' (`nemeton::indicator_labels()`), so the label read from it describes the
-#' values on screen. A local table indexed by column name follows the *slug*
-#' instead, and inverts - which is what this helper replaces.
+#' A column is named after the **function that fills it**, and that name used
+#' to contradict the code: `F1` pointed at `indicateur_f2_erosion`, which
+#' carries erosion. The core has uncrossed both families since - L in v0.176.0
+#' (spec 045), F in v0.182.0 (spec 049) - so code, column and slug agree today.
+#' The helper stays because the agreement is not a property one can rely on: it
+#' pairs code, column and label explicitly row by row
+#' (`nemeton::indicator_labels()`), so the label describes the values on screen
+#' whatever the core renames next. A local table indexed by column name follows
+#' the *slug*, and inverts again at the first rename - which is what this
+#' helper replaces.
 #'
 #' @param col_name Character. Column name, with or without the `_norm` suffix.
 #' @param lang Character. `"fr"` or `"en"`.
