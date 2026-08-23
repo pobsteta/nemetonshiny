@@ -305,3 +305,56 @@ test_that("chaque contexte du lot designe un fichier qui existe", {
     )
   })
 })
+
+
+# ---------------------------------------------------------------------------
+# Couche `houppier` (coeur >= 0.184.0)
+# ---------------------------------------------------------------------------
+
+test_that("un coeur sans segment_houppiers degrade en silence", {
+  # Le plancher n'est PAS releve tant que v0.184.0 n'est pas taguee : l'app doit
+  # tourner sur les deux, et un GeoPackage sans houppiers reste valide - le
+  # telephone se contente de ne pas pre-remplir les hauteurs.
+  testthat::local_mocked_bindings(
+    .marculus_chm_path = function(...) "inexistant.tif")
+  expect_null(nemetonshiny:::.marculus_houppiers("projet-sans-chm"))
+})
+
+test_that("chaque contexte ne recoit que les houppiers de SES parcelles", {
+  skip_if_not_installed("sf")
+  poly <- function(dx) sf::st_polygon(list(rbind(
+    c(dx, 0), c(dx + 1, 0), c(dx + 1, 1), c(dx, 1), c(dx, 0))))
+  hp <- sf::st_sf(h_max = c(20, 25, 30),
+                  geometry = sf::st_sfc(poly(0), poly(2), poly(10), crs = 4326))
+  par <- sf::st_sf(id = "p", geometry = sf::st_sfc(poly(0), crs = 4326))
+
+  out <- nemetonshiny:::.marculus_clip_houppiers(hp, par)
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$h_max, 20)
+
+  # INTERSECTION et non decoupe : un houppier a cheval garde son contour entier.
+  # Le rogner deplacerait son centroide et retrecirait le polygone dans lequel
+  # une tige doit tomber - l'estimation raterait justement les arbres de bord.
+  chevauche <- sf::st_sf(h_max = 22, geometry = sf::st_sfc(
+    sf::st_polygon(list(rbind(c(0.5, 0), c(1.5, 0), c(1.5, 1), c(0.5, 1), c(0.5, 0)))),
+    crs = 4326))
+  garde <- nemetonshiny:::.marculus_clip_houppiers(chevauche, par)
+  expect_equal(nrow(garde), 1L)
+  expect_equal(as.numeric(sf::st_area(garde)), as.numeric(sf::st_area(chevauche)))
+
+  expect_null(nemetonshiny:::.marculus_clip_houppiers(NULL, par))
+  expect_null(nemetonshiny:::.marculus_clip_houppiers(hp, NULL))
+})
+
+test_that("un CRS sans bloc d'autorite est retamponne avant l'ecriture", {
+  # Le MNH de Couchey porte le NOM « EPSG:2154 » sans bloc d'autorite :
+  # `st_crs(x)$epsg` y lit NA. Ecrite telle quelle, la couche partirait avec un
+  # CRS que le telephone ne sait pas rattacher - et Marculus reprojette tout en
+  # WGS84 a la lecture, donc il n'aurait rien a reprojeter DEPUIS.
+  skip_if_not_installed("sf")
+  g <- sf::st_sfc(sf::st_point(c(900000, 6500000)))
+  x <- sf::st_sf(h_max = 20, geometry = g)
+  sf::st_crs(x) <- sf::st_crs("EPSG:2154")$wkt   # WKT nu, sans AUTHORITY
+  out <- nemetonshiny:::.marculus_to_4326(x)
+  expect_equal(sf::st_crs(out)$epsg, 4326L)
+})

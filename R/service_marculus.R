@@ -54,6 +54,7 @@ MARCULUS_CONTEXT_ACTION_TYPES <- c(
 #' @noRd
 MARCULUS_LAYER_PARCELLES <- "parcelle"
 MARCULUS_LAYER_DESSERTE  <- "desserte"
+MARCULUS_LAYER_HOUPPIER  <- "houppier"
 
 #' Field separators of the encoded `essences` column
 #'
@@ -331,6 +332,124 @@ marculus_sync_json <- function(contexts) {
 }
 
 
+#' Crown layer of a project, when the core knows how to segment it
+#'
+#' @description
+#' Pre-fills the **height** of a marked stem: on the phone, a point-in-polygon
+#' on the GNSS position reads `h_max` and proposes it, modifiable. Without this
+#' layer the GeoPackage stays valid - Marculus simply does not estimate.
+#'
+#' Computed **once per project**, not once per context. The core measured
+#' 2 046 crowns in 11 s over 36.4 ha with a ~670 MB peak, so the whole extent is
+#' cheaper than thirteen clipped runs, and every context then takes the crowns
+#' its parcels cover.
+#'
+#' No `run_memory_capped()`: ~670 MB is 4 % of the ceiling. The capped child
+#' costs an AOI to serialise and a progress channel to thread, and the memory
+#' budget does not buy that here - unlike FORDEAD or reGénération.
+#'
+#' Degrades in silence on a core that predates `segment_houppiers()`
+#' (`nemeton 0.184.0`): the floor is not raised while that version is unreleased,
+#' so the app must run on both.
+#'
+#' @param project_id Character. Project identifier.
+#' @param aoi Optional `sf` limiting the segmentation. **Pass it**: the cached
+#'   CHM is a whole LiDAR HD tile, far larger than the project. Measured on
+#'   Couchey - 1 674 ha of tile for 536 ha of parcels - segmenting everything
+#'   costs 162 s and 46 158 crowns, most of them in forests belonging to
+#'   somebody else.
+#' @return An `sf` of polygons carrying `h_max`, or `NULL`.
+#' @noRd
+.marculus_houppiers <- function(project_id, aoi = NULL) {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
+  if (!exists("segment_houppiers", envir = asNamespace("nemeton"),
+              inherits = FALSE)) {
+    return(NULL)
+  }
+  chm <- .marculus_chm_path(project_id)
+  if (is.null(chm)) return(NULL)
+
+  out <- tryCatch(
+    nemeton::segment_houppiers(chm, aoi = aoi),
+    error = function(e) {
+      cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
+      NULL
+    })
+  if (!inherits(out, "sf") || nrow(out) == 0L) return(NULL)
+  if (!("h_max" %in% names(out))) return(NULL)
+
+  out <- out[, "h_max", drop = FALSE]
+  .marculus_to_4326(out)
+}
+
+#' Outline of everything a project covers
+#'
+#' Union of the tenements, or of the parcels when no tenement exists yet.
+#' Buffered by 10 m so a crown standing on the boundary is still segmented -
+#' the marker walking the edge sees those trees too.
+#'
+#' @param project The loaded project.
+#' @return An `sf` of one polygon, or `NULL`.
+#' @noRd
+.marculus_aoi <- function(project) {
+  src <- if (inherits(project$tenements, "sf") && nrow(project$tenements) > 0L) {
+    project$tenements
+  } else if (inherits(project$parcels, "sf") && nrow(project$parcels) > 0L) {
+    project$parcels
+  } else NULL
+  if (is.null(src)) return(NULL)
+  tryCatch({
+    u <- sf::st_union(sf::st_geometry(src))
+    metrique <- sf::st_transform(u, 2154)
+    sf::st_sf(geometry = sf::st_buffer(metrique, 10))
+  }, error = function(e) NULL)
+}
+
+#' Height model of a project, highest resolution first
+#'
+#' The 0.20 m CHM is the one the pipeline writes last; the 1.5 m is its
+#' predecessor and a fine enough input, the core re-sampling to 0.5 m anyway.
+#'
+#' @param project_id Character. Project identifier.
+#' @return A path, or `NULL`.
+#' @noRd
+.marculus_chm_path <- function(project_id) {
+  path <- get_project_path(project_id)
+  if (is.null(path)) return(NULL)
+  dir <- file.path(path, "cache", "layers", "opencanopy")
+  for (f in c("chm_predicted_0_2m.tif", "chm_predicted_1_5m.tif", "chm.tif")) {
+    p <- file.path(dir, f)
+    if (file.exists(p)) return(p)
+  }
+  NULL
+}
+
+#' Reproject to WGS84, re-stamping a CRS that carries no authority block
+#'
+#' @description
+#' The CHM of Couchey is named "EPSG:2154" without an authority block:
+#' `sf::st_crs(x)$epsg` reads `NA` on anything derived from it. Written as-is,
+#' the layer would leave with a CRS the phone cannot resolve - and Marculus
+#' reprojects everything to WGS84 on read, so it would have nothing to reproject
+#' *from*. The core warned about this: the defect is in the files, not in the
+#' function that reads them.
+#'
+#' Lambert-93 is assumed only when the CRS is projected and metric, which is
+#' what every French height model in this cache is.
+#'
+#' @param x An `sf`.
+#' @return The same `sf` in EPSG:4326.
+#' @noRd
+.marculus_to_4326 <- function(x) {
+  crs <- sf::st_crs(x)
+  if (is.na(crs$epsg) && !is.na(crs$input) && grepl("2154", crs$input)) {
+    sf::st_crs(x) <- 2154
+  }
+  if (is.na(sf::st_crs(x)$epsg) && is.na(sf::st_crs(x)$input)) return(x)
+  tryCatch(sf::st_transform(x, 4326), error = function(e) x)
+}
+
+
 # ---- Ecriture ---------------------------------------------------------
 
 #' Write the GeoPackage of one context
@@ -345,9 +464,12 @@ marculus_sync_json <- function(contexts) {
 #' @param file Destination path.
 #' @param desserte Optional `sf` of lines, shared across contexts of the same
 #'   project (it is read once, not once per action).
+#' @param houppiers Optional `sf` of crowns for the whole project; each context
+#'   keeps those its parcels cover.
 #' @return Invisibly `TRUE` when the parcel layer was written.
 #' @noRd
-marculus_write_action_gpkg <- function(project, action, file, desserte = NULL) {
+marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
+                                       houppiers = NULL) {
   par <- .marculus_parcelles(project, action$ug_id)
   if (is.null(par)) return(invisible(FALSE))
 
@@ -364,7 +486,41 @@ marculus_write_action_gpkg <- function(project, action, file, desserte = NULL) {
       }
     )
   }
+
+  # Les houppiers du CHANTIER seulement : la couche du projet entier pese pour
+  # rien dans les douze autres GeoPackages, et le telephone n'a que faire des
+  # arbres d'une parcelle qu'il n'ouvrira pas.
+  hp <- .marculus_clip_houppiers(houppiers, par)
+  if (inherits(hp, "sf") && nrow(hp) > 0L) {
+    tryCatch(
+      sf::st_write(hp, file, layer = MARCULUS_LAYER_HOUPPIER,
+                   append = FALSE, quiet = TRUE),
+      error = function(e) {
+        cli::cli_warn("Couche houppier non ecrite : {conditionMessage(e)}")
+      }
+    )
+  }
   invisible(TRUE)
+}
+
+#' Keep the crowns a context's parcels cover
+#'
+#' Intersection, not clipping: a crown straddling the boundary keeps its whole
+#' outline. Cutting it would move its centroid and shrink the polygon a stem
+#' must fall into - the estimate would then miss the very trees at the edge.
+#'
+#' @param houppiers An `sf` of crowns, or `NULL`.
+#' @param parcelles An `sf` of the context's parcels.
+#' @return An `sf`, or `NULL`.
+#' @noRd
+.marculus_clip_houppiers <- function(houppiers, parcelles) {
+  if (!inherits(houppiers, "sf") || nrow(houppiers) == 0L) return(NULL)
+  if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) return(NULL)
+  hit <- tryCatch(
+    lengths(sf::st_intersects(houppiers, sf::st_union(parcelles))) > 0L,
+    error = function(e) NULL)
+  if (is.null(hit) || !any(hit)) return(NULL)
+  houppiers[hit, , drop = FALSE]
 }
 
 #' Actions of a plan that become marking contexts
@@ -410,8 +566,11 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   actions <- marculus_eligible_actions(plan)
   if (length(actions) == 0L) return(invisible(vide))
 
-  # Lue UNE fois : la desserte est celle du projet, pas celle de l'action.
-  desserte <- .marculus_desserte(project_id)
+  # Lues UNE fois : desserte et houppiers sont ceux du PROJET, pas de l'action.
+  # L'emprise limite la segmentation aux parcelles : le CHM en cache est une
+  # dalle LiDAR HD entiere, sans rapport avec le perimetre du projet.
+  desserte  <- .marculus_desserte(project_id)
+  houppiers <- .marculus_houppiers(project_id, aoi = .marculus_aoi(project))
 
   tmp <- file.path(tempdir(), paste0("marculus_", project_id))
   unlink(tmp, recursive = TRUE)
@@ -431,7 +590,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
                                         gpkg_nom = nom_gpkg)
     contexts[[length(contexts) + 1L]] <- ctx
     ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
-                                     desserte = desserte)
+                                     desserte = desserte, houppiers = houppiers)
     if (isTRUE(ok)) n_gpkg <- n_gpkg + 1L
   }
 
@@ -444,5 +603,6 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
 
   invisible(list(n_contexts = length(contexts), n_gpkg = n_gpkg,
                  n_essences = length(essences),
-                 has_desserte = !is.null(desserte)))
+                 has_desserte = !is.null(desserte),
+                 n_houppiers = if (is.null(houppiers)) 0L else nrow(houppiers)))
 }
