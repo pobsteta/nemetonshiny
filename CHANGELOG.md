@@ -10,6 +10,34 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.135.0] - 2026-08-23
+
+### Added
+
+- `R/service_marculus.R` : export des chantiers de martelage vers **Marculus**
+  (application Android). Un ZIP contenant un GeoPackage par action qui désigne
+  des tiges (`eclaircie`, `coupe_rase`, `depressage`, `observation`) et un
+  fichier `.marsync` portant tous les contextes. Bouton « Envoyer vers
+  Marculus » dans le bloc *Exports* du Plan d'actions.
+- Couches produites : `parcelle` (périmètre de l'UGF, colonnes `proprietaire`,
+  `foret`, `commune`, `section`, `numero`) et `desserte` (repli des quatre
+  couches de l'onglet Desserte en une seule, provenance conservée dans `type`).
+  Aucune table de tuiles : vectoriel seulement.
+- Le `.marsync` vise `fusionnerJson()` (union par UUID, non destructif) et non
+  `importerJson()` (qui efface tout) : pas de section `referentiels`, un test
+  l'interdit.
+- Feuille de martelage **pré-remplie par profil de groupe** : les profils de
+  `inst/config/groupes_amenagement.yaml` portent une liste `essences` (ONF,
+  CRPF, OFB, générique), lue par `get_groupes_essences()`.
+- `specs/BRIEF-nemeton-houppiers-mnh.md` : brief pour la couche `houppier`
+  (segmentation de couronnes sur MNH), qui est de la logique métier et
+  appartient au cœur.
+- `specs/BRIEF-coeur-rattrapage-2026-08-23.md` : regroupe les cinq briefs cœur
+  ouverts, et désigne la seule urgence.
+- Nouvelles clés i18n `action_plan_download_marculus`,
+  `action_plan_export_running_marculus`, `marculus_export_ok_fmt`,
+  `marculus_export_empty`.
+
 ## [0.134.1] - 2026-08-23
 
 ### Fixed

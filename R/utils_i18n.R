@@ -547,6 +547,22 @@ TRANSLATIONS <- list(
     fr = "G\u00e9n\u00e9ration du rapport PDF\u2026",
     en = "Generating PDF report\u2026"
   ),
+  action_plan_download_marculus = list(
+    fr = "Envoyer vers Marculus",
+    en = "Send to Marculus"
+  ),
+  action_plan_export_running_marculus = list(
+    fr = "Pr\u00e9paration des contextes de martelage\u2026",
+    en = "Preparing marking contexts\u2026"
+  ),
+  marculus_export_ok_fmt = list(
+    fr = "%d contexte(s) de martelage, %d GeoPackage(s), feuille pr\u00e9-remplie de %d essences. Ouvrir le .marsync sur le t\u00e9l\u00e9phone, puis rattacher un GeoPackage \u00e0 chaque contexte.",
+    en = "%d marking context(s), %d GeoPackage(s), sheet pre-filled with %d species. Open the .marsync on the phone, then attach a GeoPackage to each context."
+  ),
+  marculus_export_empty = list(
+    fr = "Aucune action ne d\u00e9signe de tiges (\u00e9claircie, coupe rase, d\u00e9pressage, observation) : rien \u00e0 envoyer.",
+    en = "No action designates stems (thinning, clear-cut, respacing, observation): nothing to send."
+  ),
   action_plan_pdf_failed = list(
     fr = "\u00c9chec de la g\u00e9n\u00e9ration du PDF",
     en = "PDF generation failed"

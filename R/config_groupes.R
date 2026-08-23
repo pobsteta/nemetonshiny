@@ -209,6 +209,33 @@ get_groupes_codes <- function(profile_key = NULL) {
 }
 
 
+#' Species the marking sheet starts with, for a profile
+#'
+#' @description
+#' The species matrix of a Marculus context has to start somewhere, and the
+#' honest options are two: empty, or a plausible list the marker prunes on the
+#' spot. Empty wins on rigour and loses on the ground - a marker facing a beech
+#' stand should not begin by typing "Hêtre".
+#'
+#' The list hangs off the **group profile** because that is the closest thing
+#' the project carries to a silvicultural context: ONF public forests, CRPF
+#' private woodlands and OFB natural areas do not mark the same species.
+#'
+#' Written accented and in full: Marculus normalises (lower case, accents
+#' stripped) before looking up its cubing coefficients, so the readable form
+#' and the matched form are the same string. The phone derives the three-letter
+#' ONF code itself.
+#'
+#' @param profile_key Character. Profile key, or `NULL` for the default.
+#' @return Character vector, possibly empty when a profile declares none.
+#' @noRd
+get_groupes_essences <- function(profile_key = NULL) {
+  prof <- resolve_groupes_profile(profile_key)
+  if (is.null(prof) || is.null(prof$essences)) return(character(0))
+  as.character(unlist(prof$essences, use.names = FALSE))
+}
+
+
 #' Named choices (label -> code) for a groupe selectInput
 #'
 #' @param profile_key Character. Profile key.
