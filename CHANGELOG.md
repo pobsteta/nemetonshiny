@@ -12,6 +12,25 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.134.1\] - 2026-08-23
+
+### Fixed
+
+- `.compute_error_message()` re-atténuait un message que le cœur
+  **affirme**. Depuis `nemeton 0.183.1`, « ran out of memory » vient
+  d’un `Result=oom-kill` constaté auprès de systemd : l’app l’affiche
+  désormais à l’affirmatif, et réserve la formulation prudente au cas «
+  tué, verdict indisponible » (mode dégradé). Implémente
+  `briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md`.
+- Quand systemd répond `signal`, le cœur précise que ce n’est **pas** le
+  plafond mémoire : l’app ne le contredit plus et passe le message tel
+  quel.
+- Le plafond en vigueur est extrait des deux formulations du cœur et
+  affiché (`compute_error_ceiling_fmt`) : c’est lui qu’il faut relever.
+- Nouvelles clés i18n `compute_error_killed`,
+  `compute_error_ceiling_fmt` ; `compute_error_oom` reformulée à
+  l’affirmatif.
+
 ## \[0.134.0\] - 2026-08-23
 
 ### Removed

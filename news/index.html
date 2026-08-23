@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.134.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.134.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,44 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.134.1" id="nemetonshiny-01341-2026-08-23">nemetonshiny 0.134.1 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01341-2026-08-23"></a></h2>
+<p>Implémente <code>briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md</code>. <strong>Aucun plancher relevé</strong> : le message vient du cœur, l’app ne fait que le relayer.</p>
+<div class="section level4">
+<h4 id="fixed--la-prudence-ne-sapplique-plus-à-ce-qui-est-certain-0-134-1">Fixed — La prudence ne s’applique plus à ce qui est certain<a class="anchor" aria-label="anchor" href="#fixed--la-prudence-ne-sapplique-plus-%C3%A0-ce-qui-est-certain-0-134-1"></a></h4>
+<p>Le cœur (<code>nemeton 0.183.1</code>) <strong>nomme désormais le scope transitoire</strong> et demande son verdict à systemd, au lieu de l’inférer d’un code de sortie. Quand il écrit « ran out of memory », le dépassement est <strong>constaté</strong>. Or <code>.compute_error_message()</code>, livré en v0.134.0, recouvrait ce message de sa formulation prudente — « la cause habituelle est le plafond mémoire » — et rendait à l’utilisateur une incertitude que le cœur venait de lever. Le brief l’avait vu venir ; c’est corrigé.</p>
+<p>Quatre messages du cœur, quatre traitements distincts :</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Message du cœur</th>
+<th>Ce qui est su</th>
+<th>Ce qu’affiche l’app</th>
+</tr></thead><tbody><tr><td><code>ran out of memory … (ceiling: X)</code></td>
+<td>
+<code>Result=oom-kill</code> : <strong>certain</strong>
+</td>
+<td>le plafond a été dépassé, affirmatif</td>
+</tr><tr><td><code>was killed (signal N; verdict unavailable)</code></td>
+<td>tué, cause inconnue</td>
+<td>le plafond est la cause <em>habituelle</em>
+</td>
+</tr><tr><td><code>failed … (systemd: "signal")</code></td>
+<td>systemd dit que ce <strong>n’est pas</strong> la mémoire</td>
+<td>passe tel quel</td>
+</tr><tr><td>autre</td>
+<td>erreur R ordinaire</td>
+<td>passe tel quel</td>
+</tr></tbody></table><p>La formulation prudente <strong>garde donc un objet</strong>, mais un seul : le mode dégradé, sans cgroup ni <code>systemctl</code>, où un scope arrêté et un <code>kill</code> extérieur ont exactement le même visage qu’un dépassement. Le cas de l’incident du 2026-08-22 — un <code>exit -15</code> nu, sur un cœur antérieur — y reste rattaché, le plancher n’ayant pas bougé.</p>
+<p><strong>Le plafond en vigueur remonte désormais à l’écran</strong> (<code>Plafond en vigueur : 10G</code>), extrait de l’une ou l’autre des deux formulations du cœur. C’est lui qu’il faut relever ; le connaître évite de deviner. Le code de sortie, lui, ne s’affiche toujours pas — il ne dit rien à personne.</p>
+<p><strong>Un faux positif est explicitement refusé</strong> : quand systemd dit <code>signal</code>, le cœur précise « This is not the memory ceiling » et l’app ne le contredit pas. C’est exactement le piège que le cœur a évité en refusant d’élargir la reconnaissance à <code>-15</code>, et il aurait été absurde de le réintroduire par le bas.</p>
+</div>
+<div class="section level4">
+<h4 id="note-de-calendrier-0-134-1">Note de calendrier<a class="anchor" aria-label="anchor" href="#note-de-calendrier-0-134-1"></a></h4>
+<p><code>nemeton 0.183.1</code> n’est <strong>pas encore publié</strong> au moment de cette release : le travail cœur est sur la branche <code>fix/oom-diagnostic-scope-result</code>, ni mergé ni tagué. Cette version de l’app est donc prête <em>pour</em> lui, sans en dépendre — aucun changement d’API, aucun plancher à relever, et les quatre cas ci-dessus sont testés sur les chaînes exactes que le cœur produira. Les deux premières lignes du tableau ne s’observeront en vrai qu’une fois <code>v0.183.1</code> taguée, que <code>Remotes: @*release</code> la tire et qu’elle soit installée.</p>
+</div>
+<div class="section level4">
+<h4 id="reliquat-signalé-par-le-cœur-0-134-1">Reliquat signalé par le cœur<a class="anchor" aria-label="anchor" href="#reliquat-signal%C3%A9-par-le-c%C5%93ur-0-134-1"></a></h4>
+<p><code>.reconfort_run_py()</code> (chaîne RECONFORT) ne rend qu’un code de sortie et reste aveugle au même défaut. L’outillage cœur l’attend déjà (<code>unit =</code>, <code>.capped_scope_result()</code>). Hors périmètre ici : ce chemin ne passe pas par <code>.compute_error_message()</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.134.0" id="nemetonshiny-01340-2026-08-23">nemetonshiny 0.134.0 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01340-2026-08-23"></a></h2>
 <p>Implémente <code>briefs/vers-nemetonshiny/2026-08-22-plafond-memoire.md</code>. Plancher relevé à <code>nemeton (&gt;= 0.183.0)</code>.</p>
