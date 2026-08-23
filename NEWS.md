@@ -1,4 +1,4 @@
-# nemetonshiny 0.133.1 (2026-08-23)
+# nemetonshiny 0.134.0 (2026-08-23)
 
 Implémente `briefs/vers-nemetonshiny/2026-08-22-plafond-memoire.md`. Plancher
 relevé à `nemeton (>= 0.183.0)`.
