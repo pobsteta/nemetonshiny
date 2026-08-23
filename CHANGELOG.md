@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.137.0\] - 2026-08-23
+
+### Changed
+
+- Le bouton devient **« Télécharger pour Marculus »** : il produit un
+  ZIP remis au navigateur, il n’envoie rien. Aucun canal de push
+  n’existe des deux côtés.
+
+### Added
+
+- Champ `gpkgNom` dans chaque contexte du `.marsync` : nom de fichier du
+  GeoPackage associé, nu (jamais un chemin) et ASCII. Clé inconnue des
+  versions publiées de Marculus, donc inerte et sans ordre de livraison
+  à respecter.
+- `specs/BRIEF-marculus-import-zip.md` : entrée « Importer un lot (.zip)
+  » côté Marculus — décompression, fusion des contextes, rattachement
+  automatique par `gpkgNom`, avec les garde-fous (jamais
+  `importerJson()`, refus du zip-slip, lot partiel accepté mais
+  signalé).
+- Tests : chaque contexte du lot désigne un fichier présent ; deux
+  actions sur la même UGF ne partagent pas un nom de fichier.
+
 ## \[0.136.0\] - 2026-08-23
 
 ### Added

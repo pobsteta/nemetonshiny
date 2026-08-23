@@ -1,5 +1,72 @@
 # Changelog
 
+## nemetonshiny 0.137.0 (2026-08-23)
+
+#### Changed — Le bouton dit ce qu’il fait
+
+**« Télécharger pour Marculus »**, et non plus « Envoyer vers Marculus
+». Il n’y a pas d’envoi : le bouton fabrique un ZIP et le remet au
+navigateur. Aucun canal de push n’existe, ni ici ni dans Marculus, qui
+lit des fichiers depuis le stockage de l’appareil. Le nom promettait un
+appairage que l’utilisateur aurait cherché en vain.
+
+Le chemin le plus court reste d’ouvrir Nemeton **dans le navigateur du
+téléphone** : le téléchargement atterrit alors directement dans les
+*Téléchargements* de l’appareil. Sinon Quick Share, un cloud, ou le
+câble.
+
+#### Added — `gpkgNom` : de quoi apparier un chantier et sa carte
+
+Chaque contexte du `.marsync` porte désormais le **nom de fichier** de
+son GeoPackage dans le lot. Le champ est inerte aujourd’hui — c’est une
+clé inconnue de toutes les versions publiées de Marculus, et
+`JSONObject` ignore ce qu’il ne lit pas — mais c’est ce qui permettra à
+l’application de faire elle-même l’appariement.
+
+**Le problème qu’il vise.** Réceptionner un lot demande aujourd’hui
+d’ouvrir le `.marsync`, puis de rattacher **treize GeoPackages à la
+main**, depuis un sélecteur de fichiers, sur treize noms qui se
+ressemblent (`..._ug_1_-_eclaircie.gpkg`, `..._ug_10_-_eclaircie.gpkg`).
+Une erreur d’appariement **ne se voit pas** : le contexte s’ouvre, la
+carte affiche une parcelle — la mauvaise — et les tiges se rattachent
+spatialement à un périmètre qui n’est pas le leur. Le journal devient
+faux sans jamais avoir été en erreur.
+
+Deux propriétés garanties à l’émission, et testées : c’est un **nom
+nu**, jamais un chemin
+([`basename()`](https://rdrr.io/r/base/basename.html) est appliqué, un
+`../` ne peut pas sortir), et il est **ASCII** — ni accent ni espace —
+pour traverser un ZIP et un système de fichiers Android sans surprise.
+Un test vérifie en outre que chaque contexte du lot désigne un fichier
+**présent**, et que deux actions sur la même UGF ne partagent pas un nom
+: le second écraserait le premier, et un contexte pointerait sur le
+chantier de l’autre.
+
+#### Added — Brief pour Marculus : réceptionner le lot
+
+`specs/BRIEF-marculus-import-zip.md` demande une entrée « Importer un
+lot (.zip) » : décompresser, fusionner les contextes, rattacher chaque
+GeoPackage par son `gpkgNom`. Rien à synchroniser entre les deux côtés —
+le champ étant inerte, Marculus peut l’implémenter quand il veut.
+
+Le brief insiste sur trois choses qui doivent rester vraies : passer par
+`fusionnerJson()` et **jamais** `importerJson()`, qui efface tout avant
+d’insérer ; **refuser** une entrée d’archive contenant `..` plutôt que
+l’assainir ; et traiter un lot amputé d’un fichier en créant quand même
+le contexte — douze chantiers valent mieux que zéro, à condition de le
+dire.
+
+Il est écrit d’après le **code Android lu**, pas supposé, et trois
+constats en découlent. Le `.marsync` **s’importe déjà** : le bouton
+*Fusionner* ouvre le sélecteur sur `*/*` et appelle `fusionnerJson()` —
+un opérateur qui décompresse le lot sur son téléphone crée ses contextes
+sans qu’une ligne change, seuls les rattachements restent manuels. La
+**plomberie ZIP existe** aussi (`lireJsonDepuisZip`), donc le travail
+demandé est plus petit qu’annoncé. Mais ce lecteur-là alimente
+`importerJson()`, la porte destructive : le brief demande de ne pas le
+réutiliser tel quel, les deux imports devant cohabiter à quelques lignes
+l’un de l’autre dans le même écran.
+
 ## nemetonshiny 0.136.0 (2026-08-23)
 
 #### Added — Envoyer les chantiers de martelage vers Marculus
