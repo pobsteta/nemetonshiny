@@ -118,9 +118,16 @@ MARCULUS_STATUTS <- c(
 #' @param action One action of the plan.
 #' @param project The loaded project (names the context, dates it).
 #' @param essences Character vector of species for the marking sheet.
+#' @param gpkg_nom File name of this context's GeoPackage inside the bundle,
+#'   or `NULL`. Emitted as `gpkgNom`, an **unknown key** to every Marculus
+#'   released so far - `JSONObject` ignores what it does not read, so the field
+#'   is inert until the app learns to open a bundle
+#'   (`specs/BRIEF-marculus-import-zip.md`). It is what would let the phone pair
+#'   context and file by itself, instead of thirteen manual attachments.
 #' @return A named list, ready for `jsonlite::toJSON()`.
 #' @noRd
-marculus_context_from_action <- function(action, project, essences = character(0)) {
+marculus_context_from_action <- function(action, project, essences = character(0),
+                                         gpkg_nom = NULL) {
   ug <- action$ug_id %||% "?"
   nom_projet <- project$metadata$name %||% project$id
   type <- action$type %||% "autre"
@@ -162,6 +169,9 @@ marculus_context_from_action <- function(action, project, essences = character(0
   cmt <- action$commentaire %||% ""
   if (nzchar(cmt)) ctx$commentaire <- cmt
   if (!is.null(date_martelage)) ctx$dateMartelage <- date_martelage
+  # Nom de fichier NU, jamais un chemin : le lot est a plat, et un chemin
+  # relatif ouvrirait la porte au zip-slip cote telephone.
+  if (!is.null(gpkg_nom) && nzchar(gpkg_nom)) ctx$gpkgNom <- basename(gpkg_nom)
   ctx
 }
 
@@ -410,10 +420,17 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   contexts <- list()
   n_gpkg <- 0L
   for (a in actions) {
-    ctx <- marculus_context_from_action(a, project, essences = essences)
+    # Le nom du fichier se decide AVANT le contexte, puisque le contexte le
+    # porte. Lisible - un operateur qui rattache a la main lit le nom du
+    # chantier - et sans accent ni espace, pour traverser un ZIP et un systeme
+    # de fichiers Android sans surprise.
+    provisoire <- marculus_context_from_action(a, project, essences = essences)
+    nom_gpkg <- paste0(gsub("[^A-Za-z0-9_-]+", "_", provisoire$nom), ".gpkg")
+
+    ctx <- marculus_context_from_action(a, project, essences = essences,
+                                        gpkg_nom = nom_gpkg)
     contexts[[length(contexts) + 1L]] <- ctx
-    nom <- gsub("[^A-Za-z0-9_-]+", "_", ctx$nom)
-    ok <- marculus_write_action_gpkg(project, a, file.path(tmp, paste0(nom, ".gpkg")),
+    ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
                                      desserte = desserte)
     if (isTRUE(ok)) n_gpkg <- n_gpkg + 1L
   }

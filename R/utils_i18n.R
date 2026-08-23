@@ -548,8 +548,8 @@ TRANSLATIONS <- list(
     en = "Generating PDF report\u2026"
   ),
   action_plan_download_marculus = list(
-    fr = "Envoyer vers Marculus",
-    en = "Send to Marculus"
+    fr = "T\u00e9l\u00e9charger pour Marculus",
+    en = "Download for Marculus"
   ),
   action_plan_export_running_marculus = list(
     fr = "Pr\u00e9paration des contextes de martelage\u2026",
