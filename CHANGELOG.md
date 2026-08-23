@@ -12,6 +12,30 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.138.1\] - 2026-08-23
+
+### Changed
+
+- Les houppiers sont segmentés à la **fin du calcul des indicateurs**
+  (`precompute_houppiers()`) et mis en cache dans
+  `cache/layers/houppiers/houppiers.gpkg` ; l’export Marculus lit ce
+  cache au lieu de segmenter. 173 s dans un `downloadHandler` gelaient
+  la session.
+- Best-effort : un échec de segmentation ne fait pas échouer un calcul
+  d’indicateurs abouti ; un projet sans cache produit un GeoPackage
+  valide, sans la couche.
+- Repli sur la dalle entière quand l’appel avec emprise échoue (chaque
+  contexte étant de toute façon découpé sur ses parcelles).
+
+### Known issues
+
+- La couche `houppier` reste absente en pratique : `nemeton v0.184.0`
+  n’est ni taguée ni publiée, et son arbre de développement
+  (`0.184.0.9000`) a régressé — `segment_houppiers()` échoue en
+  `st_crs(x) == st_crs(y) is not TRUE`, avec ou sans emprise, sur une
+  donnée qui passait le matin même. Brief déposé :
+  `briefs/vers-nemeton/2026-08-23-houppiers-regression-crs.md`.
+
 ## \[0.138.0\] - 2026-08-23
 
 ### Added

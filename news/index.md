@@ -1,5 +1,50 @@
 # Changelog
 
+## nemetonshiny 0.138.1 (2026-08-23)
+
+#### Changed — Les houppiers se calculent avec les indicateurs, plus au téléchargement
+
+La segmentation coûte **173 s**, et borner l’emprise n’y change presque
+rien (162 s sans) — la dalle est lue et ré-échantillonnée dans les deux
+cas. Dans un `downloadHandler`, c’étaient 173 s de session gelée à
+chaque export.
+
+Elle part donc à la **fin du calcul des indicateurs**
+(`precompute_houppiers()`) : on y est déjà dans l’enfant plafonné, après
+un travail qui se compte en heures, et le CHM vient d’être produit. Le
+résultat est mis en cache dans `cache/layers/houppiers/houppiers.gpkg`,
+et l’export se contente de le **lire** — le lot redevient affaire de
+secondes.
+
+**Best-effort de bout en bout.** Un projet sans CHM, un cœur sans
+`segment_houppiers()`, une segmentation qui échoue : aucun de ces cas ne
+fait échouer un calcul d’indicateurs qui, lui, a abouti. Un projet
+calculé avant ce mécanisme n’a simplement pas la couche, et le
+GeoPackage reste valide — le téléphone ne pré-remplit alors pas les
+hauteurs.
+
+#### La couche n’apparaîtra pas encore, et ce n’est pas le câblage
+
+Deux obstacles, tous deux côté cœur, tous deux signalés :
+
+**`v0.184.0` n’est ni taguée ni publiée.** `gh release list` s’arrête à
+`v0.183.1` : tant que le tag n’existe pas, `Remotes: @*release` ne peut
+rien en tirer. Le plancher n’est donc pas relevé et le câblage dégrade
+en silence.
+
+**Et l’arbre de développement du cœur a régressé aujourd’hui.**
+`segment_houppiers()` rendait 22 435 houppiers en 173 s ce matin sur la
+version locale `0.184.0` ; sur `0.184.0.9000`, le même appel sur la même
+donnée échoue en `st_crs(x) == st_crs(y) is not TRUE`, levé depuis
+`lidR`. Reproduit quatre fois. Ce n’est **pas** un problème d’emprise —
+sans emprise, l’échec est le même — ni de CRS d’AOI : aligner l’AOI sur
+le CRS exact du raster ne change rien. Brief déposé avec la reproduction
+minimale (`briefs/vers-nemeton/2026-08-23-houppiers-regression-crs.md`).
+
+Un repli sur la dalle entière est tenté quand l’appel avec emprise
+échoue. Inutile aujourd’hui puisque les deux échouent — correct dès que
+la régression sera levée.
+
 ## nemetonshiny 0.138.0 (2026-08-23)
 
 #### Added — La couche `houppier` entre dans le lot Marculus

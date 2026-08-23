@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.138.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.138.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.138.1" id="nemetonshiny-01381-2026-08-23">nemetonshiny 0.138.1 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01381-2026-08-23"></a></h2>
+<div class="section level4">
+<h4 id="changed--les-houppiers-se-calculent-avec-les-indicateurs-plus-au-téléchargement-0-138-1">Changed — Les houppiers se calculent avec les indicateurs, plus au téléchargement<a class="anchor" aria-label="anchor" href="#changed--les-houppiers-se-calculent-avec-les-indicateurs-plus-au-t%C3%A9l%C3%A9chargement-0-138-1"></a></h4>
+<p>La segmentation coûte <strong>173 s</strong>, et borner l’emprise n’y change presque rien (162 s sans) — la dalle est lue et ré-échantillonnée dans les deux cas. Dans un <code>downloadHandler</code>, c’étaient 173 s de session gelée à chaque export.</p>
+<p>Elle part donc à la <strong>fin du calcul des indicateurs</strong> (<code>precompute_houppiers()</code>) : on y est déjà dans l’enfant plafonné, après un travail qui se compte en heures, et le CHM vient d’être produit. Le résultat est mis en cache dans <code>cache/layers/houppiers/houppiers.gpkg</code>, et l’export se contente de le <strong>lire</strong> — le lot redevient affaire de secondes.</p>
+<p><strong>Best-effort de bout en bout.</strong> Un projet sans CHM, un cœur sans <code>segment_houppiers()</code>, une segmentation qui échoue : aucun de ces cas ne fait échouer un calcul d’indicateurs qui, lui, a abouti. Un projet calculé avant ce mécanisme n’a simplement pas la couche, et le GeoPackage reste valide — le téléphone ne pré-remplit alors pas les hauteurs.</p>
+</div>
+<div class="section level4">
+<h4 id="la-couche-napparaîtra-pas-encore-et-ce-nest-pas-le-câblage-0-138-1">La couche n’apparaîtra pas encore, et ce n’est pas le câblage<a class="anchor" aria-label="anchor" href="#la-couche-nappara%C3%AEtra-pas-encore-et-ce-nest-pas-le-c%C3%A2blage-0-138-1"></a></h4>
+<p>Deux obstacles, tous deux côté cœur, tous deux signalés :</p>
+<p><strong><code>v0.184.0</code> n’est ni taguée ni publiée.</strong> <code>gh release list</code> s’arrête à <code>v0.183.1</code> : tant que le tag n’existe pas, <code>Remotes: @*release</code> ne peut rien en tirer. Le plancher n’est donc pas relevé et le câblage dégrade en silence.</p>
+<p><strong>Et l’arbre de développement du cœur a régressé aujourd’hui.</strong> <code>segment_houppiers()</code> rendait 22 435 houppiers en 173 s ce matin sur la version locale <code>0.184.0</code> ; sur <code>0.184.0.9000</code>, le même appel sur la même donnée échoue en <code>st_crs(x) == st_crs(y) is not TRUE</code>, levé depuis <code>lidR</code>. Reproduit quatre fois. Ce n’est <strong>pas</strong> un problème d’emprise — sans emprise, l’échec est le même — ni de CRS d’AOI : aligner l’AOI sur le CRS exact du raster ne change rien. Brief déposé avec la reproduction minimale (<code>briefs/vers-nemeton/2026-08-23-houppiers-regression-crs.md</code>).</p>
+<p>Un repli sur la dalle entière est tenté quand l’appel avec emprise échoue. Inutile aujourd’hui puisque les deux échouent — correct dès que la régression sera levée.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.138.0" id="nemetonshiny-01380-2026-08-23">nemetonshiny 0.138.0 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01380-2026-08-23"></a></h2>
 <div class="section level4">
