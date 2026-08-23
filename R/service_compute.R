@@ -4826,21 +4826,26 @@ get_computation_progress <- function(project_id) {
 #' Turn a computation failure into something the user can act on
 #'
 #' @description
-#' The capped child dies in two ways that mean the same thing, and the core
-#' only names one of them.
+#' The core distinguishes four failures, and the app must not flatten them back
+#' into one. Since `nemeton 0.183.1` the core **names the transient scope** and
+#' asks systemd what happened, so it no longer guesses from an exit code:
 #'
-#' When the cgroup ceiling is hit, the kernel OOM killer kills the **R process
-#' inside** the transient scope (SIGKILL). But what `processx` watches is the
-#' `systemd-run` client, not that R process: systemd then tears the scope down
-#' and the client exits on **SIGTERM**. So the frequent case surfaces as
-#' `exit -15`, which the core reports with its generic message
-#' (`isolate.R`) rather than the memory one sitting right above it. Observed
-#' 2026-08-22: `run-r11dc…scope: Failed with result 'oom-kill'` in the journal,
-#' `exit -15` on screen.
+#' | Core message | What is known | What we say |
+#' |---|---|---|
+#' | `ran out of memory … (ceiling: X)` | `Result=oom-kill`: **certain** | the ceiling was exceeded |
+#' | `was killed (signal N; systemd's verdict unavailable)` | killed, cause unknown | the ceiling is the *usual* cause |
+#' | `failed … (systemd: "signal")` | systemd says **not** memory | passed through untouched |
+#' | anything else | an ordinary R error | passed through untouched |
 #'
-#' Hence the wording: the process **was killed**, and the ceiling is the *usual*
-#' cause — not a certainty we cannot establish from an exit code alone. The
-#' remedy is named either way, which is what was missing.
+#' The middle row is why the prudent wording still exists: with no cgroup and no
+#' `systemctl`, a stopped scope and an outside `kill` look exactly like an OOM
+#' from here. The top row is why it is no longer the *only* wording — re-hedging
+#' a verdict systemd actually delivered would throw away a certainty that was
+#' expensive to obtain (`briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md`).
+#'
+#' The exit code itself never reaches the screen: it tells a user nothing. The
+#' **ceiling** does, since raising it is the remedy — so it is extracted from
+#' whichever core message carries it and appended.
 #'
 #' @param msg Character. Raw error message from the task.
 #' @param i18n The i18n object.
@@ -4849,14 +4854,59 @@ get_computation_progress <- function(project_id) {
 .compute_error_message <- function(msg, i18n) {
   msg <- as.character(msg %||% "")
 
-  # -9 / 137 : le coeur a su le dire. -15 / 143 : demontage du scope apres
-  # l'OOM kill, meme cause, message generique.
-  tue <- grepl("ran out of memory", msg, fixed = TRUE) ||
+  join <- function(...) {
+    parts <- Filter(nzchar, c(...))
+    htmltools::HTML(paste(parts, collapse = " "))
+  }
+  ceiling_note <- function() {
+    ceil <- .compute_error_ceiling(msg)
+    if (is.null(ceil)) "" else sprintf(i18n$t("compute_error_ceiling_fmt"), ceil)
+  }
+
+  # 1. Certitude : systemd a constate `oom-kill`. (Un coeur anterieur a 0.183.1
+  #    produisait la meme phrase par inference sur -9 ; elle reste juste.)
+  if (grepl("ran out of memory", msg, fixed = TRUE)) {
+    return(join(i18n$t("compute_error_oom"), ceiling_note()))
+  }
+
+  # 2. Tue, verdict indisponible. Le coeur >= 0.183.1 le dit explicitement ; un
+  #    coeur anterieur laissait un `exit -15` nu, qui etait DEJA cela sans le
+  #    dire - c'est l'incident du 2026-08-22.
+  # « verdict unavailable » et non « systemd's verdict unavailable » :
+  # l'apostrophe est justement le caractere que cli peut rendre en U+2019.
+  tue <- grepl("verdict unavailable", msg, fixed = TRUE) ||
     (grepl("capped child process", msg, fixed = TRUE) &&
        grepl("exit (-9|-15|137|143)\\b", msg))
+  if (tue) return(join(i18n$t("compute_error_killed"), ceiling_note()))
 
-  if (tue) return(htmltools::HTML(i18n$t("compute_error_oom")))
+  # 3. Tout le reste tel quel - dont `systemd: "signal"`, que le coeur
+  #    accompagne de « This is not the memory ceiling ». Le contredire en
+  #    invoquant la memoire serait exactement le faux positif qu'il evite.
   htmltools::HTML(sprintf(i18n$t("compute_error_fmt"), htmltools::htmlEscape(msg)))
+}
+
+
+#' Extract the ceiling named by a core failure message
+#'
+#' Two shapes carry it: `(ceiling: 10G)` when the OOM is certain, and
+#' `The memory ceiling (10G) is the usual cause` when it is not. `"none"` is a
+#' real value — it means the run was uncapped, which is worth showing.
+#'
+#' @param msg Character. Raw error message.
+#' @return A length-1 character, or `NULL` when no ceiling is named.
+#' @noRd
+.compute_error_ceiling <- function(msg) {
+  m <- regmatches(msg, regexpr("ceiling: [^)]+", msg))
+  if (!length(m)) {
+    m <- regmatches(msg, regexpr("memory ceiling \\([^)]+\\)", msg))
+    if (!length(m)) return(NULL)
+    m <- sub("^memory ceiling \\(", "", m)
+    m <- sub("\\)$", "", m)
+  } else {
+    m <- sub("^ceiling: ", "", m)
+  }
+  m <- trimws(gsub("[\"`']", "", m))
+  if (!nzchar(m)) NULL else m
 }
 
 

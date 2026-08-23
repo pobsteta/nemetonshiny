@@ -1,3 +1,60 @@
+# nemetonshiny 0.134.1 (2026-08-23)
+
+Implémente `briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md`.
+**Aucun plancher relevé** : le message vient du cœur, l'app ne fait que le
+relayer.
+
+### Fixed — La prudence ne s'applique plus à ce qui est certain
+
+Le cœur (`nemeton 0.183.1`) **nomme désormais le scope transitoire** et demande
+son verdict à systemd, au lieu de l'inférer d'un code de sortie. Quand il écrit
+« ran out of memory », le dépassement est **constaté**. Or `.compute_error_message()`,
+livré en v0.134.0, recouvrait ce message de sa formulation prudente — « la cause
+habituelle est le plafond mémoire » — et rendait à l'utilisateur une incertitude
+que le cœur venait de lever. Le brief l'avait vu venir ; c'est corrigé.
+
+Quatre messages du cœur, quatre traitements distincts :
+
+| Message du cœur | Ce qui est su | Ce qu'affiche l'app |
+|---|---|---|
+| `ran out of memory … (ceiling: X)` | `Result=oom-kill` : **certain** | le plafond a été dépassé, affirmatif |
+| `was killed (signal N; verdict unavailable)` | tué, cause inconnue | le plafond est la cause *habituelle* |
+| `failed … (systemd: "signal")` | systemd dit que ce **n'est pas** la mémoire | passe tel quel |
+| autre | erreur R ordinaire | passe tel quel |
+
+La formulation prudente **garde donc un objet**, mais un seul : le mode dégradé,
+sans cgroup ni `systemctl`, où un scope arrêté et un `kill` extérieur ont
+exactement le même visage qu'un dépassement. Le cas de l'incident du 2026-08-22
+— un `exit -15` nu, sur un cœur antérieur — y reste rattaché, le plancher n'ayant
+pas bougé.
+
+**Le plafond en vigueur remonte désormais à l'écran** (`Plafond en vigueur :
+10G`), extrait de l'une ou l'autre des deux formulations du cœur. C'est lui
+qu'il faut relever ; le connaître évite de deviner. Le code de sortie, lui, ne
+s'affiche toujours pas — il ne dit rien à personne.
+
+**Un faux positif est explicitement refusé** : quand systemd dit `signal`, le
+cœur précise « This is not the memory ceiling » et l'app ne le contredit pas.
+C'est exactement le piège que le cœur a évité en refusant d'élargir la
+reconnaissance à `-15`, et il aurait été absurde de le réintroduire par le bas.
+
+### Note de calendrier
+
+`nemeton 0.183.1` n'est **pas encore publié** au moment de cette release : le
+travail cœur est sur la branche `fix/oom-diagnostic-scope-result`, ni mergé ni
+tagué. Cette version de l'app est donc prête *pour* lui, sans en dépendre —
+aucun changement d'API, aucun plancher à relever, et les quatre cas ci-dessus
+sont testés sur les chaînes exactes que le cœur produira. Les deux premières
+lignes du tableau ne s'observeront en vrai qu'une fois `v0.183.1` taguée, que
+`Remotes: @*release` la tire et qu'elle soit installée.
+
+### Reliquat signalé par le cœur
+
+`.reconfort_run_py()` (chaîne RECONFORT) ne rend qu'un code de sortie et reste
+aveugle au même défaut. L'outillage cœur l'attend déjà (`unit =`,
+`.capped_scope_result()`). Hors périmètre ici : ce chemin ne passe pas par
+`.compute_error_message()`.
+
 # nemetonshiny 0.134.0 (2026-08-23)
 
 Implémente `briefs/vers-nemetonshiny/2026-08-22-plafond-memoire.md`. Plancher
