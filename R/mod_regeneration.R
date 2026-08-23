@@ -136,7 +136,8 @@
     package = "nemetonshiny",
     args    = list(units = units, project_path = project_path, cfg = cfg),
     options = list(nemeton.app_options = app_opts),
-    # memory_max = NULL -> defaut coeur (70 % RAM) ; MemorySwapMax=0 deja gere cote
+    # memory_max = NULL -> politique coeur (50 % MemTotal depuis nemeton
+    # 0.183.0, plancher 4 Go) ; MemorySwapMax=0 deja gere cote
     # coeur. Le progress reste le canal disque (engine_status.json/engine.log),
     # poll 1 s inchange : pas de progress_callback necessaire.
     quiet   = FALSE)

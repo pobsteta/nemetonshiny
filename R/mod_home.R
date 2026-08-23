@@ -1195,10 +1195,15 @@ mod_home_server <- function(id, app_state) {
           }
         }, error = function(e) e$message)
 
+        # Le message brut du coeur ne dit rien a l'utilisateur : « failed in its
+        # capped child process (exit -15) » est le visage habituel d'un
+        # depassement de plafond memoire. `.compute_error_message()` le traduit
+        # et nomme le remede. i18n, aussi : ce `paste()` francais en dur
+        # traversait la regle depuis longtemps.
         shiny::showNotification(
-          paste("Erreur de calcul:", error_msg),
+          .compute_error_message(error_msg, i18n),
           type = "error",
-          duration = 10
+          duration = 15
         )
 
         # Reset computing state

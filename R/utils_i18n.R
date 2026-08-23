@@ -1141,6 +1141,22 @@ TRANSLATIONS <- list(
   task_compute_start = list(fr = "D\u00e9marrage des calculs", en = "Starting calculations"),
   task_complete = list(fr = "Traitement termin\u00e9", en = "Processing complete"),
   task_error = list(fr = "Erreur de traitement", en = "Processing error"),
+  compute_error_fmt = list(fr = "Erreur de calcul : %s", en = "Computation error: %s"),
+  compute_error_oom = list(
+    fr = paste0(
+      "Le processus de calcul a \u00e9t\u00e9 tu\u00e9 ; la cause habituelle est ",
+      "le <strong>plafond m\u00e9moire</strong>. La session, elle, est intacte \u2014 ",
+      "c'est ce que le plafond prot\u00e8ge. Relever ",
+      "<code>NEMETON_MEMORY_MAX</code> (accepte <code>none</code>) ou calculer ",
+      "sur une emprise plus petite."
+    ),
+    en = paste0(
+      "The computation process was killed; the usual cause is the ",
+      "<strong>memory ceiling</strong>. The session itself is intact \u2014 that is ",
+      "what the ceiling protects. Raise <code>NEMETON_MEMORY_MAX</code> ",
+      "(accepts <code>none</code>) or compute on a smaller extent."
+    )
+  ),
   task_resuming = list(fr = "Reprise des calculs...", en = "Resuming calculations..."),
   task_spectral_diversity = list(fr = "Diversit\u00e9 spectrale (B4/L3) : analyse biodivMapR sur Sentinel-2...", en = "Spectral diversity (B4/L3): biodivMapR analysis on Sentinel-2..."),
   elapsed_time = list(fr = "Temps \u00e9coul\u00e9", en = "Elapsed time"),

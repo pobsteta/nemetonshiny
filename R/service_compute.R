@@ -4823,58 +4823,42 @@ get_computation_progress <- function(project_id) {
 # (`use_file_progress = TRUE`), canal qui traverse un process enfant sans
 # changement, et la valeur de retour est bien relayee (`readRDS`).
 
-#' Memory ceiling for the capped indicator computation
+#' Turn a computation failure into something the user can act on
 #'
-#' Honours `NEMETON_MEMORY_MAX` (same variable as FORDEAD, see
-#' `.capped_memory_max()`), and otherwise picks its OWN default rather than
-#' deferring to the core's.
+#' @description
+#' The capped child dies in two ways that mean the same thing, and the core
+#' only names one of them.
 #'
-#' Why not the core default: it is 70 % of RAM — on the 31 GB workstation where
-#' the incident happened, **21.7 GB**, well ABOVE the 17.1 GB at which
-#' `systemd-oomd` had already killed the session. A ceiling that only trips
-#' after the executioner has acted is not a ceiling. 50 % leaves the IDE, the
-#' Shiny process and the idle workers of the pool enough room that the user
-#' slice never reaches sustained reclaim.
+#' When the cgroup ceiling is hit, the kernel OOM killer kills the **R process
+#' inside** the transient scope (SIGKILL). But what `processx` watches is the
+#' `systemd-run` client, not that R process: systemd then tears the scope down
+#' and the client exits on **SIGTERM**. So the frequent case surfaces as
+#' `exit -15`, which the core reports with its generic message
+#' (`isolate.R`) rather than the memory one sitting right above it. Observed
+#' 2026-08-22: `run-r11dc…scope: Failed with result 'oom-kill'` in the journal,
+#' `exit -15` on screen.
 #'
-#' This is a HEURISTIC, not a measurement: `systemd-oomd` acts on memory
-#' *pressure*, not on an absolute figure, so no fraction can be proven correct
-#' from here. It is deliberately conservative, and `NEMETON_MEMORY_MAX`
-#' overrides it in both directions — including `"none"` to disable the ceiling
-#' when a legitimate run needs the room.
+#' Hence the wording: the process **was killed**, and the ceiling is the *usual*
+#' cause — not a certainty we cannot establish from an exit code alone. The
+#' remedy is named either way, which is what was missing.
 #'
-#' @return A length-1 character (`"12G"`), `FALSE` (no ceiling), or `NULL` when
-#'   the host's RAM cannot be read (then the core default applies).
+#' @param msg Character. Raw error message from the task.
+#' @param i18n The i18n object.
+#' @return An `HTML` string for `showNotification()`.
 #' @noRd
-.compute_memory_max <- function() {
-  raw <- trimws(Sys.getenv("NEMETON_MEMORY_MAX", ""))
-  if (nzchar(raw)) {
-    if (tolower(raw) %in% c("none", "off", "false", "no", "0")) return(FALSE)
-    return(raw)
-  }
-  total <- .total_memory_bytes()
-  if (!is.finite(total) || total <= 0) return(NULL)
-  go <- max(4, floor(0.5 * total / 1024^3))   # plancher 4 Go : sous cela, rien ne passe
-  paste0(go, "G")
+.compute_error_message <- function(msg, i18n) {
+  msg <- as.character(msg %||% "")
+
+  # -9 / 137 : le coeur a su le dire. -15 / 143 : demontage du scope apres
+  # l'OOM kill, meme cause, message generique.
+  tue <- grepl("ran out of memory", msg, fixed = TRUE) ||
+    (grepl("capped child process", msg, fixed = TRUE) &&
+       grepl("exit (-9|-15|137|143)\\b", msg))
+
+  if (tue) return(htmltools::HTML(i18n$t("compute_error_oom")))
+  htmltools::HTML(sprintf(i18n$t("compute_error_fmt"), htmltools::htmlEscape(msg)))
 }
 
-#' Total physical memory of the host, in bytes
-#'
-#' `MemTotal` and not `MemAvailable`: the ceiling must be stable from one run to
-#' the next. Sizing it on what happens to be free would give a different limit
-#' depending on which browser tabs are open.
-#'
-#' @return Total bytes (numeric) or `NA_real_` off Linux.
-#' @noRd
-.total_memory_bytes <- function() {
-  if (!file.exists("/proc/meminfo")) return(NA_real_)
-  lines <- tryCatch(readLines("/proc/meminfo", n = 5L), error = function(e) NULL)
-  if (is.null(lines)) return(NA_real_)
-  hit <- grep("^MemTotal:", lines, value = TRUE)
-  if (length(hit) == 0L) return(NA_real_)
-  kb <- suppressWarnings(as.numeric(gsub("[^0-9]", "", hit[1])))
-  if (!is.finite(kb)) return(NA_real_)
-  kb * 1024
-}
 
 #' Run the full indicator computation in a memory-capped child process
 #'
@@ -4905,7 +4889,13 @@ get_computation_progress <- function(project_id) {
     fn <- utils::getFromNamespace("start_computation", "nemetonshiny")
     return(do.call(fn, args))
   }
+  # Pas de `memory_max =` : le plafond est une POLITIQUE, et elle appartient au
+  # coeur depuis `nemeton 0.183.0` (50 % de MemTotal, plancher 4 Go, avec
+  # `NEMETON_MEMORY_MAX` et `options(nemeton.memory_max=)` par-dessus). L'app en
+  # portait sa propre copie ; trois chemins lourds de la meme session tournaient
+  # ainsi sous trois plafonds differents. Une fraction reintroduite ici en
+  # ferait un quatrieme.
   rmc(fun = "start_computation", package = "nemetonshiny",
       args = args, options = list(nemeton.app_options = app_opts),
-      memory_max = .compute_memory_max(), quiet = FALSE)
+      quiet = FALSE)
 }

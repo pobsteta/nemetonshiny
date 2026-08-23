@@ -238,19 +238,18 @@ test_that(".build_fordead_ntfy_callback ne touche pas au fichier de progression"
   })
 })
 
-test_that(".capped_memory_max mappe l'env var sur l'argument coeur", {
-  withr::with_envvar(c(NEMETON_MEMORY_MAX = ""), {
-    expect_null(nemetonshiny:::.capped_memory_max())
-  })
-  withr::with_envvar(c(NEMETON_MEMORY_MAX = "16G"), {
-    expect_identical(nemetonshiny:::.capped_memory_max(), "16G")
-  })
-  withr::with_envvar(c(NEMETON_MEMORY_MAX = "none"), {
-    expect_identical(nemetonshiny:::.capped_memory_max(), FALSE)
-  })
-  withr::with_envvar(c(NEMETON_MEMORY_MAX = "OFF"), {
-    expect_identical(nemetonshiny:::.capped_memory_max(), FALSE)
-  })
+test_that("l'app ne decide plus du plafond FORDEAD", {
+  # `.capped_memory_max()` traduisait NEMETON_MEMORY_MAX pour le passer au
+  # coeur. Depuis `nemeton 0.183.0` le coeur lit la variable LUI-MEME, et il
+  # porte la politique (50 % de MemTotal, plancher 4 Go). L'app qui traduisait
+  # produisait un deuxieme plafond a cote de celui du calcul des indicateurs.
+  expect_false(exists(".capped_memory_max", envir = asNamespace("nemetonshiny"),
+                      inherits = FALSE))
+  f <- testthat::test_path("..", "..", "R", "service_monitoring.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes (package installe)")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]   # les commentaires PARLENT du plafond
+  expect_false(any(grepl("memory_max\\s*=", code)))
 })
 
 test_that(".capture_worker_envvars transmet NEMETON_MEMORY_MAX au worker", {
