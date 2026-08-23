@@ -377,6 +377,64 @@ marculus_sync_json <- function(contexts) {
 }
 
 
+#' Where a project's segmented crowns live
+#'
+#' Beside the other cached layers, under their own directory: the crowns are a
+#' derived product of the CHM, not a source, and they are rewritten whenever the
+#' indicators are recomputed.
+#'
+#' @param project_id Character. Project identifier.
+#' @return A path, or `NULL` when the project is unknown.
+#' @noRd
+.houppiers_cache_path <- function(project_id) {
+  path <- get_project_path(project_id)
+  if (is.null(path)) return(NULL)
+  file.path(path, "cache", "layers", "houppiers", "houppiers.gpkg")
+}
+
+#' Segment the crowns once, at computation time, and cache them
+#'
+#' @description
+#' Called at the end of `start_computation()`. The crowns serve no indicator -
+#' they go into the Marculus bundle, where the phone reads `h_max` to pre-fill
+#' the height of a marked stem.
+#'
+#' **Why here and not at download time.** Segmenting cost 173 s on Couchey, and
+#' bounding the extent barely helps (162 s without) - the tile is read and
+#' re-sampled either way. In a `downloadHandler` that is 173 s of frozen
+#' session. Here, we are already inside the memory-capped child, after work that
+#' counts in hours, and the CHM has just been produced.
+#'
+#' Best-effort throughout: a project with no CHM, a core without
+#' `segment_houppiers()`, a segmentation that throws - none of these may fail a
+#' computation that otherwise succeeded.
+#'
+#' @param project_id Character. Project identifier.
+#' @return Invisibly the number of crowns written, `0` when nothing was.
+#' @noRd
+precompute_houppiers <- function(project_id) {
+  if (!requireNamespace("nemeton", quietly = TRUE) ||
+      !exists("segment_houppiers", envir = asNamespace("nemeton"),
+              inherits = FALSE)) {
+    return(invisible(0L))
+  }
+  out_path <- .houppiers_cache_path(project_id)
+  chm <- .marculus_chm_path(project_id)
+  if (is.null(out_path) || is.null(chm)) return(invisible(0L))
+
+  projet <- load_project(project_id)
+  aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
+
+  hp <- .marculus_segment_houppiers(chm, aoi)
+  if (is.null(hp)) return(invisible(0L))
+
+  dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+  if (file.exists(out_path)) unlink(out_path)
+  sf::st_write(hp, out_path, layer = "houppier", quiet = TRUE, driver = "GPKG")
+  cli::cli_alert_success("Houppiers : {nrow(hp)} segment\u00e9s et mis en cache.")
+  invisible(nrow(hp))
+}
+
 #' Crown layer of a project, when the core knows how to segment it
 #'
 #' @description
@@ -393,38 +451,66 @@ marculus_sync_json <- function(contexts) {
 #' costs an AOI to serialise and a progress channel to thread, and the memory
 #' budget does not buy that here - unlike FORDEAD or reGénération.
 #'
-#' Degrades in silence on a core that predates `segment_houppiers()`
-#' (`nemeton 0.184.0`): the floor is not raised while that version is unreleased,
-#' so the app must run on both.
+#' The export READS this cache, it never segments. A bundle must stay a matter
+#' of seconds; the crowns are produced by [precompute_houppiers()] during the
+#' indicator computation. A project computed before that existed simply has no
+#' crown layer - the GeoPackage remains valid, the phone just does not pre-fill
+#' heights.
 #'
 #' @param project_id Character. Project identifier.
-#' @param aoi Optional `sf` limiting the segmentation. **Pass it**: the cached
-#'   CHM is a whole LiDAR HD tile, far larger than the project. Measured on
-#'   Couchey - 1 674 ha of tile for 536 ha of parcels - segmenting everything
-#'   costs 162 s and 46 158 crowns, most of them in forests belonging to
-#'   somebody else.
 #' @return An `sf` of polygons carrying `h_max`, or `NULL`.
 #' @noRd
-.marculus_houppiers <- function(project_id, aoi = NULL) {
-  if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
-  if (!exists("segment_houppiers", envir = asNamespace("nemeton"),
-              inherits = FALSE)) {
-    return(NULL)
-  }
-  chm <- .marculus_chm_path(project_id)
-  if (is.null(chm)) return(NULL)
-
-  out <- tryCatch(
-    nemeton::segment_houppiers(chm, aoi = aoi),
-    error = function(e) {
-      cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
-      NULL
-    })
+.marculus_houppiers <- function(project_id) {
+  p <- .houppiers_cache_path(project_id)
+  if (is.null(p) || !file.exists(p)) return(NULL)
+  out <- tryCatch(sf::st_read(p, layer = "houppier", quiet = TRUE),
+                  error = function(e) NULL)
   if (!inherits(out, "sf") || nrow(out) == 0L) return(NULL)
   if (!("h_max" %in% names(out))) return(NULL)
+  out[, "h_max", drop = FALSE]
+}
 
-  out <- out[, "h_max", drop = FALSE]
-  .marculus_to_4326(out)
+#' Segment crowns on a CHM, best-effort
+#'
+#' Bounded by the AOI: the cached CHM is a whole LiDAR HD tile, far larger than
+#' the project. Measured on Couchey - 1 674 ha of tile for 536 ha of parcels -
+#' segmenting everything yields 46 158 crowns against 22 435, most of the
+#' surplus standing in forests belonging to somebody else. The time is much the
+#' same either way, which is precisely why this runs at computation time.
+#'
+#' **Falls back to the whole tile when the bounded call fails.** On
+#' `nemeton 0.184.0.9000` the `aoi` path aborts with
+#' `st_crs(x) == st_crs(y) is not TRUE`, raised inside lidR once the CHM has
+#' been cropped - reproduced twice, and not cured by handing the AOI in the
+#' raster's own CRS (`specs/BRIEF-nemeton-houppiers-aoi-crs.md`). Segmenting
+#' everything costs the same time and yields crowns standing in other people's
+#' forests, but each context is clipped to its own parcels before writing, so
+#' the surplus never reaches the phone. A feature that degrades beats a feature
+#' that disappears.
+#'
+#' @param chm Path to the height model.
+#' @param aoi Optional `sf` limiting the segmentation.
+#' @return An `sf` in EPSG:4326 carrying `h_max`, or `NULL`.
+#' @noRd
+.marculus_segment_houppiers <- function(chm, aoi = NULL) {
+  tenter <- function(emprise) {
+    tryCatch(nemeton::segment_houppiers(chm, aoi = emprise),
+             error = function(e) {
+               cli::cli_warn("Segmentation des houppiers{if (is.null(emprise)) '' else ' (emprise)'} : {conditionMessage(e)}")
+               NULL
+             })
+  }
+
+  out <- tenter(aoi)
+  if (!inherits(out, "sf") && !is.null(aoi)) {
+    cli::cli_alert_info(
+      "Houppiers : repli sur la dalle enti\u00e8re, chaque contexte sera \
+       de toute fa\u00e7on d\u00e9coup\u00e9 sur ses parcelles.")
+    out <- tenter(NULL)
+  }
+  if (!inherits(out, "sf") || nrow(out) == 0L) return(NULL)
+  if (!("h_max" %in% names(out))) return(NULL)
+  .marculus_to_4326(out[, "h_max", drop = FALSE])
 }
 
 #' Outline of everything a project covers
@@ -612,10 +698,10 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   if (length(actions) == 0L) return(invisible(vide))
 
   # Lues UNE fois : desserte et houppiers sont ceux du PROJET, pas de l'action.
-  # L'emprise limite la segmentation aux parcelles : le CHM en cache est une
-  # dalle LiDAR HD entiere, sans rapport avec le perimetre du projet.
+  # Les houppiers sont LUS d'un cache produit au calcul des indicateurs - les
+  # segmenter ici gelerait la session le temps du telechargement.
   desserte  <- .marculus_desserte(project_id)
-  houppiers <- .marculus_houppiers(project_id, aoi = .marculus_aoi(project))
+  houppiers <- .marculus_houppiers(project_id)
 
   tmp <- file.path(tempdir(), paste0("marculus_", project_id))
   unlink(tmp, recursive = TRUE)
