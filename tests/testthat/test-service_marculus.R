@@ -402,3 +402,55 @@ test_that("sans libelle, l'identifiant vaut mieux qu'un vide", {
     list(id = "a", ug_id = "ug_1", type = "eclaircie"), projet)
   expect_identical(ctx$nom, "F - ug_1 - eclaircie")
 })
+
+
+test_that("les houppiers sont precalcules, pas segmentes au telechargement", {
+  # 173 s dans un `downloadHandler` gelent la session. La segmentation a donc
+  # quitte l'export pour la fin du calcul des indicateurs, ou l'on est deja
+  # dans l'enfant plafonne apres un travail qui se compte en heures.
+  expect_true(exists("precompute_houppiers",
+                     envir = asNamespace("nemetonshiny"), inherits = FALSE))
+
+  # L'export LIT un cache ; il ne connait plus `segment_houppiers`.
+  src <- deparse(body(nemetonshiny:::.marculus_houppiers))
+  expect_false(any(grepl("segment_houppiers", src, fixed = TRUE)))
+  expect_true(any(grepl("houppiers_cache_path", src, fixed = TRUE)))
+
+  # Et `start_computation()` le declenche.
+  f <- testthat::test_path("..", "..", "R", "service_compute.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  expect_true(any(grepl("precompute_houppiers", code, fixed = TRUE)))
+})
+
+test_that("sans cache, l'export se passe de la couche au lieu d'echouer", {
+  # Un projet calcule avant ce mecanisme n'a pas de houppiers. Le GeoPackage
+  # reste valide - le telephone se contente de ne pas pre-remplir les hauteurs.
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        dir.create("p1")
+        expect_null(nemetonshiny:::.marculus_houppiers("p1"))
+      })
+  })
+})
+
+test_that("un echec de segmentation ne fait pas echouer le precalcul", {
+  # Best-effort de bout en bout : un calcul d'indicateurs qui aboutit ne doit
+  # pas echouer parce que les houppiers n'ont pas pu etre segmentes. Constate
+  # en vrai le 2026-08-23 : le coeur de developpement rendait
+  # `st_crs(x) == st_crs(y) is not TRUE`.
+  testthat::local_mocked_bindings(
+    .marculus_chm_path = function(...) "chm.tif",
+    .marculus_segment_houppiers = function(...) NULL)
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        dir.create("p1")
+        expect_identical(nemetonshiny:::precompute_houppiers("p1"), 0L)
+      })
+  })
+})

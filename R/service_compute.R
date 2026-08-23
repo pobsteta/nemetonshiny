@@ -1061,6 +1061,19 @@ start_computation <- function(project_id,
     # Final save (ensures metadata is updated)
     save_indicators(project_id, results)
 
+    # Houppiers : segmentes ICI, une fois, et mis en cache. Ils ne servent pas
+    # aux indicateurs - ils partent dans le lot Marculus, ou ils pre-remplissent
+    # la hauteur d'une tige au martelage. Les calculer au telechargement
+    # bloquait la session 173 s ; ici on est deja dans l'enfant plafonne, apres
+    # un travail qui se compte en heures, et le CHM vient d'etre produit.
+    #
+    # Best-effort de bout en bout : un echec ne doit pas faire echouer un calcul
+    # d'indicateurs qui, lui, a abouti.
+    tryCatch(precompute_houppiers(project_id),
+             error = function(e) {
+               cli::cli_warn("Houppiers non precalcules : {conditionMessage(e)}")
+             })
+
     # Sync to PostGIS database if configured (non-bloquant)
     if (is_db_configured()) {
       tryCatch({
