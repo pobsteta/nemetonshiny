@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.134.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.136.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,35 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.136.0" id="nemetonshiny-01360-2026-08-23">nemetonshiny 0.136.0 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01360-2026-08-23"></a></h2>
+<div class="section level4">
+<h4 id="added--envoyer-les-chantiers-de-martelage-vers-marculus-0-136-0">Added — Envoyer les chantiers de martelage vers Marculus<a class="anchor" aria-label="anchor" href="#added--envoyer-les-chantiers-de-martelage-vers-marculus-0-136-0"></a></h4>
+<p>Un bouton <strong>« Envoyer vers Marculus »</strong> dans le bloc <em>Exports</em> du Plan d’actions. Il produit un ZIP : <strong>un GeoPackage par action qui désigne des tiges</strong>, plus <strong>un fichier <code>.marsync</code></strong> portant tous les contextes de martelage. Vérifié sur ForêtAccess : 13 actions éligibles → 13 contextes, 13 GeoPackages, desserte incluse, feuille pré-remplie de 10 essences.</p>
+<p><strong>Quelles actions deviennent un contexte.</strong> Le critère est le geste de l’opérateur, pas l’intention sylvicole : il y a contexte quand quelqu’un parcourra le peuplement en désignant les tiges une par une. Éclaircie et coupe rase marquent ce qui part, dépressage ce qui reste, observation couvre les tournées d’inventaire, qui comptent les tiges de la même façon. Plantation, desserte, protection en sont absents — rien n’y est désigné tige à tige, et un contexte vide sur le téléphone est pire que pas de contexte.</p>
+<p><strong>Le <code>.marsync</code> passe par la FUSION, jamais par la restauration.</strong> Côté téléphone, <code>fusionnerJson()</code> fait une union par UUID, non destructive et atomique : les contextes se créent sans toucher aux tiges déjà saisies. L’autre porte d’entrée, <code>importerJson()</code>, <strong>efface</strong> contextes, tiges et configs avant d’insérer. Le fichier produit ici ne porte donc pas de section <code>referentiels</code> — c’est la seule chose qui distingue les deux formats, et la ressemblance serait coûteuse. Un test l’interdit.</p>
+<p><strong>Les noms de couches sont un contrat, pas une convention.</strong> Dans un GeoPackage Marculus, c’est le <strong>nom de la table</strong> qui dit le rôle : <code>desserte</code> pour les voies, <code>houppier</code> pour les hauteurs, et <strong>tout autre nom est lu comme des parcelles</strong>, rattachement spatial des tiges compris. Une couche mal nommée ne provoque pas d’erreur : elle remplit le journal de parcelles fantômes. D’où des noms figés en constantes, et un test qui vérifie que le fichier ne porte <strong>que</strong> <code>parcelle</code> et <code>desserte</code>.</p>
+<p><strong>La desserte est repliée en une seule couche.</strong> L’onglet en produit quatre — <code>desserte_existante</code> (BD TOPO corrigée), <code>reseau_cree</code> (les pistes dessinées par le moteur), <code>osm_track</code> et <code>desserte_detectee</code>. Marculus n’en lit qu’une. Ce qui survit au repli est la <strong>provenance</strong>, dans la colonne <code>type</code> : un opérateur qui voit une piste à l’écran doit savoir si elle existe au sol ou si elle est une proposition sur le papier.</p>
+<p><strong>Pas d’ortho dans le GeoPackage</strong> — vectoriel seulement. Marculus prendrait la première table de tuiles comme fond hors-ligne, et les orthophotos du projet pèsent des gigaoctets.</p>
+</div>
+<div class="section level4">
+<h4 id="added--la-feuille-de-martelage-part-pré-remplie-selon-le-profil-de-groupe-0-136-0">Added — La feuille de martelage part pré-remplie, selon le profil de groupe<a class="anchor" aria-label="anchor" href="#added--la-feuille-de-martelage-part-pr%C3%A9-remplie-selon-le-profil-de-groupe-0-136-0"></a></h4>
+<p>Les profils de <code>groupes_amenagement.yaml</code> portent désormais une liste <code>essences</code>. ONF, CRPF et OFB ne martèlent pas les mêmes : le peuplier ouvre une feuille CRPF et n’a rien à faire en tête d’une feuille ONF ; l’aulne glutineux et le saule appartiennent aux zones humides suivies par l’OFB. Le profil de groupe est ce que le projet porte de plus proche d’un contexte sylvicole, et il est déjà choisi par ailleurs.</p>
+<p>Les libellés sont écrits <strong>accentués et en toutes lettres</strong> — « Hêtre », « Sapin pectiné » — parce que le téléphone normalise (minuscules, accents ôtés) avant de chercher son coefficient de cubage : la forme lisible et la forme appariée sont la même chaîne. C’est lui qui dérive ensuite le code ONF à trois caractères, pas nous. Un test interdit qu’un code à trois lettres se glisse dans ces listes, et qu’un séparateur du format (<code>RS</code>, <code>US</code>) apparaisse dans un libellé — il casserait l’encodage de la matrice entière.</p>
+<p>Une liste explicite passée à l’export prime toujours ; <code>character(0)</code> reste possible et donne une feuille vide, que l’opérateur remplit.</p>
+<p><strong>Deux champs restent vides, délibérément.</strong> <code>cheminGpkg</code> est un chemin dans le stockage privé du téléphone, que cette machine ne peut pas connaître — l’opérateur rattache le GeoPackage à son contexte sur place. Et le nom de commune affiché vient de <code>commune_geometry</code>, pas de la colonne <code>commune</code> des parcelles : celle-ci porte le <strong>code INSEE</strong>, et <code>48042</code> ne dit rien à un marteleur sur le terrain.</p>
+</div>
+<div class="section level4">
+<h4 id="ce-qui-manque-encore--la-couche-houppier-0-136-0">Ce qui manque encore — la couche <code>houppier</code>
+<a class="anchor" aria-label="anchor" href="#ce-qui-manque-encore--la-couche-houppier-0-136-0"></a></h4>
+<p>L’estimation automatique des hauteurs demande une segmentation de couronnes sur MNH (détection des apex + délimitation), c’est-à-dire de la <strong>logique métier</strong> : elle appartient à <code>nemeton</code>, pas ici (règle 1). Le GeoPackage produit est valide sans elle — le téléphone se contente alors de ne pas pré-remplir les hauteurs. <code>lasR</code>, déjà dépendance de l’app, expose ce qu’il faut (<code>chm</code>, <code>local_maximum</code>, <code>region_growing</code>, <code>hulls</code>).</p>
+<p>Brief émis : <code>specs/BRIEF-nemeton-houppiers-mnh.md</code>, avec le point de vigilance mémoire — ré-échantillonner le MNH avant de segmenter, un houppier faisant 3 à 10 m de diamètre quand le MNH de Couchey compte 418 M cellules à 0,20 m.</p>
+</div>
+<div class="section level4">
+<h4 id="added--un-brief-unique-de-rattrapage-pour-le-cœur-0-136-0">Added — Un brief unique de rattrapage pour le cœur<a class="anchor" aria-label="anchor" href="#added--un-brief-unique-de-rattrapage-pour-le-c%C5%93ur-0-136-0"></a></h4>
+<p><code>specs/BRIEF-coeur-rattrapage-2026-08-23.md</code> regroupe les cinq briefs ouverts en trois jours : journal <code>PLAN.md</code> (quatre releases), houppiers, <code>pct_veg</code> d’<code>opencanopynemeton</code>, et le diagnostic OOM/SIGTERM (soldé, reste à publier). Cinq documents dont deux déjà partiellement traités font perdre plus de temps qu’ils n’en font gagner : il faut d’abord établir lequel est encore vrai. Le document unique dit ce qui reste, et désigne la seule urgence — <code>pct_veg</code>, la seule qui empêche aujourd’hui un calcul d’aboutir.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.134.1" id="nemetonshiny-01341-2026-08-23">nemetonshiny 0.134.1 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01341-2026-08-23"></a></h2>
 <p>Implémente <code>briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md</code>. <strong>Aucun plancher relevé</strong> : le message vient du cœur, l’app ne fait que le relayer.</p>

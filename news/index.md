@@ -1,5 +1,108 @@
 # Changelog
 
+## nemetonshiny 0.136.0 (2026-08-23)
+
+#### Added — Envoyer les chantiers de martelage vers Marculus
+
+Un bouton **« Envoyer vers Marculus »** dans le bloc *Exports* du Plan
+d’actions. Il produit un ZIP : **un GeoPackage par action qui désigne
+des tiges**, plus **un fichier `.marsync`** portant tous les contextes
+de martelage. Vérifié sur ForêtAccess : 13 actions éligibles → 13
+contextes, 13 GeoPackages, desserte incluse, feuille pré-remplie de 10
+essences.
+
+**Quelles actions deviennent un contexte.** Le critère est le geste de
+l’opérateur, pas l’intention sylvicole : il y a contexte quand quelqu’un
+parcourra le peuplement en désignant les tiges une par une. Éclaircie et
+coupe rase marquent ce qui part, dépressage ce qui reste, observation
+couvre les tournées d’inventaire, qui comptent les tiges de la même
+façon. Plantation, desserte, protection en sont absents — rien n’y est
+désigné tige à tige, et un contexte vide sur le téléphone est pire que
+pas de contexte.
+
+**Le `.marsync` passe par la FUSION, jamais par la restauration.** Côté
+téléphone, `fusionnerJson()` fait une union par UUID, non destructive et
+atomique : les contextes se créent sans toucher aux tiges déjà saisies.
+L’autre porte d’entrée, `importerJson()`, **efface** contextes, tiges et
+configs avant d’insérer. Le fichier produit ici ne porte donc pas de
+section `referentiels` — c’est la seule chose qui distingue les deux
+formats, et la ressemblance serait coûteuse. Un test l’interdit.
+
+**Les noms de couches sont un contrat, pas une convention.** Dans un
+GeoPackage Marculus, c’est le **nom de la table** qui dit le rôle :
+`desserte` pour les voies, `houppier` pour les hauteurs, et **tout autre
+nom est lu comme des parcelles**, rattachement spatial des tiges
+compris. Une couche mal nommée ne provoque pas d’erreur : elle remplit
+le journal de parcelles fantômes. D’où des noms figés en constantes, et
+un test qui vérifie que le fichier ne porte **que** `parcelle` et
+`desserte`.
+
+**La desserte est repliée en une seule couche.** L’onglet en produit
+quatre — `desserte_existante` (BD TOPO corrigée), `reseau_cree` (les
+pistes dessinées par le moteur), `osm_track` et `desserte_detectee`.
+Marculus n’en lit qu’une. Ce qui survit au repli est la **provenance**,
+dans la colonne `type` : un opérateur qui voit une piste à l’écran doit
+savoir si elle existe au sol ou si elle est une proposition sur le
+papier.
+
+**Pas d’ortho dans le GeoPackage** — vectoriel seulement. Marculus
+prendrait la première table de tuiles comme fond hors-ligne, et les
+orthophotos du projet pèsent des gigaoctets.
+
+#### Added — La feuille de martelage part pré-remplie, selon le profil de groupe
+
+Les profils de `groupes_amenagement.yaml` portent désormais une liste
+`essences`. ONF, CRPF et OFB ne martèlent pas les mêmes : le peuplier
+ouvre une feuille CRPF et n’a rien à faire en tête d’une feuille ONF ;
+l’aulne glutineux et le saule appartiennent aux zones humides suivies
+par l’OFB. Le profil de groupe est ce que le projet porte de plus proche
+d’un contexte sylvicole, et il est déjà choisi par ailleurs.
+
+Les libellés sont écrits **accentués et en toutes lettres** — « Hêtre »,
+« Sapin pectiné » — parce que le téléphone normalise (minuscules,
+accents ôtés) avant de chercher son coefficient de cubage : la forme
+lisible et la forme appariée sont la même chaîne. C’est lui qui dérive
+ensuite le code ONF à trois caractères, pas nous. Un test interdit qu’un
+code à trois lettres se glisse dans ces listes, et qu’un séparateur du
+format (`RS`, `US`) apparaisse dans un libellé — il casserait l’encodage
+de la matrice entière.
+
+Une liste explicite passée à l’export prime toujours ; `character(0)`
+reste possible et donne une feuille vide, que l’opérateur remplit.
+
+**Deux champs restent vides, délibérément.** `cheminGpkg` est un chemin
+dans le stockage privé du téléphone, que cette machine ne peut pas
+connaître — l’opérateur rattache le GeoPackage à son contexte sur place.
+Et le nom de commune affiché vient de `commune_geometry`, pas de la
+colonne `commune` des parcelles : celle-ci porte le **code INSEE**, et
+`48042` ne dit rien à un marteleur sur le terrain.
+
+#### Ce qui manque encore — la couche `houppier`
+
+L’estimation automatique des hauteurs demande une segmentation de
+couronnes sur MNH (détection des apex + délimitation), c’est-à-dire de
+la **logique métier** : elle appartient à `nemeton`, pas ici (règle 1).
+Le GeoPackage produit est valide sans elle — le téléphone se contente
+alors de ne pas pré-remplir les hauteurs. `lasR`, déjà dépendance de
+l’app, expose ce qu’il faut (`chm`, `local_maximum`, `region_growing`,
+`hulls`).
+
+Brief émis : `specs/BRIEF-nemeton-houppiers-mnh.md`, avec le point de
+vigilance mémoire — ré-échantillonner le MNH avant de segmenter, un
+houppier faisant 3 à 10 m de diamètre quand le MNH de Couchey compte 418
+M cellules à 0,20 m.
+
+#### Added — Un brief unique de rattrapage pour le cœur
+
+`specs/BRIEF-coeur-rattrapage-2026-08-23.md` regroupe les cinq briefs
+ouverts en trois jours : journal `PLAN.md` (quatre releases), houppiers,
+`pct_veg` d’`opencanopynemeton`, et le diagnostic OOM/SIGTERM (soldé,
+reste à publier). Cinq documents dont deux déjà partiellement traités
+font perdre plus de temps qu’ils n’en font gagner : il faut d’abord
+établir lequel est encore vrai. Le document unique dit ce qui reste, et
+désigne la seule urgence — `pct_veg`, la seule qui empêche aujourd’hui
+un calcul d’aboutir.
+
 ## nemetonshiny 0.134.1 (2026-08-23)
 
 Implémente
