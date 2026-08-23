@@ -1,5 +1,74 @@
 # Changelog
 
+## nemetonshiny 0.134.0 (2026-08-23)
+
+Implémente `briefs/vers-nemetonshiny/2026-08-22-plafond-memoire.md`.
+Plancher relevé à `nemeton (>= 0.183.0)`.
+
+#### Removed — Le plafond mémoire n’est plus décidé ici
+
+L’app portait sa propre politique de plafond, et le cœur a tranché en sa
+faveur sur le fond : **50 % de `MemTotal`**, exactement le chiffre que
+`.compute_memory_max()` avait choisi contre le défaut cœur de 70 %. Le
+constat qui l’avait motivé est confirmé — sur la station de référence,
+70 % font 21 Go quand `systemd-oomd` avait déjà tué la session à 17,1
+Go. *Un plafond qui se déclenche après l’exécuteur n’est pas un
+plafond.*
+
+Avoir raison ne justifiait pas de garder la copie. Elle avait produit
+**trois plafonds dans la même session** : le calcul des indicateurs à 50
+%, FORDEAD et la reGénération au défaut cœur de 70 %. Trois travaux
+lourds, trois limites — la même classe de défaut que le fork
+d’`INDICATOR_FAMILIES`, et elle se corrige au même endroit : en n’ayant
+plus de copie du tout.
+
+Partent donc `.compute_memory_max()`, `.total_memory_bytes()`
+(`service_compute.R`) et `.capped_memory_max()`
+(`service_monitoring.R`). Aucun site d’appel ne passe plus `memory_max`
+: le cœur lit `NEMETON_MEMORY_MAX` lui-même, avec les mêmes valeurs de
+désactivation. La variable continue d’être transmise au worker
+(`.capture_worker_envvars()`) — c’est lui qui lance l’enfant, donc lui
+qui résout le plafond.
+
+Un test interdit désormais toute fraction de RAM dans les trois fichiers
+concernés : le remède à trois plafonds n’est pas d’en choisir un
+meilleur ici, c’est de n’en avoir aucun.
+
+#### Fixed — « exit -15 » ne dit rien ; il dit maintenant « plafond mémoire »
+
+Un calcul sur Couchey a été tué après 3 h 20 de CPU, 11 Go de cache et
+**zéro indicateur**, avec pour tout diagnostic :
+
+    "start_computation" failed in its capped child process (exit -15).
+    ✖ ExtendedTask failed
+
+Le journal système disait la vérité à la même minute :
+`run-r11dc…scope: Failed with result 'oom-kill'`.
+
+**L’écart vient de qui surveille quoi.** `processx` surveille le client
+`systemd-run`, pas le R qui tourne dans le scope. Quand le plafond est
+atteint, l’OOM killer tue le R (SIGKILL, −9), systemd démonte ensuite le
+scope, et le client sort en **SIGTERM (−15)**. Or le cœur ne reconnaît
+comme mémoire que −9 et 137 : le cas le plus fréquent tombait dans la
+branche générique, à côté du message « ran out of memory (ceiling: …) »
+qui aurait tout dit.
+
+L’app traduit désormais elle-même (`.compute_error_message()`) :
+processus tué → le plafond mémoire est la **cause habituelle**, et le
+remède est nommé (`NEMETON_MEMORY_MAX`, emprise plus petite). Pas « la
+cause » : un code de sortie ne permet pas de l’affirmer, et le message
+ne prétend pas plus que ce qu’il sait. Le code de sortie, lui, ne
+remonte plus à l’écran — il ne dit rien à personne.
+
+Au passage, ce message était un `paste("Erreur de calcul:", …)` **en dur
+en français**, contraire à la règle i18n depuis longtemps. Il est
+bilingue, et le message brut du moteur est échappé avant affichage.
+
+Deux briefs partent avec cette version — le vrai correctif est ailleurs
+: `specs/BRIEF-opencanopy-pct-veg-values.md` (la ligne qui a provoqué
+l’OOM) et `specs/BRIEF-nemeton-oom-sigterm-scope.md` (la reconnaissance
+du −15).
+
 ## nemetonshiny 0.133.0 (2026-08-22)
 
 #### Changed — Un import CSV remplace le projet courant, et le dit avant
