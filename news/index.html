@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.137.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.138.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,42 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.138.0" id="nemetonshiny-01380-2026-08-23">nemetonshiny 0.138.0 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01380-2026-08-23"></a></h2>
+<div class="section level4">
+<h4 id="added--la-couche-houppier-entre-dans-le-lot-marculus-0-138-0">Added — La couche <code>houppier</code> entre dans le lot Marculus<a class="anchor" aria-label="anchor" href="#added--la-couche-houppier-entre-dans-le-lot-marculus-0-138-0"></a></h4>
+<p><code><a href="https://pobsteta.github.io/nemeton/reference/segment_houppiers.html" class="external-link">nemeton::segment_houppiers()</a></code> (cœur v0.184.0) est câblé : le téléphone pré-remplit désormais la <strong>hauteur</strong> d’une tige — point-dans-polygone sur la position GNSS, lecture de <code>h_max</code>, valeur modifiable.</p>
+<p>Calculée <strong>une fois par projet</strong>, chaque contexte gardant les houppiers que ses parcelles recouvrent. <strong>Intersection et non découpe</strong> : un houppier à cheval sur la limite garde son contour entier — le rogner déplacerait son centroïde et rétrécirait le polygone dans lequel une tige doit tomber, l’estimation raterait justement les arbres de bord.</p>
+<p>L’emprise est passée au cœur, le CHM en cache étant une dalle LiDAR HD entière : sur Couchey, 1 674 ha de dalle pour 536 ha de parcelles, 46 158 houppiers sans emprise contre 22 435 avec. Le CRS est <strong>retamponné</strong> avant écriture — le MNH porte le <em>nom</em> « EPSG:2154 » sans bloc d’autorité, et la couche serait partie avec un CRS que le téléphone ne sait pas rattacher.</p>
+<p><strong>Réserve, à traiter avant de considérer le chemin utilisable</strong> : 173 s de calcul, et l’emprise n’y change presque rien (162 s sans). C’est trop pour un <code>downloadHandler</code>, qui bloque la session. Le plancher n’est <strong>pas</strong> relevé, <code>v0.184.0</code> n’étant pas encore taguée : le câblage dégrade en silence sur un cœur plus ancien, et le GeoPackage reste valide sans la couche.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--les-calibrages-du-croisement-onf-passent-dans-les-paramètres-0-138-0">Changed — Les calibrages du croisement ONF passent dans les paramètres<a class="anchor" aria-label="anchor" href="#changed--les-calibrages-du-croisement-onf-passent-dans-les-param%C3%A8tres-0-138-0"></a></h4>
+<p>Domanialité retenue, purge des parcelles peu forestières et son seuil quittent la barre de Carte UGF pour <strong>Paramètres › Sources &amp; paramètres</strong>, persistés par projet. Ce sont des calibrages, réglés une fois par massif, alors que le bouton de croisement est un geste qu’on répète. La sidebar garde le <strong>rappel</strong> des valeurs en vigueur et le chemin pour les changer.</p>
+<p><strong>Le seuil devient paramétrable, à 0 % par défaut, et la purge est cochée.</strong> Cela imposait de passer la comparaison de <code>&lt;</code> à <code>&lt;=</code> : avec <code>&lt;</code>, un seuil de 0 % ne supprimait <em>rien</em>, pas même une parcelle sans un mètre carré de forêt — un réglage inerte à sa propre valeur par défaut. À 0 %, ne partent donc que les parcelles que la forêt publique ne touche pas du tout, ce qui rend la coche par défaut défendable.</p>
+<p>S’y ajoute <strong>l’écartement des débordements ONF hors cadastre</strong> (coché par défaut). Vraie intersection, pas un filtre : une parcelle forestière à cheval est <strong>coupée</strong>, pas rejetée — la rejeter cacherait la forêt réellement présente sur la parcelle.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--un-pipeline-open-canopy-interrompu-ne-fait-plus-tout-recommencer-0-138-0">Fixed — Un pipeline Open-Canopy interrompu ne fait plus tout recommencer<a class="anchor" aria-label="anchor" href="#fixed--un-pipeline-open-canopy-interrompu-ne-fait-plus-tout-recommencer-0-138-0"></a></h4>
+<p>Le garde-fou du cache testait <code>chm_1_5m.tif</code>, un <strong>témoin</strong> que l’app écrit <em>après</em> que le pipeline a rendu ; le pipeline, lui, écrit <code>chm_predicted_1_5m.tif</code> au fil de l’eau. Toute interruption — OOM, annulation, coupure — laissait donc un cache complet que le prochain essai ignorait, et tout repartait du téléchargement des orthophotos.</p>
+<p>Constaté sur Couchey : tué à sa dernière étape après <strong>3 h 20 de CPU</strong>, 11 Go de produits valides sur le disque, relance intégrale. Le livrable du pipeline est désormais adopté quand il est là.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-bouton-ia-du-plan-dactions-était-resté-vert-0-138-0">Fixed — Le bouton IA du Plan d’actions était resté vert<a class="anchor" aria-label="anchor" href="#fixed--le-bouton-ia-du-plan-dactions-%C3%A9tait-rest%C3%A9-vert-0-138-0"></a></h4>
+<p>Signalé par l’utilisateur : « Générer les actions (IA) » portait <code>btn-primary</code> et une baguette magique, là où la règle veut <code>btn-ia</code> et les trois étoiles.</p>
+<p>Le défaut est plus large que l’apparence. La v0.130.10 annonçait que l’accent couvrait « toute l’app » en nommant quatre surfaces — Synthèse, Plan d’actions, reGénération, Famille. <strong>Trois avaient un test, celle-là n’en avait pas</strong> : rien ne vérifiait ce que l’entrée de NEWS affirmait. Deux boutons sont corrigés, pas un : celui du panneau et celui qui <strong>lance</strong> la génération dans la modale, le laisser vert aurait fait passer d’un ambre à un vert pour un seul geste. Un test de source énumère désormais les surfaces génératrices et interdit les deux signalétiques que l’ambre a remplacées.</p>
+<p>Et une clé i18n manquante, trouvée <strong>en lançant l’app</strong> : le bouton d’enregistrement du nouveau bloc portait <code>i18n$t("save")</code>, une clé qui n’existe pas — il affichait sa clé brute.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--les-contextes-sont-nommés-par-leur-parcelle-forestière-0-138-0">Changed — Les contextes sont nommés par leur parcelle forestière<a class="anchor" aria-label="anchor" href="#changed--les-contextes-sont-nomm%C3%A9s-par-leur-parcelle-foresti%C3%A8re-0-138-0"></a></h4>
+<p>« Couchey — ug_20260822203555_001 — coupe_rase » devient <strong>« Couchey - parcelle 1 - coupe_rase »</strong>. L’identifiant interne ne dit rien à un marteleur : sur un téléphone la liste des contextes est plate, et il connaît sa parcelle forestière, pas le rang qu’elle occupe dans une table. Le libellé est celui que le croisement ONF a déjà écrit.</p>
+<p>Le nom de la forêt est retiré <strong>quand il répète celui du projet</strong> — « Couchey - Forêt communale de Couchey — parcelle 1 » disait Couchey deux fois pour rien. Sans libellé (projet ancien, groupe jamais nommé), l’identifiant reste : il est pauvre, un milieu vide serait pire.</p>
+</div>
+<div class="section level4">
+<h4 id="changed---télécharger-vers-marculus--0-138-0">Changed — « Télécharger vers Marculus »<a class="anchor" aria-label="anchor" href="#changed---t%C3%A9l%C3%A9charger-vers-marculus--0-138-0"></a></h4>
+<p>Le bouton d’export prend ce libellé en français, sur demande. L’anglais garde <em>for</em>, plus juste : rien ne part vers Marculus, le bouton dépose un ZIP dans les téléchargements.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.137.0" id="nemetonshiny-01370-2026-08-23">nemetonshiny 0.137.0 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01370-2026-08-23"></a></h2>
 <div class="section level4">

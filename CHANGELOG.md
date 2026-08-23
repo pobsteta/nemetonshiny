@@ -12,6 +12,45 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.138.0\] - 2026-08-23
+
+### Added
+
+- Couche `houppier` dans le lot Marculus via
+  [`nemeton::segment_houppiers()`](https://pobsteta.github.io/nemeton/reference/segment_houppiers.html)
+  (cœur v0.184.0, plancher **non** relevé : la version n’est pas taguée,
+  le câblage dégrade en silence). Calculée une fois par projet,
+  intersectée par contexte, CRS retamponné. **Réserve** : 173 s dans un
+  `downloadHandler`.
+- `project_onf_params()` / `set_project_onf_params()` : domanialité,
+  purge, seuil et découpe cadastre persistés par projet.
+
+### Changed
+
+- Les trois calibrages du croisement ONF passent de la barre de Carte
+  UGF à **Paramètres › Sources & paramètres** ; la sidebar garde un
+  rappel.
+- Seuil de purge paramétrable, **0 % par défaut**, purge et découpe
+  cochées. La comparaison passe de `<` à `<=`, sans quoi 0 % ne
+  supprimerait rien.
+- Les débordements du parcellaire ONF hors cadastre sont écartés par une
+  vraie intersection (une parcelle à cheval est coupée, pas rejetée).
+- Bouton d’export renommé « Télécharger vers Marculus » (FR).
+- Les contextes Marculus sont nommés par leur **parcelle forestière** («
+  Couchey - parcelle 1 - coupe_rase ») et non par leur `ug_id` ; le nom
+  de la forêt est élidé quand il répète celui du projet. Repli sur
+  l’identifiant quand aucun libellé n’existe.
+
+### Fixed
+
+- Le cache Open-Canopy adopte `chm_predicted_1_5m.tif` : un pipeline
+  interrompu ne fait plus recommencer 11 Go de travail valide.
+- Le bouton « Générer les actions (IA) » et celui qui lance la
+  génération prennent l’accent ambre `btn-ia` + trois étoiles. Test de
+  source ajouté sur toutes les surfaces génératrices.
+- Clé i18n `onf_params_save` manquante (le bouton affichait sa clé
+  brute).
+
 ## \[0.137.0\] - 2026-08-23
 
 ### Changed
