@@ -2427,6 +2427,32 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
   if (!dir.exists(oc_dir)) dir.create(oc_dir, recursive = TRUE, showWarnings = FALSE)
 
   chm_path <- file.path(oc_dir, "chm_1_5m.tif")
+
+  # `chm_1_5m.tif` est un TEMOIN, ecrit par l'app apres que le pipeline a
+  # RENDU (`.run_opencanopy_chm`, dernier statement). Le pipeline, lui, ecrit
+  # ses propres livrables au fil de l'eau : `chm_predicted_1_5m.tif`,
+  # `chm_predicted_0_2m.tif`, les quatre indices, les deux orthos.
+  #
+  # Consequence si l'on ne teste QUE le temoin : un pipeline interrompu -
+  # OOM, annulation, coupure - laisse 11 Go de produits valides que le prochain
+  # essai ignore, et tout recommence depuis le telechargement des orthos.
+  # Constate sur Couchey le 2026-08-22 : tue a sa derniere etape apres 3 h 20
+  # de CPU, cache complet sur le disque, et pourtant relance integrale.
+  #
+  # On adopte donc le livrable du pipeline quand il est la. Le temoin est
+  # ecrit dans la foulee, pour que le chemin nominal reste inchange ensuite.
+  if (!file.exists(chm_path)) {
+    predit <- file.path(oc_dir, "chm_predicted_1_5m.tif")
+    if (file.exists(predit)) {
+      cli::cli_alert_info(
+        "CHM Open-Canopy repris du cache ({.file {basename(predit)}}) : \
+         le pipeline n'est pas relance.")
+      ok <- tryCatch(file.copy(predit, chm_path, overwrite = TRUE),
+                     error = function(e) FALSE)
+      if (!isTRUE(ok)) chm_path <- predit
+    }
+  }
+
   if (!file.exists(chm_path)) {
     aoi_path <- file.path(oc_dir, "aoi.gpkg")
     parcels_l93 <- sf::st_transform(parcels, 2154)

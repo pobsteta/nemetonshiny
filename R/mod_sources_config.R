@@ -157,7 +157,13 @@ mod_sources_config_ui <- function(id) {
     shiny::uiOutput(ns("desserte_block")),
     # Idem pour la reGeneration (phenologie, overrides experts, forcage,
     # resolution microclimat).
-    shiny::uiOutput(ns("regen_block"))
+    shiny::uiOutput(ns("regen_block")),
+    # Idem pour le croisement ONF : domanialite retenue, purge des parcelles
+    # peu forestieres et decoupe du parcellaire sur le cadastre. Trois
+    # calibrages qui vivaient dans la barre d'actions de Carte UGF, a cote du
+    # bouton qui les consomme - donc regles a chaque essai au lieu d'une fois
+    # par massif.
+    shiny::uiOutput(ns("onf_block"))
   )
 }
 
@@ -678,6 +684,88 @@ mod_sources_config_server <- function(id, app_state) {
           largeur_m     = input$dess_largeur_m)
         .refresh_project(pid)
         shiny::showNotification(i18n$t("dess_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Parcellaire ONF - domanialite, purge, decoupe
+    # ========================================
+
+    output$onf_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh()
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("onf_params_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("onf_params_hint"))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(class = "mt-3", header, hint,
+                              htmltools::tags$em(class = "text-muted small",
+                                                 i18n$t("sources_need_project"))))
+      }
+      cfg <- project_onf_params(app_state$current_project$metadata)
+
+      htmltools::div(
+        class = "mt-3",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = c(4, 4, 4),
+          shiny::checkboxGroupInput(
+            ns("onf_domanialite_cfg"),
+            label = i18n$t("onf_domanialite"),
+            choices = stats::setNames(
+              c("domaniale", "autre"),
+              c(i18n$t("onf_domanialite_domaniale"),
+                i18n$t("onf_domanialite_autre"))),
+            selected = cfg$domanialite),
+          htmltools::div(
+            shiny::checkboxInput(ns("onf_purge_cfg"),
+                                 i18n$t("onf_purge_hors"),
+                                 value = isTRUE(cfg$purger)),
+            info_popover_in_label(i18n$t("onf_purge_hors_tip")),
+            shiny::numericInput(
+              ns("onf_seuil_cfg"),
+              label = htmltools::tagList(
+                i18n$t("onf_seuil_foret"),
+                info_popover_in_label(i18n$t("onf_seuil_foret_tip"))),
+              value = round(100 * cfg$seuil_foret), min = 0, max = 100, step = 1)),
+          htmltools::div(
+            shiny::checkboxInput(ns("onf_clip_cfg"),
+                                 i18n$t("onf_clip_cadastre"),
+                                 value = isTRUE(cfg$clip_cadastre)),
+            info_popover_in_label(i18n$t("onf_clip_cadastre_tip")))
+        ),
+        shiny::actionButton(ns("onf_save"), i18n$t("onf_params_save"),
+                            class = "btn-primary btn-sm")
+      )
+    })
+
+    shiny::observeEvent(input$onf_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        # Le seuil se saisit en POUR CENT et se range en part : l'utilisateur
+        # pense « 10 % », le coeur compare des parts.
+        seuil <- suppressWarnings(as.numeric(input$onf_seuil_cfg))
+        if (length(seuil) != 1L || is.na(seuil)) seuil <- 0
+        set_project_onf_params(
+          pid,
+          domanialite   = input$onf_domanialite_cfg,
+          purger        = isTRUE(input$onf_purge_cfg),
+          seuil_foret   = max(0, min(1, seuil / 100)),
+          clip_cadastre = isTRUE(input$onf_clip_cfg))
+        .refresh_project(pid)
+        shiny::showNotification(i18n$t("onf_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

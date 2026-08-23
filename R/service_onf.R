@@ -82,7 +82,8 @@ NULL
 
 onf_load_parcelles <- function(aoi,
                                domanialite = "toutes",
-                               max_parcelles = 5000L) {
+                               max_parcelles = 5000L,
+                               clip_cadastre = FALSE) {
   if (is.null(aoi) || !inherits(aoi, c("sf", "sfc"))) {
     return(list(status = "no_aoi", parcelles = NULL))
   }
@@ -108,7 +109,43 @@ onf_load_parcelles <- function(aoi,
   if (is.null(parcelles)) return(list(status = "unavailable", parcelles = NULL))
   if (nrow(parcelles) == 0L) return(list(status = "empty", parcelles = parcelles))
 
+  if (isTRUE(clip_cadastre)) parcelles <- .onf_clip_cadastre(parcelles, aoi)
+  if (nrow(parcelles) == 0L) return(list(status = "empty", parcelles = parcelles))
+
   list(status = "ok", parcelles = parcelles)
+}
+
+#' Cut the ONF parcellaire back to the project's cadastral parcels
+#'
+#' @description
+#' The WFS answers on a bounding extent, so it returns forest that runs well
+#' past the parcels one actually owns. The crossing already tiles on the
+#' cadastre and is unaffected - what carried those fragments was the orange
+#' preview layer and any export of the raw parcellaire, which showed forest
+#' belonging to nobody's parcel and invited the question every time.
+#'
+#' A real intersection, not a filter: a forest parcel straddling the boundary
+#' is **cut**, not dropped. Dropping it would hide the forest actually standing
+#' on the parcel; keeping it whole would put back what this removes.
+#'
+#' @param onf An `sf` of forest parcels.
+#' @param aoi The project's cadastral parcels.
+#' @return The `sf`, cut. Unchanged when the intersection cannot be computed -
+#'   a preview slightly too wide beats an empty map.
+#' @noRd
+.onf_clip_cadastre <- function(onf, aoi) {
+  if (!inherits(onf, "sf") || nrow(onf) == 0L) return(onf)
+  tryCatch({
+    cad <- sf::st_union(sf::st_geometry(sf::st_transform(aoi, sf::st_crs(onf))))
+    hit <- lengths(sf::st_intersects(onf, cad)) > 0L
+    if (!any(hit)) return(onf[0L, , drop = FALSE])
+    out <- suppressWarnings(sf::st_intersection(onf[hit, , drop = FALSE], cad))
+    out <- out[!sf::st_is_empty(sf::st_geometry(out)), , drop = FALSE]
+    if (nrow(out) == 0L) onf[0L, , drop = FALSE] else out
+  }, error = function(e) {
+    cli::cli_warn("Decoupe du parcellaire ONF : {conditionMessage(e)}")
+    onf
+  })
 }
 
 
@@ -270,8 +307,10 @@ onf_projet_croise <- function(projet,
 #'
 #' @param projet List. Project already re-tiled by the crossing.
 #' @param label_hors Character. Label of the "outside public forest" UGF.
-#' @param seuil_foret Numeric in 0..1. Forest share below which the parcel is
-#'   dropped. `0` keeps every parcel holding the least bit of forest.
+#' @param seuil_foret Numeric in 0..1. Forest share **at or below** which the
+#'   parcel is dropped. At `0`, that is every parcel the forest does not touch
+#'   at all - and only those. The comparison used to be strict, which made `0`
+#'   mean "purge nothing": a setting that did nothing at its own default.
 #'
 #' @return List with `projet`, `n_supprimees` (parcels dropped) and
 #'   `n_partielles` (parcels KEPT that still hold a non-forest share - they are
@@ -279,7 +318,7 @@ onf_projet_croise <- function(projet,
 #'
 #' @noRd
 onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
-                                  seuil_foret = 0.10) {
+                                  seuil_foret = 0) {
   ugs <- projet$ugs
   ten <- projet$tenements
   vide <- list(projet = projet, n_supprimees = 0L, n_partielles = 0L)
@@ -289,7 +328,7 @@ onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
   if (length(ug_hors) == 0L) return(vide)
 
   seuil_foret <- suppressWarnings(as.numeric(seuil_foret))
-  if (length(seuil_foret) != 1L || is.na(seuil_foret)) seuil_foret <- 0.10
+  if (length(seuil_foret) != 1L || is.na(seuil_foret)) seuil_foret <- 0
   seuil_foret <- max(0, min(1, seuil_foret))
 
   # Part FORESTIERE de chaque parcelle, lue sur `surface_m2` (la surface
@@ -306,8 +345,10 @@ onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
   # Une parcelle de surface nulle n'a pas de part definie : on la laisse, la
   # supprimer sur une division par zero serait arbitraire.
   part <- ifelse(tot > 0, foret / tot, NA_real_)
-  # `<` et non `<=` : au seuil exact, la parcelle est conservee.
-  a_supprimer <- names(part)[!is.na(part) & part < seuil_foret]
+  # `<=` et non `<` : sans quoi le seuil 0 - le defaut - ne supprimerait RIEN,
+  # pas meme une parcelle sans un metre carre de foret. Au seuil exact la
+  # parcelle part donc, ce qui est le sens qu'on attend de « moins de 10 % ».
+  a_supprimer <- names(part)[!is.na(part) & part <= seuil_foret]
   if (length(a_supprimer) == 0L) return(vide)
 
   projet$tenements <- ten[!as.character(ten$parent_parcelle_id) %in% a_supprimer,

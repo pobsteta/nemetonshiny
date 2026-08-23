@@ -2036,6 +2036,89 @@ set_project_accessibility_params <- function(project_id, buffer_m = NULL) {
 }
 
 
+#' Default ONF crossing parameters
+#'
+#' @description
+#' Three settings that shape what the ONF crossing keeps, and they are
+#' calibrations rather than gestures: one sets them once per massif, not at
+#' each attempt. Hence their place in *Sources & paramètres* and their
+#' persistence per project.
+#'
+#' `seuil_foret` is a **share**, 0 to 1. `0` no longer means "purge nothing":
+#' the comparison is `<=`, so at zero every cadastral parcel the public forest
+#' does not touch **at all** is dropped. That is what makes `purger = TRUE` a
+#' defensible default - at 0 %, only what holds nothing forested goes.
+#'
+#' `clip_cadastre` discards the ONF forest that spills **outside** the
+#' project's cadastral parcels. The crossing already tiles on the cadastre, so
+#' this changes nothing there; what it changes is the orange preview layer and
+#' any export of the raw parcellaire, which used to carry fragments belonging
+#' to nobody's parcel.
+#'
+#' @noRd
+ONF_PARAMS_DEFAULT <- list(
+  domanialite   = c("domaniale", "autre"),
+  purger        = TRUE,
+  seuil_foret   = 0,
+  clip_cadastre = TRUE
+)
+
+#' Read the ONF crossing parameters of a project
+#'
+#' @param metadata Project metadata list.
+#' @return List with `domanialite`, `purger`, `seuil_foret`, `clip_cadastre`.
+#' @noRd
+project_onf_params <- function(metadata) {
+  src <- metadata$onf_params %||% list()
+
+  dom <- src$domanialite %||% ONF_PARAMS_DEFAULT$domanialite
+  dom <- as.character(unlist(dom, use.names = FALSE))
+  dom <- dom[dom %in% c("domaniale", "autre")]
+  # Aucune domanialite cochee n'est un etat que le croisement refuse : plutot
+  # que de le persister, on retombe sur le defaut.
+  if (length(dom) == 0L) dom <- ONF_PARAMS_DEFAULT$domanialite
+
+  seuil <- suppressWarnings(as.numeric(src$seuil_foret %||%
+                                         ONF_PARAMS_DEFAULT$seuil_foret))
+  if (length(seuil) != 1L || is.na(seuil)) seuil <- ONF_PARAMS_DEFAULT$seuil_foret
+
+  list(
+    domanialite   = dom,
+    purger        = isTRUE(src$purger %||% ONF_PARAMS_DEFAULT$purger),
+    seuil_foret   = max(0, min(1, seuil)),
+    clip_cadastre = isTRUE(src$clip_cadastre %||% ONF_PARAMS_DEFAULT$clip_cadastre)
+  )
+}
+
+#' Persist the ONF crossing parameters on a project
+#'
+#' @param project_id Character.
+#' @param domanialite Character vector, `"domaniale"` and/or `"autre"`.
+#' @param purger Logical. Drop parcels below `seuil_foret`.
+#' @param seuil_foret Numeric 0..1. Forest share at or below which a parcel goes.
+#' @param clip_cadastre Logical. Discard ONF forest outside the cadastre.
+#' @return Invisible `TRUE`.
+#' @noRd
+set_project_onf_params <- function(project_id, domanialite = NULL,
+                                   purger = NULL, seuil_foret = NULL,
+                                   clip_cadastre = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+  cfg <- project_onf_params(list(onf_params = list(
+    domanialite = domanialite, purger = purger,
+    seuil_foret = seuil_foret, clip_cadastre = clip_cadastre)))
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+
+  update_project_metadata(project_id, list(onf_params = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "ONF : domanialite {paste(cfg$domanialite, collapse = '+')}, seuil {round(cfg$seuil_foret * 100)} %")
+  invisible(TRUE)
+}
+
+
 #' Default road-network (desserte) parameters
 #'
 #' @description

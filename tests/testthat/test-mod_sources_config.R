@@ -164,3 +164,34 @@ test_that("saving without a project warns instead of writing", {
     expect_false(called)
   })
 })
+
+
+test_that("le bloc ONF des parametres est complet et coche par defaut", {
+  # Trouve en LANCANT l'app : le bouton portait `i18n$t("save")`, une cle qui
+  # n'existe pas - il affichait donc sa cle brute. Les blocs voisins ont chacun
+  # la leur (`dess_params_save`, `acc_params_save`...), et rien dans les tests
+  # unitaires ne regardait le libelle.
+  skip_if_not_installed("bslib")
+  i18n <- get_i18n("fr")
+  expect_true(i18n$has("onf_params_save"))
+
+  projet <- list(id = "p1", metadata = list(name = "F"))
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(language = "fr", project_id = "p1",
+                                      current_project = projet)), {
+    session$setInputs(x = 1)
+    h <- paste(as.character(output$onf_block), collapse = " ")
+
+    for (id in c("onf_domanialite_cfg", "onf_purge_cfg", "onf_seuil_cfg",
+                 "onf_clip_cfg", "onf_save")) {
+      expect_true(grepl(id, h, fixed = TRUE), info = id)
+    }
+    # Le libelle, pas la cle.
+    expect_true(grepl("Enregistrer les param", h, fixed = TRUE))
+
+    # Defauts demandes : purge cochee, decoupe cochee, seuil a 0 %.
+    expect_true(grepl('value="0"', h, fixed = TRUE))
+    # Quatre controles coches : purge, decoupe, et les deux domanialites.
+    expect_equal(length(gregexpr("checked", h)[[1]]), 8L)
+  })
+})
