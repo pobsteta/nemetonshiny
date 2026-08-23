@@ -58,12 +58,17 @@ mod_action_plan_ui <- function(id) {
         ),
 
         # ---- IA ----------------------------------------------------
+        # Ambre + trois etoiles : ce bouton produit du contenu GENERE, et
+        # l'ambre ne dit pas un niveau d'action - elle dit une PROVENANCE. Il
+        # etait reste vert avec une baguette magique, alors que la v0.130.10
+        # annoncait que l'accent couvrait « toute l'app » : la Synthese et la
+        # Famille avaient un test, le Plan d'actions n'en avait pas.
         htmltools::tags$h6(i18n$t("action_plan_section_ia")),
         shiny::actionButton(
           ns("generate_all"),
           label = i18n$t("action_plan_generate_all"),
-          icon = shiny::icon("wand-magic-sparkles"),
-          class = "btn-sm btn-primary w-100 mb-3"
+          icon = bsicons::bs_icon("stars"),
+          class = "btn-sm btn-ia w-100 mb-3"
         ),
         # The Q/R chat used to live behind an "Ouvrir le chat" modal
         # button here; it now lives in the persistent left sidebar
@@ -1970,10 +1975,13 @@ mod_action_plan_server <- function(id, app_state) {
         ),
         footer = htmltools::tagList(
           shiny::modalButton(i18n$t("cancel")),
+          # Le bouton qui LANCE la generation porte la meme provenance que
+          # celui qui ouvre la modale : le laisser vert ferait passer d'un
+          # ambre a un vert pour un seul et meme geste.
           shiny::actionButton(ns("gen_run"),
                               label = i18n$t("action_plan_generate_run"),
-                              icon = shiny::icon("play"),
-                              class = "btn-primary")
+                              icon = bsicons::bs_icon("stars"),
+                              class = "btn-ia")
         )
       ))
     })

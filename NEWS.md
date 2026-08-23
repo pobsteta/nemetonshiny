@@ -1,3 +1,98 @@
+# nemetonshiny 0.138.0 (2026-08-23)
+
+### Added — La couche `houppier` entre dans le lot Marculus
+
+`nemeton::segment_houppiers()` (cœur v0.184.0) est câblé : le téléphone
+pré-remplit désormais la **hauteur** d'une tige — point-dans-polygone sur la
+position GNSS, lecture de `h_max`, valeur modifiable.
+
+Calculée **une fois par projet**, chaque contexte gardant les houppiers que ses
+parcelles recouvrent. **Intersection et non découpe** : un houppier à cheval sur
+la limite garde son contour entier — le rogner déplacerait son centroïde et
+rétrécirait le polygone dans lequel une tige doit tomber, l'estimation raterait
+justement les arbres de bord.
+
+L'emprise est passée au cœur, le CHM en cache étant une dalle LiDAR HD entière :
+sur Couchey, 1 674 ha de dalle pour 536 ha de parcelles, 46 158 houppiers sans
+emprise contre 22 435 avec. Le CRS est **retamponné** avant écriture — le MNH
+porte le *nom* « EPSG:2154 » sans bloc d'autorité, et la couche serait partie
+avec un CRS que le téléphone ne sait pas rattacher.
+
+**Réserve, à traiter avant de considérer le chemin utilisable** : 173 s de
+calcul, et l'emprise n'y change presque rien (162 s sans). C'est trop pour un
+`downloadHandler`, qui bloque la session. Le plancher n'est **pas** relevé,
+`v0.184.0` n'étant pas encore taguée : le câblage dégrade en silence sur un cœur
+plus ancien, et le GeoPackage reste valide sans la couche.
+
+### Changed — Les calibrages du croisement ONF passent dans les paramètres
+
+Domanialité retenue, purge des parcelles peu forestières et son seuil quittent
+la barre de Carte UGF pour **Paramètres › Sources & paramètres**, persistés par
+projet. Ce sont des calibrages, réglés une fois par massif, alors que le bouton
+de croisement est un geste qu'on répète. La sidebar garde le **rappel** des
+valeurs en vigueur et le chemin pour les changer.
+
+**Le seuil devient paramétrable, à 0 % par défaut, et la purge est cochée.**
+Cela imposait de passer la comparaison de `<` à `<=` : avec `<`, un seuil de 0 %
+ne supprimait *rien*, pas même une parcelle sans un mètre carré de forêt — un
+réglage inerte à sa propre valeur par défaut. À 0 %, ne partent donc que les
+parcelles que la forêt publique ne touche pas du tout, ce qui rend la coche par
+défaut défendable.
+
+S'y ajoute **l'écartement des débordements ONF hors cadastre** (coché par
+défaut). Vraie intersection, pas un filtre : une parcelle forestière à cheval
+est **coupée**, pas rejetée — la rejeter cacherait la forêt réellement présente
+sur la parcelle.
+
+### Fixed — Un pipeline Open-Canopy interrompu ne fait plus tout recommencer
+
+Le garde-fou du cache testait `chm_1_5m.tif`, un **témoin** que l'app écrit
+*après* que le pipeline a rendu ; le pipeline, lui, écrit
+`chm_predicted_1_5m.tif` au fil de l'eau. Toute interruption — OOM, annulation,
+coupure — laissait donc un cache complet que le prochain essai ignorait, et tout
+repartait du téléchargement des orthophotos.
+
+Constaté sur Couchey : tué à sa dernière étape après **3 h 20 de CPU**, 11 Go de
+produits valides sur le disque, relance intégrale. Le livrable du pipeline est
+désormais adopté quand il est là.
+
+### Fixed — Le bouton IA du Plan d'actions était resté vert
+
+Signalé par l'utilisateur : « Générer les actions (IA) » portait `btn-primary`
+et une baguette magique, là où la règle veut `btn-ia` et les trois étoiles.
+
+Le défaut est plus large que l'apparence. La v0.130.10 annonçait que l'accent
+couvrait « toute l'app » en nommant quatre surfaces — Synthèse, Plan d'actions,
+reGénération, Famille. **Trois avaient un test, celle-là n'en avait pas** : rien
+ne vérifiait ce que l'entrée de NEWS affirmait. Deux boutons sont corrigés, pas
+un : celui du panneau et celui qui **lance** la génération dans la modale, le
+laisser vert aurait fait passer d'un ambre à un vert pour un seul geste. Un test
+de source énumère désormais les surfaces génératrices et interdit les deux
+signalétiques que l'ambre a remplacées.
+
+Et une clé i18n manquante, trouvée **en lançant l'app** : le bouton
+d'enregistrement du nouveau bloc portait `i18n$t("save")`, une clé qui n'existe
+pas — il affichait sa clé brute.
+
+### Changed — Les contextes sont nommés par leur parcelle forestière
+
+« Couchey — ug_20260822203555_001 — coupe_rase » devient **« Couchey - parcelle
+1 - coupe_rase »**. L'identifiant interne ne dit rien à un marteleur : sur un
+téléphone la liste des contextes est plate, et il connaît sa parcelle
+forestière, pas le rang qu'elle occupe dans une table. Le libellé est celui que
+le croisement ONF a déjà écrit.
+
+Le nom de la forêt est retiré **quand il répète celui du projet** — « Couchey -
+Forêt communale de Couchey — parcelle 1 » disait Couchey deux fois pour rien.
+Sans libellé (projet ancien, groupe jamais nommé), l'identifiant reste : il est
+pauvre, un milieu vide serait pire.
+
+### Changed — « Télécharger vers Marculus »
+
+Le bouton d'export prend ce libellé en français, sur demande. L'anglais garde
+*for*, plus juste : rien ne part vers Marculus, le bouton dépose un ZIP dans les
+téléchargements.
+
 # nemetonshiny 0.137.0 (2026-08-23)
 
 ### Changed — Le bouton dit ce qu'il fait

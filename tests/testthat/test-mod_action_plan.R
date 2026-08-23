@@ -107,3 +107,43 @@ test_that("nom de projet manquant -> slug de repli nemeton_action_plan.pdf", {
   expect_true(nemetonshiny:::.archive_action_plan_pdf(rendered, project))
   expect_true(file.exists(file.path(pdir, "exports", "nemeton_action_plan.pdf")))
 })
+
+
+test_that("le bouton IA du Plan d'actions porte l'accent ambre", {
+  # v0.130.10 annoncait que l'accent IA couvrait « toute l'app » et nommait
+  # quatre surfaces : Synthese, Plan d'actions, reGeneration, Famille. Trois
+  # avaient un test ; le Plan d'actions n'en avait pas, et son bouton est reste
+  # vert avec une baguette magique jusqu'a ce qu'un utilisateur le signale.
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+
+  expect_true(grepl("btn-ia", h, fixed = TRUE))
+  expect_true(grepl("bi-stars", h, fixed = TRUE))
+  # L'ancienne signaletique ne doit pas revenir par megarde.
+  expect_false(grepl("wand-magic", h, fixed = TRUE))
+})
+
+test_that("aucune surface generatrice ne reste au vert", {
+  # Garde-fou de SOURCE, celui qui manquait : il enumere les boutons qui
+  # produisent du contenu genere et verifie que chacun porte `btn-ia`. Un test
+  # par module aurait laisse passer le suivant - c'est exactement ce qui s'est
+  # produit.
+  boutons <- list(
+    list(f = "mod_action_plan.R", id = "generate_all"),
+    list(f = "mod_action_plan.R", id = "gen_run"),
+    list(f = "mod_regeneration.R", id = NULL),
+    list(f = "app_ui.R", id = "ai_generate"))
+
+  for (b in boutons) {
+    path <- testthat::test_path("..", "..", "R", b$f)
+    testthat::skip_if_not(file.exists(path), "sources R absentes")
+    code <- readLines(path, warn = FALSE)
+    code <- code[!grepl("^\\s*#", code)]
+    # La baguette magique et le robot sont les deux signaletiques que l'ambre a
+    # remplacees : aucune ne doit subsister dans un fichier qui genere.
+    expect_false(any(grepl("wand-magic|icon\\(\"robot\"\\)", code)), info = b$f)
+    expect_true(any(grepl("btn-ia", code, fixed = TRUE)), info = b$f)
+  }
+})

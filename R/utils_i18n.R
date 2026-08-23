@@ -548,7 +548,7 @@ TRANSLATIONS <- list(
     en = "Generating PDF report\u2026"
   ),
   action_plan_download_marculus = list(
-    fr = "T\u00e9l\u00e9charger pour Marculus",
+    fr = "T\u00e9l\u00e9charger vers Marculus",
     en = "Download for Marculus"
   ),
   action_plan_export_running_marculus = list(
@@ -2677,6 +2677,50 @@ TRANSLATIONS <- list(
   ),
   # Purge optionnelle, DECOCHEE par defaut : elle retire des parcelles du projet,
   # ce qui oblige a repasser par Selection pour les recuperer.
+  onf_params_section = list(
+    fr = "Parcellaire ONF (croisement)",
+    en = "ONF forest parcels (crossing)"
+  ),
+  onf_params_hint = list(
+    fr = "Ces r\u00e9glages se posent une fois par massif. Le croisement lui-m\u00eame reste dans Carte UGF.",
+    en = "These settings are made once per massif. The crossing itself stays in the UGF map."
+  ),
+  onf_seuil_foret = list(
+    fr = "Supprimer les parcelles dont la part foresti\u00e8re est inf\u00e9rieure ou \u00e9gale \u00e0 (%)",
+    en = "Drop parcels whose forest share is at or below (%)"
+  ),
+  onf_seuil_foret_tip = list(
+    fr = "\u00c0 <strong>0 %</strong>, seules partent les parcelles que la for\u00eat publique ne touche pas du tout. Au-dessus, une parcelle for\u00eati\u00e8re \u00e0 3 % est un effet de bord de num\u00e9risation, pas un peuplement \u00e0 g\u00e9rer.",
+    en = "At <strong>0 %</strong>, only parcels the public forest does not touch at all are dropped. Above that, a parcel 3 % forested is a digitising edge effect, not a stand to manage."
+  ),
+  onf_clip_cadastre = list(
+    fr = "\u00c9carter le parcellaire ONF hors des parcelles cadastrales",
+    en = "Discard ONF forest outside the cadastral parcels"
+  ),
+  onf_clip_cadastre_tip = list(
+    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. La d\u00e9coupe est une vraie intersection \u2014 une parcelle for\u00eati\u00e8re \u00e0 cheval est <strong>coup\u00e9e</strong>, pas \u00e9cart\u00e9e.",
+    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. The cut is a real intersection \u2014 a forest parcel straddling the boundary is <strong>cut</strong>, not dropped."
+  ),
+  onf_params_save = list(
+    fr = "Enregistrer les param\u00e8tres ONF",
+    en = "Save ONF settings"
+  ),
+  onf_params_saved = list(
+    fr = "Param\u00e8tres du parcellaire ONF enregistr\u00e9s.",
+    en = "ONF parcel settings saved."
+  ),
+  onf_rappel_domanialite = list(
+    fr = "Domanialit\u00e9 retenue : <strong>%s</strong>",
+    en = "Ownership kept: <strong>%s</strong>"
+  ),
+  onf_rappel_purge = list(
+    fr = "Purge des parcelles peu foresti\u00e8res : %s (seuil %d %%)",
+    en = "Drop of barely forested parcels: %s (threshold %d %%)"
+  ),
+  onf_rappel_ou = list(
+    fr = "\u00c0 changer dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
+    en = "Change them in Settings \u203a Sources & parameters."
+  ),
   onf_purge_hors = list(
     fr = "Supprimer les parcelles hors for\u00eat publique (< 10 %)",
     en = "Remove parcels outside public forest (< 10 %)"

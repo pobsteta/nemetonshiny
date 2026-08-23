@@ -280,43 +280,13 @@ mod_ug_map_actions_bar <- function(id) {
         class = "text-muted small mb-2",
         i18n$t("onf_grain_parcelle")
       ),
-      # Deux coches plutot qu'un radio a trois branches : " Toutes " n'etait que
-      # la conjonction des deux autres, donc une troisieme facon de dire la meme
-      # chose. Les deux cochees = tout le parcellaire public, ce qui reste le
-      # defaut. Ce choix filtre le parcellaire AVANT le croisement, donc il
-      # determine aussi quelles parcelles cadastrales sont retenues.
-      shiny::checkboxGroupInput(
-        ns("onf_domanialite"),
-        label = i18n$t("onf_domanialite"),
-        choices = stats::setNames(
-          c("domaniale", "autre"),
-          c(i18n$t("onf_domanialite_domaniale"),
-            i18n$t("onf_domanialite_autre"))
-        ),
-        selected = c("domaniale", "autre")
-      ),
-      # v0.130.1.9001 - le calage sur les limites cadastrales etait une coche,
-      # decochee par defaut. Il est desormais SYSTEMATIQUE, et la coche est
-      # retiree : les limites foresti\u00e8res ONF sont approximatives au bord,
-      # et une UGF dont le bord ne suit pas la parcelle qu'elle recouvre a 90 %
-      # ou plus est un artefact de numerisation, pas une decision de gestion.
-      # Mesure sur La-Vieille-Loye : 170 -> 124 tenements, 13 -> 41 bords
-      # exactement cadastraux. Le garde-fou du coeur reste entier - une parcelle
-      # reellement partagee entre deux UGF n'est PAS calee, et le " hors UGF "
-      # ne peut jamais prendre une parcelle.
-      # Purge optionnelle, DECOCHEE par defaut : elle retire des parcelles du
-      # projet, ce qui oblige a repasser par Selection pour les recuperer. Un
-      # defaut destructif serait indefendable.
-      htmltools::div(
-        class = "d-flex align-items-center mb-2",
-        shiny::checkboxInput(
-          ns("onf_purge_hors"),
-          label = i18n$t("onf_purge_hors"),
-          value = FALSE,
-          width = "100%"
-        ),
-        info_popover_in_label(i18n$t("onf_purge_hors_tip"))
-      ),
+      # Domanialite, purge et seuil ont quitte cette barre pour
+      # « Parametres > Sources & parametres » : ce sont des CALIBRAGES, regles
+      # une fois par massif, alors que le bouton ci-dessous est un geste qu'on
+      # repete. Meme mouvement que les seuils FAST (v0.126.2) et les calibrages
+      # de quatre onglets (v0.128.0). Le rappel des valeurs en vigueur reste
+      # ici, avec le chemin pour les changer.
+      shiny::uiOutput(ns("onf_params_rappel")),
       # La note de calage vit dans un " i " a cote du bouton plutot qu'en
       # paragraphe permanent : c'est une explication qu'on lit une fois, pas une
       # valeur qu'on surveille. Le paragraphe repoussait le bouton vers le bas.
@@ -2310,15 +2280,20 @@ mod_ug_server <- function(id, app_state) {
       i18n_snap <- shiny::isolate(i18n())
       # Vecteur des coches. `onf_load_parcelles()` le traduit en argument coeur
       # et rend le statut " no_domanialite " si aucune n'est cochee.
-      dom       <- shiny::isolate(input$onf_domanialite)
-      purger    <- isTRUE(shiny::isolate(input$onf_purge_hors))
+      # Les reglages viennent des parametres du projet, plus de la barre : ils
+      # y sont persistes, donc ils survivent au rechargement et sont les memes
+      # pour tous ceux qui ouvrent le projet.
+      cfg       <- project_onf_params(shiny::isolate(app_state$current_project)$metadata)
+      dom       <- cfg$domanialite
+      purger    <- isTRUE(cfg$purger)
       .onf_spinner_on(i18n_snap)
 
       later::later(function() {
         tryCatch({
           # UN SEUL appel WFS, sur l'emprise de toute la selection (le brief
           # interdit explicitement un appel par parcelle).
-          res <- onf_load_parcelles(projet$parcels, domanialite = dom)
+          res <- onf_load_parcelles(projet$parcels, domanialite = dom,
+                                    clip_cadastre = cfg$clip_cadastre)
           if (!identical(res$status, "ok")) {
             shiny::removeNotification(.onf_notif_id, session = session)
             .onf_notify_status(res$status, i18n_snap)
@@ -2347,7 +2322,8 @@ mod_ug_server <- function(id, app_state) {
           n_partielles <- 0L
           if (purger) {
             purge <- onf_purger_hors_foret(projet_final,
-                                           .onf_label_hors_ugf(i18n_snap))
+                                           .onf_label_hors_ugf(i18n_snap),
+                                           seuil_foret = cfg$seuil_foret)
             projet_final <- purge$projet
             n_purgees <- purge$n_supprimees
             n_partielles <- purge$n_partielles %||% 0L
@@ -2542,7 +2518,10 @@ mod_ug_server <- function(id, app_state) {
           # (pas de foret publique, WFS muet) ne doivent PAS annuler l'import :
           # le projet existe, il est simplement sans UGF forestieres.
           if (croiser) {
-            onf <- onf_load_parcelles(charge$parcels)
+            cfg_csv <- project_onf_params(charge$metadata)
+            onf <- onf_load_parcelles(charge$parcels,
+                                      domanialite = cfg_csv$domanialite,
+                                      clip_cadastre = cfg_csv$clip_cadastre)
             if (identical(onf$status, "ok")) {
               out <- tryCatch(
                 onf_projet_croise(charge, onf$parcelles,
@@ -2608,6 +2587,28 @@ mod_ug_server <- function(id, app_state) {
             type = "error", duration = 12, session = session)
         })
       }, delay = 0.05)
+    })
+
+    # Rappel des calibrages ONF en vigueur, avec le chemin pour les changer.
+    # Une sidebar qui perd ses reglages sans dire ou ils sont partis oblige a
+    # les chercher : le rappel est ce qui rend le deplacement acceptable.
+    output$onf_params_rappel <- shiny::renderUI({
+      i18n <- i18n()
+      cfg <- project_onf_params(app_state$current_project$metadata)
+      dom <- paste(vapply(cfg$domanialite, function(d) {
+        i18n$t(if (identical(d, "domaniale")) "onf_domanialite_domaniale"
+               else "onf_domanialite_autre")
+      }, character(1)), collapse = " + ")
+
+      htmltools::div(
+        class = "text-muted small mb-2",
+        htmltools::tags$div(sprintf(i18n$t("onf_rappel_domanialite"), dom)),
+        htmltools::tags$div(sprintf(
+          i18n$t("onf_rappel_purge"),
+          i18n$t(if (isTRUE(cfg$purger)) "yes" else "no"),
+          round(100 * cfg$seuil_foret))),
+        htmltools::tags$div(i18n$t("onf_rappel_ou"))
+      )
     })
 
     # ================================================================

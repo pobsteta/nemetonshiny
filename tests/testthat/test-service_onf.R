@@ -503,7 +503,8 @@ test_that("la purge retire aussi les parcelles forestieres a moins de 10 %", {
     groupe = NA_character_, stringsAsFactors = FALSE)
   projet <- list(parcels = parcels, tenements = tenements, ugs = ugs)
 
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique",
+                                              seuil_foret = 0.10)
   expect_equal(out$n_supprimees, 1L)
   # P05 (5 % de forêt) part ENTIÈRE, y compris son tènement forestier.
   expect_false("P05" %in% out$projet$tenements$parent_parcelle_id)
@@ -530,18 +531,47 @@ test_that("le seuil de purge est parametrable et exclusif au bord", {
                      label = c("Foret domaniale X", "Hors foret publique"),
                      groupe = NA_character_, stringsAsFactors = FALSE))
 
-  # Au seuil exact, la parcelle est CONSERVÉE (`<`, pas `<=`).
+  # Au seuil exact, la parcelle PART (`<=`, plus `<`). Cette inversion est le
+  # prix d'un défaut à 0 % qui fasse quelque chose : avec `<`, un seuil de 0 %
+  # ne supprimait RIEN, pas même une parcelle sans un mètre carré de forêt — un
+  # réglage inerte à sa propre valeur par défaut.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
-    projet, "Hors foret publique", seuil_foret = 0.10)$n_supprimees, 0L)
-  # Un seuil plus haut l'emporte.
+    projet, "Hors foret publique", seuil_foret = 0.10)$n_supprimees, 1L)
+  # Sous le seuil, elle reste.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
-    projet, "Hors foret publique", seuil_foret = 0.20)$n_supprimees, 1L)
-  # Seuil 0 : seules les parcelles SANS la moindre forêt partiraient.
+    projet, "Hors foret publique", seuil_foret = 0.05)$n_supprimees, 0L)
+  # Seuil 0 : la parcelle est forestière à 10 %, elle reste.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
     projet, "Hors foret publique", seuil_foret = 0)$n_supprimees, 0L)
-  # Seuil aberrant -> défaut 10 %.
+  # Seuil aberrant -> défaut 0 %, qui ne retire pas une parcelle forestière.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
     projet, "Hors foret publique", seuil_foret = NA)$n_supprimees, 0L)
+})
+
+test_that("a 0 %, une parcelle SANS la moindre foret part", {
+  skip_if_not_installed("sf")
+  # Le cas que le défaut doit couvrir : la purge est cochée par défaut, à 0 %,
+  # et ce qu'elle retire alors est exactement ce qui n'a rien de forestier.
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  projet <- list(
+    parcels = sf::st_sf(id = c("PF", "P0"), contenance = c(1e4, 1e4),
+                        geometry = sf::st_sfc(carre(0, 100), carre(100, 200),
+                                              crs = 2154)),
+    tenements = sf::st_sf(
+      tenement_id = c("t1", "t2"), parent_parcelle_id = c("PF", "P0"),
+      ug_id = c("ug_f", "ug_h"), surface_m2 = c(1e4, 1e4),
+      surface_sig_m2 = c(1e4, 1e4),
+      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
+    ugs = data.frame(ug_id = c("ug_f", "ug_h"),
+                     label = c("Foret domaniale X", "Hors foret publique"),
+                     groupe = NA_character_, stringsAsFactors = FALSE))
+
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique",
+                                              seuil_foret = 0)
+  expect_equal(out$n_supprimees, 1L)
+  expect_false("P0" %in% as.character(out$projet$parcels$id))
+  expect_true("PF" %in% as.character(out$projet$parcels$id))
 })
 
 test_that("la purge compte les parcelles restees partiellement forestieres", {
@@ -567,7 +597,8 @@ test_that("la purge compte les parcelles restees partiellement forestieres", {
                      label = c("Foret domaniale X", "Hors foret publique"),
                      groupe = NA_character_, stringsAsFactors = FALSE))
 
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
+  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique",
+                                              seuil_foret = 0.10)
   expect_equal(out$n_supprimees, 1L)     # P05, forestière à 5 %
   expect_equal(out$n_partielles, 1L)     # P60 garde sa part hors forêt
   # Et c'est bien elle qui maintient l'UGF « hors forêt » en vie.

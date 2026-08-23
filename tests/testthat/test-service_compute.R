@@ -5600,3 +5600,48 @@ test_that("ndvi_from_irc keeps the IGN IRC band order", {
   expect_equal(direct, 0.6, tolerance = 1e-6)
   expect_equal(inverse, 0)  # -0.6 ecrete a 0
 })
+
+
+# ---------------------------------------------------------------------------
+# Cache Open-Canopy : un pipeline interrompu ne doit pas tout faire recommencer
+#
+# INCIDENT 2026-08-22 (Couchey) : le pipeline tue a sa derniere etape apres
+# 3 h 20 de CPU, 11 Go de produits valides sur le disque - et la relance
+# repartait du telechargement des orthos. Le garde-fou ne testait que
+# `chm_1_5m.tif`, un TEMOIN que l'app ecrit APRES que le pipeline a rendu ; le
+# pipeline, lui, ecrit `chm_predicted_1_5m.tif` au fil de l'eau.
+# ---------------------------------------------------------------------------
+
+test_that("le CHM deja predit est repris au lieu de relancer le pipeline", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+
+  withr::with_tempdir({
+    oc <- file.path(getwd(), "opencanopy")
+    dir.create(oc, recursive = TRUE)
+    r <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4,
+                     ymin = 0, ymax = 4, crs = "EPSG:2154", vals = 1)
+    terra::writeRaster(r, file.path(oc, "chm_predicted_1_5m.tif"))
+
+    relance <- new.env(parent = emptyenv())
+    relance$appele <- FALSE
+    testthat::local_mocked_bindings(
+      .run_opencanopy_chm = function(...) { relance$appele <- TRUE; NULL })
+    testthat::local_mocked_bindings(
+      requireNamespace = function(pkg, ...) TRUE, .package = "base")
+
+    poly <- sf::st_polygon(list(rbind(c(0, 0), c(4, 0), c(4, 4), c(0, 4), c(0, 0))))
+    parcels <- sf::st_sf(id = "p",
+                         geometry = sf::st_sfc(poly, crs = 2154))
+
+    # La suite de la fonction assainit le CHM avec des couches qu'on n'a pas :
+    # ce qui se teste ici est uniquement qu'elle ne RELANCE pas le pipeline.
+    try(suppressWarnings(nemetonshiny:::download_chm_opencanopy(
+      parcels, getwd(), rasters = list(), vectors = list())), silent = TRUE)
+
+    expect_false(relance$appele)
+    # Le temoin est pose dans la foulee, pour que le chemin nominal reste le
+    # meme au prochain passage.
+    expect_true(file.exists(file.path(oc, "chm_1_5m.tif")))
+  })
+})

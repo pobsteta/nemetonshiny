@@ -157,7 +157,13 @@ test_that("la barre d'actions carte porte l'action ONF, et une seule", {
   # composition cadastrale était perdue — un cas dégradé du croisement, et
   # destructif. Le test le verrouille pour qu'il ne revienne pas par mégarde.
   expect_false(grepl("ug-btn_onf_import", h, fixed = TRUE))
-  expect_true(grepl("ug-onf_domanialite", h, fixed = TRUE))
+  # La domanialité, la purge et son seuil ont rejoint « Paramètres › Sources &
+  # paramètres » : ce sont des calibrages, réglés une fois par massif, alors que
+  # le bouton ci-dessus est un geste qu'on répète. Ce qui reste ici est le
+  # RAPPEL des valeurs en vigueur — une sidebar qui perd ses réglages sans dire
+  # où ils sont partis oblige à les chercher.
+  expect_false(grepl("ug-onf_domanialite\"", h))
+  expect_true(grepl("ug-onf_params_rappel", h, fixed = TRUE))
   # v0.130.1.9001 — le calage sur les limites cadastrales est SYSTÉMATIQUE, la
   # coche est retirée. Il reste annoncé en clair : une UGF dont le bord suit le
   # cadastre plutôt que le tracé ONF serait incompréhensible sans cette phrase.
