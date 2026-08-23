@@ -10,7 +10,7 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
-## [0.135.0] - 2026-08-23
+## [0.136.0] - 2026-08-23
 
 ### Added
 

@@ -1,4 +1,4 @@
-# nemetonshiny 0.135.0 (2026-08-23)
+# nemetonshiny 0.136.0 (2026-08-23)
 
 ### Added — Envoyer les chantiers de martelage vers Marculus
 
