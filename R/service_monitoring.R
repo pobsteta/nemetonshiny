@@ -679,8 +679,8 @@ run_fordead_async <- function() {
           ),
           db_url            = child_db_url,
           progress_path     = progress_path,
-          progress_callback = ntfy_cb,
-          memory_max        = .capped_memory_max()
+          progress_callback = ntfy_cb
+          # Pas de `memory_max =` : politique du coeur depuis nemeton 0.183.0.
         ),
         error = function(e) {
           .ntfy_send(
@@ -1053,30 +1053,6 @@ run_reconfort_async <- function() {
 }
 
 
-#' Memory ceiling for the capped FORDEAD child process
-#'
-#' v0.106.5.9003 (spec 008) - Resolves `NEMETON_MEMORY_MAX` into the
-#' `memory_max` argument of `nemeton::run_memory_capped()`:
-#'
-#' * unset / empty  -> `NULL` : the core default (70 % of RAM).
-#' * `"none"` / `"off"` / `"false"` / `"0"` -> `FALSE` : no ceiling at
-#'   all (escape hatch when a legitimate run gets killed).
-#' * anything else  -> passed through verbatim (`"16G"`, `"21474836480"`,
-#'   ... - the core validates and hands it to `systemd-run`).
-#'
-#' Read worker-side (the worker is what spawns the child), hence the
-#' env var is forwarded by [.capture_worker_envvars()].
-#'
-#' @return `NULL`, `FALSE`, or a length-1 character.
-#' @noRd
-.capped_memory_max <- function() {
-  raw <- trimws(Sys.getenv("NEMETON_MEMORY_MAX", ""))
-  if (!nzchar(raw)) return(NULL)
-  if (tolower(raw) %in% c("none", "off", "false", "no", "0")) return(FALSE)
-  raw
-}
-
-
 #' Composite progress callback for RECONFORT (file writer + ntfy phase push)
 #'
 #' Mirror of [.build_fordead_progress_callback()] for the RECONFORT event
@@ -1255,10 +1231,10 @@ run_reconfort_async <- function() {
     # ignore en silence et le coeur retomberait sur tempdir() - qui est parfois
     # un tmpfs, c'est-a-dire de la RAM, ce qui annulerait tout le benefice.
     "NEMETON_SCRATCH_DIR",
-    # plafond memoire du process enfant FORDEAD (nemeton >= 0.157.0).
-    # Lu par `.capped_memory_max()` DANS le worker (c'est lui qui lance
-    # l'enfant), donc a transferer comme NEMETON_SCRATCH_DIR : les
-    # workers sont pre-chauffes et figent leur environnement.
+    # plafond memoire du process enfant. Resolu par le COEUR (nemeton
+    # >= 0.183.0) mais lu DANS le worker, puisque c'est lui qui lance
+    # l'enfant : a transferer comme NEMETON_SCRATCH_DIR, les workers etant
+    # pre-chauffes, ils figent leur environnement.
     "NEMETON_MEMORY_MAX"
   )
   vals <- vapply(keys, function(k) Sys.getenv(k, unset = ""), character(1))

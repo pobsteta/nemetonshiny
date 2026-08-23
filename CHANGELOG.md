@@ -10,6 +10,35 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.133.1] - 2026-08-23
+
+### Removed
+
+- `.compute_memory_max()` et `.total_memory_bytes()` (`service_compute.R`),
+  `.capped_memory_max()` (`service_monitoring.R`) : le plafond mémoire est une
+  politique du cœur depuis `nemeton 0.183.0` (50 % de `MemTotal`, plancher
+  4 Go). Aucun site d'appel ne passe plus `memory_max`. L'app en portait une
+  copie, d'où **trois plafonds** dans la même session (indicateurs 50 %,
+  FORDEAD et reGénération 70 %). Implémente
+  `briefs/vers-nemetonshiny/2026-08-22-plafond-memoire.md`.
+- Un test interdit toute fraction de RAM (`MemTotal`, `/proc/meminfo`) dans
+  `service_compute.R`, `service_monitoring.R` et `mod_regeneration.R`.
+
+### Fixed
+
+- Un calcul tué par le plafond mémoire s'affichait « failed in its capped child
+  process (exit -15) ». `processx` surveille le client `systemd-run`, pas le R
+  tué dans le scope : l'OOM (SIGKILL) devient un SIGTERM de démontage, que le
+  cœur ne reconnaît pas comme mémoire. `.compute_error_message()` traduit −9,
+  −15, 137 et 143 en un message qui nomme le plafond et le remède.
+- Le message d'erreur de calcul était un `paste("Erreur de calcul:", …)` en dur
+  en français (règle i18n) et recrachait le message brut du moteur sans
+  échappement. Nouvelles clés `compute_error_fmt` et `compute_error_oom`.
+
+### Changed
+
+- Plancher relevé à `nemeton (>= 0.183.0)`.
+
 ## [0.133.0] - 2026-08-22
 
 ### Fixed
