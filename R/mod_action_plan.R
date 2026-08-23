@@ -108,6 +108,19 @@ mod_action_plan_ui <- function(id) {
         ),
         htmltools::tagAppendAttributes(
           shiny::downloadButton(
+            ns("download_marculus"),
+            label = i18n$t("action_plan_download_marculus"),
+            icon = shiny::icon("mobile-screen"),
+            class = "btn-sm btn-outline-success w-100 mb-2"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("action_plan_export_running_marculus"),
+                             auto_unbox = TRUE)
+          )
+        ),
+        htmltools::tagAppendAttributes(
+          shiny::downloadButton(
             ns("download_pdf"),
             label = i18n$t("action_plan_download_pdf"),
             icon = shiny::icon("file-pdf"),
@@ -1679,6 +1692,54 @@ mod_action_plan_server <- function(id, app_state) {
           shiny::showNotification(i18n$t("action_plan_export_terrain_failed"),
                                   type = "error", duration = NULL)
         }
+      }
+    )
+
+    # ============================================================
+    # Export Marculus (martelage sur telephone)
+    # ============================================================
+    #
+    # Un ZIP : un GeoPackage par action qui designe des tiges, plus UN fichier
+    # `.marsync` portant tous les contextes. Cote telephone, ce dernier passe
+    # par la FUSION (union par UUID), pas par la restauration de sauvegarde -
+    # rien n'est ecrase, les tiges deja saisies survivent.
+
+    output$download_marculus <- shiny::downloadHandler(
+      filename = function() {
+        paste0(.project_export_slug(app_state$current_project, "nemeton"),
+               "_marculus.zip")
+      },
+      content = function(file) {
+        i18n <- get_i18n(app_state$language)
+        on.exit(
+          session$sendCustomMessage("nemetonHideDownloadToast", list()),
+          add = TRUE
+        )
+
+        pid <- app_state$project_id %||% app_state$current_project$id
+        if (is.null(pid)) {
+          writeLines("No project", file)
+          return()
+        }
+        res <- tryCatch(marculus_export_bundle(pid, file),
+                        error = function(e) {
+                          cli::cli_warn("Export Marculus : {conditionMessage(e)}")
+                          NULL
+                        })
+
+        # Zero contexte n'est pas une panne : c'est un plan sans action de
+        # designation de tiges. Le dire, plutot que livrer un ZIP vide dont
+        # l'utilisateur chercherait la cause dans son telephone.
+        if (is.null(res) || identical(res$n_contexts, 0L)) {
+          shiny::showNotification(i18n$t("marculus_export_empty"),
+                                  type = "warning", duration = 10)
+          if (!file.exists(file)) writeLines("", file)
+          return()
+        }
+        shiny::showNotification(
+          sprintf(i18n$t("marculus_export_ok_fmt"), res$n_contexts, res$n_gpkg,
+                  res$n_essences %||% 0L),
+          type = "message", duration = 10)
       }
     )
 

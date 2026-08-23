@@ -44,6 +44,22 @@ profiles:
     description:
       fr: "Groupes d'aménagement standards des aménagements forestiers ONF."
       en: "Standard management groups used in ONF forest management plans."
+    # Essences pre-remplies dans la feuille de martelage envoyee vers Marculus.
+    # Ecrites en toutes lettres et accentuees : le telephone normalise
+    # (minuscules + accents otes) avant de chercher son coefficient de cubage,
+    # donc la forme lisible et la forme reconnue sont la meme. C'est lui qui
+    # affiche ensuite le code ONF a trois caracteres.
+    essences:
+      - "Hêtre"
+      - "Chêne sessile"
+      - "Chêne pédonculé"
+      - "Sapin pectiné"
+      - "Épicéa commun"
+      - "Douglas"
+      - "Pin sylvestre"
+      - "Frêne"
+      - "Érable sycomore"
+      - "Charme"
     groupes:
       - code: AMETS
         label:
@@ -120,6 +136,17 @@ profiles:
     description:
       fr: "Classement des peuplements utilisé dans les Plans Simples de Gestion."
       en: "Stand classification used in Simple Management Plans (PSG)."
+    essences:
+      - "Chêne sessile"
+      - "Chêne pédonculé"
+      - "Hêtre"
+      - "Douglas"
+      - "Pin maritime"
+      - "Pin sylvestre"
+      - "Épicéa commun"
+      - "Châtaignier"
+      - "Frêne"
+      - "Peuplier"
     groupes:
       - code: FR
         label:
@@ -195,6 +222,17 @@ profiles:
     description:
       fr: "Zonage de gestion utilisé dans les plans de gestion ENS (OFB / CD)."
       en: "Management zoning used in ENS management plans (OFB / Dept.)."
+    essences:
+      - "Hêtre"
+      - "Chêne sessile"
+      - "Chêne pédonculé"
+      - "Charme"
+      - "Frêne"
+      - "Érable sycomore"
+      - "Tilleul"
+      - "Aulne glutineux"
+      - "Saule"
+      - "Bouleau"
     groupes:
       - code: CONS_STRICTE
         label:
@@ -270,6 +308,13 @@ profiles:
     description:
       fr: "Liste minimale et neutre pour les cas non couverts par ONF/CRPF/OFB."
       en: "Minimal neutral list for cases not covered by ONF/CRPF/OFB."
+    essences:
+      - "Hêtre"
+      - "Chêne sessile"
+      - "Sapin pectiné"
+      - "Épicéa commun"
+      - "Douglas"
+      - "Pin sylvestre"
     groupes:
       - code: PROD
         label:
