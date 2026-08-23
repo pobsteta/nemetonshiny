@@ -104,6 +104,51 @@ MARCULUS_STATUTS <- c(
   )
 }
 
+#' Human designation of a tenement group, for a context name
+#'
+#' @description
+#' `ug_id` is an internal identifier - `ug_1`, or `ug_20260822203555_001` after
+#' an ONF crossing. On a phone, a flat list of "Couchey - ug_20260822203555_001
+#' - coupe_rase" cannot be navigated: the marker knows their **forest parcel**,
+#' not the row it occupies in a table. The label is what the crossing already
+#' wrote - "Forêt communale de Couchey — parcelle 1".
+#'
+#' The forest name is dropped when it repeats the project's, which it usually
+#' does: "Couchey - Forêt communale de Couchey — parcelle 1 - coupe_rase" says
+#' Couchey twice for no gain. What is kept is the part that distinguishes one
+#' site from the next.
+#'
+#' Falls back to `ug_id` when the project carries no label - a legacy project
+#' whose `ugs` is a bare character vector, or a group the crossing never named.
+#' An identifier is poor, an empty middle is worse.
+#'
+#' @param project The loaded project.
+#' @param ug_id Character. Tenement group identifier.
+#' @param nom_projet Character. Project name, used to spot the repetition.
+#' @return A length-1 character.
+#' @noRd
+.marculus_ug_label <- function(project, ug_id, nom_projet = NULL) {
+  id <- as.character(ug_id %||% "?")
+  ugs <- project$ugs
+  if (!is.data.frame(ugs) || !all(c("ug_id", "label") %in% names(ugs))) return(id)
+
+  lab <- as.character(ugs$label)[match(id, as.character(ugs$ug_id))]
+  if (length(lab) != 1L || is.na(lab) || !nzchar(trimws(lab))) return(id)
+  lab <- trimws(lab)
+
+  # « Foret communale de Couchey - parcelle 1 » -> « parcelle 1 » quand le
+  # projet s'appelle deja Couchey. Le separateur est le tiret cadratin que pose
+  # le croisement ; sans lui, on garde le libelle entier.
+  if (!is.null(nom_projet) && nzchar(nom_projet) &&
+      grepl(nom_projet, lab, fixed = TRUE)) {
+    morceaux <- strsplit(lab, "\u2014|\u2013| - ")[[1]]
+    queue <- trimws(morceaux[length(morceaux)])
+    if (length(morceaux) > 1L && nzchar(queue)) return(queue)
+  }
+  lab
+}
+
+
 #' Build the Marculus context of one action plan action
 #'
 #' @description
@@ -129,8 +174,8 @@ MARCULUS_STATUTS <- c(
 #' @noRd
 marculus_context_from_action <- function(action, project, essences = character(0),
                                          gpkg_nom = NULL) {
-  ug <- action$ug_id %||% "?"
   nom_projet <- project$metadata$name %||% project$id
+  ug <- .marculus_ug_label(project, action$ug_id, nom_projet)
   type <- action$type %||% "autre"
   libelle <- if (identical(type, "autre")) (action$type_libre %||% type) else type
 

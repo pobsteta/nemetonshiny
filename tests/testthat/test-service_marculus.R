@@ -358,3 +358,47 @@ test_that("un CRS sans bloc d'autorite est retamponne avant l'ecriture", {
   out <- nemetonshiny:::.marculus_to_4326(x)
   expect_equal(sf::st_crs(out)$epsg, 4326L)
 })
+
+
+test_that("le contexte est nomme par sa PARCELLE FORESTIERE, pas par un identifiant", {
+  # `ug_20260822203555_001` ne dit rien a un marteleur : sur un telephone, la
+  # liste des contextes est plate, et il connait sa parcelle forestiere, pas le
+  # rang qu'elle occupe dans une table. Le libelle est deja ecrit par le
+  # croisement ONF.
+  projet <- list(
+    id = "p", metadata = list(name = "Couchey"),
+    ugs = data.frame(
+      ug_id = c("ug_001", "ug_002"),
+      label = c("For\u00eat communale de Couchey \u2014 parcelle 1",
+                "For\u00eat communale de Couchey \u2014 parcelle 10"),
+      stringsAsFactors = FALSE))
+
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    list(id = "a", ug_id = "ug_001", type = "coupe_rase"), projet)
+  expect_identical(ctx$nom, "Couchey - parcelle 1 - coupe_rase")
+  # Le nom de la foret est retire QUAND il repete celui du projet : sinon le
+  # contexte dirait « Couchey » deux fois pour rien.
+  expect_false(grepl("Couchey.*Couchey", ctx$nom))
+
+  # Un libelle qui ne reprend pas le nom du projet est garde entier.
+  projet$metadata$name <- "Massif Est"
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    list(id = "a", ug_id = "ug_002", type = "eclaircie"), projet)
+  expect_true(grepl("parcelle 10", ctx$nom, fixed = TRUE))
+  expect_true(grepl("For\u00eat communale", ctx$nom))
+})
+
+test_that("sans libelle, l'identifiant vaut mieux qu'un vide", {
+  # Projet ancien dont `ugs` est un simple vecteur, ou groupe que le croisement
+  # n'a jamais nomme : un identifiant est pauvre, un milieu vide est pire.
+  projet <- list(id = "p", metadata = list(name = "F"), ugs = c("ug_1", "ug_2"))
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    list(id = "a", ug_id = "ug_1", type = "eclaircie"), projet)
+  expect_identical(ctx$nom, "F - ug_1 - eclaircie")
+
+  projet$ugs <- data.frame(ug_id = "ug_1", label = NA_character_,
+                           stringsAsFactors = FALSE)
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    list(id = "a", ug_id = "ug_1", type = "eclaircie"), projet)
+  expect_identical(ctx$nom, "F - ug_1 - eclaircie")
+})
