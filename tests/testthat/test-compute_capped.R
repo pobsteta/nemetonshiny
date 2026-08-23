@@ -116,21 +116,58 @@ test_that("le worker n'appelle plus start_computation en direct", {
 # de demontage, et le coeur ne reconnait que -9/137.
 # ---------------------------------------------------------------------------
 
-test_that("un enfant tue est traduit en plafond memoire, pas en charabia", {
+test_that("une certitude du coeur n'est PAS re-attenuee", {
+  # `nemeton 0.183.1` nomme le scope transitoire et demande son verdict a
+  # systemd : quand il ecrit « ran out of memory », l'OOM est CONSTATE, pas
+  # infere. Re-couvrir cela d'un « la cause habituelle est... » rendrait a
+  # l'utilisateur une incertitude que le coeur venait de lever.
+  for (lang in c("fr", "en")) {
+    i18n <- get_i18n(lang)
+    out <- as.character(nemetonshiny:::.compute_error_message(
+      '"start_computation" ran out of memory and was killed (ceiling: 96M).', i18n))
+    attenue <- if (lang == "fr") "habituelle" else "usual"
+    expect_false(grepl(attenue, out), info = lang)
+    # Le plafond REMONTE : c'est lui qu'il faut relever, le connaitre est utile.
+    expect_true(grepl("96M", out, fixed = TRUE), info = lang)
+    expect_true(grepl("NEMETON_MEMORY_MAX", out, fixed = TRUE), info = lang)
+  }
+})
+
+test_that("un verdict indisponible reste au conditionnel", {
+  # Sans cgroup ni systemctl, un scope arrete et un `kill` exterieur ont
+  # exactement le meme visage qu'un OOM. C'est le seul cas ou la prudence a
+  # encore un objet - et le coeur la formule lui-meme.
+  i18n <- get_i18n("fr")
+  out <- as.character(nemetonshiny:::.compute_error_message(
+    '"f" was killed (signal 9; systemd\u2019s verdict unavailable). The memory ceiling (10G) is the usual cause',
+    i18n))
+  expect_true(grepl("habituelle", out))
+  expect_true(grepl("10G", out, fixed = TRUE))
+})
+
+test_that("un coeur anterieur a 0.183.1 reste traduit", {
+  # L'incident du 2026-08-22 : un `exit -15` nu, qui etait deja un OOM sans
+  # pouvoir le dire. Le plancher n'ayant pas bouge, ce cas doit survivre.
   i18n <- get_i18n("fr")
   for (st in c("-9", "-15", "137", "143")) {
-    msg <- sprintf('"start_computation" failed in its capped child process (exit %s).', st)
-    out <- as.character(nemetonshiny:::.compute_error_message(msg, i18n))
+    out <- as.character(nemetonshiny:::.compute_error_message(
+      sprintf('"start_computation" failed in its capped child process (exit %s).', st), i18n))
     expect_true(grepl("plafond", out), info = st)
-    # Le remede est NOMME : sans lui, savoir que c'est la memoire ne sert a rien.
-    expect_true(grepl("NEMETON_MEMORY_MAX", out, fixed = TRUE), info = st)
-    # Et le code de sortie ne remonte pas a l'ecran : il ne dit rien a personne.
+    # Le code de sortie ne remonte pas a l'ecran : il ne dit rien a personne.
     expect_false(grepl("exit", out, fixed = TRUE), info = st)
   }
-  # Le message que le coeur SAIT formuler (-9/137) est reconnu par son texte.
+})
+
+test_that("quand systemd dit que ce N'EST PAS la memoire, on ne le contredit pas", {
+  # Le faux positif que le coeur a pris soin d'eviter : elargir a -15 aurait
+  # fait passer un `systemctl stop` pour un depassement. L'app ne doit pas le
+  # reintroduire par le bas.
+  i18n <- get_i18n("fr")
   out <- as.character(nemetonshiny:::.compute_error_message(
-    "start_computation ran out of memory and was killed (ceiling: 10G).", i18n))
-  expect_true(grepl("plafond", out))
+    '"f" failed in its capped child process (systemd: "signal"). This is not the memory ceiling: systemd would have said "oom-kill".',
+    i18n))
+  expect_false(grepl("plafond m", out))
+  expect_true(grepl("not the memory ceiling", out, fixed = TRUE))
 })
 
 test_that("une erreur ordinaire passe telle quelle, echappee et traduite", {
@@ -149,6 +186,15 @@ test_that("le message d'echec est bilingue", {
     '"f" failed in its capped child process (exit -15).', get_i18n("en")))
   expect_true(grepl("memory ceiling", en, fixed = TRUE))
   expect_false(grepl("plafond", en))
+})
+
+test_that("le plafond est extrait des DEUX formulations du coeur", {
+  f <- nemetonshiny:::.compute_error_ceiling
+  expect_identical(f("ran out of memory and was killed (ceiling: 15G)."), "15G")
+  expect_identical(f("The memory ceiling (10G) is the usual cause"), "10G")
+  # « none » est une vraie valeur : le run n'etait pas plafonne, et le dire aide.
+  expect_identical(f("ran out of memory and was killed (ceiling: none)."), "none")
+  expect_null(f("objet introuvable"))
 })
 
 test_that("le message francais en dur a quitte mod_home", {

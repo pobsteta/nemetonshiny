@@ -1144,18 +1144,36 @@ TRANSLATIONS <- list(
   compute_error_fmt = list(fr = "Erreur de calcul : %s", en = "Computation error: %s"),
   compute_error_oom = list(
     fr = paste0(
-      "Le processus de calcul a \u00e9t\u00e9 tu\u00e9 ; la cause habituelle est ",
-      "le <strong>plafond m\u00e9moire</strong>. La session, elle, est intacte \u2014 ",
-      "c'est ce que le plafond prot\u00e8ge. Relever ",
+      "Le calcul a <strong>d\u00e9pass\u00e9 son plafond m\u00e9moire</strong> et son ",
+      "processus a \u00e9t\u00e9 tu\u00e9. La session, elle, est intacte \u2014 c'est ce ",
+      "que le plafond prot\u00e8ge. Relever <code>NEMETON_MEMORY_MAX</code> ",
+      "(accepte <code>none</code>) ou calculer sur une emprise plus petite."
+    ),
+    en = paste0(
+      "The computation <strong>exceeded its memory ceiling</strong> and its ",
+      "process was killed. The session itself is intact \u2014 that is what the ",
+      "ceiling protects. Raise <code>NEMETON_MEMORY_MAX</code> ",
+      "(accepts <code>none</code>) or compute on a smaller extent."
+    )
+  ),
+  compute_error_killed = list(
+    fr = paste0(
+      "Le processus de calcul a \u00e9t\u00e9 tu\u00e9, sans que la cause ait pu ",
+      "\u00eatre \u00e9tablie ; le <strong>plafond m\u00e9moire</strong> en est la cause ",
+      "habituelle. La session, elle, est intacte. Relever ",
       "<code>NEMETON_MEMORY_MAX</code> (accepte <code>none</code>) ou calculer ",
       "sur une emprise plus petite."
     ),
     en = paste0(
-      "The computation process was killed; the usual cause is the ",
-      "<strong>memory ceiling</strong>. The session itself is intact \u2014 that is ",
-      "what the ceiling protects. Raise <code>NEMETON_MEMORY_MAX</code> ",
-      "(accepts <code>none</code>) or compute on a smaller extent."
+      "The computation process was killed, without the cause being established; ",
+      "the <strong>memory ceiling</strong> is the usual one. The session itself ",
+      "is intact. Raise <code>NEMETON_MEMORY_MAX</code> (accepts ",
+      "<code>none</code>) or compute on a smaller extent."
     )
+  ),
+  compute_error_ceiling_fmt = list(
+    fr = "Plafond en vigueur : <code>%s</code>.",
+    en = "Ceiling in force: <code>%s</code>."
   ),
   task_resuming = list(fr = "Reprise des calculs...", en = "Resuming calculations..."),
   task_spectral_diversity = list(fr = "Diversit\u00e9 spectrale (B4/L3) : analyse biodivMapR sur Sentinel-2...", en = "Spectral diversity (B4/L3): biodivMapR analysis on Sentinel-2..."),
