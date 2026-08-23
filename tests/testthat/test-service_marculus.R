@@ -219,3 +219,89 @@ test_that("une liste explicite prime sur le profil, et le vide reste possible", 
     essences = character(0))
   expect_identical(vide$essences, "")
 })
+
+
+# ---------------------------------------------------------------------------
+# `gpkgNom` : l'appariement contexte <-> fichier dans le lot
+#
+# Sans lui, receptionner treize chantiers demande treize rattachements manuels
+# depuis un selecteur de fichiers, sur des noms qui se ressemblent. Une erreur
+# d'appariement ne se voit pas : la carte affiche une parcelle - la mauvaise -
+# et les tiges se rattachent a un perimetre qui n'est pas le leur.
+# Cf. `specs/BRIEF-marculus-import-zip.md`.
+# ---------------------------------------------------------------------------
+
+test_that("le contexte nomme le fichier de son GeoPackage, sans chemin", {
+  p <- list(id = "p", metadata = list(name = "F"))
+  a <- list(id = "x", ug_id = "u", type = "eclaircie")
+
+  ctx <- nemetonshiny:::marculus_context_from_action(a, p, gpkg_nom = "chantier.gpkg")
+  expect_identical(ctx$gpkgNom, "chantier.gpkg")
+
+  # Un nom NU, jamais un chemin : le lot est a plat, et un chemin relatif
+  # ouvrirait la porte au zip-slip cote telephone.
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    a, p, gpkg_nom = "../../evasion.gpkg")
+  expect_identical(ctx$gpkgNom, "evasion.gpkg")
+
+  # Absent par defaut : le champ ne doit pas apparaitre vide.
+  expect_null(nemetonshiny:::marculus_context_from_action(a, p)$gpkgNom)
+})
+
+test_that("chaque contexte du lot designe un fichier qui existe", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("jsonlite")
+  poly <- function(dx) sf::st_polygon(list(rbind(
+    c(dx, 0), c(dx + 1, 0), c(dx + 1, 1), c(dx, 1), c(dx, 0))))
+
+  withr::with_tempdir({
+    racine <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = racine),
+      {
+        parcels <- sf::st_sf(
+          id = "p1", section = "A", numero = "1", commune = "1",
+          contenance = 1e4, geometry = sf::st_sfc(poly(0), crs = 4326))
+        pid <- nemetonshiny:::create_project(name = "Lot", parcels = parcels)$id
+
+        # Deux actions eligibles sur la meme UGF, pour que les noms different
+        # bien par l'action et pas seulement par l'UGF.
+        chemin <- nemetonshiny:::get_project_path(pid)
+        jsonlite::write_json(list(
+          version = 1L, project_id = pid, horizon_annees = 20L,
+          actions = list(
+            list(id = "a1", ug_id = "ug_1", type = "eclaircie",
+                 annee_cible = 2028L, priorite = "haute", statut = "validee"),
+            list(id = "a2", ug_id = "ug_1", type = "coupe_rase",
+                 annee_cible = 2030L, priorite = "basse", statut = "proposee")),
+          audit = list()),
+          file.path(chemin, "data", "action_plan.json"), auto_unbox = TRUE)
+
+        z <- file.path(racine, "lot.zip")
+        res <- nemetonshiny:::marculus_export_bundle(pid, z)
+        expect_equal(res$n_contexts, 2L)
+
+        d <- file.path(racine, "ouvert")
+        dir.create(d)
+        utils::unzip(z, exdir = d)
+
+        ms <- list.files(d, pattern = "[.]marsync$", full.names = TRUE)
+        expect_length(ms, 1L)
+        j <- jsonlite::fromJSON(ms, simplifyVector = FALSE)
+
+        for (ctx in j$contextes) {
+          expect_false(is.null(ctx$gpkgNom), info = ctx$id)
+          # LE point du brief : le nom annonce designe un fichier PRESENT.
+          expect_true(file.exists(file.path(d, ctx$gpkgNom)), info = ctx$gpkgNom)
+          # ASCII seul : le nom doit traverser un ZIP et un systeme de fichiers
+          # Android sans surprise.
+          expect_false(grepl("[^A-Za-z0-9_.-]", ctx$gpkgNom), info = ctx$gpkgNom)
+        }
+        # Deux actions, deux fichiers distincts : sans cela le second ecraserait
+        # le premier et un contexte pointerait sur le chantier de l'autre.
+        noms <- vapply(j$contextes, function(c) c$gpkgNom, "")
+        expect_length(unique(noms), 2L)
+      }
+    )
+  })
+})
