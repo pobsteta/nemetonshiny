@@ -1,3 +1,88 @@
+# nemetonshiny 0.139.0 (2026-08-25)
+
+### Changed — Chaque indicateur est enregistré deux fois : brut et normalisé
+
+Un indicateur répond à deux questions — « combien ? » dans son unité propre, et
+« où cela situe-t-il cette UGF ? » sur 0–100. N'en garder qu'une coûtait des
+deux côtés : chaque consommateur renormalisait à sa façon, et l'écran montrait
+un NDVI de **0,227** à côté de 75 % d'ancienneté comme si les deux échelles n'en
+faisaient qu'une.
+
+La normalisation est celle du **cœur, par indicateur** (`normalize_indicator()`),
+à bornes **absolues** : deux projets restent comparables. Un min-max ferait de
+chaque projet son propre étalon, et le même peuplement scorerait différemment
+selon ses voisins.
+
+C'est aussi la fonction qu'emploie `create_family_index()` — et celle-là
+**préfère les colonnes `_norm` quand elles existent**. Persister le jumeau fait
+donc coïncider la valeur stockée et la valeur affichée, au lieu de laisser deux
+vérités dériver. **Conséquence visible** : l'onglet Familles d'indicateurs passe
+des valeurs brutes aux valeurs normalisées.
+
+Seuls les indicateurs que le cœur **déclare** reçoivent un jumeau.
+`normalize_indicator()` rend un indicateur inconnu **inchangé** ; écrire cela en
+`_norm` serait un mensonge par omission — la colonne annoncerait 0–100 en
+portant des mètres ou des habitants, et la vue Famille la préférerait au brut.
+
+**Côté base** : `inst/sql/migration_006_indicateurs_norm.sql` (31 colonnes,
+idempotent). **À appliquer à la main** : les fichiers `migration_00N.sql` ne
+sont pas joués par l'application, seul `schema.sql` l'est. L'écriture devient
+donc **tolérante** à un schéma en retard — sans ce filtre,
+`dbWriteTable(append = TRUE)` échouerait et l'on perdrait *aussi* les valeurs
+brutes, pour une colonne d'appoint manquante.
+
+### Changed — Un indicateur non calculé ne prend plus de colonne
+
+Une colonne entièrement vide occupait une carte, une colonne du tableau et une
+case du radar pour ne rien dire — et laissait croire à une mesure **nulle**
+plutôt qu'à une mesure **absente**. Elle sort de la vue.
+
+Les colonnes de **statut** des indicateurs écartés sont conservées : sans elles,
+la raison de leur absence disparaîtrait avec eux, et le bandeau explicatif
+n'aurait plus rien à lire.
+
+### Fixed — L'import CSV croisait mais ne purgeait pas
+
+Implémente `briefs/vers-nemetonshiny/2026-08-25-csv-purge-hors-foret.md`.
+`onf_purger_hors_foret()` n'était appelée qu'à **une seule ligne de toute
+l'application** — celle du bouton ONF. L'import CSV laissait donc subsister
+l'UGF « Hors forêt publique » : 74 tènements, 50,15 ha sur les 535,59 ha de
+Couchey.
+
+**Le correctif naïf aurait été faux**, et le brief le disait : la purge retire
+des **parcelles**, pas seulement des tènements. `save_ug_data()` seul les
+laisserait revenir au prochain chargement — le défaut payé en v0.130.7. Le
+chemin CSV passe donc par `.onf_commit(with_parcels = …)`, le même mécanisme
+testé que le bouton.
+
+Le réglage vient du **projet**, pas d'une coche propre à ce chemin : il vaut
+quel que soit ce qui crée les UGF. Mais l'utilisateur vient de fournir ces
+parcelles dans son fichier — l'import **dit** donc ce qu'il retire.
+
+### Fixed — Quatre défauts signalés sur capture
+
+- Le bloc ONF des paramètres **n'avait pas de cadre** : `mt-3` au lieu du
+  `mt-3 p-2 border rounded` de ses voisins.
+- Des `<strong>` s'affichaient **tels quels** dans les infobulles.
+  `info_popover()` n'interprète pas le HTML — les infobulles du dépôt sont du
+  texte, et j'étais le seul à y avoir mis des balises.
+- **L'import CSV ne rafraîchissait pas les sous-onglets de Sélection.** Il émet
+  bien `restore_project`, mais les parcelles de `mod_home` sont une réactive
+  **locale** que lui seul peut poser : la carte et la recherche de commune
+  suivaient le signal, les sous-onglets qui lisent `parcels()` continuaient
+  d'afficher le projet **précédent**. Relais ajouté, avec un test qui vérifie
+  aussi qu'un signal sans parcelles ne vide pas l'écran.
+- L'infobulle distingue enfin **deux découpes opposées** que son libellé
+  confondait : écarter le parcellaire ONF hors cadastre n'est pas retirer les
+  bouts de parcelle cadastrale hors forêt — ça, c'est la purge.
+
+### Vérifié sur données réelles
+
+Sur Couchey, 218 tènements et 530 ha : **0 m² de tènement hors de sa parcelle
+cadastrale**. L'UGF est bien une partie ou un regroupement de parcelles
+cadastrales, jamais autre chose — le parcellaire ONF n'apporte que le numéro de
+parcelle forestière et son groupe.
+
 # nemetonshiny 0.138.1 (2026-08-23)
 
 ### Changed — Les houppiers se calculent avec les indicateurs, plus au téléchargement
