@@ -548,6 +548,62 @@ backfill_all_commune_geometries <- function() {
 }
 
 
+#' Add the normalised twin of every indicator column
+#'
+#' @description
+#' An indicator is stored **twice**: its raw value in its own unit, and its
+#' normalised value on 0-100. The two answer different questions - "how many
+#' m3/ha?" and "where does that place this UGF?" - and keeping only one cost us
+#' both ways. Only the raw was persisted, so every consumer wanting a comparable
+#' score had to re-derive it, and the screen showed an NDVI of 0.227 beside 75 %
+#' of ancientness as if the two scales were one.
+#'
+#' **The normalisation is the core's, per indicator** (`normalize_indicator()`),
+#' not a min-max over whatever rows this project happens to hold. Absolute
+#' bounds make two projects comparable; a min-max would make each project its
+#' own yardstick, and the same stand would score differently depending on its
+#' neighbours.
+#'
+#' It is also the function `create_family_index()` uses - and that one **prefers
+#' `_norm` columns when they exist**. Persisting them therefore makes the stored
+#' number and the displayed number the same, instead of two truths that drift.
+#'
+#' **Only indicators the core declares** get a twin. `normalize_indicator()`
+#' returns an unknown indicator's values **unchanged** rather than failing - a
+#' silent pass-through. Writing that as `_norm` would be a lie by omission: the
+#' column would claim a 0-100 scale while holding raw metres or inhabitants,
+#' and the family view *prefers* `_norm` when it exists, so the raw value would
+#' then be displayed as if normalised. Better no twin than a false one.
+#'
+#' @param df A data.frame of indicators.
+#' @return The same data.frame with `<indicateur>_norm` columns added.
+#' @noRd
+.add_normalized_indicators <- function(df) {
+  if (!is.data.frame(df) || nrow(df) == 0L) return(df)
+  cols <- grep("^indicateur_", names(df), value = TRUE)
+  cols <- cols[!grepl("_norm$", cols)]
+  if (length(cols) == 0L) return(df)
+
+  connus <- tryCatch(as.character(nemeton::list_indicators()),
+                     error = function(e) character(0))
+  inconnus <- setdiff(cols, connus)
+  cols <- intersect(cols, connus)
+
+  for (cc in cols) {
+    v <- suppressWarnings(as.numeric(df[[cc]]))
+    n <- tryCatch(nemeton::normalize_indicator(cc, v), error = function(e) NULL)
+    if (is.null(n) || length(n) != nrow(df)) next
+    df[[paste0(cc, "_norm")]] <- as.numeric(n)
+  }
+  if (length(inconnus)) {
+    cli::cli_warn(c(
+      "Normalisation impossible pour {length(inconnus)} indicateur{?s} : {.field {inconnus}}.",
+      i = "Leur valeur brute est conserv\u00e9e ; la colonne {.code _norm} manque."))
+  }
+  df
+}
+
+
 #' Save indicators results to project
 #'
 #' @description

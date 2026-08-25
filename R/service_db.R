@@ -574,11 +574,34 @@ db_save_indicators <- function(con, project_id, indicators) {
     "famille_social", "famille_production", "famille_energie", "famille_naturalite"
   )
 
+  # Chaque indicateur voyage avec son jumeau normalise 0-100
+  # (`migration_006_indicateurs_norm.sql`). Les familles n'en ont pas : elles
+  # SONT deja des scores 0-100.
+  db_cols <- c(db_cols, paste0(grep("^indicateur_", db_cols, value = TRUE), "_norm"))
+
   # Le schema PostGIS porte encore les anciens slugs L : on traduit a l'ecriture.
   ind_df <- .slugs_l_vers_schema(ind_df)
 
-  # Ne garder que les colonnes presentes dans les donnees ET dans le schema
+  # Ne garder que les colonnes presentes dans les donnees ET dans le schema...
   available_cols <- intersect(names(ind_df), db_cols)
+
+  # ... ET REELLEMENT PRESENTES DANS LA TABLE. Les fichiers
+  # `inst/sql/migration_00N.sql` ne sont pas joues par l'app - seul `schema.sql`
+  # l'est - donc une base peut tres bien ne pas porter les colonnes `_norm`.
+  # Sans ce filtre, `dbWriteTable(append = TRUE)` echouerait et l'on perdrait
+  # AUSSI les valeurs brutes, pour une colonne d'appoint manquante.
+  colonnes_table <- tryCatch(
+    DBI::dbListFields(con, DBI::Id(schema = "nemeton", table = "indicators")),
+    error = function(e) NULL)
+  if (!is.null(colonnes_table)) {
+    absentes <- setdiff(available_cols, colonnes_table)
+    if (length(absentes)) {
+      cli::cli_warn(c(
+        "{length(absentes)} colonne{?s} absente{?s} de {.field nemeton.indicators}, ignor\u00e9e{?s} \u00e0 l'\u00e9criture.",
+        i = "Appliquer {.file inst/sql/migration_006_indicateurs_norm.sql} pour enregistrer les valeurs normalis\u00e9es."))
+      available_cols <- intersect(available_cols, colonnes_table)
+    }
+  }
   insert_cols <- c("project_id", available_cols)
   insert_df <- ind_df[, intersect(names(ind_df), insert_cols), drop = FALSE]
 

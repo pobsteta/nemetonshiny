@@ -2074,3 +2074,40 @@ test_that("les setters ecrivent puis relisent les memes valeurs", {
     )
   })
 })
+
+
+test_that("valeur brute et valeur normalisee sont enregistrees ensemble", {
+  # Un indicateur repond a deux questions : « combien ? » dans son unite, et
+  # « ou cela situe-t-il cette UGF ? » sur 0-100. N'en garder qu'une coutait des
+  # deux cotes : chaque consommateur renormalisait a sa facon, et l'ecran
+  # montrait un NDVI de 0,227 a cote de 75 % d'anciennete comme si les deux
+  # echelles n'en faisaient qu'une.
+  df <- data.frame(
+    ug_id = c("a", "b", "c"),
+    indicateur_c2_ndvi = c(0.2, 0.6, NA),
+    indicateur_t1_anciennete = c(50, 75, 100))
+
+  out <- nemetonshiny:::.add_normalized_indicators(df)
+
+  expect_true("indicateur_c2_ndvi_norm" %in% names(out))
+  expect_true("indicateur_t1_anciennete_norm" %in% names(out))
+  # La valeur BRUTE survit : c'est elle qui se verifie sur le terrain.
+  expect_equal(out$indicateur_c2_ndvi, df$indicateur_c2_ndvi)
+
+  n <- out$indicateur_c2_ndvi_norm
+  expect_true(all(n[!is.na(n)] >= 0 & n[!is.na(n)] <= 100))
+  # Un vide reste vide : normaliser n'invente pas de mesure.
+  expect_true(is.na(n[3]))
+
+  # Idempotent : re-normaliser ne cree pas `_norm_norm`.
+  encore <- nemetonshiny:::.add_normalized_indicators(out)
+  expect_false(any(grepl("_norm_norm", names(encore))))
+})
+
+test_that("un indicateur que le coeur ignore ne fait pas echouer l'enregistrement", {
+  # Perdre une colonne d'appoint vaut mieux que perdre tout le calcul.
+  df <- data.frame(ug_id = "a", indicateur_zz9_inconnu = 42)
+  expect_warning(out <- nemetonshiny:::.add_normalized_indicators(df))
+  expect_equal(out$indicateur_zz9_inconnu, 42)
+  expect_false("indicateur_zz9_inconnu_norm" %in% names(out))
+})

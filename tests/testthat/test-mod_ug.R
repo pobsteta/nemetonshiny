@@ -240,7 +240,13 @@ test_that("la previsualisation ONF est effacee apres le croisement", {
   expect_length(efface, 1L)
   # L'effacement vient APRÈS la pose, et après le commit du projet.
   expect_gt(efface, pose)
+  # Depuis que l'import CSV purge lui aussi (brief du 2026-08-25), il y a DEUX
+  # appels a `.onf_commit(projet_final, ...)`. Ce test ne parle que du chemin du
+  # BOUTON : la previsualisation orange n'existe que la. On compare donc
+  # l'effacement au commit qui le precede, pas a un appel suppose unique.
   commit <- grep("\\.onf_commit\\(projet_final", src)
-  expect_length(commit, 1L)
-  expect_gt(efface, commit)
+  expect_gte(length(commit), 1L)
+  avant <- commit[commit < efface]
+  expect_gte(length(avant), 1L)
+  expect_gt(efface, max(avant))
 })

@@ -2707,16 +2707,16 @@ TRANSLATIONS <- list(
     en = "Drop parcels whose forest share is at or below (%)"
   ),
   onf_seuil_foret_tip = list(
-    fr = "\u00c0 <strong>0 %</strong>, seules partent les parcelles que la for\u00eat publique ne touche pas du tout. Au-dessus, une parcelle for\u00eati\u00e8re \u00e0 3 % est un effet de bord de num\u00e9risation, pas un peuplement \u00e0 g\u00e9rer.",
-    en = "At <strong>0 %</strong>, only parcels the public forest does not touch at all are dropped. Above that, a parcel 3 % forested is a digitising edge effect, not a stand to manage."
+    fr = "\u00c0 0 %, seules partent les parcelles que la for\u00eat publique ne touche pas du tout. Au-dessus, une parcelle for\u00eati\u00e8re \u00e0 3 % est un effet de bord de num\u00e9risation, pas un peuplement \u00e0 g\u00e9rer.",
+    en = "At 0 %, only parcels the public forest does not touch at all are dropped. Above that, a parcel 3 % forested is a digitising edge effect, not a stand to manage."
   ),
   onf_clip_cadastre = list(
     fr = "\u00c9carter le parcellaire ONF hors des parcelles cadastrales",
     en = "Discard ONF forest outside the cadastral parcels"
   ),
   onf_clip_cadastre_tip = list(
-    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. La d\u00e9coupe est une vraie intersection \u2014 une parcelle for\u00eati\u00e8re \u00e0 cheval est <strong>coup\u00e9e</strong>, pas \u00e9cart\u00e9e.",
-    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. The cut is a real intersection \u2014 a forest parcel straddling the boundary is <strong>cut</strong>, not dropped."
+    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. La d\u00e9coupe est une vraie intersection \u2014 une parcelle foresti\u00e8re \u00e0 cheval est coup\u00e9e, pas \u00e9cart\u00e9e. Elle ne touche pas aux bouts de parcelle cadastrale hors for\u00eat : c'est la purge, au-dessus, qui les retire.",
+    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. The cut is a real intersection \u2014 a forest parcel straddling the boundary is cut, not dropped. It does not touch the parts of a cadastral parcel outside the forest: that is what the purge above removes."
   ),
   onf_params_save = list(
     fr = "Enregistrer les param\u00e8tres ONF",

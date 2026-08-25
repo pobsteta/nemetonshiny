@@ -729,6 +729,22 @@ mod_home_server <- function(id, app_state) {
       }
     })
 
+    # Un AUTRE module peut charger un projet - l'import CSV vit dans mod_ug - et
+    # il annonce le changement par `restore_project`, le signal prevu pour cela.
+    # Mais les parcelles de la Selection sont une reactive LOCALE a mod_home :
+    # personne d'autre ne peut la poser. Sans ce relais, le signal partait, la
+    # carte et la recherche de commune suivaient, et les sous-onglets qui lisent
+    # `parcels()` continuaient d'afficher le projet PRECEDENT.
+    #
+    # Le chemin d'ouverture nominal (mod_home lui-meme) pose deja les deux a la
+    # suite ; ce relais le rejoue pour lui sans effet, et le rattrape pour les
+    # autres.
+    shiny::observeEvent(app_state$restore_project, {
+      r <- app_state$restore_project
+      p <- r$parcels
+      if (inherits(p, "sf") && nrow(p) > 0L) parcels_data(p)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
     # Parcels reactive (consumed by mod_map_server)
     parcels <- shiny::reactive(parcels_data())
 
