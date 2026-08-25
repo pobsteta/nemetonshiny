@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.138.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.139.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,40 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.139.0" id="nemetonshiny-01390-2026-08-25">nemetonshiny 0.139.0 (2026-08-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01390-2026-08-25"></a></h2>
+<div class="section level4">
+<h4 id="changed--chaque-indicateur-est-enregistré-deux-fois--brut-et-normalisé-0-139-0">Changed — Chaque indicateur est enregistré deux fois : brut et normalisé<a class="anchor" aria-label="anchor" href="#changed--chaque-indicateur-est-enregistr%C3%A9-deux-fois--brut-et-normalis%C3%A9-0-139-0"></a></h4>
+<p>Un indicateur répond à deux questions — « combien ? » dans son unité propre, et « où cela situe-t-il cette UGF ? » sur 0–100. N’en garder qu’une coûtait des deux côtés : chaque consommateur renormalisait à sa façon, et l’écran montrait un NDVI de <strong>0,227</strong> à côté de 75 % d’ancienneté comme si les deux échelles n’en faisaient qu’une.</p>
+<p>La normalisation est celle du <strong>cœur, par indicateur</strong> (<code>normalize_indicator()</code>), à bornes <strong>absolues</strong> : deux projets restent comparables. Un min-max ferait de chaque projet son propre étalon, et le même peuplement scorerait différemment selon ses voisins.</p>
+<p>C’est aussi la fonction qu’emploie <code>create_family_index()</code> — et celle-là <strong>préfère les colonnes <code>_norm</code> quand elles existent</strong>. Persister le jumeau fait donc coïncider la valeur stockée et la valeur affichée, au lieu de laisser deux vérités dériver. <strong>Conséquence visible</strong> : l’onglet Familles d’indicateurs passe des valeurs brutes aux valeurs normalisées.</p>
+<p>Seuls les indicateurs que le cœur <strong>déclare</strong> reçoivent un jumeau. <code>normalize_indicator()</code> rend un indicateur inconnu <strong>inchangé</strong> ; écrire cela en <code>_norm</code> serait un mensonge par omission — la colonne annoncerait 0–100 en portant des mètres ou des habitants, et la vue Famille la préférerait au brut.</p>
+<p><strong>Côté base</strong> : <code>inst/sql/migration_006_indicateurs_norm.sql</code> (31 colonnes, idempotent). <strong>À appliquer à la main</strong> : les fichiers <code>migration_00N.sql</code> ne sont pas joués par l’application, seul <code>schema.sql</code> l’est. L’écriture devient donc <strong>tolérante</strong> à un schéma en retard — sans ce filtre, <code>dbWriteTable(append = TRUE)</code> échouerait et l’on perdrait <em>aussi</em> les valeurs brutes, pour une colonne d’appoint manquante.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--un-indicateur-non-calculé-ne-prend-plus-de-colonne-0-139-0">Changed — Un indicateur non calculé ne prend plus de colonne<a class="anchor" aria-label="anchor" href="#changed--un-indicateur-non-calcul%C3%A9-ne-prend-plus-de-colonne-0-139-0"></a></h4>
+<p>Une colonne entièrement vide occupait une carte, une colonne du tableau et une case du radar pour ne rien dire — et laissait croire à une mesure <strong>nulle</strong> plutôt qu’à une mesure <strong>absente</strong>. Elle sort de la vue.</p>
+<p>Les colonnes de <strong>statut</strong> des indicateurs écartés sont conservées : sans elles, la raison de leur absence disparaîtrait avec eux, et le bandeau explicatif n’aurait plus rien à lire.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--limport-csv-croisait-mais-ne-purgeait-pas-0-139-0">Fixed — L’import CSV croisait mais ne purgeait pas<a class="anchor" aria-label="anchor" href="#fixed--limport-csv-croisait-mais-ne-purgeait-pas-0-139-0"></a></h4>
+<p>Implémente <code>briefs/vers-nemetonshiny/2026-08-25-csv-purge-hors-foret.md</code>. <code>onf_purger_hors_foret()</code> n’était appelée qu’à <strong>une seule ligne de toute l’application</strong> — celle du bouton ONF. L’import CSV laissait donc subsister l’UGF « Hors forêt publique » : 74 tènements, 50,15 ha sur les 535,59 ha de Couchey.</p>
+<p><strong>Le correctif naïf aurait été faux</strong>, et le brief le disait : la purge retire des <strong>parcelles</strong>, pas seulement des tènements. <code>save_ug_data()</code> seul les laisserait revenir au prochain chargement — le défaut payé en v0.130.7. Le chemin CSV passe donc par <code>.onf_commit(with_parcels = …)</code>, le même mécanisme testé que le bouton.</p>
+<p>Le réglage vient du <strong>projet</strong>, pas d’une coche propre à ce chemin : il vaut quel que soit ce qui crée les UGF. Mais l’utilisateur vient de fournir ces parcelles dans son fichier — l’import <strong>dit</strong> donc ce qu’il retire.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--quatre-défauts-signalés-sur-capture-0-139-0">Fixed — Quatre défauts signalés sur capture<a class="anchor" aria-label="anchor" href="#fixed--quatre-d%C3%A9fauts-signal%C3%A9s-sur-capture-0-139-0"></a></h4>
+<ul><li>Le bloc ONF des paramètres <strong>n’avait pas de cadre</strong> : <code>mt-3</code> au lieu du <code>mt-3 p-2 border rounded</code> de ses voisins.</li>
+<li>Des <code>&lt;strong&gt;</code> s’affichaient <strong>tels quels</strong> dans les infobulles. <code>info_popover()</code> n’interprète pas le HTML — les infobulles du dépôt sont du texte, et j’étais le seul à y avoir mis des balises.</li>
+<li>
+<strong>L’import CSV ne rafraîchissait pas les sous-onglets de Sélection.</strong> Il émet bien <code>restore_project</code>, mais les parcelles de <code>mod_home</code> sont une réactive <strong>locale</strong> que lui seul peut poser : la carte et la recherche de commune suivaient le signal, les sous-onglets qui lisent <code>parcels()</code> continuaient d’afficher le projet <strong>précédent</strong>. Relais ajouté, avec un test qui vérifie aussi qu’un signal sans parcelles ne vide pas l’écran.</li>
+<li>L’infobulle distingue enfin <strong>deux découpes opposées</strong> que son libellé confondait : écarter le parcellaire ONF hors cadastre n’est pas retirer les bouts de parcelle cadastrale hors forêt — ça, c’est la purge.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="vérifié-sur-données-réelles-0-139-0">Vérifié sur données réelles<a class="anchor" aria-label="anchor" href="#v%C3%A9rifi%C3%A9-sur-donn%C3%A9es-r%C3%A9elles-0-139-0"></a></h4>
+<p>Sur Couchey, 218 tènements et 530 ha : <strong>0 m² de tènement hors de sa parcelle cadastrale</strong>. L’UGF est bien une partie ou un regroupement de parcelles cadastrales, jamais autre chose — le parcellaire ONF n’apporte que le numéro de parcelle forestière et son groupe.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.138.1" id="nemetonshiny-01381-2026-08-23">nemetonshiny 0.138.1 (2026-08-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01381-2026-08-23"></a></h2>
 <div class="section level4">

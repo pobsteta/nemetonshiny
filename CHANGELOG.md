@@ -12,6 +12,40 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.139.0\] - 2026-08-25
+
+### Added
+
+- `.add_normalized_indicators()` : chaque indicateur est persisté en
+  **brut** et en **normalisé 0–100**
+  ([`nemeton::normalize_indicator()`](https://pobsteta.github.io/nemeton/reference/normalize_indicator.html),
+  bornes absolues). Seuls les indicateurs que le cœur déclare reçoivent
+  un jumeau.
+- `inst/sql/migration_006_indicateurs_norm.sql` : 31 colonnes `_norm`,
+  idempotent. **À appliquer à la main** (l’app ne joue que
+  `schema.sql`).
+
+### Changed
+
+- L’écriture en base ignore les colonnes absentes de la table plutôt que
+  d’échouer, pour ne pas perdre les valeurs brutes avec les normalisées.
+- Un indicateur entièrement vide ne prend plus de colonne dans les
+  familles ; son statut est conservé pour que la raison reste dite.
+- L’onglet Familles d’indicateurs affiche désormais les valeurs
+  normalisées (conséquence de la persistance des `_norm`, que
+  `create_family_index()` préfère).
+
+### Fixed
+
+- L’import CSV purge désormais comme le bouton ONF, avec la persistance
+  des parcelles (`with_parcels`) et un compte rendu de ce qui est
+  retiré.
+- L’import CSV rafraîchit les sous-onglets de Sélection (relais de
+  `restore_project` vers la réactive locale de `mod_home`).
+- Cadre manquant du bloc ONF dans les paramètres ; `<strong>` affichés
+  en clair dans deux infobulles ; libellé de la découpe cadastre
+  clarifié.
+
 ## \[0.138.1\] - 2026-08-23
 
 ### Changed
