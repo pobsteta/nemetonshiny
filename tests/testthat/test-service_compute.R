@@ -5645,3 +5645,40 @@ test_that("le CHM deja predit est repris au lieu de relancer le pipeline", {
     expect_true(file.exists(file.path(oc, "chm_1_5m.tif")))
   })
 })
+
+
+test_that("un NDVI d'ortho d'affichage rend C2 INDISPONIBLE, pas approximatif", {
+  # L'ortho IRC du WMS IGN est une image 8 bits etiree pour l'oeil, compressee
+  # en JPEG : ce ne sont pas des reflectances. Mesure sur Couchey (sans cache
+  # Sentinel-2) : NDVI median 0,227 quand une foret saine est entre 0,6 et 0,8 ;
+  # sur Fordead, la meme source sortait NEGATIVE sur les 30 UGF (v0.126.1).
+  #
+  # Le repli produisait donc une valeur CREDIBLE ET FAUSSE. Un avertissement en
+  # console ne rattrape pas cela : l'utilisateur lit un indicateur, pas une
+  # provenance.
+  wms <- nemetonshiny:::.c2_apply_provenance(c(0.22, 0.24), "wms_irc")
+  expect_true(all(is.na(wms)))
+  # La CAUSE voyage avec la valeur vide : c'est elle qui alimente le bandeau.
+  expect_identical(attr(wms, "nemeton_status_name"), "c2_status")
+  expect_true(all(attr(wms, "nemeton_status") == "wms_irc"))
+
+  # Sentinel-2 : la valeur passe telle quelle, avec sa provenance.
+  s2 <- nemetonshiny:::.c2_apply_provenance(c(0.22, 0.24), "s2_l2a")
+  expect_equal(as.numeric(s2), c(0.22, 0.24))
+  expect_true(all(attr(s2, "nemeton_status") == "s2_l2a"))
+
+  # Provenance inconnue : on ne touche a rien plutot que de deviner.
+  expect_equal(as.numeric(nemetonshiny:::.c2_apply_provenance(c(1, 2), NULL)), c(1, 2))
+  expect_null(attr(nemetonshiny:::.c2_apply_provenance(c(1, 2), NULL), "nemeton_status"))
+})
+
+test_that("la cause d'un C2 vide est traduite, pas affichee en cle brute", {
+  for (lang in c("fr", "en")) {
+    i18n <- get_i18n(lang)
+    expect_true(i18n$has("c2_wms_irc"), info = lang)
+    txt <- i18n$t("c2_wms_irc")
+    expect_false(identical(txt, "c2_wms_irc"), info = lang)
+    # Elle doit nommer la source fautive, sinon elle n'apprend rien.
+    expect_true(grepl("Sentinel-2", txt, fixed = TRUE), info = lang)
+  }
+})

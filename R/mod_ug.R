@@ -2531,8 +2531,40 @@ mod_ug_server <- function(id, app_state) {
                   NULL
                 })
               if (!is.null(out) && identical(out$status, "ok")) {
-                save_ug_data(pid, out$projet)
+                # LA PURGE SUIT LE CROISEMENT, ici comme au bouton ONF. Sans
+                # elle, l'UGF « Hors foret publique » - le RESTE, produit a
+                # dessein pour que la parcelle cadastrale reste entierement
+                # pavee - survivait a l'import : 74 tenements et 50,15 ha sur
+                # les 535,59 ha de Couchey, groupe d'amenagement vide.
+                #
+                # Le reglage vient du PROJET (`cfg_csv$purger`), pas d'une coche
+                # propre a ce chemin : il vaut pour le projet, quel que soit ce
+                # qui cree les UGF. Ce que l'import doit en revanche a
+                # l'utilisateur, c'est de DIRE ce qu'il a retire - il vient de
+                # fournir ces parcelles dans son fichier.
+                projet_final <- out$projet
+                n_purgees <- 0L
+                if (isTRUE(cfg_csv$purger)) {
+                  purge <- onf_purger_hors_foret(
+                    projet_final, .onf_label_hors_ugf(i18n_snap),
+                    seuil_foret = cfg_csv$seuil_foret)
+                  projet_final <- purge$projet
+                  n_purgees <- purge$n_supprimees
+                }
+
+                # `with_parcels` : la purge retire des PARCELLES du projet, pas
+                # seulement des tenements. `save_ug_data()` seul les laisserait
+                # revenir au prochain chargement, sans leurs tenements - c'est
+                # le defaut paye en v0.130.7, et le reintroduire par la porte du
+                # CSV serait une regression sur un bug deja corrige.
+                .onf_commit(projet_final, with_parcels = n_purgees > 0L)
                 charge <- load_project(pid)
+
+                if (n_purgees > 0L) {
+                  shiny::showNotification(
+                    sprintf(i18n_snap$t("onf_purge_hors_fmt"), n_purgees),
+                    type = "warning", duration = 12, session = session)
+                }
               } else {
                 .onf_notify_status(out$status %||% "no_overlap", i18n_snap)
               }

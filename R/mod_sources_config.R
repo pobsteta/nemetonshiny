@@ -704,14 +704,14 @@ mod_sources_config_server <- function(id, app_state) {
 
       pid <- .pid()
       if (is.null(pid)) {
-        return(htmltools::div(class = "mt-3", header, hint,
+        return(htmltools::div(class = "mt-3 p-2 border rounded", header, hint,
                               htmltools::tags$em(class = "text-muted small",
                                                  i18n$t("sources_need_project"))))
       }
       cfg <- project_onf_params(app_state$current_project$metadata)
 
       htmltools::div(
-        class = "mt-3",
+        class = "mt-3 p-2 border rounded",
         header, hint,
         bslib::layout_columns(
           col_widths = c(4, 4, 4),

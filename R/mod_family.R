@@ -79,6 +79,17 @@ mod_family_server <- function(id, family_code, app_state) {
       }
 
       matched <- unique(matched)
+
+      # UN INDICATEUR NON CALCULE NE PREND PAS DE COLONNE. Une colonne
+      # entierement vide occupe une carte, une colonne du tableau et une case du
+      # radar pour ne rien dire - et laisse croire a une mesure nulle plutot
+      # qu'a une mesure absente. Ce qui n'a pas ete calcule sort de la vue ; la
+      # RAISON, elle, reste dite (cf. `indicator_na_banner()`, qui traduit le
+      # statut des indicateurs ainsi ecartes).
+      vides <- vapply(matched, function(cc) all(is.na(df[[cc]])), logical(1))
+      ecartes <- matched[vides]
+      matched <- matched[!vides]
+
       if (length(matched) == 0) return(NULL)
 
       # Keep the UGF identifier + display metadata + matched indicators.
@@ -93,8 +104,10 @@ mod_family_server <- function(id, family_code, app_state) {
       # indicateur jusqu'ici, sinon le bandeau qui explique un axe vide n'aurait
       # rien a lire. Elles sont textuelles et prefixees : `get_indicator_cols()`
       # ne les prend pas pour des indicateurs, ni le tableau, ni les stats.
+      # Les statuts des indicateurs ECARTES sont conserves eux aussi : c'est
+      # tout ce qui reste pour dire POURQUOI ils ne sont pas la.
       status_cols <- intersect(
-        unique(vapply(matched,
+        unique(vapply(c(matched, ecartes),
                       function(col) .indicator_status_col(col) %||% NA_character_,
                       character(1), USE.NAMES = FALSE)),
         all_cols

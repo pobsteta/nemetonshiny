@@ -893,6 +893,23 @@ TRANSLATIONS <- list(
     fr = "La source LST n'a pas pu \u00eatre interrog\u00e9e (%s).",
     en = "The LST source could not be queried (%s)."
   ),
+  # Cause nomm\u00e9e d'un C2 vide : la provenance du NDVI, decidee a
+  # l'acquisition. `wms_irc` = repli sur l'ortho d'affichage, donc pas de C2.
+  c2_wms_irc = list(
+    fr = paste0(
+      "Aucune s\u00e9rie Sentinel-2 en cache pour ce projet. Le seul NDVI ",
+      "disponible viendrait de l'orthophoto IRC du WMS IGN \u2014 une image ",
+      "8 bits \u00e9tir\u00e9e pour l'affichage, pas des r\u00e9flectances : ",
+      "elle donne un NDVI cr\u00e9dible et faux. C2 est donc laiss\u00e9 vide ",
+      "plut\u00f4t que calcul\u00e9 sur cette source."
+    ),
+    en = paste0(
+      "No Sentinel-2 series cached for this project. The only available NDVI ",
+      "would come from the IGN WMS IRC orthophoto \u2014 an 8-bit image ",
+      "stretched for display, not reflectance: it yields a credible, wrong ",
+      "NDVI. C2 is therefore left empty rather than computed on that source."
+    )
+  ),
   # Cause nomm\u00e9e d'un A5 vide, rendue par le c\u0153ur dans `a5_status`.
   a5_skipped_no_lst = list(
     fr = paste0(
@@ -2690,16 +2707,16 @@ TRANSLATIONS <- list(
     en = "Drop parcels whose forest share is at or below (%)"
   ),
   onf_seuil_foret_tip = list(
-    fr = "\u00c0 <strong>0 %</strong>, seules partent les parcelles que la for\u00eat publique ne touche pas du tout. Au-dessus, une parcelle for\u00eati\u00e8re \u00e0 3 % est un effet de bord de num\u00e9risation, pas un peuplement \u00e0 g\u00e9rer.",
-    en = "At <strong>0 %</strong>, only parcels the public forest does not touch at all are dropped. Above that, a parcel 3 % forested is a digitising edge effect, not a stand to manage."
+    fr = "\u00c0 0 %, seules partent les parcelles que la for\u00eat publique ne touche pas du tout. Au-dessus, une parcelle for\u00eati\u00e8re \u00e0 3 % est un effet de bord de num\u00e9risation, pas un peuplement \u00e0 g\u00e9rer.",
+    en = "At 0 %, only parcels the public forest does not touch at all are dropped. Above that, a parcel 3 % forested is a digitising edge effect, not a stand to manage."
   ),
   onf_clip_cadastre = list(
     fr = "\u00c9carter le parcellaire ONF hors des parcelles cadastrales",
     en = "Discard ONF forest outside the cadastral parcels"
   ),
   onf_clip_cadastre_tip = list(
-    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. La d\u00e9coupe est une vraie intersection \u2014 une parcelle for\u00eati\u00e8re \u00e0 cheval est <strong>coup\u00e9e</strong>, pas \u00e9cart\u00e9e.",
-    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. The cut is a real intersection \u2014 a forest parcel straddling the boundary is <strong>cut</strong>, not dropped."
+    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. La d\u00e9coupe est une vraie intersection \u2014 une parcelle foresti\u00e8re \u00e0 cheval est coup\u00e9e, pas \u00e9cart\u00e9e. Elle ne touche pas aux bouts de parcelle cadastrale hors for\u00eat : c'est la purge, au-dessus, qui les retire.",
+    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. The cut is a real intersection \u2014 a forest parcel straddling the boundary is cut, not dropped. It does not touch the parts of a cadastral parcel outside the forest: that is what the purge above removes."
   ),
   onf_params_save = list(
     fr = "Enregistrer les param\u00e8tres ONF",

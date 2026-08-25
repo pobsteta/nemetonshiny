@@ -1879,3 +1879,32 @@ test_that("tour_ready input triggers do_start_tour", {
 
 # Drain async callbacks to prevent testServer session accumulation
 later::run_now(0)
+
+
+test_that("un projet charge par un AUTRE module rafraichit les parcelles de Selection", {
+  # L'import CSV vit dans mod_ug et annonce le changement par `restore_project`.
+  # Mais les parcelles de la Selection sont une reactive LOCALE a mod_home :
+  # personne d'autre ne peut la poser. Sans relais, la carte et la recherche de
+  # commune suivaient le signal, et les sous-onglets qui lisent `parcels()`
+  # continuaient d'afficher le projet PRECEDENT.
+  skip_if_not_installed("sf")
+  poly <- sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0))))
+  p <- sf::st_sf(id = c("x", "y"), code_insee = "21200",
+                 geometry = sf::st_sfc(poly, poly + c(2, 0), crs = 4326))
+
+  shiny::testServer(nemetonshiny:::mod_home_server,
+                    args = list(app_state = shiny::reactiveValues(language = "fr")), {
+    session$setInputs(x = 1)
+    app_state$restore_project <- list(commune_code = "21200", parcels = p,
+                                      timestamp = Sys.time())
+    session$flushReact()
+    expect_equal(nrow(parcels()), 2L)
+
+    # Un signal sans parcelles ne vide pas la Selection : mieux vaut l'etat
+    # precedent qu'un ecran blanc.
+    app_state$restore_project <- list(commune_code = "21200", parcels = NULL,
+                                      timestamp = Sys.time())
+    session$flushReact()
+    expect_equal(nrow(parcels()), 2L)
+  })
+})
