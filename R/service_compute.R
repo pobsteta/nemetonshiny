@@ -4490,16 +4490,9 @@ compute_single_indicator <- function(indicator, parcels, layers) {
 
       vals <- .capture_status_attr(vals, result)
 
-      # C2 n'a pas de colonne de statut au coeur : sa provenance se decide a
-      # l'acquisition, pas au calcul. On l'injecte dans le meme canal, pour que
-      # l'interface n'ait qu'un mecanisme a connaitre. Un NDVI issu d'une ortho
-      # d'affichage reste lisible, mais l'utilisateur doit savoir qu'il l'est.
       if (identical(indicator, "indicateur_c2_ndvi") &&
-          !is.null(layers$ndvi_provenance) &&
           is.null(attr(vals, "nemeton_status_name"))) {
-        attr(vals, "nemeton_status") <-
-          rep(as.character(layers$ndvi_provenance), length(vals))
-        attr(vals, "nemeton_status_name") <- "c2_status"
+        vals <- .c2_apply_provenance(vals, layers$ndvi_provenance)
       }
 
       return(vals)
@@ -4861,6 +4854,43 @@ get_computation_progress <- function(project_id) {
 # only the job died ". Le progres continue de passer par le disque
 # (`use_file_progress = TRUE`), canal qui traverse un process enfant sans
 # changement, et la valeur de retour est bien relayee (`readRDS`).
+
+#' Decide what C2 is worth, given where its NDVI came from
+#'
+#' @description
+#' **A display-image NDVI is not an NDVI.** The IGN WMS IRC orthophoto is an
+#' 8-bit image stretched for the eye and JPEG-compressed: those are not
+#' reflectances. Measured on Couchey, which has no Sentinel-2 cache: median
+#' NDVI **0.227**, where healthy forest sits between 0.6 and 0.8. On Fordead the
+#' same source came out **negative on all 30 UGF** (v0.126.1).
+#'
+#' The fallback therefore produced a value that was credible and wrong, and a
+#' console warning did not rescue it: a user reads an indicator, not a
+#' provenance. C2 is left **unavailable** instead, and the reason travels with
+#' the emptiness - `indicator_na_banner()` turns `c2_status` into a sentence via
+#' the `c2_wms_irc` key.
+#'
+#' C2 carries no status column in the core: its provenance is decided at
+#' acquisition, not at computation. It is injected into the same channel so the
+#' interface has one mechanism to know, not two.
+#'
+#' @param vals Numeric vector of C2 values.
+#' @param provenance Character, `"s2_l2a"` or `"wms_irc"`, or `NULL`.
+#' @return `vals`, emptied when the source cannot bear the indicator, carrying
+#'   `nemeton_status` / `nemeton_status_name`.
+#' @noRd
+.c2_apply_provenance <- function(vals, provenance) {
+  if (is.null(provenance)) return(vals)
+  prov <- as.character(provenance)[1L]
+  if (is.na(prov) || !nzchar(prov)) return(vals)
+
+  if (identical(prov, "wms_irc")) vals <- rep(NA_real_, length(vals))
+
+  attr(vals, "nemeton_status") <- rep(prov, length(vals))
+  attr(vals, "nemeton_status_name") <- "c2_status"
+  vals
+}
+
 
 #' Turn a computation failure into something the user can act on
 #'

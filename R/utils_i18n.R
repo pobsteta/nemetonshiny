@@ -893,6 +893,23 @@ TRANSLATIONS <- list(
     fr = "La source LST n'a pas pu \u00eatre interrog\u00e9e (%s).",
     en = "The LST source could not be queried (%s)."
   ),
+  # Cause nomm\u00e9e d'un C2 vide : la provenance du NDVI, decidee a
+  # l'acquisition. `wms_irc` = repli sur l'ortho d'affichage, donc pas de C2.
+  c2_wms_irc = list(
+    fr = paste0(
+      "Aucune s\u00e9rie Sentinel-2 en cache pour ce projet. Le seul NDVI ",
+      "disponible viendrait de l'orthophoto IRC du WMS IGN \u2014 une image ",
+      "8 bits \u00e9tir\u00e9e pour l'affichage, pas des r\u00e9flectances : ",
+      "elle donne un NDVI cr\u00e9dible et faux. C2 est donc laiss\u00e9 vide ",
+      "plut\u00f4t que calcul\u00e9 sur cette source."
+    ),
+    en = paste0(
+      "No Sentinel-2 series cached for this project. The only available NDVI ",
+      "would come from the IGN WMS IRC orthophoto \u2014 an 8-bit image ",
+      "stretched for display, not reflectance: it yields a credible, wrong ",
+      "NDVI. C2 is therefore left empty rather than computed on that source."
+    )
+  ),
   # Cause nomm\u00e9e d'un A5 vide, rendue par le c\u0153ur dans `a5_status`.
   a5_skipped_no_lst = list(
     fr = paste0(
