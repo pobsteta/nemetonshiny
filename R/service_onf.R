@@ -349,7 +349,17 @@ onf_purger_hors_foret <- function(projet, label_hors = .onf_label_hors_ugf(),
   # pas meme une parcelle sans un metre carre de foret. Au seuil exact la
   # parcelle part donc, ce qui est le sens qu'on attend de « moins de 10 % ».
   a_supprimer <- names(part)[!is.na(part) & part <= seuil_foret]
-  if (length(a_supprimer) == 0L) return(vide)
+  # Ne rien supprimer n'est PAS ne rien avoir a dire. Si l'UGF " hors foret
+  # publique " subsiste, c'est que des parcelles CONSERVEES gardent une part
+  # non forestiere - et ce chemin sortait muet, si bien que l'utilisateur
+  # lisait la ligne survivante comme une purge en panne. C'est le cas de
+  # Couchey : les 21 parcelles touchent TOUTES la foret publique (la plus
+  # faible a 5,05 %), donc le seuil 0 - " seulement ce que la foret ne touche
+  # pas du tout " - n'a legitimement rien a prendre.
+  if (length(a_supprimer) == 0L) {
+    vide$n_partielles <- length(unique(pid[est_hors]))
+    return(vide)
+  }
 
   projet$tenements <- ten[!as.character(ten$parent_parcelle_id) %in% a_supprimer,
                           , drop = FALSE]

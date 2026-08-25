@@ -2224,6 +2224,34 @@ mod_ug_server <- function(id, app_state) {
       TRUE
     }
 
+    # Rend compte de la purge - LES DEUX chemins qui croisent le parcellaire
+    # (bouton ONF et import CSV) passent par ici, sinon ils divergent : le
+    # bouton expliquait ce qui restait, le CSV se taisait.
+    #
+    # Deux messages, parce qu'ils repondent a deux questions. Le premier dit ce
+    # qui a ete RETIRE ; le second dit pourquoi une ligne " Hors foret
+    # publique " SUBSISTE malgre la demande. Les fondre laisserait
+    # l'utilisateur devant une purge apparemment en panne.
+    #
+    # Le seuil est passe au message : il est parametrable depuis
+    # Parametres > Sources & parametres et vaut 0 par defaut, alors que le
+    # texte annoncait " 10 % " en dur - la valeur d'un defaut qui a change.
+    .onf_notify_purge <- function(n_purgees, n_partielles, seuil_foret,
+                                  i18n_snap) {
+      pct <- format(round(100 * (seuil_foret %||% 0), 1), trim = TRUE)
+      shiny::showNotification(
+        if (n_purgees > 0L) {
+          sprintf(i18n_snap$t("onf_purge_hors_fmt"), n_purgees, pct)
+        } else sprintf(i18n_snap$t("onf_purge_hors_aucune_fmt"), pct),
+        type = if (n_purgees > 0L) "warning" else "message",
+        duration = 10, session = session)
+      if (n_partielles > 0L) {
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_purge_partielles_fmt"), n_partielles),
+          type = "message", duration = 12, session = session)
+      }
+    }
+
     # Surcouche " Parcellaire ONF " : montre CE QUI VA ETRE IMPORTE avant de
     # toucher au projet. Sans elle, l'utilisateur valide un remplacement de ses
     # parcelles sans avoir vu ce qui les remplace.
@@ -2373,21 +2401,8 @@ mod_ug_server <- function(id, app_state) {
               type = "message", duration = 10, session = session)
           }
           if (purger) {
-            shiny::showNotification(
-              if (n_purgees > 0L) {
-                sprintf(i18n_snap$t("onf_purge_hors_fmt"), n_purgees)
-              } else i18n_snap$t("onf_purge_hors_aucune"),
-              type = if (n_purgees > 0L) "warning" else "message",
-              duration = 10, session = session)
-            # Message SEPARE : il n'explique pas la suppression, il explique ce
-            # qui RESTE. Une ligne " Hors foret publique " qui subsiste apres
-            # une purge se lit comme un echec tant qu'on ignore qu'elle porte
-            # des fragments de parcelles mi-forestieres.
-            if (n_partielles > 0L) {
-              shiny::showNotification(
-                sprintf(i18n_snap$t("onf_purge_partielles_fmt"), n_partielles),
-                type = "message", duration = 12, session = session)
-            }
+            .onf_notify_purge(n_purgees, n_partielles, cfg$seuil_foret,
+                              i18n_snap)
           }
         }, error = function(e) {
           shiny::removeNotification(.onf_notif_id, session = session)
@@ -2544,12 +2559,14 @@ mod_ug_server <- function(id, app_state) {
                 # fournir ces parcelles dans son fichier.
                 projet_final <- out$projet
                 n_purgees <- 0L
+                n_partielles <- 0L
                 if (isTRUE(cfg_csv$purger)) {
                   purge <- onf_purger_hors_foret(
                     projet_final, .onf_label_hors_ugf(i18n_snap),
                     seuil_foret = cfg_csv$seuil_foret)
                   projet_final <- purge$projet
                   n_purgees <- purge$n_supprimees
+                  n_partielles <- purge$n_partielles %||% 0L
                 }
 
                 # `with_parcels` : la purge retire des PARCELLES du projet, pas
@@ -2560,10 +2577,14 @@ mod_ug_server <- function(id, app_state) {
                 .onf_commit(projet_final, with_parcels = n_purgees > 0L)
                 charge <- load_project(pid)
 
-                if (n_purgees > 0L) {
-                  shiny::showNotification(
-                    sprintf(i18n_snap$t("onf_purge_hors_fmt"), n_purgees),
-                    type = "warning", duration = 12, session = session)
+                # Le meme compte rendu qu'au bouton ONF. Ce chemin ne parlait
+                # QUE s'il avait supprime quelque chose : une purge qui ne
+                # trouve rien a prendre - toutes les parcelles touchant un peu
+                # de foret publique - laissait l'UGF " Hors foret publique " en
+                # place sans un mot d'explication.
+                if (isTRUE(cfg_csv$purger)) {
+                  .onf_notify_purge(n_purgees, n_partielles,
+                                    cfg_csv$seuil_foret, i18n_snap)
                 }
               } else {
                 .onf_notify_status(out$status %||% "no_overlap", i18n_snap)

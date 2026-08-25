@@ -1,3 +1,41 @@
+# nemetonshiny 0.139.0.9001 (2026-08-25)
+
+### Fixed — La purge du parcellaire disait ce qu'elle retirait, jamais ce qu'elle laissait
+
+Après un import CSV à Couchey, une UGF « Hors forêt publique » subsistait —
+72 tènements, 49,68 ha — et rien ne l'expliquait. La purge n'était pas en
+panne : le seuil vaut **0 %**, c'est-à-dire « ne retirer que ce que la forêt ne
+touche pas du tout », et les **21 parcelles du projet touchent toutes** de la
+forêt publique — la plus faible à 5,05 %. Il n'y avait rien à prendre.
+
+Ce qui manquait était le compte rendu. `onf_purger_hors_foret()` calcule
+`n_partielles` — les parcelles **conservées** qui gardent une part hors forêt, et
+qui sont la raison d'être de la ligne survivante — mais son retour anticipé
+« rien à supprimer » rendait `0`. Le silence tombait donc exactement au moment où
+l'explication était la plus utile : Couchey en compte **14**.
+
+Trois corrections :
+
+- `onf_purger_hors_foret()` compte les parcelles partielles même quand elle ne
+  supprime rien.
+- L'import CSV ne parlait **que** s'il avait supprimé quelque chose. Les deux
+  chemins qui croisent le parcellaire — bouton ONF et import CSV — passent
+  désormais par le même compte rendu ; ils disaient deux choses différentes d'une
+  purge identique.
+- Les messages annonçaient « sous 10 % » en dur, la valeur d'un défaut qui a
+  changé. Ils affichent le seuil réel, paramétrable dans
+  *Paramètres > Sources & paramètres*.
+
+Le comportement de la purge n'est pas touché : monter le seuil reste le levier,
+et à 10 % il retire 3 parcelles et 31,9 ha de « hors forêt ».
+
+**Ce que ce levier n'atteindra pas**, et qui part en brief cœur : 42 échardes
+(7 ha) et 31 fragments de moins de 100 m² appartiennent à des parcelles
+forestières à 93-99 %. Ils échappent à `min_surface_ha` parce que le reliquat
+arrive **fusionné en une ligne multipartie** — 10,89 ha pour une seule parcelle —
+et n'est éclaté en singleparts qu'ensuite, côté app. L'absorption passe avant
+l'éclatement, donc ne voit aucune écharde.
+
 # nemetonshiny 0.139.0 (2026-08-25)
 
 ### Changed — Chaque indicateur est enregistré deux fois : brut et normalisé

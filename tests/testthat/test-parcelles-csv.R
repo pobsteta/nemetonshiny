@@ -310,7 +310,37 @@ test_that("l'import CSV purge comme le bouton ONF, et persiste les parcelles", {
   # ET la persistance des parcelles, sans quoi la purge serait cosmetique.
   expect_true(any(grepl("with_parcels", bloc, fixed = TRUE)))
   # L'utilisateur vient de fournir ces parcelles : on lui dit ce qu'on retire.
-  expect_true(any(grepl("onf_purge_hors_fmt", bloc, fixed = TRUE)))
+  # Le compte rendu passe par le MEME helper que le bouton ONF - il disait deux
+  # choses differentes selon le chemin, alors que la purge y est identique.
+  expect_true(any(grepl(".onf_notify_purge(", bloc, fixed = TRUE)))
+  # Et il ne doit PAS etre conditionne a une suppression effective : une purge
+  # qui ne trouve rien a prendre laisse quand meme l'UGF « Hors foret
+  # publique » a l'ecran, et c'est justement ce silence qui la faisait passer
+  # pour cassee (Couchey : 21 parcelles, TOUTES touchant la foret publique,
+  # la plus faible a 5,05 % - donc rien a purger au seuil 0).
+  expect_false(any(grepl("if (n_purgees > 0L) {", bloc, fixed = TRUE)))
+  expect_true(any(grepl("n_partielles", bloc, fixed = TRUE)))
+})
+
+test_that("onf_purger_hors_foret compte les partielles meme sans suppression", {
+  # Le retour anticipe « rien a supprimer » rendait n_partielles = 0, donc les
+  # deux chemins se taisaient au moment ou l'explication etait la plus utile.
+  ten <- data.frame(
+    tenement_id = c("t1", "t2", "t3"),
+    parent_parcelle_id = c("p1", "p1", "p2"),
+    ug_id = c("u_for", "u_hors", "u_for"),
+    surface_m2 = c(8000, 2000, 5000),
+    stringsAsFactors = FALSE)
+  ugs <- data.frame(
+    ug_id = c("u_for", "u_hors"),
+    label = c("For\u00eat", "Hors for\u00eat publique"),
+    stringsAsFactors = FALSE)
+  projet <- list(parcels = NULL, tenements = ten, ugs = ugs)
+
+  # Seuil 0 : p1 est forestiere a 80 %, p2 a 100 % - aucune n'est a retirer.
+  r <- onf_purger_hors_foret(projet, "Hors for\u00eat publique", seuil_foret = 0)
+  expect_identical(r$n_supprimees, 0L)
+  expect_identical(r$n_partielles, 1L)   # p1 garde sa part hors foret
 })
 
 test_that("onf_purger_hors_foret reste appelee sur les DEUX chemins d'entree", {
