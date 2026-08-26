@@ -332,14 +332,44 @@ marculus_sync_json <- function(contexts) {
 #' track on screen needs to know whether it exists on the ground or is a
 #' proposal on paper. That distinction is the only one worth a column here.
 #'
+#' When that tab never ran, the Accessibility run's own `desserte` serves as a
+#' fallback - see `.marculus_desserte_accessibilite()`.
+#'
 #' @param project_id Character. Project identifier.
 #' @return An `sf` of lines, or `NULL` when no desserte run left anything.
 #' @noRd
 .marculus_desserte <- function(project_id) {
   path <- get_project_path(project_id)
   if (is.null(path)) return(NULL)
+
+  morceaux <- .marculus_desserte_onglet(path)
+  # Repli sur l'onglet Accessibilite. Un projet peut n'avoir jamais ouvert
+  # l'onglet Desserte et porter quand meme son reseau : `run_accessibility()`
+  # acquiert la BD TOPO par le meme `foretaccess::acquire_desserte()` et la
+  # range dans SON cache. C'est la meme desserte existante, a un repertoire
+  # pres - la refuser ne protegeait rien, elle partait juste vide sur le
+  # telephone. Repli et non union : quand les deux onglets ont tourne, la
+  # couche de l'onglet Desserte redit la meme BD TOPO, corrigee en plus.
+  if (length(morceaux) == 0L) morceaux <- .marculus_desserte_accessibilite(path)
+  if (length(morceaux) == 0L) return(NULL)
+
+  out <- do.call(rbind, morceaux)
+  # Marculus accepte LINESTRING et MULTILINESTRING ; une desserte cartographiee
+  # en surface serait contouree cote telephone. On ne lui envoie que des lignes.
+  geom_ok <- as.character(sf::st_geometry_type(out)) %in%
+    c("LINESTRING", "MULTILINESTRING")
+  out <- out[geom_ok, , drop = FALSE]
+  if (nrow(out) == 0L) NULL else out
+}
+
+#' The four layers the Desserte tab leaves in its own cache
+#'
+#' @param path Project root.
+#' @return A list of `sf`, possibly empty.
+#' @noRd
+.marculus_desserte_onglet <- function(path) {
   cache <- file.path(path, "cache", "desserte")
-  if (!dir.exists(cache)) return(NULL)
+  if (!dir.exists(cache)) return(list())
 
   sources <- list(
     list(gpkg = "desserte.gpkg",           layer = "desserte_existante", type = "existante"),
@@ -350,30 +380,48 @@ marculus_sync_json <- function(contexts) {
 
   morceaux <- list()
   for (s in sources) {
-    gp <- file.path(cache, s$gpkg)
-    if (!file.exists(gp)) next
-    lyr <- tryCatch(sf::st_layers(gp)$name, error = function(e) character(0))
-    if (!(s$layer %in% lyr)) next
-    d <- tryCatch(sf::st_read(gp, layer = s$layer, quiet = TRUE),
-                  error = function(e) NULL)
-    if (!inherits(d, "sf") || nrow(d) == 0L) next
-
-    nom <- if ("nom" %in% names(d)) as.character(d$nom) else NA_character_
-    morceaux[[length(morceaux) + 1L]] <- sf::st_sf(
-      nom      = nom,
-      type     = s$type,
-      geometry = sf::st_geometry(sf::st_transform(d, 4326))
-    )
+    d <- .marculus_read_desserte(file.path(cache, s$gpkg), s$layer, s$type)
+    if (!is.null(d)) morceaux[[length(morceaux) + 1L]] <- d
   }
-  if (length(morceaux) == 0L) return(NULL)
+  morceaux
+}
 
-  out <- do.call(rbind, morceaux)
-  # Marculus accepte LINESTRING et MULTILINESTRING ; une desserte cartographiee
-  # en surface serait contouree cote telephone. On ne lui envoie que des lignes.
-  geom_ok <- as.character(sf::st_geometry_type(out)) %in%
-    c("LINESTRING", "MULTILINESTRING")
-  out <- out[geom_ok, , drop = FALSE]
-  if (nrow(out) == 0L) NULL else out
+#' The desserte the Accessibility run left behind, used as a fallback
+#'
+#' Same BD TOPO network, same acquisition, another cache directory. Typed
+#' `existante` because that is what it is: acquired from the ground truth, not
+#' designed by the engine.
+#'
+#' @param path Project root.
+#' @return A list of at most one `sf`.
+#' @noRd
+.marculus_desserte_accessibilite <- function(path) {
+  gp <- .accessibility_gpkg_path(path)
+  d <- .marculus_read_desserte(gp, "desserte", "existante")
+  if (is.null(d)) list() else list(d)
+}
+
+#' Read one desserte layer and reduce it to what Marculus reads
+#'
+#' @param gp Path to a GeoPackage, possibly absent or `NULL`.
+#' @param layer Layer name.
+#' @param type Provenance written into the `type` column.
+#' @return An `sf` of `nom`/`type`/geometry in EPSG:4326, or `NULL`.
+#' @noRd
+.marculus_read_desserte <- function(gp, layer, type) {
+  if (is.null(gp) || !file.exists(gp)) return(NULL)
+  lyr <- tryCatch(sf::st_layers(gp)$name, error = function(e) character(0))
+  if (!(layer %in% lyr)) return(NULL)
+  d <- tryCatch(sf::st_read(gp, layer = layer, quiet = TRUE),
+                error = function(e) NULL)
+  if (!inherits(d, "sf") || nrow(d) == 0L) return(NULL)
+
+  geom <- tryCatch(sf::st_geometry(sf::st_transform(d, 4326)),
+                   error = function(e) NULL)
+  if (is.null(geom)) return(NULL)
+
+  nom <- if ("nom" %in% names(d)) as.character(d$nom) else NA_character_
+  sf::st_sf(nom = nom, type = type, geometry = geom)
 }
 
 

@@ -501,3 +501,132 @@ test_that("la segmentation retrouve son emprise et son budget de cellules", {
   # Et l'emprise est bien celle du projet, calculee avant l'appel.
   expect_true(any(grepl(".marculus_aoi(projet)", code, fixed = TRUE)))
 })
+
+
+# ---- Repli desserte sur le cache Accessibilite -------------------------
+
+# Un projet peut porter sa desserte SANS avoir jamais ouvert l'onglet Desserte :
+# l'onglet Accessibilite acquiert la meme BD TOPO et la range dans son propre
+# cache. La lire ailleurs faisait partir la table `desserte` vide sur le
+# telephone alors que le reseau existait sur le disque.
+
+# Ecrit un projet minimal et renvoie son identifiant.
+.projet_marculus_test <- function(racine) {
+  poly <- sf::st_polygon(list(rbind(
+    c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0))))
+  parcels <- sf::st_sf(
+    id = "p1", section = "A", numero = "1", commune = "1",
+    contenance = 1e4, geometry = sf::st_sfc(poly, crs = 4326))
+  nemetonshiny:::create_project(name = "Repli", parcels = parcels)$id
+}
+
+# Une desserte de deux troncons, ecrite dans le CRS reel du cache (Lambert-93)
+# pour que la reprojection soit exercee et pas seulement supposee.
+.ecrire_desserte_gpkg <- function(gpkg, layer, n = 2L) {
+  dir.create(dirname(gpkg), recursive = TRUE, showWarnings = FALSE)
+  lignes <- lapply(seq_len(n), function(i) {
+    sf::st_linestring(rbind(c(850000 + i * 10, 6900000),
+                            c(850000 + i * 10, 6900100)))
+  })
+  d <- sf::st_sf(classe = rep("route", n), largeur = rep(4, n),
+                 geometry = sf::st_sfc(lignes, crs = 2154))
+  sf::st_write(d, gpkg, layer = layer, quiet = TRUE, delete_dsn = TRUE)
+}
+
+test_that("sans onglet Desserte, la desserte de l'Accessibilite prend le relais", {
+  skip_if_not_installed("sf")
+
+  withr::with_tempdir({
+    racine <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = racine),
+      {
+        pid <- .projet_marculus_test(racine)
+        chemin <- nemetonshiny:::get_project_path(pid)
+
+        # Avant : rien nulle part. C'est l'etat qui produisait la couche vide.
+        expect_null(nemetonshiny:::.marculus_desserte(pid))
+
+        .ecrire_desserte_gpkg(
+          file.path(chemin, "cache", "accessibility", "accessibilite.gpkg"),
+          "desserte")
+
+        d <- nemetonshiny:::.marculus_desserte(pid)
+        expect_s3_class(d, "sf")
+        expect_equal(nrow(d), 2L)
+        # Acquise du terrain, pas dessinee par le moteur.
+        expect_equal(unique(d$type), "existante")
+        # Marculus lit du 4326 ; le cache Accessibilite est en 2154.
+        expect_equal(sf::st_crs(d)$epsg, 4326L)
+        # La couche n'a pas de colonne `nom` : la sienne doit rester une vraie
+        # colonne NA, pas faire echouer la lecture.
+        expect_true(all(is.na(d$nom)))
+      })
+  })
+})
+
+test_that("le repli ne s'applique pas quand l'onglet Desserte a tourne", {
+  skip_if_not_installed("sf")
+
+  withr::with_tempdir({
+    racine <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = racine),
+      {
+        pid <- .projet_marculus_test(racine)
+        chemin <- nemetonshiny:::get_project_path(pid)
+
+        .ecrire_desserte_gpkg(
+          file.path(chemin, "cache", "desserte", "desserte.gpkg"),
+          "desserte_existante", n = 3L)
+        .ecrire_desserte_gpkg(
+          file.path(chemin, "cache", "accessibility", "accessibilite.gpkg"),
+          "desserte", n = 2L)
+
+        d <- nemetonshiny:::.marculus_desserte(pid)
+        # 3 et non 5 : les deux caches redisent la meme BD TOPO, celui de
+        # l'onglet Desserte en plus corrige. Les cumuler doublerait le reseau.
+        expect_equal(nrow(d), 3L)
+      })
+  })
+})
+
+test_that("le repli fait exister la table desserte dans le GeoPackage exporte", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("jsonlite")
+
+  withr::with_tempdir({
+    racine <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = racine),
+      {
+        pid <- .projet_marculus_test(racine)
+        chemin <- nemetonshiny:::get_project_path(pid)
+
+        jsonlite::write_json(list(
+          version = 1L, project_id = pid, horizon_annees = 20L,
+          actions = list(
+            list(id = "a1", ug_id = "ug_1", type = "eclaircie",
+                 annee_cible = 2028L, priorite = "haute", statut = "validee")),
+          audit = list()),
+          file.path(chemin, "data", "action_plan.json"), auto_unbox = TRUE)
+
+        .ecrire_desserte_gpkg(
+          file.path(chemin, "cache", "accessibility", "accessibilite.gpkg"),
+          "desserte")
+
+        z <- file.path(racine, "repli.zip")
+        res <- nemetonshiny:::marculus_export_bundle(pid, z)
+        expect_true(res$has_desserte)
+
+        d <- file.path(racine, "ouvert")
+        dir.create(d)
+        utils::unzip(z, exdir = d)
+        gp <- list.files(d, pattern = "[.]gpkg$", full.names = TRUE)
+        expect_length(gp, 1L)
+        # LE symptome : la table etait absente, donc vide sur le telephone.
+        expect_true("desserte" %in% sf::st_layers(gp)$name)
+        expect_equal(nrow(sf::st_read(gp, layer = "desserte", quiet = TRUE)), 2L)
+      })
+  })
+})

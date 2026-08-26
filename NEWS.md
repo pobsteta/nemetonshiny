@@ -1,3 +1,24 @@
+# nemetonshiny 0.140.1.9003 (2026-08-26)
+
+### Fixed — L'export Marculus partait sans desserte quand seule l'Accessibilité avait tourné
+
+`.marculus_desserte()` ne lisait que le cache de l'onglet Desserte
+(`cache/desserte/*.gpkg`). Un projet dont le réseau vient de l'onglet
+Accessibilité — même acquisition `foretaccess::acquire_desserte()`, rangée dans
+`cache/accessibility/accessibilite.gpkg` — n'a jamais ce répertoire : la
+fonction rendait `NULL`, `marculus_write_action_gpkg()` n'écrivait alors aucune
+table `desserte`, et l'opérateur ouvrait sur son téléphone une couche vide
+alors que le réseau était sur le disque. Constaté sur le projet Fordead, dont
+la couche `desserte` de l'Accessibilité porte 1 748 tronçons.
+
+L'Accessibilité sert désormais de **repli** — lue seulement quand les quatre
+couches de l'onglet Desserte ne donnent rien. Repli et non union : quand les
+deux onglets ont tourné, ils redisent la même BD TOPO, celle de l'onglet
+Desserte en plus corrigée ; les cumuler doublerait le réseau sur le téléphone.
+La lecture d'une couche est sortie en `.marculus_read_desserte()`, partagée par
+les deux sources, ce qui donne au repli la reprojection en 4326 et la colonne
+`nom` absente traitées comme ailleurs.
+
 # nemetonshiny 0.140.1.9002 (2026-08-26)
 
 ### Changed — Le rattachement du reliquat retourne au cœur
