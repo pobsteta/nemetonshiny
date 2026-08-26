@@ -1,4 +1,4 @@
-# nemetonshiny 0.139.0.9002 (2026-08-26)
+# nemetonshiny 0.140.0 (2026-08-26)
 
 ### Changed — Une UGF est faite de parcelles cadastrales, et de rien d'autre
 
@@ -104,43 +104,20 @@ et échoue quand même. Ni la mémoire ni le CRS n'en rendent compte. Deux brief
 déposés côté cœur ; le contournement partira quand le cœur matérialisera le
 raster, et l'app retrouvera l'emprise et les 0,50 m.
 
-# nemetonshiny 0.139.0.9001 (2026-08-25)
+### Fixed — Les messages de purge annonçaient un seuil qui n'était plus le sien
 
-### Fixed — La purge du parcellaire disait ce qu'elle retirait, jamais ce qu'elle laissait
+Le constat qui a ouvert tout ce lot : après un import CSV à Couchey, une UGF
+« Hors forêt publique » subsistait — 72 tènements, 49,68 ha — sans explication.
+La purge n'était pas en panne. Le seuil vaut **0 %**, c'est-à-dire « ne retirer
+que ce que la forêt ne touche pas du tout », et les **21 parcelles du projet
+touchent toutes** de la forêt publique, la plus faible à 5,05 %. Il n'y avait
+rien à prendre.
 
-Après un import CSV à Couchey, une UGF « Hors forêt publique » subsistait —
-72 tènements, 49,68 ha — et rien ne l'expliquait. La purge n'était pas en
-panne : le seuil vaut **0 %**, c'est-à-dire « ne retirer que ce que la forêt ne
-touche pas du tout », et les **21 parcelles du projet touchent toutes** de la
-forêt publique — la plus faible à 5,05 %. Il n'y avait rien à prendre.
-
-Ce qui manquait était le compte rendu. `onf_purger_hors_foret()` calcule
-`n_partielles` — les parcelles **conservées** qui gardent une part hors forêt, et
-qui sont la raison d'être de la ligne survivante — mais son retour anticipé
-« rien à supprimer » rendait `0`. Le silence tombait donc exactement au moment où
-l'explication était la plus utile : Couchey en compte **14**.
-
-Trois corrections :
-
-- `onf_purger_hors_foret()` compte les parcelles partielles même quand elle ne
-  supprime rien.
-- L'import CSV ne parlait **que** s'il avait supprimé quelque chose. Les deux
-  chemins qui croisent le parcellaire — bouton ONF et import CSV — passent
-  désormais par le même compte rendu ; ils disaient deux choses différentes d'une
-  purge identique.
-- Les messages annonçaient « sous 10 % » en dur, la valeur d'un défaut qui a
-  changé. Ils affichent le seuil réel, paramétrable dans
-  *Paramètres > Sources & paramètres*.
-
-Le comportement de la purge n'est pas touché : monter le seuil reste le levier,
-et à 10 % il retire 3 parcelles et 31,9 ha de « hors forêt ».
-
-**Ce que ce levier n'atteindra pas**, et qui part en brief cœur : 42 échardes
-(7 ha) et 31 fragments de moins de 100 m² appartiennent à des parcelles
-forestières à 93-99 %. Ils échappent à `min_surface_ha` parce que le reliquat
-arrive **fusionné en une ligne multipartie** — 10,89 ha pour une seule parcelle —
-et n'est éclaté en singleparts qu'ensuite, côté app. L'absorption passe avant
-l'éclatement, donc ne voit aucune écharde.
+La bonne réponse n'était donc pas de purger davantage mais de **rattacher** —
+c'est l'objet de ce lot. Reste de ce diagnostic : les messages annonçaient
+« sous 10 % » **en dur**, la valeur d'un défaut qui a changé depuis. Ils
+affichent le seuil réel, et les deux chemins qui croisent le parcellaire rendent
+compte de la même façon.
 
 # nemetonshiny 0.139.0 (2026-08-25)
 
