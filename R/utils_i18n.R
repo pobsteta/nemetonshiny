@@ -2760,6 +2760,13 @@ TRANSLATIONS <- list(
       "own. Recovering removed parcels means going back to the Selection tab."
     )
   ),
+  # Une parcelle cadastrale que le parcellaire ONF ne numerote pas garde son
+  # UGF : elle est dans le CSV, donc dans la foret. Elle est nommee par la
+  # seule reference qu'elle possede - la sienne.
+  onf_ugf_cadastrale_fmt = list(
+    fr = "Parcelle cadastrale %s",
+    en = "Cadastral parcel %s"
+  ),
   onf_purge_hors_fmt = list(
     fr = "%d parcelle(s) \u00e0 %s %% ou moins de for\u00eat publique retir\u00e9e(s) du projet.",
     en = "%d parcel(s) at %s %% or less public forest removed from the project."

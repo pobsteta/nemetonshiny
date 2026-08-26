@@ -597,3 +597,21 @@ test_that("init_compute_state supports resume with previously computed indicator
     }
   )
 })
+
+test_that("le bloc « Calculs termines » est repliable comme les autres", {
+  # Demande de Pascal (2026-08-26) : c'etait le seul bloc du sidebar de
+  # Selection qu'on ne pouvait pas replier - et c'est celui qui porte le tableau
+  # des indicateurs, donc le plus haut, celui qui repousse tout le reste.
+  ui <- mod_progress_ui("p")
+  html <- as.character(ui)
+
+  expect_true(grepl('id="p-complete_collapse"', html, fixed = TRUE))
+  expect_true(grepl('data-bs-target="#p-complete_collapse"', html, fixed = TRUE))
+  # Ouvert par defaut : replier est un geste de l'utilisateur, pas un etat initial.
+  expect_true(grepl('class="collapse show"', html, fixed = TRUE))
+  # Le meme chevron que les autres blocs, sinon l'affordance ne se lit pas.
+  expect_true(grepl("collapse-icon", html, fixed = TRUE))
+  # Le contenu n'a pas ete perdu au passage.
+  expect_true(grepl('id="p-indicators_table_container"', html, fixed = TRUE))
+  expect_true(grepl('id="p-completion_message_text"', html, fixed = TRUE))
+})

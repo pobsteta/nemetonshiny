@@ -1,3 +1,109 @@
+# nemetonshiny 0.139.0.9002 (2026-08-26)
+
+### Changed — Une UGF est faite de parcelles cadastrales, et de rien d'autre
+
+Règle posée par Pascal : le parcellaire ONF n'est pas un filtre, c'est une
+**source d'étiquettes**. On le croise pour récupérer le numéro de parcelle
+forestière, puis on le jette. Ce qui fait foi, c'est le cadastre — les UGF sont
+des regroupements, des découpes ou des parcelles cadastrales entières, et **rien
+d'une parcelle cadastrale n'est jamais écarté**.
+
+L'UGF « Hors forêt publique » disparaît. Ses 49,68 ha à Couchey n'étaient pas
+hors forêt : c'étaient des layons, des routes, les interstices entre parcelles
+forestières adjacentes et le jeu de numérisation le long des limites — de la
+forêt que le parcellaire ONF n'avait simplement pas numérotée.
+
+**Chaque bout rejoint la parcelle forestière avec laquelle il partage la plus
+longue frontière.** Longueur, jamais surface ni distance : un layon qui longe la
+parcelle 3 sur 400 m et effleure la 4 par un coin appartient à la 3. Un contact
+ponctuel n'est pas un voisinage.
+
+L'alternative « tout à l'UGF dominante » a été écartée sur mesure, pas par
+principe. Sur `212000000A0036` — **une** parcelle cadastrale qui porte **28**
+parcelles forestières — la dominante absorberait 10,89 ha de bandes situées à
+l'autre bout de la parcelle, grossissant de 77 % sur des terrains qu'elle ne
+touche pas. La règle du voisinage répartit ces mêmes bandes entre 6 UGF.
+
+Le reliquat est d'abord **éclaté en parties simples** : le cœur le rend fusionné
+en une ligne par parcelle, et à cette granularité « le voisin » n'a pas de sens.
+
+Sur Couchey (21 parcelles, parcellaire ONF réel) :
+
+| | Avant | Après |
+|---|---|---|
+| UGF | 75 | **74** |
+| dont « Hors forêt publique » | 1 (72 tènements, 49,68 ha) | **0** |
+| Tènements | 223 | **165** |
+| Surface totale | 535,13 ha | **535,13 ha** |
+| Écart de surface **par parcelle** | — | **0 m²** |
+
+Une parcelle du CSV qu'aucune parcelle forestière ne touche garde **sa propre
+UGF**, nommée par sa référence cadastrale — jamais versée dans un fourre-tout,
+qui ferait une unité de gestion qui n'en est pas une.
+
+### Changed — L'import CSV ne purge plus rien
+
+Un CSV liste la forêt : ses parcelles **sont** la forêt, toutes. En supprimer
+contredirait le fichier que l'utilisateur vient de fournir. Le réglage
+« Supprimer les parcelles » reste offert au bouton ONF, où la sélection est faite
+à la main sur la carte et peut déborder.
+
+Ce qui réglait le défaut d'origine — une UGF « Hors forêt publique » survivant à
+l'import — n'est plus la purge mais le rattachement. Rien n'étant mis de côté, il
+ne reste rien à purger.
+
+La purge lit désormais la part forestière **relevée pendant le croisement**
+(`.onf_part_foret()`) et non plus l'UGF résiduelle, qui n'existe plus.
+
+### Added — Le bloc « Calculs terminés » se replie comme les autres
+
+Demande de Pascal. C'était le seul bloc du sidebar de Sélection qu'on ne pouvait
+pas replier — et c'est celui qui porte le tableau des indicateurs, donc le plus
+haut, celui qui repousse tout ce qui se trouve dessous. Même en-tête cliquable,
+même chevron, ouvert par défaut : replier reste un geste, pas un état initial.
+
+### Fixed — Les houppiers ne se calculaient sur aucun projet
+
+Deux défauts indépendants, tous deux constatés sur le projet « Fordead » dont le
+calcul d'indicateurs venait d'aboutir sans produire la moindre couche houppier.
+
+**Le mauvais modèle de hauteur était choisi.** La résolution ne regardait que
+`cache/layers/opencanopy/` et prenait le premier fichier existant. Or les quatre
+rasters Open-Canopy de ce projet sont **plats** — toutes leurs valeurs entre 0 et
+0,20 m — pendant que le MNH LiDAR HD du même cache affiche une médiane de
+20,7 m. La segmentation tournait 142 s pour rendre 0 houppier, en silence, à la
+fin de chaque calcul. La résolution passe par **`nemeton::resolve_project_chm()`**,
+le résolveur canonique — celui du plan d'échantillonnage — qui préfère LiDAR HD à
+Open-Canopy. Plus un garde : un modèle de hauteur sans hauteur n'en est pas un.
+
+**lidR refuse un raster qui vit sur disque.** Segmenter une dalle isolée le dit
+mot pour mot : *« Cannot segment the trees from a raster stored on disk »*, et
+une reproduction minimale le confirme — le même CHM synthétique segmente en
+mémoire et échoue dès qu'on le relit depuis un GeoTIFF. C'est aussi pourquoi
+forcer l'agrégation marche : `terra::aggregate()` rend son résultat en mémoire.
+
+Le `st_crs(x) == st_crs(y) is not TRUE` que deux rapports ont pris pour la cause
+en est un symptôme : lidR convertit un raster sur disque en `RasterLayer`, et
+`sf::st_crs()` d'un `RasterLayer` rend un proj4string là où un `SpatRaster` rend
+un WKT propre. Les deux ne comparent plus égal, et le `st_crop()` interne de
+lidR s'arrête là.
+
+Contournement : passer le raster du résolveur **sans emprise**, avec
+`max_cells = 5e6` au lieu du défaut 2e7. Mesuré sur Fordead (80 M cellules,
+637 ha), c'est le seul des quatre chemins essayés qui aboutit — **224 614
+houppiers en 870 s**, `h_max` médian 25,5 m, mis en cache pour l'export
+Marculus. Le prix est double et assumé : la résolution (0,50 m travaillé à
+2 m, ce qui suffit pour pré-remplir la hauteur d'une tige, où l'on veut l'apex
+au-dessus de la tige et non la forme du houppier) et l'emprise (on segmente la
+dalle entière, chaque contexte étant de toute façon découpé sur ses parcelles à
+l'export).
+
+**Un cas reste inexpliqué et le brief le dit** : un raster croppé puis agrégé à
+la main revient `inMemory = TRUE`, avec des CRS identiques entre apex et modèle,
+et échoue quand même. Ni la mémoire ni le CRS n'en rendent compte. Deux briefs
+déposés côté cœur ; le contournement partira quand le cœur matérialisera le
+raster, et l'app retrouvera l'emprise et les 0,50 m.
+
 # nemetonshiny 0.139.0.9001 (2026-08-25)
 
 ### Fixed — La purge du parcellaire disait ce qu'elle retirait, jamais ce qu'elle laissait

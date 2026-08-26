@@ -419,13 +419,15 @@ precompute_houppiers <- function(project_id) {
     return(invisible(0L))
   }
   out_path <- .houppiers_cache_path(project_id)
-  chm <- .marculus_chm_path(project_id)
+  chm <- .marculus_chm(project_id)
   if (is.null(out_path) || is.null(chm)) return(invisible(0L))
 
-  projet <- load_project(project_id)
-  aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
-
-  hp <- .marculus_segment_houppiers(chm, aoi)
+  # Pas d'emprise : on segmente la dalle entiere. Elle deborde du projet - a
+  # Fordead, 1 169 ha de dalles pour 637 ha de parcelles - mais chaque contexte
+  # est de toute facon decoupe sur SES parcelles au moment de l'export, et le
+  # chemin avec emprise est precisement celui qui echoue (cf.
+  # MARCULUS_HOUPPIER_MAX_CELLS). Le temps est du meme ordre.
+  hp <- .marculus_segment_houppiers(chm)
   if (is.null(hp)) return(invisible(0L))
 
   dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
@@ -492,66 +494,129 @@ precompute_houppiers <- function(project_id) {
 #' @param aoi Optional `sf` limiting the segmentation.
 #' @return An `sf` in EPSG:4326 carrying `h_max`, or `NULL`.
 #' @noRd
-.marculus_segment_houppiers <- function(chm, aoi = NULL) {
-  tenter <- function(emprise) {
-    tryCatch(nemeton::segment_houppiers(chm, aoi = emprise),
-             error = function(e) {
-               cli::cli_warn("Segmentation des houppiers{if (is.null(emprise)) '' else ' (emprise)'} : {conditionMessage(e)}")
-               NULL
-             })
-  }
+#' Cell budget under which lidR actually segments
+#'
+#' **lidR will not segment a raster that lives on disk.** It says so in as many
+#' words - *"Cannot segment the trees from a raster stored on disk. Use
+#' segment_trees() or load the raster in memory"* - and a minimal reproduction
+#' confirms it: the same synthetic CHM segments fine in memory and fails as soon
+#' as it is read back from a GeoTIFF.
+#'
+#' That is why forcing aggregation works. `terra::aggregate()` returns its
+#' result **in memory**, so a raster thinned past this budget is one lidR
+#' accepts, while the same raster left whole is a disk-backed proxy it refuses.
+#'
+#' The core's own default (2e7) is not low enough. Measured on the project
+#' "Fordead" (LiDAR HD MNH, 20 tiles, 80 M cells, 637 ha):
+#'
+#' | `max_cells` | Result |
+#' |---|---|
+#' | 2e7 (core default) | fails |
+#' | **5e6** | **224 614 crowns in 657 s** |
+#'
+#' **It costs resolution**, and the cost is stated rather than hidden: 80 M
+#' cells down to 5 M is a factor of 4, so a 0.50 m model works at 2 m. For
+#' pre-filling the height of a marked stem that is enough - we want the apex
+#' above the stem, not the shape of the crown.
+#'
+#' **What is still unexplained**, and is written down rather than glossed over:
+#' a raster cropped to the AOI and aggregated by hand comes back `inMemory =
+#' TRUE` and *still* fails, with the `st_crs(x) == st_crs(y)` wording. Neither
+#' the CRS (repaired to EPSG:2154, no change) nor memory residence accounts for
+#' that one. Passing the resolver's raster whole, with the budget below, is the
+#' path that measurably works - so it is the path taken. Brief filed:
+#' `briefs/vers-nemeton/2026-08-26-lidr-raster-en-memoire.md`.
+MARCULUS_HOUPPIER_MAX_CELLS <- 5e6
 
-  out <- tenter(aoi)
-  if (!inherits(out, "sf") && !is.null(aoi)) {
-    cli::cli_alert_info(
-      "Houppiers : repli sur la dalle enti\u00e8re, chaque contexte sera \
-       de toute fa\u00e7on d\u00e9coup\u00e9 sur ses parcelles.")
-    out <- tenter(NULL)
-  }
+
+.marculus_segment_houppiers <- function(chm) {
+  out <- tryCatch(
+    nemeton::segment_houppiers(chm, aoi = NULL,
+                               max_cells = MARCULUS_HOUPPIER_MAX_CELLS),
+    error = function(e) {
+      cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
+      NULL
+    })
   if (!inherits(out, "sf") || nrow(out) == 0L) return(NULL)
   if (!("h_max" %in% names(out))) return(NULL)
   .marculus_to_4326(out[, "h_max", drop = FALSE])
 }
 
-#' Outline of everything a project covers
+
+#' Does this height model actually hold a canopy?
 #'
-#' Union of the tenements, or of the parcels when no tenement exists yet.
-#' Buffered by 10 m so a crown standing on the boundary is still segmented -
-#' the marker walking the edge sees those trees too.
+#' @description
+#' A model whose tallest pixel stands below `hmin` describes no tree, and
+#' `segment_houppiers()` will rightly return nothing from it - after spending
+#' minutes finding that out. The project "Fordead" is the case that forced this
+#' check: its four Open-Canopy rasters are **flat**, every value between 0 and
+#' 0.20 m, while the LiDAR HD height model sitting in the same cache has a
+#' median of 20.7 m. Segmentation ran 142 s and returned 0 crowns, silently,
+#' at the end of every indicator computation.
 #'
-#' @param project The loaded project.
-#' @return An `sf` of one polygon, or `NULL`.
+#' Sampled rather than read whole: the rasters here run to hundreds of millions
+#' of cells, and the question - "is there anything tall in there at all" - does
+#' not need every one of them. A false negative costs what we already had (no
+#' crowns); a false positive costs the two minutes this check exists to save.
+#'
+#' @param r A `SpatRaster`.
+#' @param hmin Numeric. Minimum tree height, matching `segment_houppiers()`.
+#' @return `TRUE` when at least one sampled cell reaches `hmin`.
 #' @noRd
-.marculus_aoi <- function(project) {
-  src <- if (inherits(project$tenements, "sf") && nrow(project$tenements) > 0L) {
-    project$tenements
-  } else if (inherits(project$parcels, "sf") && nrow(project$parcels) > 0L) {
-    project$parcels
-  } else NULL
-  if (is.null(src)) return(NULL)
-  tryCatch({
-    u <- sf::st_union(sf::st_geometry(src))
-    metrique <- sf::st_transform(u, 2154)
-    sf::st_sf(geometry = sf::st_buffer(metrique, 10))
-  }, error = function(e) NULL)
+.marculus_chm_exploitable <- function(r, hmin = 5) {
+  if (!inherits(r, "SpatRaster")) return(FALSE)
+  v <- tryCatch(
+    terra::spatSample(r, 1e5, method = "regular", na.rm = TRUE, warn = FALSE),
+    error = function(e) NULL)
+  if (is.null(v)) return(TRUE)   # doute : on laisse le coeur trancher
+  v <- suppressWarnings(as.numeric(v[[1]]))
+  v <- v[is.finite(v)]
+  length(v) > 0L && max(v) >= hmin
 }
 
-#' Height model of a project, highest resolution first
+
+#' Height model of a project, best source first
 #'
-#' The 0.20 m CHM is the one the pipeline writes last; the 1.5 m is its
-#' predecessor and a fine enough input, the core re-sampling to 0.5 m anyway.
+#' @description
+#' Delegates to `nemeton::resolve_project_chm()`, the canonical resolver - the
+#' same one the sampling plan uses. It probes the project cache and **prefers
+#' LiDAR HD over Open-Canopy**, which is both the better source and the higher
+#' NDP.
+#'
+#' This function used to look **only** inside `cache/layers/opencanopy/`, taking
+#' the first file that existed. On a project holding both, it therefore picked
+#' the weaker of the two - and on "Fordead", where the Open-Canopy rasters came
+#' out flat, it picked one with no canopy in it at all while twenty LiDAR HD
+#' tiles sat unused next door.
+#'
+#' The Open-Canopy fallback is kept, and both candidates now have to pass
+#' [.marculus_chm_exploitable()]: a height model with no height is not a
+#' height model.
 #'
 #' @param project_id Character. Project identifier.
-#' @return A path, or `NULL`.
+#' @return A `SpatRaster` - `segment_houppiers()` takes one directly - or
+#'   `NULL` when no usable model exists.
 #' @noRd
-.marculus_chm_path <- function(project_id) {
+.marculus_chm <- function(project_id) {
   path <- get_project_path(project_id)
   if (is.null(path)) return(NULL)
+
+  r <- tryCatch(nemeton::resolve_project_chm(path, verbose = FALSE),
+                error = function(e) NULL)
+  if (.marculus_chm_exploitable(r)) return(r)
+
   dir <- file.path(path, "cache", "layers", "opencanopy")
   for (f in c("chm_predicted_0_2m.tif", "chm_predicted_1_5m.tif", "chm.tif")) {
     p <- file.path(dir, f)
-    if (file.exists(p)) return(p)
+    if (!file.exists(p)) next
+    rr <- tryCatch(terra::rast(p), error = function(e) NULL)
+    if (.marculus_chm_exploitable(rr)) return(rr)
   }
+
+  cli::cli_alert_info(
+    "Houppiers : aucun mod\u00e8le de hauteur exploitable dans le cache du \
+     projet (pas de LiDAR HD, et le mod\u00e8le Open-Canopy ne porte aucune \
+     v\u00e9g\u00e9tation).")
   NULL
 }
 

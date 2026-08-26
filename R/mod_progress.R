@@ -145,29 +145,49 @@ mod_progress_ui <- function(id) {
     htmltools::div(
       id = ns("complete_card_wrapper"),
       style = "display: none;",
+      # Repliable, comme tous les autres blocs du sidebar (Projets recents,
+      # Recherche, Actions UGF...). Il porte le tableau des indicateurs, donc
+      # c'est le plus haut de la colonne - et c'était le seul qu'on ne pouvait
+      # pas replier pour atteindre ce qui se trouve dessous.
       bslib::card(
         id = ns("complete_card"),
         class = "border-success",
         bslib::card_header(
-          class = "bg-success text-white d-flex align-items-center",
-          bsicons::bs_icon("check-circle", class = "me-2"),
-          i18n$t("computation_complete")
-        ),
-        bslib::card_body(
+          class = "bg-success text-white",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("complete_collapse")),
+          `aria-expanded` = "true",
+          `aria-controls` = ns("complete_collapse"),
           htmltools::div(
-            class = "text-center py-2",
-            htmltools::p(
-              class = "mb-2",
-              htmltools::span(id = ns("completion_message_text"))
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("check-circle", class = "me-2"),
+              i18n$t("computation_complete")
             ),
-            htmltools::p(
-              class = "mb-2 text-muted small",
-              htmltools::span(id = ns("completion_duration_text"))
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::div(
+          id = ns("complete_collapse"),
+          class = "collapse show",
+          bslib::card_body(
+            htmltools::div(
+              class = "text-center py-2",
+              htmltools::p(
+                class = "mb-2",
+                htmltools::span(id = ns("completion_message_text"))
+              ),
+              htmltools::p(
+                class = "mb-2 text-muted small",
+                htmltools::span(id = ns("completion_duration_text"))
+              )
+            ),
+            htmltools::div(
+              id = ns("indicators_table_container"),
+              style = "max-height: 300px; overflow-y: auto;"
             )
-          ),
-          htmltools::div(
-            id = ns("indicators_table_container"),
-            style = "max-height: 300px; overflow-y: auto;"
           )
         )
       )

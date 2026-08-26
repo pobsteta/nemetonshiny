@@ -316,7 +316,7 @@ test_that("un coeur sans segment_houppiers degrade en silence", {
   # tourner sur les deux, et un GeoPackage sans houppiers reste valide - le
   # telephone se contente de ne pas pre-remplir les hauteurs.
   testthat::local_mocked_bindings(
-    .marculus_chm_path = function(...) "inexistant.tif")
+    .marculus_chm = function(...) NULL)
   expect_null(nemetonshiny:::.marculus_houppiers("projet-sans-chm"))
 })
 
@@ -443,7 +443,7 @@ test_that("un echec de segmentation ne fait pas echouer le precalcul", {
   # en vrai le 2026-08-23 : le coeur de developpement rendait
   # `st_crs(x) == st_crs(y) is not TRUE`.
   testthat::local_mocked_bindings(
-    .marculus_chm_path = function(...) "chm.tif",
+    .marculus_chm = function(...) "chm.tif",
     .marculus_segment_houppiers = function(...) NULL)
   withr::with_tempdir({
     with_mocked_bindings(
@@ -453,4 +453,28 @@ test_that("un echec de segmentation ne fait pas echouer le precalcul", {
         expect_identical(nemetonshiny:::precompute_houppiers("p1"), 0L)
       })
   })
+})
+
+test_that("un modele de hauteur sans vegetation n'est pas retenu", {
+  skip_if_not_installed("terra")
+  # Le projet " Fordead " : ses quatre rasters Open-Canopy sont PLATS - toutes
+  # les valeurs entre 0 et 0,20 m - alors que le MNH LiDAR HD du meme cache a
+  # une mediane de 20,7 m. La segmentation tournait 142 s pour rendre 0
+  # houppier, en silence, a la fin de CHAQUE calcul d'indicateurs.
+  plat <- terra::rast(nrows = 60, ncols = 60, xmin = 0, xmax = 60,
+                      ymin = 0, ymax = 60, crs = "EPSG:2154")
+  terra::values(plat) <- runif(terra::ncell(plat), 0, 0.2)
+  expect_false(nemetonshiny:::.marculus_chm_exploitable(plat))
+
+  boise <- plat
+  terra::values(boise) <- runif(terra::ncell(boise), 0, 25)
+  expect_true(nemetonshiny:::.marculus_chm_exploitable(boise))
+
+  # Un raster entierement NA n'est pas un modele de hauteur non plus.
+  vide <- plat
+  terra::values(vide) <- NA_real_
+  expect_false(nemetonshiny:::.marculus_chm_exploitable(vide))
+
+  # Ce qui n'est pas un raster ne l'est pas davantage.
+  expect_false(nemetonshiny:::.marculus_chm_exploitable(NULL))
 })

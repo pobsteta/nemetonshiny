@@ -2236,8 +2236,7 @@ mod_ug_server <- function(id, app_state) {
     # Le seuil est passe au message : il est parametrable depuis
     # Parametres > Sources & parametres et vaut 0 par defaut, alors que le
     # texte annoncait " 10 % " en dur - la valeur d'un defaut qui a change.
-    .onf_notify_purge <- function(n_purgees, n_partielles, seuil_foret,
-                                  i18n_snap) {
+    .onf_notify_purge <- function(n_purgees, seuil_foret, i18n_snap) {
       pct <- format(round(100 * (seuil_foret %||% 0), 1), trim = TRUE)
       shiny::showNotification(
         if (n_purgees > 0L) {
@@ -2245,11 +2244,6 @@ mod_ug_server <- function(id, app_state) {
         } else sprintf(i18n_snap$t("onf_purge_hors_aucune_fmt"), pct),
         type = if (n_purgees > 0L) "warning" else "message",
         duration = 10, session = session)
-      if (n_partielles > 0L) {
-        shiny::showNotification(
-          sprintf(i18n_snap$t("onf_purge_partielles_fmt"), n_partielles),
-          type = "message", duration = 12, session = session)
-      }
     }
 
     # Surcouche " Parcellaire ONF " : montre CE QUI VA ETRE IMPORTE avant de
@@ -2333,28 +2327,25 @@ mod_ug_server <- function(id, app_state) {
           rv$onf_preview <- res$parcelles
 
           # Calage systematique (cf. UI ci-dessus) : plus de choix a lire.
-          out <- onf_projet_croise(
-            projet, res$parcelles,
-            label_hors = .onf_label_hors_ugf(i18n_snap)
-          )
+          out <- onf_projet_croise(projet, res$parcelles, i18n = i18n_snap)
           if (!identical(out$status, "ok")) {
             shiny::removeNotification(.onf_notif_id, session = session)
             .onf_notify_status(out$status, i18n_snap)
             return()
           }
 
-          # Purge optionnelle, APRES le croisement : elle a besoin des UGF pour
-          # savoir quelles parcelles sont entierement hors foret.
+          # Purge optionnelle, APRES le croisement. Elle lit la part forestiere
+          # RELEVEE PAR le croisement (`out$part_foret`) et non plus l'UGF
+          # « Hors foret publique » : celle-ci n'existe plus, chaque bout ayant
+          # rejoint son voisin. Ce chemin-ci est le SEUL qui la propose - une
+          # selection faite a la main peut deborder, un CSV ne le peut pas.
           projet_final <- out$projet
           n_purgees <- 0L
-          n_partielles <- 0L
           if (purger) {
-            purge <- onf_purger_hors_foret(projet_final,
-                                           .onf_label_hors_ugf(i18n_snap),
+            purge <- onf_purger_hors_foret(projet_final, out$part_foret,
                                            seuil_foret = cfg$seuil_foret)
             projet_final <- purge$projet
             n_purgees <- purge$n_supprimees
-            n_partielles <- purge$n_partielles %||% 0L
           }
 
           # `with_parcels` : la purge retire des parcelles du projet, il faut
@@ -2401,8 +2392,7 @@ mod_ug_server <- function(id, app_state) {
               type = "message", duration = 10, session = session)
           }
           if (purger) {
-            .onf_notify_purge(n_purgees, n_partielles, cfg$seuil_foret,
-                              i18n_snap)
+            .onf_notify_purge(n_purgees, cfg$seuil_foret, i18n_snap)
           }
         }, error = function(e) {
           shiny::removeNotification(.onf_notif_id, session = session)
@@ -2539,53 +2529,27 @@ mod_ug_server <- function(id, app_state) {
                                       clip_cadastre = cfg_csv$clip_cadastre)
             if (identical(onf$status, "ok")) {
               out <- tryCatch(
-                onf_projet_croise(charge, onf$parcelles,
-                                  label_hors = .onf_label_hors_ugf(i18n_snap)),
+                onf_projet_croise(charge, onf$parcelles, i18n = i18n_snap),
                 error = function(e) {
                   cli::cli_warn("Croisement ONF apres import CSV : {conditionMessage(e)}")
                   NULL
                 })
               if (!is.null(out) && identical(out$status, "ok")) {
-                # LA PURGE SUIT LE CROISEMENT, ici comme au bouton ONF. Sans
-                # elle, l'UGF « Hors foret publique » - le RESTE, produit a
-                # dessein pour que la parcelle cadastrale reste entierement
-                # pavee - survivait a l'import : 74 tenements et 50,15 ha sur
-                # les 535,59 ha de Couchey, groupe d'amenagement vide.
+                # AUCUNE PURGE ICI, et c'est une decision, pas un oubli
+                # (Pascal, 2026-08-26) : un CSV liste la foret. Ses parcelles
+                # SONT la foret, toutes, et en supprimer contredirait le fichier
+                # que l'utilisateur vient de fournir. Le reglage reste offert au
+                # bouton ONF, ou la selection est faite a la main sur la carte
+                # et peut deborder.
                 #
-                # Le reglage vient du PROJET (`cfg_csv$purger`), pas d'une coche
-                # propre a ce chemin : il vaut pour le projet, quel que soit ce
-                # qui cree les UGF. Ce que l'import doit en revanche a
-                # l'utilisateur, c'est de DIRE ce qu'il a retire - il vient de
-                # fournir ces parcelles dans son fichier.
-                projet_final <- out$projet
-                n_purgees <- 0L
-                n_partielles <- 0L
-                if (isTRUE(cfg_csv$purger)) {
-                  purge <- onf_purger_hors_foret(
-                    projet_final, .onf_label_hors_ugf(i18n_snap),
-                    seuil_foret = cfg_csv$seuil_foret)
-                  projet_final <- purge$projet
-                  n_purgees <- purge$n_supprimees
-                  n_partielles <- purge$n_partielles %||% 0L
-                }
-
-                # `with_parcels` : la purge retire des PARCELLES du projet, pas
-                # seulement des tenements. `save_ug_data()` seul les laisserait
-                # revenir au prochain chargement, sans leurs tenements - c'est
-                # le defaut paye en v0.130.7, et le reintroduire par la porte du
-                # CSV serait une regression sur un bug deja corrige.
-                .onf_commit(projet_final, with_parcels = n_purgees > 0L)
+                # Ce qui reglait le probleme d'origine - l'UGF « Hors foret
+                # publique » survivant a l'import - n'est plus la purge mais le
+                # RATTACHEMENT : chaque bout de parcelle cadastrale sans numero
+                # forestier rejoint la parcelle voisine avec laquelle il partage
+                # la plus longue frontiere. Rien n'est mis de cote, donc rien ne
+                # reste a purger.
+                .onf_commit(out$projet, with_parcels = FALSE)
                 charge <- load_project(pid)
-
-                # Le meme compte rendu qu'au bouton ONF. Ce chemin ne parlait
-                # QUE s'il avait supprime quelque chose : une purge qui ne
-                # trouve rien a prendre - toutes les parcelles touchant un peu
-                # de foret publique - laissait l'UGF " Hors foret publique " en
-                # place sans un mot d'explication.
-                if (isTRUE(cfg_csv$purger)) {
-                  .onf_notify_purge(n_purgees, n_partielles,
-                                    cfg_csv$seuil_foret, i18n_snap)
-                }
               } else {
                 .onf_notify_status(out$status %||% "no_overlap", i18n_snap)
               }
