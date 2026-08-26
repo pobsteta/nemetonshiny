@@ -2760,9 +2760,16 @@ TRANSLATIONS <- list(
       "own. Recovering removed parcels means going back to the Selection tab."
     )
   ),
+  # Une parcelle cadastrale que le parcellaire ONF ne numerote pas garde son
+  # UGF : elle est dans le CSV, donc dans la foret. Elle est nommee par la
+  # seule reference qu'elle possede - la sienne.
+  onf_ugf_cadastrale_fmt = list(
+    fr = "Parcelle cadastrale %s",
+    en = "Cadastral parcel %s"
+  ),
   onf_purge_hors_fmt = list(
-    fr = "%d parcelle(s) sous 10 %% de for\u00eat publique retir\u00e9e(s) du projet.",
-    en = "%d parcel(s) under 10 %% public forest removed from the project."
+    fr = "%d parcelle(s) \u00e0 %s %% ou moins de for\u00eat publique retir\u00e9e(s) du projet.",
+    en = "%d parcel(s) at %s %% or less public forest removed from the project."
   ),
   # Pourquoi une ligne " Hors foret publique " subsiste malgre la purge : les
   # parcelles MI-forestieres gardent leur part hors foret. Sans cette phrase,
@@ -2780,9 +2787,9 @@ TRANSLATIONS <- list(
       "\"Outside public forest\" UGF alive."
     )
   ),
-  onf_purge_hors_aucune = list(
-    fr = "Aucune parcelle sous 10 % de for\u00eat publique \u00e0 retirer.",
-    en = "No parcel under 10 % public forest to remove."
+  onf_purge_hors_aucune_fmt = list(
+    fr = "Aucune parcelle \u00e0 %s %% ou moins de for\u00eat publique \u00e0 retirer.",
+    en = "No parcel at %s %% or less public forest to remove."
   ),
   onf_auto_select_fmt = list(
     fr = "%d parcelle(s) cadastrale(s) sur %d touchent la for\u00eat publique retenue.",

@@ -287,39 +287,39 @@ test_that("la modale previent AVANT de detruire, et son bouton passe au rouge", 
 })
 
 
-test_that("l'import CSV purge comme le bouton ONF, et persiste les parcelles", {
-  # Constat de Pascal le 2026-08-25 : apres import de couchey-21200.csv, une UGF
-  # « Hors foret publique » subsistait - 74 tenements, 50,15 ha sur 535,59 ha.
-  # Le RESTE est produit a dessein (sans lui la parcelle cadastrale cesse d'etre
-  # entierement pavee) ; ce qui manquait, c'est l'etape d'apres.
+test_that("l'import CSV croise, rattache, et ne purge RIEN", {
+  # Regle de Pascal, 2026-08-26 : un CSV liste la foret. Ses parcelles SONT la
+  # foret, toutes. En supprimer contredirait le fichier que l'utilisateur vient
+  # de fournir - le reglage de purge reste offert au bouton ONF, ou la selection
+  # est faite a la main sur la carte et peut deborder.
   #
-  # Le correctif naif serait faux : la purge retire des PARCELLES, pas seulement
-  # des tenements. `save_ug_data()` seul les laisserait revenir au prochain
-  # chargement - le defaut paye en v0.130.7.
+  # Ce qui reglait le probleme d'origine (une UGF « Hors foret publique »
+  # survivant a l'import : 74 tenements, 50,15 ha sur 535,59) n'est plus la
+  # purge mais le RATTACHEMENT, fait dans onf_projet_croise().
   f <- testthat::test_path("..", "..", "R", "mod_ug.R")
   testthat::skip_if_not(file.exists(f), "sources R absentes")
   code <- readLines(f, warn = FALSE)
 
-  # Le bloc CSV : depuis `csv_file` jusqu'a la fin de son croisement.
   i_csv <- grep("confirm_import_csv", code)[1]
   testthat::skip_if(is.na(i_csv), "bloc CSV introuvable")
   bloc <- code[i_csv:min(length(code), i_csv + 220)]
+  bloc <- bloc[!grepl("^\s*#", bloc)]
 
-  expect_true(any(grepl("onf_purger_hors_foret", bloc, fixed = TRUE)))
-  expect_true(any(grepl("cfg_csv$seuil_foret", bloc, fixed = TRUE)))
-  # ET la persistance des parcelles, sans quoi la purge serait cosmetique.
-  expect_true(any(grepl("with_parcels", bloc, fixed = TRUE)))
-  # L'utilisateur vient de fournir ces parcelles : on lui dit ce qu'on retire.
-  expect_true(any(grepl("onf_purge_hors_fmt", bloc, fixed = TRUE)))
+  expect_true(any(grepl("onf_projet_croise", bloc, fixed = TRUE)))
+  # AUCUNE purge sur ce chemin, et aucun reglage de purge lu.
+  expect_false(any(grepl("onf_purger_hors_foret", bloc, fixed = TRUE)))
+  expect_false(any(grepl("cfg_csv$purger", bloc, fixed = TRUE)))
+  expect_false(any(grepl("cfg_csv$seuil_foret", bloc, fixed = TRUE)))
+  # Rien n'etant supprime, il n'y a plus de parcelles a reecrire.
+  expect_true(any(grepl("with_parcels = FALSE", bloc, fixed = TRUE)))
 })
 
-test_that("onf_purger_hors_foret reste appelee sur les DEUX chemins d'entree", {
-  # Elle n'etait appelee qu'a UNE ligne de toute l'application - celle du
-  # bouton ONF. C'est ce qui rendait l'ecart invisible.
+test_that("la purge reste offerte au bouton ONF, et a lui seul", {
+  # L'inverse du test precedent : le reglage n'est pas retire de l'application,
+  # il est retire d'UN chemin. Le compter garde les deux moities honnetes.
   f <- testthat::test_path("..", "..", "R", "mod_ug.R")
   testthat::skip_if_not(file.exists(f), "sources R absentes")
   code <- readLines(f, warn = FALSE)
-  code <- code[!grepl("^\\s*#", code)]
-  appels <- sum(grepl("onf_purger_hors_foret\\(", code))
-  expect_gte(appels, 2L)
+  code <- code[!grepl("^\s*#", code)]
+  expect_equal(sum(grepl("onf_purger_hors_foret\\(", code)), 1L)
 })

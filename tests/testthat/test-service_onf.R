@@ -126,8 +126,7 @@ test_that("le croisement preserve le pavage exact de chaque parcelle cadastrale"
   # `projet_validate()` ne vérifie pas le pavage.
   projet <- .onf_test_projet()
   cad <- .onf_test_cadastre()
-  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles())
   expect_equal(out$status, "ok")
   p <- out$projet
 
@@ -141,8 +140,7 @@ test_that("le croisement preserve le pavage exact de chaque parcelle cadastrale"
 
 test_that("le croisement produit des tenement_id uniques et des invariants valides", {
   skip_if_not_installed("sf")
-  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles())
   p <- out$projet
   expect_equal(length(unique(p$tenements$tenement_id)), nrow(p$tenements))
   expect_silent(nemetonshiny:::projet_validate(p))
@@ -153,24 +151,37 @@ test_that("le reste hors foret publique recoit une UGF plutot que NA", {
   # `croiser_parcelles_onf(inclure_reste = TRUE)` rend ces lignes avec
   # `nom_ugf = NA`. Sans étiquetage elles deviendraient des tènements sans UGF,
   # ce que l'invariant 2 interdit — l'import échouerait au lieu de dégrader.
-  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  #
+  # Depuis la règle du 2026-08-26, elles ne forment plus une UGF « hors forêt
+  # publique » : chaque bout REJOINT son voisin, parce qu'il est dans une
+  # parcelle cadastrale qui, elle, fait partie de la forêt.
+  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles())
   p <- out$projet
-  expect_true("Hors foret publique" %in% p$ugs$label)
+  expect_false(any(grepl("Hors for", p$ugs$label)))
   expect_false(any(is.na(p$tenements$ug_id)))
+  # Et rien n'est perdu au passage : chaque parcelle reste exactement pavée.
+  cad <- .onf_test_cadastre()
+  for (pid in unique(p$tenements$parent_parcelle_id)) {
+    expect_equal(
+      sum(as.numeric(sf::st_area(
+        p$tenements[p$tenements$parent_parcelle_id == pid, ]))),
+      as.numeric(sf::st_area(cad[cad$id == pid, ])), tolerance = 1e-6)
+  }
 })
 
 test_that("une UGF a cheval sur deux parcelles cadastrales donne UNE seule UGF", {
   skip_if_not_installed("sf")
   # La parcelle forestière 2 déborde de C1 sur C2 : elle doit rassembler ses
   # deux tènements sous une UGF unique, pas en créer une par cadastre.
-  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles())
   p <- out$projet
   ug2 <- p$ugs$ug_id[p$ugs$label == "FD X - parcelle 2"]
   expect_length(ug2, 1L)
   tn <- p$tenements[p$tenements$ug_id == ug2, ]
-  expect_equal(nrow(tn), 2L)
+  # Elle couvre les deux parcelles cadastrales. On ne fige PAS le nombre de
+  # tènements : depuis le rattachement, une UGF peut aussi recevoir les bouts
+  # sans numéro de ses parcelles. Ce qui doit tenir, c'est l'unicité de l'UGF
+  # et les parcelles qu'elle touche.
   expect_setequal(tn$parent_parcelle_id, c("C1", "C2"))
 })
 
@@ -201,8 +212,7 @@ test_that("aucun recoupement rend no_overlap sans toucher au projet", {
   sf::st_geometry(loin) <- sf::st_geometry(loin) + c(10000, 10000)
   sf::st_crs(loin) <- 2154
 
-  out <- nemetonshiny:::onf_projet_croise(projet, loin,
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(projet, loin)
   expect_equal(out$status, "no_overlap")
   # Le projet ressort INTACT : mêmes tènements, mêmes UGF, mêmes libellés.
   expect_equal(nrow(out$projet$tenements), nrow(projet$tenements))
@@ -216,8 +226,7 @@ test_that("aucun recoupement rend no_overlap sans toucher au projet", {
 
 test_that("onf_croise_resume compte UGF, parcelles, cheval et hors-foret", {
   skip_if_not_installed("sf")
-  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles())
   r <- nemetonshiny:::onf_croise_resume(out$tenements)
 
   expect_equal(r$n_ugf, 2L)
@@ -350,19 +359,22 @@ test_that("les parcelles sans foret sont couvertes et comptees par le coeur", {
   cad3 <- rbind(cad, loin)
   projet <- nemetonshiny:::ug_init_default(list(parcels = cad3))
 
-  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles())
   expect_equal(out$status, "ok")
   expect_equal(out$n_retenues, 2L)      # C1 et C2, pas C3
   expect_equal(out$n_total, 3L)
 
   p <- out$projet
-  # C3 n'a pas disparu : elle porte un tènement, rattaché à « hors forêt ».
+  # C3 n'a pas disparu, et elle ne va plus dans un fourre-tout : aucune parcelle
+  # forestière ne la touche, donc elle devient SA PROPRE UGF, nommée par la
+  # seule référence qu'elle possède (Pascal, 2026-08-26). La mélanger à d'autres
+  # parcelles sans rapport ferait une unité de gestion qui n'en est pas une.
   expect_true("C3" %in% p$tenements$parent_parcelle_id)
-  ug_hors <- p$ugs$ug_id[p$ugs$label == "Hors foret publique"]
-  expect_length(ug_hors, 1L)
-  expect_true(all(p$tenements$ug_id[p$tenements$parent_parcelle_id == "C3"]
-                  %in% ug_hors))
+  ug_c3 <- unique(p$tenements$ug_id[p$tenements$parent_parcelle_id == "C3"])
+  expect_length(ug_c3, 1L)
+  expect_match(p$ugs$label[p$ugs$ug_id == ug_c3], "C3", fixed = TRUE)
+  # Elle n'emporte QUE C3 : une UGF cadastrale ne ramasse pas les voisines.
+  expect_setequal(p$tenements$parent_parcelle_id[p$tenements$ug_id == ug_c3], "C3")
   expect_silent(nemetonshiny:::projet_validate(p))
 
   # Pavage de C3 : la parcelle écartée est couverte en entier.
@@ -379,8 +391,7 @@ test_that("aucune parcelle concernee rend no_overlap et n'altere pas le projet",
   sf::st_geometry(loin) <- sf::st_geometry(loin) + c(10000, 10000)
   sf::st_crs(loin) <- 2154
 
-  out <- nemetonshiny:::onf_projet_croise(projet, loin,
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(projet, loin)
   expect_equal(out$status, "no_overlap")
   expect_equal(out$n_retenues, 0L)
   # Le projet ressort intact — aucune UGF « hors forêt » n'apparaît.
@@ -405,21 +416,22 @@ test_that("onf_purger_hors_foret raisonne par PARCELLE, jamais par tenement", {
   cad3 <- rbind(cad, loin)
   projet <- nemetonshiny:::ug_init_default(list(parcels = cad3))
 
-  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles())
   avant <- out$projet
   # C2 est mi-forestière : elle porte un tènement forestier ET un hors-forêt.
   expect_true("C2" %in% avant$tenements$parent_parcelle_id)
   expect_true("C3" %in% avant$tenements$parent_parcelle_id)
 
-  purge <- nemetonshiny:::onf_purger_hors_foret(avant, "Hors foret publique")
+  purge <- nemetonshiny:::onf_purger_hors_foret(avant, out$part_foret)
   p <- purge$projet
 
   # Seule C3, entièrement hors forêt, disparaît.
   expect_equal(purge$n_supprimees, 1L)
   expect_false("C3" %in% p$tenements$parent_parcelle_id)
   expect_false("C3" %in% as.character(p$parcels$id))
-  # C2 reste, AVEC son fragment hors forêt : sa surface est intacte.
+  # C2 reste, AVEC la part que le parcellaire ONF ne numérote pas — elle a
+  # rejoint l'UGF voisine, mais elle n'a pas quitté la parcelle : sa surface est
+  # intacte.
   expect_true("C2" %in% p$tenements$parent_parcelle_id)
   a <- sum(as.numeric(sf::st_area(
     p$tenements[p$tenements$parent_parcelle_id == "C2", ])))
@@ -440,9 +452,8 @@ test_that("la purge retire les parcelles de $parcels, pas seulement des tenement
       c(10000, 10000), c(10100, 10000), c(10100, 10100),
       c(10000, 10100), c(10000, 10000)))), crs = 2154))
   projet <- nemetonshiny:::ug_init_default(list(parcels = rbind(cad, loin)))
-  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
-  p <- nemetonshiny:::onf_purger_hors_foret(out$projet, "Hors foret publique")$projet
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles())
+  p <- nemetonshiny:::onf_purger_hors_foret(out$projet, out$part_foret)$projet
 
   expect_equal(nrow(p$parcels), 2L)
   # Aucune parcelle orpheline : toute parcelle restante porte au moins un tènement.
@@ -450,28 +461,39 @@ test_that("la purge retire les parcelles de $parcels, pas seulement des tenement
                   unique(as.character(p$tenements$parent_parcelle_id)))
 })
 
-test_that("la purge supprime l'UGF hors foret devenue vide", {
+test_that("une parcelle mi-forestiere n'est pas purgee et garde toute sa surface", {
   skip_if_not_installed("sf")
-  # Une UGF que plus aucun tènement ne porte violerait l'invariant 3.
+  # Les deux parcelles touchent la forêt : aucune ne descend au seuil, donc la
+  # purge ne prend rien — et C2, qui déborde, garde la part que le parcellaire
+  # ONF ne numérote pas. C'est l'invariant du 2026-08-26 : on garde TOUT de la
+  # parcelle cadastrale.
   cad <- .onf_test_cadastre()
-  # Ici les deux parcelles touchent la forêt, mais C2 déborde : son fragment
-  # hors forêt subsiste, donc l'UGF « hors » doit RESTER.
   projet <- nemetonshiny:::ug_init_default(list(parcels = cad))
-  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles(),
-                                          label_hors = "Hors foret publique")
-  purge <- nemetonshiny:::onf_purger_hors_foret(out$projet, "Hors foret publique")
+  out <- nemetonshiny:::onf_projet_croise(projet, .onf_test_parcelles())
+  purge <- nemetonshiny:::onf_purger_hors_foret(out$projet, out$part_foret)
   expect_equal(purge$n_supprimees, 0L)
-  expect_true("Hors foret publique" %in% purge$projet$ugs$label)
+  expect_false(any(grepl("Hors for", purge$projet$ugs$label)))
+  for (pid in unique(purge$projet$tenements$parent_parcelle_id)) {
+    expect_equal(
+      sum(as.numeric(sf::st_area(
+        purge$projet$tenements[
+          purge$projet$tenements$parent_parcelle_id == pid, ]))),
+      as.numeric(sf::st_area(cad[cad$id == pid, ])), tolerance = 1e-6)
+  }
   expect_silent(nemetonshiny:::projet_validate(purge$projet))
 })
 
-test_that("la purge est un no-op quand il n'y a pas d'UGF hors foret", {
+test_that("la purge est un no-op sans part forestiere a lire", {
   skip_if_not_installed("sf")
+  # Elle ne devine plus rien depuis les UGF : sans le relevé pris pendant le
+  # croisement, elle n'a pas de quoi décider, et ne touche donc à rien.
   projet <- .onf_test_projet()
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
-  expect_equal(out$n_supprimees, 0L)
-  expect_equal(nrow(out$projet$tenements), nrow(projet$tenements))
-  expect_equal(out$projet$ugs$label, projet$ugs$label)
+  for (pf in list(NULL, stats::setNames(numeric(0), character(0)))) {
+    out <- nemetonshiny:::onf_purger_hors_foret(projet, pf)
+    expect_equal(out$n_supprimees, 0L)
+    expect_equal(nrow(out$projet$tenements), nrow(projet$tenements))
+    expect_equal(out$projet$ugs$label, projet$ugs$label)
+  }
 })
 
 test_that("la purge retire aussi les parcelles forestieres a moins de 10 %", {
@@ -503,8 +525,8 @@ test_that("la purge retire aussi les parcelles forestieres a moins de 10 %", {
     groupe = NA_character_, stringsAsFactors = FALSE)
   projet <- list(parcels = parcels, tenements = tenements, ugs = ugs)
 
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique",
-                                              seuil_foret = 0.10)
+  out <- nemetonshiny:::onf_purger_hors_foret(
+    projet, c(P90 = 0.90, P05 = 0.05), seuil_foret = 0.10)
   expect_equal(out$n_supprimees, 1L)
   # P05 (5 % de forêt) part ENTIÈRE, y compris son tènement forestier.
   expect_false("P05" %in% out$projet$tenements$parent_parcelle_id)
@@ -536,16 +558,16 @@ test_that("le seuil de purge est parametrable et exclusif au bord", {
   # ne supprimait RIEN, pas même une parcelle sans un mètre carré de forêt — un
   # réglage inerte à sa propre valeur par défaut.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
-    projet, "Hors foret publique", seuil_foret = 0.10)$n_supprimees, 1L)
+    projet, c(P10 = 0.10), seuil_foret = 0.10)$n_supprimees, 1L)
   # Sous le seuil, elle reste.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
-    projet, "Hors foret publique", seuil_foret = 0.05)$n_supprimees, 0L)
+    projet, c(P10 = 0.10), seuil_foret = 0.05)$n_supprimees, 0L)
   # Seuil 0 : la parcelle est forestière à 10 %, elle reste.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
-    projet, "Hors foret publique", seuil_foret = 0)$n_supprimees, 0L)
+    projet, c(P10 = 0.10), seuil_foret = 0)$n_supprimees, 0L)
   # Seuil aberrant -> défaut 0 %, qui ne retire pas une parcelle forestière.
   expect_equal(nemetonshiny:::onf_purger_hors_foret(
-    projet, "Hors foret publique", seuil_foret = NA)$n_supprimees, 0L)
+    projet, c(P10 = 0.10), seuil_foret = NA)$n_supprimees, 0L)
 })
 
 test_that("a 0 %, une parcelle SANS la moindre foret part", {
@@ -567,75 +589,129 @@ test_that("a 0 %, une parcelle SANS la moindre foret part", {
                      label = c("Foret domaniale X", "Hors foret publique"),
                      groupe = NA_character_, stringsAsFactors = FALSE))
 
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique",
-                                              seuil_foret = 0)
+  out <- nemetonshiny:::onf_purger_hors_foret(
+    projet, c(PF = 1, P0 = 0), seuil_foret = 0)
   expect_equal(out$n_supprimees, 1L)
   expect_false("P0" %in% as.character(out$projet$parcels$id))
   expect_true("PF" %in% as.character(out$projet$parcels$id))
 })
 
-test_that("la purge compte les parcelles restees partiellement forestieres", {
+test_that(".onf_part_foret lit la part forestiere sur la table de croisement", {
   skip_if_not_installed("sf")
-  # Ce chiffre existe pour une raison d'interface : une ligne « Hors forêt
-  # publique » qui subsiste après une purge se lit comme un échec, tant qu'on
-  # ignore qu'elle porte les fragments des parcelles mi-forestières.
+  # Elle remplace le raisonnement « quels tènements portent l'UGF hors forêt »,
+  # qui n'a plus d'objet : après rattachement, plus rien n'est « hors ». La part
+  # doit donc être relevée AVANT, sur la table que rend le cœur.
   carre <- function(x0, x1) sf::st_polygon(list(rbind(
     c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
-  projet <- list(
-    parcels = sf::st_sf(
-      id = c("P60", "P05"), contenance = c(1e4, 1e4),
-      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
-    tenements = sf::st_sf(
-      tenement_id = c("t1", "t2", "t3", "t4"),
-      parent_parcelle_id = c("P60", "P60", "P05", "P05"),
-      ug_id = c("ug_f", "ug_h", "ug_f", "ug_h"),
-      surface_m2 = c(6000, 4000, 500, 9500),
-      surface_sig_m2 = c(6000, 4000, 500, 9500),
-      geometry = sf::st_sfc(carre(0, 60), carre(60, 100),
-                            carre(100, 105), carre(105, 200), crs = 2154)),
-    ugs = data.frame(ug_id = c("ug_f", "ug_h"),
-                     label = c("Foret domaniale X", "Hors foret publique"),
-                     groupe = NA_character_, stringsAsFactors = FALSE))
+  ten <- sf::st_sf(
+    parcelle_cadastrale = c("P60", "P60", "P05", "P05", "P100"),
+    hors_ugf = c(FALSE, TRUE, FALSE, TRUE, FALSE),
+    surface_ha = c(0.6, 0.4, 0.05, 0.95, 1),
+    nom_ugf = c("FD 1", NA, "FD 1", NA, "FD 2"),
+    geometry = sf::st_sfc(carre(0, 60), carre(60, 100), carre(100, 105),
+                          carre(105, 200), carre(200, 300), crs = 2154))
+  pf <- nemetonshiny:::.onf_part_foret(ten)
+  expect_equal(unname(pf[["P60"]]), 0.6)
+  expect_equal(unname(pf[["P05"]]), 0.05)
+  expect_equal(unname(pf[["P100"]]), 1)
 
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique",
-                                              seuil_foret = 0.10)
-  expect_equal(out$n_supprimees, 1L)     # P05, forestière à 5 %
-  expect_equal(out$n_partielles, 1L)     # P60 garde sa part hors forêt
-  # Et c'est bien elle qui maintient l'UGF « hors forêt » en vie.
-  expect_true("Hors foret publique" %in% out$projet$ugs$label)
+  # Une surface nulle n'a pas de part definie : NA, et la purge la laisse donc
+  # tranquille plutot que de la supprimer sur une division par zero.
+  ten0 <- ten[1, ]; ten0$surface_ha <- 0; ten0$parcelle_cadastrale <- "P00"
+  expect_true(is.na(nemetonshiny:::.onf_part_foret(ten0)[["P00"]]))
+
+  # Une table sans les colonnes attendues rend un vecteur vide, pas une erreur.
+  expect_length(nemetonshiny:::.onf_part_foret(ten[, "nom_ugf"]), 0L)
+  expect_length(nemetonshiny:::.onf_part_foret(NULL), 0L)
 })
 
-test_that("n_partielles vaut 0 quand la purge ne laisse que du forestier", {
+test_that("un bout sans numero rejoint le voisin de plus longue frontiere", {
   skip_if_not_installed("sf")
+  # LE test de l'option A. Une parcelle cadastrale de 300 m de long porte deux
+  # parcelles forestieres ; le bout non couvert longe la SECONDE sur 100 m et ne
+  # touche la premiere par aucun cote. Il doit rejoindre la seconde - meme si la
+  # premiere est plus grande, ce qui est precisement le cas ici (l'option B, «
+  # tout a la dominante », se tromperait).
   carre <- function(x0, x1) sf::st_polygon(list(rbind(
     c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
-  projet <- list(
-    parcels = sf::st_sf(
-      id = c("PF", "P00"), contenance = c(1e4, 1e4),
-      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
-    tenements = sf::st_sf(
-      tenement_id = c("t1", "t2"),
-      parent_parcelle_id = c("PF", "P00"),
-      ug_id = c("ug_f", "ug_h"),
-      surface_m2 = c(1e4, 1e4), surface_sig_m2 = c(1e4, 1e4),
-      geometry = sf::st_sfc(carre(0, 100), carre(100, 200), crs = 2154)),
-    ugs = data.frame(ug_id = c("ug_f", "ug_h"),
-                     label = c("Foret domaniale X", "Hors foret publique"),
-                     groupe = NA_character_, stringsAsFactors = FALSE))
+  ten <- sf::st_sf(
+    parcelle_cadastrale = rep("C1", 3),
+    hors_ugf = c(FALSE, FALSE, TRUE),
+    surface_ha = c(2, 0.5, 0.5),
+    nom_ugf = c("FD - parcelle 1", "FD - parcelle 2", NA),
+    geometry = sf::st_sfc(carre(0, 200), carre(200, 250), carre(250, 300),
+                          crs = 2154))
+  out <- nemetonshiny:::.onf_rattacher_reste(ten)
 
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
-  expect_equal(out$n_supprimees, 1L)
-  expect_equal(out$n_partielles, 0L)
-  # Plus aucun fragment hors forêt : l'UGF disparaît (invariant 3).
-  expect_false("Hors foret publique" %in% out$projet$ugs$label)
+  expect_false(any(nemetonshiny:::.isTRUE_vec(out$hors_ugf)))
+  expect_equal(out$label_ugf[is.na(out$nom_ugf)], "FD - parcelle 2")
+  # La plus grande UGF n'a PAS ramasse le bout : c'est ce qui distingue A de B.
+  expect_false("FD - parcelle 1" %in% out$label_ugf[is.na(out$nom_ugf)])
+  # Rien n'est perdu : la surface totale est celle d'avant.
+  expect_equal(sum(as.numeric(sf::st_area(out))),
+               sum(as.numeric(sf::st_area(ten))), tolerance = 1e-6)
 })
 
-test_that("n_partielles est present meme quand la purge ne fait rien", {
+test_that("le reliquat multipartie est eclate avant d'etre rattache", {
   skip_if_not_installed("sf")
-  projet <- .onf_test_projet()
-  out <- nemetonshiny:::onf_purger_hors_foret(projet, "Hors foret publique")
-  expect_equal(out$n_supprimees, 0L)
-  # Le champ doit exister quoi qu'il arrive : le module lit `%||% 0L`, mais un
-  # champ manquant signalerait un chemin de retour oublié.
-  expect_false(is.null(out$n_partielles))
+  # Le coeur rend le reste FUSIONNE en une ligne par parcelle cadastrale. Sans
+  # eclatement, les deux bouts opposes d'une parcelle iraient a la MEME UGF -
+  # celle qui gagne la comparaison globale - alors qu'ils bordent chacun la
+  # leur. C'est le defaut que l'option A doit precisement eviter.
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  reste <- sf::st_multipolygon(list(
+    list(rbind(c(0, 0), c(20, 0), c(20, 100), c(0, 100), c(0, 0))),
+    list(rbind(c(180, 0), c(200, 0), c(200, 100), c(180, 100), c(180, 0)))))
+  ten <- sf::st_sf(
+    parcelle_cadastrale = rep("C1", 3),
+    hors_ugf = c(FALSE, FALSE, TRUE),
+    surface_ha = c(1, 1, 0.4),
+    nom_ugf = c("FD - parcelle 1", "FD - parcelle 2", NA),
+    geometry = sf::st_sfc(carre(20, 100), carre(100, 180), reste, crs = 2154))
+  out <- nemetonshiny:::.onf_rattacher_reste(ten)
+
+  bouts <- out$label_ugf[is.na(out$nom_ugf)]
+  expect_length(bouts, 2L)                       # eclate
+  expect_setequal(bouts, c("FD - parcelle 1", "FD - parcelle 2"))
+  expect_equal(sum(as.numeric(sf::st_area(out))),
+               sum(as.numeric(sf::st_area(ten))), tolerance = 1e-6)
 })
+
+test_that("un bout sans aucun voisin forestier devient une UGF cadastrale", {
+  skip_if_not_installed("sf")
+  # Reponse de Pascal (2026-08-26) : la parcelle est dans le CSV, donc dans la
+  # foret. Elle garde son UGF, nommee par la seule reference qu'elle possede -
+  # jamais versee dans un fourre-tout avec des parcelles sans rapport.
+  carre <- function(x0, x1) sf::st_polygon(list(rbind(
+    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
+  ten <- sf::st_sf(
+    parcelle_cadastrale = c("C1", "C9"),
+    hors_ugf = c(FALSE, TRUE),
+    surface_ha = c(1, 1),
+    nom_ugf = c("FD - parcelle 1", NA),
+    geometry = sf::st_sfc(carre(0, 100), carre(500, 600), crs = 2154))
+  out <- nemetonshiny:::.onf_rattacher_reste(ten)
+
+  lab <- out$label_ugf[out$parcelle_cadastrale == "C9"]
+  expect_match(lab, "C9", fixed = TRUE)
+  # Elle ne rejoint PAS la parcelle forestiere d'a cote, qu'elle ne touche pas.
+  expect_false(identical(lab, "FD - parcelle 1"))
+})
+
+test_that("un contact ponctuel n'est pas un voisinage", {
+  skip_if_not_installed("sf")
+  # Deux polygones qui se touchent par un SEUL coin partagent une frontiere de
+  # longueur nulle. Les compter comme voisins reviendrait a rattacher au hasard.
+  tri <- function(x, y) sf::st_polygon(list(rbind(
+    c(x, y), c(x + 50, y), c(x, y + 50), c(x, y))))
+  ten <- sf::st_sf(
+    parcelle_cadastrale = rep("C1", 2),
+    hors_ugf = c(FALSE, TRUE),
+    surface_ha = c(1, 1),
+    nom_ugf = c("FD - parcelle 1", NA),
+    geometry = sf::st_sfc(tri(0, 0), tri(50, 50), crs = 2154))
+  out <- nemetonshiny:::.onf_rattacher_reste(ten)
+  expect_match(out$label_ugf[is.na(out$nom_ugf)], "C1", fixed = TRUE)
+})
+
