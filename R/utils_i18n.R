@@ -2009,6 +2009,7 @@ TRANSLATIONS <- list(
   source_roads = list(fr = "R\u00e9seau routier (IGN)", en = "Road Network (IGN)"),
   source_buildings = list(fr = "B\u00e2timents (BD TOPO)", en = "Buildings (BD TOPO)"),
   source_bdforet = list(fr = "BD For\u00eat V2 - Formations v\u00e9g\u00e9tales (IGN)", en = "BD For\u00eat V2 - Vegetation Formations (IGN)"),
+  source_population = list(fr = "Carroyage de population Filosofi 2021 (INSEE)", en = "Filosofi 2021 population grid (INSEE)"),
   source_lidar_mnh = list(fr = "Hauteur de canop\u00e9e LiDAR HD (IGN)", en = "Canopy Height Model LiDAR HD (IGN)"),
   source_lidar_mnt = list(fr = "Mod\u00e8le Num\u00e9rique de Terrain LiDAR HD (IGN)", en = "Digital Terrain Model LiDAR HD (IGN)"),
   source_lidar_copc = list(fr = "Nuages de points LiDAR HD (IGN)", en = "LiDAR HD Point Clouds (IGN)"),
@@ -2870,9 +2871,18 @@ TRANSLATIONS <- list(
     fr = "%d parcelle(s) foresti\u00e8re(s) d\u00e9tenue(s) en partie seulement.",
     en = "%d forest parcel(s) only partly held."
   ),
-  onf_croise_hors_fmt = list(
-    fr = "%.1f ha de votre s\u00e9lection hors for\u00eat publique.",
-    en = "%.1f ha of your selection outside public forest."
+  # Le message ne dit plus « hors foret » - depuis le rattachement, rien ne
+  # l'est : il dit ce que le rattachement A FAIT. Taire ce chiffre laisserait
+  # croire que le parcellaire couvrait tout.
+  onf_croise_rattache_fmt = list(
+    fr = paste0(
+      "%.1f ha non num\u00e9rot\u00e9s par le parcellaire ONF ont rejoint ",
+      "les parcelles foresti\u00e8res voisines."
+    ),
+    en = paste0(
+      "%.1f ha unnumbered by the ONF layer joined the neighbouring forest ",
+      "parcels."
+    )
   ),
   # Le premier bouton REMPLACE les parcelles du projet : le dire avant, pas apres.
   onf_source_note = list(

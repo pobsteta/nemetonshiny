@@ -478,3 +478,26 @@ test_that("un modele de hauteur sans vegetation n'est pas retenu", {
   # Ce qui n'est pas un raster ne l'est pas davantage.
   expect_false(nemetonshiny:::.marculus_chm_exploitable(NULL))
 })
+
+test_that("la segmentation retrouve son emprise et son budget de cellules", {
+  # De v0.140.0 a v0.140.1 l'appel etait bride : `aoi = NULL` et un `max_cells`
+  # force a 5e6, seul chemin qu'on avait mesure comme fonctionnel quand lidR
+  # refusait un raster reste sur disque. Cela coutait l'emprise (on segmentait
+  # 1 169 ha de dalles pour 637 ha de parcelles) ET la resolution (0,50 m
+  # travaille a 2 m). `nemeton 0.189.0` materialise le raster lui-meme.
+  f <- testthat::test_path("..", "..", "R", "service_marculus.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+
+  expect_true(any(grepl("segment_houppiers(chm, aoi = aoi)", code, fixed = TRUE)))
+  # Plus de bride : ni budget force, ni emprise annulee.
+  expect_false(any(grepl("MARCULUS_HOUPPIER_MAX_CELLS", code, fixed = TRUE)))
+  # L'emprise n'est plus annulee A L'APPEL. La chercher tel quel attraperait la
+  # SIGNATURE (`function(chm, aoi = NULL)`), ou le defaut est legitime : c'est
+  # ce que mon premier jet faisait, et le test echouait sur son propre code.
+  expect_false(any(grepl("segment_houppiers(chm, aoi = NULL",
+                         code, fixed = TRUE)))
+  # Et l'emprise est bien celle du projet, calculee avant l'appel.
+  expect_true(any(grepl(".marculus_aoi(projet)", code, fixed = TRUE)))
+})

@@ -165,31 +165,6 @@ onf_load_parcelles <- function(aoi,
 }
 
 
-#' Split a layer into single-part polygons
-#'
-#' @description
-#' The core returns the crossing remainder **fused into one row per cadastral
-#' parcel** (`.croiser_reste()` is a single `st_difference()` per parcel), so a
-#' 10.89 ha "remainder" of `212000000A0036` is one multipart geometry made of
-#' eight scattered strips. At that granularity "the neighbouring UGF" has no
-#' meaning: that parcel borders twenty-eight of them.
-#'
-#' Splitting first is therefore not a detail of shape - it is what makes the
-#' attachment answerable at all.
-#'
-#' @param x An `sf`.
-#' @return The same `sf`, one row per part. Unchanged if the cast fails.
-#' @noRd
-.onf_singleparts <- function(x) {
-  if (!inherits(x, "sf") || nrow(x) == 0L) return(x)
-  out <- tryCatch(
-    suppressWarnings(sf::st_cast(sf::st_make_valid(x), "POLYGON")),
-    error = function(e) NULL)
-  if (!inherits(out, "sf") || nrow(out) < nrow(x)) return(x)
-  out
-}
-
-
 #' Label of a cadastral parcel that meets no forest parcel
 #'
 #' @description
@@ -209,113 +184,31 @@ onf_load_parcelles <- function(aoi,
 }
 
 
-#' Attach every un-numbered piece of a cadastral parcel to its neighbour
+#' Dress the label the core puts on a cadastral-only UGF
 #'
 #' @description
-#' **The rule this implements** (Pascal, 2026-08-26): the ONF layer is not a
-#' filter, it is a *source of labels*. It is crossed to recover the forest
-#' parcel number, then discarded. What stands is the cadastre - so the UGF are
-#' groups, splits or whole cadastral parcels, and **nothing of a cadastral
-#' parcel is ever dropped or set aside**.
+#' With `rattacher_reste = TRUE` the core names an un-numbered parcel by its
+#' bare cadastral reference (`nom_ugf = "212000000A0036"`, `ugf_id = "cad~..."`).
+#' That is the right *identity*; it is not a label a user reads in a table next
+#' to "Forêt communale de Couchey — parcelle 12".
 #'
-#' The crossing leaves pieces the ONF layer does not cover: 50.34 ha over
-#' Couchey's 529.73. They used to be gathered into one "outside public forest"
-#' UGF, which read as *land outside the forest* when it is nothing of the sort -
-#' it is forest the ONF layer simply did not number: rides, tracks, the gaps
-#' between adjacent forest parcels, and digitising slack along the edges.
+#' Dressing it is presentation, so it stays here - and it stays keyed on
+#' `ugf_id`, not on the shape of the name: a forest parcel numbered "12" would
+#' otherwise be indistinguishable from a cadastral reference by pattern alone.
 #'
-#' **Each piece joins the forest parcel with which it shares the longest common
-#' boundary** ("option A", chosen over "everything to the largest UGF" on
-#' evidence: on `212000000A0036`, whose 28 forest parcels are cut from a single
-#' cadastral parcel, the dominant one would swallow 10.89 ha of strips it does
-#' not touch, growing 77 % on land that is nowhere near it).
-#'
-#' Boundary **length**, not area or distance: a ride running along parcel 3 for
-#' 400 m and grazing parcel 4 at a corner belongs to 3, whatever their
-#' respective sizes.
-#'
-#' A piece with no forest neighbour - a whole parcel the ONF layer misses, or a
-#' sliver touching nothing - falls back on [.onf_label_cadastrale()]. All the
-#' pieces of one parcel then share a label, so they land in **one** UGF rather
-#' than one each.
-#'
-#' **Where this belongs.** The crossing arithmetic lives in the core, and so
-#' should this; the app carries it because `croiser_parcelles_onf()` has no such
-#' option yet and the core is another repository. Brief filed:
-#' `briefs/vers-nemeton/2026-08-26-rattachement-reste-voisin.md`.
-#'
-#' @param ten Crossing table from `nemeton::croiser_parcelles_onf()`, with
-#'   `hors_ugf` and `parcelle_cadastrale`.
+#' @param ten Crossing table from `nemeton::croiser_parcelles_onf()`.
 #' @param i18n Translator, or `NULL`.
-#' @return `ten`, remainder split into parts, each row carrying `label_ugf`.
+#' @return Character vector of labels, one per row.
 #' @noRd
-.onf_rattacher_reste <- function(ten, i18n = NULL) {
-  if (!inherits(ten, "sf") || nrow(ten) == 0L) return(ten)
-  if (!all(c("hors_ugf", "parcelle_cadastrale") %in% names(ten))) return(ten)
-
-  etiquette <- function(x) {
-    lab <- as.character(x$nom_ugf)
-    vide <- is.na(lab) | !nzchar(lab)
-    lab[vide] <- .onf_label_cadastrale(x$parcelle_cadastrale[vide], i18n)
-    lab
+.onf_labels_ugf <- function(ten, i18n = NULL) {
+  lab <- as.character(ten$nom_ugf)
+  cad <- !is.na(ten$ugf_id) & startsWith(as.character(ten$ugf_id), "cad~")
+  if (any(cad)) lab[cad] <- .onf_label_cadastrale(lab[cad], i18n)
+  vide <- is.na(lab) | !nzchar(lab)
+  if (any(vide)) {
+    lab[vide] <- .onf_label_cadastrale(ten$parcelle_cadastrale[vide], i18n)
   }
-
-  est_hors <- .isTRUE_vec(ten$hors_ugf)
-  if (!any(est_hors)) {
-    ten$label_ugf <- etiquette(ten)
-    return(ten)
-  }
-
-  fo <- ten[!est_hors, , drop = FALSE]
-  re <- .onf_singleparts(ten[est_hors, , drop = FALSE])
-  re$label_ugf <- NA_character_
-
-  # Par parcelle cadastrale : « le voisin » ne veut rien dire au-dela. Deux
-  # UGF qui se touchent dans DEUX parcelles differentes ne se disputent pas un
-  # bout - chaque bout appartient a une parcelle, et il y reste.
-  if (nrow(fo) > 0L) {
-    fo_par <- split(seq_len(nrow(fo)), as.character(fo$parcelle_cadastrale))
-    re_par <- split(seq_len(nrow(re)), as.character(re$parcelle_cadastrale))
-    for (ref in names(re_par)) {
-      ir <- re_par[[ref]]
-      jf <- fo_par[[ref]]
-      if (is.null(jf) || length(jf) == 0L) next
-      br <- sf::st_boundary(sf::st_geometry(re)[ir])
-      bf <- sf::st_boundary(sf::st_geometry(fo)[jf])
-      # Une seule intersection croisee, vectorisee : `idx` rend les paires qui
-      # se rencontrent, et rien d'autre n'est calcule. La boucle naive faisait
-      # 8 x 29 appels sur A0036 pour la meme information.
-      it <- tryCatch(suppressWarnings(sf::st_intersection(br, bf)),
-                     error = function(e) NULL)
-      if (is.null(it) || length(it) == 0L) next
-      idx <- attr(it, "idx")
-      if (is.null(idx)) next
-      L <- suppressWarnings(as.numeric(sf::st_length(it)))
-      L[is.na(L)] <- 0
-      # Un contact PONCTUEL a une longueur nulle : ce n'est pas un voisinage.
-      garde <- L > 0
-      if (!any(garde)) next
-      cle <- paste(idx[garde, 1], idx[garde, 2], sep = "/")
-      somme <- tapply(L[garde], cle, sum)
-      parts <- do.call(rbind, strsplit(names(somme), "/", fixed = TRUE))
-      for (i in unique(parts[, 1])) {
-        sel <- parts[, 1] == i
-        best <- which(sel)[which.max(somme[sel])]
-        re$label_ugf[ir[as.integer(i)]] <-
-          as.character(fo$nom_ugf[jf[as.integer(parts[best, 2])]])
-      }
-    }
-  }
-
-  # Sans voisin forestier : la parcelle cadastrale devient son propre UGF.
-  orphelin <- is.na(re$label_ugf) | !nzchar(re$label_ugf)
-  re$label_ugf[orphelin] <-
-    .onf_label_cadastrale(re$parcelle_cadastrale[orphelin], i18n)
-
-  fo$label_ugf <- etiquette(fo)
-  # `hors_ugf` devient faux pour tout le monde : plus rien n'est « hors ».
-  re$hors_ugf <- FALSE
-  rbind(fo, re[, names(fo)])
+  lab
 }
 
 
@@ -383,6 +276,11 @@ onf_projet_croise <- function(projet,
   # L'app faisait ce tri en v0.130.3, avec une reinjection qui imposait un
   # aller-retour de projection - d'ou 0,001231 % d'ecart de pavage. Fait dans le
   # coeur, ou les deux couches partagent deja un CRS, le pavage redevient exact.
+  # Part forestiere RELEVEE AVANT le croisement, sur les deux couches brutes :
+  # apres `rattacher_reste`, plus aucune ligne ne porte `hors_ugf = TRUE` et
+  # l'information n'existe plus dans la table. C'est elle que la purge consomme.
+  part_foret <- .onf_part_foret(parcelles, onf)
+
   ten <- nemeton::croiser_parcelles_onf(
     onf,
     parcelles,
@@ -390,7 +288,12 @@ onf_projet_croise <- function(projet,
     seuil_calage       = seuil_calage,
     # Cf. la doc ci-dessus : le reliquat porte le pavage exact, il n'est pas
     # une option d'affichage.
-    inclure_reste      = TRUE
+    inclure_reste      = TRUE,
+    # Le coeur applique la regle depuis 0.189.0 : chaque bout rejoint la
+    # parcelle forestiere avec laquelle il partage la plus longue frontiere,
+    # et une parcelle sans voisin forestier devient sa propre UGF. L'app
+    # portait cette regle en v0.140.x, faute de mieux ; elle est rendue.
+    rattacher_reste    = TRUE
   )
 
   # Compteur " N parcelles sur M " LU sur l'attribut plutot que recalcule : le
@@ -407,8 +310,16 @@ onf_projet_croise <- function(projet,
   # parcellaire hors sujet passerait pour un succes et reetiquetterait TOUS les
   # tenements en " hors foret publique ", detruisant le decoupage existant pour
   # rien. Le signal juste est : aucune ligne rattachee a une UGF.
-  dans_ugf <- if (nrow(ten) && "hors_ugf" %in% names(ten)) {
-    !.isTRUE_vec(ten$hors_ugf)
+  # Le signal ne peut PLUS se lire sur `hors_ugf` : avec `rattacher_reste`, le
+  # coeur le met a FALSE partout - une parcelle sans voisin forestier devient sa
+  # propre UGF, `ugf_id = "cad~<reference>"`. Lire `hors_ugf` ferait donc passer
+  # un parcellaire hors sujet pour un succes, et TOUS les tenements seraient
+  # reetiquetes en UGF cadastrales : le decoupage de l'utilisateur detruit pour
+  # rien. Ce qui distingue un vrai rattachement, c'est un `ugf_id` de parcelle
+  # FORESTIERE.
+  dans_ugf <- if (nrow(ten) && "ugf_id" %in% names(ten)) {
+    id <- as.character(ten$ugf_id)
+    !is.na(id) & nzchar(id) & !startsWith(id, "cad~")
   } else {
     rep(TRUE, if (is.null(ten)) 0L else nrow(ten))
   }
@@ -417,58 +328,76 @@ onf_projet_croise <- function(projet,
                 n_retenues = n_retenues, n_total = n_total))
   }
 
-  # Part FORESTIERE de chaque parcelle, RELEVEE AVANT le rattachement. Apres,
-  # l'information n'existe plus : tout appartient a une UGF forestiere, il n'y
-  # a plus d'UGF « hors » a interroger. C'est elle, et non le label survivant,
-  # que la purge consomme desormais.
-  part_foret <- .onf_part_foret(ten)
+  # Le label pilote l'affectation UGF de tenement_import_replace(). Le coeur a
+  # deja rattache chaque bout a son voisin (rattacher_reste = TRUE) : aucune
+  # ligne ne reste « hors UGF », donc aucun tenement sans UGF (invariant 2).
+  # Il ne reste qu'a habiller le nom d'une UGF purement cadastrale.
+  ten$label_ugf <- .onf_labels_ugf(ten, i18n)
 
-  # Le label pilote l'affectation UGF de tenement_import_replace(). Chaque bout
-  # sans numero rejoint son voisin ; plus aucune ligne ne reste « hors UGF »,
-  # donc plus aucun tenement sans UGF (invariant 2).
-  projet <- tenement_import_replace(projet, .onf_rattacher_reste(ten, i18n))
+  projet <- tenement_import_replace(projet, ten)
 
-  # `tenements` reste la table AVANT rattachement : c'est elle que lit
-  # [onf_croise_resume()], et le resume doit dire ce que le croisement a
-  # TROUVE - dont la surface qu'aucune parcelle forestiere ne numerotait.
-  # Apres rattachement, `hors_ugf` est faux partout et cette information a
-  # disparu, ce qui rendrait le compte rendu muet sur le sujet meme qui
-  # interesse l'utilisateur.
+  # Surface que le parcellaire ONF ne numerotait pas, et qui vient de rejoindre
+  # les peuplements voisins. Ce n'est PAS « hors foret » - c'est ce que le
+  # rattachement a fait, et le dire vaut mieux que de le taire.
+  aires <- attr(part_foret, "aires_m2")
+  surface_rattachee_ha <- if (length(part_foret) && !is.null(aires)) {
+    sum(aires * (1 - ifelse(is.na(part_foret), 1, part_foret)), na.rm = TRUE) / 1e4
+  } else 0
+
   list(status = "ok", projet = projet, tenements = ten,
        n_retenues = n_retenues, n_total = n_total,
-       part_foret = part_foret)
+       part_foret = part_foret,
+       surface_rattachee_ha = surface_rattachee_ha)
 }
 
 
-#' Forest share of each cadastral parcel, read off the crossing
+#' Forest share of each cadastral parcel, measured before the crossing
 #'
 #' @description
-#' Taken from `surface_ha` and `hors_ugf` on the core's crossing table, **before
-#' the remainder is attached**. Afterwards the question has no answer left to
-#' read: every piece belongs to a forest UGF, and nothing says any more which
-#' part of a parcel the ONF layer actually numbered.
+#' The share of each cadastral parcel actually covered by the ONF layer, taken
+#' by intersecting the two directly.
 #'
-#' No geometry is touched - comparing shares inside one parcel needs no area
-#' recomputation, and `st_area()` on a CRS-bearing geometry is the expensive
-#' call this codebase learned to avoid.
+#' **Why not read it off the crossing table any more.** Until v0.140.1 it came
+#' from `surface_ha` and `hors_ugf`. With `rattacher_reste = TRUE`
+#' (`nemeton >= 0.189.0`) there is no `hors_ugf = TRUE` left to read: every
+#' piece has joined a forest UGF, and the table can no longer say which part of
+#' a parcel the ONF layer numbered. Measuring it upstream is also **truer** -
+#' the crossing table has been through snapping and sliver absorption, which
+#' move surface between rows for reasons that have nothing to do with forest
+#' cover.
 #'
-#' @param ten Crossing table from `nemeton::croiser_parcelles_onf()`.
-#' @return Named numeric, one share in 0..1 per cadastral reference. A parcel of
-#'   zero area has no defined share and gets `NA`.
+#' @param parcelles `sf` of the project's cadastral parcels.
+#' @param onf `sf` of ONF forest parcels.
+#' @return Named numeric, one share in 0..1 per parcel id, carrying an
+#'   `aires_m2` attribute (same order). Empty on any failure - the purge then
+#'   has nothing to decide on and touches nothing, which is the safe default.
 #' @noRd
-.onf_part_foret <- function(ten) {
+.onf_part_foret <- function(parcelles, onf) {
   vide <- stats::setNames(numeric(0), character(0))
-  if (!inherits(ten, "sf") || nrow(ten) == 0L) return(vide)
-  if (!all(c("hors_ugf", "parcelle_cadastrale", "surface_ha") %in% names(ten))) {
-    return(vide)
-  }
-  hors <- .isTRUE_vec(ten$hors_ugf)
-  s <- suppressWarnings(as.numeric(ten$surface_ha))
-  s[is.na(s)] <- 0
-  ref <- as.character(ten$parcelle_cadastrale)
-  tot <- tapply(s, ref, sum)
-  fo  <- tapply(s * !hors, ref, sum)
-  stats::setNames(as.numeric(ifelse(tot > 0, fo / tot, NA_real_)), names(tot))
+  if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) return(vide)
+  if (!inherits(onf, "sf") || nrow(onf) == 0L) return(vide)
+  id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcelles))
+  if (!length(id_col)) return(vide)
+
+  tryCatch({
+    cad <- sf::st_make_valid(sf::st_transform(parcelles, 2154))
+    u <- sf::st_union(sf::st_geometry(
+      sf::st_make_valid(sf::st_transform(onf, 2154))))
+    aire <- as.numeric(sf::st_area(cad))
+
+    inter <- suppressWarnings(sf::st_intersection(sf::st_geometry(cad), u))
+    couvert <- rep(0, nrow(cad))
+    idx <- attr(inter, "idx")
+    if (!is.null(idx) && length(inter)) {
+      a <- as.numeric(sf::st_area(inter))
+      for (k in seq_along(a)) couvert[idx[k, 1]] <- couvert[idx[k, 1]] + a[k]
+    }
+
+    out <- stats::setNames(ifelse(aire > 0, couvert / aire, NA_real_),
+                           as.character(cad[[id_col[1]]]))
+    attr(out, "aires_m2") <- aire
+    out
+  }, error = function(e) vide)
 }
 
 
@@ -489,10 +418,11 @@ onf_projet_croise <- function(projet,
 #' goes, or none of it does; dropping one piece would leave a hole inside a
 #' parcel the user still owns.
 #'
-#' The share comes from [.onf_part_foret()], **measured before the remainder was
-#' attached**. Until v0.139.0 it was re-derived from the surviving "outside
-#' public forest" UGF - which no longer exists, every piece having joined its
-#' neighbour ([.onf_rattacher_reste()]).
+#' The share comes from [.onf_part_foret()], measured on the two raw layers
+#' **before** the crossing. Until v0.139.0 it was re-derived from the surviving
+#' "outside public forest" UGF - which no longer exists, every piece having
+#' joined its neighbour (`croiser_parcelles_onf(rattacher_reste = TRUE)`,
+#' `nemeton >= 0.189.0`).
 #'
 #' @param projet List. Project already re-tiled by the crossing.
 #' @param part_foret Named numeric from [.onf_part_foret()].

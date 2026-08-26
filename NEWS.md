@@ -1,3 +1,69 @@
+# nemetonshiny 0.140.1.9002 (2026-08-26)
+
+### Changed — Le rattachement du reliquat retourne au cœur
+
+Implémente `briefs/vers-nemetonshiny/2026-08-26-cœur-v0.189.0.md`.
+`Imports: nemeton (>= 0.189.0)`.
+
+La règle livrée en v0.140.0 — chaque bout de parcelle cadastrale sans numéro
+rejoint la parcelle forestière avec laquelle il partage la plus longue
+frontière, une parcelle sans voisin devient sa propre UGF — vit désormais dans
+`croiser_parcelles_onf(rattacher_reste = TRUE)`. L'app la portait faute de
+mieux, en écart assumé à sa propre règle « aucune logique métier » ; elle est
+rendue. `.onf_rattacher_reste()` et `.onf_singleparts()` disparaissent.
+
+Le cœur signale au passage un piège que mon implémentation frôlait : sur un
+mélange POLYGON/MULTIPOLYGON, `sf::st_cast("POLYGON")` ne garde que le
+**premier** polygone de chaque multipartie, sans erreur ni avertissement —
+13,74 ha sur 50,34 évaporés dans sa première écriture. Le passage par
+MULTIPOLYGON d'abord est obligatoire.
+
+**La part forestière change de source.** Elle était lue sur la table de
+croisement (`surface_ha` et `hors_ugf`) ; avec le rattachement, plus aucune
+ligne ne porte `hors_ugf = TRUE` et la table ne peut plus dire quelle part
+d'une parcelle était numérotée. Elle est maintenant mesurée **en amont**, en
+intersectant directement cadastre et parcellaire — ce qui est aussi plus juste :
+la table de croisement a subi le calage et l'absorption des échardes, qui
+déplacent de la surface pour des raisons étrangères à la couverture forestière.
+
+Le message « X ha de votre sélection hors forêt publique » décrivait une
+situation qui n'existe plus. Il dit maintenant ce que le rattachement **a
+fait** : « X ha non numérotés par le parcellaire ONF ont rejoint les parcelles
+forestières voisines ».
+
+### Fixed — Les houppiers retrouvent leur emprise et leur résolution
+
+Le contournement de v0.140.0 — `aoi = NULL` et `max_cells = 5e6` forcé — était
+le seul chemin mesuré comme fonctionnel, faute de connaître la cause. Le cœur
+matérialise désormais le raster lui-même (`nemeton 0.189.0`) : l'appel redevient
+normal, avec emprise, et sans budget de cellules imposé. On récupère les 0,50 m
+au lieu de 2 m, et la segmentation cesse de porter sur 1 169 ha de dalles pour
+637 ha de parcelles.
+
+### Added — S3 population : la grille INSEE est câblée
+
+`load_insee_population_source()` entre dans le résolveur de couches, au même
+titre que `bdforet` ou `roads`. Sans elle, S3 restait `NA` partout — voulu
+depuis `nemeton 0.187.0`, qui ne fabrique plus aucune valeur : l'ancien chemin
+« proxy » rendait `surface_du_tampon × 100 hab/km²`, un nombre qui variait
+plausiblement avec la taille de l'unité et passait donc pour une mesure.
+
+Le câblage tient en deux points, et le second est celui qui décide : la couche
+est déclarée et téléchargée comme les autres, **et** la grille est passée à
+`indicateur_s3_population()` par injection nommée. Le dispatcher du cœur filtre
+les arguments sur les formals de la fonction cible, or celle-ci déclare
+`population_grid` mais ni `layers` ni `...` : sans cette injection la grille ne
+l'atteint jamais et S3 reste `NA`, en silence.
+
+Le cache national du cœur (`~/.cache/nemeton/insee/`, ~52 Mo, une fois par
+machine) porte la grille entière ; le cache projet reçoit l'extrait découpé,
+pour qu'un recalcul ne relise pas 52 Mo afin d'y retailler les mêmes cellules.
+
+S3 change aussi de grandeur côté cœur — une **densité** (hab/km² dans 5 km) au
+lieu d'un effectif, sur échelle logarithmique. L'ancienne normalisation saturait
+à 10 000 habitants quand Couchey en compte 46 110 : 100/100 pour une bourgogne
+rurale, et pour presque toute forêt française.
+
 # nemetonshiny 0.140.1.9001 (2026-08-26)
 
 ### Fixed — R-CMD-check était rouge depuis trois jours, pour une raison mécanique

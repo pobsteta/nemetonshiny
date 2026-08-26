@@ -10,6 +10,35 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+### Added
+
+- `download_insee_population()` + couche `population` : carroyage INSEE
+  Filosofi 2021 câblé dans le résolveur, avec injection nommée
+  `population_grid` — sans laquelle le dispatcher du cœur ne la transmet jamais.
+- `helper-sources.R` : `chemin_source()`, `skip_sans_sources()`, `chemin_inst()`.
+
+### Changed
+
+- `Imports: nemeton (>= 0.189.0)`.
+- Le rattachement du reliquat passe par
+  `croiser_parcelles_onf(rattacher_reste = TRUE)` au lieu d'une implémentation
+  locale.
+- `.onf_part_foret()` mesure sur les deux couches brutes, plus sur la table de
+  croisement.
+- `onf_projet_croise()` rend `surface_rattachee_ha`.
+- Le message « X ha hors forêt publique » devient « X ha … ont rejoint les
+  parcelles forestières voisines ».
+- Les houppiers retrouvent l'emprise du projet et la résolution native.
+
+### Fixed
+
+- R-CMD-check : onze tests d'arbre source échouaient sous le paquet installé.
+
+### Removed
+
+- `.onf_rattacher_reste()`, `.onf_singleparts()`,
+  `MARCULUS_HOUPPIER_MAX_CELLS` : le cœur fait le travail.
+
 ## [0.140.1] - 2026-08-26
 
 ### Fixed

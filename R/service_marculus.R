@@ -422,12 +422,10 @@ precompute_houppiers <- function(project_id) {
   chm <- .marculus_chm(project_id)
   if (is.null(out_path) || is.null(chm)) return(invisible(0L))
 
-  # Pas d'emprise : on segmente la dalle entiere. Elle deborde du projet - a
-  # Fordead, 1 169 ha de dalles pour 637 ha de parcelles - mais chaque contexte
-  # est de toute facon decoupe sur SES parcelles au moment de l'export, et le
-  # chemin avec emprise est precisement celui qui echoue (cf.
-  # MARCULUS_HOUPPIER_MAX_CELLS). Le temps est du meme ordre.
-  hp <- .marculus_segment_houppiers(chm)
+  projet <- load_project(project_id)
+  aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
+
+  hp <- .marculus_segment_houppiers(chm, aoi)
   if (is.null(hp)) return(invisible(0L))
 
   dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
@@ -494,45 +492,52 @@ precompute_houppiers <- function(project_id) {
 #' @param aoi Optional `sf` limiting the segmentation.
 #' @return An `sf` in EPSG:4326 carrying `h_max`, or `NULL`.
 #' @noRd
-#' Cell budget under which lidR actually segments
+#' Outline of everything a project covers
 #'
-#' **lidR will not segment a raster that lives on disk.** It says so in as many
-#' words - *"Cannot segment the trees from a raster stored on disk. Use
-#' segment_trees() or load the raster in memory"* - and a minimal reproduction
-#' confirms it: the same synthetic CHM segments fine in memory and fails as soon
-#' as it is read back from a GeoTIFF.
+#' Union of the tenements, or of the parcels when no tenement exists yet.
+#' Buffered by 10 m so a crown standing on the boundary is still segmented -
+#' the marker walking the edge sees those trees too.
 #'
-#' That is why forcing aggregation works. `terra::aggregate()` returns its
-#' result **in memory**, so a raster thinned past this budget is one lidR
-#' accepts, while the same raster left whole is a disk-backed proxy it refuses.
-#'
-#' The core's own default (2e7) is not low enough. Measured on the project
-#' "Fordead" (LiDAR HD MNH, 20 tiles, 80 M cells, 637 ha):
-#'
-#' | `max_cells` | Result |
-#' |---|---|
-#' | 2e7 (core default) | fails |
-#' | **5e6** | **224 614 crowns in 657 s** |
-#'
-#' **It costs resolution**, and the cost is stated rather than hidden: 80 M
-#' cells down to 5 M is a factor of 4, so a 0.50 m model works at 2 m. For
-#' pre-filling the height of a marked stem that is enough - we want the apex
-#' above the stem, not the shape of the crown.
-#'
-#' **What is still unexplained**, and is written down rather than glossed over:
-#' a raster cropped to the AOI and aggregated by hand comes back `inMemory =
-#' TRUE` and *still* fails, with the `st_crs(x) == st_crs(y)` wording. Neither
-#' the CRS (repaired to EPSG:2154, no change) nor memory residence accounts for
-#' that one. Passing the resolver's raster whole, with the budget below, is the
-#' path that measurably works - so it is the path taken. Brief filed:
-#' `briefs/vers-nemeton/2026-08-26-lidr-raster-en-memoire.md`.
-MARCULUS_HOUPPIER_MAX_CELLS <- 5e6
+#' @param project The loaded project.
+#' @return An `sf` of one polygon, or `NULL`.
+#' @noRd
+.marculus_aoi <- function(project) {
+  src <- if (inherits(project$tenements, "sf") && nrow(project$tenements) > 0L) {
+    project$tenements
+  } else if (inherits(project$parcels, "sf") && nrow(project$parcels) > 0L) {
+    project$parcels
+  } else NULL
+  if (is.null(src)) return(NULL)
+  tryCatch({
+    u <- sf::st_union(sf::st_geometry(src))
+    metrique <- sf::st_transform(u, 2154)
+    sf::st_sf(geometry = sf::st_buffer(metrique, 10))
+  }, error = function(e) NULL)
+}
 
 
-.marculus_segment_houppiers <- function(chm) {
+#' Segment crowns on a CHM, best-effort
+#'
+#' @description
+#' Bounded by the AOI: the cached height model is a whole LiDAR HD tile, far
+#' larger than the project - 1 169 ha of tiles for 637 ha of parcels on
+#' "Fordead". The core keeps a boundary crown whole (`emprise = "intersecte"`),
+#' so a tree straddling the edge is a tree, not a fraction of one.
+#'
+#' **A forced `max_cells` lived here from v0.140.0 to v0.141.0**, along with
+#' `aoi = NULL`, because that was the only path measured as working: lidR
+#' refused a raster left on disk, and shrinking the cell budget forced an
+#' aggregation, which `terra` returns in memory. It cost resolution (0.50 m
+#' worked at 2 m) and it cost the AOI. `nemeton 0.189.0` materialises the raster
+#' itself, so both are given back - the call is a normal one again.
+#'
+#' @param chm A `SpatRaster`.
+#' @param aoi The project outline, or `NULL`.
+#' @return An `sf` of crowns carrying `h_max`, in WGS84, or `NULL`.
+#' @noRd
+.marculus_segment_houppiers <- function(chm, aoi = NULL) {
   out <- tryCatch(
-    nemeton::segment_houppiers(chm, aoi = NULL,
-                               max_cells = MARCULUS_HOUPPIER_MAX_CELLS),
+    nemeton::segment_houppiers(chm, aoi = aoi),
     error = function(e) {
       cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
       NULL
