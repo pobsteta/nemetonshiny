@@ -12,6 +12,51 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.140.0\] - 2026-08-26
+
+### Added
+
+- `.onf_rattacher_reste()` : chaque bout de parcelle cadastrale sans
+  numéro forestier rejoint la parcelle forestière avec laquelle il
+  partage la **plus longue frontière**. Le reliquat est éclaté en
+  parties simples au préalable.
+- `.onf_part_foret()` : part forestière par parcelle, relevée sur la
+  table de croisement **avant** rattachement.
+- `.marculus_chm_exploitable()` : un modèle de hauteur dont rien
+  n’atteint `hmin` n’est pas retenu.
+- `MARCULUS_HOUPPIER_MAX_CELLS` : budget de cellules sous lequel lidR
+  segmente.
+- Repli accordéon sur le bloc « Calculs terminés » du sidebar de
+  Sélection.
+
+### Changed
+
+- L’UGF « Hors forêt publique » n’est plus produite : rien d’une
+  parcelle cadastrale n’est écarté.
+- Une parcelle qu’aucune parcelle forestière ne touche garde sa propre
+  UGF, nommée par sa référence cadastrale.
+- L’import CSV ne purge plus aucune parcelle ; le réglage reste au
+  bouton ONF.
+- `onf_purger_hors_foret()` prend `part_foret` au lieu d’un libellé
+  d’UGF.
+- `onf_projet_croise()` prend `i18n` au lieu de `label_hors`, et rend
+  `part_foret`.
+- La résolution du modèle de hauteur passe par
+  [`nemeton::resolve_project_chm()`](https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html),
+  qui préfère LiDAR HD à Open-Canopy.
+
+### Fixed
+
+- Les houppiers ne se calculaient sur aucun projet : mauvaise source de
+  MNH, et refus de lidR de segmenter un raster stocké sur disque.
+- Les messages de purge annonçaient « sous 10 % » en dur alors que le
+  seuil est paramétrable et vaut 0 par défaut.
+
+### Removed
+
+- `.onf_label_hors_ugf()` et `.marculus_aoi()` : sans appelant.
+- `n_partielles` : sans objet, l’UGF résiduelle n’existant plus.
+
 ## \[0.139.0\] - 2026-08-25
 
 ### Added
