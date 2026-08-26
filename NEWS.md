@@ -1,4 +1,4 @@
-# nemetonshiny 0.140.0.9001 (2026-08-26)
+# nemetonshiny 0.140.1 (2026-08-26)
 
 ### Fixed — Un test ne parsait plus, et ma vérification ne le voyait pas
 
