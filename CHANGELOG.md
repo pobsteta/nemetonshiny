@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.140.1\] - 2026-08-26
+
+### Fixed
+
+- `test-parcelles-csv.R` : `grepl("^\s*#", ...)` au lieu de `"^\\s*#"`
+  rendait le fichier entier non analysable
+  (`'\s' is an unrecognized escape`), et R-CMD-check échouait. Un
+  fichier qui ne parse pas n’apparaît ni en `[failure]` ni en `[error]`
+  : il disparaît du compte, d’où un faux vert en local.
+
 ## \[0.140.0\] - 2026-08-26
 
 ### Added

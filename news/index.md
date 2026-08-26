@@ -1,5 +1,24 @@
 # Changelog
 
+## nemetonshiny 0.140.1 (2026-08-26)
+
+#### Fixed — Un test ne parsait plus, et ma vérification ne le voyait pas
+
+`test-parcelles-csv.R` portait `grepl("^\s*#", ...)` au lieu de
+`grepl("^\\s*#", ...)` : en R, `"\s"` n’est pas une séquence
+d’échappement valide, et le fichier entier cessait d’être analysable.
+R-CMD-check l’a vu,
+`Error: '\s' is an unrecognized escape in character string`.
+
+**Ce qui m’a échappé, et qui compte plus que la coquille** : je filtrais
+la sortie de la suite sur `[failure]` et `[error]`. Un fichier qui ne
+*parse* pas n’apparaît sous aucune des deux étiquettes — il est
+simplement absent du compte. Ma vérification annonçait donc « 0 échec »
+sur une suite dont un fichier n’avait pas été exécuté du tout.
+
+Vérifié cette fois-ci sur les **106 fichiers de test**, un
+[`parse()`](https://rdrr.io/r/base/parse.html) chacun.
+
 ## nemetonshiny 0.140.0 (2026-08-26)
 
 #### Changed — Une UGF est faite de parcelles cadastrales, et de rien d’autre

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.140.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.140.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.140.1" id="nemetonshiny-01401-2026-08-26">nemetonshiny 0.140.1 (2026-08-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01401-2026-08-26"></a></h2>
+<div class="section level4">
+<h4 id="fixed--un-test-ne-parsait-plus-et-ma-vérification-ne-le-voyait-pas-0-140-1">Fixed — Un test ne parsait plus, et ma vérification ne le voyait pas<a class="anchor" aria-label="anchor" href="#fixed--un-test-ne-parsait-plus-et-ma-v%C3%A9rification-ne-le-voyait-pas-0-140-1"></a></h4>
+<p><code>test-parcelles-csv.R</code> portait <code>grepl("^\s*#", ...)</code> au lieu de <code>grepl("^\\s*#", ...)</code> : en R, <code>"\s"</code> n’est pas une séquence d’échappement valide, et le fichier entier cessait d’être analysable. R-CMD-check l’a vu, <code>Error: '\s' is an unrecognized escape in character string</code>.</p>
+<p><strong>Ce qui m’a échappé, et qui compte plus que la coquille</strong> : je filtrais la sortie de la suite sur <code>[failure]</code> et <code>[error]</code>. Un fichier qui ne <em>parse</em> pas n’apparaît sous aucune des deux étiquettes — il est simplement absent du compte. Ma vérification annonçait donc « 0 échec » sur une suite dont un fichier n’avait pas été exécuté du tout.</p>
+<p>Vérifié cette fois-ci sur les <strong>106 fichiers de test</strong>, un <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code> chacun.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.140.0" id="nemetonshiny-01400-2026-08-26">nemetonshiny 0.140.0 (2026-08-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01400-2026-08-26"></a></h2>
 <div class="section level4">
