@@ -303,7 +303,7 @@ test_that("l'import CSV croise, rattache, et ne purge RIEN", {
   i_csv <- grep("confirm_import_csv", code)[1]
   testthat::skip_if(is.na(i_csv), "bloc CSV introuvable")
   bloc <- code[i_csv:min(length(code), i_csv + 220)]
-  bloc <- bloc[!grepl("^\s*#", bloc)]
+  bloc <- bloc[!grepl("^\\s*#", bloc)]
 
   expect_true(any(grepl("onf_projet_croise", bloc, fixed = TRUE)))
   # AUCUNE purge sur ce chemin, et aucun reglage de purge lu.
@@ -320,6 +320,6 @@ test_that("la purge reste offerte au bouton ONF, et a lui seul", {
   f <- testthat::test_path("..", "..", "R", "mod_ug.R")
   testthat::skip_if_not(file.exists(f), "sources R absentes")
   code <- readLines(f, warn = FALSE)
-  code <- code[!grepl("^\s*#", code)]
+  code <- code[!grepl("^\\s*#", code)]
   expect_equal(sum(grepl("onf_purger_hors_foret\\(", code)), 1L)
 })
