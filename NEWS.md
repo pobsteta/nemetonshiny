@@ -1,3 +1,33 @@
+# nemetonshiny 0.140.1.9004 (2026-08-26)
+
+### Fixed — La notification du moteur reGénération oubliait la phase au pire moment
+
+`.regen_read_phase()` jetait tout `engine_status.json` vieux de plus de 2 min, et
+la notification bas-droite retombait alors sur « Moteur reGénération en cours… ».
+Or le cœur n'émet qu'**un** événement par année ERA5
+(`.rsen_moyenne_categorie()`), puis télécharge douze mois auprès de Copernicus
+sans un mot — mesuré à 1 h 36 pour l'année 2020 du projet Fordead, ~8 min par
+mois. La phase réelle était donc effacée précisément pendant le plus long moment
+du run, celui où l'on se demande si quelque chose tourne encore.
+
+La lecture ne juge plus : elle porte l'âge de la dernière écriture (`stale_s`), et
+le libellé dit le silence au lieu de le cacher — « Microclimat — étés canicule
+2022 (1/1) — dernier signe de vie il y a 27 min ». Le seuil de 2 min est conservé,
+mais il déclenche un aveu, plus un oubli. La protection contre une phase fantôme
+d'un run précédent ne tenait de toute façon pas à cette péremption :
+`engine_status.json` est effacé au lancement et en fin de tâche, et le poll est
+gardé par `rv$engine_running`.
+
+### Added — Compteur de mois ERA5 (en attente du cœur)
+
+`regen_expo:era5_mois` est mappé et affiché — « Microclimat — étés canicule 2022
+— mois 3/12 ». Chaque morceau du libellé est optionnel : tant que le cœur n'émet
+pas cet événement, la branche est morte et rien ne change. Le brief cœur
+correspondant est `specs/BRIEF-nemeton-era5-progression-mensuelle.md`, qui
+demande aussi la reprise d'un cache ERA5 partiel — aujourd'hui un run tué au
+mois 7 rend l'année entière irrécupérable, `mcera5::request_era5()` refusant un
+`.zip` déjà présent.
+
 # nemetonshiny 0.140.1.9003 (2026-08-26)
 
 ### Fixed — L'export Marculus partait sans desserte quand seule l'Accessibilité avait tourné

@@ -847,6 +847,14 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:era5" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
                            list(year = p$year, i = p$i, n = p$n)),
+      # Un evenement par MOIS telecharge (cœur a venir - cf. specs/BRIEF-nemeton-
+      # era5-progression-mensuelle.md). Le compteur d'ANNEES disparait ici : le
+      # cœur n'en connait pas le rang depuis .rsen_forcage_era5(), et "2022 -
+      # mois 3/12" dit deja tout ce que "(1/1)" pretendait dire. Tant que le cœur
+      # n'emet pas cet evenement, cette branche est morte et rien ne change.
+      "regen_expo:era5_mois" =
+        .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
+                           list(year = p$year, mois_i = p$mois_i, mois_n = p$mois_n)),
       "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
       "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
       "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),

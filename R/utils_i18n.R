@@ -5345,6 +5345,8 @@ TRANSLATIONS <- list(
   ),
   regen_phase_biljou = list(fr = "Bilan hydrique du sol (BILJOU)\u2026", en = "Soil water balance (BILJOU)\u2026"),
   regen_phase_micro_skip = list(fr = "Exposition microclimf ignor\u00e9e : %s", en = "microclimf exposure skipped: %s"),
+  regen_phase_silence = list(fr = " \u2014 dernier signe de vie il y a %d min", en = " \u2014 last sign of life %d min ago"),
+  regen_phase_micro_mois = list(fr = " \u2014 mois %d/%d", en = " \u2014 month %d/%d"),
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
   regen_phase_skip_reason_structure = list(fr = "structure de v\u00e9g\u00e9tation manquante", en = "missing vegetation structure"),
   regen_guard_biljou = list(fr = "Bilan hydrique r\u00e9el indisponible : for\u00e7age m\u00e9t\u00e9o (SAFRAN/ERA5) ou donn\u00e9es sol non r\u00e9cup\u00e9r\u00e9s pour cette zone.", en = "Real water balance unavailable: weather forcing (SAFRAN/ERA5) or soil data could not be retrieved for this area."),

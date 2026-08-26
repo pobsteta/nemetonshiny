@@ -13,15 +13,39 @@
 # la session principale le poll (invalidateLater 1000) et rend la phase dans la
 # notif bas-droite. Cf. brief engine-phase-status.
 
-# Lit engine_status.json ; NULL si absent/illisible/perime (> 2 min sans MAJ).
-.regen_read_phase <- function(project_path) {
+# Au-dela de ce silence, la notif dit depuis combien de temps le worker n'a
+# plus rien ecrit. La valeur est celle de l'ancienne peremption : ce n'est plus
+# le seuil ou l'on OUBLIE la phase, c'est celui ou l'on avoue le silence.
+.REGEN_PHASE_SILENCE_S <- 120L
+
+# Lit engine_status.json ; NULL si absent/illisible. Un fichier vieux n'est PLUS
+# jete : il l'etait, et la notif retombait alors sur « Moteur en cours... », un
+# libelle qui ne dit rien de ce qui tourne. Or le cœur n'emet qu'UN evenement
+# par annee ERA5 (`.rsen_moyenne_categorie()`), et les douze telechargements
+# mensuels qui suivent durent plus d'une heure sans un mot : la phase reelle
+# etait effacee precisement pendant le plus long moment du run, celui ou
+# l'utilisateur se demande si ca tourne encore. On garde la derniere phase
+# connue et on datera son silence (cf. `.regen_silence_suffix()`).
+# `stale_s` : secondes depuis la derniere ecriture, NA quand le worker n'a pas
+# horodate. La protection contre une phase FANTOME d'un run precedent ne tenait
+# de toute facon pas a cette peremption : `engine_status.json` est efface au
+# lancement et en fin de tache, et le poll est garde par `rv$engine_running`.
+.regen_read_phase <- function(project_path, now = Sys.time()) {
   if (is.null(project_path)) return(NULL)
   f <- file.path(project_path, "cache", "regeneration", "engine_status.json")
   if (!file.exists(f)) return(NULL)
   st <- tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
   if (is.null(st) || is.null(st$phase)) return(NULL)
-  if (!is.null(st$ts) && as.integer(Sys.time()) - st$ts > 120L) return(NULL)
+  st$stale_s <- if (is.null(st$ts)) NA_integer_ else
+    max(0L, as.integer(now) - as.integer(st$ts))
   st
+}
+
+# " - dernier signe de vie il y a N min ", ou "" tant que le worker parle.
+.regen_silence_suffix <- function(i18n, st) {
+  s <- st$stale_s
+  if (is.null(s) || is.na(s) || s < .REGEN_PHASE_SILENCE_S) return("")
+  sprintf(i18n$t("regen_phase_silence"), as.integer(round(s / 60)))
 }
 
 # " base ({i}/{n}) " seulement si l'evenement a fourni l'avancement.
@@ -32,12 +56,21 @@
   else base
 }
 
-# " base {year} ({i}/{n}) " seulement si l'evenement era5 a fourni l'annee.
+# " base {year} ({i}/{n}) - mois {mois_i}/{mois_n} ", chaque morceau n'apparaissant
+# que si l'evenement l'a fourni. L'annee vient de `regen_expo:era5` ; le mois de
+# `regen_expo:era5_mois`, qu'un cœur assez recent emet pendant les douze
+# telechargements CDS d'une annee - cf. specs/BRIEF-nemeton-era5-progression-
+# mensuelle.md. Sans lui, une annee entiere tient en "(1/1)" pendant plus d'une
+# heure : le compteur est exact et n'apprend rien.
 .regen_micro_lbl <- function(i18n, key, st) {
   base <- i18n$t(key)
-  if (!is.null(st$year) && !is.null(st$i) && !is.null(st$n))
-    sprintf("%s %s (%d/%d)", base, st$year, as.integer(st$i), as.integer(st$n))
-  else base
+  if (!is.null(st$year)) base <- paste(base, st$year)
+  if (!is.null(st$i) && !is.null(st$n))
+    base <- sprintf("%s (%d/%d)", base, as.integer(st$i), as.integer(st$n))
+  if (!is.null(st$mois_i) && !is.null(st$mois_n))
+    base <- paste0(base, sprintf(i18n$t("regen_phase_micro_mois"),
+                                 as.integer(st$mois_i), as.integer(st$mois_n)))
+  base
 }
 
 # Lit engine.log (JSONL, ecrit en ajout par le worker - spec 035 B3.b). Renvoie
@@ -1679,8 +1712,14 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::invalidateLater(1000)
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       st  <- .regen_read_phase(project_path)
-      lbl <- if (is.null(st)) i18n$t("regen_engine_running") else .regen_phase_label(i18n, st)
-      if (!nzchar(lbl)) lbl <- i18n$t("regen_engine_running")   # done / illisible
+      lbl <- i18n$t("regen_engine_running")                     # done / illisible
+      if (!is.null(st)) {
+        phase_lbl <- .regen_phase_label(i18n, st)
+        # Le silence ne se date que sur une phase NOMMEE : accroche a
+        # « Moteur en cours... », il daterait un libelle qui n'a jamais rien
+        # promis, et ne dirait qu'une inquietude de plus.
+        if (nzchar(phase_lbl)) lbl <- paste0(phase_lbl, .regen_silence_suffix(i18n, st))
+      }
       shiny::showNotification(
         .running_notif_content(lbl, rv$engine_start),
         id = session$ns("engine_notif"), type = "message", duration = NULL)
