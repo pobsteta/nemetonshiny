@@ -1,3 +1,29 @@
+# nemetonshiny 0.140.1.9001 (2026-08-26)
+
+### Fixed — R-CMD-check était rouge depuis trois jours, pour une raison mécanique
+
+Douze runs consécutifs en échec sur `main` du 23 au 26 août, pendant que la
+suite locale annonçait 12 510 PASS. Onze tests lisent l'**arbre source** —
+`R/mod_ug.R`, `CLAUDE.md`, `inst/app/www/css/custom.css` — via
+`test_path("..", "..", ...)`, sans garde. En local `pkgload::load_all()` les
+trouve ; sous `R CMD check` les tests tournent depuis le paquet installé, où
+`../../R/` ne mène nulle part, et `readLines()` échoue sur *cannot open the
+connection*.
+
+Un helper nomme le motif une fois plutôt que de le recopier treize fois, et il
+distingue deux situations qui ne se valent pas :
+
+- **`inst/` survit à l'installation**, sous un autre chemin : `chemin_inst()`
+  interroge `system.file()` d'abord, donc le test **s'exécute** en CI au lieu
+  d'y être sauté.
+- **`R/` et la racine du dépôt ne survivent pas** : `skip_sans_sources()` saute,
+  faute de mieux. Un test sauté vaut mieux qu'un test rouge, mais il ne vérifie
+  plus rien là-bas — c'est le prix d'un test d'arbre source, payé sciemment.
+
+Le test du helper lui-même a d'abord été écrit avec `expect_error(..., class =
+"skip")` : le skip se **propage** et sautait le test, sans évaluer une seule
+assertion. Réécrit en attrapant la condition.
+
 # nemetonshiny 0.140.1 (2026-08-26)
 
 ### Fixed — Un test ne parsait plus, et ma vérification ne le voyait pas
