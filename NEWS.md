@@ -1,55 +1,8 @@
-# nemetonshiny 0.140.1.9004 (2026-08-26)
+# nemetonshiny 0.141.0 (2026-08-27)
 
-### Fixed — La notification du moteur reGénération oubliait la phase au pire moment
-
-`.regen_read_phase()` jetait tout `engine_status.json` vieux de plus de 2 min, et
-la notification bas-droite retombait alors sur « Moteur reGénération en cours… ».
-Or le cœur n'émet qu'**un** événement par année ERA5
-(`.rsen_moyenne_categorie()`), puis télécharge douze mois auprès de Copernicus
-sans un mot — mesuré à 1 h 36 pour l'année 2020 du projet Fordead, ~8 min par
-mois. La phase réelle était donc effacée précisément pendant le plus long moment
-du run, celui où l'on se demande si quelque chose tourne encore.
-
-La lecture ne juge plus : elle porte l'âge de la dernière écriture (`stale_s`), et
-le libellé dit le silence au lieu de le cacher — « Microclimat — étés canicule
-2022 (1/1) — dernier signe de vie il y a 27 min ». Le seuil de 2 min est conservé,
-mais il déclenche un aveu, plus un oubli. La protection contre une phase fantôme
-d'un run précédent ne tenait de toute façon pas à cette péremption :
-`engine_status.json` est effacé au lancement et en fin de tâche, et le poll est
-gardé par `rv$engine_running`.
-
-### Added — Compteur de mois ERA5 (en attente du cœur)
-
-`regen_expo:era5_mois` est mappé et affiché — « Microclimat — étés canicule 2022
-— mois 3/12 ». Chaque morceau du libellé est optionnel : tant que le cœur n'émet
-pas cet événement, la branche est morte et rien ne change. Le brief cœur
-correspondant est `specs/BRIEF-nemeton-era5-progression-mensuelle.md`, qui
-demande aussi la reprise d'un cache ERA5 partiel — aujourd'hui un run tué au
-mois 7 rend l'année entière irrécupérable, `mcera5::request_era5()` refusant un
-`.zip` déjà présent.
-
-# nemetonshiny 0.140.1.9003 (2026-08-26)
-
-### Fixed — L'export Marculus partait sans desserte quand seule l'Accessibilité avait tourné
-
-`.marculus_desserte()` ne lisait que le cache de l'onglet Desserte
-(`cache/desserte/*.gpkg`). Un projet dont le réseau vient de l'onglet
-Accessibilité — même acquisition `foretaccess::acquire_desserte()`, rangée dans
-`cache/accessibility/accessibilite.gpkg` — n'a jamais ce répertoire : la
-fonction rendait `NULL`, `marculus_write_action_gpkg()` n'écrivait alors aucune
-table `desserte`, et l'opérateur ouvrait sur son téléphone une couche vide
-alors que le réseau était sur le disque. Constaté sur le projet Fordead, dont
-la couche `desserte` de l'Accessibilité porte 1 748 tronçons.
-
-L'Accessibilité sert désormais de **repli** — lue seulement quand les quatre
-couches de l'onglet Desserte ne donnent rien. Repli et non union : quand les
-deux onglets ont tourné, ils redisent la même BD TOPO, celle de l'onglet
-Desserte en plus corrigée ; les cumuler doublerait le réseau sur le téléphone.
-La lecture d'une couche est sortie en `.marculus_read_desserte()`, partagée par
-les deux sources, ce qui donne au repli la reprojection en 4326 et la colonne
-`nom` absente traitées comme ailleurs.
-
-# nemetonshiny 0.140.1.9002 (2026-08-26)
+Jalon : le cycle dev 0.140.1.9001 → .9004 est consolidé ici. Le MINOR vient du
+retour au cœur du rattachement du reliquat (brief cœur v0.189.0) ; le reste est
+correctif.
 
 ### Changed — Le rattachement du reliquat retourne au cœur
 
@@ -115,7 +68,52 @@ lieu d'un effectif, sur échelle logarithmique. L'ancienne normalisation saturai
 à 10 000 habitants quand Couchey en compte 46 110 : 100/100 pour une bourgogne
 rurale, et pour presque toute forêt française.
 
-# nemetonshiny 0.140.1.9001 (2026-08-26)
+### Fixed — L'export Marculus partait sans desserte quand seule l'Accessibilité avait tourné
+
+`.marculus_desserte()` ne lisait que le cache de l'onglet Desserte
+(`cache/desserte/*.gpkg`). Un projet dont le réseau vient de l'onglet
+Accessibilité — même acquisition `foretaccess::acquire_desserte()`, rangée dans
+`cache/accessibility/accessibilite.gpkg` — n'a jamais ce répertoire : la
+fonction rendait `NULL`, `marculus_write_action_gpkg()` n'écrivait alors aucune
+table `desserte`, et l'opérateur ouvrait sur son téléphone une couche vide
+alors que le réseau était sur le disque. Constaté sur le projet Fordead, dont
+la couche `desserte` de l'Accessibilité porte 1 748 tronçons.
+
+L'Accessibilité sert désormais de **repli** — lue seulement quand les quatre
+couches de l'onglet Desserte ne donnent rien. Repli et non union : quand les
+deux onglets ont tourné, ils redisent la même BD TOPO, celle de l'onglet
+Desserte en plus corrigée ; les cumuler doublerait le réseau sur le téléphone.
+La lecture d'une couche est sortie en `.marculus_read_desserte()`, partagée par
+les deux sources, ce qui donne au repli la reprojection en 4326 et la colonne
+`nom` absente traitées comme ailleurs.
+
+### Fixed — La notification du moteur reGénération oubliait la phase au pire moment
+
+`.regen_read_phase()` jetait tout `engine_status.json` vieux de plus de 2 min, et
+la notification bas-droite retombait alors sur « Moteur reGénération en cours… ».
+Or le cœur n'émet qu'**un** événement par année ERA5
+(`.rsen_moyenne_categorie()`), puis télécharge douze mois auprès de Copernicus
+sans un mot — mesuré à 1 h 36 pour l'année 2020 du projet Fordead, ~8 min par
+mois. La phase réelle était donc effacée précisément pendant le plus long moment
+du run, celui où l'on se demande si quelque chose tourne encore.
+
+La lecture ne juge plus : elle porte l'âge de la dernière écriture (`stale_s`), et
+le libellé dit le silence au lieu de le cacher — « Microclimat — étés canicule
+2022 (1/1) — dernier signe de vie il y a 27 min ». Le seuil de 2 min est conservé,
+mais il déclenche un aveu, plus un oubli. La protection contre une phase fantôme
+d'un run précédent ne tenait de toute façon pas à cette péremption :
+`engine_status.json` est effacé au lancement et en fin de tâche, et le poll est
+gardé par `rv$engine_running`.
+
+### Added — Compteur de mois ERA5 (en attente du cœur)
+
+`regen_expo:era5_mois` est mappé et affiché — « Microclimat — étés canicule 2022
+— mois 3/12 ». Chaque morceau du libellé est optionnel : tant que le cœur n'émet
+pas cet événement, la branche est morte et rien ne change. Le brief cœur
+correspondant est `specs/BRIEF-nemeton-era5-progression-mensuelle.md`, qui
+demande aussi la reprise d'un cache ERA5 partiel — aujourd'hui un run tué au
+mois 7 rend l'année entière irrécupérable, `mcera5::request_era5()` refusant un
+`.zip` déjà présent.
 
 ### Fixed — R-CMD-check était rouge depuis trois jours, pour une raison mécanique
 
