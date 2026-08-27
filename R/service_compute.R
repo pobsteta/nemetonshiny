@@ -187,6 +187,21 @@ DATA_SOURCES <- list(
       source = "ign_bd_topo",
       required_for = c("indicateur_s2_bati", "indicateur_n1_distance")
     ),
+    # Carroyage INSEE Filosofi 2021, la seule entree de S3. Le coeur ne fabrique
+    # plus rien depuis sa v0.187.0 : sans grille, S3 vaut NA - et c'est la
+    # bonne reponse, l'ancien chemin « proxy » rendant surface_du_tampon x 100
+    # hab/km2, un nombre qui variait plausiblement avec la taille de l'unite et
+    # passait donc pour une mesure.
+    #
+    # Son cache est celui du COEUR (~/.cache/nemeton/insee/, ~52 Mo, une fois
+    # par machine), pas celui du projet : la grille est nationale et la
+    # dupliquer par projet serait absurde.
+    population = list(
+      name = "Carroyage INSEE Filosofi 2021",
+      type = "vector",
+      source = "insee_filosofi",
+      required_for = c("indicateur_s3_population")
+    ),
     bdforet = list(
       name = "BD For\u00eat V2 (IGN)",
       type = "vector",
@@ -1556,7 +1571,8 @@ download_layers_for_parcels <- function(parcels,
     wetlands = "source_wetlands",
     roads = "source_roads",
     buildings = "source_buildings",
-    bdforet = "source_bdforet"
+    bdforet = "source_bdforet",
+    population = "source_population"
   )
 
   # Download raster sources
@@ -2575,6 +2591,7 @@ download_vector_source <- function(source_name,
     "inpn_wfs" = download_inpn_wfs(source_name, bbox, cache_file),
     "ign_bd_topo" = download_ign_bdtopo(source_name, bbox, cache_file),
     "ign_bdforet" = download_ign_bdforet(bbox, cache_file),
+    "insee_filosofi" = download_insee_population(bbox, cache_file),
     {
       cli::cli_warn("Unknown vector source: {source_config$source}")
       NULL
@@ -2814,6 +2831,57 @@ download_ign_bdtopo <- function(layer_name, bbox, cache_file) {
     cli::cli_warn("Failed to download IGN BD TOPO {layer_name}: {e$message}")
     NULL
   })
+}
+
+
+#' Download the INSEE population grid that S3 needs
+#'
+#' @description
+#' Thin wrapper over `nemeton::load_insee_population_source()`, which owns the
+#' download (~52 Mo, Filosofi 2021 carroyage), the national cache in
+#' `~/.cache/nemeton/insee/` and the clipping to the area. Nothing is decided
+#' here - the app only turns a bbox into the `sf` the resolver expects.
+#'
+#' **Why the project cache still gets a copy.** The core caches the *national*
+#' grid; what is written here is the clipped extract, alongside `roads.gpkg` and
+#' `bdforet.gpkg`, so a recomputation of the project does not re-read 52 Mo to
+#' cut out the same few hundred cells.
+#'
+#' Returns `NULL` when the source cannot be reached. S3 is then `NA` - which is
+#' the answer, not a failure: since `nemeton 0.187.0` no population figure is
+#' ever fabricated.
+#'
+#' @param bbox Area of interest, as a `bbox` or an `sf`/`sfc`.
+#' @param cache_file Where to write the clipped grid.
+#' @return An `sf` of population cells, or `NULL`.
+#' @noRd
+download_insee_population <- function(bbox, cache_file) {
+  if (!exists("load_insee_population_source",
+              envir = asNamespace("nemeton"), inherits = FALSE)) {
+    cli::cli_warn(
+      "nemeton::load_insee_population_source() absente : S3 restera NA.")
+    return(NULL)
+  }
+
+  aoi <- tryCatch({
+    if (inherits(bbox, c("sf", "sfc"))) bbox else sf::st_as_sfc(bbox)
+  }, error = function(e) NULL)
+  if (is.null(aoi)) return(NULL)
+
+  grille <- tryCatch(
+    nemeton::load_insee_population_source(aoi),
+    error = function(e) {
+      cli::cli_warn("Carroyage INSEE : {conditionMessage(e)}")
+      NULL
+    })
+  if (!inherits(grille, "sf") || nrow(grille) == 0L) return(NULL)
+
+  tryCatch(
+    sf::st_write(grille, cache_file, quiet = TRUE, delete_dsn = TRUE),
+    error = function(e) cli::cli_warn(
+      "Carroyage INSEE non mis en cache : {conditionMessage(e)}"))
+
+  grille
 }
 
 
@@ -4464,6 +4532,16 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # is NULL and the two indicators surface as not-yet-available.
     if ("spectral" %in% func_args && !is.null(layers$spectral)) {
       args$spectral <- layers$spectral
+    }
+
+    # S3 population: hand over the INSEE grid. Same name-resolved injection as
+    # `spectral` above - and the ONLY thing that makes S3 a measurement. The
+    # core's dispatcher filters arguments on the target's formals, and
+    # `indicateur_s3_population()` declares `population_grid` but neither
+    # `layers` nor `...`: without this line the grid never reaches it and S3 is
+    # NA everywhere, silently (nemeton >= 0.189.0, brief du 2026-08-26).
+    if ("population_grid" %in% func_args && !is.null(layers$population)) {
+      args$population_grid <- layers$population
     }
 
     # F1 soil fertility: opt into the absolute SoilGrids CEC path

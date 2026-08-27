@@ -332,14 +332,44 @@ marculus_sync_json <- function(contexts) {
 #' track on screen needs to know whether it exists on the ground or is a
 #' proposal on paper. That distinction is the only one worth a column here.
 #'
+#' When that tab never ran, the Accessibility run's own `desserte` serves as a
+#' fallback - see `.marculus_desserte_accessibilite()`.
+#'
 #' @param project_id Character. Project identifier.
 #' @return An `sf` of lines, or `NULL` when no desserte run left anything.
 #' @noRd
 .marculus_desserte <- function(project_id) {
   path <- get_project_path(project_id)
   if (is.null(path)) return(NULL)
+
+  morceaux <- .marculus_desserte_onglet(path)
+  # Repli sur l'onglet Accessibilite. Un projet peut n'avoir jamais ouvert
+  # l'onglet Desserte et porter quand meme son reseau : `run_accessibility()`
+  # acquiert la BD TOPO par le meme `foretaccess::acquire_desserte()` et la
+  # range dans SON cache. C'est la meme desserte existante, a un repertoire
+  # pres - la refuser ne protegeait rien, elle partait juste vide sur le
+  # telephone. Repli et non union : quand les deux onglets ont tourne, la
+  # couche de l'onglet Desserte redit la meme BD TOPO, corrigee en plus.
+  if (length(morceaux) == 0L) morceaux <- .marculus_desserte_accessibilite(path)
+  if (length(morceaux) == 0L) return(NULL)
+
+  out <- do.call(rbind, morceaux)
+  # Marculus accepte LINESTRING et MULTILINESTRING ; une desserte cartographiee
+  # en surface serait contouree cote telephone. On ne lui envoie que des lignes.
+  geom_ok <- as.character(sf::st_geometry_type(out)) %in%
+    c("LINESTRING", "MULTILINESTRING")
+  out <- out[geom_ok, , drop = FALSE]
+  if (nrow(out) == 0L) NULL else out
+}
+
+#' The four layers the Desserte tab leaves in its own cache
+#'
+#' @param path Project root.
+#' @return A list of `sf`, possibly empty.
+#' @noRd
+.marculus_desserte_onglet <- function(path) {
   cache <- file.path(path, "cache", "desserte")
-  if (!dir.exists(cache)) return(NULL)
+  if (!dir.exists(cache)) return(list())
 
   sources <- list(
     list(gpkg = "desserte.gpkg",           layer = "desserte_existante", type = "existante"),
@@ -350,30 +380,48 @@ marculus_sync_json <- function(contexts) {
 
   morceaux <- list()
   for (s in sources) {
-    gp <- file.path(cache, s$gpkg)
-    if (!file.exists(gp)) next
-    lyr <- tryCatch(sf::st_layers(gp)$name, error = function(e) character(0))
-    if (!(s$layer %in% lyr)) next
-    d <- tryCatch(sf::st_read(gp, layer = s$layer, quiet = TRUE),
-                  error = function(e) NULL)
-    if (!inherits(d, "sf") || nrow(d) == 0L) next
-
-    nom <- if ("nom" %in% names(d)) as.character(d$nom) else NA_character_
-    morceaux[[length(morceaux) + 1L]] <- sf::st_sf(
-      nom      = nom,
-      type     = s$type,
-      geometry = sf::st_geometry(sf::st_transform(d, 4326))
-    )
+    d <- .marculus_read_desserte(file.path(cache, s$gpkg), s$layer, s$type)
+    if (!is.null(d)) morceaux[[length(morceaux) + 1L]] <- d
   }
-  if (length(morceaux) == 0L) return(NULL)
+  morceaux
+}
 
-  out <- do.call(rbind, morceaux)
-  # Marculus accepte LINESTRING et MULTILINESTRING ; une desserte cartographiee
-  # en surface serait contouree cote telephone. On ne lui envoie que des lignes.
-  geom_ok <- as.character(sf::st_geometry_type(out)) %in%
-    c("LINESTRING", "MULTILINESTRING")
-  out <- out[geom_ok, , drop = FALSE]
-  if (nrow(out) == 0L) NULL else out
+#' The desserte the Accessibility run left behind, used as a fallback
+#'
+#' Same BD TOPO network, same acquisition, another cache directory. Typed
+#' `existante` because that is what it is: acquired from the ground truth, not
+#' designed by the engine.
+#'
+#' @param path Project root.
+#' @return A list of at most one `sf`.
+#' @noRd
+.marculus_desserte_accessibilite <- function(path) {
+  gp <- .accessibility_gpkg_path(path)
+  d <- .marculus_read_desserte(gp, "desserte", "existante")
+  if (is.null(d)) list() else list(d)
+}
+
+#' Read one desserte layer and reduce it to what Marculus reads
+#'
+#' @param gp Path to a GeoPackage, possibly absent or `NULL`.
+#' @param layer Layer name.
+#' @param type Provenance written into the `type` column.
+#' @return An `sf` of `nom`/`type`/geometry in EPSG:4326, or `NULL`.
+#' @noRd
+.marculus_read_desserte <- function(gp, layer, type) {
+  if (is.null(gp) || !file.exists(gp)) return(NULL)
+  lyr <- tryCatch(sf::st_layers(gp)$name, error = function(e) character(0))
+  if (!(layer %in% lyr)) return(NULL)
+  d <- tryCatch(sf::st_read(gp, layer = layer, quiet = TRUE),
+                error = function(e) NULL)
+  if (!inherits(d, "sf") || nrow(d) == 0L) return(NULL)
+
+  geom <- tryCatch(sf::st_geometry(sf::st_transform(d, 4326)),
+                   error = function(e) NULL)
+  if (is.null(geom)) return(NULL)
+
+  nom <- if ("nom" %in% names(d)) as.character(d$nom) else NA_character_
+  sf::st_sf(nom = nom, type = type, geometry = geom)
 }
 
 
@@ -422,12 +470,10 @@ precompute_houppiers <- function(project_id) {
   chm <- .marculus_chm(project_id)
   if (is.null(out_path) || is.null(chm)) return(invisible(0L))
 
-  # Pas d'emprise : on segmente la dalle entiere. Elle deborde du projet - a
-  # Fordead, 1 169 ha de dalles pour 637 ha de parcelles - mais chaque contexte
-  # est de toute facon decoupe sur SES parcelles au moment de l'export, et le
-  # chemin avec emprise est precisement celui qui echoue (cf.
-  # MARCULUS_HOUPPIER_MAX_CELLS). Le temps est du meme ordre.
-  hp <- .marculus_segment_houppiers(chm)
+  projet <- load_project(project_id)
+  aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
+
+  hp <- .marculus_segment_houppiers(chm, aoi)
   if (is.null(hp)) return(invisible(0L))
 
   dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
@@ -494,45 +540,52 @@ precompute_houppiers <- function(project_id) {
 #' @param aoi Optional `sf` limiting the segmentation.
 #' @return An `sf` in EPSG:4326 carrying `h_max`, or `NULL`.
 #' @noRd
-#' Cell budget under which lidR actually segments
+#' Outline of everything a project covers
 #'
-#' **lidR will not segment a raster that lives on disk.** It says so in as many
-#' words - *"Cannot segment the trees from a raster stored on disk. Use
-#' segment_trees() or load the raster in memory"* - and a minimal reproduction
-#' confirms it: the same synthetic CHM segments fine in memory and fails as soon
-#' as it is read back from a GeoTIFF.
+#' Union of the tenements, or of the parcels when no tenement exists yet.
+#' Buffered by 10 m so a crown standing on the boundary is still segmented -
+#' the marker walking the edge sees those trees too.
 #'
-#' That is why forcing aggregation works. `terra::aggregate()` returns its
-#' result **in memory**, so a raster thinned past this budget is one lidR
-#' accepts, while the same raster left whole is a disk-backed proxy it refuses.
-#'
-#' The core's own default (2e7) is not low enough. Measured on the project
-#' "Fordead" (LiDAR HD MNH, 20 tiles, 80 M cells, 637 ha):
-#'
-#' | `max_cells` | Result |
-#' |---|---|
-#' | 2e7 (core default) | fails |
-#' | **5e6** | **224 614 crowns in 657 s** |
-#'
-#' **It costs resolution**, and the cost is stated rather than hidden: 80 M
-#' cells down to 5 M is a factor of 4, so a 0.50 m model works at 2 m. For
-#' pre-filling the height of a marked stem that is enough - we want the apex
-#' above the stem, not the shape of the crown.
-#'
-#' **What is still unexplained**, and is written down rather than glossed over:
-#' a raster cropped to the AOI and aggregated by hand comes back `inMemory =
-#' TRUE` and *still* fails, with the `st_crs(x) == st_crs(y)` wording. Neither
-#' the CRS (repaired to EPSG:2154, no change) nor memory residence accounts for
-#' that one. Passing the resolver's raster whole, with the budget below, is the
-#' path that measurably works - so it is the path taken. Brief filed:
-#' `briefs/vers-nemeton/2026-08-26-lidr-raster-en-memoire.md`.
-MARCULUS_HOUPPIER_MAX_CELLS <- 5e6
+#' @param project The loaded project.
+#' @return An `sf` of one polygon, or `NULL`.
+#' @noRd
+.marculus_aoi <- function(project) {
+  src <- if (inherits(project$tenements, "sf") && nrow(project$tenements) > 0L) {
+    project$tenements
+  } else if (inherits(project$parcels, "sf") && nrow(project$parcels) > 0L) {
+    project$parcels
+  } else NULL
+  if (is.null(src)) return(NULL)
+  tryCatch({
+    u <- sf::st_union(sf::st_geometry(src))
+    metrique <- sf::st_transform(u, 2154)
+    sf::st_sf(geometry = sf::st_buffer(metrique, 10))
+  }, error = function(e) NULL)
+}
 
 
-.marculus_segment_houppiers <- function(chm) {
+#' Segment crowns on a CHM, best-effort
+#'
+#' @description
+#' Bounded by the AOI: the cached height model is a whole LiDAR HD tile, far
+#' larger than the project - 1 169 ha of tiles for 637 ha of parcels on
+#' "Fordead". The core keeps a boundary crown whole (`emprise = "intersecte"`),
+#' so a tree straddling the edge is a tree, not a fraction of one.
+#'
+#' **A forced `max_cells` lived here from v0.140.0 to v0.141.0**, along with
+#' `aoi = NULL`, because that was the only path measured as working: lidR
+#' refused a raster left on disk, and shrinking the cell budget forced an
+#' aggregation, which `terra` returns in memory. It cost resolution (0.50 m
+#' worked at 2 m) and it cost the AOI. `nemeton 0.189.0` materialises the raster
+#' itself, so both are given back - the call is a normal one again.
+#'
+#' @param chm A `SpatRaster`.
+#' @param aoi The project outline, or `NULL`.
+#' @return An `sf` of crowns carrying `h_max`, in WGS84, or `NULL`.
+#' @noRd
+.marculus_segment_houppiers <- function(chm, aoi = NULL) {
   out <- tryCatch(
-    nemeton::segment_houppiers(chm, aoi = NULL,
-                               max_cells = MARCULUS_HOUPPIER_MAX_CELLS),
+    nemeton::segment_houppiers(chm, aoi = aoi),
     error = function(e) {
       cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
       NULL

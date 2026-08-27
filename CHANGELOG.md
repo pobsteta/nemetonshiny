@@ -10,6 +10,50 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.141.0] - 2026-08-27
+
+### Added
+
+- `download_insee_population()` + couche `population` : carroyage INSEE
+  Filosofi 2021 câblé dans le résolveur, avec injection nommée
+  `population_grid` — sans laquelle le dispatcher du cœur ne la transmet jamais.
+- `helper-sources.R` : `chemin_source()`, `skip_sans_sources()`, `chemin_inst()`.
+- Mapping de `regen_expo:era5_mois` + clé `regen_phase_micro_mois` : compteur de
+  mois ERA5 dans la notification du moteur reGénération. Branche morte tant que
+  le cœur n'émet pas l'événement — cf.
+  `specs/BRIEF-nemeton-era5-progression-mensuelle.md`.
+
+### Changed
+
+- `Imports: nemeton (>= 0.189.0)`.
+- Le rattachement du reliquat passe par
+  `croiser_parcelles_onf(rattacher_reste = TRUE)` au lieu d'une implémentation
+  locale.
+- `.onf_part_foret()` mesure sur les deux couches brutes, plus sur la table de
+  croisement.
+- `onf_projet_croise()` rend `surface_rattachee_ha`.
+- Le message « X ha hors forêt publique » devient « X ha … ont rejoint les
+  parcelles forestières voisines ».
+- Les houppiers retrouvent l'emprise du projet et la résolution native.
+- `.regen_read_phase()` ne jette plus un `engine_status.json` périmé : elle rend
+  son âge (`stale_s`) et la notification date le silence (« — dernier signe de
+  vie il y a N min ») au lieu de retomber sur le libellé générique.
+- `.regen_micro_lbl()` rend chaque morceau du libellé indépendamment : l'année
+  s'affiche même sans compteur `(i/n)`.
+
+### Fixed
+
+- R-CMD-check : onze tests d'arbre source échouaient sous le paquet installé.
+- L'export Marculus partait sans table `desserte` quand le réseau venait de
+  l'onglet Accessibilité : `.marculus_desserte()` ne lisait que
+  `cache/desserte/`. L'Accessibilité sert désormais de repli (et non d'union :
+  les deux caches redisent la même BD TOPO).
+
+### Removed
+
+- `.onf_rattacher_reste()`, `.onf_singleparts()`,
+  `MARCULUS_HOUPPIER_MAX_CELLS` : le cœur fait le travail.
+
 ## [0.140.1] - 2026-08-26
 
 ### Fixed

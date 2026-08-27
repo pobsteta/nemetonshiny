@@ -14,7 +14,7 @@
 # y compris ceux à venir.
 
 test_that("aucun module ne lit input$*_groups de façon réactive", {
-  r_dir <- testthat::test_path("..", "..", "R")
+  r_dir <- chemin_source("R"); skip_sans_sources(r_dir)
   skip_if_not(dir.exists(r_dir), "sources R absentes (package installé)")
 
   offenders <- character()

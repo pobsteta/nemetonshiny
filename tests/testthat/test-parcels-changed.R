@@ -28,7 +28,8 @@ test_that("mod_ug pose le signal quand la purge a retire des parcelles", {
   skip_if_not_installed("sf")
   # C'est l'émetteur. Sans ce signal, la correction de la v0.130.6 reste
   # invisible dans l'onglet Sélection.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"), warn = FALSE)
+  f <- chemin_source("R", "mod_ug.R"); skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
   pose <- grep("app_state\\$parcels_changed <- ", src)
   expect_length(pose, 1L)
 
@@ -39,7 +40,8 @@ test_that("mod_ug pose le signal quand la purge a retire des parcelles", {
 })
 
 test_that("mod_map ecoute le signal et garde l'idempotence", {
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_map.R"), warn = FALSE)
+  f <- chemin_source("R", "mod_map.R"); skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
   expect_true(any(grepl("observeEvent(app_state$parcels_changed", src, fixed = TRUE)))
   # Garde d'idempotence : sans elle, toute invalidation de app_state rejouerait
   # le redessin de la couche.
@@ -69,7 +71,8 @@ test_that("un signal mal forme laisse la carte intacte", {
   skip_if_not_installed("sf")
   # Un signal sans `parcels`, avec 0 ligne, ou sans colonne `id` ne doit pas
   # vider la carte : mieux vaut un affichage périmé qu'un affichage vide.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_map.R"), warn = FALSE)
+  f <- chemin_source("R", "mod_map.R"); skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
   i <- grep("observeEvent(app_state$parcels_changed", src, fixed = TRUE)
   bloc <- paste(src[i:(i + 45)], collapse = "\n")
   expect_match(bloc, 'inherits(pd, "sf")', fixed = TRUE)

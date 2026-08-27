@@ -222,7 +222,8 @@ test_that("la couche Parcellaire ONF a une case dans TOUS les controles", {
   #
   # Il y a DEUX contrôles (rendu initial + re-création après `clearControls()`
   # à chaque redessin) : en oublier un suffit à faire réapparaître le bug.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"), warn = FALSE)
+  f <- chemin_source("R", "mod_ug.R"); skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
   ctrl <- grep("overlayGroups = ", src, value = TRUE)
   expect_length(ctrl, 2L)
   expect_true(all(grepl("Parcellaire ONF", ctrl, fixed = TRUE)))
@@ -233,7 +234,8 @@ test_that("la previsualisation ONF est effacee apres le croisement", {
   # jamais remis à NULL. La surcouche restait superposée au résultat — d'autant
   # plus trompeuse après une purge, puisqu'elle continuait d'afficher un
   # parcellaire que le projet ne contenait plus.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"), warn = FALSE)
+  f <- chemin_source("R", "mod_ug.R"); skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
   pose <- grep("rv\\$onf_preview <- res\\$parcelles", src)
   efface <- grep("rv\\$onf_preview <- NULL", src)
   expect_length(pose, 1L)

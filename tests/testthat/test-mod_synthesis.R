@@ -14,9 +14,9 @@ test_that("le bouton IA de la Synthese porte l'accent ambre et les trois etoiles
 })
 
 test_that("la classe btn-ia existe dans le CSS, avec un texte lisible", {
-  css <- readLines(
-    testthat::test_path("..", "..", "inst", "app", "www", "css", "custom.css"),
-    warn = FALSE)
+  # `inst/` survit a l'installation : on passe par system.file(), donc ce test
+  # s'EXECUTE sous R CMD check au lieu d'y etre saute.
+  css <- readLines(chemin_inst("app", "www", "css", "custom.css"), warn = FALSE)
   txt <- paste(css, collapse = "\n")
   expect_match(txt, "--nemeton-ia: #E8A33D", fixed = TRUE)
   expect_match(txt, ".btn-ia {", fixed = TRUE)
@@ -66,7 +66,8 @@ test_that("plus aucune icone robot ne subsiste dans les sources", {
   # `updateActionButton()` qui restaurent l'icône après une génération. Ceux-là
   # défaisaient l'accent dès la première utilisation du bouton, sans qu'aucun
   # test d'UI ne le voie : ils ne s'exécutent qu'en session.
-  src <- list.files(testthat::test_path("..", "..", "R"), pattern = "\\.R$",
+  r_dir <- chemin_source("R"); skip_sans_sources(r_dir)
+  src <- list.files(r_dir, pattern = "\\.R$",
                     full.names = TRUE)
   restants <- unlist(lapply(src, function(f) {
     l <- readLines(f, warn = FALSE)
@@ -81,7 +82,8 @@ test_that("le CLAUDE.md documente l'accent ambre", {
   # hiérarchie où l'ambre n'existe pas : une prochaine relecture y verrait une
   # entorse esthétique — ce que la règle interdit explicitement — et la
   # « corrigerait » en repassant le bouton en vert.
-  md <- readLines(testthat::test_path("..", "..", "CLAUDE.md"), warn = FALSE)
+  f <- chemin_source("CLAUDE.md"); skip_sans_sources(f)
+  md <- readLines(f, warn = FALSE)
   txt <- paste(md, collapse = "\n")
   expect_match(txt, "btn-ia", fixed = TRUE)
   expect_match(txt, "#E8A33D", fixed = TRUE)
@@ -94,7 +96,8 @@ test_that("le vert du bloc Tableau des actions n'est PAS touche", {
   skip_if_not_installed("bslib")
   # `action_table_card()` reste vert : c'est un bloc d'actions de l'utilisateur,
   # pas une surface IA. Confondre les deux viderait l'accent de son sens.
-  css <- readLines(testthat::test_path("..", "..", "R", "utils_ui.R"), warn = FALSE)
+  f <- chemin_source("R", "utils_ui.R"); skip_sans_sources(f)
+  css <- readLines(f, warn = FALSE)
   expect_true(any(grepl("card-header bg-success", css, fixed = TRUE)))
 })
 

@@ -1178,7 +1178,8 @@ test_that("DATA_SOURCES vector entries have valid structure", {
 test_that("DATA_SOURCES sources are recognized types", {
   ds <- nemetonshiny:::DATA_SOURCES
   valid_raster_sources <- c("ign_irc", "ign_bd_alti", "oso", "ign_lidar_hd")
-  valid_vector_sources <- c("inpn_wfs", "ign_bd_topo", "ign_bdforet")
+  valid_vector_sources <- c("inpn_wfs", "ign_bd_topo", "ign_bdforet",
+                            "insee_filosofi")
 
   for (name in names(ds$rasters)) {
     expect_true(

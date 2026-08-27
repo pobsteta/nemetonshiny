@@ -224,15 +224,19 @@ test_that("aucun recoupement rend no_overlap sans toucher au projet", {
 
 # ---- onf_croise_resume : lire le retour, ne rien recalculer ----------------
 
-test_that("onf_croise_resume compte UGF, parcelles, cheval et hors-foret", {
+test_that("onf_croise_resume compte UGF, parcelles et cheval", {
   skip_if_not_installed("sf")
   out <- nemetonshiny:::onf_projet_croise(.onf_test_projet(), .onf_test_parcelles())
   r <- nemetonshiny:::onf_croise_resume(out$tenements)
 
-  expect_equal(r$n_ugf, 2L)
   expect_equal(r$n_parcelles, 2L)
   expect_equal(r$n_multi, 1L)          # la parcelle forestière 2 est à cheval
-  expect_gt(r$surface_hors_ha, 0)      # C2 déborde hors forêt publique
+  # `surface_hors_ha` vaut desormais 0 sur ce chemin, et ce n'est pas une perte
+  # d'information : le rattachement a fait qu'aucune ligne n'est « hors ». Le
+  # chiffre qui porte encore le sens est `surface_rattachee_ha`, mesure en
+  # amont sur les deux couches brutes.
+  expect_equal(r$surface_hors_ha, 0)
+  expect_gt(out$surface_rattachee_ha, 0)   # C2 deborde du parcellaire ONF
 })
 
 test_that("onf_croise_resume tient une table vide et un tout-hors-foret", {
@@ -596,122 +600,76 @@ test_that("a 0 %, une parcelle SANS la moindre foret part", {
   expect_true("PF" %in% as.character(out$projet$parcels$id))
 })
 
-test_that(".onf_part_foret lit la part forestiere sur la table de croisement", {
+test_that(".onf_part_foret mesure la part couverte, sur les deux couches brutes", {
   skip_if_not_installed("sf")
-  # Elle remplace le raisonnement « quels tènements portent l'UGF hors forêt »,
-  # qui n'a plus d'objet : après rattachement, plus rien n'est « hors ». La part
-  # doit donc être relevée AVANT, sur la table que rend le cœur.
+  # Elle ne lit plus la table de croisement : avec `rattacher_reste = TRUE`
+  # (coeur >= 0.189.0) plus aucune ligne ne porte `hors_ugf = TRUE`, et la
+  # table ne peut plus dire quelle part de la parcelle etait numerotee. La
+  # mesurer en amont est aussi plus JUSTE - la table a subi le calage et
+  # l'absorption des echardes, qui deplacent de la surface pour des raisons
+  # etrangeres a la couverture forestiere.
   carre <- function(x0, x1) sf::st_polygon(list(rbind(
     c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
-  ten <- sf::st_sf(
-    parcelle_cadastrale = c("P60", "P60", "P05", "P05", "P100"),
-    hors_ugf = c(FALSE, TRUE, FALSE, TRUE, FALSE),
-    surface_ha = c(0.6, 0.4, 0.05, 0.95, 1),
-    nom_ugf = c("FD 1", NA, "FD 1", NA, "FD 2"),
-    geometry = sf::st_sfc(carre(0, 60), carre(60, 100), carre(100, 105),
-                          carre(105, 200), carre(200, 300), crs = 2154))
-  pf <- nemetonshiny:::.onf_part_foret(ten)
-  expect_equal(unname(pf[["P60"]]), 0.6)
-  expect_equal(unname(pf[["P05"]]), 0.05)
-  expect_equal(unname(pf[["P100"]]), 1)
+  cad <- sf::st_sf(
+    id = c("P60", "P00"),
+    geometry = sf::st_sfc(carre(0, 100), carre(200, 300), crs = 2154))
+  onf <- sf::st_sf(
+    id = "F1", geometry = sf::st_sfc(carre(0, 60), crs = 2154))
 
-  # Une surface nulle n'a pas de part definie : NA, et la purge la laisse donc
-  # tranquille plutot que de la supprimer sur une division par zero.
-  ten0 <- ten[1, ]; ten0$surface_ha <- 0; ten0$parcelle_cadastrale <- "P00"
-  expect_true(is.na(nemetonshiny:::.onf_part_foret(ten0)[["P00"]]))
+  pf <- nemetonshiny:::.onf_part_foret(cad, onf)
+  expect_equal(unname(pf[["P60"]]), 0.6, tolerance = 1e-6)
+  expect_equal(unname(pf[["P00"]]), 0)          # aucune foret ne la touche
+  # Les aires voyagent avec, pour que l'appelant chiffre ce qui a ete rattache
+  # sans refaire un st_area().
+  expect_equal(attr(pf, "aires_m2"), c(1e4, 1e4), tolerance = 1e-6)
 
-  # Une table sans les colonnes attendues rend un vecteur vide, pas une erreur.
-  expect_length(nemetonshiny:::.onf_part_foret(ten[, "nom_ugf"]), 0L)
-  expect_length(nemetonshiny:::.onf_part_foret(NULL), 0L)
+  # Entrees inexploitables : vecteur vide, jamais une erreur. La purge n'a
+  # alors rien a decider et ne touche a rien, ce qui est le defaut sur.
+  expect_length(nemetonshiny:::.onf_part_foret(NULL, onf), 0L)
+  expect_length(nemetonshiny:::.onf_part_foret(cad, NULL), 0L)
+  expect_length(nemetonshiny:::.onf_part_foret(cad[, 0], onf), 0L)
 })
 
-test_that("un bout sans numero rejoint le voisin de plus longue frontiere", {
-  skip_if_not_installed("sf")
-  # LE test de l'option A. Une parcelle cadastrale de 300 m de long porte deux
-  # parcelles forestieres ; le bout non couvert longe la SECONDE sur 100 m et ne
-  # touche la premiere par aucun cote. Il doit rejoindre la seconde - meme si la
-  # premiere est plus grande, ce qui est precisement le cas ici (l'option B, «
-  # tout a la dominante », se tromperait).
-  carre <- function(x0, x1) sf::st_polygon(list(rbind(
-    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
-  ten <- sf::st_sf(
-    parcelle_cadastrale = rep("C1", 3),
-    hors_ugf = c(FALSE, FALSE, TRUE),
-    surface_ha = c(2, 0.5, 0.5),
-    nom_ugf = c("FD - parcelle 1", "FD - parcelle 2", NA),
-    geometry = sf::st_sfc(carre(0, 200), carre(200, 250), carre(250, 300),
-                          crs = 2154))
-  out <- nemetonshiny:::.onf_rattacher_reste(ten)
+test_that(".onf_labels_ugf habille une UGF purement cadastrale", {
+  # Le coeur nomme une parcelle sans voisin forestier par sa reference brute
+  # (`nom_ugf = "212000000A0036"`, `ugf_id = "cad~..."`). C'est la bonne
+  # IDENTITE ; ce n'est pas un libelle qu'on lit dans un tableau a cote de
+  # « Foret communale de Couchey - parcelle 12 ».
+  ten <- data.frame(
+    ugf_id  = c("F1", "cad~212000000A0036", NA),
+    nom_ugf = c("FD X - parcelle 12", "212000000A0036", NA),
+    parcelle_cadastrale = c("C1", "212000000A0036", "C9"),
+    stringsAsFactors = FALSE)
+  lab <- nemetonshiny:::.onf_labels_ugf(ten)
 
-  expect_false(any(nemetonshiny:::.isTRUE_vec(out$hors_ugf)))
-  expect_equal(out$label_ugf[is.na(out$nom_ugf)], "FD - parcelle 2")
-  # La plus grande UGF n'a PAS ramasse le bout : c'est ce qui distingue A de B.
-  expect_false("FD - parcelle 1" %in% out$label_ugf[is.na(out$nom_ugf)])
-  # Rien n'est perdu : la surface totale est celle d'avant.
-  expect_equal(sum(as.numeric(sf::st_area(out))),
-               sum(as.numeric(sf::st_area(ten))), tolerance = 1e-6)
+  expect_identical(lab[1], "FD X - parcelle 12")   # intacte
+  expect_match(lab[2], "212000000A0036", fixed = TRUE)
+  expect_false(identical(lab[2], "212000000A0036"))  # habillee
+  # Une ligne sans nom retombe sur sa reference cadastrale plutot que sur NA :
+  # un tenement sans UGF violerait l'invariant 2.
+  expect_match(lab[3], "C9", fixed = TRUE)
+
+  # La detection est sur `ugf_id`, PAS sur la forme du nom : une parcelle
+  # forestiere numerotee « 12 » ne doit pas passer pour une reference cadastrale.
+  ten2 <- data.frame(ugf_id = "F9", nom_ugf = "12", parcelle_cadastrale = "C1",
+                     stringsAsFactors = FALSE)
+  expect_identical(nemetonshiny:::.onf_labels_ugf(ten2), "12")
 })
 
-test_that("le reliquat multipartie est eclate avant d'etre rattache", {
-  skip_if_not_installed("sf")
-  # Le coeur rend le reste FUSIONNE en une ligne par parcelle cadastrale. Sans
-  # eclatement, les deux bouts opposes d'une parcelle iraient a la MEME UGF -
-  # celle qui gagne la comparaison globale - alors qu'ils bordent chacun la
-  # leur. C'est le defaut que l'option A doit precisement eviter.
-  carre <- function(x0, x1) sf::st_polygon(list(rbind(
-    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
-  reste <- sf::st_multipolygon(list(
-    list(rbind(c(0, 0), c(20, 0), c(20, 100), c(0, 100), c(0, 0))),
-    list(rbind(c(180, 0), c(200, 0), c(200, 100), c(180, 100), c(180, 0)))))
-  ten <- sf::st_sf(
-    parcelle_cadastrale = rep("C1", 3),
-    hors_ugf = c(FALSE, FALSE, TRUE),
-    surface_ha = c(1, 1, 0.4),
-    nom_ugf = c("FD - parcelle 1", "FD - parcelle 2", NA),
-    geometry = sf::st_sfc(carre(20, 100), carre(100, 180), reste, crs = 2154))
-  out <- nemetonshiny:::.onf_rattacher_reste(ten)
+test_that("le croisement delegue le rattachement au coeur, sans le reimplementer", {
+  # La regle - chaque bout rejoint la plus longue frontiere, une parcelle sans
+  # voisin devient sa propre UGF - est passee dans `croiser_parcelles_onf()`
+  # (coeur >= 0.189.0). L'app la portait en v0.140.x faute de mieux ; la garder
+  # en double serait deux verites qui derivent.
+  f <- testthat::test_path("..", "..", "R", "service_onf.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
 
-  bouts <- out$label_ugf[is.na(out$nom_ugf)]
-  expect_length(bouts, 2L)                       # eclate
-  expect_setequal(bouts, c("FD - parcelle 1", "FD - parcelle 2"))
-  expect_equal(sum(as.numeric(sf::st_area(out))),
-               sum(as.numeric(sf::st_area(ten))), tolerance = 1e-6)
+  expect_true(any(grepl("rattacher_reste    = TRUE", code, fixed = TRUE)))
+  # Plus d'implementation locale.
+  expect_false(any(grepl(".onf_rattacher_reste <- function", code, fixed = TRUE)))
+  expect_false(any(grepl(".onf_singleparts <- function", code, fixed = TRUE)))
 })
 
-test_that("un bout sans aucun voisin forestier devient une UGF cadastrale", {
-  skip_if_not_installed("sf")
-  # Reponse de Pascal (2026-08-26) : la parcelle est dans le CSV, donc dans la
-  # foret. Elle garde son UGF, nommee par la seule reference qu'elle possede -
-  # jamais versee dans un fourre-tout avec des parcelles sans rapport.
-  carre <- function(x0, x1) sf::st_polygon(list(rbind(
-    c(x0, 0), c(x1, 0), c(x1, 100), c(x0, 100), c(x0, 0))))
-  ten <- sf::st_sf(
-    parcelle_cadastrale = c("C1", "C9"),
-    hors_ugf = c(FALSE, TRUE),
-    surface_ha = c(1, 1),
-    nom_ugf = c("FD - parcelle 1", NA),
-    geometry = sf::st_sfc(carre(0, 100), carre(500, 600), crs = 2154))
-  out <- nemetonshiny:::.onf_rattacher_reste(ten)
-
-  lab <- out$label_ugf[out$parcelle_cadastrale == "C9"]
-  expect_match(lab, "C9", fixed = TRUE)
-  # Elle ne rejoint PAS la parcelle forestiere d'a cote, qu'elle ne touche pas.
-  expect_false(identical(lab, "FD - parcelle 1"))
-})
-
-test_that("un contact ponctuel n'est pas un voisinage", {
-  skip_if_not_installed("sf")
-  # Deux polygones qui se touchent par un SEUL coin partagent une frontiere de
-  # longueur nulle. Les compter comme voisins reviendrait a rattacher au hasard.
-  tri <- function(x, y) sf::st_polygon(list(rbind(
-    c(x, y), c(x + 50, y), c(x, y + 50), c(x, y))))
-  ten <- sf::st_sf(
-    parcelle_cadastrale = rep("C1", 2),
-    hors_ugf = c(FALSE, TRUE),
-    surface_ha = c(1, 1),
-    nom_ugf = c("FD - parcelle 1", NA),
-    geometry = sf::st_sfc(tri(0, 0), tri(50, 50), crs = 2154))
-  out <- nemetonshiny:::.onf_rattacher_reste(ten)
-  expect_match(out$label_ugf[is.na(out$nom_ugf)], "C1", fixed = TRUE)
-})
 

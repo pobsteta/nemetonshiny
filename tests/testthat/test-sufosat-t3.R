@@ -255,7 +255,8 @@ test_that("l'annee d'ancrage est bien l'annee COURANTE, pas une constante", {
   expect_true(attendu >= 2026L)
   expect_type(attendu, "integer")
   # Et le code de staging emploie bien cette expression, pas un littéral.
-  src <- readLines(testthat::test_path("..", "..", "R", "service_compute.R"),
+  f <- chemin_source("R", "service_compute.R"); skip_sans_sources(f)
+  src <- readLines(f,
                    warn = FALSE)
   pose <- grep("sufosat_layer\\$reference_year", src, value = TRUE)
   expect_length(pose, 1L)

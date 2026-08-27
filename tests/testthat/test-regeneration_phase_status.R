@@ -53,16 +53,90 @@ test_that(".regen_read_phase returns NULL when absent, and reads a fresh file", 
   expect_equal(st$phase, "exposition")
 })
 
-test_that(".regen_read_phase drops a stale file (> 2 min without update)", {
+# Un fichier vieux n'est PLUS jeté : il l'était, et la notif retombait alors sur
+# « Moteur en cours… ». Le cœur n'émet qu'un événement par année ERA5, puis
+# télécharge douze mois sans un mot — la phase réelle disparaissait pendant
+# l'heure et demie la plus longue du run. On la garde, et on date son silence.
+.ecrire_phase_agee <- function(reg, phase, age_s) {
+  writeLines(
+    jsonlite::toJSON(list(phase = phase, ts = as.integer(Sys.time()) - age_s),
+                     auto_unbox = TRUE),
+    file.path(reg, "engine_status.json"))
+}
+
+test_that(".regen_read_phase keeps a stale file and dates its silence", {
   d <- withr::local_tempdir()
   reg <- file.path(d, "cache", "regeneration")
   dir.create(reg, recursive = TRUE)
-  # ts vieux de > 120 s → périmé → NULL (worker mort, phase obsolète)
-  writeLines(
-    jsonlite::toJSON(list(phase = "biljou", ts = as.integer(Sys.time()) - 300L),
-                     auto_unbox = TRUE),
-    file.path(reg, "engine_status.json"))
-  expect_null(nemetonshiny:::.regen_read_phase(d))
+  .ecrire_phase_agee(reg, "biljou", 300L)
+
+  st <- nemetonshiny:::.regen_read_phase(d)
+  expect_equal(st$phase, "biljou")
+  # ~300 s : la lecture porte l'âge, elle ne le juge pas.
+  expect_true(abs(st$stale_s - 300L) <= 2L)
+})
+
+test_that(".regen_read_phase dates a fresh file at ~0 s, and NA without ts", {
+  d <- withr::local_tempdir()
+  reg <- file.path(d, "cache", "regeneration")
+  dir.create(reg, recursive = TRUE)
+
+  nemetonshiny:::.regen_write_phase(reg, "grille")
+  expect_lt(nemetonshiny:::.regen_read_phase(d)$stale_s, 5L)
+
+  # Un worker qui n'horodate pas ne doit pas faire inventer un âge de 1970.
+  writeLines(jsonlite::toJSON(list(phase = "grille"), auto_unbox = TRUE),
+             file.path(reg, "engine_status.json"))
+  expect_true(is.na(nemetonshiny:::.regen_read_phase(d)$stale_s))
+})
+
+test_that(".regen_silence_suffix ne parle qu'au-dela de deux minutes", {
+  i18n <- get_i18n("fr")
+  sfx <- function(s) nemetonshiny:::.regen_silence_suffix(i18n, list(stale_s = s))
+
+  # Tant que le worker parle, la phase se suffit : pas de suffixe.
+  expect_equal(sfx(0L), "")
+  expect_equal(sfx(119L), "")
+  expect_equal(sfx(NA_integer_), "")
+  expect_equal(nemetonshiny:::.regen_silence_suffix(i18n, list()), "")
+
+  expect_match(sfx(300L), "dernier signe de vie il y a 5 min")
+  expect_match(sfx(6000L), "il y a 100 min")
+  expect_match(nemetonshiny:::.regen_silence_suffix(get_i18n("en"),
+                                                    list(stale_s = 300L)),
+               "last sign of life 5 min ago")
+})
+
+test_that(".regen_micro_lbl compte les MOIS quand le coeur les emet", {
+  i18n <- get_i18n("fr")
+  lbl <- function(st) nemetonshiny:::.regen_phase_label(i18n, st)
+
+  # Le mois seul, sans compteur d'années : c'est la forme que produira
+  # `regen_expo:era5_mois` (le cœur ne connaît pas le rang de l'année là-bas).
+  expect_match(lbl(list(phase = "microclimf_canicule", year = 2022,
+                        mois_i = 3, mois_n = 12)),
+               "2022 \u2014 mois 3/12", fixed = TRUE)
+  # L'année seule reste rendue même sans (i/n) — l'ancienne version exigeait
+  # les trois et retombait sur le libellé nu.
+  expect_match(lbl(list(phase = "microclimf_moyenne", year = 2020)),
+               "2020", fixed = TRUE)
+  # Les deux compteurs cohabitent si le cœur les fournit ensemble.
+  expect_match(lbl(list(phase = "microclimf_moyenne", year = 2020, i = 1, n = 2,
+                        mois_i = 7, mois_n = 12)),
+               "2020 (1/2) \u2014 mois 7/12", fixed = TRUE)
+})
+
+test_that("la notif garde la phase ERA5 nommee et y accroche le silence", {
+  i18n <- get_i18n("fr")
+  # L'état exact observé sur le projet Fordead : microclimf année canicule,
+  # (1/1) parce que le cœur ne compte que les ANNÉES, silencieux depuis 27 min
+  # parce qu'il télécharge les mois sans rien émettre.
+  st <- list(phase = "microclimf_canicule", year = 2022, i = 1, n = 1,
+             stale_s = 1620L)
+  lbl <- paste0(nemetonshiny:::.regen_phase_label(i18n, st),
+                nemetonshiny:::.regen_silence_suffix(i18n, st))
+  expect_match(lbl, "2022 \\(1/1\\)")
+  expect_match(lbl, "il y a 27 min")
 })
 
 test_that(".regen_phase_label renders the 6 phases + terminal states (FR)", {

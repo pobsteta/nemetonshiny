@@ -2386,9 +2386,13 @@ mod_ug_server <- function(id, app_state) {
               sprintf(i18n_snap$t("onf_croise_partielle_fmt"), length(r$partielles)),
               type = "warning", duration = 10, session = session)
           }
-          if (r$surface_hors_ha > 0 && !purger) {
+          # Ce que le rattachement a deplace. Le message d'avant disait
+          # « X ha hors foret publique » : depuis que plus rien ne l'est, il
+          # decrivait une situation qui n'existe plus.
+          sr <- out$surface_rattachee_ha %||% 0
+          if (sr > 0.05) {
             shiny::showNotification(
-              sprintf(i18n_snap$t("onf_croise_hors_fmt"), r$surface_hors_ha),
+              sprintf(i18n_snap$t("onf_croise_rattache_fmt"), sr),
               type = "message", duration = 10, session = session)
           }
           if (purger) {

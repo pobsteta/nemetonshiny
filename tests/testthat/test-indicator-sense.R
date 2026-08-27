@@ -118,7 +118,8 @@ test_that("famille_risque n'est plus peinte avec la palette de risque", {
   expect_false(est_risque("famille_risque"))
 
   # Et le code source ne doit plus le mentionner dans ce motif.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_family.R"),
+  f <- chemin_source("R", "mod_family.R"); skip_sans_sources(f)
+  src <- readLines(f,
                    warn = FALSE)
   pal <- grep("is_risk <- grepl", src, value = TRUE)
   expect_length(pal, 1L)
@@ -129,7 +130,8 @@ test_that("l'app n'inverse aucun indicateur de risque elle-meme", {
   # Consigne n°1 du brief : le cœur rend déjà la valeur dans le bon sens. Toute
   # inversion côté app annulerait la correction EN SILENCE — le radar
   # remonterait sur les massifs exposés sans qu'aucun test ne tombe.
-  src <- list.files(testthat::test_path("..", "..", "R"), pattern = "\\.R$",
+  r_dir <- chemin_source("R"); skip_sans_sources(r_dir)
+  src <- list.files(r_dir, pattern = "\\.R$",
                     full.names = TRUE)
   suspects <- unlist(lapply(src, function(f) {
     l <- readLines(f, warn = FALSE)
