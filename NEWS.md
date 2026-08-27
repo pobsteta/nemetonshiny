@@ -1,4 +1,4 @@
-# nemetonshiny 0.141.0.9001 (2026-08-27)
+# nemetonshiny 0.141.1 (2026-08-27)
 
 ### Fixed — Un douzième test d'arbre source rendait encore R-CMD-check rouge
 
