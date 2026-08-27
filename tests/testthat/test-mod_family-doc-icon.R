@@ -7,8 +7,11 @@
 #    jamais en recette mais se produiront un jour en production : colonne
 #    absente, `NA`, langue servie differente de la langue demandee.
 #  * le BRANCHEMENT sur le coeur (`get_indicator_doc()`) se teste sur C1
-#    (documente) et C2 (non documente), et se saute quand le coeur installe est
-#    anterieur a 0.192.0.
+#    (documente) et C2 (non documente). Il ne se saute plus : depuis que
+#    `Imports:` exige nemeton >= 0.192.0, un coeur sans les colonnes `doc_*`
+#    n'est plus installable, et un test qui se saute silencieusement ne
+#    signalerait pas une installation cassee - il l'excuserait. La presence des
+#    colonnes est donc affirmee, pas supposee.
 #
 # Aucun des deux ne fige la liste des indicateurs documentes ni leur nombre :
 # la premiere fiche ajoutee cote coeur est une bonne nouvelle, elle ne doit pas
@@ -68,7 +71,7 @@ test_that("doc_icon announces a fact sheet served in another language", {
 test_that("doc_icon tolerates a row of nemeton::indicator_labels()", {
   skip_if_not_installed("bsicons")
   ind <- nemeton::indicator_labels(lang = "fr")
-  skip_if_not("doc_url" %in% names(ind), "nemeton < 0.192.0: pas de fiches")
+  expect_true("doc_url" %in% names(ind))
 
   c1 <- ind[ind$code == "C1", , drop = FALSE]
   icon <- nemetonshiny:::doc_icon(c1, "fr", nemetonshiny:::get_i18n("fr"))
@@ -78,7 +81,7 @@ test_that("doc_icon tolerates a row of nemeton::indicator_labels()", {
 
 test_that("get_indicator_doc reads the fact sheets from the core", {
   ind <- nemeton::indicator_labels(lang = "fr")
-  skip_if_not("doc_url" %in% names(ind), "nemeton < 0.192.0: pas de fiches")
+  expect_true("doc_url" %in% names(ind))
 
   # C1 est documente aujourd'hui ; C2 ne l'est pas. On teste le mecanisme sur
   # les deux, pas un decompte de fiches.
@@ -97,7 +100,7 @@ test_that("get_indicator_doc reads the fact sheets from the core", {
 
 test_that("get_indicator_doc serves the other language rather than nothing", {
   ind <- nemeton::indicator_labels(lang = "en")
-  skip_if_not("doc_url" %in% names(ind), "nemeton < 0.192.0: pas de fiches")
+  expect_true("doc_url" %in% names(ind))
 
   doc_en <- nemetonshiny:::get_indicator_doc("C1", "en")
   expect_false(is.null(doc_en))

@@ -1097,9 +1097,11 @@ get_indicator_doc <- function(col_name, lang = "fr") {
 #'   what keeps that trade honest. The mention disappears by itself the day the
 #'   translation lands core-side; nothing to change here.
 #'
-#' The length test on `doc_url` guards cores older than 0.192.0, where the
-#' column does not exist: `row$doc_url` is then `NULL` and `is.na(NULL)` yields
-#' `logical(0)`, which `if` rejects.
+#' The length test on `doc_url` is NOT about old cores - `Imports:` now requires
+#' nemeton >= 0.192.0, so the column always exists. It guards the shape of `row`
+#' itself: a zero-row slice (`ind[ind$code == "ZZ", ]`, an unknown code) yields
+#' `character(0)`, and `is.na(character(0))` is `logical(0)`, which `if` rejects.
+#' That case does not depend on any core version, so the test stays.
 #'
 #' @param row List or data.frame row with `doc_url` and `doc_lang`, or `NULL`.
 #' @param lang Character. Interface language.

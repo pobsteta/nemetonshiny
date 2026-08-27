@@ -193,9 +193,12 @@ get_app_config <- function(key, default = NULL) {
       vals[!vapply(vals, is.null, logical(1))]
     }
 
-    # Fiches longues (spec 052). Absentes des coeurs < 0.192.0 : `pick()` rend
-    # alors des NA et aucune entree ne survit - l'icone ne s'affiche pas, ce
-    # qui est le comportement voulu, pas une erreur.
+    # Fiches longues (spec 052). `pick()` plutot qu'un acces direct, comme pour
+    # les libelles : ce n'est plus une precaution de version - `Imports:` exige
+    # nemeton >= 0.192.0 - mais la meme regle que `bilingual()`, une colonne
+    # absente donnant NA plutot qu'une erreur. La plupart des indicateurs n'ont
+    # pas de fiche et sortent a NA : c'est la condition d'affichage, pas un
+    # defaut.
     doc_entry <- function(r) {
       if (nrow(r) == 0L) return(NULL)
       url <- pick(r, "doc_url")[1]

@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+### Changed
+
+- `Imports: nemeton (>= 0.189.0)` → `(>= 0.192.0)` : `doc_url` / `doc_lang`
+  sont désormais dans une release stable du cœur, ce qui rend l'icône « fiche »
+  de la v0.142.0 réellement atteignable au lieu de silencieusement absente.
+- `test-mod_family-doc-icon.R` : les trois `skip_if_not()` de version
+  deviennent des `expect_true()` — le plancher rend le skip impossible à
+  justifier.
+- Commentaires de `doc_icon()` et `.build_indicator_families()` : la raison des
+  gardes défensives est corrigée (forme de `row` et cohérence avec
+  `bilingual()`, non plus compatibilité de version). Les gardes elles-mêmes
+  sont conservées.
+
 ## [0.142.0] - 2026-08-27
 
 ### Added
