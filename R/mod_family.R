@@ -390,6 +390,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
         label <- clean_indicator_label(col, i18n)
         tooltip_text <- get_indicator_tooltip(col, app_state$language)
+        doc_row <- get_indicator_doc(col, app_state$language)
 
         # Alerts
         alerts <- list()
@@ -410,10 +411,14 @@ mod_family_server <- function(id, family_code, app_state) {
           )))
         }
 
-        # Build label with tooltip if available
-        label_element <- if (!is.null(tooltip_text)) {
-          htmltools::tagList(
-            htmltools::tags$strong(label),
+        # Build label with tooltip if available, then the fact-sheet link.
+        # Les deux affordances sont independantes : un indicateur peut avoir une
+        # infobulle sans fiche (le cas general) ou l'inverse. `tagList` laisse
+        # tomber les NULL, il n'y a donc pas de branche a ecrire pour chaque
+        # combinaison.
+        label_element <- htmltools::tagList(
+          htmltools::tags$strong(label),
+          if (!is.null(tooltip_text)) {
             bslib::tooltip(
               htmltools::tags$span(
                 class = "ms-1 text-info",
@@ -422,10 +427,9 @@ mod_family_server <- function(id, family_code, app_state) {
               ),
               tooltip_text
             )
-          )
-        } else {
-          htmltools::tags$strong(label)
-        }
+          },
+          doc_icon(doc_row, app_state$language, i18n)
+        )
 
         htmltools::div(
           class = "mb-3",
@@ -1020,4 +1024,114 @@ get_indicator_tooltip <- function(col_name, lang = "fr") {
 
   # No tooltip found
   NULL
+}
+
+
+#' Resolve the fact sheet of an indicator column (spec 052)
+#'
+#' @description
+#' Mirror of [get_indicator_tooltip()] for the long-form fact sheets the core
+#' publishes as pkgdown articles. Nothing is hard-coded here - neither the URL,
+#' nor the list of documented indicators, nor the language a sheet exists in:
+#' all four come from `nemeton::indicator_labels()` through
+#' `INDICATOR_FAMILIES$<F>$indicator_docs`. The day the core adds a sheet, the
+#' icon appears on its own.
+#'
+#' @param col_name Character. Column name, short code, with or without the
+#'   `_norm` suffix.
+#' @param lang Character. Interface language, `"fr"` or `"en"`.
+#'
+#' @return A list with `doc_url` (absolute) and `doc_lang` (the language
+#'   actually served, which may differ from `lang`), or `NULL` when the
+#'   indicator has no fact sheet - the normal case, not an error.
+#'
+#' @noRd
+get_indicator_doc <- function(col_name, lang = "fr") {
+  base <- sub("_norm$", "", col_name)
+  # `NULL` et vecteurs de longueur > 1 compris : `%in%` rend alors `logical(0)`
+  # ou un vecteur, qu'un `if` refuse ou tronque.
+  if (!isTRUE(lang %in% c("fr", "en"))) lang <- "fr"
+
+  entry_for <- function(fam, code) {
+    docs <- fam$indicator_docs
+    if (is.null(docs) || !code %in% names(docs)) return(NULL)
+    hit <- docs[[code]][[lang]]
+    if (is.null(hit)) return(NULL)
+    list(doc_url = hit$url, doc_lang = hit$lang)
+  }
+
+  for (fam in INDICATOR_FAMILIES) {
+    if (!is.null(fam$column_names) && base %in% fam$column_names) {
+      idx <- which(fam$column_names == base)[1]
+      if (idx <= length(fam$indicators)) {
+        hit <- entry_for(fam, fam$indicators[idx])
+        if (!is.null(hit)) return(hit)
+      }
+    }
+    # Codes courts (`C1`) aussi bien que colonnes longues, comme l'infobulle.
+    if (base %in% fam$indicators) {
+      hit <- entry_for(fam, base)
+      if (!is.null(hit)) return(hit)
+    }
+  }
+
+  NULL
+}
+
+
+#' Fact sheet icon, next to the tooltip "i" (spec 052)
+#'
+#' @description
+#' Renders the link only for indicators the core declares as documented. `row`
+#' is anything carrying `doc_url` / `doc_lang`: the list returned by
+#' [get_indicator_doc()], or a row of `nemeton::indicator_labels()` directly.
+#'
+#' Two details are not cosmetic:
+#'
+#' * **New tab, always.** A fact sheet is long; opening it in place would lose
+#'   the state of the computation running behind it. `rel="noopener
+#'   noreferrer"` goes with `target="_blank"`, without exception.
+#' * **The served language is announced.** When the sheet does not exist in the
+#'   interface language, the core serves the other one rather than nothing - a
+#'   sheet in the wrong language beats no sheet. Saying so in the tooltip is
+#'   what keeps that trade honest. The mention disappears by itself the day the
+#'   translation lands core-side; nothing to change here.
+#'
+#' The length test on `doc_url` guards cores older than 0.192.0, where the
+#' column does not exist: `row$doc_url` is then `NULL` and `is.na(NULL)` yields
+#' `logical(0)`, which `if` rejects.
+#'
+#' @param row List or data.frame row with `doc_url` and `doc_lang`, or `NULL`.
+#' @param lang Character. Interface language.
+#' @param i18n An i18n object from [get_i18n()].
+#'
+#' @return An `<a>` tag, or `NULL` when the indicator has no fact sheet.
+#'
+#' @noRd
+doc_icon <- function(row, lang, i18n) {
+  if (is.null(row)) return(NULL)
+
+  url <- row$doc_url %||% NA_character_
+  if (length(url) != 1L || is.na(url) || !nzchar(url)) return(NULL)
+
+  doc_lang <- row$doc_lang %||% NA_character_
+  label <- i18n$t("indicateur_fiche_ouvrir")
+  if (length(doc_lang) == 1L && !is.na(doc_lang) && !identical(doc_lang, lang)) {
+    lang_key <- paste0("langue_", doc_lang)
+    if (i18n$has(lang_key)) {
+      label <- paste0(label, " ", i18n$t(lang_key))
+    }
+  }
+
+  htmltools::tags$a(
+    href = url,
+    target = "_blank",
+    rel = "noopener noreferrer",
+    class = "ms-1 nmt-doc-link",
+    title = label,
+    `aria-label` = label,
+    # `size` ici et pas en CSS : `bs_icon()` ecrit height/width en style INLINE,
+    # qui gagne sur la feuille. 0.875em est la taille du « i » voisin (`fa-sm`).
+    bsicons::bs_icon("journal-text", size = "0.875em")
+  )
 }

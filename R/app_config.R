@@ -148,12 +148,29 @@ get_app_config <- function(key, default = NULL) {
 #' (`get_family_config()`, `mod_family`, `utils_theme`, `service_export`,
 #' `llm_prompts`, `mod_synthesis`...) need no change.
 #'
-#' @return Named list of 12 families, ordered as the core orders them.
+#' `indicator_docs` (spec 052) follows the same rule for the long-form fact
+#' sheets: it carries only what the core declares, keyed by indicator code, and
+#' is empty for every family that has no sheet - which is most of them today.
+#' Reading it here rather than hard-coding a URL is what makes the icon appear
+#' by itself the day the core publishes a second sheet.
+#'
+#' @return Named list of 12 families, ordered as the core orders them. Each
+#'   carries `indicator_labels`, `indicator_tooltips` and `indicator_docs`,
+#'   keyed by indicator code.
 #'
 #' @noRd
 .build_indicator_families <- function() {
   fam <- nemeton::indicator_families()
-  lab <- nemeton::indicator_labels()
+  lab <- nemeton::indicator_labels(lang = "fr")
+  # Deuxieme lecture, pour les fiches uniquement (spec 052). `doc_url` /
+  # `doc_lang` dependent de la langue DEMANDEE, pas seulement de la langue
+  # servie : quand la fiche n'existe pas dans la langue courante, le coeur rend
+  # celle de l'autre langue et le dit dans `doc_lang`. Les colonnes
+  # `doc_url_fr` / `doc_url_en` portent deja ce repli et ne permettent donc pas
+  # de reconstruire `doc_lang` - il faut la reponse du coeur pour chaque langue.
+  # Deux appels sur une table statique de 41 lignes, lus une seule fois par
+  # session (`delayedAssign`).
+  lab_en <- nemeton::indicator_labels(lang = "en")
 
   pick <- function(df, col) {
     if (col %in% names(df)) df[[col]] else rep(NA_character_, nrow(df))
@@ -165,11 +182,34 @@ get_app_config <- function(key, default = NULL) {
     cols  <- unlist(fam$column_names[[i]], use.names = FALSE)
 
     rows <- lab[lab$family == code, , drop = FALSE]
+    rows_en <- lab_en[lab_en$family == code, , drop = FALSE]
     bilingual <- function(fr_col, en_col) {
       vals <- lapply(codes, function(cd) {
         r <- rows[rows$code == cd, , drop = FALSE]
         if (nrow(r) == 0L) return(NULL)
         list(fr = pick(r, fr_col)[1], en = pick(r, en_col)[1])
+      })
+      names(vals) <- codes
+      vals[!vapply(vals, is.null, logical(1))]
+    }
+
+    # Fiches longues (spec 052). Absentes des coeurs < 0.192.0 : `pick()` rend
+    # alors des NA et aucune entree ne survit - l'icone ne s'affiche pas, ce
+    # qui est le comportement voulu, pas une erreur.
+    doc_entry <- function(r) {
+      if (nrow(r) == 0L) return(NULL)
+      url <- pick(r, "doc_url")[1]
+      if (is.na(url) || !nzchar(url)) return(NULL)
+      list(url = url, lang = pick(r, "doc_lang")[1])
+    }
+    docs <- function() {
+      vals <- lapply(codes, function(cd) {
+        entry <- list(
+          fr = doc_entry(rows[rows$code == cd, , drop = FALSE]),
+          en = doc_entry(rows_en[rows_en$code == cd, , drop = FALSE])
+        )
+        if (is.null(entry$fr) && is.null(entry$en)) return(NULL)
+        entry
       })
       names(vals) <- codes
       vals[!vapply(vals, is.null, logical(1))]
@@ -184,7 +224,8 @@ get_app_config <- function(key, default = NULL) {
       indicators = codes,
       column_names = cols,
       indicator_labels = bilingual("label_fr", "label_en"),
-      indicator_tooltips = bilingual("tooltip_fr", "tooltip_en")
+      indicator_tooltips = bilingual("tooltip_fr", "tooltip_en"),
+      indicator_docs = docs()
     )
   })
 

@@ -188,6 +188,38 @@ test_that("Family indicator_tooltips keys match indicators", {
   }
 })
 
+test_that("Family indicator_docs is a subset of indicators (spec 052)", {
+  families <- nemetonshiny:::INDICATOR_FAMILIES
+
+  # Contrairement a `indicator_labels` / `indicator_tooltips`, les fiches sont
+  # RARES : un seul indicateur en a une aujourd'hui (C1), et une famille entiere
+  # peut n'en avoir aucune. Le test verifie donc une inclusion, pas une egalite,
+  # et surtout PAS un decompte : il doit rester vert le jour ou le coeur publie
+  # une deuxieme fiche. Sur un coeur < 0.192.0, toutes les listes sont vides -
+  # l'inclusion tient encore, et l'icone ne s'affiche simplement pas.
+  for (fam_code in names(families)) {
+    fam <- families[[fam_code]]
+    docs <- fam$indicator_docs
+    expect_true(is.list(docs), info = paste("indicator_docs missing for", fam_code))
+    expect_true(
+      all(names(docs) %in% fam$indicators),
+      info = paste("indicator_docs has unknown keys for family:", fam_code)
+    )
+    for (ind in names(docs)) {
+      entry <- docs[[ind]]
+      expect_equal(sort(names(entry)), c("en", "fr"))
+      # Au moins une des deux langues resolue, et toujours une URL absolue :
+      # l'app la pose telle quelle dans un href, sans base a concatener.
+      served <- Filter(Negate(is.null), entry)
+      expect_gt(length(served), 0)
+      for (hit in served) {
+        expect_match(hit$url, "^https?://")
+        expect_true(hit$lang %in% c("fr", "en"))
+      }
+    }
+  }
+})
+
 test_that("Family labels have fr and en translations", {
   families <- nemetonshiny:::INDICATOR_FAMILIES
 

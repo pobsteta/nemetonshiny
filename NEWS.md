@@ -1,3 +1,47 @@
+# nemetonshiny 0.142.0 (2026-08-27)
+
+### Added — Une icône « fiche » à côté du « i », pour les indicateurs documentés
+
+Spec 052 côté cœur (`brief-nemetonshiny.md`). Dans l'onglet **Familles
+d'indicateurs**, chaque indicateur porte déjà un « i » qui ouvre son infobulle.
+Les indicateurs qui disposent d'une **fiche longue** — une vignette pkgdown du
+cœur — gagnent une seconde icône juste à côté, qui l'ouvre dans un nouvel
+onglet. Un seul indicateur en a une aujourd'hui, **C1 — Biomasse carbone**.
+
+**Rien n'est câblé sur C1.** Ni l'URL, ni la liste des indicateurs documentés,
+ni la langue des fiches ne sont écrites ici : les quatre viennent des colonnes
+`doc_url` / `doc_lang` / `doc_url_fr` / `doc_url_en` que
+`nemeton::indicator_labels()` expose depuis la v0.192.0, lues par
+`.build_indicator_families()` comme le sont déjà libellés et infobulles. Le jour
+où le cœur publie une deuxième fiche, l'icône apparaît sans qu'on touche à
+l'app — et c'est aussi pourquoi les tests vérifient le *mécanisme* sur C1
+(documenté) et C2 (non documenté) plutôt qu'un décompte de fiches, qui
+rougirait à la première bonne nouvelle.
+
+**La fiche peut être servie dans l'autre langue, et l'interface le dit.** Quand
+elle n'existe pas dans la langue courante, le cœur rend l'autre plutôt que rien
+— une fiche dans la mauvaise langue vaut mieux que pas de fiche. C'est le cas
+de C1 aujourd'hui : en anglais, l'infobulle du lien se lit *« Open the detailed
+fact sheet (new tab) (in French) »*. La mention disparaîtra d'elle-même le jour
+où la traduction sera écrite côté cœur.
+
+Trois clés i18n (`indicateur_fiche_ouvrir`, `langue_fr`, `langue_en`), un
+`<a target="_blank" rel="noopener noreferrer">` — la fiche est longue, l'ouvrir
+en place perdrait l'état du calcul en cours.
+
+**Le plancher `Imports: nemeton` reste à 0.189.0.** La release cœur 0.192.0
+n'est pas encore publiée ; épingler dès maintenant rendrait l'app
+non-installable. Sur un cœur antérieur, `doc_url` n'existe pas, aucune entrée
+n'est construite et l'icône ne s'affiche simplement pas — l'absence de fiche est
+la condition d'affichage, pas une erreur. Deux gardes tiennent ce cas : le test
+de longueur sur `doc_url` dans `doc_icon()` (sans lui, `is.na(NULL)` rend
+`logical(0)`, qu'un `if` refuse) et le repli en `NA` de `pick()` côté config.
+
+**Un piège à connaître en recette** : `doc_url` est déjà correcte avant que la
+PR cœur ne soit mergée, mais la page pkgdown n'est déployée qu'au push sur
+`main` du dépôt cœur. Tant que ce merge n'a pas eu lieu, le lien mène à un 404
+transitoire.
+
 # nemetonshiny 0.141.1 (2026-08-27)
 
 ### Fixed — Un douzième test d'arbre source rendait encore R-CMD-check rouge
