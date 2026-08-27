@@ -1,5 +1,23 @@
 # Changelog
 
+## nemetonshiny 0.141.1 (2026-08-27)
+
+#### Fixed — Un douzième test d’arbre source rendait encore R-CMD-check rouge
+
+`test-indicator-families-defork.R` lisait `../../R/app_config.R` en
+direct. `R/` ne survit pas à l’installation : sous `R CMD check`, les
+tests tournent depuis `<pkg>/tests/` et
+[`readLines()`](https://rdrr.io/r/base/readLines.html) échoue sur «
+cannot open the connection ». Le passage en `helper-sources.R` livré en
+v0.140.1.9001 avait traité onze fichiers et manqué celui-là — il
+suffisait à lui seul à faire échouer le job `R-CMD-check` de `main` sur
+la release v0.141.0, pendant que la suite locale et le job `tests`
+(arbre source) annonçaient 12 566 PASS.
+
+Même remède que les onze autres : `chemin_source()` +
+`skip_sans_sources()`. Le test s’exécute en local, saute sous le paquet
+installé.
+
 ## nemetonshiny 0.141.0 (2026-08-27)
 
 Jalon : le cycle dev 0.140.1.9001 → .9004 est consolidé ici. Le MINOR

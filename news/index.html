@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.141.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.141.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.141.1" id="nemetonshiny-01411-2026-08-27">nemetonshiny 0.141.1 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01411-2026-08-27"></a></h2>
+<div class="section level4">
+<h4 id="fixed--un-douzième-test-darbre-source-rendait-encore-r-cmd-check-rouge-0-141-1">Fixed — Un douzième test d’arbre source rendait encore R-CMD-check rouge<a class="anchor" aria-label="anchor" href="#fixed--un-douzi%C3%A8me-test-darbre-source-rendait-encore-r-cmd-check-rouge-0-141-1"></a></h4>
+<p><code>test-indicator-families-defork.R</code> lisait <code>../../R/app_config.R</code> en direct. <code>R/</code> ne survit pas à l’installation : sous <code>R CMD check</code>, les tests tournent depuis <code>&lt;pkg&gt;/tests/</code> et <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code> échoue sur « cannot open the connection ». Le passage en <code>helper-sources.R</code> livré en v0.140.1.9001 avait traité onze fichiers et manqué celui-là — il suffisait à lui seul à faire échouer le job <code>R-CMD-check</code> de <code>main</code> sur la release v0.141.0, pendant que la suite locale et le job <code>tests</code> (arbre source) annonçaient 12 566 PASS.</p>
+<p>Même remède que les onze autres : <code>chemin_source()</code> + <code>skip_sans_sources()</code>. Le test s’exécute en local, saute sous le paquet installé.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.141.0" id="nemetonshiny-01410-2026-08-27">nemetonshiny 0.141.0 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01410-2026-08-27"></a></h2>
 <p>Jalon : le cycle dev 0.140.1.9001 → .9004 est consolidé ici. Le MINOR vient du retour au cœur du rattachement du reliquat (brief cœur v0.189.0) ; le reste est correctif.</p>
