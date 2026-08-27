@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,29 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.142.1" id="nemetonshiny-01421-2026-08-27">nemetonshiny 0.142.1 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01421-2026-08-27"></a></h2>
+<div class="section level4">
+<h4 id="changed--le-plancher-cœur-passe-à-et-licône--fiche--devient-garantie-0-142-1">Changed — le plancher cœur passe à 0.192.0, et l’icône « fiche » devient garantie<a class="anchor" aria-label="anchor" href="#changed--le-plancher-c%C5%93ur-passe-%C3%A0-et-lic%C3%B4ne--fiche--devient-garantie-0-142-1"></a></h4>
+<p><code>nemeton 0.192.0</code> est publiée (tag <code>v0.192.0</code>, <code>main</code> du cœur à <code>7c9714c</code>) : les colonnes <code>doc_url</code> / <code>doc_lang</code> de <code>indicator_labels()</code> existent désormais dans une release stable. <code>Imports: nemeton (&gt;= 0.189.0)</code> → <code>(&gt;= 0.192.0)</code>.</p>
+<p>Ce n’est pas un bump « pour suivre » : la v0.142.0 consommait déjà cette API, mais contre un cœur antérieur elle ne trouvait rien et l’icône restait invisible — la fonctionnalité était livrée sans être atteignable. Le plancher transforme ce silence en garantie.</p>
+<p><strong>Les tests n’ont plus de skip de version.</strong> Les trois <code>skip_if_not("doc_url" %in% names(ind))</code> de <code>test-mod_family-doc-icon.R</code> deviennent des <code>expect_true()</code>. Un cœur sans ces colonnes n’étant plus installable, un test qui se saute silencieusement n’aurait plus rien à excuser : il masquerait une installation cassée au lieu de la signaler.</p>
+</div>
+<div class="section level4">
+<h4 id="le-cœur-na-pas-livré-une-fiche-il-en-a-livré-0-142-1">Le cœur n’a pas livré une fiche, il en a livré 41<a class="anchor" aria-label="anchor" href="#le-c%C5%93ur-na-pas-livr%C3%A9-une-fiche-il-en-a-livr%C3%A9-0-142-1"></a></h4>
+<p>Le brief annonçait « aujourd’hui un seul indicateur a une fiche : C1 ». <code>nemeton 0.192.0</code> en documente en fait <strong>les 41</strong>, des douze familles, chacune avec sa vignette pkgdown présente (vérifié : 41 déclarations, 41 <code>.Rmd</code>). L’icône apparaît donc sur <strong>chaque</strong> indicateur, pas seulement sur C1 — et <strong>sans une ligne de code modifiée</strong> dans l’app. C’était tout l’intérêt de ne rien câbler sur C1 : la livraison massive du cœur est absorbée telle quelle.</p>
+<p><strong>Un test avait pourtant figé la liste, et il a rougi.</strong> L’exemple du brief prenait C2 comme cas négatif (<code>expect_null(get_indicator_doc("C2"))</code>), ce que le même brief interdisait deux paragraphes plus loin — « le test ne doit pas figer la liste des indicateurs documentés […] sinon il tombera au rouge à la première fiche ajoutée, pour une bonne nouvelle ». C’est exactement ce qui s’est produit. Le cas négatif porte désormais sur des codes que le cœur ne connaît pas (<code>"unknown_indicator"</code>, <code>"ZZ"</code>), les seuls stables : tout vrai code d’indicateur est susceptible de gagner une fiche.</p>
+</div>
+<div class="section level4">
+<h4 id="ce-qui-ne-change-pas--les-gardes-défensives-restent-0-142-1">Ce qui ne change PAS — les gardes défensives restent<a class="anchor" aria-label="anchor" href="#ce-qui-ne-change-pas--les-gardes-d%C3%A9fensives-restent-0-142-1"></a></h4>
+<p>J’avais annoncé leur retrait comme corollaire du bump. C’était une erreur de lecture, corrigée ici plutôt que propagée :</p>
+<ul><li>
+<strong>Le test de longueur sur <code>doc_url</code> dans <code>doc_icon()</code> reste.</strong> Sa raison n’a jamais été seulement le cœur ancien. Il protège la <em>forme</em> de <code>row</code> : une tranche vide (<code>ind[ind$code == "ZZ", ]</code>, un code inconnu) rend <code>character(0)</code>, et <code>is.na(character(0))</code> vaut <code>logical(0)</code>, qu’un <code>if</code> refuse. Ce cas ne dépend d’aucune version du cœur. <code>doc_icon()</code> étant documentée comme acceptant une ligne de <code>indicator_labels()</code> telle quelle, le retirer aurait été une régression déguisée en nettoyage.</li>
+<li>
+<strong><code>pick()</code> reste</strong> dans <code>.build_indicator_families()</code> : c’est le helper générique déjà employé par <code>bilingual()</code>, pas une précaution ajoutée pour les fiches. L’en écarter pour les seules colonnes <code>doc_*</code> aurait introduit une incohérence.</li>
+</ul><p>Seuls les commentaires qui justifiaient ces deux gardes par « cœur &lt; 0.192.0 » sont réécrits : la raison invoquée était devenue fausse, la garde ne l’est pas.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.142.0" id="nemetonshiny-01420-2026-08-27">nemetonshiny 0.142.0 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01420-2026-08-27"></a></h2>
 <div class="section level4">
