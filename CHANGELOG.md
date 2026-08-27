@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.142.0] - 2026-08-27
+
 ### Added
 
 - Onglet *Familles d'indicateurs* : une icône « fiche » (`journal-text`) à côté

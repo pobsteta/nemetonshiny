@@ -1,4 +1,4 @@
-# nemetonshiny 0.141.1.9000 (2026-08-27)
+# nemetonshiny 0.142.0 (2026-08-27)
 
 ### Added — Une icône « fiche » à côté du « i », pour les indicateurs documentés
 
