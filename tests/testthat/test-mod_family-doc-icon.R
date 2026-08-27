@@ -7,7 +7,8 @@
 #    jamais en recette mais se produiront un jour en production : colonne
 #    absente, `NA`, langue servie differente de la langue demandee.
 #  * le BRANCHEMENT sur le coeur (`get_indicator_doc()`) se teste sur C1
-#    (documente) et C2 (non documente). Il ne se saute plus : depuis que
+#    (documente) et sur un code inconnu du coeur (jamais documente). Il ne se
+#    saute plus : depuis que
 #    `Imports:` exige nemeton >= 0.192.0, un coeur sans les colonnes `doc_*`
 #    n'est plus installable, et un test qui se saute silencieusement ne
 #    signalerait pas une installation cassee - il l'excuserait. La presence des
@@ -83,8 +84,12 @@ test_that("get_indicator_doc reads the fact sheets from the core", {
   ind <- nemeton::indicator_labels(lang = "fr")
   expect_true("doc_url" %in% names(ind))
 
-  # C1 est documente aujourd'hui ; C2 ne l'est pas. On teste le mecanisme sur
-  # les deux, pas un decompte de fiches.
+  # Cas positif sur C1. Le cas NEGATIF ne peut pas etre un vrai code
+  # d'indicateur : nemeton 0.192.0 documente les 41, et en documentera d'autres
+  # a mesure que la famille s'etend. Un `expect_null()` sur C2 a justement
+  # rougi ici - le brief avait prevenu qu'un test ne devait pas figer la liste
+  # des indicateurs documentes, et c'est exactement ce qu'il faisait. Le seul
+  # negatif stable est un code que le coeur ne connait pas.
   doc <- nemetonshiny:::get_indicator_doc("C1", "fr")
   expect_false(is.null(doc))
   expect_match(doc$doc_url, "^https://", fixed = FALSE)
@@ -94,8 +99,8 @@ test_that("get_indicator_doc reads the fact sheets from the core", {
   expect_equal(nemetonshiny:::get_indicator_doc("indicateur_c1_biomasse", "fr"), doc)
   expect_equal(nemetonshiny:::get_indicator_doc("indicateur_c1_biomasse_norm", "fr"), doc)
 
-  expect_null(nemetonshiny:::get_indicator_doc("C2", "fr"))
   expect_null(nemetonshiny:::get_indicator_doc("unknown_indicator", "fr"))
+  expect_null(nemetonshiny:::get_indicator_doc("ZZ", "fr"))
 })
 
 test_that("get_indicator_doc serves the other language rather than nothing", {

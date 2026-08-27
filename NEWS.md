@@ -17,6 +17,26 @@ deviennent des `expect_true()`. Un cœur sans ces colonnes n'étant plus
 installable, un test qui se saute silencieusement n'aurait plus rien à
 excuser : il masquerait une installation cassée au lieu de la signaler.
 
+### Le cœur n'a pas livré une fiche, il en a livré 41
+
+Le brief annonçait « aujourd'hui un seul indicateur a une fiche : C1 ».
+`nemeton 0.192.0` en documente en fait **les 41**, des douze familles, chacune
+avec sa vignette pkgdown présente (vérifié : 41 déclarations,
+41 `.Rmd`). L'icône apparaît donc sur **chaque** indicateur, pas seulement
+sur C1 — et **sans une ligne de code modifiée** dans l'app. C'était
+tout l'intérêt de ne rien câbler sur C1 : la livraison massive du
+cœur est absorbée telle quelle.
+
+**Un test avait pourtant figé la liste, et il a rougi.** L'exemple du brief
+prenait C2 comme cas négatif (`expect_null(get_indicator_doc("C2"))`), ce que
+le même brief interdisait deux paragraphes plus loin — « le test ne doit
+pas figer la liste des indicateurs documentés […] sinon il tombera au
+rouge à la première fiche ajoutée, pour une bonne nouvelle ». C'est
+exactement ce qui s'est produit. Le cas négatif porte désormais sur des
+codes que le cœur ne connaît pas (`"unknown_indicator"`, `"ZZ"`), les
+seuls stables : tout vrai code d'indicateur est susceptible de gagner une
+fiche.
+
 ### Ce qui ne change PAS — les gardes défensives restent
 
 J'avais annoncé leur retrait comme corollaire du bump. C'était une erreur de

@@ -18,6 +18,10 @@ For a narrative, per-feature description of each release, see
 - `test-mod_family-doc-icon.R` : les trois `skip_if_not()` de version
   deviennent des `expect_true()` — le plancher rend le skip impossible à
   justifier.
+- `test-mod_family-doc-icon.R` : le cas négatif passe de `C2` à des codes
+  inconnus du cœur (`"unknown_indicator"`, `"ZZ"`). `nemeton 0.192.0` documente
+  les 41 indicateurs, pas seulement C1 : figer un vrai code comme « non
+  documenté » faisait rougir la suite à la première fiche ajoutée.
 - Commentaires de `doc_icon()` et `.build_indicator_families()` : la raison des
   gardes défensives est corrigée (forme de `row` et cohérence avec
   `bilingual()`, non plus compatibilité de version). Les gardes elles-mêmes
