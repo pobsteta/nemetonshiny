@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.141.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.142.0" id="nemetonshiny-01420-2026-08-27">nemetonshiny 0.142.0 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01420-2026-08-27"></a></h2>
+<div class="section level4">
+<h4 id="added--une-icône--fiche--à-côté-du--i--pour-les-indicateurs-documentés-0-142-0">Added — Une icône « fiche » à côté du « i », pour les indicateurs documentés<a class="anchor" aria-label="anchor" href="#added--une-ic%C3%B4ne--fiche--%C3%A0-c%C3%B4t%C3%A9-du--i--pour-les-indicateurs-document%C3%A9s-0-142-0"></a></h4>
+<p>Spec 052 côté cœur (<code>brief-nemetonshiny.md</code>). Dans l’onglet <strong>Familles d’indicateurs</strong>, chaque indicateur porte déjà un « i » qui ouvre son infobulle. Les indicateurs qui disposent d’une <strong>fiche longue</strong> — une vignette pkgdown du cœur — gagnent une seconde icône juste à côté, qui l’ouvre dans un nouvel onglet. Un seul indicateur en a une aujourd’hui, <strong>C1 — Biomasse carbone</strong>.</p>
+<p><strong>Rien n’est câblé sur C1.</strong> Ni l’URL, ni la liste des indicateurs documentés, ni la langue des fiches ne sont écrites ici : les quatre viennent des colonnes <code>doc_url</code> / <code>doc_lang</code> / <code>doc_url_fr</code> / <code>doc_url_en</code> que <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_labels.html" class="external-link">nemeton::indicator_labels()</a></code> expose depuis la v0.192.0, lues par <code>.build_indicator_families()</code> comme le sont déjà libellés et infobulles. Le jour où le cœur publie une deuxième fiche, l’icône apparaît sans qu’on touche à l’app — et c’est aussi pourquoi les tests vérifient le <em>mécanisme</em> sur C1 (documenté) et C2 (non documenté) plutôt qu’un décompte de fiches, qui rougirait à la première bonne nouvelle.</p>
+<p><strong>La fiche peut être servie dans l’autre langue, et l’interface le dit.</strong> Quand elle n’existe pas dans la langue courante, le cœur rend l’autre plutôt que rien — une fiche dans la mauvaise langue vaut mieux que pas de fiche. C’est le cas de C1 aujourd’hui : en anglais, l’infobulle du lien se lit <em>« Open the detailed fact sheet (new tab) (in French) »</em>. La mention disparaîtra d’elle-même le jour où la traduction sera écrite côté cœur.</p>
+<p>Trois clés i18n (<code>indicateur_fiche_ouvrir</code>, <code>langue_fr</code>, <code>langue_en</code>), un <code>&lt;a target="_blank" rel="noopener noreferrer"&gt;</code> — la fiche est longue, l’ouvrir en place perdrait l’état du calcul en cours.</p>
+<p><strong>Le plancher <code>Imports: nemeton</code> reste à 0.189.0.</strong> La release cœur 0.192.0 n’est pas encore publiée ; épingler dès maintenant rendrait l’app non-installable. Sur un cœur antérieur, <code>doc_url</code> n’existe pas, aucune entrée n’est construite et l’icône ne s’affiche simplement pas — l’absence de fiche est la condition d’affichage, pas une erreur. Deux gardes tiennent ce cas : le test de longueur sur <code>doc_url</code> dans <code>doc_icon()</code> (sans lui, <code>is.na(NULL)</code> rend <code>logical(0)</code>, qu’un <code>if</code> refuse) et le repli en <code>NA</code> de <code>pick()</code> côté config.</p>
+<p><strong>Un piège à connaître en recette</strong> : <code>doc_url</code> est déjà correcte avant que la PR cœur ne soit mergée, mais la page pkgdown n’est déployée qu’au push sur <code>main</code> du dépôt cœur. Tant que ce merge n’a pas eu lieu, le lien mène à un 404 transitoire.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.141.1" id="nemetonshiny-01411-2026-08-27">nemetonshiny 0.141.1 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01411-2026-08-27"></a></h2>
 <div class="section level4">
