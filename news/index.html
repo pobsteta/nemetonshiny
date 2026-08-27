@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.140.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.141.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,53 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.141.0" id="nemetonshiny-01410-2026-08-27">nemetonshiny 0.141.0 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01410-2026-08-27"></a></h2>
+<p>Jalon : le cycle dev 0.140.1.9001 → .9004 est consolidé ici. Le MINOR vient du retour au cœur du rattachement du reliquat (brief cœur v0.189.0) ; le reste est correctif.</p>
+<div class="section level4">
+<h4 id="changed--le-rattachement-du-reliquat-retourne-au-cœur-0-141-0">Changed — Le rattachement du reliquat retourne au cœur<a class="anchor" aria-label="anchor" href="#changed--le-rattachement-du-reliquat-retourne-au-c%C5%93ur-0-141-0"></a></h4>
+<p>Implémente <code>briefs/vers-nemetonshiny/2026-08-26-cœur-v0.189.0.md</code>. <code>Imports: nemeton (&gt;= 0.189.0)</code>.</p>
+<p>La règle livrée en v0.140.0 — chaque bout de parcelle cadastrale sans numéro rejoint la parcelle forestière avec laquelle il partage la plus longue frontière, une parcelle sans voisin devient sa propre UGF — vit désormais dans <code>croiser_parcelles_onf(rattacher_reste = TRUE)</code>. L’app la portait faute de mieux, en écart assumé à sa propre règle « aucune logique métier » ; elle est rendue. <code>.onf_rattacher_reste()</code> et <code>.onf_singleparts()</code> disparaissent.</p>
+<p>Le cœur signale au passage un piège que mon implémentation frôlait : sur un mélange POLYGON/MULTIPOLYGON, <code>sf::st_cast("POLYGON")</code> ne garde que le <strong>premier</strong> polygone de chaque multipartie, sans erreur ni avertissement — 13,74 ha sur 50,34 évaporés dans sa première écriture. Le passage par MULTIPOLYGON d’abord est obligatoire.</p>
+<p><strong>La part forestière change de source.</strong> Elle était lue sur la table de croisement (<code>surface_ha</code> et <code>hors_ugf</code>) ; avec le rattachement, plus aucune ligne ne porte <code>hors_ugf = TRUE</code> et la table ne peut plus dire quelle part d’une parcelle était numérotée. Elle est maintenant mesurée <strong>en amont</strong>, en intersectant directement cadastre et parcellaire — ce qui est aussi plus juste : la table de croisement a subi le calage et l’absorption des échardes, qui déplacent de la surface pour des raisons étrangères à la couverture forestière.</p>
+<p>Le message « X ha de votre sélection hors forêt publique » décrivait une situation qui n’existe plus. Il dit maintenant ce que le rattachement <strong>a fait</strong> : « X ha non numérotés par le parcellaire ONF ont rejoint les parcelles forestières voisines ».</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--les-houppiers-retrouvent-leur-emprise-et-leur-résolution-0-141-0">Fixed — Les houppiers retrouvent leur emprise et leur résolution<a class="anchor" aria-label="anchor" href="#fixed--les-houppiers-retrouvent-leur-emprise-et-leur-r%C3%A9solution-0-141-0"></a></h4>
+<p>Le contournement de v0.140.0 — <code>aoi = NULL</code> et <code>max_cells = 5e6</code> forcé — était le seul chemin mesuré comme fonctionnel, faute de connaître la cause. Le cœur matérialise désormais le raster lui-même (<code>nemeton 0.189.0</code>) : l’appel redevient normal, avec emprise, et sans budget de cellules imposé. On récupère les 0,50 m au lieu de 2 m, et la segmentation cesse de porter sur 1 169 ha de dalles pour 637 ha de parcelles.</p>
+</div>
+<div class="section level4">
+<h4 id="added--s3-population--la-grille-insee-est-câblée-0-141-0">Added — S3 population : la grille INSEE est câblée<a class="anchor" aria-label="anchor" href="#added--s3-population--la-grille-insee-est-c%C3%A2bl%C3%A9e-0-141-0"></a></h4>
+<p><code>load_insee_population_source()</code> entre dans le résolveur de couches, au même titre que <code>bdforet</code> ou <code>roads</code>. Sans elle, S3 restait <code>NA</code> partout — voulu depuis <code>nemeton 0.187.0</code>, qui ne fabrique plus aucune valeur : l’ancien chemin « proxy » rendait <code>surface_du_tampon × 100 hab/km²</code>, un nombre qui variait plausiblement avec la taille de l’unité et passait donc pour une mesure.</p>
+<p>Le câblage tient en deux points, et le second est celui qui décide : la couche est déclarée et téléchargée comme les autres, <strong>et</strong> la grille est passée à <code>indicateur_s3_population()</code> par injection nommée. Le dispatcher du cœur filtre les arguments sur les formals de la fonction cible, or celle-ci déclare <code>population_grid</code> mais ni <code>layers</code> ni <code>...</code> : sans cette injection la grille ne l’atteint jamais et S3 reste <code>NA</code>, en silence.</p>
+<p>Le cache national du cœur (<code>~/.cache/nemeton/insee/</code>, ~52 Mo, une fois par machine) porte la grille entière ; le cache projet reçoit l’extrait découpé, pour qu’un recalcul ne relise pas 52 Mo afin d’y retailler les mêmes cellules.</p>
+<p>S3 change aussi de grandeur côté cœur — une <strong>densité</strong> (hab/km² dans 5 km) au lieu d’un effectif, sur échelle logarithmique. L’ancienne normalisation saturait à 10 000 habitants quand Couchey en compte 46 110 : 100/100 pour une bourgogne rurale, et pour presque toute forêt française.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--lexport-marculus-partait-sans-desserte-quand-seule-laccessibilité-avait-tourné-0-141-0">Fixed — L’export Marculus partait sans desserte quand seule l’Accessibilité avait tourné<a class="anchor" aria-label="anchor" href="#fixed--lexport-marculus-partait-sans-desserte-quand-seule-laccessibilit%C3%A9-avait-tourn%C3%A9-0-141-0"></a></h4>
+<p><code>.marculus_desserte()</code> ne lisait que le cache de l’onglet Desserte (<code>cache/desserte/*.gpkg</code>). Un projet dont le réseau vient de l’onglet Accessibilité — même acquisition <code><a href="https://pobsteta.github.io/foretaccess/reference/acquire_desserte.html" class="external-link">foretaccess::acquire_desserte()</a></code>, rangée dans <code>cache/accessibility/accessibilite.gpkg</code> — n’a jamais ce répertoire : la fonction rendait <code>NULL</code>, <code>marculus_write_action_gpkg()</code> n’écrivait alors aucune table <code>desserte</code>, et l’opérateur ouvrait sur son téléphone une couche vide alors que le réseau était sur le disque. Constaté sur le projet Fordead, dont la couche <code>desserte</code> de l’Accessibilité porte 1 748 tronçons.</p>
+<p>L’Accessibilité sert désormais de <strong>repli</strong> — lue seulement quand les quatre couches de l’onglet Desserte ne donnent rien. Repli et non union : quand les deux onglets ont tourné, ils redisent la même BD TOPO, celle de l’onglet Desserte en plus corrigée ; les cumuler doublerait le réseau sur le téléphone. La lecture d’une couche est sortie en <code>.marculus_read_desserte()</code>, partagée par les deux sources, ce qui donne au repli la reprojection en 4326 et la colonne <code>nom</code> absente traitées comme ailleurs.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--la-notification-du-moteur-regénération-oubliait-la-phase-au-pire-moment-0-141-0">Fixed — La notification du moteur reGénération oubliait la phase au pire moment<a class="anchor" aria-label="anchor" href="#fixed--la-notification-du-moteur-reg%C3%A9n%C3%A9ration-oubliait-la-phase-au-pire-moment-0-141-0"></a></h4>
+<p><code>.regen_read_phase()</code> jetait tout <code>engine_status.json</code> vieux de plus de 2 min, et la notification bas-droite retombait alors sur « Moteur reGénération en cours… ». Or le cœur n’émet qu’<strong>un</strong> événement par année ERA5 (<code>.rsen_moyenne_categorie()</code>), puis télécharge douze mois auprès de Copernicus sans un mot — mesuré à 1 h 36 pour l’année 2020 du projet Fordead, ~8 min par mois. La phase réelle était donc effacée précisément pendant le plus long moment du run, celui où l’on se demande si quelque chose tourne encore.</p>
+<p>La lecture ne juge plus : elle porte l’âge de la dernière écriture (<code>stale_s</code>), et le libellé dit le silence au lieu de le cacher — « Microclimat — étés canicule 2022 (1/1) — dernier signe de vie il y a 27 min ». Le seuil de 2 min est conservé, mais il déclenche un aveu, plus un oubli. La protection contre une phase fantôme d’un run précédent ne tenait de toute façon pas à cette péremption : <code>engine_status.json</code> est effacé au lancement et en fin de tâche, et le poll est gardé par <code>rv$engine_running</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="added--compteur-de-mois-era5-en-attente-du-cœur-0-141-0">Added — Compteur de mois ERA5 (en attente du cœur)<a class="anchor" aria-label="anchor" href="#added--compteur-de-mois-era5-en-attente-du-c%C5%93ur-0-141-0"></a></h4>
+<p><code>regen_expo:era5_mois</code> est mappé et affiché — « Microclimat — étés canicule 2022 — mois 3/12 ». Chaque morceau du libellé est optionnel : tant que le cœur n’émet pas cet événement, la branche est morte et rien ne change. Le brief cœur correspondant est <code>specs/BRIEF-nemeton-era5-progression-mensuelle.md</code>, qui demande aussi la reprise d’un cache ERA5 partiel — aujourd’hui un run tué au mois 7 rend l’année entière irrécupérable, <code>mcera5::request_era5()</code> refusant un <code>.zip</code> déjà présent.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--r-cmd-check-était-rouge-depuis-trois-jours-pour-une-raison-mécanique-0-141-0">Fixed — R-CMD-check était rouge depuis trois jours, pour une raison mécanique<a class="anchor" aria-label="anchor" href="#fixed--r-cmd-check-%C3%A9tait-rouge-depuis-trois-jours-pour-une-raison-m%C3%A9canique-0-141-0"></a></h4>
+<p>Douze runs consécutifs en échec sur <code>main</code> du 23 au 26 août, pendant que la suite locale annonçait 12 510 PASS. Onze tests lisent l’<strong>arbre source</strong> — <code>R/mod_ug.R</code>, <code>CLAUDE.md</code>, <code>inst/app/www/css/custom.css</code> — via <code>test_path("..", "..", ...)</code>, sans garde. En local <code><a href="https://pkgload.r-lib.org/reference/load_all.html" class="external-link">pkgload::load_all()</a></code> les trouve ; sous <code>R CMD check</code> les tests tournent depuis le paquet installé, où <code>../../R/</code> ne mène nulle part, et <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code> échoue sur <em>cannot open the connection</em>.</p>
+<p>Un helper nomme le motif une fois plutôt que de le recopier treize fois, et il distingue deux situations qui ne se valent pas :</p>
+<ul><li>
+<strong><code>inst/</code> survit à l’installation</strong>, sous un autre chemin : <code>chemin_inst()</code> interroge <code><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file()</a></code> d’abord, donc le test <strong>s’exécute</strong> en CI au lieu d’y être sauté.</li>
+<li>
+<strong><code>R/</code> et la racine du dépôt ne survivent pas</strong> : <code>skip_sans_sources()</code> saute, faute de mieux. Un test sauté vaut mieux qu’un test rouge, mais il ne vérifie plus rien là-bas — c’est le prix d’un test d’arbre source, payé sciemment.</li>
+</ul><p>Le test du helper lui-même a d’abord été écrit avec <code>expect_error(..., class = "skip")</code> : le skip se <strong>propage</strong> et sautait le test, sans évaluer une seule assertion. Réécrit en attrapant la condition.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.140.1" id="nemetonshiny-01401-2026-08-26">nemetonshiny 0.140.1 (2026-08-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01401-2026-08-26"></a></h2>
 <div class="section level4">

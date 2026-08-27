@@ -1,5 +1,164 @@
 # Changelog
 
+## nemetonshiny 0.141.0 (2026-08-27)
+
+Jalon : le cycle dev 0.140.1.9001 → .9004 est consolidé ici. Le MINOR
+vient du retour au cœur du rattachement du reliquat (brief cœur
+v0.189.0) ; le reste est correctif.
+
+#### Changed — Le rattachement du reliquat retourne au cœur
+
+Implémente `briefs/vers-nemetonshiny/2026-08-26-cœur-v0.189.0.md`.
+`Imports: nemeton (>= 0.189.0)`.
+
+La règle livrée en v0.140.0 — chaque bout de parcelle cadastrale sans
+numéro rejoint la parcelle forestière avec laquelle il partage la plus
+longue frontière, une parcelle sans voisin devient sa propre UGF — vit
+désormais dans `croiser_parcelles_onf(rattacher_reste = TRUE)`. L’app la
+portait faute de mieux, en écart assumé à sa propre règle « aucune
+logique métier » ; elle est rendue. `.onf_rattacher_reste()` et
+`.onf_singleparts()` disparaissent.
+
+Le cœur signale au passage un piège que mon implémentation frôlait : sur
+un mélange POLYGON/MULTIPOLYGON, `sf::st_cast("POLYGON")` ne garde que
+le **premier** polygone de chaque multipartie, sans erreur ni
+avertissement — 13,74 ha sur 50,34 évaporés dans sa première écriture.
+Le passage par MULTIPOLYGON d’abord est obligatoire.
+
+**La part forestière change de source.** Elle était lue sur la table de
+croisement (`surface_ha` et `hors_ugf`) ; avec le rattachement, plus
+aucune ligne ne porte `hors_ugf = TRUE` et la table ne peut plus dire
+quelle part d’une parcelle était numérotée. Elle est maintenant mesurée
+**en amont**, en intersectant directement cadastre et parcellaire — ce
+qui est aussi plus juste : la table de croisement a subi le calage et
+l’absorption des échardes, qui déplacent de la surface pour des raisons
+étrangères à la couverture forestière.
+
+Le message « X ha de votre sélection hors forêt publique » décrivait une
+situation qui n’existe plus. Il dit maintenant ce que le rattachement
+**a fait** : « X ha non numérotés par le parcellaire ONF ont rejoint les
+parcelles forestières voisines ».
+
+#### Fixed — Les houppiers retrouvent leur emprise et leur résolution
+
+Le contournement de v0.140.0 — `aoi = NULL` et `max_cells = 5e6` forcé —
+était le seul chemin mesuré comme fonctionnel, faute de connaître la
+cause. Le cœur matérialise désormais le raster lui-même
+(`nemeton 0.189.0`) : l’appel redevient normal, avec emprise, et sans
+budget de cellules imposé. On récupère les 0,50 m au lieu de 2 m, et la
+segmentation cesse de porter sur 1 169 ha de dalles pour 637 ha de
+parcelles.
+
+#### Added — S3 population : la grille INSEE est câblée
+
+`load_insee_population_source()` entre dans le résolveur de couches, au
+même titre que `bdforet` ou `roads`. Sans elle, S3 restait `NA` partout
+— voulu depuis `nemeton 0.187.0`, qui ne fabrique plus aucune valeur :
+l’ancien chemin « proxy » rendait `surface_du_tampon × 100 hab/km²`, un
+nombre qui variait plausiblement avec la taille de l’unité et passait
+donc pour une mesure.
+
+Le câblage tient en deux points, et le second est celui qui décide : la
+couche est déclarée et téléchargée comme les autres, **et** la grille
+est passée à `indicateur_s3_population()` par injection nommée. Le
+dispatcher du cœur filtre les arguments sur les formals de la fonction
+cible, or celle-ci déclare `population_grid` mais ni `layers` ni `...` :
+sans cette injection la grille ne l’atteint jamais et S3 reste `NA`, en
+silence.
+
+Le cache national du cœur (`~/.cache/nemeton/insee/`, ~52 Mo, une fois
+par machine) porte la grille entière ; le cache projet reçoit l’extrait
+découpé, pour qu’un recalcul ne relise pas 52 Mo afin d’y retailler les
+mêmes cellules.
+
+S3 change aussi de grandeur côté cœur — une **densité** (hab/km² dans 5
+km) au lieu d’un effectif, sur échelle logarithmique. L’ancienne
+normalisation saturait à 10 000 habitants quand Couchey en compte 46 110
+: 100/100 pour une bourgogne rurale, et pour presque toute forêt
+française.
+
+#### Fixed — L’export Marculus partait sans desserte quand seule l’Accessibilité avait tourné
+
+`.marculus_desserte()` ne lisait que le cache de l’onglet Desserte
+(`cache/desserte/*.gpkg`). Un projet dont le réseau vient de l’onglet
+Accessibilité — même acquisition
+[`foretaccess::acquire_desserte()`](https://pobsteta.github.io/foretaccess/reference/acquire_desserte.html),
+rangée dans `cache/accessibility/accessibilite.gpkg` — n’a jamais ce
+répertoire : la fonction rendait `NULL`, `marculus_write_action_gpkg()`
+n’écrivait alors aucune table `desserte`, et l’opérateur ouvrait sur son
+téléphone une couche vide alors que le réseau était sur le disque.
+Constaté sur le projet Fordead, dont la couche `desserte` de
+l’Accessibilité porte 1 748 tronçons.
+
+L’Accessibilité sert désormais de **repli** — lue seulement quand les
+quatre couches de l’onglet Desserte ne donnent rien. Repli et non union
+: quand les deux onglets ont tourné, ils redisent la même BD TOPO, celle
+de l’onglet Desserte en plus corrigée ; les cumuler doublerait le réseau
+sur le téléphone. La lecture d’une couche est sortie en
+`.marculus_read_desserte()`, partagée par les deux sources, ce qui donne
+au repli la reprojection en 4326 et la colonne `nom` absente traitées
+comme ailleurs.
+
+#### Fixed — La notification du moteur reGénération oubliait la phase au pire moment
+
+`.regen_read_phase()` jetait tout `engine_status.json` vieux de plus de
+2 min, et la notification bas-droite retombait alors sur « Moteur
+reGénération en cours… ». Or le cœur n’émet qu’**un** événement par
+année ERA5 (`.rsen_moyenne_categorie()`), puis télécharge douze mois
+auprès de Copernicus sans un mot — mesuré à 1 h 36 pour l’année 2020 du
+projet Fordead, ~8 min par mois. La phase réelle était donc effacée
+précisément pendant le plus long moment du run, celui où l’on se demande
+si quelque chose tourne encore.
+
+La lecture ne juge plus : elle porte l’âge de la dernière écriture
+(`stale_s`), et le libellé dit le silence au lieu de le cacher — «
+Microclimat — étés canicule 2022 (1/1) — dernier signe de vie il y a 27
+min ». Le seuil de 2 min est conservé, mais il déclenche un aveu, plus
+un oubli. La protection contre une phase fantôme d’un run précédent ne
+tenait de toute façon pas à cette péremption : `engine_status.json` est
+effacé au lancement et en fin de tâche, et le poll est gardé par
+`rv$engine_running`.
+
+#### Added — Compteur de mois ERA5 (en attente du cœur)
+
+`regen_expo:era5_mois` est mappé et affiché — « Microclimat — étés
+canicule 2022 — mois 3/12 ». Chaque morceau du libellé est optionnel :
+tant que le cœur n’émet pas cet événement, la branche est morte et rien
+ne change. Le brief cœur correspondant est
+`specs/BRIEF-nemeton-era5-progression-mensuelle.md`, qui demande aussi
+la reprise d’un cache ERA5 partiel — aujourd’hui un run tué au mois 7
+rend l’année entière irrécupérable, `mcera5::request_era5()` refusant un
+`.zip` déjà présent.
+
+#### Fixed — R-CMD-check était rouge depuis trois jours, pour une raison mécanique
+
+Douze runs consécutifs en échec sur `main` du 23 au 26 août, pendant que
+la suite locale annonçait 12 510 PASS. Onze tests lisent l’**arbre
+source** — `R/mod_ug.R`, `CLAUDE.md`, `inst/app/www/css/custom.css` —
+via `test_path("..", "..", ...)`, sans garde. En local
+[`pkgload::load_all()`](https://pkgload.r-lib.org/reference/load_all.html)
+les trouve ; sous `R CMD check` les tests tournent depuis le paquet
+installé, où `../../R/` ne mène nulle part, et
+[`readLines()`](https://rdrr.io/r/base/readLines.html) échoue sur
+*cannot open the connection*.
+
+Un helper nomme le motif une fois plutôt que de le recopier treize fois,
+et il distingue deux situations qui ne se valent pas :
+
+- **`inst/` survit à l’installation**, sous un autre chemin :
+  `chemin_inst()` interroge
+  [`system.file()`](https://rdrr.io/r/base/system.file.html) d’abord,
+  donc le test **s’exécute** en CI au lieu d’y être sauté.
+- **`R/` et la racine du dépôt ne survivent pas** :
+  `skip_sans_sources()` saute, faute de mieux. Un test sauté vaut mieux
+  qu’un test rouge, mais il ne vérifie plus rien là-bas — c’est le prix
+  d’un test d’arbre source, payé sciemment.
+
+Le test du helper lui-même a d’abord été écrit avec
+`expect_error(..., class = "skip")` : le skip se **propage** et sautait
+le test, sans évaluer une seule assertion. Réécrit en attrapant la
+condition.
+
 ## nemetonshiny 0.140.1 (2026-08-26)
 
 #### Fixed — Un test ne parsait plus, et ma vérification ne le voyait pas
