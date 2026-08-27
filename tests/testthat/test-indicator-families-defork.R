@@ -7,7 +7,13 @@
 # This file is what stops a copy from creeping back.
 
 test_that("the app declares no family table of its own", {
-  src <- readLines("../../R/app_config.R", warn = FALSE)
+  # `R/` ne survit pas a l'installation : sous R CMD check ce chemin ne mene
+  # nulle part et `readLines()` echoue sur « cannot open the connection ». Ce
+  # fichier avait ete oublie par le passage en `helper-sources.R` (v0.140.1.9001)
+  # et rendait R-CMD-check rouge a lui seul, la suite locale restant verte.
+  f <- chemin_source("R", "app_config.R")
+  skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
   # Une re-declaration littérale est exactement ce qui a dérivé la première fois.
   expect_false(any(grepl("^INDICATOR_FAMILIES <- list\\(", src)))
   expect_true(any(grepl("delayedAssign\\(\"INDICATOR_FAMILIES\"", src)))

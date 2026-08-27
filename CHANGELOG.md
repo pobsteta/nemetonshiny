@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.141.1] - 2026-08-27
+
+### Fixed
+
+- `test-indicator-families-defork.R` lisait `../../R/app_config.R` en direct.
+  `R/` ne survit pas à l'installation : sous `R CMD check`, `readLines()` échoue
+  sur « cannot open the connection ». Le passage en `helper-sources.R`
+  (v0.140.1.9001) avait traité onze fichiers et manqué celui-là, qui suffisait à
+  faire échouer `R-CMD-check` sur `main`. Remède identique :
+  `chemin_source()` + `skip_sans_sources()`.
+
+### Changed
+
+- Le brief ERA5 est déposé dans `briefs/vers-nemeton/` ; les deux copies
+  pointent sur la release v0.141.0 plutôt que sur le cycle dev.
+
+
 ## [0.141.0] - 2026-08-27
 
 ### Added

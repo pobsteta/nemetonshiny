@@ -140,7 +140,7 @@ Deux points vérifiés sur `mcera5` 0.4.0, à ne pas re-deviner :
 et l'affiche (`.regen_micro_lbl()`) sous la forme
 **« Microclimat — étés canicule 2022 — mois 3/12 »**. Chaque morceau est optionnel :
 tant que le cœur n'émet pas `regen_expo:era5_mois`, la branche est morte et rien
-ne change. Livré app v0.140.1.9004.
+ne change. Livré app **v0.141.0** (`nemetonshiny@b7aff412`).
 
 L'app a aussi cessé de jeter un `engine_status.json` vieux de plus de 2 min : elle
 garde la dernière phase connue et date son silence (« — dernier signe de vie il y
@@ -181,4 +181,4 @@ mesurer un avancement.
 
 Entrée `Fixed` (B2 est une correction de bug) + `Changed` (B1), et une ligne au
 journal `PLAN.md` mentionnant le brief et l'app consommatrice
-(`nemetonshiny@0.140.1.9004`).
+(`nemetonshiny@b7aff412`, v0.141.0).
