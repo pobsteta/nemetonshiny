@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.142.1] - 2026-08-27
+
 ### Changed
 
 - `Imports: nemeton (>= 0.189.0)` → `(>= 0.192.0)` : `doc_url` / `doc_lang`

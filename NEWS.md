@@ -1,4 +1,4 @@
-# nemetonshiny 0.142.0.9001 (2026-08-27)
+# nemetonshiny 0.142.1 (2026-08-27)
 
 ### Changed — le plancher cœur passe à 0.192.0, et l'icône « fiche » devient garantie
 
