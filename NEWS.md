@@ -1,3 +1,62 @@
+# nemetonshiny 0.142.1 (2026-08-27)
+
+### Changed — le plancher cœur passe à 0.192.0, et l'icône « fiche » devient garantie
+
+`nemeton 0.192.0` est publiée (tag `v0.192.0`, `main` du cœur à `7c9714c`) :
+les colonnes `doc_url` / `doc_lang` de `indicator_labels()` existent désormais
+dans une release stable. `Imports: nemeton (>= 0.189.0)` → `(>= 0.192.0)`.
+
+Ce n'est pas un bump « pour suivre » : la v0.142.0 consommait déjà cette API,
+mais contre un cœur antérieur elle ne trouvait rien et l'icône restait
+invisible — la fonctionnalité était livrée sans être atteignable. Le plancher
+transforme ce silence en garantie.
+
+**Les tests n'ont plus de skip de version.** Les trois
+`skip_if_not("doc_url" %in% names(ind))` de `test-mod_family-doc-icon.R`
+deviennent des `expect_true()`. Un cœur sans ces colonnes n'étant plus
+installable, un test qui se saute silencieusement n'aurait plus rien à
+excuser : il masquerait une installation cassée au lieu de la signaler.
+
+### Le cœur n'a pas livré une fiche, il en a livré 41
+
+Le brief annonçait « aujourd'hui un seul indicateur a une fiche : C1 ».
+`nemeton 0.192.0` en documente en fait **les 41**, des douze familles, chacune
+avec sa vignette pkgdown présente (vérifié : 41 déclarations,
+41 `.Rmd`). L'icône apparaît donc sur **chaque** indicateur, pas seulement
+sur C1 — et **sans une ligne de code modifiée** dans l'app. C'était
+tout l'intérêt de ne rien câbler sur C1 : la livraison massive du
+cœur est absorbée telle quelle.
+
+**Un test avait pourtant figé la liste, et il a rougi.** L'exemple du brief
+prenait C2 comme cas négatif (`expect_null(get_indicator_doc("C2"))`), ce que
+le même brief interdisait deux paragraphes plus loin — « le test ne doit
+pas figer la liste des indicateurs documentés […] sinon il tombera au
+rouge à la première fiche ajoutée, pour une bonne nouvelle ». C'est
+exactement ce qui s'est produit. Le cas négatif porte désormais sur des
+codes que le cœur ne connaît pas (`"unknown_indicator"`, `"ZZ"`), les
+seuls stables : tout vrai code d'indicateur est susceptible de gagner une
+fiche.
+
+### Ce qui ne change PAS — les gardes défensives restent
+
+J'avais annoncé leur retrait comme corollaire du bump. C'était une erreur de
+lecture, corrigée ici plutôt que propagée :
+
+- **Le test de longueur sur `doc_url` dans `doc_icon()` reste.** Sa raison n'a
+  jamais été seulement le cœur ancien. Il protège la *forme* de `row` : une
+  tranche vide (`ind[ind$code == "ZZ", ]`, un code inconnu) rend `character(0)`,
+  et `is.na(character(0))` vaut `logical(0)`, qu'un `if` refuse. Ce cas ne
+  dépend d'aucune version du cœur. `doc_icon()` étant documentée comme
+  acceptant une ligne de `indicator_labels()` telle quelle, le retirer aurait
+  été une régression déguisée en nettoyage.
+- **`pick()` reste** dans `.build_indicator_families()` : c'est le helper
+  générique déjà employé par `bilingual()`, pas une précaution ajoutée pour les
+  fiches. L'en écarter pour les seules colonnes `doc_*` aurait introduit une
+  incohérence.
+
+Seuls les commentaires qui justifiaient ces deux gardes par « cœur < 0.192.0 »
+sont réécrits : la raison invoquée était devenue fausse, la garde ne l'est pas.
+
 # nemetonshiny 0.142.0 (2026-08-27)
 
 ### Added — Une icône « fiche » à côté du « i », pour les indicateurs documentés
