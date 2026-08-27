@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+### Added
+
+- Onglet *Familles d'indicateurs* : une icône « fiche » (`journal-text`) à côté
+  du « i » pour les indicateurs que le cœur déclare documentés, ouvrant la
+  vignette pkgdown correspondante dans un nouvel onglet (spec cœur 052). Lue
+  depuis `nemeton::indicator_labels()` (`doc_url` / `doc_lang`, cœur ≥ 0.192.0),
+  jamais câblée sur un indicateur : C1 aujourd'hui, les suivants sans
+  modification de l'app. Quand la fiche n'existe pas dans la langue courante, le
+  cœur sert l'autre et l'infobulle le signale.
+- `INDICATOR_FAMILIES$<F>$indicator_docs`, `get_indicator_doc()`, `doc_icon()`.
+- i18n : `indicateur_fiche_ouvrir`, `langue_fr`, `langue_en`.
+- CSS : `.nmt-doc-link`.
+
 ## [0.141.1] - 2026-08-27
 
 ### Fixed

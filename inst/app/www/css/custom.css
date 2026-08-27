@@ -846,3 +846,27 @@ table.dataTable td.action-comment-trigger {
 table.dataTable td.action-comment-trigger:hover {
   background-color: rgba(13, 110, 253, 0.08);
 }
+
+/* ============================================================
+   Fact sheet link, next to the tooltip "i" (spec 052)
+   ============================================================
+   Deux icônes fines côte à côte, pas un bouton : la fiche est le
+   voisin immédiat du « i » et doit se lire comme sa parente. Même
+   couleur d'accent (`--nemeton-info`, celle de `.text-info` que
+   porte le « i »), même ligne de base, séparation d'un demi-espace
+   assurée par `.ms-1` côté R.
+
+   La TAILLE de l'icône n'est pas ici : `bsicons::bs_icon()` écrit
+   height/width en style *inline*, qui gagne sur cette feuille. Elle
+   se règle donc à l'appel (`size = "0.875em"`, la taille du « i »
+   voisin, rendu en `fa-sm`) — cf. `doc_icon()` dans `R/mod_family.R`.
+*/
+.nmt-doc-link {
+  color: var(--nemeton-info);
+  text-decoration: none;
+  line-height: 1;
+}
+.nmt-doc-link:hover,
+.nmt-doc-link:focus-visible {
+  color: var(--nemeton-primary);
+}

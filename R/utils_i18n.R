@@ -927,6 +927,18 @@ TRANSLATIONS <- list(
     fr = "Indicateur non disponible sur cette emprise.",
     en = "Indicator not available over this area."
   ),
+  # Fiche longue d'un indicateur (spec 052). La fiche elle-meme est une vignette
+  # du coeur, publiee par pkgdown : seul le libelle du lien vit ici. Les deux
+  # cles `langue_*` servent a dire dans quelle langue la fiche est REELLEMENT
+  # servie quand elle n'existe pas dans la langue courante - le coeur rend
+  # l'autre langue plutot que rien, et l'interface le signale plutot que d'ouvrir
+  # du francais sans prevenir.
+  indicateur_fiche_ouvrir = list(
+    fr = "Ouvrir la fiche d\u00e9taill\u00e9e (nouvel onglet)",
+    en = "Open the detailed fact sheet (new tab)"
+  ),
+  langue_fr = list(fr = "(en fran\u00e7ais)", en = "(in French)"),
+  langue_en = list(fr = "(en anglais)", en = "(in English)"),
   # Verdicts d'applicabilite (coeur v0.175.0). Cles stables cote coeur,
   # traduction ici. `%d sur %d` est ajoute par `applicabilite_message()`.
   appl_count_fmt = list(
