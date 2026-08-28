@@ -1,4 +1,40 @@
-# nemetonshiny 0.142.2.9000 (dev)
+# nemetonshiny 0.142.3 (2026-08-28)
+
+### Fixed — La carte UGF restait vide au premier passage sur son sous-onglet
+
+Passer de « Carte cadastrale » à « Carte UGF » n'affichait ni les tènements ni
+les UGF ; il fallait aller sur « Tableau UGF » puis revenir pour que la carte se
+peuple.
+
+`output$ug_map` était **la seule des six cartes leaflet de l'app à rester
+suspendue** quand son onglet est caché (`suspendWhenHidden` vaut `TRUE` par
+défaut). « Carte UGF » étant un sous-onglet non-défaut, la carte n'existe pas
+encore côté client au moment où l'observer de dessin émet ses `leafletProxy()` —
+et leaflet **jette silencieusement** les messages adressés à une carte absente du
+DOM (`Couldn't find map with id ug-ug_map` dans la console du navigateur). Après
+un aller-retour par « Tableau UGF », la carte existe et le redessin déclenché par
+la navigation s'applique : d'où le contournement que l'utilisateur avait trouvé.
+
+Le repo documentait déjà ce piège pour les cinq autres cartes — cf.
+`mod_monitoring_fordead_map.R` : « peut rester suspendu / s'initialiser à
+taille 0 → clics et leafletProxy inopérants ». `mod_ug` posait l'option sur son
+tableau et ses deux compteurs, mais avait oublié sa carte. Le coût est nul : ce
+`renderLeaflet` ne produit qu'une carte vide (fond de plan, contrôle de couches,
+barre de dessin) ; les polygones restent gouvernés par la garde de visibilité de
+la v0.142.2 et ne sont toujours pas dessinés onglet fermé.
+
+Le test **intercepte l'appel réel** à `outputOptions()` plutôt que de grepper le
+fichier source : `outputOptions(output, "ug_map")` ne répond rien sous
+`testServer()`, et un test textuel passerait sur un appel commenté (vérifié par
+mutation).
+
+> Part de responsabilité de la v0.142.2, honnêtement : la garde de visibilité
+> livrée alors n'a pas créé cette course, mais elle l'a vraisemblablement rendue
+> systématique. Auparavant l'observer de dessin tournait à chaque invalidation
+> de `projet_ug`, ce qui multipliait les occasions qu'un envoi tombe après la
+> création de la carte ; la garde les réduit au seul bump de navigation. Non
+> vérifié par la mesure — les tentatives E2E n'ont pas abouti (chromote ne
+> parvenait plus à se connecter à l'app de test).
 
 ### Changed — Brief cœur : `resolve_project_chm()` ignore `cache/layers/opencanopy/`
 

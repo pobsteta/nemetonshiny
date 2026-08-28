@@ -1643,6 +1643,29 @@ mod_ug_server <- function(id, app_state) {
     shiny::outputOptions(output, "ug_map_count", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "ug_map_surface", suspendWhenHidden = FALSE)
 
+    # La CARTE aussi - c'etait l'oubli du bloc ci-dessus. « Carte UGF » est un
+    # sous-onglet NON-DEFAUT (le defaut est « Carte cadastrale ») : suspendue,
+    # la carte n'existe pas encore cote client au moment ou l'observer de dessin
+    # emet ses `leafletProxy()`, et leaflet jette silencieusement les messages
+    # adresses a une carte absente du DOM (« Couldn't find map with id
+    # ug-ug_map » dans la console du navigateur). Symptome : au PREMIER passage
+    # sur « Carte UGF », ni les tenements ni les UGF n'apparaissent ; il faut
+    # aller sur « Tableau UGF » et revenir - la carte existe alors, et le
+    # redessin declenche par la navigation s'applique.
+    #
+    # Les cinq autres cartes leaflet de sous-onglets non-defaut de l'app
+    # portent deja cette option pour exactement cette raison (cf. le
+    # commentaire de `mod_monitoring_fordead_map.R` : « peut rester suspendu /
+    # s'initialiser a taille 0 -> clics et leafletProxy inoperants »).
+    # `ug_map` etait la seule exception.
+    #
+    # Le cout est nul : ce `renderLeaflet` ne produit qu'une carte VIDE (fond
+    # de plan, controle de couches, barre de dessin). Les polygones, eux,
+    # restent gouvernes par la garde de visibilite de l'observer de dessin -
+    # ils ne sont pas dessines onglet ferme. Le `invalidateSize` deja emis a
+    # l'ouverture de l'onglet corrige la taille 0 du conteneur cache.
+    shiny::outputOptions(output, "ug_map", suspendWhenHidden = FALSE)
+
     # ================================================================
     # OUTPUT: Summary text
     # ================================================================

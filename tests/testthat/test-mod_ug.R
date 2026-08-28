@@ -335,3 +335,41 @@ test_that("la carte UGF se dessine quand son sous-onglet est visible", {
   skip_if_not_installed("bslib")
   expect_gt(.compte_dessins_carte_ugf("selection", "tenements"), 0L)
 })
+
+
+test_that("la carte UGF n'est pas suspendue quand son sous-onglet est cache", {
+  skip_if_not_installed("bslib")
+  # « Carte UGF » est un sous-onglet NON-DEFAUT. Suspendue, la carte n'existe
+  # pas cote client quand l'observer de dessin emet ses `leafletProxy()`, et
+  # leaflet jette les messages adresses a une carte absente du DOM : au premier
+  # passage sur l'onglet, ni tenements ni UGF n'apparaissaient - il fallait
+  # aller sur « Tableau UGF » et revenir.
+  #
+  # `outputOptions(output, "ug_map")` ne repond rien sous `testServer()` (les
+  # outputs n'y sont pas materialises), donc on INTERCEPTE l'appel : le mock
+  # delegue a la vraie fonction et se contente d'enregistrer ce qui a ete
+  # demande. Un test qui grepperait le fichier source passerait sur un appel
+  # commente.
+  projet <- .projet_ugf_minimal()
+  app_state <- shiny::reactiveValues(language = "fr", current_project = projet)
+
+  vraie <- shiny::outputOptions
+  demandes <- list()
+  testthat::local_mocked_bindings(
+    outputOptions = function(x, name, ...) {
+      if (!missing(name)) {
+        opts <- list(...)
+        if (length(opts)) demandes[[name]] <<- opts
+      }
+      tryCatch(vraie(x, name, ...), error = function(e) NULL)
+    },
+    .package = "shiny")
+
+  shiny::testServer(
+    nemetonshiny:::mod_ug_server,
+    args = list(app_state = app_state),
+    { invisible(NULL) })
+
+  expect_true("ug_map" %in% names(demandes))
+  expect_false(demandes$ug_map$suspendWhenHidden)
+})
