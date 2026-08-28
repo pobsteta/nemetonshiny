@@ -1,0 +1,211 @@
+# Tests for service_pipeline.R
+# Machine a etats du lancement enchaine ("Tout calculer").
+
+test_that("pipeline_new_run impose l'ordre du registre", {
+  # L'appelant peut passer les ids dans n'importe quel ordre (cases a cocher
+  # d'une modale) : c'est le registre qui decide de l'ordre d'execution, pas
+  # l'ordre de selection - sinon l'IA pourrait tourner avant les indicateurs
+  # qu'elle resume.
+  etat <- nemetonshiny:::pipeline_new_run(
+    c("ia_plan", "indicateurs", "desserte"))
+  expect_equal(etat$steps, c("indicateurs", "desserte", "ia_plan"))
+})
+
+test_that("pipeline_new_run ignore les ids inconnus sans echouer", {
+  etat <- nemetonshiny:::pipeline_new_run(c("indicateurs", "moteur_fantome"))
+  expect_equal(etat$steps, "indicateurs")
+})
+
+test_that("un run parcourt ses etapes dans l'ordre", {
+  etat <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte"))
+  expect_equal(nemetonshiny:::pipeline_current_step(etat), "indicateurs")
+
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "ok")
+  expect_equal(nemetonshiny:::pipeline_current_step(etat), "desserte")
+
+  etat <- nemetonshiny:::pipeline_record(etat, "desserte", "ok")
+  expect_null(nemetonshiny:::pipeline_current_step(etat))
+  expect_true(nemetonshiny:::pipeline_is_done(etat))
+  expect_false(is.null(etat$ended))
+})
+
+test_that("une etape en echec n'interrompt pas la chaine", {
+  # Decision produit : on continue et on rapporte a la fin. Un run de plusieurs
+  # heures ne doit pas s'arreter au bout de dix minutes sur un moteur
+  # secondaire.
+  etat <- nemetonshiny:::pipeline_new_run(
+    c("indicateurs", "desserte", "ia_plan"))
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "error", "boum")
+  expect_equal(nemetonshiny:::pipeline_current_step(etat), "desserte")
+
+  etat <- nemetonshiny:::pipeline_record(etat, "desserte", "ok")
+  expect_equal(nemetonshiny:::pipeline_current_step(etat), "ia_plan")
+
+  rep <- nemetonshiny:::pipeline_report(etat)
+  expect_equal(rep$status[rep$step_id == "indicateurs"], "error")
+  expect_equal(rep$message[rep$step_id == "indicateurs"], "boum")
+})
+
+test_that("une reponse tardive ne rejoue pas et ne decale pas le curseur", {
+  # Un module qui repond deux fois (retry, resultat rejoue apres reconnexion)
+  # ecraserait sinon le resultat de l'etape SUIVANTE et ferait sauter une
+  # etape - le run se terminerait en silence avec une etape jamais lancee.
+  etat <- nemetonshiny:::pipeline_new_run(
+    c("indicateurs", "desserte", "ia_plan"))
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "ok")
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "error", "tardif")
+
+  expect_equal(nemetonshiny:::pipeline_current_step(etat), "desserte")
+  rep <- nemetonshiny:::pipeline_report(etat)
+  expect_equal(rep$status[rep$step_id == "indicateurs"], "ok")
+  expect_true(is.na(rep$message[rep$step_id == "indicateurs"]))
+})
+
+test_that("une reponse hors du run est ignoree", {
+  etat <- nemetonshiny:::pipeline_new_run("indicateurs")
+  avant <- etat
+  etat <- nemetonshiny:::pipeline_record(etat, "sante_fordead", "ok")
+  expect_equal(etat$index, avant$index)
+  expect_equal(nemetonshiny:::pipeline_current_step(etat), "indicateurs")
+})
+
+test_that("skipped se distingue de error dans le decompte", {
+  # « 3 sautees faute de configuration » ne doit pas se lire « 3 en echec » :
+  # c'est toute la difference entre un run a corriger et un run nominal sur un
+  # projet qui n'a pas de zone monitoring.
+  etat <- nemetonshiny:::pipeline_new_run(
+    c("indicateurs", "sante_fast", "sante_fordead"))
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "ok")
+  etat <- nemetonshiny:::pipeline_record(etat, "sante_fast", "skipped", "pas de zone")
+  etat <- nemetonshiny:::pipeline_record(etat, "sante_fordead", "error", "boum")
+
+  compte <- nemetonshiny:::pipeline_tally(etat)
+  expect_equal(unname(compte[["ok"]]), 1L)
+  expect_equal(unname(compte[["skipped"]]), 1L)
+  expect_equal(unname(compte[["error"]]), 1L)
+})
+
+test_that("un statut inconnu est traite comme une erreur, jamais accepte tel quel", {
+  etat <- nemetonshiny:::pipeline_new_run("indicateurs")
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "n_importe_quoi")
+  expect_equal(nemetonshiny:::pipeline_report(etat)$status, "error")
+})
+
+test_that("l'annulation tranche tout ce qui n'a pas encore repondu", {
+  etat <- nemetonshiny:::pipeline_new_run(
+    c("indicateurs", "desserte", "ia_plan"))
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "ok")
+  etat <- nemetonshiny:::pipeline_mark_running(etat)
+  etat <- nemetonshiny:::pipeline_cancel(etat)
+
+  expect_true(nemetonshiny:::pipeline_is_done(etat))
+  rep <- nemetonshiny:::pipeline_report(etat)
+  expect_equal(rep$status[rep$step_id == "indicateurs"], "ok")
+  expect_equal(rep$status[rep$step_id == "desserte"], "cancelled")
+  expect_equal(rep$status[rep$step_id == "ia_plan"], "cancelled")
+})
+
+test_that("le rapport porte une ligne par etape, dans l'ordre, avec sa duree", {
+  etat <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte"))
+  etat <- nemetonshiny:::pipeline_mark_running(etat)
+  etat <- nemetonshiny:::pipeline_record(etat, "indicateurs", "ok")
+
+  rep <- nemetonshiny:::pipeline_report(etat)
+  expect_equal(nrow(rep), 2L)
+  expect_equal(rep$step_id, c("indicateurs", "desserte"))
+  expect_equal(rep$label[1], "pipeline_step_indicateurs")
+  expect_false(is.na(rep$seconds[1]))
+  expect_equal(rep$status[2], "pending")
+})
+
+test_that("chaque etape du registre porte une cle i18n qui existe", {
+  # Une etape sans traduction s'afficherait sous sa cle brute dans le panneau
+  # de progression - le genre de defaut qu'on ne voit qu'en production.
+  for (s in nemetonshiny:::PIPELINE_STEPS) {
+    expect_true(s$label %in% names(nemetonshiny:::TRANSLATIONS),
+                info = sprintf("cle i18n absente : %s", s$label))
+  }
+})
+
+test_that("les ids du registre sont uniques", {
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  expect_equal(length(ids), length(unique(ids)))
+})
+
+test_that("les prealables reGeneration precedent le moteur dans le registre", {
+  # Regression signalee 2026-08-28 : la chaine ne lancait que `engine_task`.
+  # Or `eobs_task` DETERMINE les annees moyenne / canicule et les pousse dans
+  # les champs que le moteur lit ensuite - lance seul, le moteur tournait sur
+  # les valeurs par defaut codees en dur (2018 / 2022), sans que rien ne le
+  # signale. L'ordre du registre est donc une contrainte de CORRECTION des
+  # resultats, pas de confort de lecture.
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  rang <- function(x) which(ids == x)
+
+  expect_true(rang("regen_annees") < rang("regeneration"))
+  expect_true(rang("regen_gel") < rang("regeneration"))
+  # Les deux fetch E-OBS sont bornes par les annees detectees.
+  expect_true(rang("regen_annees") < rang("regen_eobs_rr"))
+  expect_true(rang("regen_annees") < rang("regen_eobs_tg"))
+})
+
+test_that("l'ingest sante precede les moteurs qui lisent son cache", {
+  # FORDEAD et RECONFORT recoivent tous deux `cache_dir = .resolve_s2_cache_dir()`,
+  # que seul l'ingest de la surveillance rapide remplit.
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  rang <- function(x) which(ids == x)
+  expect_true(rang("sante_fast") < rang("sante_fordead"))
+  expect_true(rang("sante_fast") < rang("sante_reconfort"))
+})
+
+test_that("les indicateurs precedent tout, et les IA ferment la marche", {
+  # Les 31 indicateurs alimentent chaque vue ; la perspective IA les resume, et
+  # le plan d'actions se construit sur les commentaires qu'elle vient d'ecrire
+  # (`plan_llm_context()`).
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  expect_equal(ids[1], "indicateurs")
+  expect_equal(utils::tail(ids, 2), c("ia_synthese", "ia_plan"))
+})
+
+test_that("chaque module cite par le registre repond bien a ses etapes", {
+  # Filet contre l'oubli le plus couteux du dispositif : une etape declaree
+  # dans le registre que PERSONNE n'ecoute bloque la chaine en silence. On
+  # verifie que chaque id apparait dans un `pipeline_targets()` du module
+  # annonce.
+  fichiers <- c(home = "mod_home.R", accessibility = "mod_accessibility.R",
+                desserte = "mod_desserte.R", regeneration = "mod_regeneration.R",
+                monitoring = "mod_monitoring.R", synthesis = "mod_synthesis.R",
+                action_plan = "mod_action_plan.R")
+  for (etape in nemetonshiny:::PIPELINE_STEPS) {
+    f <- chemin_source("R", fichiers[[etape$module]])
+    skip_sans_sources(f)
+    src <- paste(readLines(f, warn = FALSE), collapse = "\n")
+    expect_true(
+      grepl(sprintf('pipeline_targets(req, "%s")', etape$id), src, fixed = TRUE),
+      info = sprintf("aucun ecouteur pour l'etape %s dans %s",
+                     etape$id, fichiers[[etape$module]]))
+  }
+})
+
+test_that("le typage de la desserte suit immediatement son moteur", {
+  # `run_desserte_typage()` lit le cache que le moteur desserte vient de
+  # remplir. Le placer ailleurs le ferait travailler sur le cache d'un run
+  # precedent, ou sur rien.
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  expect_equal(ids[which(ids == "desserte") + 1L], "desserte_typage")
+})
+
+test_that("la correction LiDAR precede l'analyse d'accessibilite", {
+  # L'analyse consomme le reseau corrige des qu'il existe sur disque. L'ordre
+  # inverse produirait une analyse sur reseau brut, puis deux heures de
+  # correction dont plus rien ne se servirait dans ce run.
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  expect_true(which(ids == "accessibilite_correction") < which(ids == "accessibilite"))
+})
+
+test_that("les controles desserte suivent leur moteur", {
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  rang <- function(x) which(ids == x)
+  expect_true(rang("desserte") < rang("desserte_typage"))
+  expect_true(rang("desserte") < rang("desserte_integrite"))
+})

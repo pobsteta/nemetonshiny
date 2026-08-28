@@ -1986,15 +1986,18 @@ mod_action_plan_server <- function(id, app_state) {
       ))
     })
 
-    shiny::observeEvent(input$gen_run, {
-      shiny::removeModal()
+    # ORCHESTRATION - corps extrait. Le lancement enchaine impose
+    # `scope = "all"` : il n'y a pas de selection d'UGF a ce moment-la, et
+    # une chaine « tout calculer » qui ne planifierait qu'une partie des UGF
+    # serait un piege silencieux.
+    .generer_plan_actions <- function(scope = NULL) {
       if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
       ctx <- plan_llm_context()
       if (is.null(ctx)) return()
       sel_ugs <- selected_ug_rv()
-      scope <- input$gen_scope %||% "all"
+      scope <- scope %||% input$gen_scope %||% "all"
       target_ugs <- if (scope == "selected" && length(sel_ugs) > 0L) {
         sel_ugs
       } else {
@@ -2098,6 +2101,44 @@ mod_action_plan_server <- function(id, app_state) {
                 length(parsed$errors)),
         type = "message", duration = 6
       )
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$gen_run, {
+      shiny::removeModal()
+      .generer_plan_actions()
+    })
+
+    # --- Lancement enchaine : etape « ia_plan » ------------------------
+    # Vient APRES `ia_synthese` dans le registre : le plan se construit sur
+    # les commentaires que la synthese vient d'ecrire (`plan_llm_context()`).
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "ia_plan")) return()
+      i18n <- get_i18n(app_state$language %||% "fr")
+      if (is.null(app_state$current_project)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (is.null(plan_llm_context())) {
+        pipeline_answer(app_state, req, "skipped",
+                        i18n$t("action_plan_generate_no_comments"))
+        return()
+      }
+      ok <- tryCatch({
+        isTRUE(.generer_plan_actions(scope = "all"))
+      }, error = function(e) {
+        cli::cli_warn("pipeline ia_plan: {conditionMessage(e)}")
+        conditionMessage(e)
+      })
+      # Trois issues distinctes, pas deux : `TRUE` = genere, une chaine =
+      # message d'erreur, `FALSE` = la generation a refuse de partir (cle
+      # API absente, rien a resumer) - c'est un saut, pas un echec.
+      pipeline_answer(
+        app_state, req,
+        if (isTRUE(ok)) "ok" else if (is.character(ok)) "error" else "skipped",
+        if (isTRUE(ok)) NULL else if (is.character(ok)) as.character(ok)
+        else i18n$t("pipeline_skip_not_started"))
     })
 
     # ============================================================

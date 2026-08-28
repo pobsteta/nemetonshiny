@@ -118,6 +118,11 @@ mod_home_ui <- function(id) {
       # Progress Module (shown during computation)
       mod_progress_ui(ns("progress")),
 
+      # Lancement enchaine de tous les moteurs + generations IA. Place juste
+      # sous le bouton de calcul des indicateurs : c'est la meme famille de
+      # geste (« lancer »), en plus large.
+      mod_pipeline_ui(ns("pipeline")),
+
       # Carte UGF actions (map-based + global actions)
       # Visible uniquement dans le sous-onglet " Carte UGF " : ces actions
       # portent sur la carte des UGF, elles n'ont pas de sens ailleurs. Le
@@ -629,6 +634,11 @@ mod_home_server <- function(id, app_state) {
 
     search_result <- mod_search_server("search", app_state)
 
+    # Orchestrateur du lancement enchaine. Il ne lance aucun moteur lui-meme :
+    # il poste `app_state$pipeline_request` et attend `app_state$pipeline_answer`
+    # (cf. service_pipeline.R).
+    mod_pipeline_server("pipeline", app_state)
+
     # ========================================
     # Cadastre Parcels
     # ========================================
@@ -1106,9 +1116,13 @@ mod_home_server <- function(id, app_state) {
     })
 
     # Confirmed computation handler
-    shiny::observeEvent(input$confirm_compute, {
+    # PERF/ORCHESTRATION - le lancement du calcul est extrait en fonction
+    # locale : il a desormais DEUX appelants, le bouton (via sa modale de
+    # confirmation) et le lancement enchaine (`mod_pipeline`), qui ne doit pas
+    # rouvrir une modale que l'utilisateur vient deja de valider. Dupliquer le
+    # bloc aurait fait diverger les deux chemins des la premiere evolution.
+    .lancer_calcul_indicateurs <- function() {
       if (deny_if_readonly(app_state)) return()
-      shiny::removeModal()
 
       project <- app_state$current_project
       shiny::req(project)
@@ -1166,6 +1180,48 @@ mod_home_server <- function(id, app_state) {
       # App options are passed explicitly because future runs in a separate R process
       cli::cli_alert_info("Starting computation for project {project$id}")
       compute_task$invoke(project$id, get_app_options())
+      invisible(TRUE)
+    }
+
+    # Confirmed computation handler
+    shiny::observeEvent(input$confirm_compute, {
+      if (deny_if_readonly(app_state)) return()
+      shiny::removeModal()
+      .lancer_calcul_indicateurs()
+    })
+
+    # ------------------------------------------------------------------
+    # Lancement enchaine : etape « indicateurs »
+    # ------------------------------------------------------------------
+    # Contrat (cf. service_pipeline.R) : tout chemin qui a reconnu la requete
+    # DOIT repondre, sinon la chaine reste bloquee sur cette etape. Les deux
+    # sorties precoces ci-dessous repondent donc `skipped` plutot que de se
+    # taire, et les reponses de fin sont posees par les handlers de resultat
+    # existants (succes et erreur), pas ici : `compute_task` est asynchrone.
+    pipeline_req <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "indicateurs")) return()
+      i18n <- get_i18n(app_state$language %||% "fr")
+
+      if (is.null(app_state$current_project)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (isTRUE(app_state$computation_running)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      pipeline_req(req)
+      # Une garde interne peut refuser le lancement (lecture seule, projet
+      # incomplet) : la fonction rend alors NULL et aucune tache ne demarre.
+      # Sans ce test, plus personne ne repondrait et la chaine resterait
+      # bloquee sur cette etape, sans rien afficher.
+      if (!isTRUE(.lancer_calcul_indicateurs())) {
+        pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
     })
 
     # Watch for ExtendedTask errors (handles failures before progress file is written)
@@ -1188,6 +1244,12 @@ mod_home_server <- function(id, app_state) {
 
         # Unblock parcel modification (T089)
         app_state$computation_running <- FALSE
+
+        if (!is.null(pipeline_req())) {
+          pipeline_answer(app_state, pipeline_req(), "error",
+                          i18n$t("computation_error"))
+          pipeline_req(NULL)
+        }
 
         # End computing mode, hide progress card, show error card
         session$sendCustomMessage("setComputingMode", list(active = FALSE))
@@ -1323,6 +1385,11 @@ mod_home_server <- function(id, app_state) {
           app_state$current_project <- load_project(project_id)
           app_state$project_status <- "completed"
           app_state$refresh_projects <- Sys.time()
+
+          if (!is.null(pipeline_req())) {
+            pipeline_answer(app_state, pipeline_req(), "ok")
+            pipeline_req(NULL)
+          }
 
           shiny::showNotification(
             i18n$t("computation_complete"),

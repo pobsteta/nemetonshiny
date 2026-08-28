@@ -5631,6 +5631,162 @@ TRANSLATIONS <- list(
   regen_coverage_warn = list(
     fr = "%d UG \u00e0 couverture faible exclues par d\u00e9faut.",
     en = "%d low-coverage units excluded by default."
+  ),
+
+  # --- Lancement encha\u00een\u00e9 (pipeline "Tout calculer") ------------------
+  pipeline_button = list(
+    fr = "Tout calculer",
+    en = "Run everything"
+  ),
+  pipeline_title = list(
+    fr = "Lancer tous les calculs",
+    en = "Run every computation"
+  ),
+  pipeline_help = list(
+    fr = "Les moteurs s'ex\u00e9cutent les uns apr\u00e8s les autres, puis les g\u00e9n\u00e9rations IA. Une \u00e9tape en \u00e9chec n'interrompt pas la cha\u00eene : le rapport final indique ce qui a r\u00e9ussi, \u00e9chou\u00e9 ou \u00e9t\u00e9 saut\u00e9.",
+    en = "Engines run one after another, then the AI generations. A failing step does not stop the chain: the final report lists what succeeded, failed or was skipped."
+  ),
+  pipeline_duration_warning = list(
+    fr = "Un lancement complet peut durer plusieurs heures. Laissez l'onglet ouvert.",
+    en = "A full run can take several hours. Keep the tab open."
+  ),
+  pipeline_scope = list(
+    fr = "\u00c9tapes \u00e0 ex\u00e9cuter",
+    en = "Steps to run"
+  ),
+  pipeline_profil = list(
+    fr = "Profil de l'analyste (perspectives IA)",
+    en = "Analyst profile (AI perspectives)"
+  ),
+  pipeline_run = list(
+    fr = "Lancer la cha\u00eene",
+    en = "Start the chain"
+  ),
+  pipeline_cancel = list(
+    fr = "Arr\u00eater la cha\u00eene",
+    en = "Stop the chain"
+  ),
+  pipeline_running_fmt = list(
+    fr = "\u00c9tape %d/%d : %s",
+    en = "Step %d/%d: %s"
+  ),
+  pipeline_no_project = list(
+    fr = "Chargez un projet avant de lancer les calculs.",
+    en = "Load a project before starting the computations."
+  ),
+  pipeline_no_step = list(
+    fr = "S\u00e9lectionnez au moins une \u00e9tape.",
+    en = "Select at least one step."
+  ),
+  pipeline_report_title = list(
+    fr = "Rapport du lancement",
+    en = "Run report"
+  ),
+  pipeline_report_summary_fmt = list(
+    fr = "%d r\u00e9ussie(s), %d en \u00e9chec, %d saut\u00e9e(s) \u2014 dur\u00e9e totale %s",
+    en = "%d succeeded, %d failed, %d skipped \u2014 total duration %s"
+  ),
+  pipeline_col_step = list(fr = "\u00c9tape", en = "Step"),
+  pipeline_col_status = list(fr = "R\u00e9sultat", en = "Outcome"),
+  pipeline_col_duration = list(fr = "Dur\u00e9e", en = "Duration"),
+  pipeline_col_detail = list(fr = "D\u00e9tail", en = "Detail"),
+  pipeline_status_ok = list(fr = "R\u00e9ussie", en = "Succeeded"),
+  pipeline_status_error = list(fr = "\u00c9chec", en = "Failed"),
+  pipeline_status_skipped = list(fr = "Saut\u00e9e", en = "Skipped"),
+  pipeline_status_cancelled = list(fr = "Annul\u00e9e", en = "Cancelled"),
+  pipeline_status_running = list(fr = "En cours", en = "Running"),
+  pipeline_status_pending = list(fr = "En attente", en = "Pending"),
+  pipeline_done = list(
+    fr = "Lancement termin\u00e9",
+    en = "Run finished"
+  ),
+  pipeline_cancelled_notice = list(
+    fr = "Cha\u00eene arr\u00eat\u00e9e. Les \u00e9tapes en cours ou \u00e0 venir sont annul\u00e9es.",
+    en = "Chain stopped. Running and upcoming steps are cancelled."
+  ),
+  pipeline_step_indicateurs = list(
+    fr = "Indicateurs (31 indicateurs, 12 familles)",
+    en = "Indicators (31 indicators, 12 families)"
+  ),
+  pipeline_step_accessibilite_correction = list(
+    fr = "Terrain accessible \u2014 correction LiDAR du r\u00e9seau",
+    en = "Accessible terrain \u2014 LiDAR network correction"
+  ),
+  pipeline_step_accessibilite = list(
+    fr = "Terrain accessible",
+    en = "Accessible terrain"
+  ),
+  pipeline_step_desserte = list(
+    fr = "Desserte foresti\u00e8re",
+    en = "Forest road network"
+  ),
+  pipeline_step_desserte_typage = list(
+    fr = "Desserte \u2014 typage du r\u00e9seau",
+    en = "Forest roads \u2014 network typing"
+  ),
+  pipeline_step_desserte_integrite = list(
+    fr = "Desserte \u2014 contr\u00f4le d'int\u00e9grit\u00e9",
+    en = "Forest roads \u2014 integrity check"
+  ),
+  pipeline_step_regen_annees = list(
+    fr = "reG\u00e9n\u00e9ration \u2014 ann\u00e9es moyenne / canicule (E-OBS)",
+    en = "Regeneration \u2014 average / heatwave years (E-OBS)"
+  ),
+  pipeline_step_regen_eobs_rr = list(
+    fr = "reG\u00e9n\u00e9ration \u2014 pr\u00e9cipitations E-OBS",
+    en = "Regeneration \u2014 E-OBS precipitation"
+  ),
+  pipeline_step_regen_eobs_tg = list(
+    fr = "reG\u00e9n\u00e9ration \u2014 temp\u00e9rature moyenne E-OBS",
+    en = "Regeneration \u2014 E-OBS mean temperature"
+  ),
+  pipeline_step_regen_gel = list(
+    fr = "reG\u00e9n\u00e9ration \u2014 risque de gel tardif (R7)",
+    en = "Regeneration \u2014 late frost risk (R7)"
+  ),
+  pipeline_step_regeneration = list(
+    fr = "reG\u00e9n\u00e9ration",
+    en = "Regeneration"
+  ),
+  pipeline_step_sante_fast = list(
+    fr = "Sant\u00e9 \u2014 surveillance rapide",
+    en = "Health \u2014 rapid surveillance"
+  ),
+  pipeline_step_sante_fordead = list(
+    fr = "Sant\u00e9 \u2014 diagnostic FORDEAD",
+    en = "Health \u2014 FORDEAD diagnosis"
+  ),
+  pipeline_step_sante_reconfort = list(
+    fr = "Sant\u00e9 \u2014 RECONFORT",
+    en = "Health \u2014 RECONFORT"
+  ),
+  pipeline_step_ia_synthese = list(
+    fr = "Perspective IA (synth\u00e8se + 12 familles)",
+    en = "AI perspective (synthesis + 12 families)"
+  ),
+  pipeline_step_ia_plan = list(
+    fr = "Plan d'actions IA",
+    en = "AI action plan"
+  ),
+  pipeline_skip_no_engine = list(
+    fr = "Aucun moteur s\u00e9lectionn\u00e9 dans l'onglet.",
+    en = "No engine selected in the tab."
+  ),
+  pipeline_skip_no_zone = list(
+    fr = "Aucune zone de suivi enregistr\u00e9e pour ce projet.",
+    en = "No monitoring zone registered for this project."
+  ),
+  pipeline_skip_no_indicators = list(
+    fr = "Indicateurs non calcul\u00e9s.",
+    en = "Indicators not computed."
+  ),
+  pipeline_skip_not_started = list(
+    fr = "Le lancement a \u00e9t\u00e9 refus\u00e9 par l'onglet (pr\u00e9requis manquant).",
+    en = "The tab declined to start (missing prerequisite)."
+  ),
+  pipeline_skip_busy = list(
+    fr = "Moteur d\u00e9j\u00e0 en cours d'ex\u00e9cution.",
+    en = "Engine already running."
   )
 )
 

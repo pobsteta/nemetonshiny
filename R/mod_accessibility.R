@@ -805,7 +805,10 @@ mod_accessibility_server <- function(id, app_state) {
 
     rv_correct <- shiny::reactiveVal(NULL)   # dernier resume de correction
     correct_start <- shiny::reactiveVal(NULL)   # horodatage de depart (chrono)
-    shiny::observeEvent(input$correct_desserte, {
+    # ORCHESTRATION - correction LiDAR du reseau (~2-3 h). Preaable de
+    # l'analyse d'accessibilite : le moteur consomme le reseau corrige quand
+    # il existe, d'ou sa place AVANT dans la chaine.
+    .lancer_correction_lidar <- function() {
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("correct_desserte", state = "ready"); return()
       }
@@ -853,6 +856,40 @@ mod_accessibility_server <- function(id, app_state) {
           correct_start(NULL)
           rv_correct(list(status = "error", reason = "acc_correct_failed"))
         })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$correct_desserte, .lancer_correction_lidar())
+
+    # --- Lancement enchaine : etape « accessibilite_correction » -------
+    correction_pipeline_req <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "accessibilite_correction")) return()
+      if (is.null(tryCatch(app_state$current_project$path, error = function(e) NULL))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (identical(correct_task$status(), "running") || isTRUE(rv$running)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      correction_pipeline_req(req)
+      if (!isTRUE(.lancer_correction_lidar())) {
+        correction_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    shiny::observe({
+      st <- correct_task$status()
+      req <- correction_pipeline_req()
+      if (is.null(req) || !st %in% c("success", "error")) return()
+      pipeline_answer(app_state, req,
+                      if (identical(st, "success")) "ok" else "error",
+                      if (identical(st, "success")) NULL else i18n$t("error"))
+      correction_pipeline_req(NULL)
     })
 
     # Rafraichit le chrono du toast de correction toutes les secondes tant qu'elle
@@ -928,7 +965,19 @@ mod_accessibility_server <- function(id, app_state) {
     })
 
     # --- Lancement -------------------------------------------------------------
-    shiny::observeEvent(input$run, {
+    # ORCHESTRATION - corps extrait en fonction locale : il a deux appelants,
+    # le bouton de l'onglet et le lancement enchaine (`mod_pipeline`). Les
+    # gardes restent ICI, dans le module qui connait ses inputs (moteurs
+    # coches, buffer, reseau corrige) - c'est tout l'interet de faire lancer
+    # le moteur par son proprietaire plutot que par l'orchestrateur.
+    # `use_corrected` : le lancement enchaine doit l'imposer. La case de l'onglet
+    # naît d'un `renderUI` conditionne par `corrected_available()`, donc
+    # `input$use_corrected` ne remonte au serveur qu'apres un aller-retour
+    # CLIENT - il vaudrait encore NULL juste apres l'etape de correction, et
+    # l'analyse ignorerait le reseau qu'on vient de passer deux heures a
+    # corriger. `corrected_available()` lit le disque : elle, est a jour tout de
+    # suite. NULL = on lit la case, comportement inchange pour le bouton.
+    .lancer_accessibilite <- function(use_corrected_force = NULL) {
       if (isTRUE(rv$running)) {
         shiny::showNotification(i18n$t("acc_busy_already"), type = "warning",
                                 duration = 5)
@@ -990,7 +1039,7 @@ mod_accessibility_server <- function(id, app_state) {
       # Garde-fou : un echec SYNCHRONE d'invoke (serialisation d'un argument) ne
       # doit pas laisser le bouton fige " busy " ni la notif collee.
       buffer_m <- buffer_m_r()
-      use_corrected <- isTRUE(input$use_corrected)
+      use_corrected <- use_corrected_force %||% isTRUE(input$use_corrected)
       tryCatch(
         acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,
                         .dev_pkg_path, get_app_options(),
@@ -1007,6 +1056,46 @@ mod_accessibility_server <- function(id, app_state) {
                    .strip_ansi(conditionMessage(e))),
             type = "error", duration = NULL)
         })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run, .lancer_accessibilite())
+
+    # ------------------------------------------------------------------
+    # Lancement enchaine : etape « accessibilite »
+    # ------------------------------------------------------------------
+    # Contrat : toute requete reconnue reçoit une reponse (cf. service_pipeline.R).
+    # Les sorties precoces repondent `skipped` avec leur raison ; la reponse de
+    # fin est posee par l'observer de resultat de `acc_task`, plus bas.
+    pipeline_req <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "accessibilite")) return()
+
+      if (is.null(units_sf()) ||
+          is.null(tryCatch(app_state$current_project$path, error = function(e) NULL))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (length(intersect(input$engines %||% character(0),
+                           ACCESSIBILITY_ENGINES)) == 0L) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_engine"))
+        return()
+      }
+      if (isTRUE(rv$running) || identical(correct_task$status(), "running")) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      pipeline_req(req)
+      # Utiliser le reseau corrige s'il existe sur disque - c'est exactement le
+      # defaut de la case de l'onglet (`value = TRUE` des qu'une correction est
+      # disponible), mais lu cote serveur plutot qu'attendu du client.
+      if (!isTRUE(.lancer_accessibilite(
+            use_corrected_force = isTRUE(corrected_available())))) {
+        pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
     })
 
     # Rafraichit le chrono de la notif persistante tant que le worker tourne.
@@ -1045,7 +1134,16 @@ mod_accessibility_server <- function(id, app_state) {
         list(status = "error", reason = "accessibility_engine_failed",
              detail = conditionMessage(e))
       })
-      if (!is.list(res) || !identical(res$status, "success")) {
+      ok_moteur <- is.list(res) && identical(res$status, "success")
+      if (!is.null(pipeline_req())) {
+        pipeline_answer(app_state, pipeline_req(),
+                        if (ok_moteur) "ok" else "error",
+                        if (ok_moteur) NULL
+                        else i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
+                                      "accessibility_engine_failed"))
+        pipeline_req(NULL)
+      }
+      if (!ok_moteur) {
         reason <- tryCatch(res$reason, error = function(e) NULL) %||%
           "accessibility_engine_failed"
         msg <- i18n$t(reason)
