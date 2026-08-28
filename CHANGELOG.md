@@ -10,6 +10,55 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.142.2] - 2026-08-28
+
+### Fixed
+
+- **Chargement d'un projet récent : 13,2 s → 5,1 s** (médiane de 3 mesures
+  Chrome piloté, Couchey / 75 UGF / 223 tènements). Trois causes cumulées :
+  - `ug_build_sf()` était appelée par **sept reactives** dans le même flush
+    (`ug_sf_4326`, `units_sf` ×4, `ugf_sf_r`, rendu carte `mod_ug`), leurs
+    sorties portant `suspendWhenHidden = FALSE`. Elle est mémoïsée, avec pour
+    clé le hash du couple `(ugs, tenements)` — toute mutation du domaine
+    invalide l'entrée d'elle-même. Hash : 0,4 ms contre 2950 ms de
+    reconstruction.
+  - La dissolution faisait un `st_make_valid()` **par UGF** (75 appels, 695 ms)
+    au lieu d'un seul sur les 223 tènements (97 ms). Nouveau `.ug_geometries()` ;
+    `ug_build_sf()` passe de 2988 ms à ~950 ms, à résultat géométriquement
+    identique (75/75 `st_equals`, différence symétrique nulle).
+  - `mod_ug` dessinait sa carte via `leafletProxy()` **onglet fermé**, travail
+    que leaflet jette et que le module redessinait déjà à l'ouverture :
+    2 × 370 ms retirés du chemin critique.
+- Le fallback planaire s2 n'écrit plus dans la console R. Sur Couchey, une seule
+  UGF sur 75 a des sommets auto-tangents que s2 refuse de dissoudre ; la bascule
+  vers GEOS est délibérée et sans effet sur le résultat, mais `sf_use_s2()`
+  émettait un `message()` à chaque changement d'état (règle stricte 9).
+- **« Générer les placettes » échouait** avec « Stratification-valid candidate
+  pool (0) is below `n_base` — 2108 of 2108 candidates fell on NA pixels ». Le
+  message accusait la couverture des rasters ; la cause était une unité.
+  `prep_sampling_raster()` comparait la résolution d'un MNT en EPSG:4326
+  (0,00025 **degré**) à `target_res_m = 5` **mètres**, d'où un facteur
+  d'agrégation de 20 003 : le MNT sortait en **une seule cellule**. Le raster est
+  désormais aligné sur le CRS métrique de la zone avant tout raisonnement en
+  mètres — ce dont le cœur a besoin, calculant le TPI avec
+  `focalMat(mnt, d = 100)` en unités du CRS.
+- Le CHM Open-Canopy du projet n'était plus ignoré par le plan
+  d'échantillonnage. `nemeton::resolve_project_chm()` sonde `cache/layers/chm/`
+  quand `download_chm_opencanopy()` écrit dans `cache/layers/opencanopy/` : sur
+  Couchey, un CHM exploitable (EPSG:2154, 0,2 m, hauteurs jusqu'à 32 m) était
+  invisible et le plan tirait sans strate de hauteur, en silence. Le plan passe
+  d'une erreur bloquante à 112 placettes stratifiées hauteur × topographie.
+  *Cause racine côté cœur, non corrigée ici (règle 12).*
+
+### Changed
+
+- `prep_sampling_raster()` sort de `mod_sampling_server()` en
+  `.prep_sampling_raster()` : aucun état Shiny, et son contrat d'unités est
+  précisément ce qui devait être testé.
+- `.marculus_chm()` / `.marculus_chm_exploitable()` deviennent `.project_chm()` /
+  `.chm_exploitable()` : ces helpers servent désormais la segmentation des
+  houppiers **et** le plan d'échantillonnage, ce ne sont plus des helpers
+  Marculus.
 ## [0.142.1] - 2026-08-27
 
 ### Changed

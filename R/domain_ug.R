@@ -508,47 +508,82 @@ ug_delete <- function(projet, ug_id) {
 #' @return sfc geometry (union of tenement geometries).
 #' @noRd
 ug_geometry <- function(projet, ug_id) {
+  .ug_geometries(projet, ug_id)[[1]]
+}
+
+#' Dissolve the tenements of several UGs in one pass
+#'
+#' @description
+#' Batch form of [ug_geometry()]. Returns one dissolved geometry per id, in
+#' the order given.
+#'
+#' @param projet List. Project.
+#' @param ug_ids Character vector. UG identifiers.
+#'
+#' @return A list of length `length(ug_ids)`, each element a single-feature sfc.
+#' @noRd
+# PERF - le `st_make_valid()` est fait UNE fois sur tous les tenements du
+# projet, pas une fois par UGF. Les operations sf paient un cout fixe par
+# APPEL (aller-retour R <-> GEOS/s2, relecture des parametres du CRS) qui
+# domine largement le cout par geometrie quand les lots sont petits : 75
+# appels sur ~3 tenements chacun coutaient 695 ms la ou un seul appel sur les
+# 223 en coute 97 (mesure 2026-08-28, projet Couchey). Meme motif que le
+# piege connu de `st_area()` en boucle.
+.ug_geometries <- function(projet, ug_ids) {
   tenements <- projet$tenements
 
-  ug_tenements <- tenements[tenements$ug_id == ug_id, ]
-  if (nrow(ug_tenements) == 0) {
-    cli::cli_abort("UG {ug_id} has no tenements")
-  }
+  # Un seul make_valid pour tout le projet ; les sous-ensembles par UGF sont
+  # ensuite de simples indexations, gratuites.
+  geoms_all <- sf::st_geometry(tenements)
+  geoms_all <- tryCatch(sf::st_make_valid(geoms_all), error = function(e) geoms_all)
 
-  # Dissolve the tenements making up this UGF. S2 is strict about
-  # self-touching vertices that often arise from splits / make_valid
-  # cascades - fall back to planar GEOS when S2 complains. We also
-  # make_valid each geometry first and after the union.
+  # S2 est strict sur les sommets auto-tangents que produisent les decoupes
+  # et les cascades de make_valid : on retombe sur GEOS planaire quand il
+  # proteste. `sf_use_s2()` est un etat GLOBAL de sf et bavarde a chaque
+  # bascule (« Spherical geometry (s2) switched off », puis l'avertissement
+  # « st_union assumes that they are planar ») : ce bruit console n'apprend
+  # rien a l'utilisateur - la bascule est deliberee et sans effet sur le
+  # resultat - donc on le mufle ici plutot que de le laisser remonter (regle
+  # stricte 9 : pas de message() en prod). L'etat est restaure a la sortie.
   prev_s2 <- sf::sf_use_s2()
-  on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
-  geoms <- sf::st_geometry(ug_tenements)
-  geoms <- tryCatch(sf::st_make_valid(geoms), error = function(e) geoms)
-  out <- tryCatch({
-    sf::st_union(geoms)
-  }, error = function(e) {
-    sf::sf_use_s2(FALSE)
-    g <- tryCatch(sf::st_make_valid(geoms), error = function(e) geoms)
-    sf::st_union(g)
-  })
-  out <- tryCatch(sf::st_make_valid(out), error = function(e) out)
+  on.exit(suppressMessages(sf::sf_use_s2(prev_s2)), add = TRUE)
 
-  # Normalise the result to (MULTI)POLYGON. st_union() may return a
-  # GEOMETRYCOLLECTION if st_make_valid introduced sliver lines or
-  # points - those would break every indicateur_* function that
-  # expects an area. We extract the polygon components and cast to
-  # MULTIPOLYGON for consistency.
-  out_type <- as.character(sf::st_geometry_type(out)[[1]])
-  if (identical(out_type, "GEOMETRYCOLLECTION")) {
+  lapply(ug_ids, function(uid) {
+    idx <- which(tenements$ug_id == uid)
+    if (length(idx) == 0) {
+      cli::cli_abort("UG {uid} has no tenements")
+    }
+    geoms <- geoms_all[idx]
+
     out <- tryCatch(
-      sf::st_collection_extract(out, "POLYGON"),
-      error = function(e) out
+      sf::st_union(geoms),
+      error = function(e) {
+        suppressMessages(sf::sf_use_s2(FALSE))
+        on.exit(suppressMessages(sf::sf_use_s2(prev_s2)), add = TRUE)
+        g <- tryCatch(sf::st_make_valid(geoms), error = function(e) geoms)
+        suppressMessages(sf::st_union(g))
+      }
     )
-  }
-  if (!inherits(out, "sfc_MULTIPOLYGON")) {
-    out <- tryCatch(sf::st_cast(out, "MULTIPOLYGON"),
-                    error = function(e) out)
-  }
-  out
+    out <- tryCatch(sf::st_make_valid(out), error = function(e) out)
+
+    # Normalise the result to (MULTI)POLYGON. st_union() may return a
+    # GEOMETRYCOLLECTION if st_make_valid introduced sliver lines or
+    # points - those would break every indicateur_* function that
+    # expects an area. We extract the polygon components and cast to
+    # MULTIPOLYGON for consistency.
+    out_type <- as.character(sf::st_geometry_type(out)[[1]])
+    if (identical(out_type, "GEOMETRYCOLLECTION")) {
+      out <- tryCatch(
+        sf::st_collection_extract(out, "POLYGON"),
+        error = function(e) out
+      )
+    }
+    if (!inherits(out, "sfc_MULTIPOLYGON")) {
+      out <- tryCatch(sf::st_cast(out, "MULTIPOLYGON"),
+                      error = function(e) out)
+    }
+    out
+  })
 }
 
 
@@ -711,7 +746,62 @@ ug_list <- function(projet, filter_groupe = NULL) {
 #' @return sf object with columns: ug_id, label, groupe, surface_m2,
 #'   n_tenements, cadastral_refs, geometry.
 #' @noRd
+# PERF - MEMOISATION. Le resultat ne depend que de `projet$ugs` et de
+# `projet$tenements` : la fonction est pure. Or au chargement d'un projet,
+# SEPT reactives independantes l'appellent dans le meme flush - `ug_sf_4326`
+# (mod_action_plan), `units_sf` (mod_desserte, mod_accessibility,
+# mod_sampling, mod_regeneration, via .resolve_project_aoi_2154),
+# `ugf_sf_r` (mod_monitoring_pixel_map) et le rendu carte de mod_ug - parce
+# que leurs sorties portent `suspendWhenHidden = FALSE` et se rendent donc
+# meme onglet ferme. Chaque appel refait un `st_make_valid()` + `st_union()`
+# PAR UGF : ~3 s pour 75 UGF / 223 tenements, x7 = ~30 s de boucle Shiny
+# bloquee entre le clic sur un projet recent et l'affichage des parcelles
+# (mesure Rprof, 2026-08-28). Le cache ramene ce cout a un seul calcul.
+#
+# La cle est le hash du COUPLE (ugs, tenements), pas l'id du projet : toute
+# mutation du domaine - reaffectation d'un tenement, renommage ou scission
+# d'UGF, migration de schema - change le hash et invalide donc l'entree,
+# sans qu'aucun appelant ait a penser a purger quoi que ce soit. Le hash
+# coute 0,4 ms contre 2950 ms de reconstruction (meme mesure).
+.ug_sf_cache <- new.env(parent = emptyenv())
+
+#' Reset the `ug_build_sf()` memoisation cache
+#'
+#' Exposed for tests: the cache is keyed by content, so production code
+#' never needs to purge it.
+#' @noRd
+ug_build_sf_cache_clear <- function() {
+  rm(list = ls(.ug_sf_cache, all.names = TRUE), envir = .ug_sf_cache)
+  invisible(NULL)
+}
+
 ug_build_sf <- function(projet) {
+  # Cle de contenu. `rlang::hash()` traverse les sfc sans les materialiser
+  # en texte, d'ou son cout negligeable devant la reconstruction.
+  key <- tryCatch(
+    rlang::hash(list(projet$ugs, projet$tenements)),
+    error = function(e) NULL
+  )
+  if (!is.null(key) && !is.null(.ug_sf_cache[[key]])) {
+    return(.ug_sf_cache[[key]])
+  }
+
+  res <- .ug_build_sf_impl(projet)
+
+  if (!is.null(key)) {
+    # Borne le cache a 3 entrees (projet courant + deux precedents) : un sf
+    # d'UGF dissoutes est leger, mais on ne veut pas d'une fuite qui grossit
+    # a chaque edition d'UGF pendant une longue session.
+    keys <- ls(.ug_sf_cache, all.names = TRUE)
+    if (length(keys) >= 3L) {
+      rm(list = keys[seq_len(length(keys) - 2L)], envir = .ug_sf_cache)
+    }
+    assign(key, res, envir = .ug_sf_cache)
+  }
+  res
+}
+
+.ug_build_sf_impl <- function(projet) {
   ugs <- projet$ugs
   tenements <- projet$tenements
 
@@ -719,11 +809,8 @@ ug_build_sf <- function(projet) {
     return(NULL)
   }
 
-  # Build geometry per UG
-  geoms <- lapply(ugs$ug_id, function(uid) {
-    ug_geometry(projet, uid)
-  })
-  geom_sfc <- do.call(c, geoms)
+  # Build geometry per UG (one batch pass, cf. .ug_geometries)
+  geom_sfc <- do.call(c, .ug_geometries(projet, ugs$ug_id))
   sf::st_crs(geom_sfc) <- sf::st_crs(tenements)
 
   # Backward compat: compute surface_sig_m2 if missing

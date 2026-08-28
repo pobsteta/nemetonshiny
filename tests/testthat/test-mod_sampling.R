@@ -464,3 +464,64 @@ test_that("clicking generate with no DEM shows dem_missing toast and skips creat
                 character(1))
   expect_true(any(grepl("dem_missing", ids)))
 })
+
+
+# ==============================================================================
+# .prep_sampling_raster() : contrat d'unites
+# ==============================================================================
+# Regression 2026-08-28 : un MNT rendu en EPSG:4326 (resolution ~0,00025 DEGRE)
+# etait compare a `target_res_m = 5` METRES. La regle `cur_res < target_res_m`
+# etait donc toujours vraie et le facteur d'agregation valait round(5/0,00025)
+# = 20003 : le MNT de Couchey (118 x 318) sortait en UNE cellule, tous les
+# candidats tombaient sur du NA et `create_sampling_plan()` s'arretait sur
+# « Stratification-valid candidate pool (0) is below n_base » (2108 sur 2108).
+
+# MNT synthetique en degres, calibre comme celui de Couchey : ~0,00025 deg/px
+# sur une emprise qui couvre la zone de test.
+.mnt_en_degres <- function() {
+  r <- terra::rast(xmin = 4.90, xmax = 4.98, ymin = 47.25, ymax = 47.28,
+                   resolution = 0.00025, crs = "EPSG:4326")
+  terra::values(r) <- seq_len(terra::ncell(r))
+  r
+}
+
+.zone_lambert93 <- function() {
+  bbox <- sf::st_bbox(c(xmin = 4.92, ymin = 47.26, xmax = 4.96, ymax = 47.27),
+                      crs = sf::st_crs(4326))
+  sf::st_transform(sf::st_sf(geometry = sf::st_as_sfc(bbox)), 2154)
+}
+
+test_that(".prep_sampling_raster ramene un raster geographique en CRS metrique", {
+  skip_if_not_installed("terra")
+  zone <- .zone_lambert93()
+  out <- suppressWarnings(nemetonshiny:::.prep_sampling_raster(.mnt_en_degres(), zone))
+
+  # Le cœur calcule le TPI avec `focalMat(mnt, d = 100)`, ou 100 s'exprime dans
+  # les unites du CRS : un raster en degres lui ferait demander une fenetre de
+  # 100 degres.
+  # Comparaison semantique : `st_crs()` porte aussi un libelle `$input` qui
+  # differe (« RGF93 v1 / Lambert-93 » vs « EPSG:2154 ») sans que le systeme
+  # de coordonnees change.
+  expect_true(sf::st_crs(out) == sf::st_crs(zone))
+  expect_false(terra::is.lonlat(out))
+})
+
+test_that(".prep_sampling_raster ne pulverise pas un raster en degres", {
+  skip_if_not_installed("terra")
+  zone <- .zone_lambert93()
+  out <- suppressWarnings(nemetonshiny:::.prep_sampling_raster(.mnt_en_degres(), zone))
+
+  # Le symptome exact du bug : le raster reduit a une poignee de cellules.
+  # Le seuil est volontairement lache - on verrouille l'ordre de grandeur, pas
+  # une geometrie de sortie precise qui dependrait de la version de GDAL.
+  expect_gt(terra::ncell(out), 1000)
+  expect_gt(terra::global(!is.na(out), "sum", na.rm = TRUE)[[1]], 1000)
+
+  # Et la resolution reste de l'ordre du metre, pas du degre.
+  expect_gt(terra::res(out)[1], 1)
+  expect_lt(terra::res(out)[1], 100)
+})
+
+test_that(".prep_sampling_raster laisse passer NULL", {
+  expect_null(nemetonshiny:::.prep_sampling_raster(NULL, .zone_lambert93()))
+})
