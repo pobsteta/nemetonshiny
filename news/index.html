@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,67 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.142.2" id="nemetonshiny-01422-2026-08-28">nemetonshiny 0.142.2 (2026-08-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01422-2026-08-28"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-chargement-dun-projet-récent-reconstruisait-sept-fois-la-même-géométrie-ugf-0-142-2">Fixed — Le chargement d’un projet récent reconstruisait sept fois la même géométrie UGF<a class="anchor" aria-label="anchor" href="#fixed--le-chargement-dun-projet-r%C3%A9cent-reconstruisait-sept-fois-la-m%C3%AAme-g%C3%A9om%C3%A9trie-ugf-0-142-2"></a></h4>
+<p>Cliquer sur un projet récent (mesuré sur Couchey : 75 UGF, 223 tenements) laissait la boucle Shiny bloquée une dizaine de secondes entre le clic et l’affichage des parcelles cadastrales, la notification « Projet chargé » comprise (mesure consolidée plus bas).</p>
+<p>Le chargement lui-même n’y était pour rien : <code>load_project()</code> rend la main en ~280 ms et la portion synchrone de l’observer en ~440 ms. Le profilage Rprof du thread principal a montré la vraie cause — <strong>sept reactives indépendantes appellent <code>ug_build_sf()</code> dans le même flush</strong> : <code>ug_sf_4326</code> (mod_action_plan), <code>units_sf</code> (mod_desserte, mod_accessibility, mod_sampling, mod_regeneration, via <code>.resolve_project_aoi_2154</code>), <code>ugf_sf_r</code> (mod_monitoring_pixel_map) et le rendu carte de mod_ug. Leurs sorties portent <code>suspendWhenHidden = FALSE</code>, donc elles se rendent même onglet fermé. Chaque appel refait un <code>st_make_valid()</code> + <code>st_union()</code> PAR UGF : ~3 s pièce, sept fois de suite, sur le thread unique.</p>
+<p><code>ug_build_sf()</code> est pure — son résultat ne dépend que de <code>projet$ugs</code> et <code>projet$tenements</code>. Elle est désormais mémoïsée, avec pour clé le <strong>hash du couple (ugs, tenements)</strong> et non l’id du projet : toute mutation du domaine (réaffectation d’un tenement, renommage ou scission d’UGF, migration de schéma) change le hash et invalide l’entrée, sans qu’aucun appelant ait à purger quoi que ce soit. Le hash coûte 0,4 ms contre 2950 ms de reconstruction. Cache borné à trois entrées.</p>
+<p>Dans l’app : un recalcul, sept lectures de cache. Mesure de bout en bout consolidée pour les trois correctifs de ce cycle : voir plus bas.</p>
+<p>Trois tests verrouillent le comportement (<code>test-domain_ug.R</code>), dont un qui <strong>compte les reconstructions réelles</strong> via un mock de <code>.ug_build_sf_impl()</code> : comparer deux résultats d’une fonction déterministe ne prouverait rien sur le cache (vérifié par mutation — cache neutralisé, le test échoue).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--la-géométrie-ugf-était-reconstruite-tenement-par-tenement-0-142-2">Fixed — La géométrie UGF était reconstruite tenement par tenement<a class="anchor" aria-label="anchor" href="#fixed--la-g%C3%A9om%C3%A9trie-ugf-%C3%A9tait-reconstruite-tenement-par-tenement-0-142-2"></a></h4>
+<p>Deuxième volet du même chemin critique. <code>ug_geometry()</code> faisait un <code>st_make_valid()</code> <strong>par UGF</strong>, soit 75 appels sur ~3 tenements chacun là où un seul appel sur les 223 fait le même travail. Les opérations <code>sf</code> paient un coût fixe par <em>appel</em> — aller-retour R ↔︎ GEOS/s2, relecture des paramètres du CRS — qui domine largement le coût par géométrie sur de petits lots : <strong>695 ms en 75 appels contre 97 ms en un seul</strong>. Même piège que <code>st_area()</code> en boucle.</p>
+<p>La dissolution passe par un nouveau <code>.ug_geometries()</code> qui valide tout le projet en une passe ; <code>ug_geometry()</code> en devient le cas à un élément et garde sa signature. <code>ug_build_sf()</code> : <strong>2988 ms → ~950 ms</strong>, et toujours une seule fois grâce au cache du volet précédent.</p>
+<p>Équivalence vérifiée contre l’implémentation d’origine sur le projet Couchey : 75/75 UGF géométriquement identiques (<code>st_equals</code>), différence symétrique nulle par paire, attributs et CRS identiques, écart de surface 3 × 10⁻⁷ m².</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-fallback-planaire-s2-bavardait-dans-la-console-r-0-142-2">Fixed — Le fallback planaire s2 bavardait dans la console R<a class="anchor" aria-label="anchor" href="#fixed--le-fallback-planaire-s2-bavardait-dans-la-console-r-0-142-2"></a></h4>
+<p>Les blocs « Spherical geometry (s2) switched off » / « although coordinates are longitude/latitude, st_union assumes that they are planar » / « switched on » qui défilaient au démarrage venaient de ce même chemin : sur les 75 UGF de Couchey, <strong>une seule</strong> a des sommets auto-tangents que s2 refuse de dissoudre, et <code>ug_geometry()</code> bascule alors sur GEOS planaire. La bascule est délibérée et sans effet sur le résultat — <code>sf_use_s2()</code> émet simplement un <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> à chaque changement d’état global.</p>
+<p>Ce bruit n’apprenait rien à l’utilisateur et se répétait à chaque appel de <code>ug_build_sf()</code> (donc sept fois par chargement de projet, avant le cache). Il est désormais muselé à la source (règle stricte 9 : pas de <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> en prod). L’état de <code>sf_use_s2()</code> reste restauré à la sortie. Mesure après correctif : zéro message émis par un <code>ug_build_sf()</code> complet.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--la-carte-ugf-se-dessinait-pendant-que-son-onglet-était-fermé-0-142-2">Fixed — La carte UGF se dessinait pendant que son onglet était fermé<a class="anchor" aria-label="anchor" href="#fixed--la-carte-ugf-se-dessinait-pendant-que-son-onglet-%C3%A9tait-ferm%C3%A9-0-142-2"></a></h4>
+<p>Le rendu des tenements de <code>mod_ug</code> passe par <code>leafletProxy()</code> dans un <code>observe()</code> — que rien ne suspend quand l’onglet est caché. Or leaflet <strong>jette silencieusement</strong> les polygones envoyés à une carte absente du DOM, ce que le module documentait déjà : son observer de re-zoom les redessine à l’ouverture de l’onglet via <code>rv$redraw_counter</code>.</p>
+<p>Ce travail était donc intégralement perdu — mais payé sur le thread unique, dans le flush même qui doit afficher les parcelles cadastrales : <strong>2 × 370 ms</strong> au chargement d’un projet récent. Le dessin est maintenant conditionné à la visibilité du sous-onglet (et non à un drapeau « déjà ouvert » : si l’onglet est affiché quand les données arrivent, on dessine tout de suite). Deux tests verrouillent les deux moitiés de la garde, vérifiés par mutation dans les deux sens.</p>
+</div>
+<div class="section level4">
+<h4 id="mesure-de-bout-en-bout-des-trois-correctifs-ci-dessus-0-142-2">Mesure de bout en bout des trois correctifs ci-dessus<a class="anchor" aria-label="anchor" href="#mesure-de-bout-en-bout-des-trois-correctifs-ci-dessus-0-142-2"></a></h4>
+<p>Chrome piloté, du clic sur le projet récent à l’apparition des parcelles cadastrales, sur Couchey (75 UGF, 223 tènements). Trois exécutions par configuration, machine par ailleurs au repos, code de référence réinjecté par <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">assignInNamespace()</a></code> pour que les deux configurations partagent tout le reste :</p>
+<table class="table"><thead><tr><th>Configuration</th>
+<th>Mesures (s)</th>
+<th>Médiane</th>
+</tr></thead><tbody><tr><td>Avant</td>
+<td>13,67 / 12,68 / 13,16</td>
+<td><strong>13,2 s</strong></td>
+</tr><tr><td>Après</td>
+<td>5,11 / 5,61 / 5,10</td>
+<td><strong>5,1 s</strong></td>
+</tr></tbody></table><p>Soit <strong>2,5×</strong>, avec une dispersion de ±0,5 s.</p>
+<blockquote>
+<p>Un chiffre de « 29,5 s » a circulé en cours de session : il provenait d’une exécution <strong>sous <code><a href="https://rdrr.io/r/utils/Rprof.html" class="external-link">Rprof()</a></code></strong> (échantillonnage à 20 ms) et sur une machine chargée, deux biais qui gonflent la mesure. Les runs isolés de ce type variaient de 6,6 à 9,7 s côté « après » — c’est ce qui a motivé le passage à un banc répété plutôt qu’à un run unique. Les mesures unitaires citées plus haut (<code>ug_build_sf</code>, <code>st_make_valid</code>, nombre d’appels) sont, elles, prises hors profileur et reproduites.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="fixed---générer-les-placettes--échouait-sur-tout-projet-dont-le-mnt-est-en-degrés-0-142-2">Fixed — « Générer les placettes » échouait sur tout projet dont le MNT est en degrés<a class="anchor" aria-label="anchor" href="#fixed---g%C3%A9n%C3%A9rer-les-placettes--%C3%A9chouait-sur-tout-projet-dont-le-mnt-est-en-degr%C3%A9s-0-142-2"></a></h4>
+<p><code>create_sampling_plan(): Stratification-valid candidate pool (0) is below n_base (88). 2108 of 2108 candidates fell on NA pixels of the CHM / MNT rasters.</code> — le message accusait la couverture des rasters ; la cause était une <strong>unité</strong>.</p>
+<p><code>prep_sampling_raster()</code> compare la résolution du raster à <code>target_res_m = 5</code>, en mètres. Rien ne garantissait que le raster soit métrique : <code>resolve_project_dem()</code> rend le <code>cache/layers/dem.tif</code> de Couchey en EPSG:4326, dont la résolution vaut 0,00025 <strong>degré</strong>. La règle <code>cur_res &lt; target_res_m</code> était donc toujours vraie et le facteur d’agrégation valait <code>round(5 / 0,00025)</code> = <strong>20 003</strong> : le MNT sortait de la fonction en <strong>une seule cellule</strong> (118 × 318 → 1 × 1). Tous les candidats tombaient ensuite sur du NA. Le buffer de 200 souffrait du même flou d’unité.</p>
+<p>La fonction aligne désormais le raster sur le CRS de la zone (Lambert-93, métrique) avant tout raisonnement en mètres — ce dont le cœur a de toute façon besoin, puisqu’il calcule le TPI avec <code>terra::focalMat(mnt, d = 100)</code>, où 100 s’exprime dans les unités du CRS. Elle sort de <code>mod_sampling_server()</code> en <code>.prep_sampling_raster()</code> : elle ne porte aucun état Shiny et son contrat d’unités est précisément ce qui devait être testé.</p>
+<p>La comparaison de CRS utilise <code>==</code> (sémantique) et non <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>, qui compare aussi le libellé <code>$input</code> — un raster déjà en Lambert-93 mais décrit « RGF93 v1 / Lambert-93 » plutôt que « EPSG:2154 » aurait été reprojeté à chaque appel, pour rien et en resamplant.</p>
+<p>Vérifié sur Couchey : le MNT sort en EPSG:2154, 169 × 302 à 20 m, 48 292 cellules utiles, et le plan se génère (GRTS). Quatre tests, vérifiés par mutation.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-chm-open-canopy-du-projet-était-ignoré-par-le-plan-déchantillonnage-0-142-2">Fixed — Le CHM Open-Canopy du projet était ignoré par le plan d’échantillonnage<a class="anchor" aria-label="anchor" href="#fixed--le-chm-open-canopy-du-projet-%C3%A9tait-ignor%C3%A9-par-le-plan-d%C3%A9chantillonnage-0-142-2"></a></h4>
+<p>Même écran, défaut distinct. <code><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">nemeton::resolve_project_chm()</a></code> sonde <code>cache/layers/chm/</code>, alors que <code>download_chm_opencanopy()</code> dépose ses livrables dans <code>cache/layers/opencanopy/</code>. Sur Couchey, un CHM parfaitement exploitable — EPSG:2154, 0,2 m, hauteurs jusqu’à 32 m — était donc invisible et le plan tirait <strong>sans strate de hauteur</strong>, en silence.</p>
+<p><code>service_marculus.R</code> avait déjà rencontré et traité ce cas pour la segmentation des houppiers. Son helper est repris ici plutôt que dupliqué, et renommé <code>.project_chm()</code> / <code>.chm_exploitable()</code> — ce n’est pas un helper Marculus : il sert les deux appelants qui ont besoin du meilleur modèle de hauteur disponible, LiDAR HD prioritaire, Open-Canopy en repli, chaque candidat devant porter de la hauteur.</p>
+<p>Le plan de Couchey passe de « erreur bloquante » à 112 placettes stratifiées hauteur × topographie.</p>
+<blockquote>
+<p>Cause racine côté cœur, <strong>non corrigée ici</strong> (règle 12 : ce dépôt n’écrit pas dans <code>nemeton</code>) : le résolveur devrait connaître <code>cache/layers/opencanopy/</code>. Le contournement applicatif ci-dessus tient sans lui.</p>
+</blockquote>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.142.1" id="nemetonshiny-01421-2026-08-27">nemetonshiny 0.142.1 (2026-08-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01421-2026-08-27"></a></h2>
 <div class="section level4">
