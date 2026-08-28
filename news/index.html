@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,69 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.0" id="nemetonshiny-01430-2026-08-28">nemetonshiny 0.143.0 (2026-08-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01430-2026-08-28"></a></h2>
+<p>Jalon : un seul bouton lance les seize calculs de l’application, puis les generations IA.</p>
+<div class="section level4">
+<h4 id="added---tout-calculer---un-bouton-seize-etapes-un-rapport-0-143-0">Added — « Tout calculer » : un bouton, seize etapes, un rapport<a class="anchor" aria-label="anchor" href="#added---tout-calculer---un-bouton-seize-etapes-un-rapport-0-143-0"></a></h4>
+<p>Dans la sidebar de l’onglet <em>Selection</em>, sous le bouton de calcul des indicateurs. Une modale demande le perimetre (les seize etapes, cochables) et le <strong>profil de l’analyste</strong> parmi les quinze profils experts, qui s’applique a toutes les generations IA de la chaine. Un panneau suit l’avancement etape par etape, avec un bouton d’arret ; a la fin, un rapport donne pour chaque etape son issue et sa duree.</p>
+<p>Une etape en echec <strong>n’interrompt pas</strong> la chaine : le rapport distingue <code>reussie</code> / <code>echec</code> / <code>sautee</code> / <code>annulee</code>. « Trois sautees faute de configuration » ne doit pas se lire « trois en echec ».</p>
+<p>L’ordre n’est pas cosmetique — il encode ce qui alimente quoi :</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>#</th>
+<th>Etape</th>
+<th>Pourquoi la</th>
+</tr></thead><tbody><tr><td>1</td>
+<td>Indicateurs</td>
+<td>toutes les vues les lisent</td>
+</tr><tr><td>2</td>
+<td>Accessibilite — correction LiDAR</td>
+<td>l’analyse consomme le reseau corrige des qu’il existe</td>
+</tr><tr><td>3</td>
+<td>Accessibilite</td>
+<td></td>
+</tr><tr><td>4-6</td>
+<td>Desserte, typage, integrite</td>
+<td>typage et controle lisent le cache du moteur</td>
+</tr><tr><td>7</td>
+<td>reGeneration — annees moyenne / canicule</td>
+<td>
+<strong>determine</strong> les annees que le gel et le moteur consomment</td>
+</tr><tr><td>8-9</td>
+<td>reGeneration — precipitations, temperature (E-OBS)</td>
+<td>bornees par les annees ci-dessus</td>
+</tr><tr><td>10</td>
+<td>reGeneration — gel R7</td>
+<td>enrichit le resultat courant</td>
+</tr><tr><td>11</td>
+<td>reGeneration — moteur</td>
+<td></td>
+</tr><tr><td>12</td>
+<td>Sante — surveillance rapide</td>
+<td>son ingest remplit le cache Sentinel-2</td>
+</tr><tr><td>13-14</td>
+<td>Sante — FORDEAD, RECONFORT</td>
+<td>tous deux lisent ce cache</td>
+</tr><tr><td>15</td>
+<td>Perspective IA</td>
+<td>synthese + les 12 commentaires de famille en une passe</td>
+</tr><tr><td>16</td>
+<td>Plan d’actions IA</td>
+<td>se construit sur les commentaires que (15) vient d’ecrire</td>
+</tr></tbody></table><p><strong>Choix d’architecture.</strong> L’orchestrateur ne lance aucun moteur lui-meme : il poste <code>app_state$pipeline_request</code> et le module proprietaire repond sur <code>app_state$pipeline_answer</code>. Chaque moteur est un <code>ExtendedTask</code> dont les arguments viennent des inputs de son onglet (moteurs coches, buffer, reseau corrige, periode S2) ; un orchestrateur qui les appellerait directement devrait tout redupliquer et divergerait des qu’un onglet gagne une option. Le corps de chaque observer de bouton est donc extrait en fonction locale, appelee par le bouton <strong>et</strong> par la chaine — aucun bloc duplique.</p>
+<p><strong>Le piege de l’aller-retour client, rencontre trois fois.</strong> Plusieurs etapes publient leur resultat par <code>updateNumericInput()</code> / <code>renderUI()</code>, qui ne remontent au serveur qu’apres un aller-retour navigateur : l’etape suivante y lirait encore la valeur precedente. Trois valeurs sont donc passees en argument explicite plutot que relues dans les champs :</p>
+<ul><li>les annees moyenne / canicule, prises sur <code>eobs_task$result()</code> — sans quoi le moteur reGeneration aurait tourne sur les defauts codes en dur (2018 / 2022), <strong>sans que rien ne le signale</strong> ;</li>
+<li>
+<code>use_corrected</code>, calcule depuis <code>corrected_available()</code> (qui lit le disque) — sans quoi l’analyse d’accessibilite serait partie sur le reseau brut apres deux a trois heures de correction devenue inutile ;</li>
+<li>le profil expert des generations IA.</li>
+</ul><p><code>NULL</code> conserve partout le comportement exact des boutons manuels.</p>
+<p><strong>Le mode de defaillance a connaitre.</strong> Tout chemin de code qui a reconnu une requete DOIT repondre. Un module qui se tait bloque la chaine sur son etape, sans rien afficher. Les gardes internes (pas de zone monitoring, pas de cle API, lecture seule) faisaient exactement cela : la fonction de lancement sortait tot, aucune tache ne demarrait, personne ne repondait. Les seize branchements testent desormais la valeur de retour du lancement et repondent <code>sautee</code> quand il n’a pas eu lieu. Les deux generations IA rendaient meme <code>TRUE</code> en dur — une perspective jamais generee aurait ete rapportee « reussie ».</p>
+<p><strong>Tests.</strong> 74 sur <code>service_pipeline.R</code>, sans Shiny : ordre du registre, reponse tardive qui ne doit ni ecraser l’etape suivante ni decaler le curseur, reponse d’un run annule puis relance, <code>sautee</code> distinguee de <code>echec</code>, annulation. Plus un test qui verifie que <strong>chaque etape declaree a un ecouteur</strong> dans le module annonce — le filet contre l’etape orpheline qui bloquerait la chaine. Verifies par mutation.</p>
+</div>
+<div class="section level4">
+<h4 id="restent-hors-chaine-0-143-0">Restent hors chaine<a class="anchor" aria-label="anchor" href="#restent-hors-chaine-0-143-0"></a></h4>
+<p>Optimisation, OSM et detection (panneaux d’analyse annexes de la desserte), RVT et pre-build CVAT (preparation d’annotation).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.142.3" id="nemetonshiny-01423-2026-08-28">nemetonshiny 0.142.3 (2026-08-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01423-2026-08-28"></a></h2>
 <div class="section level4">

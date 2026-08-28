@@ -1,5 +1,89 @@
 # Changelog
 
+## nemetonshiny 0.143.0 (2026-08-28)
+
+Jalon : un seul bouton lance les seize calculs de l’application, puis
+les generations IA.
+
+#### Added — « Tout calculer » : un bouton, seize etapes, un rapport
+
+Dans la sidebar de l’onglet *Selection*, sous le bouton de calcul des
+indicateurs. Une modale demande le perimetre (les seize etapes,
+cochables) et le **profil de l’analyste** parmi les quinze profils
+experts, qui s’applique a toutes les generations IA de la chaine. Un
+panneau suit l’avancement etape par etape, avec un bouton d’arret ; a la
+fin, un rapport donne pour chaque etape son issue et sa duree.
+
+Une etape en echec **n’interrompt pas** la chaine : le rapport distingue
+`reussie` / `echec` / `sautee` / `annulee`. « Trois sautees faute de
+configuration » ne doit pas se lire « trois en echec ».
+
+L’ordre n’est pas cosmetique — il encode ce qui alimente quoi :
+
+| \# | Etape | Pourquoi la |
+|----|----|----|
+| 1 | Indicateurs | toutes les vues les lisent |
+| 2 | Accessibilite — correction LiDAR | l’analyse consomme le reseau corrige des qu’il existe |
+| 3 | Accessibilite |  |
+| 4-6 | Desserte, typage, integrite | typage et controle lisent le cache du moteur |
+| 7 | reGeneration — annees moyenne / canicule | **determine** les annees que le gel et le moteur consomment |
+| 8-9 | reGeneration — precipitations, temperature (E-OBS) | bornees par les annees ci-dessus |
+| 10 | reGeneration — gel R7 | enrichit le resultat courant |
+| 11 | reGeneration — moteur |  |
+| 12 | Sante — surveillance rapide | son ingest remplit le cache Sentinel-2 |
+| 13-14 | Sante — FORDEAD, RECONFORT | tous deux lisent ce cache |
+| 15 | Perspective IA | synthese + les 12 commentaires de famille en une passe |
+| 16 | Plan d’actions IA | se construit sur les commentaires que (15) vient d’ecrire |
+
+**Choix d’architecture.** L’orchestrateur ne lance aucun moteur lui-meme
+: il poste `app_state$pipeline_request` et le module proprietaire repond
+sur `app_state$pipeline_answer`. Chaque moteur est un `ExtendedTask`
+dont les arguments viennent des inputs de son onglet (moteurs coches,
+buffer, reseau corrige, periode S2) ; un orchestrateur qui les
+appellerait directement devrait tout redupliquer et divergerait des
+qu’un onglet gagne une option. Le corps de chaque observer de bouton est
+donc extrait en fonction locale, appelee par le bouton **et** par la
+chaine — aucun bloc duplique.
+
+**Le piege de l’aller-retour client, rencontre trois fois.** Plusieurs
+etapes publient leur resultat par `updateNumericInput()` / `renderUI()`,
+qui ne remontent au serveur qu’apres un aller-retour navigateur :
+l’etape suivante y lirait encore la valeur precedente. Trois valeurs
+sont donc passees en argument explicite plutot que relues dans les
+champs :
+
+- les annees moyenne / canicule, prises sur `eobs_task$result()` — sans
+  quoi le moteur reGeneration aurait tourne sur les defauts codes en dur
+  (2018 / 2022), **sans que rien ne le signale** ;
+- `use_corrected`, calcule depuis `corrected_available()` (qui lit le
+  disque) — sans quoi l’analyse d’accessibilite serait partie sur le
+  reseau brut apres deux a trois heures de correction devenue inutile ;
+- le profil expert des generations IA.
+
+`NULL` conserve partout le comportement exact des boutons manuels.
+
+**Le mode de defaillance a connaitre.** Tout chemin de code qui a
+reconnu une requete DOIT repondre. Un module qui se tait bloque la
+chaine sur son etape, sans rien afficher. Les gardes internes (pas de
+zone monitoring, pas de cle API, lecture seule) faisaient exactement
+cela : la fonction de lancement sortait tot, aucune tache ne demarrait,
+personne ne repondait. Les seize branchements testent desormais la
+valeur de retour du lancement et repondent `sautee` quand il n’a pas eu
+lieu. Les deux generations IA rendaient meme `TRUE` en dur — une
+perspective jamais generee aurait ete rapportee « reussie ».
+
+**Tests.** 74 sur `service_pipeline.R`, sans Shiny : ordre du registre,
+reponse tardive qui ne doit ni ecraser l’etape suivante ni decaler le
+curseur, reponse d’un run annule puis relance, `sautee` distinguee de
+`echec`, annulation. Plus un test qui verifie que **chaque etape
+declaree a un ecouteur** dans le module annonce — le filet contre
+l’etape orpheline qui bloquerait la chaine. Verifies par mutation.
+
+#### Restent hors chaine
+
+Optimisation, OSM et detection (panneaux d’analyse annexes de la
+desserte), RVT et pre-build CVAT (preparation d’annotation).
+
 ## nemetonshiny 0.142.3 (2026-08-28)
 
 #### Fixed — La carte UGF restait vide au premier passage sur son sous-onglet

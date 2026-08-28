@@ -12,6 +12,49 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.0\] - 2026-08-28
+
+### Added
+
+- **« Tout calculer »** : un bouton dans la sidebar *Sélection* enchaîne
+  les seize calculs de l’application puis les générations IA. Modale de
+  lancement (périmètre cochable + profil de l’analyste parmi les quinze
+  profils experts, appliqué à toutes les générations IA), panneau de
+  progression avec arrêt, et rapport final par étape avec durées. Une
+  étape en échec n’interrompt pas la chaîne ; le rapport distingue
+  réussie / échec / sautée / annulée.
+- `R/service_pipeline.R` : registre ordonné des étapes et machine à
+  états, sans Shiny (74 tests). `R/mod_pipeline.R` : bouton, modale,
+  progression, rapport.
+- Protocole orchestrateur ↔︎ modules : `app_state$pipeline_request` /
+  `app_state$pipeline_answer`. L’orchestrateur ne lance aucun moteur
+  lui-même — chaque module exécute le sien avec ses propres gardes et
+  les inputs de son onglet.
+- ~50 clés i18n FR/EN.
+
+### Changed
+
+- Le corps de chaque observer de bouton de lancement est extrait en
+  fonction locale, appelée par le bouton **et** par la chaîne : aucun
+  bloc dupliqué entre les deux chemins.
+- `.lancer_moteur_regen()`, `.lancer_gel()` acceptent des années
+  explicites ; `.lancer_accessibilite()` un `use_corrected_force` ;
+  `.generer_ia_synthese()` un profil. Ces valeurs transitent d’ordinaire
+  par `updateNumericInput()` / `renderUI()`, qui ne remontent au serveur
+  qu’après un aller-retour client : l’étape suivante de la chaîne y
+  lirait la valeur précédente. `NULL` conserve le comportement des
+  boutons manuels.
+
+### Fixed
+
+- Les gardes internes des modules (pas de zone monitoring, pas de clé
+  API, lecture seule) faisaient sortir la fonction de lancement sans
+  démarrer de tâche : personne ne répondait et la chaîne se serait
+  bloquée en silence sur cette étape. Les branchements testent désormais
+  la valeur de retour du lancement et répondent « sautée ». Les deux
+  générations IA rendaient `TRUE` en dur — une perspective jamais
+  générée aurait été rapportée « réussie ».
+
 ## \[0.142.3\] - 2026-08-28
 
 ### Fixed
