@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.142.3] - 2026-08-28
+
+### Fixed
+
+- **La carte UGF restait vide au premier passage sur son sous-onglet** : passer
+  de « Carte cadastrale » à « Carte UGF » n'affichait ni tènements ni UGF, il
+  fallait aller sur « Tableau UGF » et revenir. `output$ug_map` était la seule
+  des six cartes leaflet de l'app à rester suspendue quand son onglet est caché ;
+  « Carte UGF » étant un sous-onglet non-défaut, la carte n'existait pas encore
+  côté client quand l'observer de dessin émettait ses `leafletProxy()`, et
+  leaflet jette silencieusement les messages adressés à une carte absente du DOM.
+  `mod_ug` posait déjà l'option sur son tableau et ses compteurs, mais avait
+  oublié sa carte.
+
+### Changed
+
+- Brief cœur `specs/BRIEF-nemeton-resolve-chm-opencanopy.md` :
+  `resolve_project_chm()` sonde `cache/layers/chm/` alors que
+  `download_chm_opencanopy()` écrit dans `cache/layers/opencanopy/`. Le brief
+  signale deux pièges (un candidat sans `file` mosaïquerait orthophotos et
+  indices spectraux en VRT ; les entrées doivent venir après `"LiDAR HD MNH"`)
+  et porte l'entrée `PLAN.md` de la v0.142.2, que la session app ne peut pas
+  écrire côté cœur (règle 12).
+
 ## [0.142.2] - 2026-08-28
 
 ### Fixed
