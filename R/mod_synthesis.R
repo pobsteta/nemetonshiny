@@ -610,7 +610,12 @@ mod_synthesis_server <- function(id, app_state) {
     # ================================================================
     # AI ANALYSIS: Generate synthesis analysis via ellmer
     # ================================================================
-    shiny::observeEvent(input$ai_generate, {
+    # ORCHESTRATION - corps extrait. `profil` permet au lancement enchaine
+    # d'imposer le profil choisi dans sa modale sans passer par
+    # `updateSelectInput()`, qui ne prendrait effet qu'apres un aller-retour
+    # client - donc trop tard pour la generation qu'on declenche dans la
+    # foulee. NULL = on garde le selecteur de l'onglet.
+    .generer_ia_synthese <- function(profil = NULL) {
       i18n <- get_i18n(app_state$language)
 
       # Check API key for providers that require one
@@ -643,7 +648,7 @@ mod_synthesis_server <- function(id, app_state) {
       language <- if (identical(app_state$language, "fr")) "fran\u00e7ais" else "English"
       rag_lang <- if (identical(app_state$language, "fr")) "fr" else "en"
       prompt <- build_synthesis_prompt(sf_data, language)
-      expert <- input$expert_profile %||% "generalist"
+      expert <- profil %||% input$expert_profile %||% "generalist"
       system_prompt <- build_system_prompt(language, expert = expert)
 
       # v0.56.0 \u2014 R\u00e9cup\u00e9ration RAG (perspective sourc\u00e9e). Le contexte
@@ -874,6 +879,46 @@ mod_synthesis_server <- function(id, app_state) {
       shiny::updateActionButton(session, "ai_generate",
                                 label = i18n$t("ai_generate"),
                                 icon = bsicons::bs_icon("stars"))
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$ai_generate, .generer_ia_synthese())
+
+    # --- Lancement enchaine : etape « ia_synthese » --------------------
+    # La generation est SYNCHRONE (13 appels LLM enchaines) : elle rend la
+    # main quand tout est ecrit, on repond donc juste apres, sans machinerie
+    # de statut. C'est aussi pourquoi les etapes IA sont les dernieres de la
+    # chaine : elles gelent la boucle Shiny le temps des appels.
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "ia_synthese")) return()
+      i18n <- get_i18n(app_state$language %||% "fr")
+      projet <- app_state$current_project
+      if (is.null(projet)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (!isTRUE(projet$metadata$indicators_computed)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_indicators"))
+        return()
+      }
+      # `isTRUE()` et non `TRUE` en dur : une sortie precoce (cle API
+      # absente, aucun indicateur) rend NULL, et la rapporter « reussie »
+      # ferait croire a une perspective generee qui n'existe pas.
+      ok <- tryCatch({
+        isTRUE(.generer_ia_synthese(profil = pipeline_profil(req)))
+      }, error = function(e) {
+        cli::cli_warn("pipeline ia_synthese: {conditionMessage(e)}")
+        conditionMessage(e)
+      })
+      # Trois issues distinctes, pas deux : `TRUE` = genere, une chaine =
+      # message d'erreur, `FALSE` = la generation a refuse de partir (cle
+      # API absente, rien a resumer) - c'est un saut, pas un echec.
+      pipeline_answer(
+        app_state, req,
+        if (isTRUE(ok)) "ok" else if (is.character(ok)) "error" else "skipped",
+        if (isTRUE(ok)) NULL else if (is.character(ok)) .strip_ansi(as.character(ok))
+        else i18n$t("pipeline_skip_not_started"))
     })
 
     # ================================================================

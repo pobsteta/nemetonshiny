@@ -492,6 +492,36 @@ mod_monitoring_server <- function(id, app_state) {
       get_i18n(app_state$language %||% "fr")
     })
 
+    # Requetes du lancement enchaine en cours, une par moteur sante. Trois
+    # memoires distinctes : les trois moteurs peuvent etre demandes dans la
+    # meme chaine, et chacun repond quand SA tache est tranchee.
+    sante_fast_pipeline_req      <- shiny::reactiveVal(NULL)
+    sante_fordead_pipeline_req   <- shiny::reactiveVal(NULL)
+    sante_reconfort_pipeline_req <- shiny::reactiveVal(NULL)
+
+    # Repond au lancement enchaine des qu'un moteur sante est tranche.
+    # `shiny::observe()` sur les trois statuts : ils sont reactifs, donc cet
+    # observer se reveille a chaque transition, y compris "error" - qu'un
+    # `observeEvent` sur le seul resultat manquerait (result() re-leve
+    # l'erreur et le handler ne s'executerait jamais, cf. le commentaire de
+    # mod_search sur restore_task).
+    shiny::observe({
+      i18n <- i18n_r()
+      for (item in list(
+        list(rv = sante_fast_pipeline_req,      st = fast_task$status()),
+        list(rv = sante_fordead_pipeline_req,   st = fordead_task$status()),
+        list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status())
+      )) {
+        req <- item$rv()
+        if (is.null(req)) next
+        if (!item$st %in% c("success", "error")) next
+        pipeline_answer(app_state, req,
+                        if (identical(item$st, "success")) "ok" else "error",
+                        if (identical(item$st, "success")) NULL else i18n$t("error"))
+        item$rv(NULL)
+      }
+    })
+
     # ----- Calibrages FAST, lus dans les metadonnees du projet --------
     # v0.126.2 - Les seuils NDVI/NBR/NDMI et la fenetre roulante etaient des
     # sliders de ce sidebar ; ils vivent desormais dans l'onglet
@@ -2243,7 +2273,9 @@ mod_monitoring_server <- function(id, app_state) {
     }
 
     # Click handler: validate state, build window dates, fire the task.
-    shiny::observeEvent(input$run, {
+    # ORCHESTRATION - corps extrait : bouton de l'onglet ET lancement
+    # enchaine (`mod_pipeline`) empruntent le meme chemin, gardes comprises.
+    .lancer_fast <- function() {
       i18n <- i18n_r()
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
@@ -2326,6 +2358,29 @@ mod_monitoring_server <- function(id, app_state) {
 
       start_fast_ingest(as.integer(input$zone_id),
                         as.Date(dr[1]), as.Date(dr[2]))
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run, .lancer_fast())
+
+    # --- Lancement enchaine : etape « sante_fast » ---
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "sante_fast")) return()
+      i18n <- i18n_r()
+      if (is.null(app_state$current_project)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (identical(fast_task$status(), "running")) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      sante_fast_pipeline_req(req)
+      if (!isTRUE(.lancer_fast())) {
+        sante_fast_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
     })
 
     # v0.85.2.9000 - " Reprendre " une ingestion interrompue detectee au
@@ -2807,7 +2862,8 @@ mod_monitoring_server <- function(id, app_state) {
     # domain (geographic OR species), pop a confirmation modal before
     # invoking. The user can still proceed but knows the calibration
     # warranty doesn't apply.
-    shiny::observeEvent(input$run_health, {
+    # ORCHESTRATION - corps extrait (meme motif que FAST).
+    .lancer_fordead <- function() {
       i18n <- i18n_r()
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
@@ -2864,6 +2920,29 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       .invoke_fordead()
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_health, .lancer_fordead())
+
+    # --- Lancement enchaine : etape « sante_fordead » ---
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "sante_fordead")) return()
+      i18n <- i18n_r()
+      if (is.null(app_state$current_project)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (identical(fordead_task$status(), "running")) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      sante_fordead_pipeline_req(req)
+      if (!isTRUE(.lancer_fordead())) {
+        sante_fordead_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
     })
 
     # G3 modal "Run anyway" path.
@@ -3425,6 +3504,26 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_reconfort, {
       .invoke_reconfort()
+    })
+
+    # --- Lancement enchaine : etape « sante_reconfort » ---
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "sante_reconfort")) return()
+      i18n <- i18n_r()
+      if (is.null(app_state$current_project)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (identical(reconfort_task$status(), "running")) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      sante_reconfort_pipeline_req(req)
+      if (!isTRUE(.invoke_reconfort())) {
+        sante_reconfort_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
     })
 
     # RECONFORT result handler (mirror of the FORDEAD one) : idempotent

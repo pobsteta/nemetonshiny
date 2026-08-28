@@ -541,7 +541,10 @@ mod_desserte_server <- function(id, app_state) {
     bslib::bind_task_button(dess_task, "run")
 
     # --- Lancement -------------------------------------------------------------
-    shiny::observeEvent(input$run, {
+    # ORCHESTRATION - meme motif que mod_accessibility : corps extrait pour
+    # que le bouton de l'onglet et le lancement enchaine partagent le meme
+    # chemin, gardes comprises.
+    .lancer_desserte <- function() {
       if (isTRUE(rv$running)) {
         shiny::showNotification(i18n$t("dess_busy_already"), type = "warning",
                                 duration = 5)
@@ -604,6 +607,32 @@ mod_desserte_server <- function(id, app_state) {
                    .strip_ansi(conditionMessage(e))),
             type = "error", duration = NULL)
         })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run, .lancer_desserte())
+
+    # --- Lancement enchaine : etape « desserte » -----------------------
+    pipeline_req <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "desserte")) return()
+
+      if (is.null(units_sf()) ||
+          is.null(tryCatch(app_state$current_project$path, error = function(e) NULL))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (isTRUE(rv$running)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      pipeline_req(req)
+      if (!isTRUE(.lancer_desserte())) {
+        pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
     })
 
     # Libelle " en cours " enrichi de la phase publiee par le worker sur le canal
@@ -660,7 +689,16 @@ mod_desserte_server <- function(id, app_state) {
         list(status = "error", reason = "desserte_engine_failed",
              detail = conditionMessage(e))
       })
-      if (!is.list(res) || !identical(res$status, "success")) {
+      ok_moteur <- is.list(res) && identical(res$status, "success")
+      if (!is.null(pipeline_req())) {
+        pipeline_answer(app_state, pipeline_req(),
+                        if (ok_moteur) "ok" else "error",
+                        if (ok_moteur) NULL
+                        else i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
+                                      "desserte_engine_failed"))
+        pipeline_req(NULL)
+      }
+      if (!ok_moteur) {
         reason <- tryCatch(res$reason, error = function(e) NULL) %||%
           "desserte_engine_failed"
         msg <- i18n$t(reason)
@@ -984,7 +1022,9 @@ mod_desserte_server <- function(id, app_state) {
       })
     bslib::bind_task_button(integ_task, "run_integrite")
 
-    shiny::observeEvent(input$run_integrite, {
+    # ORCHESTRATION - controle d'integrite du reseau. Lit le cache que le
+    # moteur desserte a rempli : vient donc apres lui dans la chaine.
+    .lancer_integrite <- function() {
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) {
         bslib::update_task_button("run_integrite", state = "ready")
@@ -998,6 +1038,40 @@ mod_desserte_server <- function(id, app_state) {
         id = session$ns("integ_notif"), type = "message", duration = NULL)
       integ_task$invoke(cache_dir, file.path(cache_dir, "aoi_input.gpkg"),
                         .dev_pkg_path, get_app_options())
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_integrite, .lancer_integrite())
+
+    # --- Lancement enchaine : etape « desserte_integrite » -------------
+    integ_pipeline_req <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "desserte_integrite")) return()
+      if (is.null(tryCatch(app_state$current_project$path, error = function(e) NULL))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (identical(integ_task$status(), "running")) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      integ_pipeline_req(req)
+      if (!isTRUE(.lancer_integrite())) {
+        integ_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    shiny::observe({
+      st <- integ_task$status()
+      req <- integ_pipeline_req()
+      if (is.null(req) || !st %in% c("success", "error")) return()
+      pipeline_answer(app_state, req,
+                      if (identical(st, "success")) "ok" else "error",
+                      if (identical(st, "success")) NULL else i18n$t("error"))
+      integ_pipeline_req(NULL)
     })
 
     # Tick 1 s : chrono de la notif d'integrite.
@@ -1259,7 +1333,10 @@ mod_desserte_server <- function(id, app_state) {
         })
     })
 
-    shiny::observeEvent(input$run_typage, {
+    # ORCHESTRATION - le typage est SYNCHRONE (pas d'ExtendedTask) : il rend
+    # `TRUE` s'il a type, `FALSE` si le calcul a echoue, `NULL` si une garde
+    # l'a refuse. Les trois cas sont distingues par l'appelant enchaine.
+    .lancer_typage <- function() {
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       parcelles <- units_sf()
       if (is.null(project_path) || is.null(parcelles)) {
@@ -1284,6 +1361,26 @@ mod_desserte_server <- function(id, app_state) {
         if (!is.null(det) && nzchar(det)) msg <- paste0(msg, " \u2014 ", .strip_ansi(det))
         shiny::showNotification(msg, type = "error", duration = NULL)
       }
+      isTRUE(identical(rv_typage()$status, "success"))
+    }
+
+    shiny::observeEvent(input$run_typage, .lancer_typage())
+
+    # --- Lancement enchaine : etape « desserte_typage » ----------------
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "desserte_typage")) return()
+      if (is.null(units_sf()) ||
+          is.null(tryCatch(app_state$current_project$path, error = function(e) NULL))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      ok <- .lancer_typage()
+      pipeline_answer(app_state, req,
+                      if (isTRUE(ok)) "ok" else if (is.null(ok)) "skipped" else "error",
+                      if (isTRUE(ok)) NULL
+                      else if (is.null(ok)) i18n$t("pipeline_skip_not_started")
+                      else i18n$t("desserte_typage_failed"))
     })
 
     # Le typage etait le SEUL des cinq a n'avoir aucun repli sur le cache : on

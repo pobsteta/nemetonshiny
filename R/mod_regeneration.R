@@ -962,7 +962,10 @@ mod_regeneration_server <- function(id, app_state) {
     # Auto-detect the average / heatwave years from E-OBS for this AOI.
     # Async : l'acquisition E-OBS (CDS) est deleguee a un worker future (cf.
     # eobs_task) ; le resultat met a jour les deux champs Annee.
-    shiny::observeEvent(input$auto_years, {
+    # ORCHESTRATION - corps extrait (detection E-OBS des annees moyenne /
+    # canicule). Premiere etape reGeneration de la chaine : c'est elle qui
+    # fixe les annees que le gel et le moteur consommeront ensuite.
+    .lancer_eobs_annees <- function() {
       if (deny_if_busy()) return()
       units <- units_sf()
       if (is.null(units)) {
@@ -980,7 +983,13 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::showNotification(i18n$t("regen_auto_running"), type = "message",
                               duration = NULL, id = session$ns("eobs_notif"))
       eobs_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
-    })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$auto_years, .lancer_eobs_annees())
+
+    # Requete du lancement enchaine pour l'etape « regen_annees ».
+    eobs_pipeline_req <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(eobs_task$status(), {
       st <- eobs_task$status()
@@ -1331,7 +1340,8 @@ mod_regeneration_server <- function(id, app_state) {
       TRUE
     }
 
-    shiny::observeEvent(input$fetch_eobs_rr, {
+    # ORCHESTRATION - telechargement E-OBS des precipitations (~800 Mo, CDS).
+    .lancer_eobs_rr <- function() {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("fetch_eobs_rr", state = "ready")
@@ -1353,7 +1363,10 @@ mod_regeneration_server <- function(id, app_state) {
         .running_notif_content(i18n$t("regen_eobs_rr_running"), rv$eobs_rr_start),
         id = session$ns("eobs_rr_notif"), type = "message", duration = NULL)
       eobs_rr_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
-    })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$fetch_eobs_rr, .lancer_eobs_rr())
 
     # Tick 1 s : rafraichit le chrono de la notif de telechargement `rr` (meme id
     # -> Shiny remplace le contenu en place) tant que la tache tourne.
@@ -1390,7 +1403,8 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # --- Acquisition Tdeg moyenne (tg) pour le diagramme ombrothermique --------
-    shiny::observeEvent(input$fetch_eobs_tg, {
+    # ORCHESTRATION - telechargement E-OBS de la temperature moyenne (~800 Mo, CDS).
+    .lancer_eobs_tg <- function() {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("fetch_eobs_tg", state = "ready")
@@ -1409,7 +1423,10 @@ mod_regeneration_server <- function(id, app_state) {
         .running_notif_content(i18n$t("regen_fetch_tg_running"), rv$eobs_tg_start),
         id = session$ns("eobs_tg_notif"), type = "message", duration = NULL)
       eobs_tg_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
-    })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$fetch_eobs_tg, .lancer_eobs_tg())
 
     shiny::observe({
       if (!isTRUE(rv$eobs_tg_running)) return()
@@ -1441,7 +1458,9 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # --- Moteur " risque de gel tardif " (R7, meteoland) ------------------
-    shiny::observeEvent(input$run_frost, {
+    # ORCHESTRATION - meme contrat que le moteur : `annees` prime sur les
+    # champs, pour la meme raison d'aller-retour client.
+    .lancer_gel <- function(annees = NULL) {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run_frost", state = "ready")
@@ -1461,8 +1480,8 @@ mod_regeneration_server <- function(id, app_state) {
       }
       na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
       cfg <- list(
-        year_moyenne = na_null(input$year_moyenne),
-        year_canicule = na_null(input$year_canicule),
+        year_moyenne = annees$moyenne %||% na_null(input$year_moyenne),
+        year_canicule = annees$canicule %||% na_null(input$year_canicule),
         buffer_m = (input$buffer_km %||% 25) * 1000)
       rv$frost_running <- TRUE
       rv$frost_start <- Sys.time()
@@ -1470,7 +1489,10 @@ mod_regeneration_server <- function(id, app_state) {
         .running_notif_content(i18n$t("regen_frost_running"), rv$frost_start),
         id = session$ns("frost_notif"), type = "message", duration = NULL)
       frost_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
-    })
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_frost, .lancer_gel())
 
     # Tick 1 s : chrono de la notif " interpolation gel ".
     shiny::observe({
@@ -1652,7 +1674,14 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
-    shiny::observeEvent(input$run_engine, {
+    # ORCHESTRATION - meme motif que mod_accessibility / mod_desserte.
+    # `annees` (list(moyenne, canicule)) permet au lancement enchaine d'imposer
+    # les annees que l'etape E-OBS vient de determiner. Indispensable :
+    # `eobs_task` les publie par `updateNumericInput()`, qui ne remonte au
+    # serveur qu'apres un aller-retour CLIENT - `input$year_moyenne` porterait
+    # encore la valeur precedente (2018 / 2022 par defaut) si on la lisait dans
+    # la foulee. NULL = on lit les champs, comportement inchange pour le bouton.
+    .lancer_moteur_regen <- function(annees = NULL) {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run_engine", state = "ready")
@@ -1675,8 +1704,8 @@ mod_regeneration_server <- function(id, app_state) {
       }
       na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
       cfg <- list(
-        year_moyenne = na_null(input$year_moyenne),
-        year_canicule = na_null(input$year_canicule),
+        year_moyenne = annees$moyenne %||% na_null(input$year_moyenne),
+        year_canicule = annees$canicule %||% na_null(input$year_canicule),
         forest_type = input$forest_type %||% "feuillu",
         forcing = forcing,
         # ewm NULL => SoilGrids par UGF ; valeur saisie => sol uniforme force.
@@ -1702,6 +1731,161 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::showNotification(i18n$t("regen_engine_running"), type = "message",
                               duration = NULL, id = session$ns("engine_notif"))
       engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_engine, .lancer_moteur_regen())
+
+    # --- Lancement enchaine : reGeneration en trois etapes ---------------
+    # Ordre impose par les DONNEES, pas par confort de lecture :
+    #   1. `regen_annees` (E-OBS) determine les annees moyenne / canicule ;
+    #   2. `regen_gel` (R7, meteoland) enrichit le resultat courant ;
+    #   3. `regeneration` lance le moteur, qui consomme les annees de (1) et
+    #      dont le re-run post-moteur reporte le R7 de (2) via
+    #      `.regen_attach_r7()`.
+    # Lancer (3) seul le ferait tourner sur les annees par defaut (2018/2022)
+    # sans que rien ne le signale a l'utilisateur.
+    pipeline_req <- shiny::reactiveVal(NULL)   # etape « regeneration » (moteur)
+    gel_pipeline_req <- shiny::reactiveVal(NULL)
+    annees_pipeline <- shiny::reactiveVal(NULL)  # annees E-OBS du run en cours
+
+    # Prerequis communs aux trois etapes. Repond `skipped` et rend FALSE quand
+    # l'etape ne peut pas tourner - toute requete reconnue doit repondre.
+    .regen_pipeline_pret <- function(req) {
+      if (is.null(units_sf()) ||
+          is.null(tryCatch(app_state$current_project$path, error = function(e) NULL))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return(FALSE)
+      }
+      TRUE
+    }
+
+    # 1. Annees moyenne / canicule (E-OBS)
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "regen_annees")) return()
+      if (!.regen_pipeline_pret(req)) return()
+      if (isTRUE(rv$eobs_running)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      annees_pipeline(NULL)
+      eobs_pipeline_req(req)
+      if (!isTRUE(.lancer_eobs_annees())) {
+        eobs_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    # 1bis / 1ter. Telechargements E-OBS (precipitations, temperature moyenne).
+    # Deux fetch CDS d'environ 800 Mo chacun : ce sont les etapes les plus
+    # longues de la partie reGeneration, et les seules qui dependent du reseau
+    # plutot que du CPU.
+    rr_pipeline_req <- shiny::reactiveVal(NULL)
+    tg_pipeline_req <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "regen_eobs_rr")) return()
+      if (!.regen_pipeline_pret(req)) return()
+      rr_pipeline_req(req)
+      if (!isTRUE(.lancer_eobs_rr())) {
+        rr_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "regen_eobs_tg")) return()
+      if (!.regen_pipeline_pret(req)) return()
+      tg_pipeline_req(req)
+      if (!isTRUE(.lancer_eobs_tg())) {
+        tg_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    shiny::observe({
+      for (item in list(list(rv = rr_pipeline_req, st = eobs_rr_task$status()),
+                        list(rv = tg_pipeline_req, st = eobs_tg_task$status()))) {
+        req <- item$rv()
+        if (is.null(req) || !item$st %in% c("success", "error")) next
+        pipeline_answer(app_state, req,
+                        if (identical(item$st, "success")) "ok" else "error",
+                        if (identical(item$st, "success")) NULL else i18n$t("error"))
+        item$rv(NULL)
+      }
+    })
+
+    # 2. Risque de gel tardif (R7)
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "regen_gel")) return()
+      if (!.regen_pipeline_pret(req)) return()
+      if (!regen_meteoland_available()) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("regen_frost_unavailable"))
+        return()
+      }
+      if (isTRUE(rv$frost_running)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      gel_pipeline_req(req)
+      if (!isTRUE(.lancer_gel(annees = annees_pipeline()))) {
+        gel_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    # 3. Moteur
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "regeneration")) return()
+      if (!.regen_pipeline_pret(req)) return()
+      if (isTRUE(rv$engine_running)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      pipeline_req(req)
+      if (!isTRUE(.lancer_moteur_regen(annees = annees_pipeline()))) {
+        pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    # Reponses des etapes 1 et 2 (le moteur repond depuis son propre observer
+    # de statut, plus bas).
+    shiny::observe({
+      st <- eobs_task$status()
+      req <- eobs_pipeline_req()
+      if (is.null(req) || !st %in% c("success", "error")) return()
+      if (identical(st, "success")) {
+        # Memoriser les annees ICI plutot que de relire `input$year_moyenne` a
+        # l'etape suivante : `updateNumericInput()` n'a pas encore fait son
+        # aller-retour client.
+        yrs <- tryCatch(eobs_task$result(), error = function(e) NULL)
+        if (!is.null(yrs) && !is.null(yrs$year_moyenne)) {
+          annees_pipeline(list(moyenne = yrs$year_moyenne,
+                               canicule = yrs$year_canicule))
+          pipeline_answer(app_state, req, "ok")
+        } else {
+          pipeline_answer(app_state, req, "skipped", i18n$t("regen_auto_none"))
+        }
+      } else {
+        pipeline_answer(app_state, req, "error", i18n$t("error"))
+      }
+      eobs_pipeline_req(NULL)
+    })
+
+    shiny::observe({
+      st <- frost_task$status()
+      req <- gel_pipeline_req()
+      if (is.null(req) || !st %in% c("success", "error")) return()
+      pipeline_answer(app_state, req,
+                      if (identical(st, "success")) "ok" else "error",
+                      if (identical(st, "success")) NULL else i18n$t("error"))
+      gel_pipeline_req(NULL)
     })
 
     # Poll (1 s) du fichier d'etat ecrit par le worker : rafraichit la notif
@@ -1727,6 +1911,17 @@ mod_regeneration_server <- function(id, app_state) {
 
     shiny::observeEvent(engine_task$status(), {
       st <- engine_task$status()
+      # Reponse au lancement enchaine des que la tache est tranchee, avant tout
+      # le rechargement qui suit : celui-ci peut echouer sans que le MOTEUR ait
+      # echoue, et la chaine doit rapporter le moteur, pas le rafraichissement
+      # de la carte.
+      if (st %in% c("success", "error") && !is.null(pipeline_req())) {
+        pipeline_answer(app_state, pipeline_req(),
+                        if (identical(st, "success")) "ok" else "error",
+                        if (identical(st, "success")) NULL
+                        else i18n$t("error"))
+        pipeline_req(NULL)
+      }
       if (identical(st, "success")) {
         rv$engine_running <- FALSE
         rv$engine_start <- NULL
