@@ -252,3 +252,86 @@ test_that("la previsualisation ONF est effacee apres le croisement", {
   expect_gte(length(avant), 1L)
   expect_gt(efface, max(avant))
 })
+
+
+# ==============================================================================
+# PERF : la carte UGF ne se dessine pas onglet ferme
+# ==============================================================================
+# Le rendu des tenements passe par `leafletProxy()` dans un `observe()`, donc
+# rien ne le suspend quand l'onglet est cache - et leaflet jette silencieusement
+# les polygones envoyes a une carte absente du DOM. Ce travail etait paye sur le
+# thread unique, dans le flush qui doit afficher les parcelles cadastrales
+# (2 x 370 ms au chargement d'un projet recent). Le module redessine deja a
+# l'ouverture de l'onglet via `rv$redraw_counter` : ces tests verrouillent les
+# deux moities de la garde - muet quand cache, dessine quand visible.
+
+# Session racine simulee : `mod_ug` lit `input$main_nav` et
+# `input[["home-main_tabs"]]` sur `session$userData$root_session`.
+.fausse_session_racine <- function(main_nav, sous_onglet) {
+  list(input = list(main_nav = main_nav, `home-main_tabs` = sous_onglet))
+}
+
+# Projet minimal PORTANT DEJA ses UGF : `has_ug_data()` doit etre vrai, sinon
+# l'observer d'init tenterait une migration disque et le test ne testerait plus
+# la garde de visibilite.
+.projet_ugf_minimal <- function() {
+  carre <- function(x) sf::st_polygon(list(matrix(c(
+    x, 0, x + 1, 0, x + 1, 1, x, 1, x, 0), ncol = 2, byrow = TRUE)))
+  parcels <- sf::st_sf(
+    id = c("p1", "p2"),
+    geo_parcelle = c("REF001", "REF002"),
+    section = c("A", "A"), numero = c("1", "2"),
+    contenance = c(10000, 10000),
+    geometry = sf::st_sfc(carre(0), carre(1), crs = 4326))
+  projet <- nemetonshiny:::ug_init_default(
+    list(parcels = parcels, metadata = list(id = "test_ug_visibilite")))
+  projet$metadata <- list(id = "test_ug_visibilite", groupes_profile = "onf")
+  projet
+}
+
+.compte_dessins_carte_ugf <- function(main_nav, sous_onglet) {
+  projet <- .projet_ugf_minimal()
+  app_state <- shiny::reactiveValues(language = "fr", current_project = projet)
+
+  dessins <- 0L
+  shiny::testServer(
+    nemetonshiny:::mod_ug_server,
+    args = list(app_state = app_state),
+    {
+      session$userData$root_session <-
+        .fausse_session_racine(main_nav, sous_onglet)
+      # On compte le SEUL marqueur propre au dessin des tenements - le groupe
+      # "Tenements" - et non les appels a `leafletProxy()` : d'autres
+      # observers du module en emettent, un compteur global ne distinguerait
+      # pas le dessin de la selection ou du zoom.
+      testthat::with_mocked_bindings(
+        leafletProxy = function(...) structure(list(), class = c("leaflet_proxy", "leaflet")),
+        clearGroup = function(map, ...) map,
+        addPolygons = function(map, ...) {
+          if (identical(list(...)$group, "Tenements")) dessins <<- dessins + 1L
+          map
+        },
+        addLegend = function(map, ...) map,
+        clearControls = function(map, ...) map,
+        addLayersControl = function(map, ...) map,
+        .package = "leaflet",
+        {
+          session$flushReact()
+          rv$redraw_counter <- rv$redraw_counter + 1L
+          session$flushReact()
+        }
+      )
+    })
+  dessins
+}
+
+test_that("la carte UGF ne se dessine pas quand son sous-onglet est cache", {
+  skip_if_not_installed("bslib")
+  expect_equal(.compte_dessins_carte_ugf("synthesis", "tenements"), 0L)
+  expect_equal(.compte_dessins_carte_ugf("selection", "cadastre"), 0L)
+})
+
+test_that("la carte UGF se dessine quand son sous-onglet est visible", {
+  skip_if_not_installed("bslib")
+  expect_gt(.compte_dessins_carte_ugf("selection", "tenements"), 0L)
+})

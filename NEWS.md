@@ -1,3 +1,165 @@
+# nemetonshiny 0.141.2 (2026-08-28)
+
+### Fixed — Le chargement d'un projet récent reconstruisait sept fois la même géométrie UGF
+
+Cliquer sur un projet récent (mesuré sur Couchey : 75 UGF, 223 tenements)
+laissait la boucle Shiny bloquée ~30 s entre le clic et l'affichage des
+parcelles cadastrales, la notification « Projet chargé » comprise.
+
+Le chargement lui-même n'y était pour rien : `load_project()` rend la main en
+~280 ms et la portion synchrone de l'observer en ~440 ms. Le profilage Rprof du
+thread principal a montré la vraie cause — **sept reactives indépendantes
+appellent `ug_build_sf()` dans le même flush** : `ug_sf_4326` (mod_action_plan),
+`units_sf` (mod_desserte, mod_accessibility, mod_sampling, mod_regeneration, via
+`.resolve_project_aoi_2154`), `ugf_sf_r` (mod_monitoring_pixel_map) et le rendu
+carte de mod_ug. Leurs sorties portent `suspendWhenHidden = FALSE`, donc elles se
+rendent même onglet fermé. Chaque appel refait un `st_make_valid()` +
+`st_union()` PAR UGF : ~3 s pièce, sept fois de suite, sur le thread unique.
+
+`ug_build_sf()` est pure — son résultat ne dépend que de `projet$ugs` et
+`projet$tenements`. Elle est désormais mémoïsée, avec pour clé le **hash du
+couple (ugs, tenements)** et non l'id du projet : toute mutation du domaine
+(réaffectation d'un tenement, renommage ou scission d'UGF, migration de schéma)
+change le hash et invalide l'entrée, sans qu'aucun appelant ait à purger quoi
+que ce soit. Le hash coûte 0,4 ms contre 2950 ms de reconstruction. Cache borné
+à trois entrées.
+
+Dans l'app : un recalcul, sept lectures de cache. Mesure de bout en bout
+consolidée pour les trois correctifs de ce cycle : voir plus bas.
+
+Trois tests verrouillent le comportement (`test-domain_ug.R`), dont un qui
+**compte les reconstructions réelles** via un mock de `.ug_build_sf_impl()` :
+comparer deux résultats d'une fonction déterministe ne prouverait rien sur le
+cache (vérifié par mutation — cache neutralisé, le test échoue).
+
+### Fixed — La géométrie UGF était reconstruite tenement par tenement
+
+Deuxième volet du même chemin critique. `ug_geometry()` faisait un
+`st_make_valid()` **par UGF**, soit 75 appels sur ~3 tenements chacun là où un
+seul appel sur les 223 fait le même travail. Les opérations `sf` paient un coût
+fixe par *appel* — aller-retour R ↔ GEOS/s2, relecture des paramètres du CRS —
+qui domine largement le coût par géométrie sur de petits lots : **695 ms en 75
+appels contre 97 ms en un seul**. Même piège que `st_area()` en boucle.
+
+La dissolution passe par un nouveau `.ug_geometries()` qui valide tout le projet
+en une passe ; `ug_geometry()` en devient le cas à un élément et garde sa
+signature. `ug_build_sf()` : **2988 ms → ~950 ms**, et toujours une seule fois
+grâce au cache du volet précédent.
+
+Équivalence vérifiée contre l'implémentation d'origine sur le projet Couchey :
+75/75 UGF géométriquement identiques (`st_equals`), différence symétrique nulle
+par paire, attributs et CRS identiques, écart de surface 3 × 10⁻⁷ m².
+
+### Fixed — Le fallback planaire s2 bavardait dans la console R
+
+Les blocs « Spherical geometry (s2) switched off » / « although coordinates are
+longitude/latitude, st_union assumes that they are planar » / « switched on »
+qui défilaient au démarrage venaient de ce même chemin : sur les 75 UGF de
+Couchey, **une seule** a des sommets auto-tangents que s2 refuse de dissoudre,
+et `ug_geometry()` bascule alors sur GEOS planaire. La bascule est délibérée et
+sans effet sur le résultat — `sf_use_s2()` émet simplement un `message()` à
+chaque changement d'état global.
+
+Ce bruit n'apprenait rien à l'utilisateur et se répétait à chaque appel de
+`ug_build_sf()` (donc sept fois par chargement de projet, avant le cache). Il est
+désormais muselé à la source (règle stricte 9 : pas de `message()` en prod).
+L'état de `sf_use_s2()` reste restauré à la sortie. Mesure après correctif : zéro
+message émis par un `ug_build_sf()` complet.
+
+### Fixed — La carte UGF se dessinait pendant que son onglet était fermé
+
+Le rendu des tenements de `mod_ug` passe par `leafletProxy()` dans un
+`observe()` — que rien ne suspend quand l'onglet est caché. Or leaflet **jette
+silencieusement** les polygones envoyés à une carte absente du DOM, ce que le
+module documentait déjà : son observer de re-zoom les redessine à l'ouverture de
+l'onglet via `rv$redraw_counter`.
+
+Ce travail était donc intégralement perdu — mais payé sur le thread unique,
+dans le flush même qui doit afficher les parcelles cadastrales : **2 × 370 ms**
+au chargement d'un projet récent. Le dessin est maintenant conditionné à la
+visibilité du sous-onglet (et non à un drapeau « déjà ouvert » : si l'onglet est
+affiché quand les données arrivent, on dessine tout de suite). Deux tests
+verrouillent les deux moitiés de la garde, vérifiés par mutation dans les deux
+sens.
+
+### Mesure de bout en bout des trois correctifs ci-dessus
+
+Chrome piloté, du clic sur le projet récent à l'apparition des parcelles
+cadastrales, sur Couchey (75 UGF, 223 tènements). Trois exécutions par
+configuration, machine par ailleurs au repos, code de référence réinjecté par
+`assignInNamespace()` pour que les deux configurations partagent tout le reste :
+
+| Configuration | Mesures (s) | Médiane |
+|---|---|---|
+| Avant | 13,67 / 12,68 / 13,16 | **13,2 s** |
+| Après | 5,11 / 5,61 / 5,10 | **5,1 s** |
+
+Soit **2,5×**, avec une dispersion de ±0,5 s.
+
+> Un chiffre de « 29,5 s » a circulé en cours de session : il provenait d'une
+> exécution **sous `Rprof()`** (échantillonnage à 20 ms) et sur une machine
+> chargée, deux biais qui gonflent la mesure. Les runs isolés de ce type
+> variaient de 6,6 à 9,7 s côté « après » — c'est ce qui a motivé le passage à
+> un banc répété plutôt qu'à un run unique. Les mesures unitaires citées plus
+> haut (`ug_build_sf`, `st_make_valid`, nombre d'appels) sont, elles, prises
+> hors profileur et reproduites.
+
+
+### Fixed — « Générer les placettes » échouait sur tout projet dont le MNT est en degrés
+
+`create_sampling_plan(): Stratification-valid candidate pool (0) is below
+n_base (88). 2108 of 2108 candidates fell on NA pixels of the CHM / MNT
+rasters.` — le message accusait la couverture des rasters ; la cause était une
+**unité**.
+
+`prep_sampling_raster()` compare la résolution du raster à `target_res_m = 5`,
+en mètres. Rien ne garantissait que le raster soit métrique :
+`resolve_project_dem()` rend le `cache/layers/dem.tif` de Couchey en EPSG:4326,
+dont la résolution vaut 0,00025 **degré**. La règle `cur_res < target_res_m`
+était donc toujours vraie et le facteur d'agrégation valait
+`round(5 / 0,00025)` = **20 003** : le MNT sortait de la fonction en **une seule
+cellule** (118 × 318 → 1 × 1). Tous les candidats tombaient ensuite sur du NA.
+Le buffer de 200 souffrait du même flou d'unité.
+
+La fonction aligne désormais le raster sur le CRS de la zone (Lambert-93,
+métrique) avant tout raisonnement en mètres — ce dont le cœur a de toute façon
+besoin, puisqu'il calcule le TPI avec `terra::focalMat(mnt, d = 100)`, où 100
+s'exprime dans les unités du CRS. Elle sort de `mod_sampling_server()` en
+`.prep_sampling_raster()` : elle ne porte aucun état Shiny et son contrat
+d'unités est précisément ce qui devait être testé.
+
+La comparaison de CRS utilise `==` (sémantique) et non `identical()`, qui
+compare aussi le libellé `$input` — un raster déjà en Lambert-93 mais décrit
+« RGF93 v1 / Lambert-93 » plutôt que « EPSG:2154 » aurait été reprojeté à chaque
+appel, pour rien et en resamplant.
+
+Vérifié sur Couchey : le MNT sort en EPSG:2154, 169 × 302 à 20 m, 48 292
+cellules utiles, et le plan se génère (GRTS). Quatre tests, vérifiés par
+mutation.
+
+### Fixed — Le CHM Open-Canopy du projet était ignoré par le plan d'échantillonnage
+
+Même écran, défaut distinct. `nemeton::resolve_project_chm()` sonde
+`cache/layers/chm/`, alors que `download_chm_opencanopy()` dépose ses livrables
+dans `cache/layers/opencanopy/`. Sur Couchey, un CHM parfaitement exploitable —
+EPSG:2154, 0,2 m, hauteurs jusqu'à 32 m — était donc invisible et le plan tirait
+**sans strate de hauteur**, en silence.
+
+`service_marculus.R` avait déjà rencontré et traité ce cas pour la segmentation
+des houppiers. Son helper est repris ici plutôt que dupliqué, et renommé
+`.project_chm()` / `.chm_exploitable()` — ce n'est pas un helper Marculus : il
+sert les deux appelants qui ont besoin du meilleur modèle de hauteur
+disponible, LiDAR HD prioritaire, Open-Canopy en repli, chaque candidat devant
+porter de la hauteur.
+
+Le plan de Couchey passe de « erreur bloquante » à 112 placettes stratifiées
+hauteur × topographie.
+
+> Cause racine côté cœur, **non corrigée ici** (règle 12 : ce dépôt n'écrit pas
+> dans `nemeton`) : le résolveur devrait connaître `cache/layers/opencanopy/`.
+> Le contournement applicatif ci-dessus tient sans lui.
+
+
 # nemetonshiny 0.141.1 (2026-08-27)
 
 ### Fixed — Un douzième test d'arbre source rendait encore R-CMD-check rouge

@@ -710,6 +710,41 @@ mod_ug_server <- function(id, app_state) {
       rv$redraw_counter  # invalidate on redraw trigger
       if (is.null(projet) || !has_ug_data(projet)) return()
 
+      # PERF - ne rien dessiner tant que le sous-onglet est cache. Ce n'est
+      # pas une optimisation opportuniste : l'observer de re-zoom ci-dessous
+      # documente deja que les polygones emis carte cachee sont " silently
+      # dropped by leaflet " (le conteneur n'est pas dans le DOM) et les
+      # REDESSINE a l'ouverture de l'onglet via `rv$redraw_counter`. Le
+      # travail fait ici onglet ferme etait donc integralement jete - mais il
+      # etait paye sur le thread unique, DANS le flush qui doit afficher les
+      # parcelles cadastrales : 2 x 370 ms au chargement d'un projet recent
+      # (mesure 2026-08-28), pendant que l'utilisateur attend la carte de
+      # l'onglet Selection.
+      #
+      # On teste la VISIBILITE, pas un drapeau " deja ouvert " : si l'onglet
+      # est deja affiche quand les donnees arrivent, on dessine tout de suite ;
+      # s'il est cache, le bump de `redraw_counter` a son ouverture rejoue cet
+      # observer. Sans `root_session` (testServer isole), on dessine comme
+      # avant plutot que de rendre le module muet.
+      #
+      # Lecture ISOLEE des deux inputs de navigation : en dependre
+      # reactivement ferait tourner cet observer une fois de plus a chaque
+      # ouverture de l'onglet - une par la dependance directe, une par le bump
+      # de `redraw_counter` emis dans le meme geste - soit un dessin complet
+      # paye deux fois. Les declencheurs restent ceux d'avant (donnees UGF +
+      # redraw_counter) ; la navigation ne fait que repondre a " est-ce
+      # visible maintenant ? ".
+      root_session <- session$userData$root_session
+      if (!is.null(root_session)) {
+        visible <- shiny::isolate({
+          top_nav <- root_session$input$main_nav
+          sub_nav <- root_session$input[["home-main_tabs"]]
+          !is.null(top_nav) && identical(top_nav, "selection") &&
+            !is.null(sub_nav) && identical(sub_nav, "tenements")
+        })
+        if (!visible) return()
+      }
+
       .t_map0 <- Sys.time()  # PERF - chrono rendu carte UGF (cf. NEMETON_PERF_TRACE)
 
       tenements <- projet$tenements

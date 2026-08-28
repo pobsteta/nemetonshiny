@@ -205,6 +205,73 @@ mod_sampling_ui <- function(id) {
   )
 }
 
+#' Align a project raster with the sampling zone
+#'
+#' @description
+#' Crops a CHM / DEM to the study zone (plus a focal-window margin), brings it
+#' into the zone's metric CRS and coarsens it to roughly `target_res_m`.
+#'
+#' Lives outside `mod_sampling_server()` because it holds no Shiny state and
+#' its unit-of-measure contract is exactly what needs testing.
+#'
+#' @param r A `SpatRaster` or `NULL`.
+#' @param zone An `sf` polygon in a metric CRS (the study zone).
+#' @param target_res_m Numeric. Target resolution, in metres.
+#'
+#' @return A `SpatRaster` in the zone's CRS, or `NULL` when `r` is `NULL`.
+#' @noRd
+# `target_res_m` et le buffer de 200 sont en METRES. Rien ne le garantit
+# cote raster : `resolve_project_dem()` peut rendre un MNT en EPSG:4326,
+# dont la resolution vaut ~0,00025 DEGRE. Sans reprojection, la regle
+# `cur_res < target_res_m` etait alors toujours vraie et le facteur
+# d'agregation valait `round(5 / 0.00025)` = 20003 : le MNT de Couchey
+# (118 x 318 pixels) sortait d'ici en UNE cellule. Tous les candidats
+# tombaient ensuite sur du NA et `create_sampling_plan()` s'arretait sur
+# « Stratification-valid candidate pool (0) is below n_base » - 2108 sur
+# 2108 rejetes (constate 2026-08-28).
+#
+# Le cœur a de toute facon besoin d'un raster METRIQUE : il calcule le TPI
+# avec `terra::focalMat(mnt, d = 100)`, ou 100 s'exprime dans les unites du
+# CRS. On aligne donc le raster sur le CRS de la zone (Lambert-93), qui est
+# metrique par construction, avant tout raisonnement en metres.
+.prep_sampling_raster <- function(r, zone, target_res_m = 5) {
+  if (is.null(r)) return(NULL)
+  tryCatch({
+    # Le buffer est pris dans le CRS de la ZONE : en degres, « 200 »
+    # signifierait 200 degres. On ne le transforme qu'ensuite, pour
+    # decouper dans le CRS natif du raster (moins de pixels a reprojeter).
+    z_buf   <- sf::st_buffer(zone, 200)
+    z_trans <- sf::st_transform(z_buf, sf::st_crs(r))
+    r2 <- terra::crop(r, terra::vect(z_trans), snap = "out")
+
+    # Aligner sur le CRS metrique de la zone. C'est aussi ce qui garantit
+    # que les buffers de placettes construits par le cœur (en CRS zone)
+    # et le raster parlent le meme repere.
+    # Comparaison SEMANTIQUE (`==` sur des objets crs), pas `identical()` :
+    # celui-ci compare aussi le champ `$input`, si bien qu'un raster deja en
+    # Lambert-93 mais decrit « RGF93 v1 / Lambert-93 » plutot que « EPSG:2154 »
+    # aurait ete reprojete a chaque appel - pour rien, et en resamplant.
+    if (!isTRUE(sf::st_crs(r2) == sf::st_crs(zone))) {
+      cible <- sf::st_crs(zone)$wkt
+      r2 <- terra::project(r2, cible, method = "bilinear")
+    }
+
+    cur_res <- terra::res(r2)[1]
+    if (!is.na(cur_res) && cur_res < target_res_m) {
+      fact <- max(1L, round(target_res_m / cur_res))
+      if (fact > 1L) {
+        r2 <- terra::aggregate(r2, fact = fact, fun = "mean",
+                                na.rm = TRUE)
+      }
+    }
+    r2
+  }, error = function(e) {
+    cli::cli_alert_warning("prep_sampling_raster failed: {e$message}")
+    r
+  })
+}
+
+
 
 #' Sampling Module Server
 #'
@@ -282,27 +349,6 @@ mod_sampling_server <- function(id, app_state) {
     # TPI focal window do not need sub-metre precision, and the
     # un-cropped 1-m LiDAR HD mosaics (often 100M+ cells) would
     # freeze `terra::focal()` and `terra::extract()` for minutes.
-    prep_sampling_raster <- function(r, zone, target_res_m = 5) {
-      if (is.null(r)) return(NULL)
-      tryCatch({
-        z_trans <- sf::st_transform(zone, sf::st_crs(r))
-        z_buf   <- sf::st_buffer(z_trans, 200)
-        r2 <- terra::crop(r, terra::vect(z_buf), snap = "out")
-        cur_res <- terra::res(r2)[1]
-        if (!is.na(cur_res) && cur_res < target_res_m) {
-          fact <- max(1L, round(target_res_m / cur_res))
-          if (fact > 1L) {
-            r2 <- terra::aggregate(r2, fact = fact, fun = "mean",
-                                    na.rm = TRUE)
-          }
-        }
-        r2
-      }, error = function(e) {
-        cli::cli_alert_warning("prep_sampling_raster failed: {e$message}")
-        r
-      })
-    }
-
     project_path_r <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
@@ -311,10 +357,18 @@ mod_sampling_server <- function(id, app_state) {
 
     # resolve_project_* are defensive (typed errors on NULL / "" /
     # missing path) - no need for a pre-validation guard here.
+    # `.project_chm()` plutot que `nemeton::resolve_project_chm()` seul : le
+    # resolveur du cœur sonde `cache/layers/chm/`, alors que
+    # `download_chm_opencanopy()` (service_compute.R) depose ses livrables dans
+    # `cache/layers/opencanopy/`. Sur Couchey, un CHM Open-Canopy parfaitement
+    # exploitable - EPSG:2154, 0,2 m, hauteurs jusqu'a 32 m - etait donc ignore
+    # et le plan tirait sans strate de hauteur. `.project_chm()` interroge le
+    # cœur d'abord (LiDAR HD prioritaire) puis retombe sur Open-Canopy, chaque
+    # candidat devant passer `.chm_exploitable()`.
     chm_raster <- shiny::reactive({
-      pp <- project_path_r()
-      tryCatch(nemeton::resolve_project_chm(pp, verbose = TRUE),
-               error = function(e) NULL)
+      project <- app_state$current_project
+      if (is.null(project) || is.null(project$id)) return(NULL)
+      tryCatch(.project_chm(project$id), error = function(e) NULL)
     })
 
     mnt_raster <- shiny::reactive({
@@ -697,8 +751,8 @@ mod_sampling_server <- function(id, app_state) {
       # aggregated to ~5 m so terra::focal / terra::extract stay
       # snappy (buffers = 15 m, focal window = 100 m - sub-metre
       # precision brings no value here).
-      chm_for_plan <- prep_sampling_raster(chm_raw, zone)
-      mnt_for_plan <- prep_sampling_raster(dem_raw, zone)
+      chm_for_plan <- .prep_sampling_raster(chm_raw, zone)
+      mnt_for_plan <- .prep_sampling_raster(dem_raw, zone)
 
       cli::cli_alert_info(
         "Generate: n_base={n_base}, n_over={n_over}, seed={seed}, \\

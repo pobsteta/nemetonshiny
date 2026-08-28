@@ -406,6 +406,74 @@ test_that("ug_build_sf after merge has fewer rows", {
   expect_equal(merged_row$surface_m2, 20000)
 })
 
+# --- Memoisation (PERF) ------------------------------------------------------
+# Sept reactives appellent `ug_build_sf()` dans le meme flush au chargement
+# d'un projet ; sans cache, chacune refaisait un st_union() par UGF (~30 s
+# mesurees sur 75 UGF / 223 tenements). Ces tests verrouillent les deux
+# proprietes dont depend la correction du cache : servir le meme resultat, et
+# le RECALCULER des que le domaine change.
+
+test_that("ug_build_sf rebuilds only once for repeated calls", {
+  nemetonshiny:::ug_build_sf_cache_clear()
+  projet <- create_test_projet()
+  projet <- nemetonshiny:::ug_init_default(projet)
+
+  # `ug_build_sf()` etant deterministe, comparer deux resultats ne prouve
+  # RIEN sur le cache : il faut compter les reconstructions reelles.
+  reference <- nemetonshiny:::.ug_build_sf_impl
+  appels <- 0L
+  testthat::local_mocked_bindings(
+    .ug_build_sf_impl = function(projet) {
+      appels <<- appels + 1L
+      reference(projet)
+    }
+  )
+
+  premier  <- nemetonshiny:::ug_build_sf(projet)
+  deuxieme <- nemetonshiny:::ug_build_sf(projet)
+  troisieme <- nemetonshiny:::ug_build_sf(projet)
+
+  expect_equal(appels, 1L)
+  expect_identical(premier, deuxieme)
+  expect_identical(premier, troisieme)
+})
+
+test_that("ug_build_sf cache is invalidated by any domain mutation", {
+  nemetonshiny:::ug_build_sf_cache_clear()
+  projet <- create_test_projet()
+  projet <- nemetonshiny:::ug_init_default(projet)
+
+  avant <- nemetonshiny:::ug_build_sf(projet)
+  expect_equal(nrow(avant), 3)
+
+  # Fusion : la geometrie ET le nombre de lignes changent.
+  fusionne <- nemetonshiny:::ug_merge(projet, projet$ugs$ug_id[1:2], "Merged")
+  expect_equal(nrow(nemetonshiny:::ug_build_sf(fusionne)), 2)
+
+  # Renommage seul : meme geometrie, metadonnee differente. C'est le cas que
+  # rate un cache indexe sur l'id du projet ou sur le nombre d'UGF.
+  renomme <- projet
+  renomme$ugs$label[1] <- "Renommee"
+  expect_equal(nemetonshiny:::ug_build_sf(renomme)$label[1], "Renommee")
+
+  # Le projet d'origine reste servi inchange.
+  expect_identical(nemetonshiny:::ug_build_sf(projet), avant)
+})
+
+test_that("ug_build_sf cache stays bounded", {
+  nemetonshiny:::ug_build_sf_cache_clear()
+  projet <- create_test_projet()
+  projet <- nemetonshiny:::ug_init_default(projet)
+
+  for (i in 1:6) {
+    variante <- projet
+    variante$ugs$label[1] <- paste0("UGF-", i)
+    nemetonshiny:::ug_build_sf(variante)
+  }
+
+  expect_lte(length(ls(nemetonshiny:::.ug_sf_cache, all.names = TRUE)), 3L)
+})
+
 
 # ==============================================================================
 # has_ug_data tests

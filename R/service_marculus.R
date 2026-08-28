@@ -467,7 +467,7 @@ precompute_houppiers <- function(project_id) {
     return(invisible(0L))
   }
   out_path <- .houppiers_cache_path(project_id)
-  chm <- .marculus_chm(project_id)
+  chm <- .project_chm(project_id)
   if (is.null(out_path) || is.null(chm)) return(invisible(0L))
 
   projet <- load_project(project_id)
@@ -616,7 +616,7 @@ precompute_houppiers <- function(project_id) {
 #' @param hmin Numeric. Minimum tree height, matching `segment_houppiers()`.
 #' @return `TRUE` when at least one sampled cell reaches `hmin`.
 #' @noRd
-.marculus_chm_exploitable <- function(r, hmin = 5) {
+.chm_exploitable <- function(r, hmin = 5) {
   if (!inherits(r, "SpatRaster")) return(FALSE)
   v <- tryCatch(
     terra::spatSample(r, 1e5, method = "regular", na.rm = TRUE, warn = FALSE),
@@ -643,27 +643,33 @@ precompute_houppiers <- function(project_id) {
 #' tiles sat unused next door.
 #'
 #' The Open-Canopy fallback is kept, and both candidates now have to pass
-#' [.marculus_chm_exploitable()]: a height model with no height is not a
+#' [.chm_exploitable()]: a height model with no height is not a
 #' height model.
+#'
+#' Sert Marculus (segmentation des houppiers) ET le plan d'echantillonnage :
+#' les deux ont besoin du meilleur modele de hauteur disponible, et le
+#' resolveur du cœur ignore `cache/layers/opencanopy/` - le repertoire ou
+#' `download_chm_opencanopy()` depose pourtant ses livrables (il sonde
+#' `cache/layers/chm/`). D'ou le nom neutre : ce n'est pas un helper Marculus.
 #'
 #' @param project_id Character. Project identifier.
 #' @return A `SpatRaster` - `segment_houppiers()` takes one directly - or
 #'   `NULL` when no usable model exists.
 #' @noRd
-.marculus_chm <- function(project_id) {
+.project_chm <- function(project_id) {
   path <- get_project_path(project_id)
   if (is.null(path)) return(NULL)
 
   r <- tryCatch(nemeton::resolve_project_chm(path, verbose = FALSE),
                 error = function(e) NULL)
-  if (.marculus_chm_exploitable(r)) return(r)
+  if (.chm_exploitable(r)) return(r)
 
   dir <- file.path(path, "cache", "layers", "opencanopy")
   for (f in c("chm_predicted_0_2m.tif", "chm_predicted_1_5m.tif", "chm.tif")) {
     p <- file.path(dir, f)
     if (!file.exists(p)) next
     rr <- tryCatch(terra::rast(p), error = function(e) NULL)
-    if (.marculus_chm_exploitable(rr)) return(rr)
+    if (.chm_exploitable(rr)) return(rr)
   }
 
   cli::cli_alert_info(
