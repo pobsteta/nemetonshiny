@@ -1,3 +1,23 @@
+# nemetonshiny 0.142.2.9000 (dev)
+
+### Changed — Brief cœur : `resolve_project_chm()` ignore `cache/layers/opencanopy/`
+
+`specs/BRIEF-nemeton-resolve-chm-opencanopy.md`. Le résolveur du cœur sonde
+`cache/layers/chm/` sous le label « Open-Canopy CHM », alors que
+`download_chm_opencanopy()` écrit dans `cache/layers/opencanopy/` : le CHM du
+projet est invisible et les appelants travaillent sans modèle de hauteur, en
+silence. Deux modules de l'app ont déjà dû contourner le même défaut
+(`service_marculus.R`, puis `mod_sampling.R` en v0.142.2).
+
+Le brief signale deux pièges que l'implémentation naïve manquerait : un candidat
+sans `file` mosaïquerait en VRT les deux orthophotos et les quatre indices
+spectraux qui cohabitent dans ce répertoire ; et les nouvelles entrées doivent
+atterrir **après** `"LiDAR HD MNH"`, la liste actuelle plaçant `cache/layers/chm`
+en tête alors que le LiDAR local est la meilleure source (ADR-007).
+
+Il porte aussi l'entrée `PLAN.md` de la v0.142.2, que cette session ne peut pas
+écrire côté cœur (règle 12).
+
 # nemetonshiny 0.142.2 (2026-08-28)
 
 ### Fixed — Le chargement d'un projet récent reconstruisait sept fois la même géométrie UGF
