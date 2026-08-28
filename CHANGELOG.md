@@ -10,7 +10,7 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
-## [0.141.2] - 2026-08-28
+## [0.142.2] - 2026-08-28
 
 ### Fixed
 
@@ -59,6 +59,39 @@ For a narrative, per-feature description of each release, see
   `.chm_exploitable()` : ces helpers servent désormais la segmentation des
   houppiers **et** le plan d'échantillonnage, ce ne sont plus des helpers
   Marculus.
+## [0.142.1] - 2026-08-27
+
+### Changed
+
+- `Imports: nemeton (>= 0.189.0)` → `(>= 0.192.0)` : `doc_url` / `doc_lang`
+  sont désormais dans une release stable du cœur, ce qui rend l'icône « fiche »
+  de la v0.142.0 réellement atteignable au lieu de silencieusement absente.
+- `test-mod_family-doc-icon.R` : les trois `skip_if_not()` de version
+  deviennent des `expect_true()` — le plancher rend le skip impossible à
+  justifier.
+- `test-mod_family-doc-icon.R` : le cas négatif passe de `C2` à des codes
+  inconnus du cœur (`"unknown_indicator"`, `"ZZ"`). `nemeton 0.192.0` documente
+  les 41 indicateurs, pas seulement C1 : figer un vrai code comme « non
+  documenté » faisait rougir la suite à la première fiche ajoutée.
+- Commentaires de `doc_icon()` et `.build_indicator_families()` : la raison des
+  gardes défensives est corrigée (forme de `row` et cohérence avec
+  `bilingual()`, non plus compatibilité de version). Les gardes elles-mêmes
+  sont conservées.
+
+## [0.142.0] - 2026-08-27
+
+### Added
+
+- Onglet *Familles d'indicateurs* : une icône « fiche » (`journal-text`) à côté
+  du « i » pour les indicateurs que le cœur déclare documentés, ouvrant la
+  vignette pkgdown correspondante dans un nouvel onglet (spec cœur 052). Lue
+  depuis `nemeton::indicator_labels()` (`doc_url` / `doc_lang`, cœur ≥ 0.192.0),
+  jamais câblée sur un indicateur : C1 aujourd'hui, les suivants sans
+  modification de l'app. Quand la fiche n'existe pas dans la langue courante, le
+  cœur sert l'autre et l'infobulle le signale.
+- `INDICATOR_FAMILIES$<F>$indicator_docs`, `get_indicator_doc()`, `doc_icon()`.
+- i18n : `indicateur_fiche_ouvrir`, `langue_fr`, `langue_en`.
+- CSS : `.nmt-doc-link`.
 
 ## [0.141.1] - 2026-08-27
 

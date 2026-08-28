@@ -1,10 +1,11 @@
-# nemetonshiny 0.141.2 (2026-08-28)
+# nemetonshiny 0.142.2 (2026-08-28)
 
 ### Fixed — Le chargement d'un projet récent reconstruisait sept fois la même géométrie UGF
 
 Cliquer sur un projet récent (mesuré sur Couchey : 75 UGF, 223 tenements)
-laissait la boucle Shiny bloquée ~30 s entre le clic et l'affichage des
-parcelles cadastrales, la notification « Projet chargé » comprise.
+laissait la boucle Shiny bloquée une dizaine de secondes entre le clic et
+l'affichage des parcelles cadastrales, la notification « Projet chargé »
+comprise (mesure consolidée plus bas).
 
 Le chargement lui-même n'y était pour rien : `load_project()` rend la main en
 ~280 ms et la portion synchrone de l'observer en ~440 ms. Le profilage Rprof du
@@ -159,6 +160,108 @@ hauteur × topographie.
 > dans `nemeton`) : le résolveur devrait connaître `cache/layers/opencanopy/`.
 > Le contournement applicatif ci-dessus tient sans lui.
 
+# nemetonshiny 0.142.1 (2026-08-27)
+
+### Changed — le plancher cœur passe à 0.192.0, et l'icône « fiche » devient garantie
+
+`nemeton 0.192.0` est publiée (tag `v0.192.0`, `main` du cœur à `7c9714c`) :
+les colonnes `doc_url` / `doc_lang` de `indicator_labels()` existent désormais
+dans une release stable. `Imports: nemeton (>= 0.189.0)` → `(>= 0.192.0)`.
+
+Ce n'est pas un bump « pour suivre » : la v0.142.0 consommait déjà cette API,
+mais contre un cœur antérieur elle ne trouvait rien et l'icône restait
+invisible — la fonctionnalité était livrée sans être atteignable. Le plancher
+transforme ce silence en garantie.
+
+**Les tests n'ont plus de skip de version.** Les trois
+`skip_if_not("doc_url" %in% names(ind))` de `test-mod_family-doc-icon.R`
+deviennent des `expect_true()`. Un cœur sans ces colonnes n'étant plus
+installable, un test qui se saute silencieusement n'aurait plus rien à
+excuser : il masquerait une installation cassée au lieu de la signaler.
+
+### Le cœur n'a pas livré une fiche, il en a livré 41
+
+Le brief annonçait « aujourd'hui un seul indicateur a une fiche : C1 ».
+`nemeton 0.192.0` en documente en fait **les 41**, des douze familles, chacune
+avec sa vignette pkgdown présente (vérifié : 41 déclarations,
+41 `.Rmd`). L'icône apparaît donc sur **chaque** indicateur, pas seulement
+sur C1 — et **sans une ligne de code modifiée** dans l'app. C'était
+tout l'intérêt de ne rien câbler sur C1 : la livraison massive du
+cœur est absorbée telle quelle.
+
+**Un test avait pourtant figé la liste, et il a rougi.** L'exemple du brief
+prenait C2 comme cas négatif (`expect_null(get_indicator_doc("C2"))`), ce que
+le même brief interdisait deux paragraphes plus loin — « le test ne doit
+pas figer la liste des indicateurs documentés […] sinon il tombera au
+rouge à la première fiche ajoutée, pour une bonne nouvelle ». C'est
+exactement ce qui s'est produit. Le cas négatif porte désormais sur des
+codes que le cœur ne connaît pas (`"unknown_indicator"`, `"ZZ"`), les
+seuls stables : tout vrai code d'indicateur est susceptible de gagner une
+fiche.
+
+### Ce qui ne change PAS — les gardes défensives restent
+
+J'avais annoncé leur retrait comme corollaire du bump. C'était une erreur de
+lecture, corrigée ici plutôt que propagée :
+
+- **Le test de longueur sur `doc_url` dans `doc_icon()` reste.** Sa raison n'a
+  jamais été seulement le cœur ancien. Il protège la *forme* de `row` : une
+  tranche vide (`ind[ind$code == "ZZ", ]`, un code inconnu) rend `character(0)`,
+  et `is.na(character(0))` vaut `logical(0)`, qu'un `if` refuse. Ce cas ne
+  dépend d'aucune version du cœur. `doc_icon()` étant documentée comme
+  acceptant une ligne de `indicator_labels()` telle quelle, le retirer aurait
+  été une régression déguisée en nettoyage.
+- **`pick()` reste** dans `.build_indicator_families()` : c'est le helper
+  générique déjà employé par `bilingual()`, pas une précaution ajoutée pour les
+  fiches. L'en écarter pour les seules colonnes `doc_*` aurait introduit une
+  incohérence.
+
+Seuls les commentaires qui justifiaient ces deux gardes par « cœur < 0.192.0 »
+sont réécrits : la raison invoquée était devenue fausse, la garde ne l'est pas.
+
+# nemetonshiny 0.142.0 (2026-08-27)
+
+### Added — Une icône « fiche » à côté du « i », pour les indicateurs documentés
+
+Spec 052 côté cœur (`brief-nemetonshiny.md`). Dans l'onglet **Familles
+d'indicateurs**, chaque indicateur porte déjà un « i » qui ouvre son infobulle.
+Les indicateurs qui disposent d'une **fiche longue** — une vignette pkgdown du
+cœur — gagnent une seconde icône juste à côté, qui l'ouvre dans un nouvel
+onglet. Un seul indicateur en a une aujourd'hui, **C1 — Biomasse carbone**.
+
+**Rien n'est câblé sur C1.** Ni l'URL, ni la liste des indicateurs documentés,
+ni la langue des fiches ne sont écrites ici : les quatre viennent des colonnes
+`doc_url` / `doc_lang` / `doc_url_fr` / `doc_url_en` que
+`nemeton::indicator_labels()` expose depuis la v0.192.0, lues par
+`.build_indicator_families()` comme le sont déjà libellés et infobulles. Le jour
+où le cœur publie une deuxième fiche, l'icône apparaît sans qu'on touche à
+l'app — et c'est aussi pourquoi les tests vérifient le *mécanisme* sur C1
+(documenté) et C2 (non documenté) plutôt qu'un décompte de fiches, qui
+rougirait à la première bonne nouvelle.
+
+**La fiche peut être servie dans l'autre langue, et l'interface le dit.** Quand
+elle n'existe pas dans la langue courante, le cœur rend l'autre plutôt que rien
+— une fiche dans la mauvaise langue vaut mieux que pas de fiche. C'est le cas
+de C1 aujourd'hui : en anglais, l'infobulle du lien se lit *« Open the detailed
+fact sheet (new tab) (in French) »*. La mention disparaîtra d'elle-même le jour
+où la traduction sera écrite côté cœur.
+
+Trois clés i18n (`indicateur_fiche_ouvrir`, `langue_fr`, `langue_en`), un
+`<a target="_blank" rel="noopener noreferrer">` — la fiche est longue, l'ouvrir
+en place perdrait l'état du calcul en cours.
+
+**Le plancher `Imports: nemeton` reste à 0.189.0.** La release cœur 0.192.0
+n'est pas encore publiée ; épingler dès maintenant rendrait l'app
+non-installable. Sur un cœur antérieur, `doc_url` n'existe pas, aucune entrée
+n'est construite et l'icône ne s'affiche simplement pas — l'absence de fiche est
+la condition d'affichage, pas une erreur. Deux gardes tiennent ce cas : le test
+de longueur sur `doc_url` dans `doc_icon()` (sans lui, `is.na(NULL)` rend
+`logical(0)`, qu'un `if` refuse) et le repli en `NA` de `pick()` côté config.
+
+**Un piège à connaître en recette** : `doc_url` est déjà correcte avant que la
+PR cœur ne soit mergée, mais la page pkgdown n'est déployée qu'au push sur
+`main` du dépôt cœur. Tant que ce merge n'a pas eu lieu, le lien mène à un 404
+transitoire.
 
 # nemetonshiny 0.141.1 (2026-08-27)
 
