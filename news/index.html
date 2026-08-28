@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.142.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.142.3" id="nemetonshiny-01423-2026-08-28">nemetonshiny 0.142.3 (2026-08-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01423-2026-08-28"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-carte-ugf-restait-vide-au-premier-passage-sur-son-sous-onglet-0-142-3">Fixed — La carte UGF restait vide au premier passage sur son sous-onglet<a class="anchor" aria-label="anchor" href="#fixed--la-carte-ugf-restait-vide-au-premier-passage-sur-son-sous-onglet-0-142-3"></a></h4>
+<p>Passer de « Carte cadastrale » à « Carte UGF » n’affichait ni les tènements ni les UGF ; il fallait aller sur « Tableau UGF » puis revenir pour que la carte se peuple.</p>
+<p><code>output$ug_map</code> était <strong>la seule des six cartes leaflet de l’app à rester suspendue</strong> quand son onglet est caché (<code>suspendWhenHidden</code> vaut <code>TRUE</code> par défaut). « Carte UGF » étant un sous-onglet non-défaut, la carte n’existe pas encore côté client au moment où l’observer de dessin émet ses <code>leafletProxy()</code> — et leaflet <strong>jette silencieusement</strong> les messages adressés à une carte absente du DOM (<code>Couldn't find map with id ug-ug_map</code> dans la console du navigateur). Après un aller-retour par « Tableau UGF », la carte existe et le redessin déclenché par la navigation s’applique : d’où le contournement que l’utilisateur avait trouvé.</p>
+<p>Le repo documentait déjà ce piège pour les cinq autres cartes — cf. <code>mod_monitoring_fordead_map.R</code> : « peut rester suspendu / s’initialiser à taille 0 → clics et leafletProxy inopérants ». <code>mod_ug</code> posait l’option sur son tableau et ses deux compteurs, mais avait oublié sa carte. Le coût est nul : ce <code>renderLeaflet</code> ne produit qu’une carte vide (fond de plan, contrôle de couches, barre de dessin) ; les polygones restent gouvernés par la garde de visibilité de la v0.142.2 et ne sont toujours pas dessinés onglet fermé.</p>
+<p>Le test <strong>intercepte l’appel réel</strong> à <code>outputOptions()</code> plutôt que de grepper le fichier source : <code>outputOptions(output, "ug_map")</code> ne répond rien sous <code>testServer()</code>, et un test textuel passerait sur un appel commenté (vérifié par mutation).</p>
+<blockquote>
+<p>Part de responsabilité de la v0.142.2, honnêtement : la garde de visibilité livrée alors n’a pas créé cette course, mais elle l’a vraisemblablement rendue systématique. Auparavant l’observer de dessin tournait à chaque invalidation de <code>projet_ug</code>, ce qui multipliait les occasions qu’un envoi tombe après la création de la carte ; la garde les réduit au seul bump de navigation. Non vérifié par la mesure — les tentatives E2E n’ont pas abouti (chromote ne parvenait plus à se connecter à l’app de test).</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="changed--brief-cœur--resolve_project_chm-ignore-cachelayersopencanopy-0-142-3">Changed — Brief cœur : <code>resolve_project_chm()</code> ignore <code>cache/layers/opencanopy/</code>
+<a class="anchor" aria-label="anchor" href="#changed--brief-c%C5%93ur--resolve_project_chm-ignore-cachelayersopencanopy-0-142-3"></a></h4>
+<p><code>specs/BRIEF-nemeton-resolve-chm-opencanopy.md</code>. Le résolveur du cœur sonde <code>cache/layers/chm/</code> sous le label « Open-Canopy CHM », alors que <code>download_chm_opencanopy()</code> écrit dans <code>cache/layers/opencanopy/</code> : le CHM du projet est invisible et les appelants travaillent sans modèle de hauteur, en silence. Deux modules de l’app ont déjà dû contourner le même défaut (<code>service_marculus.R</code>, puis <code>mod_sampling.R</code> en v0.142.2).</p>
+<p>Le brief signale deux pièges que l’implémentation naïve manquerait : un candidat sans <code>file</code> mosaïquerait en VRT les deux orthophotos et les quatre indices spectraux qui cohabitent dans ce répertoire ; et les nouvelles entrées doivent atterrir <strong>après</strong> <code>"LiDAR HD MNH"</code>, la liste actuelle plaçant <code>cache/layers/chm</code> en tête alors que le LiDAR local est la meilleure source (ADR-007).</p>
+<p>Il porte aussi l’entrée <code>PLAN.md</code> de la v0.142.2, que cette session ne peut pas écrire côté cœur (règle 12).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.142.2" id="nemetonshiny-01422-2026-08-28">nemetonshiny 0.142.2 (2026-08-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01422-2026-08-28"></a></h2>
 <div class="section level4">
