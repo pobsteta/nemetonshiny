@@ -12,6 +12,31 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.2\] - 2026-08-29
+
+### Added
+
+- Étape **« Santé — création des zones de suivi »** dans la chaîne,
+  avant les trois moteurs Santé qui exigent un `zone_id`. Même chemin
+  que le bouton d’enregistrement de l’onglet ; upsert, donc relançable.
+  La chaîne compte 17 étapes.
+
+### Fixed
+
+- **La perspective IA était rapportée « Réussie » sans rien avoir
+  généré** : l’appel LLM échouait, `tryCatch` rendait `NULL`, et la
+  fonction continuait jusqu’à `invisible(TRUE)`. Constaté sur Couchey —
+  étape verte en 1 s pour 13 appels LLM. Une synthèse vide fait
+  désormais échouer l’étape. Expliquait aussi le plan d’actions sauté
+  juste après.
+- Les 12 commentaires de famille n’étaient pas générés par la chaîne :
+  le switch « toutes les familles » est décoché par défaut et la chaîne
+  le suivait, malgré un libellé d’étape annonçant « synthèse + 12
+  familles ».
+- Les messages de saut nommaient un « prérequis manquant » sans le
+  désigner. Les moteurs Santé citent la zone de suivi absente ; l’IA
+  remonte sa raison réelle.
+
 ## \[0.143.1\] - 2026-08-29
 
 ### Fixed

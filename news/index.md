@@ -1,5 +1,60 @@
 # Changelog
 
+## nemetonshiny 0.143.2 (2026-08-29)
+
+Trois défauts trouvés grâce au premier run complet sur Couchey, et la
+création des zones de suivi ajoutée à la chaîne.
+
+#### Fixed — « Perspective IA : Réussie » en 1 seconde, sans rien avoir généré
+
+Le rapport du run affichait l’étape en vert, durée **1 s**, pour ce qui
+demande treize appels LLM. L’appel avait échoué : le `tryCatch`
+affichait un toast et rendait `NULL`, mais la fonction **continuait
+jusqu’à `invisible(TRUE)`**. La chaîne rapportait donc « Réussie » pour
+une perspective inexistante.
+
+Un faux positif silencieux est pire qu’un échec : il fait croire que le
+travail est fait. Une synthèse vide fait désormais échouer l’étape, avec
+le message d’erreur du LLM.
+
+C’est aussi ce qui expliquait le **Plan d’actions sauté** juste après :
+il se construit sur les commentaires que la synthèse n’avait pas écrits.
+
+#### Fixed — Les 12 commentaires de famille n’étaient pas générés
+
+Le switch « toutes les familles » de l’onglet *Synthèse* est décoché par
+défaut (`<input type="checkbox">` sans `checked`), et la chaîne le
+suivait — alors que le libellé de son étape annonce « synthèse + 12
+familles ». Elle l’impose désormais (`remplir_familles = TRUE`), le
+bouton manuel gardant son comportement.
+
+#### Fixed — Les sauts ne disaient pas ce qu’il fallait corriger
+
+« Le lancement a été refusé par l’onglet (prérequis manquant) »
+n’apprend rien. Les trois moteurs Santé annoncent maintenant **« Aucune
+zone de suivi enregistrée pour ce projet »** — la clé i18n existait
+depuis la v0.143.0 sans être utilisée nulle part. La génération IA
+remonte sa raison réelle (clé API manquante, avec le nom de la variable
+attendue ; ou absence d’indicateurs) au lieu d’un booléen.
+
+#### Added — Création des zones de suivi dans la chaîne
+
+Nouvelle étape 12, juste avant les trois moteurs Santé, qui exigent tous
+un `zone_id`. Elle emprunte le même chemin que le bouton
+d’enregistrement de l’onglet ; `build_project_monitoring_zones()` étant
+en upsert, la relancer recrée les zones du projet plutôt que d’en
+accumuler. Elle se saute proprement quand la base PostGIS n’est pas
+configurée.
+
+La chaîne compte donc **17 étapes**.
+
+#### Ce que le run a confirmé
+
+La mécanique tient : reGénération a enchaîné ses cinq étapes — années
+E-OBS 3 min 18, précipitations 1 min 43, température 3 min 22, gel R7 1
+h 38 min 53, moteur 7 min 56 — et la chaîne est allée du début à la fin
+sans se bloquer.
+
 ## nemetonshiny 0.143.1 (2026-08-29)
 
 #### Fixed — La chaîne restait bloquée sur « Indicateurs / En cours »
