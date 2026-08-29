@@ -5748,6 +5748,10 @@ TRANSLATIONS <- list(
     fr = "reG\u00e9n\u00e9ration",
     en = "Regeneration"
   ),
+  pipeline_step_sante_zone = list(
+    fr = "Sant\u00e9 \u2014 cr\u00e9ation des zones de suivi",
+    en = "Health \u2014 monitoring zones creation"
+  ),
   pipeline_step_sante_fast = list(
     fr = "Sant\u00e9 \u2014 surveillance rapide",
     en = "Health \u2014 rapid surveillance"

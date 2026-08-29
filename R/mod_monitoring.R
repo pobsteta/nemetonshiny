@@ -1282,7 +1282,10 @@ mod_monitoring_server <- function(id, app_state) {
     #   * `bdforet = sf::st_read(<proj>/cache/layers/bdforet.gpkg)`
     #     Si absent -> message " lancer le calcul du projet d'abord "
     #     (ne PAS appeler la fonction).
-    shiny::observe({
+    # ORCHESTRATION - corps extrait : le bouton d'enregistrement et l'etape
+    # « sante_zone » du lancement enchaine creent les zones par le meme
+    # chemin.
+    .enregistrer_zones_suivi <- function() {
       i18n <- i18n_r()
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) {
@@ -1397,9 +1400,45 @@ mod_monitoring_server <- function(id, app_state) {
                 paste(built_strata, collapse = ", ")),
         type = "message", duration = 6
       )
+      invisible(TRUE)
+    }
+
+    shiny::observe({
+      .enregistrer_zones_suivi()
     }) |>
       shiny::bindEvent(input$register, input$register_inline,
                        ignoreInit = TRUE)
+
+    # --- Lancement enchaine : etape « sante_zone » ---------------------
+    # Cree les zones de suivi du projet, prealable des trois moteurs sante.
+    # L'enregistrement est SYNCHRONE : on repond dans la foulee, en relisant
+    # les metadonnees pour savoir si une zone existe desormais - c'est le
+    # seul critere qui compte pour les etapes suivantes.
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "sante_zone")) return()
+      i18n <- i18n_r()
+      projet <- app_state$current_project
+      if (is.null(projet)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (!is_db_configured()) {
+        pipeline_answer(app_state, req, "skipped",
+                        i18n$t("monitoring_register_no_db"))
+        return()
+      }
+      ok <- tryCatch({
+        .enregistrer_zones_suivi()
+        TRUE
+      }, error = function(e) {
+        cli::cli_warn("pipeline sante_zone: {conditionMessage(e)}")
+        conditionMessage(e)
+      })
+      pipeline_answer(app_state, req,
+                      if (isTRUE(ok)) "ok" else "error",
+                      if (isTRUE(ok)) NULL else .strip_ansi(as.character(ok)))
+    })
 
     # DB status card - seven states:
     #   0. Async probe still running        -> spinning gear card
@@ -2372,6 +2411,10 @@ mod_monitoring_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
+      if (!isTRUE(nzchar(input$zone_id))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
+        return()
+      }
       if (identical(fast_task$status(), "running")) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
         return()
@@ -2932,6 +2975,10 @@ mod_monitoring_server <- function(id, app_state) {
       i18n <- i18n_r()
       if (is.null(app_state$current_project)) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (!isTRUE(nzchar(input$zone_id))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
         return()
       }
       if (identical(fordead_task$status(), "running")) {
@@ -3513,6 +3560,10 @@ mod_monitoring_server <- function(id, app_state) {
       i18n <- i18n_r()
       if (is.null(app_state$current_project)) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      if (!isTRUE(nzchar(input$zone_id))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
         return()
       }
       if (identical(reconfort_task$status(), "running")) {
