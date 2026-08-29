@@ -1245,8 +1245,14 @@ mod_home_server <- function(id, app_state) {
         # Unblock parcel modification (T089)
         app_state$computation_running <- FALSE
 
-        if (!is.null(pipeline_req())) {
-          pipeline_answer(app_state, pipeline_req(), "error",
+        # Ici on EST en contexte reactif (observe sur `compute_task$status()`),
+        # mais `isolate()` reste juste : sans lui, cet observer prendrait une
+        # dependance sur `pipeline_req` et se redeclencherait a chaque fois que
+        # la chaine change d'etape - une reactivite parasite sur un chemin
+        # d'erreur.
+        req_pipeline <- shiny::isolate(pipeline_req())
+        if (!is.null(req_pipeline)) {
+          pipeline_answer(app_state, req_pipeline, "error",
                           i18n$t("computation_error"))
           pipeline_req(NULL)
         }
@@ -1386,10 +1392,28 @@ mod_home_server <- function(id, app_state) {
           app_state$project_status <- "completed"
           app_state$refresh_projects <- Sys.time()
 
-          if (!is.null(pipeline_req())) {
-            pipeline_answer(app_state, pipeline_req(), "ok")
-            pipeline_req(NULL)
-          }
+          # `isolate()` OBLIGATOIRE : ce bloc vit dans `poll_fn`, un callback
+          # `later::later()` qui s'execute HORS contexte reactif - comme le
+          # signalent deja le `shiny::isolate(computing_project_id())` plus haut
+          # et le commentaire d'entree de la boucle. Sans lui, la lecture du
+          # reactiveVal leve « Operation not allowed without an active reactive
+          # context », l'erreur remonte, la reponse n'est jamais posee et le
+          # lancement enchaine reste bloque sur « Indicateurs / En cours »
+          # indefiniment - alors meme que le calcul, lui, s'est bien termine.
+          # Constate sur Couchey le 2026-08-29.
+          #
+          # `tryCatch` par-dessus : cette reponse est un effet de bord de
+          # confort ; elle ne doit en aucun cas casser la boucle de progression
+          # du calcul, qui est le chemin critique.
+          tryCatch({
+            req_pipeline <- shiny::isolate(pipeline_req())
+            if (!is.null(req_pipeline)) {
+              pipeline_answer(app_state, req_pipeline, "ok")
+              pipeline_req(NULL)
+            }
+          }, error = function(e) {
+            cli::cli_warn("pipeline: reponse « indicateurs » impossible : {conditionMessage(e)}")
+          })
 
           shiny::showNotification(
             i18n$t("computation_complete"),
