@@ -1,5 +1,40 @@
 # Changelog
 
+## nemetonshiny 0.143.1 (2026-08-29)
+
+#### Fixed — La chaîne restait bloquée sur « Indicateurs / En cours »
+
+Premier essai réel sur Couchey : le calcul des indicateurs s’est terminé
+normalement, mais la chaîne n’a jamais avancé — l’étape 1 est restée «
+En cours » et les quinze suivantes « En attente ».
+
+La réponse au pipeline était posée depuis `poll_fn`, la boucle de
+progression qui tourne dans un callback
+[`later::later()`](https://later.r-lib.org/reference/later.html) — donc
+**hors contexte réactif**. La lecture du `reactiveVal` y lève
+`Operation not allowed without an active reactive context` ; l’erreur
+remonte, la réponse n’est jamais posée, et la chaîne attend indéfiniment
+une étape pourtant terminée. C’est le mode de défaillance annoncé à la
+livraison de la v0.143.0, réalisé par le premier branchement écrit —
+dans un fichier qui documente déjà ce piège deux fois, le poller isolant
+toutes ses autres lectures.
+
+Reproduit hors Shiny en trois lignes avant correction, plutôt que
+corrigé de tête.
+
+**Second défaut, trouvé en cherchant si le premier était isolé.** Dans
+les six autres modules, les lectures sont en contexte réactif — donc
+légales — mais elles abonnaient l’observer de statut à la mémoire de
+requête. Poser la requête le redéclenchait, et s’il portait encore le
+`success` d’un run précédent, il répondait **avant que le moteur ne
+redémarre** : l’étape aurait été rapportée réussie sans avoir tourné.
+Toutes les lectures sont désormais isolées.
+
+Un test lit les sources des sept modules et refuse toute lecture non
+isolée d’une mémoire de requête (vérifié par mutation). Test de source
+assumé : le défaut est un contexte d’exécution, qu’aucun `testServer` ne
+reproduit.
+
 ## nemetonshiny 0.143.0 (2026-08-28)
 
 Jalon : un seul bouton lance les seize calculs de l’application, puis

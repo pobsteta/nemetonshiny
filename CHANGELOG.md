@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.1\] - 2026-08-29
+
+### Fixed
+
+- **La chaîne « Tout calculer » restait bloquée sur « Indicateurs / En
+  cours »** alors que le calcul s’était terminé. La réponse au pipeline
+  était posée depuis `poll_fn`, un callback
+  [`later::later()`](https://later.r-lib.org/reference/later.html) qui
+  s’exécute hors contexte réactif : la lecture du `reactiveVal` y lève
+  `Operation not allowed without an active reactive context`, l’erreur
+  remonte et la réponse n’est jamais posée.
+- Dans les six autres modules, les lectures de la mémoire de requête
+  abonnaient l’observer de statut à celle-ci : poser la requête le
+  redéclenchait et, sur un statut `success` hérité d’un run précédent,
+  il répondait avant que le moteur n’ait redémarré — l’étape aurait été
+  rapportée réussie sans avoir tourné. Toutes les lectures sont isolées.
+
 ## \[0.143.0\] - 2026-08-28
 
 ### Added

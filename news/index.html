@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.1" id="nemetonshiny-01431-2026-08-29">nemetonshiny 0.143.1 (2026-08-29)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01431-2026-08-29"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-chaîne-restait-bloquée-sur--indicateurs--en-cours--0-143-1">Fixed — La chaîne restait bloquée sur « Indicateurs / En cours »<a class="anchor" aria-label="anchor" href="#fixed--la-cha%C3%AEne-restait-bloqu%C3%A9e-sur--indicateurs--en-cours--0-143-1"></a></h4>
+<p>Premier essai réel sur Couchey : le calcul des indicateurs s’est terminé normalement, mais la chaîne n’a jamais avancé — l’étape 1 est restée « En cours » et les quinze suivantes « En attente ».</p>
+<p>La réponse au pipeline était posée depuis <code>poll_fn</code>, la boucle de progression qui tourne dans un callback <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later()</a></code> — donc <strong>hors contexte réactif</strong>. La lecture du <code>reactiveVal</code> y lève <code>Operation not allowed without an active reactive context</code> ; l’erreur remonte, la réponse n’est jamais posée, et la chaîne attend indéfiniment une étape pourtant terminée. C’est le mode de défaillance annoncé à la livraison de la v0.143.0, réalisé par le premier branchement écrit — dans un fichier qui documente déjà ce piège deux fois, le poller isolant toutes ses autres lectures.</p>
+<p>Reproduit hors Shiny en trois lignes avant correction, plutôt que corrigé de tête.</p>
+<p><strong>Second défaut, trouvé en cherchant si le premier était isolé.</strong> Dans les six autres modules, les lectures sont en contexte réactif — donc légales — mais elles abonnaient l’observer de statut à la mémoire de requête. Poser la requête le redéclenchait, et s’il portait encore le <code>success</code> d’un run précédent, il répondait <strong>avant que le moteur ne redémarre</strong> : l’étape aurait été rapportée réussie sans avoir tourné. Toutes les lectures sont désormais isolées.</p>
+<p>Un test lit les sources des sept modules et refuse toute lecture non isolée d’une mémoire de requête (vérifié par mutation). Test de source assumé : le défaut est un contexte d’exécution, qu’aucun <code>testServer</code> ne reproduit.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.0" id="nemetonshiny-01430-2026-08-28">nemetonshiny 0.143.0 (2026-08-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01430-2026-08-28"></a></h2>
 <p>Jalon : un seul bouton lance les seize calculs de l’application, puis les generations IA.</p>
