@@ -512,7 +512,7 @@ mod_monitoring_server <- function(id, app_state) {
         list(rv = sante_fordead_pipeline_req,   st = fordead_task$status()),
         list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status())
       )) {
-        req <- item$rv()
+        req <- shiny::isolate(item$rv())
         if (is.null(req)) next
         if (!item$st %in% c("success", "error")) next
         pipeline_answer(app_state, req,

@@ -690,8 +690,9 @@ mod_desserte_server <- function(id, app_state) {
              detail = conditionMessage(e))
       })
       ok_moteur <- is.list(res) && identical(res$status, "success")
-      if (!is.null(pipeline_req())) {
-        pipeline_answer(app_state, pipeline_req(),
+      req_pipeline <- shiny::isolate(pipeline_req())
+      if (!is.null(req_pipeline)) {
+        pipeline_answer(app_state, req_pipeline,
                         if (ok_moteur) "ok" else "error",
                         if (ok_moteur) NULL
                         else i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
@@ -1066,7 +1067,7 @@ mod_desserte_server <- function(id, app_state) {
 
     shiny::observe({
       st <- integ_task$status()
-      req <- integ_pipeline_req()
+      req <- shiny::isolate(integ_pipeline_req())
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",

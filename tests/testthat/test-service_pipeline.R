@@ -209,3 +209,37 @@ test_that("les controles desserte suivent leur moteur", {
   expect_true(rang("desserte") < rang("desserte_typage"))
   expect_true(rang("desserte") < rang("desserte_integrite"))
 })
+
+test_that("toute lecture d'une memoire de requete pipeline est isolee", {
+  # Deux defauts distincts, un seul remede.
+  #
+  # 1. CONTEXTE. La reponse de l'etape « indicateurs » etait posee depuis
+  #    `poll_fn`, un callback `later::later()` qui s'execute HORS contexte
+  #    reactif. La lecture y levait « Operation not allowed without an active
+  #    reactive context » ; l'erreur remontait, la reponse n'etait jamais posee,
+  #    et la chaine restait sur « Indicateurs / En cours » indefiniment - alors
+  #    meme que le calcul s'etait termine normalement (Couchey, 2026-08-29).
+  #
+  # 2. DEPENDANCE PARASITE. Ailleurs les lectures sont en contexte reactif,
+  #    donc legales - mais elles abonnent l'observer de statut a la memoire de
+  #    requete. Poser la requete le redeclenche alors, et s'il porte encore le
+  #    statut « success » d'un run precedent, il repond AVANT que le moteur
+  #    n'ait redemarre : l'etape serait rapportee reussie sans avoir tourne.
+  #
+  # Le test lit les SOURCES : ces defauts sont des contextes d'execution, que
+  # ni un testServer ni un appel direct ne reproduisent.
+  fichiers <- c("mod_home.R", "mod_accessibility.R", "mod_desserte.R",
+                "mod_regeneration.R", "mod_monitoring.R", "mod_synthesis.R",
+                "mod_action_plan.R")
+
+  for (nom in fichiers) {
+    f <- chemin_source("R", nom)
+    skip_sans_sources(f)
+    src <- readLines(f, warn = FALSE)
+    lectures <- grep("pipeline_req\\(\\)|item\\$rv\\(\\)", src, value = TRUE)
+    # Les declarations `xxx <- shiny::reactiveVal(NULL)` ne sont pas des lectures.
+    lectures <- grep("reactiveVal", lectures, value = TRUE, invert = TRUE)
+    nues <- grep("shiny::isolate\\(", lectures, value = TRUE, invert = TRUE)
+    expect_length(nues, 0L)
+  }
+})

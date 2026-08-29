@@ -1809,7 +1809,7 @@ mod_regeneration_server <- function(id, app_state) {
     shiny::observe({
       for (item in list(list(rv = rr_pipeline_req, st = eobs_rr_task$status()),
                         list(rv = tg_pipeline_req, st = eobs_tg_task$status()))) {
-        req <- item$rv()
+        req <- shiny::isolate(item$rv())
         if (is.null(req) || !item$st %in% c("success", "error")) next
         pipeline_answer(app_state, req,
                         if (identical(item$st, "success")) "ok" else "error",
@@ -1858,7 +1858,7 @@ mod_regeneration_server <- function(id, app_state) {
     # de statut, plus bas).
     shiny::observe({
       st <- eobs_task$status()
-      req <- eobs_pipeline_req()
+      req <- shiny::isolate(eobs_pipeline_req())
       if (is.null(req) || !st %in% c("success", "error")) return()
       if (identical(st, "success")) {
         # Memoriser les annees ICI plutot que de relire `input$year_moyenne` a
@@ -1880,7 +1880,7 @@ mod_regeneration_server <- function(id, app_state) {
 
     shiny::observe({
       st <- frost_task$status()
-      req <- gel_pipeline_req()
+      req <- shiny::isolate(gel_pipeline_req())
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
@@ -1915,8 +1915,9 @@ mod_regeneration_server <- function(id, app_state) {
       # le rechargement qui suit : celui-ci peut echouer sans que le MOTEUR ait
       # echoue, et la chaine doit rapporter le moteur, pas le rafraichissement
       # de la carte.
-      if (st %in% c("success", "error") && !is.null(pipeline_req())) {
-        pipeline_answer(app_state, pipeline_req(),
+      req_pipeline <- shiny::isolate(pipeline_req())
+      if (st %in% c("success", "error") && !is.null(req_pipeline)) {
+        pipeline_answer(app_state, req_pipeline,
                         if (identical(st, "success")) "ok" else "error",
                         if (identical(st, "success")) NULL
                         else i18n$t("error"))
