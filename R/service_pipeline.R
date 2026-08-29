@@ -67,6 +67,12 @@ PIPELINE_STEPS <- list(
   list(id = "regen_eobs_tg",   module = "regeneration",  label = "pipeline_step_regen_eobs_tg"),
   list(id = "regen_gel",       module = "regeneration",  label = "pipeline_step_regen_gel"),
   list(id = "regeneration",    module = "regeneration",  label = "pipeline_step_regeneration"),
+  # Creation des zones de suivi AVANT les trois moteurs sante : ils exigent
+  # tous un `zone_id`, et sans zone enregistree ils se sautent - ce qu'a montre
+  # le premier run reel sur Couchey (« Aucune zone de suivi enregistree »).
+  # `build_project_monitoring_zones()` est en upsert : relancer l'etape recree
+  # les zones du projet plutot que d'en accumuler.
+  list(id = "sante_zone",      module = "monitoring",    label = "pipeline_step_sante_zone"),
   list(id = "sante_fast",      module = "monitoring",    label = "pipeline_step_sante_fast"),
   list(id = "sante_fordead",   module = "monitoring",    label = "pipeline_step_sante_fordead"),
   list(id = "sante_reconfort", module = "monitoring",    label = "pipeline_step_sante_reconfort"),

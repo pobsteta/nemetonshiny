@@ -243,3 +243,45 @@ test_that("toute lecture d'une memoire de requete pipeline est isolee", {
     expect_length(nues, 0L)
   }
 })
+
+test_that("la creation des zones de suivi precede les moteurs sante", {
+  # Premier run reel sur Couchey : les trois moteurs sante se sont sautes,
+  # « Aucune zone de suivi enregistree ». Ils exigent tous un `zone_id` ; la
+  # chaine cree donc les zones elle-meme, juste avant.
+  ids <- nemetonshiny:::pipeline_all_step_ids()
+  rang <- function(x) which(ids == x)
+  expect_true(rang("sante_zone") < rang("sante_fast"))
+  expect_true(rang("sante_zone") < rang("sante_fordead"))
+  expect_true(rang("sante_zone") < rang("sante_reconfort"))
+})
+
+test_that("les moteurs sante nomment la zone manquante, pas un prerequis vague", {
+  # « Le lancement a ete refuse par l'onglet (prerequis manquant) » n'apprend
+  # rien : l'utilisateur ne peut pas savoir quoi corriger. Chaque moteur sante
+  # doit citer la cle qui nomme la vraie cause.
+  f <- chemin_source("R", "mod_monitoring.R")
+  skip_sans_sources(f)
+  src <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_equal(
+    length(gregexpr("pipeline_skip_no_zone", src, fixed = TRUE)[[1]]), 3L)
+})
+
+test_that("la generation IA impose le remplissage des 12 familles", {
+  # Le switch « toutes les familles » de l'onglet est DECOCHE par defaut. Sans
+  # forcage, l'etape ne generait que la synthese, alors que son libelle annonce
+  # « synthese + 12 familles ».
+  f <- chemin_source("R", "mod_synthesis.R")
+  skip_sans_sources(f)
+  src <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_true(grepl("remplir_familles = TRUE", src, fixed = TRUE))
+})
+
+test_that("une perspective non generee ne peut pas etre rapportee reussie", {
+  # Faux positif constate sur Couchey : etape « Perspective IA » verte en 1 s,
+  # pour ce qui demande 13 appels LLM. L'appel avait echoue, `tryCatch` avait
+  # rendu NULL, et la fonction continuait jusqu'a `invisible(TRUE)`.
+  f <- chemin_source("R", "mod_synthesis.R")
+  skip_sans_sources(f)
+  src <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_true(grepl("if (is.null(synthesis_response)) {", src, fixed = TRUE))
+})

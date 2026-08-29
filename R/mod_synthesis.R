@@ -615,7 +615,12 @@ mod_synthesis_server <- function(id, app_state) {
     # `updateSelectInput()`, qui ne prendrait effet qu'apres un aller-retour
     # client - donc trop tard pour la generation qu'on declenche dans la
     # foulee. NULL = on garde le selecteur de l'onglet.
-    .generer_ia_synthese <- function(profil = NULL) {
+    # `remplir_familles` : la case « toutes les familles » de l'onglet est
+    # DECOCHEE par defaut (`<input type="checkbox">` sans `checked`). Le
+    # lancement enchaine annonce pourtant « synthese + 12 familles » : il doit
+    # donc l'imposer, sinon l'etape ne fait pas ce que son libelle promet.
+    # NULL = on suit la case, comportement inchange pour le bouton.
+    .generer_ia_synthese <- function(profil = NULL, remplir_familles = NULL) {
       i18n <- get_i18n(app_state$language)
 
       # Check API key for providers that require one
@@ -624,11 +629,14 @@ mod_synthesis_server <- function(id, app_state) {
       if (!is.null(key_var) && nchar(Sys.getenv(key_var)) == 0) {
         msg <- gsub("\\{key_var\\}", key_var, i18n$t("ai_no_api_key"))
         shiny::showNotification(msg, type = "warning", duration = 8)
-        return()
+        # Rendre la RAISON, pas un simple NULL : c'est elle que le rapport du
+        # lancement enchaine affiche. « Le lancement a ete refuse (prerequis
+        # manquant) » ne permet a personne de savoir quoi corriger.
+        return(msg)
       }
 
       sf_data <- family_scores()
-      if (is.null(sf_data)) return()
+      if (is.null(sf_data)) return(i18n$t("pipeline_skip_no_indicators"))
 
       # Disable button during call
       shiny::updateActionButton(session, "ai_generate",
@@ -713,11 +721,21 @@ mod_synthesis_server <- function(id, app_state) {
         NULL
       })
 
+      # L'appel LLM a echoue : `tryCatch` a affiche un toast et rendu NULL, mais
+      # la fonction continuait jusqu'a `invisible(TRUE)` - le lancement enchaine
+      # rapportait alors « Reussie » pour une perspective qui n'existe pas
+      # (constate sur Couchey : etape « Perspective IA » verte, en 1 seconde,
+      # pour ce qui demande 13 appels LLM). Un faux positif silencieux est pire
+      # qu'un echec : il fait croire que le travail est fait.
+      if (is.null(synthesis_response)) {
+        return(i18n$t("ai_error"))
+      }
+
       # Fill all family comments if switch is checked
       family_comments_local <- as.list(shiny::isolate(app_state$family_comments))
       failed_families <- character(0)
       skipped_families <- character(0)
-      if (isTRUE(input$fill_all_comments)) {
+      if (remplir_familles %||% isTRUE(input$fill_all_comments)) {
         all_indicators <- ai_family_indicators()
         if (!is.null(all_indicators)) {
           family_codes <- get_family_codes()
@@ -902,11 +920,15 @@ mod_synthesis_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_indicators"))
         return()
       }
-      # `isTRUE()` et non `TRUE` en dur : une sortie precoce (cle API
-      # absente, aucun indicateur) rend NULL, et la rapporter « reussie »
-      # ferait croire a une perspective generee qui n'existe pas.
+      # `.generer_ia_synthese()` rend TRUE si elle a genere, ou une CHAINE
+      # disant pourquoi elle a refuse (cle API absente, aucun indicateur a
+      # resumer). On distingue ce refus - un saut, avec sa raison - d'une
+      # erreur survenue en cours de generation.
+      raison <- NULL
       ok <- tryCatch({
-        isTRUE(.generer_ia_synthese(profil = pipeline_profil(req)))
+        res <- .generer_ia_synthese(profil = pipeline_profil(req),
+                                    remplir_familles = TRUE)
+        if (isTRUE(res)) TRUE else { raison <<- as.character(res)[1]; FALSE }
       }, error = function(e) {
         cli::cli_warn("pipeline ia_synthese: {conditionMessage(e)}")
         conditionMessage(e)
@@ -918,7 +940,7 @@ mod_synthesis_server <- function(id, app_state) {
         app_state, req,
         if (isTRUE(ok)) "ok" else if (is.character(ok)) "error" else "skipped",
         if (isTRUE(ok)) NULL else if (is.character(ok)) .strip_ansi(as.character(ok))
-        else i18n$t("pipeline_skip_not_started"))
+        else raison %||% i18n$t("pipeline_skip_not_started"))
     })
 
     # ================================================================
