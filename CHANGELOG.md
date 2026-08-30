@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.3] - 2026-08-30
+
+### Fixed
+
+- **Les trois moteurs Santé se sautaient alors que les zones existaient en
+  base.** La garde interrogeait `input$zone_id`, alimenté par
+  `updateSelectInput()` — pas encore remonté du client juste après l'étape de
+  création. Résolution désormais en base via `fordead_zone_id()`, zone
+  transmise aux moteurs. Troisième occurrence de ce piège dans la chaîne.
+- **Le rapport masquait la cause réelle des échecs IA** : `raison <<- ...` était
+  placé dans le bloc d'un `tryCatch`, qui s'évalue dans le frame appelant — le
+  `<<-` fuyait vers le namespace et la variable restait `NULL`. L'échec de
+  l'appel Mistral était ainsi rapporté « prérequis manquant ». Le message
+  d'erreur du LLM remonte maintenant au rapport.
+
 ## [0.143.2] - 2026-08-29
 
 ### Added

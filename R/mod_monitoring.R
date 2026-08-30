@@ -2314,7 +2314,11 @@ mod_monitoring_server <- function(id, app_state) {
     # Click handler: validate state, build window dates, fire the task.
     # ORCHESTRATION - corps extrait : bouton de l'onglet ET lancement
     # enchaine (`mod_pipeline`) empruntent le meme chemin, gardes comprises.
-    .lancer_fast <- function() {
+    # `zone_id` : le lancement enchaine l'impose. `input$zone_id` est alimente
+    # par `updateSelectInput()`, qui ne remonte au serveur qu'apres un
+    # aller-retour CLIENT - il est encore vide juste apres l'etape de creation
+    # des zones. NULL = on lit le menu, comportement inchange pour le bouton.
+    .lancer_fast <- function(zone_id = NULL) {
       i18n <- i18n_r()
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
@@ -2347,7 +2351,7 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "message", duration = 4)
         return()
       }
-      if (!isTRUE(nzchar(input$zone_id))) {
+      if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
         return()
@@ -2395,7 +2399,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
       }
 
-      start_fast_ingest(as.integer(input$zone_id),
+      start_fast_ingest(as.integer(zone_id %||% input$zone_id),
                         as.Date(dr[1]), as.Date(dr[2]))
       invisible(TRUE)
     }
@@ -2411,7 +2415,15 @@ mod_monitoring_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
-      if (!isTRUE(nzchar(input$zone_id))) {
+      # `fordead_zone_id()` (zones lues EN BASE) et non `input$zone_id` : ce
+      # selectInput est alimente par `updateSelectInput()`, qui ne remonte au
+      # serveur qu'apres un aller-retour CLIENT. Juste apres l'etape de
+      # creation des zones, il est encore vide - les trois moteurs se sautaient
+      # donc sur « Aucune zone de suivi enregistree » alors que les quatre
+      # zones venaient d'etre creees en base (constate sur Couchey, run du
+      # 2026-08-29). Troisieme occurrence du meme piege dans cette chaine.
+      zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
+      if (is.na(zid_pipeline)) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
         return()
       }
@@ -2420,7 +2432,7 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       sante_fast_pipeline_req(req)
-      if (!isTRUE(.lancer_fast())) {
+      if (!isTRUE(.lancer_fast(zone_id = zid_pipeline))) {
         sante_fast_pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
       }
@@ -2801,9 +2813,14 @@ mod_monitoring_server <- function(id, app_state) {
     # (B02 / B05 / B8A / B11) on top of what FAST already cached
     # (B04 / B12). zone_id presence is validated up front; the
     # actual existence check happens core-side.
-    .invoke_fordead <- function() {
+    # `zone_id` ne sert qu'a NEUTRALISER le pre-check sur le menu : la zone
+    # reellement utilisee est resolue plus bas par `fordead_zone_id()` (lecture
+    # en base). Le lancement enchaine passe donc la zone qu'il a resolue, et le
+    # pre-check - qui interroge un `input` pas encore remonte du client - ne
+    # bloque plus.
+    .invoke_fordead <- function(zone_id = NULL) {
       i18n <- i18n_r()
-      if (!isTRUE(nzchar(input$zone_id))) {
+      if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
@@ -2906,7 +2923,11 @@ mod_monitoring_server <- function(id, app_state) {
     # invoking. The user can still proceed but knows the calibration
     # warranty doesn't apply.
     # ORCHESTRATION - corps extrait (meme motif que FAST).
-    .lancer_fordead <- function() {
+    # `zone_id` : le lancement enchaine l'impose. `input$zone_id` est alimente
+    # par `updateSelectInput()`, qui ne remonte au serveur qu'apres un
+    # aller-retour CLIENT - il est encore vide juste apres l'etape de creation
+    # des zones. NULL = on lit le menu, comportement inchange pour le bouton.
+    .lancer_fordead <- function(zone_id = NULL) {
       i18n <- i18n_r()
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
@@ -2929,7 +2950,7 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "message", duration = 4)
         return()
       }
-      if (!isTRUE(nzchar(input$zone_id))) {
+      if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
         return()
@@ -2962,7 +2983,7 @@ mod_monitoring_server <- function(id, app_state) {
         ))
         return()
       }
-      .invoke_fordead()
+      .invoke_fordead(zone_id = zone_id)
       invisible(TRUE)
     }
 
@@ -2977,7 +2998,15 @@ mod_monitoring_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
-      if (!isTRUE(nzchar(input$zone_id))) {
+      # `fordead_zone_id()` (zones lues EN BASE) et non `input$zone_id` : ce
+      # selectInput est alimente par `updateSelectInput()`, qui ne remonte au
+      # serveur qu'apres un aller-retour CLIENT. Juste apres l'etape de
+      # creation des zones, il est encore vide - les trois moteurs se sautaient
+      # donc sur « Aucune zone de suivi enregistree » alors que les quatre
+      # zones venaient d'etre creees en base (constate sur Couchey, run du
+      # 2026-08-29). Troisieme occurrence du meme piege dans cette chaine.
+      zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
+      if (is.na(zid_pipeline)) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
         return()
       }
@@ -2986,7 +3015,7 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       sante_fordead_pipeline_req(req)
-      if (!isTRUE(.lancer_fordead())) {
+      if (!isTRUE(.lancer_fordead(zone_id = zid_pipeline))) {
         sante_fordead_pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
       }
@@ -3488,9 +3517,13 @@ mod_monitoring_server <- function(id, app_state) {
       reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
     })
 
-    .invoke_reconfort <- function() {
+    # `zone_id` : le lancement enchaine l'impose. `input$zone_id` est alimente
+    # par `updateSelectInput()`, qui ne remonte au serveur qu'apres un
+    # aller-retour CLIENT - il est encore vide juste apres l'etape de creation
+    # des zones. NULL = on lit le menu, comportement inchange pour le bouton.
+    .invoke_reconfort <- function(zone_id = NULL) {
       i18n <- i18n_r()
-      if (!isTRUE(nzchar(input$zone_id))) {
+      if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
@@ -3533,7 +3566,7 @@ mod_monitoring_server <- function(id, app_state) {
       }
       reconfort_progress_path(ppath)
 
-      zid <- as.integer(input$zone_id)
+      zid <- as.integer(zone_id %||% input$zone_id)
       out <- if (!is.null(cd)) file.path(cd, paste0("output_zone_", zid)) else NULL
       reconfort_task$invoke(
         zone_id       = zid,
@@ -3562,7 +3595,15 @@ mod_monitoring_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
-      if (!isTRUE(nzchar(input$zone_id))) {
+      # `fordead_zone_id()` (zones lues EN BASE) et non `input$zone_id` : ce
+      # selectInput est alimente par `updateSelectInput()`, qui ne remonte au
+      # serveur qu'apres un aller-retour CLIENT. Juste apres l'etape de
+      # creation des zones, il est encore vide - les trois moteurs se sautaient
+      # donc sur « Aucune zone de suivi enregistree » alors que les quatre
+      # zones venaient d'etre creees en base (constate sur Couchey, run du
+      # 2026-08-29). Troisieme occurrence du meme piege dans cette chaine.
+      zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
+      if (is.na(zid_pipeline)) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
         return()
       }
@@ -3571,7 +3612,7 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       sante_reconfort_pipeline_req(req)
-      if (!isTRUE(.invoke_reconfort())) {
+      if (!isTRUE(.invoke_reconfort(zone_id = zid_pipeline))) {
         sante_reconfort_pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
       }

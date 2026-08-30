@@ -704,6 +704,7 @@ mod_synthesis_server <- function(id, app_state) {
         collapse = "\n\n"
       )
 
+      erreur_llm <- NULL
       synthesis_response <- tryCatch({
         chat <- create_llm_chat(system_prompt)
         resp <- as.character(chat$chat(user_prompt, echo = FALSE))
@@ -713,11 +714,12 @@ mod_synthesis_server <- function(id, app_state) {
         resp
       }, error = function(e) {
         shiny::removeNotification(notif_id)
-        shiny::showNotification(
-          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
-          type = "error",
-          duration = 8
-        )
+        msg_llm <- paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e)))
+        shiny::showNotification(msg_llm, type = "error", duration = 8)
+        # Memorise le message pour le rapport du lancement enchaine : un toast
+        # de 8 secondes au milieu d'une chaine de plusieurs heures n'est vu par
+        # personne, et « Erreur IA » sans le detail ne permet pas de corriger.
+        erreur_llm <<- msg_llm
         NULL
       })
 
@@ -728,7 +730,7 @@ mod_synthesis_server <- function(id, app_state) {
       # pour ce qui demande 13 appels LLM). Un faux positif silencieux est pire
       # qu'un echec : il fait croire que le travail est fait.
       if (is.null(synthesis_response)) {
-        return(i18n$t("ai_error"))
+        return(erreur_llm %||% i18n$t("ai_error"))
       }
 
       # Fill all family comments if switch is checked
@@ -924,11 +926,16 @@ mod_synthesis_server <- function(id, app_state) {
       # disant pourquoi elle a refuse (cle API absente, aucun indicateur a
       # resumer). On distingue ce refus - un saut, avec sa raison - d'une
       # erreur survenue en cours de generation.
-      raison <- NULL
+      # PAS de `<<-` ici : le bloc d'un `tryCatch` s'evalue dans le frame
+      # APPELANT, donc `<<-` sauterait par-dessus cet observer pour aller
+      # chercher `raison` dans le namespace du paquet. Il restait NULL et le
+      # rapport affichait « prerequis manquant » a la place de la vraie cause -
+      # exactement ce qui a masque l'echec Mistral du run du 2026-08-29. On
+      # renvoie donc la raison PAR LA VALEUR.
       ok <- tryCatch({
         res <- .generer_ia_synthese(profil = pipeline_profil(req),
                                     remplir_familles = TRUE)
-        if (isTRUE(res)) TRUE else { raison <<- as.character(res)[1]; FALSE }
+        if (isTRUE(res)) TRUE else as.character(res)[1]
       }, error = function(e) {
         cli::cli_warn("pipeline ia_synthese: {conditionMessage(e)}")
         conditionMessage(e)
@@ -940,7 +947,7 @@ mod_synthesis_server <- function(id, app_state) {
         app_state, req,
         if (isTRUE(ok)) "ok" else if (is.character(ok)) "error" else "skipped",
         if (isTRUE(ok)) NULL else if (is.character(ok)) .strip_ansi(as.character(ok))
-        else raison %||% i18n$t("pipeline_skip_not_started"))
+        else i18n$t("pipeline_skip_not_started"))
     })
 
     # ================================================================
