@@ -25,22 +25,52 @@ mod_pipeline_ui <- function(id) {
   opts <- get_app_options()
   i18n <- get_i18n(opts$language)
 
-  htmltools::div(
-    class = "mt-2",
-    htmltools::div(
-      class = "d-grid",
-      # Vert : action principale de la vue (cf. regle normative des couleurs de
-      # boutons). Ce n'est PAS de l'ambre : l'ambre signale une PROVENANCE
-      # (contenu genere), pas un niveau d'action - et ce bouton lance surtout
-      # des calculs, dont l'IA n'est que la derniere etape.
-      shiny::actionButton(
-        ns("open"),
-        label = i18n$t("pipeline_button"),
-        class = "btn-primary w-100",
-        icon = bsicons::bs_icon("play-circle")
+  # Section retractable, comme les autres blocs de cette sidebar (projets
+  # recents, recherche...) : meme entete cliquable `data-bs-toggle="collapse"`
+  # et meme chevron. Le panneau de progression peut lister dix-sept etapes -
+  # sans repli, il pousse tout le reste de la sidebar hors de l'ecran une fois
+  # la chaine lancee.
+  htmltools::tags$div(
+    id = ns("pipeline_section"),
+    class = "card mb-3",
+    htmltools::tags$div(
+      class = "card-header bg-secondary text-white py-2",
+      style = "cursor: pointer;",
+      `data-bs-toggle` = "collapse",
+      `data-bs-target` = paste0("#", ns("pipeline_collapse")),
+      `aria-expanded` = "true",
+      `aria-controls` = ns("pipeline_collapse"),
+      htmltools::div(
+        class = "d-flex align-items-center justify-content-between",
+        htmltools::div(
+          class = "d-flex align-items-center",
+          bsicons::bs_icon("play-circle", class = "me-2"),
+          i18n$t("pipeline_button")
+        ),
+        bsicons::bs_icon("chevron-down", class = "collapse-icon")
       )
     ),
-    shiny::uiOutput(ns("panel"))
+    htmltools::tags$div(
+      id = ns("pipeline_collapse"),
+      class = "collapse show",
+      htmltools::tags$div(
+        class = "card-body p-2",
+        htmltools::div(
+          class = "d-grid",
+          # Vert : action principale de la vue (cf. regle normative des couleurs
+          # de boutons). Ce n'est PAS de l'ambre : l'ambre signale une
+          # PROVENANCE (contenu genere), pas un niveau d'action - et ce bouton
+          # lance surtout des calculs, dont l'IA n'est que la derniere etape.
+          shiny::actionButton(
+            ns("open"),
+            label = i18n$t("pipeline_button"),
+            class = "btn-primary w-100",
+            icon = bsicons::bs_icon("play-circle")
+          )
+        ),
+        shiny::uiOutput(ns("panel"))
+      )
+    )
   )
 }
 
