@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,33 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.5" id="nemetonshiny-01435-2026-08-30">nemetonshiny 0.143.5 (2026-08-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01435-2026-08-30"></a></h2>
+<p>Deux messages trompeurs, tous deux désignant la conséquence en cachant la cause.</p>
+<div class="section level4">
+<h4 id="fixed---échec-du-typage--sur-le-meilleur-résultat-possible-0-143-5">Fixed — « Échec du typage » sur le meilleur résultat possible<a class="anchor" aria-label="anchor" href="#fixed---%C3%A9chec-du-typage--sur-le-meilleur-r%C3%A9sultat-possible-0-143-5"></a></h4>
+<p>Sur Couchey, le typage de la desserte s’affichait <strong>en rouge</strong> : « Le réseau ne contient aucune route à vectoriser ». Inspection du cache : le moteur avait parfaitement réussi.</p>
+<table class="table"><tbody><tr><td>Routes <strong>nouvelles</strong> à créer</td>
+<td><strong>0</strong></td>
+</tr><tr><td>Réseau existant</td>
+<td>17 056 tronçons</td>
+</tr><tr><td>Parcelles desservies</td>
+<td><strong>76 sur 76</strong></td>
+</tr><tr><td>Coût du réseau glouton</td>
+<td><strong>0</strong></td>
+</tr></tbody></table><p>Le réseau existant dessert déjà toutes les UGF : aucune route nouvelle n’est nécessaire. <code><a href="https://pobsteta.github.io/foretaccess/reference/vectoriser_reseau.html" class="external-link">foretaccess::vectoriser_reseau()</a></code> travaille sur <code>reseau$lignes</code> — les routes <em>nouvelles</em> — et abandonne quand il n’y en a aucune. Un excellent résultat rapporté comme une panne.</p>
+<p>Ce cas est désormais distingué <strong>avant</strong> l’appel, par un statut propre : toast d’information (« Aucune route nouvelle à typer : le réseau existant dessert déjà toutes les parcelles ») et étape comptée <em>Sautée</em>, non <em>Échec</em>, dans le rapport de la chaîne.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed---structure-de-végétation-manquante--quand-cest-la-grille-lidar-qui-manque-0-143-5">Fixed — « structure de végétation manquante » quand c’est la grille LiDAR qui manque<a class="anchor" aria-label="anchor" href="#fixed---structure-de-v%C3%A9g%C3%A9tation-manquante--quand-cest-la-grille-lidar-qui-manque-0-143-5"></a></h4>
+<p>microclimf annonçait une structure de végétation absente alors que le projet portait bien un <code>lai_prosail.tif</code>. La vraie cause : <code>lidar_mnt/</code>, <code>lidar_mnh/</code> et <code>lidar_nuage/</code> étaient <strong>vides</strong>, donc <code>resolve_regen_lidar_grid()</code> rendait <code>NULL</code> et le bloc était sauté avant tout essai. Le repli LAI Sentinel-2 ne vit qu’<strong>à l’intérieur</strong> du bloc grille — il n’était jamais atteint, et n’aurait de toute façon pas suffi : microclimf a besoin du MNT/MNH pour son maillage.</p>
+<p>Trois causes, trois messages désormais : « grille LiDAR HD manquante (MNT/MNH non téléchargés) », « clé CDS/ERA5 absente », ou les deux. « structure de végétation manquante » reste réservé à son cas réel — grille présente, mais ni nuage LiDAR ni LAI.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--deux-fixtures-de-test-décrivaient-un-réseau-impossible-0-143-5">Fixed — Deux fixtures de test décrivaient un réseau impossible<a class="anchor" aria-label="anchor" href="#fixed--deux-fixtures-de-test-d%C3%A9crivaient-un-r%C3%A9seau-impossible-0-143-5"></a></h4>
+<p><code>.typage_write_reseau_obj()</code> et la fixture de <code>test-desserte_visualisation.R</code> construisaient un <code>foretaccess_reseau</code> <strong>sans champ <code>lignes</code></strong>. Elles décrivaient donc, sans le vouloir, le cas limite ci-dessus. Un vrai objet réseau porte toujours ce champ ; les fixtures le fournissent maintenant.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.4" id="nemetonshiny-01434-2026-08-30">nemetonshiny 0.143.4 (2026-08-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01434-2026-08-30"></a></h2>
 <div class="section level4">

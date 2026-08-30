@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.5\] - 2026-08-30
+
+### Fixed
+
+- **Le typage de la desserte s’affichait en rouge sur le meilleur
+  résultat possible.** Sur Couchey, le réseau existant (17 056 tronçons)
+  desservait déjà les 76 UGF : zéro route nouvelle à créer, coût 0.
+  [`foretaccess::vectoriser_reseau()`](https://pobsteta.github.io/foretaccess/reference/vectoriser_reseau.html)
+  travaille sur les routes nouvelles et abandonne quand il n’y en a
+  aucune. Ce cas est distingué avant l’appel, par un statut propre :
+  information, et étape *Sautée* plutôt qu’*Échec*.
+- **microclimf annonçait « structure de végétation manquante » alors que
+  la grille LiDAR HD était absente.** Trois causes, trois messages :
+  grille absente, clé CDS absente, ou les deux. Le repli LAI Sentinel-2
+  ne vit qu’à l’intérieur du bloc grille et n’était jamais atteint.
+- Deux fixtures de test construisaient un `foretaccess_reseau` sans
+  champ `lignes`, décrivant sans le vouloir ce cas limite.
+
 ## \[0.143.4\] - 2026-08-30
 
 ### Changed
