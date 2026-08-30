@@ -8,7 +8,20 @@
   r <- terra::rast(nrows = 4, ncols = 4, vals = 1,
                    xmin = 900000, xmax = 900040, ymin = 6500000, ymax = 6500040,
                    crs = "EPSG:2154")
-  obj <- structure(list(reseau = terra::wrap(r)), class = "foretaccess_reseau")
+  # `lignes` = les routes NOUVELLES a creer. Un vrai `foretaccess_reseau` en
+  # porte toujours un champ, et c'est sur lui que `vectoriser_reseau()`
+  # travaille. La fixture l'omettait : elle decrivait donc, sans le vouloir, un
+  # reseau n'ayant AUCUNE route a typer - le cas que `run_desserte_typage()`
+  # distingue desormais (statut « empty », cf. Couchey). Ces tests-ci portent
+  # sur la suite du typage (unite m3_total, recap), pas sur ce cas limite : la
+  # fixture doit donc fournir une route.
+  lignes <- sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(
+      sf::st_linestring(rbind(c(900000, 6500000), c(900040, 6500040))),
+      crs = 2154))
+  obj <- structure(list(reseau = terra::wrap(r), lignes = lignes),
+                   class = "foretaccess_reseau")
   saveRDS(obj, file.path(cache_dir, paste0("reseau_obj_", engine, ".rds")))
 }
 

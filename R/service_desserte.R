@@ -1251,6 +1251,17 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
   if (is.null(reseau)) {
     return(list(status = "error", reason = "desserte_typage_no_reseau"))
   }
+  # Zero route NOUVELLE a creer n'est pas une panne : c'est le meilleur resultat
+  # possible - le reseau existant dessert deja toutes les parcelles (constate
+  # sur Couchey : `lignes` vide, 17 056 troncons existants, 76 UGF desservies
+  # sur 76, cout 0). `vectoriser_reseau()` travaille sur `reseau$lignes` et
+  # abandonne alors sur « Le reseau ne contient aucune route a vectoriser », que
+  # l'onglet affichait en rouge - un bon resultat rapporte comme un echec.
+  # On le distingue ici, AVANT l'appel, avec un statut propre.
+  if (is.null(reseau$lignes) || nrow(reseau$lignes) == 0L) {
+    return(list(status = "empty", reason = "desserte_typage_rien_a_typer"))
+  }
+
   graphe <- tryCatch(foretaccess::vectoriser_reseau(reseau),
                      error = function(e) structure(list(msg = conditionMessage(e)),
                                                    class = "acc_err"))

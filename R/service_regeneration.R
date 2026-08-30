@@ -987,8 +987,22 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     # ou pas de grille LiDAR HD. pai_depuis_nuage() n'est jamais appele, aucun
     # microclimf/ cree, sensibilite.gpkg reste absent -> afficher la raison plutot
     # que rester bloque sur `grille` (BILJOU en SAFRAN peut, lui, reussir).
-    reason <- if (!regen_cds_credentials_ready())
-      i18n$t("regen_phase_skip_reason_cds") else i18n$t("regen_phase_skip_reason_structure")
+    # Trois causes distinctes, trois messages. Ce bloc est atteint quand la
+    # grille LiDAR HD manque, ou la cle CDS, ou les deux - jamais parce que la
+    # vegetation manquerait : ce cas-la est traite plus haut, DANS le bloc
+    # grille. Y afficher « structure de vegetation manquante » (ce que faisait
+    # ce code) designait la consequence en cachant la cause, et envoyait
+    # chercher un LAI qui, meme present dans le cache, n'aurait servi a rien -
+    # le repli satellite ne vit qu'a l'interieur du bloc grille.
+    sans_grille <- is.null(grid)
+    sans_cds    <- !regen_cds_credentials_ready()
+    reason <- if (sans_grille && sans_cds) {
+      i18n$t("regen_phase_skip_reason_lidar_cds")
+    } else if (sans_grille) {
+      i18n$t("regen_phase_skip_reason_lidar")
+    } else {
+      i18n$t("regen_phase_skip_reason_cds")
+    }
     .regen_write_phase(out_dir, "microclimf_skipped", list(reason = reason))
   }
 

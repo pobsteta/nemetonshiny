@@ -1356,13 +1356,20 @@ mod_desserte_server <- function(id, app_state) {
         error = function(e) list(status = "error", reason = "desserte_typage_failed",
                                  detail = conditionMessage(e)))
       rv_typage(res)
-      if (!identical(res$status, "success")) {
+      # « empty » = rien a typer parce que rien a creer : information, pas
+      # erreur. Un toast rouge sur le meilleur resultat possible (reseau
+      # existant suffisant) envoie chercher une panne qui n'existe pas.
+      if (identical(res$status, "empty")) {
+        shiny::showNotification(i18n$t(res$reason %||% "desserte_typage_rien_a_typer"),
+                                type = "message", duration = 8)
+      } else if (!identical(res$status, "success")) {
         msg <- i18n$t(res$reason %||% "desserte_typage_failed")
         det <- tryCatch(res$detail, error = function(e) NULL)
         if (!is.null(det) && nzchar(det)) msg <- paste0(msg, " \u2014 ", .strip_ansi(det))
         shiny::showNotification(msg, type = "error", duration = NULL)
       }
-      isTRUE(identical(rv_typage()$status, "success"))
+      st <- rv_typage()$status
+      if (identical(st, "success")) TRUE else if (identical(st, "empty")) NA else FALSE
     }
 
     shiny::observeEvent(input$run_typage, .lancer_typage())
@@ -1377,11 +1384,15 @@ mod_desserte_server <- function(id, app_state) {
         return()
       }
       ok <- .lancer_typage()
-      pipeline_answer(app_state, req,
-                      if (isTRUE(ok)) "ok" else if (is.null(ok)) "skipped" else "error",
-                      if (isTRUE(ok)) NULL
-                      else if (is.null(ok)) i18n$t("pipeline_skip_not_started")
-                      else i18n$t("desserte_typage_failed"))
+      # Trois issues : type (TRUE), rien a typer (NA - le reseau existant
+      # suffit, c'est un bon resultat), garde refusee (NULL), echec (FALSE).
+      pipeline_answer(
+        app_state, req,
+        if (isTRUE(ok)) "ok" else if (is.null(ok) || is.na(ok)) "skipped" else "error",
+        if (isTRUE(ok)) NULL
+        else if (is.na(ok)) i18n$t("desserte_typage_rien_a_typer")
+        else if (is.null(ok)) i18n$t("pipeline_skip_not_started")
+        else i18n$t("desserte_typage_failed"))
     })
 
     # Le typage etait le SEUL des cinq a n'avoir aucun repli sur le cache : on

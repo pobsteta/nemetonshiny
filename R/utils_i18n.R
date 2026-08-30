@@ -5360,6 +5360,19 @@ TRANSLATIONS <- list(
   regen_phase_silence = list(fr = " \u2014 dernier signe de vie il y a %d min", en = " \u2014 last sign of life %d min ago"),
   regen_phase_micro_mois = list(fr = " \u2014 mois %d/%d", en = " \u2014 month %d/%d"),
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
+  # Distincte de `..._structure` : sans grille, microclimf ne demarre meme pas,
+  # et le repli LAI Sentinel-2 - qui ne vit qu'a l'INTERIEUR du bloc grille -
+  # n'est jamais atteint. Afficher « structure de vegetation manquante » dans ce
+  # cas designait la consequence et cachait la cause : c'est le MNT/MNH LiDAR HD
+  # qui manque, pas la vegetation.
+  regen_phase_skip_reason_lidar = list(
+    fr = "grille LiDAR HD manquante (MNT/MNH non t\u00e9l\u00e9charg\u00e9s)",
+    en = "missing LiDAR HD grid (DTM/CHM not downloaded)"
+  ),
+  regen_phase_skip_reason_lidar_cds = list(
+    fr = "grille LiDAR HD manquante et cl\u00e9 CDS/ERA5 absente",
+    en = "missing LiDAR HD grid and no CDS/ERA5 key"
+  ),
   regen_phase_skip_reason_structure = list(fr = "structure de v\u00e9g\u00e9tation manquante", en = "missing vegetation structure"),
   regen_guard_biljou = list(fr = "Bilan hydrique r\u00e9el indisponible : for\u00e7age m\u00e9t\u00e9o (SAFRAN/ERA5) ou donn\u00e9es sol non r\u00e9cup\u00e9r\u00e9s pour cette zone.", en = "Real water balance unavailable: weather forcing (SAFRAN/ERA5) or soil data could not be retrieved for this area."),
   regen_engine_status_micro = list(fr = "microclimf : grille LiDAR HD + identifiants CDS requis.", en = "microclimf: LiDAR HD grid + CDS credentials required."),
@@ -5783,6 +5796,10 @@ TRANSLATIONS <- list(
   pipeline_skip_no_indicators = list(
     fr = "Indicateurs non calcul\u00e9s.",
     en = "Indicators not computed."
+  ),
+  desserte_typage_rien_a_typer = list(
+    fr = "Aucune route nouvelle \u00e0 typer : le r\u00e9seau existant dessert d\u00e9j\u00e0 toutes les parcelles.",
+    en = "No new road to type: the existing network already serves every parcel."
   ),
   pipeline_skip_not_started = list(
     fr = "Le lancement a \u00e9t\u00e9 refus\u00e9 par l'onglet (pr\u00e9requis manquant).",
