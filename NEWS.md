@@ -1,3 +1,51 @@
+# nemetonshiny 0.143.5 (2026-08-30)
+
+Deux messages trompeurs, tous deux désignant la conséquence en cachant la cause.
+
+### Fixed — « Échec du typage » sur le meilleur résultat possible
+
+Sur Couchey, le typage de la desserte s'affichait **en rouge** : « Le réseau ne
+contient aucune route à vectoriser ». Inspection du cache : le moteur avait
+parfaitement réussi.
+
+| | |
+|---|---|
+| Routes **nouvelles** à créer | **0** |
+| Réseau existant | 17 056 tronçons |
+| Parcelles desservies | **76 sur 76** |
+| Coût du réseau glouton | **0** |
+
+Le réseau existant dessert déjà toutes les UGF : aucune route nouvelle n'est
+nécessaire. `foretaccess::vectoriser_reseau()` travaille sur `reseau$lignes` —
+les routes *nouvelles* — et abandonne quand il n'y en a aucune. Un excellent
+résultat rapporté comme une panne.
+
+Ce cas est désormais distingué **avant** l'appel, par un statut propre : toast
+d'information (« Aucune route nouvelle à typer : le réseau existant dessert déjà
+toutes les parcelles ») et étape comptée *Sautée*, non *Échec*, dans le rapport
+de la chaîne.
+
+### Fixed — « structure de végétation manquante » quand c'est la grille LiDAR qui manque
+
+microclimf annonçait une structure de végétation absente alors que le projet
+portait bien un `lai_prosail.tif`. La vraie cause : `lidar_mnt/`, `lidar_mnh/` et
+`lidar_nuage/` étaient **vides**, donc `resolve_regen_lidar_grid()` rendait
+`NULL` et le bloc était sauté avant tout essai. Le repli LAI Sentinel-2 ne vit
+qu'**à l'intérieur** du bloc grille — il n'était jamais atteint, et n'aurait de
+toute façon pas suffi : microclimf a besoin du MNT/MNH pour son maillage.
+
+Trois causes, trois messages désormais : « grille LiDAR HD manquante (MNT/MNH non
+téléchargés) », « clé CDS/ERA5 absente », ou les deux. « structure de végétation
+manquante » reste réservé à son cas réel — grille présente, mais ni nuage LiDAR
+ni LAI.
+
+### Fixed — Deux fixtures de test décrivaient un réseau impossible
+
+`.typage_write_reseau_obj()` et la fixture de `test-desserte_visualisation.R`
+construisaient un `foretaccess_reseau` **sans champ `lignes`**. Elles
+décrivaient donc, sans le vouloir, le cas limite ci-dessus. Un vrai objet réseau
+porte toujours ce champ ; les fixtures le fournissent maintenant.
+
 # nemetonshiny 0.143.4 (2026-08-30)
 
 ### Changed — La section « Tout calculer » se replie comme les autres

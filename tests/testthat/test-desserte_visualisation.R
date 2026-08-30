@@ -116,7 +116,13 @@ test_that("run_desserte_typage ECRIT le sidecar que relit le chargeur", {
   cd <- withr::local_tempdir()
   r <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4, ymin = 0, ymax = 4,
                    crs = "EPSG:2154", vals = 1)
-  saveRDS(list(reseau = terra::wrap(r)), file.path(cd, "reseau_obj_glouton.rds"))
+  # `lignes` non vide : sans lui, la fixture decrit un reseau sans AUCUNE route
+  # nouvelle a typer, cas que `run_desserte_typage()` distingue desormais par le
+  # statut « empty ». Ce test-ci porte sur la persistance du typage.
+  saveRDS(list(reseau = terra::wrap(r),
+               lignes = sf::st_sf(id = 1L, geometry = sf::st_sfc(
+                 sf::st_linestring(rbind(c(0, 0), c(4, 4))), crs = 2154))),
+          file.path(cd, "reseau_obj_glouton.rds"))
   parcelles <- sf::st_sf(
     P1 = 120,
     geometry = sf::st_sfc(sf::st_polygon(list(rbind(

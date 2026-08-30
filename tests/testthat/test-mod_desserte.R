@@ -192,3 +192,40 @@ test_that("les explications sont repliees, plus etalees sous les champs", {
   # Parametres > Sources & parametres, ou ils portent les MEMES textes d'aide.
   expect_gte(length(regmatches(h, gregexpr("fa-circle-info", h))[[1]]), 8L)
 })
+
+
+# ==============================================================================
+# Typage : « rien a typer » n'est pas un echec
+# ==============================================================================
+
+test_that("un reseau sans route nouvelle rend 'empty', pas une erreur", {
+  # Constate sur Couchey : le moteur glouton n'avait AUCUNE route a creer - le
+  # reseau existant (17 056 troncons) desservait deja les 76 UGF, cout 0. C'est
+  # le meilleur resultat possible. `foretaccess::vectoriser_reseau()` abandonne
+  # pourtant sur « Le reseau ne contient aucune route a vectoriser », et
+  # l'onglet l'affichait en ROUGE : un bon resultat rapporte comme une panne.
+  skip_if_not_installed("terra")
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+
+  cache <- withr::local_tempdir()
+  # Objet reseau minimal : la seule chose qui compte ici est `lignes` vide.
+  reseau <- structure(
+    list(lignes = sf::st_sf(id = integer(0),
+                            geometry = sf::st_sfc(crs = 2154)),
+         reseau = terra::wrap(terra::rast(nrows = 2, ncols = 2, vals = 1))),
+    class = "foretaccess_reseau")
+  saveRDS(reseau, file.path(cache, "reseau_obj_glouton.rds"))
+
+  parcelles <- sf::st_sf(
+    id = "p1", indicateur_p1_volume = 100,
+    geometry = sf::st_sfc(sf::st_polygon(list(matrix(
+      c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0), ncol = 2, byrow = TRUE))), crs = 2154))
+
+  res <- nemetonshiny:::run_desserte_typage(
+    cache, parcelles, taux_prelevement = 0.3, horizon_ans = 10)
+
+  expect_equal(res$status, "empty")
+  expect_equal(res$reason, "desserte_typage_rien_a_typer")
+  # Et la raison doit etre traduisible - sinon le rapport afficherait la cle.
+  expect_true(res$reason %in% names(nemetonshiny:::TRANSLATIONS))
+})
