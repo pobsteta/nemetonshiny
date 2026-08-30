@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.3" id="nemetonshiny-01433-2026-08-30">nemetonshiny 0.143.3 (2026-08-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01433-2026-08-30"></a></h2>
+<div class="section level4">
+<h4 id="fixed--santé-sautée-alors-que-les-quatre-zones-venaient-dêtre-créées-0-143-3">Fixed — Santé sautée alors que les quatre zones venaient d’être créées<a class="anchor" aria-label="anchor" href="#fixed--sant%C3%A9-saut%C3%A9e-alors-que-les-quatre-zones-venaient-d%C3%AAtre-cr%C3%A9%C3%A9es-0-143-3"></a></h4>
+<p>Second run complet sur Couchey : l’étape « création des zones de suivi » réussit en 9 s — et les trois moteurs se sautent quand même sur « Aucune zone de suivi enregistrée ». Vérification en base : les quatre zones (<code>couchey_tot</code>, <code>_feu</code>, <code>_res</code>, <code>_mix</code>) étaient bien là. La création n’était pas en cause.</p>
+<p>La garde interrogeait <code>input$zone_id</code>, un <code>selectInput</code> alimenté par <code>updateSelectInput()</code> — qui ne remonte au serveur <strong>qu’après un aller-retour client</strong>. Juste après la création des zones, il était encore vide.</p>
+<p><strong>Troisième occurrence du même piège dans cette chaîne</strong> — après les années E-OBS (v0.143.0) et <code>use_corrected</code> (v0.143.0), tous deux pourtant identifiés et commentés. Les gardes lisent désormais les zones <strong>en base</strong> via <code>fordead_zone_id()</code> et transmettent la zone résolue aux trois moteurs, qui la préfèrent à leur menu.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-rapport-masquait-la-vraie-cause-de-léchec-ia-0-143-3">Fixed — Le rapport masquait la vraie cause de l’échec IA<a class="anchor" aria-label="anchor" href="#fixed--le-rapport-masquait-la-vraie-cause-de-l%C3%A9chec-ia-0-143-3"></a></h4>
+<p>L’étape affichait « Le lancement a été refusé par l’onglet (prérequis manquant) », un message faux : les prérequis étaient réunis (<code>indicators_sf</code> à 76 lignes, <code>MISTRAL_API_KEY</code> définie).</p>
+<p>La raison réelle n’arrivait jamais. <code>raison &lt;&lt;- ...</code> était écrit dans le <strong>bloc</strong> d’un <code>tryCatch</code> — or ce bloc s’évalue dans le frame <strong>appelant</strong>, si bien que le <code>&lt;&lt;-</code> sautait par-dessus l’observer pour chercher la variable dans le namespace du paquet. Elle restait <code>NULL</code>, d’où le repli sur le message générique. Les deux cas ont été isolés pour lever le doute : dans un <em>handler</em> <code>error = function(e)</code> le <code>&lt;&lt;-</code> fonctionne (son enclos est le frame de la fonction) ; dans le <em>bloc</em>, il fuit.</p>
+<p>Ce que cela masquait : <strong>l’appel Mistral lui-même échouait</strong>. Son message partait dans un toast de 8 secondes — invisible au milieu d’un run de plusieurs heures. Il remonte désormais au rapport, détail compris.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.2" id="nemetonshiny-01432-2026-08-29">nemetonshiny 0.143.2 (2026-08-29)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01432-2026-08-29"></a></h2>
 <p>Trois défauts trouvés grâce au premier run complet sur Couchey, et la création des zones de suivi ajoutée à la chaîne.</p>

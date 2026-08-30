@@ -1,5 +1,46 @@
 # Changelog
 
+## nemetonshiny 0.143.3 (2026-08-30)
+
+#### Fixed — Santé sautée alors que les quatre zones venaient d’être créées
+
+Second run complet sur Couchey : l’étape « création des zones de suivi »
+réussit en 9 s — et les trois moteurs se sautent quand même sur « Aucune
+zone de suivi enregistrée ». Vérification en base : les quatre zones
+(`couchey_tot`, `_feu`, `_res`, `_mix`) étaient bien là. La création
+n’était pas en cause.
+
+La garde interrogeait `input$zone_id`, un `selectInput` alimenté par
+`updateSelectInput()` — qui ne remonte au serveur **qu’après un
+aller-retour client**. Juste après la création des zones, il était
+encore vide.
+
+**Troisième occurrence du même piège dans cette chaîne** — après les
+années E-OBS (v0.143.0) et `use_corrected` (v0.143.0), tous deux
+pourtant identifiés et commentés. Les gardes lisent désormais les zones
+**en base** via `fordead_zone_id()` et transmettent la zone résolue aux
+trois moteurs, qui la préfèrent à leur menu.
+
+#### Fixed — Le rapport masquait la vraie cause de l’échec IA
+
+L’étape affichait « Le lancement a été refusé par l’onglet (prérequis
+manquant) », un message faux : les prérequis étaient réunis
+(`indicators_sf` à 76 lignes, `MISTRAL_API_KEY` définie).
+
+La raison réelle n’arrivait jamais. `raison <<- ...` était écrit dans le
+**bloc** d’un `tryCatch` — or ce bloc s’évalue dans le frame
+**appelant**, si bien que le `<<-` sautait par-dessus l’observer pour
+chercher la variable dans le namespace du paquet. Elle restait `NULL`,
+d’où le repli sur le message générique. Les deux cas ont été isolés pour
+lever le doute : dans un *handler* `error = function(e)` le `<<-`
+fonctionne (son enclos est le frame de la fonction) ; dans le *bloc*, il
+fuit.
+
+Ce que cela masquait : **l’appel Mistral lui-même échouait**. Son
+message partait dans un toast de 8 secondes — invisible au milieu d’un
+run de plusieurs heures. Il remonte désormais au rapport, détail
+compris.
+
 ## nemetonshiny 0.143.2 (2026-08-29)
 
 Trois défauts trouvés grâce au premier run complet sur Couchey, et la
