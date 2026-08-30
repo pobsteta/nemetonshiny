@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.4" id="nemetonshiny-01434-2026-08-30">nemetonshiny 0.143.4 (2026-08-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01434-2026-08-30"></a></h2>
+<div class="section level4">
+<h4 id="changed--la-section--tout-calculer--se-replie-comme-les-autres-0-143-4">Changed — La section « Tout calculer » se replie comme les autres<a class="anchor" aria-label="anchor" href="#changed--la-section--tout-calculer--se-replie-comme-les-autres-0-143-4"></a></h4>
+<p>Même mécanisme que les blocs voisins de la sidebar <em>Sélection</em> (projets récents, recherche) : carte à en-tête <code>bg-secondary</code> cliquable, chevron, <code>data-bs-toggle="collapse"</code>. Dépliée par défaut, pour que le bouton reste visible sans clic préalable.</p>
+<p>Le gain n’est pas cosmétique : le panneau de progression liste <strong>dix-sept étapes</strong> et repoussait tout le reste de la sidebar hors de l’écran dès la chaîne lancée.</p>
+<p>Quatre tests, dont un qui vérifie que le bouton et le panneau sont bien <strong>à l’intérieur</strong> du bloc repliable — les laisser en dehors les rendrait insensibles au repli, et un test portant sur la seule présence des attributs passerait quand même.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.3" id="nemetonshiny-01433-2026-08-30">nemetonshiny 0.143.3 (2026-08-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01433-2026-08-30"></a></h2>
 <div class="section level4">

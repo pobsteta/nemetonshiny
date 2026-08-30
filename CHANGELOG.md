@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.4\] - 2026-08-30
+
+### Changed
+
+- La section « Tout calculer » de la sidebar *Sélection* est repliable,
+  avec le même mécanisme Bootstrap que les blocs voisins (en-tête
+  cliquable, chevron, `data-bs-toggle="collapse"`), dépliée par défaut.
+  Le panneau de progression listant dix-sept étapes repoussait sinon le
+  reste de la sidebar hors écran.
+
 ## \[0.143.3\] - 2026-08-30
 
 ### Fixed

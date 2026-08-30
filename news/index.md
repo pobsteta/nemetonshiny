@@ -1,5 +1,23 @@
 # Changelog
 
+## nemetonshiny 0.143.4 (2026-08-30)
+
+#### Changed — La section « Tout calculer » se replie comme les autres
+
+Même mécanisme que les blocs voisins de la sidebar *Sélection* (projets
+récents, recherche) : carte à en-tête `bg-secondary` cliquable, chevron,
+`data-bs-toggle="collapse"`. Dépliée par défaut, pour que le bouton
+reste visible sans clic préalable.
+
+Le gain n’est pas cosmétique : le panneau de progression liste
+**dix-sept étapes** et repoussait tout le reste de la sidebar hors de
+l’écran dès la chaîne lancée.
+
+Quatre tests, dont un qui vérifie que le bouton et le panneau sont bien
+**à l’intérieur** du bloc repliable — les laisser en dehors les rendrait
+insensibles au repli, et un test portant sur la seule présence des
+attributs passerait quand même.
+
 ## nemetonshiny 0.143.3 (2026-08-30)
 
 #### Fixed — Santé sautée alors que les quatre zones venaient d’être créées
