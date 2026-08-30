@@ -285,3 +285,37 @@ test_that("une perspective non generee ne peut pas etre rapportee reussie", {
   src <- paste(readLines(f, warn = FALSE), collapse = "\n")
   expect_true(grepl("if (is.null(synthesis_response)) {", src, fixed = TRUE))
 })
+
+test_that("les moteurs sante resolvent leur zone en base, pas dans le menu", {
+  # Run Couchey 2026-08-29 : les quatre zones venaient d'etre creees EN BASE,
+  # et les trois moteurs se sautaient quand meme sur « Aucune zone de suivi
+  # enregistree ». La garde interrogeait `input$zone_id`, un selectInput
+  # alimente par `updateSelectInput()` - pas encore remonte du client. C'est la
+  # TROISIEME occurrence du meme piege dans cette chaine (annees E-OBS,
+  # `use_corrected`, zone de suivi).
+  f <- chemin_source("R", "mod_monitoring.R")
+  skip_sans_sources(f)
+  src <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  # Chacune des trois etapes sante resout la zone via la lecture en base.
+  expect_equal(
+    length(gregexpr("zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))",
+                    src, fixed = TRUE)[[1]]), 3L)
+  # ... et la transmet au moteur, qui la prefere a son menu.
+  expect_equal(
+    length(gregexpr("zone_id = zid_pipeline", src, fixed = TRUE)[[1]]), 3L)
+})
+
+test_that("aucune raison de saut ne transite par un <<- depuis un bloc tryCatch", {
+  # Le bloc d'un `tryCatch` s'evalue dans le frame APPELANT : un `<<-` y saute
+  # par-dessus l'observer pour chercher la variable dans le namespace du
+  # paquet. La raison restait NULL et le rapport affichait « prerequis
+  # manquant » au lieu de la vraie cause - ce qui a masque un echec Mistral
+  # pendant tout un run (Couchey, 2026-08-29). Un `<<-` dans un HANDLER
+  # `error = function(e)` est licite : son enclos est bien le frame de la
+  # fonction. Seuls les blocs sont vises ici.
+  f <- chemin_source("R", "mod_synthesis.R")
+  skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
+  # `raison <<-` etait la formulation fautive ; elle ne doit plus exister.
+  expect_length(grep("raison\\s*<<-", src), 0L)
+})
