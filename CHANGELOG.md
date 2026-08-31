@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.6] - 2026-08-31
+
+### Fixed
+
+- **Le rapport de la chaîne affichait « Erreur » sans la cause.** `task$result()`
+  re-lève l'erreur du worker — seul endroit où son message subsiste — et il était
+  jeté au profit d'un libellé générique. Sur des moteurs tournant 13 h 40
+  (ingest FAST) et 4 h 10 (FORDEAD), c'était la seule information exploitable
+  sans tout relancer. `pipeline_task_error()` l'extrait sur les sept réponses
+  concernées, gère les échecs rendus par valeur
+  (`list(status = "error", reason =, detail =)`) et tronque les tracebacks
+  Python à 300 caractères.
+
 ## [0.143.5] - 2026-08-30
 
 ### Fixed

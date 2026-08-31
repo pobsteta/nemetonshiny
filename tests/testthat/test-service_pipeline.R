@@ -319,3 +319,40 @@ test_that("aucune raison de saut ne transite par un <<- depuis un bloc tryCatch"
   # `raison <<-` etait la formulation fautive ; elle ne doit plus exister.
   expect_length(grep("raison\\s*<<-", src), 0L)
 })
+
+test_that("pipeline_task_error extrait le message reel d'une tache en echec", {
+  # `task$result()` RE-LEVE l'erreur du worker : c'est le seul endroit ou son
+  # message existe encore. Sans cette extraction, le rapport n'affichait qu'un
+  # « Erreur » nu - sur des moteurs qui tournent des heures (13 h 40 pour
+  # l'ingest FAST, 4 h 10 pour FORDEAD sur Couchey), c'est la seule information
+  # exploitable sans tout relancer.
+  tache_ko <- list(result = function() stop("connexion refusee par le serveur S2"))
+  expect_match(nemetonshiny:::pipeline_task_error(tache_ko),
+               "connexion refusee", fixed = TRUE)
+})
+
+test_that("pipeline_task_error lit aussi un echec rendu PAR VALEUR", {
+  # Plusieurs moteurs de l'app ne levent pas : ils rendent
+  # `list(status = "error", reason = ..., detail = ...)`. Ne regarder que les
+  # conditions raterait ces cas-la.
+  avec_detail <- list(result = function() list(status = "error", detail = "raster illisible"))
+  expect_equal(nemetonshiny:::pipeline_task_error(avec_detail), "raster illisible")
+
+  avec_reason <- list(result = function() list(status = "error", reason = "desserte_engine_failed"))
+  expect_equal(nemetonshiny:::pipeline_task_error(avec_reason), "desserte_engine_failed")
+})
+
+test_that("pipeline_task_error tronque les tracebacks et retombe sur le defaut", {
+  # Un traceback Python (FORDEAD via reticulate) tiendrait sur des dizaines de
+  # lignes et noierait le rapport.
+  long <- paste(rep("ligne de traceback", 60), collapse = "\n")
+  out <- nemetonshiny:::pipeline_task_error(list(result = function() stop(long)))
+  expect_lte(nchar(out), 320L)
+  expect_match(out, "\\[\\.\\.\\.\\]$")
+  expect_false(grepl("\n", out, fixed = TRUE))
+
+  # Rien d'extractible -> message de repli, jamais NULL ni NA.
+  expect_equal(
+    nemetonshiny:::pipeline_task_error(list(result = function() NULL), "Erreur"),
+    "Erreur")
+})
