@@ -357,13 +357,13 @@ mod_sampling_server <- function(id, app_state) {
 
     # resolve_project_* are defensive (typed errors on NULL / "" /
     # missing path) - no need for a pre-validation guard here.
-    # `.project_chm()` plutot que `nemeton::resolve_project_chm()` seul : non
-    # plus pour le chemin - le cœur connait `cache/layers/opencanopy/` depuis
-    # v0.192.2 - mais pour le garde de CONTENU. Un modele de hauteur plat (le
-    # cas "Fordead") satisfait le resolveur, qui rend le premier chemin qui
-    # matche sans regarder ce qu'il y a dedans ; le plan tirerait alors sans
-    # strate de hauteur. `.project_chm()` y ajoute `.chm_exploitable()` et le
-    # repli sur la source suivante.
+    # `.project_chm()` plutot que `nemeton::resolve_project_chm()` seul : il
+    # passe au cœur le garde de CONTENU `.chm_exploitable()` via `validate`
+    # (nemeton >= 0.193.0). Sans lui le resolveur rend le premier chemin qui
+    # matche sans regarder ce qu'il y a dedans : un modele de hauteur plat (le
+    # cas "Fordead") le satisfait, et le plan tirerait sans strate de hauteur.
+    # Le seuil de 5 m est celui de `segment_houppiers()`, pas une constante du
+    # cœur - c'est pourquoi le predicat vit ici et le balayage la-bas.
     chm_raster <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) return(NULL)

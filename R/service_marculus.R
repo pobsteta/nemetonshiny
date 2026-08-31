@@ -612,19 +612,37 @@ precompute_houppiers <- function(project_id) {
 #' not need every one of them. A false negative costs what we already had (no
 #' crowns); a false positive costs the two minutes this check exists to save.
 #'
+#' Depuis v0.143.7 ce predicat est passe au cœur comme argument `validate`
+#' de `resolve_project_chm()` (`nemeton` >= 0.193.0). Deux consequences :
+#'
+#' * **Son verdict fait foi.** Le `TRUE` rendu dans le doute ne veut plus dire
+#'   « on laisse le cœur trancher » - le cœur ne tranche plus apres nous, il
+#'   ACCEPTE le candidat. Le choix reste le bon (dans le doute on garde : un
+#'   faux positif coute deux minutes, un faux negatif coute la source), mais
+#'   il n'est plus delegue.
+#' * **Il ne doit jamais lever.** Une erreur ici remonterait au cœur et
+#'   arreterait la resolution sur ce candidat au lieu de passer au suivant -
+#'   exactement ce que `validate` sert a eviter. D'ou le `tryCatch` global :
+#'   `spatSample()` peut echouer, mais aussi rendre un data.frame sans colonne,
+#'   sur lequel `v[[1]]` levait.
+#'
 #' @param r A `SpatRaster`.
 #' @param hmin Numeric. Minimum tree height, matching `segment_houppiers()`.
-#' @return `TRUE` when at least one sampled cell reaches `hmin`.
+#' @return `TRUE` when at least one sampled cell reaches `hmin`. Never errors.
 #' @noRd
 .chm_exploitable <- function(r, hmin = 5) {
   if (!inherits(r, "SpatRaster")) return(FALSE)
-  v <- tryCatch(
-    terra::spatSample(r, 1e5, method = "regular", na.rm = TRUE, warn = FALSE),
-    error = function(e) NULL)
-  if (is.null(v)) return(TRUE)   # doute : on laisse le coeur trancher
-  v <- suppressWarnings(as.numeric(v[[1]]))
-  v <- v[is.finite(v)]
-  length(v) > 0L && max(v) >= hmin
+  tryCatch({
+    v <- terra::spatSample(r, 1e5, method = "regular", na.rm = TRUE,
+                           warn = FALSE)
+    if (is.null(v) || NCOL(v) < 1L) {
+      TRUE
+    } else {
+      vals <- suppressWarnings(as.numeric(v[[1]]))
+      vals <- vals[is.finite(vals)]
+      length(vals) > 0L && max(vals) >= hmin
+    }
+  }, error = function(e) TRUE)
 }
 
 
@@ -642,23 +660,22 @@ precompute_houppiers <- function(project_id) {
 #' out flat, it picked one with no canopy in it at all while twenty LiDAR HD
 #' tiles sat unused next door.
 #'
-#' The Open-Canopy fallback is kept, and both candidates now have to pass
-#' [.chm_exploitable()]: a height model with no height is not a
-#' height model.
-#'
 #' Sert Marculus (segmentation des houppiers) ET le plan d'echantillonnage :
 #' les deux ont besoin du meilleur modele de hauteur disponible. D'ou le nom
 #' neutre : ce n'est pas un helper Marculus.
 #'
-#' **Depuis `nemeton` v0.192.2 le resolveur du cœur connait
-#' `cache/layers/opencanopy/`** - le repertoire ou `download_chm_opencanopy()`
-#' depose ses livrables - et le sonde fichier par fichier, apres le LiDAR HD
-#' (ADR-007). La boucle ci-dessous ne comble donc plus un trou de *chemin* :
-#' il ne lui reste que le repli **inter-sources** quand le candidat de tete est
-#' plat, que le cœur ne sait pas encore faire (il rend le premier chemin qui
-#' matche, sans regarder son contenu). Elle part des que
-#' `resolve_project_chm(validate =)` est livre - annonce en v0.193.0 ;
-#' `.chm_exploitable()` deviendra alors cet argument.
+#' **Il ne reste ici aucun chemin en dur** (v0.143.7). Le cœur connait
+#' `cache/layers/opencanopy/` depuis `nemeton` v0.192.2, et depuis v0.193.0 il
+#' prend le garde de contenu en argument : `validate` recoit le `SpatRaster`
+#' tel qu'il serait rendu - le VRT mosaique pour un repertoire de dalles, une
+#' seule fois par candidat - et un candidat refuse est **saute**, la recherche
+#' continuant a la source suivante.
+#'
+#' Le repli inter-sources y gagne : il balaie les six candidats CHM du cœur
+#' dans leur ordre (LiDAR HD d'abord, ADR-007) au lieu des trois noms de
+#' fichiers ecrits a la main qu'il sondait - dont un, `chm.tif`, n'existe pas
+#' dans ce repertoire : le temoin s'appelle `chm_1_5m.tif`. La liste etait donc
+#' fausse d'un tiers.
 #'
 #' @param project_id Character. Project identifier.
 #' @return A `SpatRaster` - `segment_houppiers()` takes one directly - or
@@ -668,17 +685,11 @@ precompute_houppiers <- function(project_id) {
   path <- get_project_path(project_id)
   if (is.null(path)) return(NULL)
 
-  r <- tryCatch(nemeton::resolve_project_chm(path, verbose = FALSE),
-                error = function(e) NULL)
-  if (.chm_exploitable(r)) return(r)
-
-  dir <- file.path(path, "cache", "layers", "opencanopy")
-  for (f in c("chm_predicted_0_2m.tif", "chm_predicted_1_5m.tif", "chm.tif")) {
-    p <- file.path(dir, f)
-    if (!file.exists(p)) next
-    rr <- tryCatch(terra::rast(p), error = function(e) NULL)
-    if (.chm_exploitable(rr)) return(rr)
-  }
+  r <- tryCatch(
+    nemeton::resolve_project_chm(path, validate = .chm_exploitable,
+                                 verbose = FALSE),
+    error = function(e) NULL)
+  if (inherits(r, "SpatRaster")) return(r)
 
   cli::cli_alert_info(
     "Houppiers : aucun mod\u00e8le de hauteur exploitable dans le cache du \

@@ -630,3 +630,74 @@ test_that("le repli fait exister la table desserte dans le GeoPackage exporte", 
       })
   })
 })
+
+
+test_that(".project_chm passe le garde de contenu au cœur, et ne sonde plus rien", {
+  # v0.143.7 - `nemeton` >= 0.193.0 prend le predicat en argument `validate` :
+  # un candidat refuse est SAUTE et la recherche continue a la source suivante.
+  # C'est ce qui autorise a retirer d'ici la boucle en dur sur
+  # `cache/layers/opencanopy/` - le repli inter-sources n'est plus perdu, il est
+  # rendu au cœur, qui balaie ses six candidats au lieu de nos trois noms.
+  vu <- new.env(parent = emptyenv())
+  testthat::local_mocked_bindings(
+    resolve_project_chm = function(project_path, validate = NULL, ...) {
+      vu$validate <- validate
+      NULL
+    },
+    .package = "nemeton")
+  testthat::local_mocked_bindings(get_project_path = function(...) "/tmp/projet")
+
+  expect_null(nemetonshiny:::.project_chm("projet"))
+  # C'est bien NOTRE predicat qui part au cœur, pas un autre ni `NULL`.
+  expect_identical(vu$validate, nemetonshiny:::.chm_exploitable)
+})
+
+test_that(".project_chm ne rattrape plus un Open-Canopy que le cœur a ecarte", {
+  skip_if_not_installed("terra")
+  # Le contre-test de la boucle retiree : un `chm_predicted_0_2m.tif`
+  # parfaitement exploitable existe sur le disque, et le cœur rend `NULL`.
+  # Avant v0.143.7 la boucle en dur l'aurait trouve ; desormais le verdict du
+  # cœur est le seul. Sans ce test, supprimer la boucle ne serait verifie par
+  # rien (verifie par mutation : le test echoue si on la remet).
+  dir <- withr::local_tempdir()
+  cache <- file.path(dir, "cache", "layers", "opencanopy")
+  dir.create(cache, recursive = TRUE)
+  r <- terra::rast(nrows = 20, ncols = 20, xmin = 0, xmax = 20,
+                   ymin = 0, ymax = 20, crs = "EPSG:2154")
+  terra::values(r) <- runif(terra::ncell(r), 10, 25)
+  terra::writeRaster(r, file.path(cache, "chm_predicted_0_2m.tif"))
+
+  testthat::local_mocked_bindings(
+    resolve_project_chm = function(...) NULL, .package = "nemeton")
+  testthat::local_mocked_bindings(get_project_path = function(...) dir)
+
+  expect_null(nemetonshiny:::.project_chm("projet"))
+})
+
+test_that(".chm_exploitable ne leve jamais - le cœur s'arreterait sur le candidat", {
+  skip_if_not_installed("terra")
+  # Une erreur levee dans `validate` remonte au cœur et arrete la resolution
+  # sur ce candidat, au lieu de passer au suivant : exactement ce que
+  # l'argument sert a eviter. Deux formes d'echec, la seconde etant celle que
+  # l'ancienne ecriture ratait - `spatSample()` peut rendre un data.frame SANS
+  # COLONNE, sur lequel `v[[1]]` levait « subscript out of bounds ».
+  r <- terra::rast(nrows = 4, ncols = 4)
+  terra::values(r) <- 1
+
+  testthat::local_mocked_bindings(
+    spatSample = function(...) stop("GDAL a rendu la main"),
+    .package = "terra")
+  expect_true(nemetonshiny:::.chm_exploitable(r))
+})
+
+test_that(".chm_exploitable survit a un echantillon sans colonne", {
+  skip_if_not_installed("terra")
+  r <- terra::rast(nrows = 4, ncols = 4)
+  terra::values(r) <- 1
+  testthat::local_mocked_bindings(
+    spatSample = function(...) data.frame(), .package = "terra")
+  # Dans le doute on GARDE le candidat : un faux positif coute deux minutes de
+  # segmentation, un faux negatif coute la source. Mais ce `TRUE` ne delegue
+  # plus rien - le cœur ne tranche plus apres nous, il accepte.
+  expect_true(nemetonshiny:::.chm_exploitable(r))
+})
