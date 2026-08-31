@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.7\] - 2026-08-31
+
+### Changed
+
+- **Le repli CHM en dur rendu au cœur.** `.project_chm()` ne sonde plus
+  `cache/layers/opencanopy/` : il passe `.chm_exploitable()` à
+  `nemeton::resolve_project_chm(validate =)` (cœur \>= 0.193.0), qui
+  saute un candidat refusé et continue à la source suivante. Le repli
+  inter-sources balaie désormais les six candidats du cœur au lieu de
+  trois noms écrits à la main, dont un inexistant.
+- Plancher `Imports: nemeton (>= 0.192.0)` -\> `(>= 0.193.0)`.
+
+### Fixed
+
+- `.chm_exploitable()` pouvait lever : le `tryCatch` ne couvrait que
+  `spatSample()`, qui peut aussi *rendre* un `data.frame` sans colonne,
+  sur lequel `v[[1]]` levait. Passé en `validate`, une erreur y arrêtait
+  la résolution du cœur au lieu de passer au candidat suivant. Le
+  prédicat est total.
+
 ## \[0.143.6\] - 2026-08-31
 
 ### Fixed

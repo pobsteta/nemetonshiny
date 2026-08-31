@@ -1,5 +1,60 @@
 # Changelog
 
+## nemetonshiny 0.143.7 (2026-08-31)
+
+#### Changed — Le repli CHM en dur rendu au cœur, qui le fait mieux
+
+`nemeton` v0.192.2 avait appris à résoudre `cache/layers/opencanopy/` ;
+v0.193.0 lui ajoute l’argument qui manquait, `validate`. Les deux
+morceaux du contournement que l’app portait depuis la v0.141.x rentrent
+donc chez eux.
+
+`.project_chm()` ne sonde plus aucun chemin. Il passe son garde de
+contenu au résolveur, qui **saute** un candidat refusé et continue à la
+source suivante :
+
+``` r
+
+nemeton::resolve_project_chm(path, validate = .chm_exploitable)
+```
+
+Le repli inter-sources n’est pas seulement préservé, il est **meilleur**
+: il balaie les six candidats CHM du cœur dans leur ordre (LiDAR HD
+d’abord, ADR-007) au lieu des trois noms de fichiers écrits à la main —
+dont un, `chm.tif`, n’existe pas dans ce répertoire : le témoin
+s’appelle `chm_1_5m.tif`. La liste était fausse d’un tiers.
+
+Ce qui **reste ici**, et doit y rester : `.chm_exploitable()`. C’est un
+garde de **contenu**, pas de chemin, et son seuil de 5 m est celui de
+`segment_houppiers()`, pas une constante du cœur. Le cœur rend le
+premier chemin qui matche sans regarder ce qu’il y a dedans ; un modèle
+de hauteur plat (le cas « Fordead ») le satisfait, et le plan
+d’échantillonnage tirerait sans strate de hauteur.
+
+#### Fixed — Le prédicat pouvait lever, ce qui coûtait désormais les sources suivantes
+
+Tant qu’il était appelé par nous, une erreur dans `.chm_exploitable()`
+ne coûtait qu’un candidat. Passé en `validate`, elle **remonte au cœur
+et arrête la résolution** sur ce candidat au lieu de passer au suivant —
+exactement ce que l’argument sert à éviter.
+
+Le `tryCatch` ne couvrait que `spatSample()`. Or cette fonction peut
+aussi **rendre** un `data.frame` sans colonne, sur lequel le `v[[1]]`
+qui suivait levait « subscript out of bounds ». Le prédicat est
+désormais total.
+
+Son `TRUE` du doute change aussi de sens, et le commentaire le disait
+encore à l’ancienne : il ne veut plus dire « on laisse le cœur trancher
+» — le cœur ne tranche plus après nous, il **accepte**. Le choix reste
+le bon (un faux positif coûte deux minutes de segmentation, un faux
+négatif coûte la source), mais il n’est plus délégué.
+
+#### Changed — Plancher `nemeton (>= 0.193.0)`
+
+Bumpé maintenant, et pas à v0.192.2 : tant que la boucle en dur était
+là, le plancher aurait documenté une dépendance que le code ne prenait
+pas encore.
+
 ## nemetonshiny 0.143.6 (2026-08-31)
 
 #### Fixed — Le rapport disait « Erreur » sans jamais dire laquelle

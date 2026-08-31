@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,29 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.7" id="nemetonshiny-01437-2026-08-31">nemetonshiny 0.143.7 (2026-08-31)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01437-2026-08-31"></a></h2>
+<div class="section level4">
+<h4 id="changed--le-repli-chm-en-dur-rendu-au-cœur-qui-le-fait-mieux-0-143-7">Changed — Le repli CHM en dur rendu au cœur, qui le fait mieux<a class="anchor" aria-label="anchor" href="#changed--le-repli-chm-en-dur-rendu-au-c%C5%93ur-qui-le-fait-mieux-0-143-7"></a></h4>
+<p><code>nemeton</code> v0.192.2 avait appris à résoudre <code>cache/layers/opencanopy/</code> ; v0.193.0 lui ajoute l’argument qui manquait, <code>validate</code>. Les deux morceaux du contournement que l’app portait depuis la v0.141.x rentrent donc chez eux.</p>
+<p><code>.project_chm()</code> ne sonde plus aucun chemin. Il passe son garde de contenu au résolveur, qui <strong>saute</strong> un candidat refusé et continue à la source suivante :</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">nemeton</span><span class="fu">::</span><span class="fu"><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">resolve_project_chm</a></span><span class="op">(</span><span class="va">path</span>, validate <span class="op">=</span> <span class="va">.chm_exploitable</span><span class="op">)</span></span></code></pre></div>
+<p>Le repli inter-sources n’est pas seulement préservé, il est <strong>meilleur</strong> : il balaie les six candidats CHM du cœur dans leur ordre (LiDAR HD d’abord, ADR-007) au lieu des trois noms de fichiers écrits à la main — dont un, <code>chm.tif</code>, n’existe pas dans ce répertoire : le témoin s’appelle <code>chm_1_5m.tif</code>. La liste était fausse d’un tiers.</p>
+<p>Ce qui <strong>reste ici</strong>, et doit y rester : <code>.chm_exploitable()</code>. C’est un garde de <strong>contenu</strong>, pas de chemin, et son seuil de 5 m est celui de <code>segment_houppiers()</code>, pas une constante du cœur. Le cœur rend le premier chemin qui matche sans regarder ce qu’il y a dedans ; un modèle de hauteur plat (le cas « Fordead ») le satisfait, et le plan d’échantillonnage tirerait sans strate de hauteur.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-prédicat-pouvait-lever-ce-qui-coûtait-désormais-les-sources-suivantes-0-143-7">Fixed — Le prédicat pouvait lever, ce qui coûtait désormais les sources suivantes<a class="anchor" aria-label="anchor" href="#fixed--le-pr%C3%A9dicat-pouvait-lever-ce-qui-co%C3%BBtait-d%C3%A9sormais-les-sources-suivantes-0-143-7"></a></h4>
+<p>Tant qu’il était appelé par nous, une erreur dans <code>.chm_exploitable()</code> ne coûtait qu’un candidat. Passé en <code>validate</code>, elle <strong>remonte au cœur et arrête la résolution</strong> sur ce candidat au lieu de passer au suivant — exactement ce que l’argument sert à éviter.</p>
+<p>Le <code>tryCatch</code> ne couvrait que <code>spatSample()</code>. Or cette fonction peut aussi <strong>rendre</strong> un <code>data.frame</code> sans colonne, sur lequel le <code>v[[1]]</code> qui suivait levait « subscript out of bounds ». Le prédicat est désormais total.</p>
+<p>Son <code>TRUE</code> du doute change aussi de sens, et le commentaire le disait encore à l’ancienne : il ne veut plus dire « on laisse le cœur trancher » — le cœur ne tranche plus après nous, il <strong>accepte</strong>. Le choix reste le bon (un faux positif coûte deux minutes de segmentation, un faux négatif coûte la source), mais il n’est plus délégué.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--plancher-nemeton--0-143-7">Changed — Plancher <code>nemeton (&gt;= 0.193.0)</code>
+<a class="anchor" aria-label="anchor" href="#changed--plancher-nemeton--0-143-7"></a></h4>
+<p>Bumpé maintenant, et pas à v0.192.2 : tant que la boucle en dur était là, le plancher aurait documenté une dépendance que le code ne prenait pas encore.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.6" id="nemetonshiny-01436-2026-08-31">nemetonshiny 0.143.6 (2026-08-31)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01436-2026-08-31"></a></h2>
 <div class="section level4">
@@ -5354,7 +5377,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="migration-0-69-0">Migration<a class="anchor" aria-label="anchor" href="#migration-0-69-0"></a></h4>
 <p><strong>Pas de migration automatique</strong> (décision UX consciente). Sur les projets existants ayant déjà préchauffé un <code>cache/layers/fast/</code>, l’ancien répertoire restera orphelin sur disque. Le nouveau code créera <code>cache/layers/fast_sampling/</code> à la prochaine demande de validation_sampling. Suppression manuelle de l’ancien recommandée pour récupérer l’espace disque :</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="détails-techniques-0-69-0">Détails techniques<a class="anchor" aria-label="anchor" href="#d%C3%A9tails-techniques-0-69-0"></a></h4>
@@ -5583,7 +5606,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="added--observabilité-rag-cli_inform-par-perspective-0-61-1">Added — Observabilité RAG (<code>cli_inform</code> par perspective)<a class="anchor" aria-label="anchor" href="#added--observabilit%C3%A9-rag-cli_inform-par-perspective-0-61-1"></a></h4>
 <p>Ajout d’une ligne de log par appel <code>rag_context()</code> réussi, dans <code>R/service_rag.R</code> juste après le retrieve cœur :</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_inform</a></span><span class="op">(</span><span class="st">"RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Pourquoi</strong> : sans ce log, un corpus muet (0 chunk au-dessus du seuil) ressemblait à un cas où <code>rag_context()</code> court-circuitait avant le retrieve (opt-out, corpus indisponible, situation_text vide…). Désormais on distingue :</p>
 <ul><li>
@@ -5670,7 +5693,7 @@ Current Memory Usage: 17.1G</code></pre>
 <p>Le test <code>test-mod_monitoring.R::"register click invokes register_project_as_zone and persists zone_id in app_state"</code> failait sur ses 3 assertions (lignes 944-946) parce que l’observer du bouton « Enregistrer la zone » était passé d’un <code>observeEvent(input$register)</code> direct à un <code>observe() |&gt; bindEvent(input$register, input$register_inline, ignoreInit = TRUE)</code> lors de l’ajout du bouton inline (commit 3f1059d).</p>
 <p>En <code>testServer</code>, <code>session$setInputs(register = 1L)</code> posé directement est traité comme l’état d’init par <code>bindEvent(ignoreInit = TRUE)</code> — l’observer ne se déclenche pas, <code>register_project_as_zone</code> n’est jamais appelé, <code>captured_project</code> reste <code>NULL</code> et les 3 assertions cascadent.</p>
 <p><strong>Fix</strong> : matérialiser une transition d’input avant la vraie valeur :</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>  <span class="co"># init</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># vrai clic, fire l'observer</span></span></code></pre></div>
 <p>Identique au pattern qu’un <code>actionButton</code> réel suit (init à 0, incrément à chaque clic). Aucun changement de code de prod — c’est strictement un fix de fidélité du harness de test.</p>
@@ -5991,7 +6014,7 @@ Current Memory Usage: 17.1G</code></pre>
    threshold_nbr = as.numeric(th$nbr))</code></pre>
 <p>La carte d’alertes FAST restait vide après chaque ingestion.</p>
 <p><strong>Cause</strong> : <code>nemeton@v0.55.0</code> (spec 017) a <strong>délibérément</strong> simplifié <code>read_fast_alert_raster()</code> en mono-index — la combinaison historique NDVI+NBR a été abandonnée. La nouvelle signature est :</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">read_fast_alert_raster</span><span class="op">(</span><span class="va">con</span>, <span class="va">zone_id</span>,</span>
 <span>                       index     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NDVI"</span>, <span class="st">"NBR"</span><span class="op">)</span>,   <span class="co"># un seul</span></span>
 <span>                       threshold <span class="op">=</span> <span class="cn">NULL</span>,               <span class="co"># un seul</span></span>
@@ -6008,7 +6031,7 @@ Current Memory Usage: 17.1G</code></pre>
 <h4 id="fixed--plan-dactions--tableau-rendu-vide-régression-v05210-0-52-12">Fixed — Plan d’actions : tableau rendu VIDE (régression v0.52.10)<a class="anchor" aria-label="anchor" href="#fixed--plan-dactions--tableau-rendu-vide-r%C3%A9gression-v05210-0-52-12"></a></h4>
 <p><strong>Symptôme</strong> : sur la vue « Carte + Tableau » du Plan d’actions, le tableau ne contient AUCUNE ligne, alors que l’en-tête indique correctement « N action(s) après filtres » et que les KPI badges + sparkline cumulatif fonctionnent.</p>
 <p><strong>Cause (régression v0.52.10)</strong> : le JS callback ajouté pour le dblclick sur la cellule commentaire passait à <code>DT::datatable(callback = ...)</code> une fonction COMPLÈTE :</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
 <p>Or <code><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">DT::datatable</a></code> wrappe <strong>automatiquement</strong> le callback fourni dans <code>function(table) { … }</code>. Le résultat était une fonction-dans-une-fonction où : 1. Le handler <code>dblclick</code> est dans une fonction INTERNE jamais appelée → handler jamais enregistré. 2. La fonction externe ne fait <code>return table;</code> → DataTables casse silencieusement son pipeline d’initialisation → tableau RENDU SANS LIGNES alors que <code>data.frame</code> a bien N lignes.</p>
 <p><strong>Fix</strong> : le callback passe désormais juste le <strong>corps</strong> de fonction (pas de wrapper <code>function(table) { ... }</code>), avec un <code>return table;</code> final. DT applique son propre wrapper et le pipeline init reprend normalement.</p>
 <p><code>R/mod_action_plan.R</code>. Cycle dev <code>0.52.11</code> → <code>0.52.11.9001</code> → release stable <strong><code>v0.52.12</code></strong> (PATCH, fix régression urgent).</p>
@@ -7976,7 +7999,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>
