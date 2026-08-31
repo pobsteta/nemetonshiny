@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.6" id="nemetonshiny-01436-2026-08-31">nemetonshiny 0.143.6 (2026-08-31)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01436-2026-08-31"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-rapport-disait--erreur--sans-jamais-dire-laquelle-0-143-6">Fixed — Le rapport disait « Erreur » sans jamais dire laquelle<a class="anchor" aria-label="anchor" href="#fixed--le-rapport-disait--erreur--sans-jamais-dire-laquelle-0-143-6"></a></h4>
+<p>Troisième run sur Couchey : la Santé part enfin (les zones sont vues), mais deux moteurs échouent — surveillance rapide après <strong>13 h 40</strong>, FORDEAD après <strong>4 h 10</strong> — et le rapport n’affiche qu’un « Erreur » nu.</p>
+<p>Or <code>task$result()</code> <strong>re-lève</strong> l’erreur du worker : c’est le seul endroit où son message existe encore. Le jeter revenait à imposer un relancement de plusieurs heures pour apprendre ce qu’on savait déjà à la seconde près.</p>
+<p><code>pipeline_task_error()</code> l’extrait désormais, sur les <strong>sept</strong> réponses concernées (trois moteurs Santé, quatre de reGénération). Il couvre aussi les moteurs qui rendent un échec <strong>par valeur</strong> — contrat <code>list(status = "error", reason =, detail =)</code> de plusieurs moteurs de l’app — que regarder les seules conditions aurait ratés. Les tracebacks Python de FORDEAD (reticulate) sont tronqués à 300 caractères et mis sur une ligne, pour ne pas noyer le rapport.</p>
+</div>
+<div class="section level4">
+<h4 id="ce-que-linspection-du-projet-a-montré-0-143-6">Ce que l’inspection du projet a montré<a class="anchor" aria-label="anchor" href="#ce-que-linspection-du-projet-a-montr%C3%A9-0-143-6"></a></h4>
+<p>Les deux moteurs « en erreur » avaient travaillé et produit :</p>
+<table class="table"><tbody><tr><td><code>ingest_run.json</code></td>
+<td>statut <strong>done</strong>, <strong>183 scènes</strong>
+</td>
+</tr><tr><td>Table <code>alert</code>, zone <code>couchey_tot</code>
+</td>
+<td><strong>51 alertes <code>fordead_dieback</code></strong></td>
+</tr></tbody></table><p>L’échec est donc survenu <strong>après</strong> le travail utile. Sa cause reste inconnue — c’est précisément ce que le correctif ci-dessus permettra de savoir au prochain run.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.5" id="nemetonshiny-01435-2026-08-30">nemetonshiny 0.143.5 (2026-08-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01435-2026-08-30"></a></h2>
 <p>Deux messages trompeurs, tous deux désignant la conséquence en cachant la cause.</p>

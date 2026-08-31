@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.143.6 (2026-08-31)
+
+#### Fixed — Le rapport disait « Erreur » sans jamais dire laquelle
+
+Troisième run sur Couchey : la Santé part enfin (les zones sont vues),
+mais deux moteurs échouent — surveillance rapide après **13 h 40**,
+FORDEAD après **4 h 10** — et le rapport n’affiche qu’un « Erreur » nu.
+
+Or `task$result()` **re-lève** l’erreur du worker : c’est le seul
+endroit où son message existe encore. Le jeter revenait à imposer un
+relancement de plusieurs heures pour apprendre ce qu’on savait déjà à la
+seconde près.
+
+`pipeline_task_error()` l’extrait désormais, sur les **sept** réponses
+concernées (trois moteurs Santé, quatre de reGénération). Il couvre
+aussi les moteurs qui rendent un échec **par valeur** — contrat
+`list(status = "error", reason =, detail =)` de plusieurs moteurs de
+l’app — que regarder les seules conditions aurait ratés. Les tracebacks
+Python de FORDEAD (reticulate) sont tronqués à 300 caractères et mis sur
+une ligne, pour ne pas noyer le rapport.
+
+#### Ce que l’inspection du projet a montré
+
+Les deux moteurs « en erreur » avaient travaillé et produit :
+
+|                                   |                                  |
+|-----------------------------------|----------------------------------|
+| `ingest_run.json`                 | statut **done**, **183 scènes**  |
+| Table `alert`, zone `couchey_tot` | **51 alertes `fordead_dieback`** |
+
+L’échec est donc survenu **après** le travail utile. Sa cause reste
+inconnue — c’est précisément ce que le correctif ci-dessus permettra de
+savoir au prochain run.
+
 ## nemetonshiny 0.143.5 (2026-08-30)
 
 Deux messages trompeurs, tous deux désignant la conséquence en cachant
