@@ -508,16 +508,17 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       i18n <- i18n_r()
       for (item in list(
-        list(rv = sante_fast_pipeline_req,      st = fast_task$status()),
-        list(rv = sante_fordead_pipeline_req,   st = fordead_task$status()),
-        list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status())
+        list(rv = sante_fast_pipeline_req,      st = fast_task$status(),      tk = fast_task),
+        list(rv = sante_fordead_pipeline_req,   st = fordead_task$status(),   tk = fordead_task),
+        list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status(), tk = reconfort_task)
       )) {
         req <- shiny::isolate(item$rv())
         if (is.null(req)) next
         if (!item$st %in% c("success", "error")) next
         pipeline_answer(app_state, req,
                         if (identical(item$st, "success")) "ok" else "error",
-                        if (identical(item$st, "success")) NULL else i18n$t("error"))
+                        if (identical(item$st, "success")) NULL
+                        else pipeline_task_error(item$tk, i18n$t("error")))
         item$rv(NULL)
       }
     })

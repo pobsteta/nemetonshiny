@@ -1807,13 +1807,14 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     shiny::observe({
-      for (item in list(list(rv = rr_pipeline_req, st = eobs_rr_task$status()),
-                        list(rv = tg_pipeline_req, st = eobs_tg_task$status()))) {
+      for (item in list(list(rv = rr_pipeline_req, st = eobs_rr_task$status(), tk = eobs_rr_task),
+                        list(rv = tg_pipeline_req, st = eobs_tg_task$status(), tk = eobs_tg_task))) {
         req <- shiny::isolate(item$rv())
         if (is.null(req) || !item$st %in% c("success", "error")) next
         pipeline_answer(app_state, req,
                         if (identical(item$st, "success")) "ok" else "error",
-                        if (identical(item$st, "success")) NULL else i18n$t("error"))
+                        if (identical(item$st, "success")) NULL
+                        else pipeline_task_error(item$tk, i18n$t("error")))
         item$rv(NULL)
       }
     })
@@ -1873,7 +1874,8 @@ mod_regeneration_server <- function(id, app_state) {
           pipeline_answer(app_state, req, "skipped", i18n$t("regen_auto_none"))
         }
       } else {
-        pipeline_answer(app_state, req, "error", i18n$t("error"))
+        pipeline_answer(app_state, req, "error",
+                        pipeline_task_error(eobs_task, i18n$t("error")))
       }
       eobs_pipeline_req(NULL)
     })
@@ -1884,7 +1886,8 @@ mod_regeneration_server <- function(id, app_state) {
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL else i18n$t("error"))
+                      if (identical(st, "success")) NULL
+                      else pipeline_task_error(frost_task, i18n$t("error")))
       gel_pipeline_req(NULL)
     })
 
@@ -1920,7 +1923,7 @@ mod_regeneration_server <- function(id, app_state) {
         pipeline_answer(app_state, req_pipeline,
                         if (identical(st, "success")) "ok" else "error",
                         if (identical(st, "success")) NULL
-                        else i18n$t("error"))
+                        else pipeline_task_error(engine_task, i18n$t("error")))
         pipeline_req(NULL)
       }
       if (identical(st, "success")) {

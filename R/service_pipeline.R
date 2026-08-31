@@ -319,3 +319,33 @@ pipeline_profil <- function(request) {
   p <- as.character(request$profil)[1]
   if (!nzchar(p)) NULL else p
 }
+
+#' Message d'erreur reel d'un `ExtendedTask`, pour le rapport de la chaine
+#'
+#' @description
+#' `task$result()` RE-LEVE l'erreur du worker : c'est le seul endroit ou son
+#' message existe encore. Sans cette extraction, le rapport du lancement
+#' enchaine n'affichait qu'un « Erreur » nu - et sur des moteurs qui tournent
+#' des heures (13 h 40 pour l'ingest FAST, 4 h 10 pour FORDEAD sur Couchey),
+#' c'est la seule information qui permette de savoir quoi corriger sans tout
+#' relancer.
+#'
+#' @param task An `ExtendedTask`.
+#' @param defaut Character. Message de repli quand rien n'est extractible.
+#' @return Character scalar.
+#' @noRd
+pipeline_task_error <- function(task, defaut = "error") {
+  msg <- tryCatch({
+    res <- task$result()
+    # Une tache peut « reussir » en rendant une liste d'echec (contrat
+    # `list(status = "error", ...)` de plusieurs moteurs de l'app).
+    if (is.list(res) && !is.null(res$detail)) as.character(res$detail)[1]
+    else if (is.list(res) && !is.null(res$reason)) as.character(res$reason)[1]
+    else NULL
+  }, error = function(e) conditionMessage(e))
+  if (is.null(msg) || !nzchar(msg)) return(defaut)
+  # Tronquer : un traceback Python (FORDEAD via reticulate) tiendrait sur des
+  # dizaines de lignes et noierait le rapport.
+  msg <- gsub("\\s+", " ", .strip_ansi(msg))
+  if (nchar(msg) > 300) paste0(substr(msg, 1, 300), " [...]") else msg
+}
