@@ -647,10 +647,18 @@ precompute_houppiers <- function(project_id) {
 #' height model.
 #'
 #' Sert Marculus (segmentation des houppiers) ET le plan d'echantillonnage :
-#' les deux ont besoin du meilleur modele de hauteur disponible, et le
-#' resolveur du cœur ignore `cache/layers/opencanopy/` - le repertoire ou
-#' `download_chm_opencanopy()` depose pourtant ses livrables (il sonde
-#' `cache/layers/chm/`). D'ou le nom neutre : ce n'est pas un helper Marculus.
+#' les deux ont besoin du meilleur modele de hauteur disponible. D'ou le nom
+#' neutre : ce n'est pas un helper Marculus.
+#'
+#' **Depuis `nemeton` v0.192.2 le resolveur du cœur connait
+#' `cache/layers/opencanopy/`** - le repertoire ou `download_chm_opencanopy()`
+#' depose ses livrables - et le sonde fichier par fichier, apres le LiDAR HD
+#' (ADR-007). La boucle ci-dessous ne comble donc plus un trou de *chemin* :
+#' il ne lui reste que le repli **inter-sources** quand le candidat de tete est
+#' plat, que le cœur ne sait pas encore faire (il rend le premier chemin qui
+#' matche, sans regarder son contenu). Elle part des que
+#' `resolve_project_chm(validate =)` est livre - annonce en v0.193.0 ;
+#' `.chm_exploitable()` deviendra alors cet argument.
 #'
 #' @param project_id Character. Project identifier.
 #' @return A `SpatRaster` - `segment_houppiers()` takes one directly - or

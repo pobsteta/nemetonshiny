@@ -357,14 +357,13 @@ mod_sampling_server <- function(id, app_state) {
 
     # resolve_project_* are defensive (typed errors on NULL / "" /
     # missing path) - no need for a pre-validation guard here.
-    # `.project_chm()` plutot que `nemeton::resolve_project_chm()` seul : le
-    # resolveur du cœur sonde `cache/layers/chm/`, alors que
-    # `download_chm_opencanopy()` (service_compute.R) depose ses livrables dans
-    # `cache/layers/opencanopy/`. Sur Couchey, un CHM Open-Canopy parfaitement
-    # exploitable - EPSG:2154, 0,2 m, hauteurs jusqu'a 32 m - etait donc ignore
-    # et le plan tirait sans strate de hauteur. `.project_chm()` interroge le
-    # cœur d'abord (LiDAR HD prioritaire) puis retombe sur Open-Canopy, chaque
-    # candidat devant passer `.chm_exploitable()`.
+    # `.project_chm()` plutot que `nemeton::resolve_project_chm()` seul : non
+    # plus pour le chemin - le cœur connait `cache/layers/opencanopy/` depuis
+    # v0.192.2 - mais pour le garde de CONTENU. Un modele de hauteur plat (le
+    # cas "Fordead") satisfait le resolveur, qui rend le premier chemin qui
+    # matche sans regarder ce qu'il y a dedans ; le plan tirerait alors sans
+    # strate de hauteur. `.project_chm()` y ajoute `.chm_exploitable()` et le
+    # repli sur la source suivante.
     chm_raster <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) return(NULL)
