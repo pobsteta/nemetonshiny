@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,42 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.11" id="nemetonshiny-014311-2026-09-01">nemetonshiny 0.143.11 (2026-09-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014311-2026-09-01"></a></h2>
+<div class="section level4">
+<h4 id="fixed--les-zones-de-suivi-étaient-recréées-à-chaque-run-et-emportaient-tous-les-caches-0-143-11">Fixed — Les zones de suivi étaient recréées à chaque run, et emportaient tous les caches<a class="anchor" aria-label="anchor" href="#fixed--les-zones-de-suivi-%C3%A9taient-recr%C3%A9%C3%A9es-%C3%A0-chaque-run-et-emportaient-tous-les-caches-0-143-11"></a></h4>
+<p><code>build_project_monitoring_zones()</code> a <code>replace = TRUE</code> par défaut, et ce <code>replace</code> <strong>supprime</strong> les lignes du projet avant de réinsérer : les identifiants changent à chaque appel. L’étape « Santé — création des zones de suivi » l’appelait à chaque lancement de la chaîne.</p>
+<p>Tout ce qui est indexé sur l’identifiant devenait donc orphelin — <code>cache/layers/{fordead,reconfort}/output_zone_&lt;id&gt;/</code>. Mesuré sur Couchey, un seul projet, trois runs :</p>
+<table class="table"><thead><tr><th>répertoire</th>
+<th>marqueurs de reprise</th>
+<th>taille</th>
+</tr></thead><tbody><tr><td><code>output_zone_37</code></td>
+<td>106</td>
+<td>3,5 Go</td>
+</tr><tr><td><code>output_zone_41</code></td>
+<td>81</td>
+<td>2,8 Go</td>
+</tr><tr><td><code>output_zone_45</code></td>
+<td>2</td>
+<td>1,4 Go</td>
+</tr></tbody></table><p><strong>6,3 Go sous des zones qui n’existent plus</strong> — vérifié en base, seule la 45 subsiste.</p>
+<p>Et le disque n’est pas le pire. Les marqueurs d’idempotence de l’ingestion RECONFORT (<code>ingested/*.done</code>, qui font sauter une scène déjà ingérée) vivent sous ce répertoire. Un nouvel identifiant = un répertoire vide = <strong>tout re-téléchargé</strong>. La reprise après arrêt était déjà écrite côté cœur ; c’est le renouvellement des identifiants qui l’annulait, run après run.</p>
+<p>La chaîne saute désormais l’étape quand les zones sont à jour. <strong>Deux conditions, et les deux comptent</strong> : la clé dit que les sources n’ont pas bougé (UGF, tènements, BD Forêt) ; la présence en base dit que les zones existent encore et portent bien une strate <code>_tot</code>. Sauter sur la seule clé servirait un <code>zone_id</code> qui ne désigne plus rien.</p>
+<p>Le compromis est celui du contrôle d’intégrité : la clé porte sur les <strong>sources</strong>, pas sur la simple présence des zones — sauter alors que les UGF ont changé laisserait une géométrie de zone périmée. Et le bouton de l’onglet réenregistre toujours.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-contrôle-dintégrité-était-rejoué-en-entier-réseau-inchangé-0-143-11">Fixed — Le contrôle d’intégrité était rejoué en entier, réseau inchangé<a class="anchor" aria-label="anchor" href="#fixed--le-contr%C3%B4le-dint%C3%A9grit%C3%A9-%C3%A9tait-rejou%C3%A9-en-entier-r%C3%A9seau-inchang%C3%A9-0-143-11"></a></h4>
+<p>51 min sur Couchey (17 056 tronçons), à <strong>chaque</strong> lancement de la chaîne. Le résultat était pourtant déjà sur le disque : <code>run_desserte_integrite()</code> écrit <code>integrite.rds</code>, et ce fichier est relu — mais uniquement pour réafficher le panneau à la réouverture du projet. Le lancement, lui, ne le consultait jamais.</p>
+<p>Ce n’était pas une décision, c’était un chaînon manquant :</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">.load_cached_desserte</span><span class="op">(</span><span class="va">project_path</span>, <span class="va">params</span><span class="op">)</span>   <span class="co"># clé : les paramètres</span></span>
+<span><span class="fu">.load_cached_integrite</span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>             <span class="co"># aucune clé</span></span></code></pre></div>
+<p>Le lecteur de la desserte compare les paramètres et refuse un cache calculé autrement. Celui de l’intégrité ne prend aucune clé : il sait répondre « le fichier existe », pas « il est encore valable ». Impossible de s’en servir pour décider de sauter.</p>
+<p><code>.desserte_integrite_cle()</code> la fournit — <code>mtime</code> + taille du GeoPackage du réseau et de l’AOI, écrits en <strong>sidecar</strong> (<code>integrite_cle.rds</code>) pour que les caches existants restent lisibles. La chaîne saute l’étape quand la clé correspond, et le rapport dit pourquoi.</p>
+<p><strong>Le sens de l’erreur est délibéré</strong> : un <code>mtime</code> qui bouge sans que le contenu change fait <em>recalculer</em> — on perd du temps. Jamais l’inverse : servir un verdict d’intégrité périmé après une régénération du réseau serait bien pire que d’attendre 51 min.</p>
+<p><strong>Le bouton de l’onglet relance toujours.</strong> Un geste explicite de l’utilisateur veut dire « recalcule », pas « ressers-moi ce que tu as ». Un test verrouille cette séparation (vérifié par mutation : déplacer la garde dans le lanceur le fait tomber).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.10" id="nemetonshiny-014310-2026-09-01">nemetonshiny 0.143.10 (2026-09-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014310-2026-09-01"></a></h2>
 <div class="section level4">
@@ -60,7 +96,7 @@
 <h4 id="fixed---objet-con-introuvable---les-deux-onexit-du-worker-étaient-dans-le-mauvais-ordre-0-143-9">Fixed — « objet ‘con’ introuvable » : les deux <code>on.exit</code> du worker étaient dans le mauvais ordre<a class="anchor" aria-label="anchor" href="#fixed---objet-con-introuvable---les-deux-onexit-du-worker-%C3%A9taient-dans-le-mauvais-ordre-0-143-9"></a></h4>
 <p>Cause trouvée, reproduite, corrigée. Le défaut qui faisait échouer les moteurs Santé <strong>après</strong> qu’ils aient fait et persisté leur travail — 13 h 40 et 4 h 10 au premier run, <code>ingest_run.json</code> à <code>done</code>, 183 scènes, 51 alertes en base.</p>
 <p>Chaque worker enregistre <code>.release_worker_memory()</code> en tête de corps, puis la fermeture de sa connexion :</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit</a></span><span class="op">(</span><span class="fu">.release_worker_memory</span><span class="op">(</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>   <span class="co"># 1er enregistré</span></span>
 <span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu">get_monitoring_db_connection</span><span class="op">(</span>db_url <span class="op">=</span> <span class="va">db_url</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit</a></span><span class="op">(</span><span class="fu">close_monitoring_db_connection</span><span class="op">(</span><span class="va">con</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>   <span class="co"># 2e</span></span></code></pre></div>
@@ -100,7 +136,7 @@
 <h4 id="changed--le-repli-chm-en-dur-rendu-au-cœur-qui-le-fait-mieux-0-143-7">Changed — Le repli CHM en dur rendu au cœur, qui le fait mieux<a class="anchor" aria-label="anchor" href="#changed--le-repli-chm-en-dur-rendu-au-c%C5%93ur-qui-le-fait-mieux-0-143-7"></a></h4>
 <p><code>nemeton</code> v0.192.2 avait appris à résoudre <code>cache/layers/opencanopy/</code> ; v0.193.0 lui ajoute l’argument qui manquait, <code>validate</code>. Les deux morceaux du contournement que l’app portait depuis la v0.141.x rentrent donc chez eux.</p>
 <p><code>.project_chm()</code> ne sonde plus aucun chemin. Il passe son garde de contenu au résolveur, qui <strong>saute</strong> un candidat refusé et continue à la source suivante :</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">nemeton</span><span class="fu">::</span><span class="fu"><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">resolve_project_chm</a></span><span class="op">(</span><span class="va">path</span>, validate <span class="op">=</span> <span class="va">.chm_exploitable</span><span class="op">)</span></span></code></pre></div>
 <p>Le repli inter-sources n’est pas seulement préservé, il est <strong>meilleur</strong> : il balaie les six candidats CHM du cœur dans leur ordre (LiDAR HD d’abord, ADR-007) au lieu des trois noms de fichiers écrits à la main — dont un, <code>chm.tif</code>, n’existe pas dans ce répertoire : le témoin s’appelle <code>chm_1_5m.tif</code>. La liste était fausse d’un tiers.</p>
 <p>Ce qui <strong>reste ici</strong>, et doit y rester : <code>.chm_exploitable()</code>. C’est un garde de <strong>contenu</strong>, pas de chemin, et son seuil de 5 m est celui de <code>segment_houppiers()</code>, pas une constante du cœur. Le cœur rend le premier chemin qui matche sans regarder ce qu’il y a dedans ; un modèle de hauteur plat (le cas « Fordead ») le satisfait, et le plan d’échantillonnage tirerait sans strate de hauteur.</p>
@@ -5439,7 +5475,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="migration-0-69-0">Migration<a class="anchor" aria-label="anchor" href="#migration-0-69-0"></a></h4>
 <p><strong>Pas de migration automatique</strong> (décision UX consciente). Sur les projets existants ayant déjà préchauffé un <code>cache/layers/fast/</code>, l’ancien répertoire restera orphelin sur disque. Le nouveau code créera <code>cache/layers/fast_sampling/</code> à la prochaine demande de validation_sampling. Suppression manuelle de l’ancien recommandée pour récupérer l’espace disque :</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="détails-techniques-0-69-0">Détails techniques<a class="anchor" aria-label="anchor" href="#d%C3%A9tails-techniques-0-69-0"></a></h4>
@@ -5668,7 +5704,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="added--observabilité-rag-cli_inform-par-perspective-0-61-1">Added — Observabilité RAG (<code>cli_inform</code> par perspective)<a class="anchor" aria-label="anchor" href="#added--observabilit%C3%A9-rag-cli_inform-par-perspective-0-61-1"></a></h4>
 <p>Ajout d’une ligne de log par appel <code>rag_context()</code> réussi, dans <code>R/service_rag.R</code> juste après le retrieve cœur :</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_inform</a></span><span class="op">(</span><span class="st">"RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Pourquoi</strong> : sans ce log, un corpus muet (0 chunk au-dessus du seuil) ressemblait à un cas où <code>rag_context()</code> court-circuitait avant le retrieve (opt-out, corpus indisponible, situation_text vide…). Désormais on distingue :</p>
 <ul><li>
@@ -5755,7 +5791,7 @@ Current Memory Usage: 17.1G</code></pre>
 <p>Le test <code>test-mod_monitoring.R::"register click invokes register_project_as_zone and persists zone_id in app_state"</code> failait sur ses 3 assertions (lignes 944-946) parce que l’observer du bouton « Enregistrer la zone » était passé d’un <code>observeEvent(input$register)</code> direct à un <code>observe() |&gt; bindEvent(input$register, input$register_inline, ignoreInit = TRUE)</code> lors de l’ajout du bouton inline (commit 3f1059d).</p>
 <p>En <code>testServer</code>, <code>session$setInputs(register = 1L)</code> posé directement est traité comme l’état d’init par <code>bindEvent(ignoreInit = TRUE)</code> — l’observer ne se déclenche pas, <code>register_project_as_zone</code> n’est jamais appelé, <code>captured_project</code> reste <code>NULL</code> et les 3 assertions cascadent.</p>
 <p><strong>Fix</strong> : matérialiser une transition d’input avant la vraie valeur :</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>  <span class="co"># init</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># vrai clic, fire l'observer</span></span></code></pre></div>
 <p>Identique au pattern qu’un <code>actionButton</code> réel suit (init à 0, incrément à chaque clic). Aucun changement de code de prod — c’est strictement un fix de fidélité du harness de test.</p>
@@ -6076,7 +6112,7 @@ Current Memory Usage: 17.1G</code></pre>
    threshold_nbr = as.numeric(th$nbr))</code></pre>
 <p>La carte d’alertes FAST restait vide après chaque ingestion.</p>
 <p><strong>Cause</strong> : <code>nemeton@v0.55.0</code> (spec 017) a <strong>délibérément</strong> simplifié <code>read_fast_alert_raster()</code> en mono-index — la combinaison historique NDVI+NBR a été abandonnée. La nouvelle signature est :</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">read_fast_alert_raster</span><span class="op">(</span><span class="va">con</span>, <span class="va">zone_id</span>,</span>
 <span>                       index     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NDVI"</span>, <span class="st">"NBR"</span><span class="op">)</span>,   <span class="co"># un seul</span></span>
 <span>                       threshold <span class="op">=</span> <span class="cn">NULL</span>,               <span class="co"># un seul</span></span>
@@ -6093,7 +6129,7 @@ Current Memory Usage: 17.1G</code></pre>
 <h4 id="fixed--plan-dactions--tableau-rendu-vide-régression-v05210-0-52-12">Fixed — Plan d’actions : tableau rendu VIDE (régression v0.52.10)<a class="anchor" aria-label="anchor" href="#fixed--plan-dactions--tableau-rendu-vide-r%C3%A9gression-v05210-0-52-12"></a></h4>
 <p><strong>Symptôme</strong> : sur la vue « Carte + Tableau » du Plan d’actions, le tableau ne contient AUCUNE ligne, alors que l’en-tête indique correctement « N action(s) après filtres » et que les KPI badges + sparkline cumulatif fonctionnent.</p>
 <p><strong>Cause (régression v0.52.10)</strong> : le JS callback ajouté pour le dblclick sur la cellule commentaire passait à <code>DT::datatable(callback = ...)</code> une fonction COMPLÈTE :</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
 <p>Or <code><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">DT::datatable</a></code> wrappe <strong>automatiquement</strong> le callback fourni dans <code>function(table) { … }</code>. Le résultat était une fonction-dans-une-fonction où : 1. Le handler <code>dblclick</code> est dans une fonction INTERNE jamais appelée → handler jamais enregistré. 2. La fonction externe ne fait <code>return table;</code> → DataTables casse silencieusement son pipeline d’initialisation → tableau RENDU SANS LIGNES alors que <code>data.frame</code> a bien N lignes.</p>
 <p><strong>Fix</strong> : le callback passe désormais juste le <strong>corps</strong> de fonction (pas de wrapper <code>function(table) { ... }</code>), avec un <code>return table;</code> final. DT applique son propre wrapper et le pipeline init reprend normalement.</p>
 <p><code>R/mod_action_plan.R</code>. Cycle dev <code>0.52.11</code> → <code>0.52.11.9001</code> → release stable <strong><code>v0.52.12</code></strong> (PATCH, fix régression urgent).</p>
@@ -8061,7 +8097,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>

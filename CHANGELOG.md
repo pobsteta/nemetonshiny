@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.11\] - 2026-09-01
+
+### Fixed
+
+- **Les zones de suivi étaient recréées à chaque lancement de la
+  chaîne.** `build_project_monitoring_zones(replace = TRUE)` supprime
+  puis réinsère : les identifiants changent, et tout ce qui est indexé
+  dessus devient orphelin (`output_zone_<id>/`). Mesuré sur Couchey :
+  6,3 Go sous des zones qui n’existent plus, et les marqueurs de reprise
+  de RECONFORT laissés derrière, ce qui faisait tout re-télécharger.
+- **Le contrôle d’intégrité de la desserte était rejoué en entier**,
+  réseau inchangé — 51 min sur Couchey. Le résultat était sur le disque,
+  mais son lecteur ne prenait aucune clé de fraîcheur.
+
 ## \[0.143.10\] - 2026-09-01
 
 ### Fixed
