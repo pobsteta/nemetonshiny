@@ -1,5 +1,63 @@
 # Changelog
 
+## nemetonshiny 0.143.9 (2026-09-01)
+
+#### Fixed — « objet ‘con’ introuvable » : les deux `on.exit` du worker étaient dans le mauvais ordre
+
+Cause trouvée, reproduite, corrigée. Le défaut qui faisait échouer les
+moteurs Santé **après** qu’ils aient fait et persisté leur travail — 13
+h 40 et 4 h 10 au premier run, `ingest_run.json` à `done`, 183 scènes,
+51 alertes en base.
+
+Chaque worker enregistre `.release_worker_memory()` en tête de corps,
+puis la fermeture de sa connexion :
+
+``` r
+
+on.exit(.release_worker_memory(), add = TRUE)   # 1er enregistré
+con <- get_monitoring_db_connection(db_url = db_url)
+on.exit(close_monitoring_db_connection(con), add = TRUE)   # 2e
+```
+
+Les handlers `on.exit` s’exécutent dans l’**ordre d’enregistrement**. Or
+la libération fait `rm(list = ls(envir = env), envir = env)` sur la
+frame du worker — `con` compris. Quand le second handler s’évalue, la
+liaison n’existe plus.
+
+Les trois fermetures passent donc devant, par `after = FALSE`.
+**Déplacer la libération en fin de corps** aurait été plus lisible, mais
+l’aurait retirée des chemins d’échec précoce (le
+[`stop()`](https://rdrr.io/r/base/stop.html) « Monitoring DB not
+configured » juste au-dessus) — là où rendre la mémoire compte le plus.
+
+#### Fixed — Le même défaut sur la connexion de log, silencieux depuis le début
+
+`close(.ws_log_conn)` est enregistré au même endroit, après la
+libération. Son handler est enveloppé dans un `tryCatch` : il échouait
+donc **sans rien dire**, et la connexion de log du worker n’était jamais
+fermée. Même correctif.
+
+#### Pourquoi la recherche statique ne pouvait pas le trouver
+
+`con` n’est pas une variable globale : c’est une locale parfaitement
+liée au moment où le code l’écrit. Le défaut est **temporel**, pas
+lexical — la liaison est détruite entre l’enregistrement du handler et
+son évaluation.
+[`codetools::findGlobals`](https://rdrr.io/pkg/codetools/man/findGlobals.html)
+sur l’intégralité des deux espaces de noms ne pouvait rien voir, et
+aucun `testServer` ne rejoue un worker `future`.
+
+D’où les deux tests : un qui isole le mécanisme, un qui lit le fichier
+et exige `after = FALSE` sur les trois fermetures (vérifié par
+mutation).
+
+> **Le piège qui a faussé la première reproduction**, noté parce qu’il
+> se reproduira : un handler qui n’**utilise** pas la locale ne la force
+> jamais — évaluation paresseuse — et ne casse pas. Ma première
+> tentative concluait « pas de bug » pour cette seule raison. Le test
+> porte un [`force()`](https://rdrr.io/r/base/force.html) explicite ;
+> sans lui, il passerait sur le code fautif.
+
 ## nemetonshiny 0.143.8 (2026-09-01)
 
 #### Fixed — Le rapport nommait l’erreur, pas l’endroit
