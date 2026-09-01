@@ -540,3 +540,58 @@ test_that("NEMETON_SCRATCH_DIR atteint le worker (le run tourne LA-BAS)", {
     expect_false("NEMETON_SCRATCH_DIR" %in% names(captured))
   })
 })
+
+
+# ---------------------------------------------------------------------------
+# Ordre des handlers `on.exit` dans les workers (run Couchey du 2026-08-31)
+# ---------------------------------------------------------------------------
+
+test_that("un handler enregistre APRES la liberation ne voit plus les locales", {
+  # Le mecanisme du defaut, isole. Les handlers `on.exit` s'executent dans
+  # l'ORDRE D'ENREGISTREMENT, et `.release_worker_memory()` fait
+  # `rm(list = ls(envir = env), envir = env)` sur la frame du worker. Un
+  # handler enregistre apres elle s'evalue donc sur une frame VIDE.
+  #
+  # Piege qui a fausse la premiere reproduction : si le handler n'UTILISE pas
+  # la locale, l'evaluation paresseuse ne la force jamais et rien ne casse.
+  # `force()` ci-dessous est donc essentiel - sans lui le test passerait sur
+  # le code fautif.
+  utilise <- function(x) { force(x); "ferme" }
+
+  fautif <- function() {
+    on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+    con <- "CONNEXION"
+    on.exit(utilise(con), add = TRUE)
+    "corps termine"
+  }
+  expect_error(fautif(), "con")
+
+  correct <- function() {
+    on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+    con <- "CONNEXION"
+    on.exit(utilise(con), add = TRUE, after = FALSE)
+    "corps termine"
+  }
+  expect_identical(correct(), "corps termine")
+})
+
+test_that("les fermetures des trois workers passent devant la liberation", {
+  # Garde de source : le defaut est TEMPOREL (la liaison est detruite entre
+  # l'enregistrement du handler et son evaluation), pas lexical - aucune
+  # analyse statique de liaison ne le voit, et aucun `testServer` ne rejoue
+  # un worker `future`. D'ou un test qui lit le fichier.
+  f <- testthat::test_path("..", "..", "R", "service_monitoring.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+
+  fermetures <- grep("on\\.exit\\(close_monitoring_db_connection\\(con\\)",
+                     code, value = TRUE)
+  expect_length(fermetures, 3L)                       # FAST, FORDEAD, RECONFORT
+  expect_true(all(grepl("after\\s*=\\s*FALSE", fermetures)))
+
+  # La liberation, elle, reste enregistree EN TETE de chaque corps : la
+  # deplacer en fin la retirerait des chemins d'echec precoce, ou rendre la
+  # memoire compte le plus.
+  expect_length(grep("on\\.exit\\(\\.release_worker_memory\\(\\)", code), 3L)
+})

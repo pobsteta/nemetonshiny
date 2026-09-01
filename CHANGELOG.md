@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.9] - 2026-09-01
+
+### Fixed
+
+- **« objet 'con' introuvable » sur les moteurs Santé.** Les handlers `on.exit`
+  s'exécutent dans l'ordre d'enregistrement ; `.release_worker_memory()`,
+  enregistré en tête de corps, efface `con` de la frame du worker avant que la
+  fermeture de connexion ne l'utilise. Les trois fermetures passent devant
+  (`after = FALSE`). L'échec survenait après le travail utile, d'où sa
+  discrétion.
+- Même défaut, silencieux, sur `close(.ws_log_conn)` : enveloppé d'un
+  `tryCatch`, il échouait sans rien dire et la connexion de log n'était jamais
+  fermée.
+
 ## [0.143.8] - 2026-09-01
 
 ### Fixed

@@ -110,9 +110,15 @@ run_ingestion_async <- function() {
           error = function(e) NULL
         )
         if (!is.null(.ws_log_conn)) {
+          # `after = FALSE` pour la meme raison que la fermeture DB plus
+          # bas : `.release_worker_memory()` efface `.ws_log_conn` de la
+          # frame avant que ce handler ne s'evalue. Ici l'echec etait
+          # SILENCIEUX - le `tryCatch` l'avalait - donc la connexion de
+          # log n'etait jamais fermee, elle fuyait jusqu'a la mort du
+          # worker. Meme defaut, sans le symptome qui l'aurait signale.
           on.exit(
             tryCatch(close(.ws_log_conn), error = function(e) NULL),
-            add = TRUE
+            add = TRUE, after = FALSE
           )
         }
       }
@@ -146,7 +152,18 @@ run_ingestion_async <- function() {
       if (is.null(con)) {
         stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
       }
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      # `after = FALSE` : cette fermeture doit s'evaluer AVANT
+      # `.release_worker_memory()`, enregistre en tete de corps. Les
+      # handlers `on.exit` s'executent dans l'ORDRE D'ENREGISTREMENT, et
+      # la liberation fait `rm(list = ls(envir = env), envir = env)` sur
+      # la frame du worker - `con` compris. Enregistree apres elle, cette
+      # ligne levait « objet 'con' introuvable » APRES que le corps ait
+      # fait et persiste son travail (run Couchey du 2026-08-31 : les
+      # trois moteurs Sante, `ingest_run.json` a `done`, 183 scenes).
+      # Deplacer la liberation en fin de corps serait plus lisible mais
+      # la retirerait des chemins d'echec precoce (le `stop()` juste
+      # au-dessus), ou rendre la memoire compte le plus.
+      on.exit(close_monitoring_db_connection(con), add = TRUE, after = FALSE)
 
       # ntfy push channel - resolved worker-side (env vars replayed
       # above). NULL when NEMETON_NTFY_TOPIC is unset -> every
@@ -573,7 +590,18 @@ run_fordead_async <- function() {
       if (is.null(con)) {
         stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
       }
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      # `after = FALSE` : cette fermeture doit s'evaluer AVANT
+      # `.release_worker_memory()`, enregistre en tete de corps. Les
+      # handlers `on.exit` s'executent dans l'ORDRE D'ENREGISTREMENT, et
+      # la liberation fait `rm(list = ls(envir = env), envir = env)` sur
+      # la frame du worker - `con` compris. Enregistree apres elle, cette
+      # ligne levait « objet 'con' introuvable » APRES que le corps ait
+      # fait et persiste son travail (run Couchey du 2026-08-31 : les
+      # trois moteurs Sante, `ingest_run.json` a `done`, 183 scenes).
+      # Deplacer la liberation en fin de corps serait plus lisible mais
+      # la retirerait des chemins d'echec precoce (le `stop()` juste
+      # au-dessus), ou rendre la memoire compte le plus.
+      on.exit(close_monitoring_db_connection(con), add = TRUE, after = FALSE)
 
       # URL passee a l'enfant plafonne, qui ouvre SA propre connexion
       # (une DBIConnection ne franchit pas une frontiere de process).
@@ -782,7 +810,18 @@ run_reconfort_async <- function() {
       if (is.null(con)) {
         stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
       }
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      # `after = FALSE` : cette fermeture doit s'evaluer AVANT
+      # `.release_worker_memory()`, enregistre en tete de corps. Les
+      # handlers `on.exit` s'executent dans l'ORDRE D'ENREGISTREMENT, et
+      # la liberation fait `rm(list = ls(envir = env), envir = env)` sur
+      # la frame du worker - `con` compris. Enregistree apres elle, cette
+      # ligne levait « objet 'con' introuvable » APRES que le corps ait
+      # fait et persiste son travail (run Couchey du 2026-08-31 : les
+      # trois moteurs Sante, `ingest_run.json` a `done`, 183 scenes).
+      # Deplacer la liberation en fin de corps serait plus lisible mais
+      # la retirerait des chemins d'echec precoce (le `stop()` juste
+      # au-dessus), ou rendre la memoire compte le plus.
+      on.exit(close_monitoring_db_connection(con), add = TRUE, after = FALSE)
 
       # ntfy push channel - resolved worker-side (env vars replayed
       # above). NULL when NEMETON_NTFY_TOPIC is unset -> every
