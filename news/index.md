@@ -1,5 +1,56 @@
 # Changelog
 
+## nemetonshiny 0.143.10 (2026-09-01)
+
+#### Fixed — RECONFORT emportait la session entière ; il tourne maintenant sous plafond
+
+Run Couchey du 2026-09-01. RECONFORT s’arrête net à l’item **82 sur
+203** de son ingestion, étape `crop`, **sans écrire le moindre événement
+d’erreur**. Un worker qui lève écrit son erreur ; celui-là n’a rien
+écrit — il a été tué.
+
+Une minute après le dernier événement :
+
+    07:11:35  Killed …/app-rstudio-1113027.scope due to memory pressure for
+              user@1000.service being 56.87% > 50.00% for > 20s with reclaim activity
+    07:11:35  systemd-oomd killed 9 process(es) in this unit
+
+Neuf processus : RStudio, la session R, les workers. `systemd-oomd` ne
+tue pas le processus fautif, il tue **le scope entier** — et il tue sur
+la **pression**, pas sur un plafond absolu : le scope était à 14,5 Go
+sur une machine de 31 Go.
+
+**Pourquoi rien ne l’a arrêté.** Le cœur ne plafonnait que le
+sous-processus Python (`.reconfort_run_py()` →
+`.reconfort_cap_memory()`), au motif que c’est lui le gourmand. Mais la
+boucle d’ingestion des 203 scènes Sentinel-2 est du **R pur**
+(`reconfort_ingest.R`, événements `reconfort:ingest_item`), et le run
+est mort **avant** d’atteindre Python. Le raisonnement laissait cette
+phase à découvert.
+
+RECONFORT passe donc en **enfant plafonné**, comme FORDEAD depuis la
+v0.106.6 : `nemeton::run_memory_capped("run_reconfort_dieback", …)`. Un
+dépassement tue l’enfant **seul**, avec une erreur attrapable, au lieu
+d’emporter la session.
+
+> Le plafond `NEMETON_MEMORY_MAX` du poste ne pouvait de toute façon
+> rien faire ici : il gouverne `run_memory_capped()`, que RECONFORT
+> n’utilisait pas. Et réglé à 16 Go sur une machine tuée à 14,5 Go, il
+> n’aurait jamais mordu en premier.
+
+#### Changed — Le parent ne rejoue que le push ntfy
+
+Sous isolation, **l’enfant écrit lui-même** les fichiers `.json` /
+`.ndjson`. Rejouer le callback composite dupliquerait chaque ligne
+NDJSON — le piège déjà payé sur FORDEAD. La moitié « push » est donc
+isolée dans `.build_reconfort_ntfy_callback()`, strict miroir de son
+équivalent FORDEAD, avec la dédup par phase côté **parent** : elle
+survit à la mort et au redémarrage de l’enfant.
+
+Le callback composite n’est plus construit dans ce worker :
+contrairement à FORDEAD, il n’émet aucun heartbeat propre et n’en avait
+donc pas l’usage.
+
 ## nemetonshiny 0.143.9 (2026-09-01)
 
 #### Fixed — « objet ‘con’ introuvable » : les deux `on.exit` du worker étaient dans le mauvais ordre

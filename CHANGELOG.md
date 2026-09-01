@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.10\] - 2026-09-01
+
+### Fixed
+
+- **RECONFORT emportait la session entière.** `systemd-oomd` a tué le
+  scope RStudio (9 processus) pendant l’item 82/203 de l’ingestion —
+  pression à 56,87 % sur `user@1000.service`, scope à 14,5 Go, aucun
+  événement d’erreur. Le cœur ne plafonnait que le sous-processus Python
+  ; la boucle d’ingestion des 203 scènes est du R pur et le run mourait
+  avant d’atteindre Python. RECONFORT passe en enfant plafonné
+  ([`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html)),
+  comme FORDEAD.
+
+### Changed
+
+- `.build_reconfort_ntfy_callback()` isole la moitié « push » du
+  callback composite : sous isolation, l’enfant écrit déjà les fichiers
+  de progression, et rejouer le composite dupliquerait chaque ligne
+  NDJSON.
+
 ## \[0.143.9\] - 2026-09-01
 
 ### Fixed
