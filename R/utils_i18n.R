@@ -5797,6 +5797,10 @@ TRANSLATIONS <- list(
     fr = "Indicateurs non calcul\u00e9s.",
     en = "Indicators not computed."
   ),
+  pipeline_skip_integrite_a_jour = list(
+    fr = "D\u00e9j\u00e0 \u00e0 jour : le r\u00e9seau n'a pas chang\u00e9 depuis le dernier contr\u00f4le.",
+    en = "Already up to date: the network has not changed since the last check."
+  ),
   desserte_typage_rien_a_typer = list(
     fr = "Aucune route nouvelle \u00e0 typer : le r\u00e9seau existant dessert d\u00e9j\u00e0 toutes les parcelles.",
     en = "No new road to type: the existing network already serves every parcel."

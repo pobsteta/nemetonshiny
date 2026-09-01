@@ -222,6 +222,61 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
   tryCatch(readRDS(f), error = function(e) NULL)
 }
 
+
+#' Freshness key of an integrity result
+#'
+#' @description
+#' Le controle d'integrite coute 51 min sur Couchey (17 056 troncons) et il
+#' etait REJOUE EN ENTIER a chaque lancement de la chaine, meme quand le
+#' reseau n'avait pas bouge. Le resultat etait pourtant deja sur le disque
+#' (`integrite.rds`) - mais [.load_cached_integrite()] ne prend AUCUNE cle :
+#' il sait repondre « le fichier existe », pas « il est encore valable ». On
+#' ne pouvait donc pas s'en servir pour decider de sauter.
+#'
+#' La cle porte sur les deux entrees du calcul : le GeoPackage du reseau et
+#' l'AOI. `mtime` + taille suffisent - on ne hache pas des fichiers de
+#' plusieurs centaines de Mo pour eviter un recalcul. Le sens de l'erreur est
+#' le bon : un `mtime` qui bouge sans que le contenu change fait RECALCULER
+#' (on perd du temps), jamais servir un verdict perime (on mentirait).
+#'
+#' Cle absente = cache d'avant cette version : traite comme perime, donc
+#' recalcule une fois puis reutilise.
+#'
+#' @param cache_dir Desserte cache directory.
+#' @param aoi_path Parcels GeoPackage the check was run against.
+#' @return A character scalar, or `NULL` when an input is missing.
+#' @noRd
+.desserte_integrite_cle <- function(cache_dir, aoi_path) {
+  gpkg <- file.path(cache_dir, "desserte.gpkg")
+  if (!file.exists(gpkg) || is.null(aoi_path) || !file.exists(aoi_path)) {
+    return(NULL)
+  }
+  info <- file.info(c(gpkg, aoi_path))
+  paste(format(info$mtime, "%Y%m%d%H%M%S"), info$size, collapse = "|")
+}
+
+
+#' Is the persisted integrity result still valid for these inputs?
+#'
+#' @description
+#' Consulte par la CHAINE seulement. Le bouton de l'onglet, lui, relance
+#' toujours : un geste explicite de l'utilisateur veut dire « recalcule »,
+#' pas « ressers-moi ce que tu as ».
+#'
+#' @param cache_dir Desserte cache directory.
+#' @param aoi_path Parcels GeoPackage.
+#' @return `TRUE` when a cached result exists AND was computed on these
+#'   exact inputs.
+#' @noRd
+.integrite_a_jour <- function(cache_dir, aoi_path) {
+  if (is.null(.load_cached_integrite(cache_dir))) return(FALSE)
+  cle <- .desserte_integrite_cle(cache_dir, aoi_path)
+  if (is.null(cle)) return(FALSE)
+  f <- file.path(cache_dir, "integrite_cle.rds")
+  if (!file.exists(f)) return(FALSE)
+  identical(tryCatch(readRDS(f), error = function(e) NULL), cle)
+}
+
 #' Run the network-integrity check on a project's designed network (worker-side)
 #'
 #' Deliberately a SEPARATE action, not a step of `run_desserte()`. Measured on
@@ -267,6 +322,14 @@ run_desserte_integrite <- function(cache_dir, aoi_path) {
   }
   tryCatch(saveRDS(integrite, file.path(cache_dir, "integrite.rds")),
            error = function(e) invisible(NULL))
+  # Cle de fraicheur en SIDECAR : `integrite.rds` garde sa forme, donc les
+  # caches ecrits avant cette version restent lisibles (ils seront juste
+  # traites comme perimes une fois).
+  cle <- .desserte_integrite_cle(cache_dir, aoi_path)
+  if (!is.null(cle)) {
+    tryCatch(saveRDS(cle, file.path(cache_dir, "integrite_cle.rds")),
+             error = function(e) invisible(NULL))
+  }
   list(status = "success", integrite = integrite)
 }
 

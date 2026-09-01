@@ -1,3 +1,39 @@
+# nemetonshiny 0.143.10.9001 (dev)
+
+### Fixed — Le contrôle d'intégrité était rejoué en entier, réseau inchangé
+
+51 min sur Couchey (17 056 tronçons), à **chaque** lancement de la chaîne. Le
+résultat était pourtant déjà sur le disque : `run_desserte_integrite()` écrit
+`integrite.rds`, et ce fichier est relu — mais uniquement pour réafficher le
+panneau à la réouverture du projet. Le lancement, lui, ne le consultait jamais.
+
+Ce n'était pas une décision, c'était un chaînon manquant :
+
+```r
+.load_cached_desserte(project_path, params)   # clé : les paramètres
+.load_cached_integrite(cache_dir)             # aucune clé
+```
+
+Le lecteur de la desserte compare les paramètres et refuse un cache calculé
+autrement. Celui de l'intégrité ne prend aucune clé : il sait répondre « le
+fichier existe », pas « il est encore valable ». Impossible de s'en servir pour
+décider de sauter.
+
+`.desserte_integrite_cle()` la fournit — `mtime` + taille du GeoPackage du
+réseau et de l'AOI, écrits en **sidecar** (`integrite_cle.rds`) pour que les
+caches existants restent lisibles. La chaîne saute l'étape quand la clé
+correspond, et le rapport dit pourquoi.
+
+**Le sens de l'erreur est délibéré** : un `mtime` qui bouge sans que le contenu
+change fait *recalculer* — on perd du temps. Jamais l'inverse : servir un
+verdict d'intégrité périmé après une régénération du réseau serait bien pire que
+d'attendre 51 min.
+
+**Le bouton de l'onglet relance toujours.** Un geste explicite de l'utilisateur
+veut dire « recalcule », pas « ressers-moi ce que tu as ». Un test verrouille
+cette séparation (vérifié par mutation : déplacer la garde dans le lanceur le
+fait tomber).
+
 # nemetonshiny 0.143.10 (2026-09-01)
 
 ### Fixed — RECONFORT emportait la session entière ; il tourne maintenant sous plafond

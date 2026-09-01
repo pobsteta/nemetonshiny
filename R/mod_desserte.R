@@ -1058,6 +1058,17 @@ mod_desserte_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
         return()
       }
+      # Le controle coute 51 min sur Couchey (17 056 troncons) et il etait
+      # rejoue A CHAQUE lancement de la chaine, meme reseau inchange. Le
+      # resultat etait pourtant deja sur le disque : il manquait la cle qui
+      # dit s'il est encore valable. Ici seulement - le bouton de l'onglet
+      # relance toujours, un geste explicite veut dire « recalcule ».
+      cache_dir <- .desserte_cache_dir(app_state$current_project$path)
+      if (.integrite_a_jour(cache_dir, file.path(cache_dir, "aoi_input.gpkg"))) {
+        pipeline_answer(app_state, req, "skipped",
+                        i18n$t("pipeline_skip_integrite_a_jour"))
+        return()
+      }
       integ_pipeline_req(req)
       if (!isTRUE(.lancer_integrite())) {
         integ_pipeline_req(NULL)

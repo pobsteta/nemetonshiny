@@ -719,3 +719,85 @@ test_that("the desserte actions refuse when dessertR is unavailable", {
     nemetonshiny:::.desserte_integrite(d, NULL, d),
     dessertR_disponible = function() FALSE, .package = "foretaccess"))
 })
+
+
+# ---------------------------------------------------------------------------
+# Fraicheur du controle d'integrite (51 min rejoues pour rien sur Couchey)
+# ---------------------------------------------------------------------------
+
+.integrite_fixture <- function(dir) {
+  writeLines("reseau", file.path(dir, "desserte.gpkg"))
+  writeLines("aoi", file.path(dir, "aoi_input.gpkg"))
+  saveRDS(list(n_infractions = 0L), file.path(dir, "integrite.rds"))
+  file.path(dir, "aoi_input.gpkg")
+}
+
+test_that("sans cle, un cache d'integrite est traite comme perime", {
+  # Les caches ecrits AVANT cette version n'ont pas de sidecar. Les servir
+  # serait servir un verdict dont on ne sait rien : on recalcule une fois.
+  withr::with_tempdir({
+    aoi <- .integrite_fixture(getwd())
+    expect_false(nemetonshiny:::.integrite_a_jour(getwd(), aoi))
+  })
+})
+
+test_that("avec la cle des memes entrees, le controle est a jour", {
+  withr::with_tempdir({
+    aoi <- .integrite_fixture(getwd())
+    cle <- nemetonshiny:::.desserte_integrite_cle(getwd(), aoi)
+    expect_false(is.null(cle))
+    saveRDS(cle, file.path(getwd(), "integrite_cle.rds"))
+    expect_true(nemetonshiny:::.integrite_a_jour(getwd(), aoi))
+  })
+})
+
+test_that("un reseau reecrit perime le controle", {
+  # Le sens de l'erreur doit etre celui-ci : on RECALCULE quand le doute
+  # existe. Servir un verdict d'integrite perime apres une regeneration du
+  # reseau serait bien pire que d'attendre 51 min.
+  withr::with_tempdir({
+    aoi <- .integrite_fixture(getwd())
+    saveRDS(nemetonshiny:::.desserte_integrite_cle(getwd(), aoi),
+            file.path(getwd(), "integrite_cle.rds"))
+    expect_true(nemetonshiny:::.integrite_a_jour(getwd(), aoi))
+
+    # Le moteur rejoue et reecrit le GeoPackage : contenu ET horodatage.
+    Sys.sleep(1.1)
+    writeLines(c("reseau", "nouvelle route"), file.path(getwd(), "desserte.gpkg"))
+    expect_false(nemetonshiny:::.integrite_a_jour(getwd(), aoi))
+  })
+})
+
+test_that("un resultat absent ne peut pas etre a jour", {
+  withr::with_tempdir({
+    aoi <- .integrite_fixture(getwd())
+    saveRDS(nemetonshiny:::.desserte_integrite_cle(getwd(), aoi),
+            file.path(getwd(), "integrite_cle.rds"))
+    unlink(file.path(getwd(), "integrite.rds"))
+    expect_false(nemetonshiny:::.integrite_a_jour(getwd(), aoi))
+  })
+})
+
+test_that("la cle est NULL quand une entree manque, et ne fait pas lever", {
+  withr::with_tempdir({
+    expect_null(nemetonshiny:::.desserte_integrite_cle(getwd(), NULL))
+    expect_null(nemetonshiny:::.desserte_integrite_cle(getwd(),
+                                                       file.path(getwd(), "absent.gpkg")))
+    expect_false(nemetonshiny:::.integrite_a_jour(getwd(), NULL))
+  })
+})
+
+test_that("le bouton de l'onglet relance TOUJOURS, la chaine seule consulte la cle", {
+  # Un geste explicite de l'utilisateur veut dire « recalcule », pas
+  # « ressers-moi ce que tu as ». Verifie par mutation : deplacer la garde
+  # dans `.lancer_integrite()` fait tomber ce test.
+  f <- testthat::test_path("..", "..", "R", "mod_desserte.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  garde <- grep("\\.integrite_a_jour\\(", code)
+  expect_length(garde, 1L)
+  lanceur <- grep("\\.lancer_integrite <- function", code)
+  fin_lanceur <- grep("observeEvent\\(input\\$run_integrite", code)
+  expect_false(any(garde > lanceur & garde < fin_lanceur))
+})
