@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.10.9001 (dev)
+# nemetonshiny 0.143.11 (2026-09-01)
 
 ### Fixed — Les zones de suivi étaient recréées à chaque run, et emportaient tous les caches
 
