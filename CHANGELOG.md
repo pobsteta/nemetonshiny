@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.8\] - 2026-09-01
+
+### Fixed
+
+- **Le rapport de la chaîne nommait l’erreur, pas l’endroit.**
+  `pipeline_task_error()` ajoute
+  [`conditionCall()`](https://rdrr.io/r/base/conditions.html), qui nomme
+  l’appel fautif et traverse la frontière `future` (vérifié de bout en
+  bout sur un vrai worker). Sur le run Couchey du 2026-08-31, « objet
+  ‘con’ introuvable » n’était pas localisable : une recherche statique
+  dans les deux paquets n’a rien donné.
+
 ## \[0.143.7\] - 2026-08-31
 
 ### Changed

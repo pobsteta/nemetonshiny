@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.8" id="nemetonshiny-01438-2026-09-01">nemetonshiny 0.143.8 (2026-09-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01438-2026-09-01"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-rapport-nommait-lerreur-pas-lendroit-0-143-8">Fixed — Le rapport nommait l’erreur, pas l’endroit<a class="anchor" aria-label="anchor" href="#fixed--le-rapport-nommait-lerreur-pas-lendroit-0-143-8"></a></h4>
+<p>Run Couchey du 2026-08-31 : le correctif v0.143.6 a bien fait remonter la cause des deux échecs Santé — <strong>« objet ‘con’ introuvable »</strong> — mais pas l’endroit. Une recherche statique dans les deux paquets (<code><a href="https://rdrr.io/pkg/codetools/man/findGlobals.html" class="external-link">codetools::findGlobals</a></code> sur les deux espaces de noms, défauts auto-référents, code construit dynamiquement) n’a rien donné : le message seul ne dit pas dans quel appel.</p>
+<p>Or <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionCall()</a></code> le nomme, et il <strong>traverse la frontière <code>future</code></strong> — vérifié : un <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> levé dans un worker rend bien son appel au parent. Le rapport de la chaîne l’affiche désormais (« … — dans <code>g(42)</code> »).</p>
+<p>Sans lui, localiser un échec de moteur long coûte un run de plusieurs heures de plus. C’est le même raisonnement qu’en v0.143.6, poussé d’un cran : le message disait <em>quoi</em>, il dit maintenant <em>où</em>.</p>
+</div>
+<div class="section level4">
+<h4 id="ce-que-la-vérification-de-bout-en-bout-a-montré-0-143-8">Ce que la vérification de bout en bout a montré<a class="anchor" aria-label="anchor" href="#ce-que-la-v%C3%A9rification-de-bout-en-bout-a-montr%C3%A9-0-143-8"></a></h4>
+<p>Le chemin a été rejoué sur un vrai <code>future</code>, pas sur un stub : un worker qui <strong>réussit et persiste</strong>, puis lève depuis son <code>on.exit</code>. Le parent reçoit <code>objet 'con' introuvable — dans fermer_connexion(con_inexistant)</code>.</p>
+<p>Une erreur levée dans l’<code>on.exit</code> d’un future fait donc échouer la tâche <strong>alors que le corps a rendu son résultat</strong>. C’est exactement la forme observée sur Couchey — <code>ingest_run.json</code> à <code>done</code>, 183 scènes, et la tâche en erreur. La queue du worker devient la piste principale ; la cause reste à confirmer au prochain run.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.7" id="nemetonshiny-01437-2026-08-31">nemetonshiny 0.143.7 (2026-08-31)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01437-2026-08-31"></a></h2>
 <div class="section level4">
