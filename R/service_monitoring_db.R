@@ -686,3 +686,85 @@ validity_check_for_zone <- function(con, zone_id, units = NULL,
 # RECONFORT. La lecture de la table `alerts` subsiste la ou elle a un sens
 # metier : `service_r5.R` (indicateur R5) appelle `nemeton::list_alerts()`
 # directement.
+
+
+#' Freshness key of a project's monitoring zones
+#'
+#' @description
+#' Les zones sont recreees a CHAQUE lancement de la chaine, et
+#' `build_project_monitoring_zones(replace = TRUE)` - le defaut - supprime les
+#' lignes du projet avant de reinserer. Les identifiants changent donc a chaque
+#' fois, et **tout ce qui est indexe dessus devient orphelin** :
+#' `cache/layers/{fordead,reconfort}/output_zone_<id>/`.
+#'
+#' Mesure sur Couchey (2026-09-01), un seul projet, trois runs :
+#'
+#' | repertoire        | marqueurs de reprise | taille |
+#' |-------------------|----------------------|--------|
+#' | `output_zone_37`  | 106                  | 3,5 Go |
+#' | `output_zone_41`  | 81                   | 2,8 Go |
+#' | `output_zone_45`  | 2                    | 1,4 Go |
+#'
+#' 6,3 Go sous des zones qui n'existent plus. Et le cout n'est pas que le
+#' disque : les marqueurs d'idempotence de RECONFORT (`ingested/*.done`, qui
+#' font sauter une scene deja ingeree) vivent sous ce repertoire. Un nouvel id
+#' = un repertoire vide = **tout re-telecharge**. La reprise apres arret est
+#' deja ecrite cote coeur ; c'est le renouvellement des ids qui l'annulait.
+#'
+#' La cle porte sur les entrees qui DETERMINENT les zones - les UGF et la
+#' BD Foret. Si aucune n'a bouge, les zones en base decrivent encore le projet
+#' et les recreer ne changerait que leurs identifiants.
+#'
+#' @param project The current project (needs `$path`).
+#' @return A character scalar, or `NULL` when a source is missing.
+#' @noRd
+.monitoring_zones_cle <- function(project) {
+  path <- tryCatch(project$path, error = function(e) NULL)
+  if (is.null(path) || !nzchar(path)) return(NULL)
+  sources <- c(
+    file.path(path, "data", "ugs.json"),
+    file.path(path, "data", "tenements.gpkg"),
+    file.path(path, "cache", "layers", "bdforet.gpkg")
+  )
+  if (!all(file.exists(sources))) return(NULL)
+  info <- file.info(sources)
+  paste(format(info$mtime, "%Y%m%d%H%M%S"), info$size, collapse = "|")
+}
+
+
+#' Persist the freshness key next to the project
+#' @noRd
+.ecrire_zones_cle <- function(project) {
+  path <- tryCatch(project$path, error = function(e) NULL)
+  cle  <- .monitoring_zones_cle(project)
+  if (is.null(path) || is.null(cle)) return(invisible(NULL))
+  tryCatch(saveRDS(cle, file.path(path, "data", "monitoring_zones_cle.rds")),
+           error = function(e) invisible(NULL))
+  invisible(NULL)
+}
+
+
+#' Are the project's monitoring zones still current?
+#'
+#' @description
+#' Consulte par la CHAINE seulement : le bouton de l'onglet reenregistre
+#' toujours, un geste explicite veut dire « refais-les ».
+#'
+#' Deux conditions, et les deux comptent. La cle dit que les SOURCES n'ont pas
+#' bouge ; la presence en base dit que les zones existent encore (quelqu'un a
+#' pu les supprimer, ou changer de base). Sauter sur la seule cle servirait un
+#' `zone_id` qui ne designe plus rien.
+#'
+#' @param project The current project.
+#' @param zones A data.frame of the project's zones (`find_zones_by_project`).
+#' @return `TRUE` when the zones can be reused as-is.
+#' @noRd
+.zones_a_jour <- function(project, zones) {
+  if (is.null(zones) || !is.data.frame(zones) || !nrow(zones)) return(FALSE)
+  if (!any(grepl("_tot$", as.character(zones$name)))) return(FALSE)
+  cle <- .monitoring_zones_cle(project)
+  if (is.null(cle)) return(FALSE)
+  f <- file.path(project$path, "data", "monitoring_zones_cle.rds")
+  if (!file.exists(f)) return(FALSE)
+  identical(tryCatch(readRDS(f), error = function(e) NULL), cle)
+}

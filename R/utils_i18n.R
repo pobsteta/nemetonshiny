@@ -5797,6 +5797,10 @@ TRANSLATIONS <- list(
     fr = "Indicateurs non calcul\u00e9s.",
     en = "Indicators not computed."
   ),
+  pipeline_skip_zones_a_jour = list(
+    fr = "Zones de suivi d\u00e9j\u00e0 \u00e0 jour : les recr\u00e9er changerait leurs identifiants et invaliderait les caches.",
+    en = "Monitoring zones already up to date: recreating them would change their ids and invalidate the caches."
+  ),
   pipeline_skip_integrite_a_jour = list(
     fr = "D\u00e9j\u00e0 \u00e0 jour : le r\u00e9seau n'a pas chang\u00e9 depuis le dernier contr\u00f4le.",
     en = "Already up to date: the network has not changed since the last check."

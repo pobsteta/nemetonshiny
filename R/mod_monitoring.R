@@ -1356,6 +1356,12 @@ mod_monitoring_server <- function(id, app_state) {
         error = function(e) e
       )
       register_running(FALSE)
+      # Empreinte des sources qui viennent de produire ces zones. C'est elle
+      # qui permettra a la chaine de NE PAS les recreer pour rien : `replace`
+      # supprime puis reinsere, donc les ids changent, et tout ce qui est
+      # indexe dessus (`output_zone_<id>/`, marqueurs de reprise compris)
+      # devient orphelin.
+      if (!inherits(result, "error")) .ecrire_zones_cle(project)
 
       if (inherits(result, "error")) {
         shiny::showNotification(
@@ -1427,6 +1433,18 @@ mod_monitoring_server <- function(id, app_state) {
       if (!is_db_configured()) {
         pipeline_answer(app_state, req, "skipped",
                         i18n$t("monitoring_register_no_db"))
+        return()
+      }
+      # Zones deja a jour : ne PAS les recreer. `replace = TRUE` supprime puis
+      # reinsere, donc les identifiants changent - et avec eux le repertoire
+      # `output_zone_<id>` de FORDEAD et de RECONFORT. Mesure sur Couchey :
+      # 6,3 Go orphelins en trois runs, et surtout les marqueurs d'idempotence
+      # de l'ingestion RECONFORT laisses derriere, ce qui faisait tout
+      # re-telecharger a chaque fois. Ici seulement : le bouton de l'onglet
+      # reenregistre toujours.
+      if (.zones_a_jour(projet, shiny::isolate(zones()))) {
+        pipeline_answer(app_state, req, "skipped",
+                        i18n$t("pipeline_skip_zones_a_jour"))
         return()
       }
       ok <- tryCatch({

@@ -1,5 +1,42 @@
 # nemetonshiny 0.143.10.9001 (dev)
 
+### Fixed — Les zones de suivi étaient recréées à chaque run, et emportaient tous les caches
+
+`build_project_monitoring_zones()` a `replace = TRUE` par défaut, et ce
+`replace` **supprime** les lignes du projet avant de réinsérer : les
+identifiants changent à chaque appel. L'étape « Santé — création des zones de
+suivi » l'appelait à chaque lancement de la chaîne.
+
+Tout ce qui est indexé sur l'identifiant devenait donc orphelin —
+`cache/layers/{fordead,reconfort}/output_zone_<id>/`. Mesuré sur Couchey, un
+seul projet, trois runs :
+
+| répertoire | marqueurs de reprise | taille |
+|---|---|---|
+| `output_zone_37` | 106 | 3,5 Go |
+| `output_zone_41` | 81 | 2,8 Go |
+| `output_zone_45` | 2 | 1,4 Go |
+
+**6,3 Go sous des zones qui n'existent plus** — vérifié en base, seule la 45
+subsiste.
+
+Et le disque n'est pas le pire. Les marqueurs d'idempotence de l'ingestion
+RECONFORT (`ingested/*.done`, qui font sauter une scène déjà ingérée) vivent
+sous ce répertoire. Un nouvel identifiant = un répertoire vide = **tout
+re-téléchargé**. La reprise après arrêt était déjà écrite côté cœur ; c'est le
+renouvellement des identifiants qui l'annulait, run après run.
+
+La chaîne saute désormais l'étape quand les zones sont à jour. **Deux
+conditions, et les deux comptent** : la clé dit que les sources n'ont pas bougé
+(UGF, tènements, BD Forêt) ; la présence en base dit que les zones existent
+encore et portent bien une strate `_tot`. Sauter sur la seule clé servirait un
+`zone_id` qui ne désigne plus rien.
+
+Le compromis est celui du contrôle d'intégrité : la clé porte sur les
+**sources**, pas sur la simple présence des zones — sauter alors que les UGF ont
+changé laisserait une géométrie de zone périmée. Et le bouton de l'onglet
+réenregistre toujours.
+
 ### Fixed — Le contrôle d'intégrité était rejoué en entier, réseau inchangé
 
 51 min sur Couchey (17 056 tronçons), à **chaque** lancement de la chaîne. Le

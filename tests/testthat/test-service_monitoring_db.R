@@ -801,3 +801,92 @@ test_that(".nemeton_db_connect omits connect_timeout on older db_connect (no err
   expect_null(res$connect_timeout)
   expect_false(res$read_only)
 })
+
+
+# ---------------------------------------------------------------------------
+# Fraicheur des zones de suivi (6,3 Go orphelins sur Couchey, 2026-09-01)
+# ---------------------------------------------------------------------------
+
+.zones_fixture <- function(dir) {
+  dir.create(file.path(dir, "data"), recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(dir, "cache", "layers"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("ugs",      file.path(dir, "data", "ugs.json"))
+  writeLines("tenement", file.path(dir, "data", "tenements.gpkg"))
+  writeLines("bdforet",  file.path(dir, "cache", "layers", "bdforet.gpkg"))
+  list(id = "p1", path = dir)
+}
+
+.zones_df <- function() {
+  data.frame(id = c(45L, 46L), name = c("couchey_tot", "couchey_feu"),
+             stringsAsFactors = FALSE)
+}
+
+test_that("sans cle ecrite, les zones ne sont pas reputees a jour", {
+  withr::with_tempdir({
+    projet <- .zones_fixture(getwd())
+    expect_false(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+  })
+})
+
+test_that("cle ecrite et sources inchangees : les zones sont a jour", {
+  withr::with_tempdir({
+    projet <- .zones_fixture(getwd())
+    nemetonshiny:::.ecrire_zones_cle(projet)
+    expect_true(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+  })
+})
+
+test_that("une UGF modifiee perime les zones", {
+  # C'est le compromis du correctif : sauter quand les UGF ONT change
+  # laisserait une geometrie de zone perimee. La cle porte donc sur les
+  # sources, pas sur la simple presence des zones.
+  withr::with_tempdir({
+    projet <- .zones_fixture(getwd())
+    nemetonshiny:::.ecrire_zones_cle(projet)
+    expect_true(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+
+    Sys.sleep(1.1)
+    writeLines(c("ugs", "une parcelle de plus"),
+               file.path(getwd(), "data", "ugs.json"))
+    expect_false(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+  })
+})
+
+test_that("une cle valide ne suffit pas si les zones ont disparu de la base", {
+  # Deux conditions, et les deux comptent : sauter sur la seule cle servirait
+  # un `zone_id` qui ne designe plus rien (base changee, zones supprimees).
+  withr::with_tempdir({
+    projet <- .zones_fixture(getwd())
+    nemetonshiny:::.ecrire_zones_cle(projet)
+    expect_false(nemetonshiny:::.zones_a_jour(projet, NULL))
+    expect_false(nemetonshiny:::.zones_a_jour(projet, .zones_df()[0, ]))
+    # Des zones sans `_tot` ne servent pas les moteurs sante, qui tournent
+    # tous sur l'union complete des UGF.
+    sans_tot <- data.frame(id = 46L, name = "couchey_feu",
+                           stringsAsFactors = FALSE)
+    expect_false(nemetonshiny:::.zones_a_jour(projet, sans_tot))
+  })
+})
+
+test_that("une source manquante ne fait pas lever, elle rend NULL", {
+  withr::with_tempdir({
+    projet <- .zones_fixture(getwd())
+    unlink(file.path(getwd(), "cache", "layers", "bdforet.gpkg"))
+    expect_null(nemetonshiny:::.monitoring_zones_cle(projet))
+    expect_false(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+    expect_null(nemetonshiny:::.monitoring_zones_cle(list(id = "x")))
+  })
+})
+
+test_that("le bouton de l'onglet reenregistre TOUJOURS, la chaine seule consulte la cle", {
+  f <- testthat::test_path("..", "..", "R", "mod_monitoring.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  garde <- grep("\\.zones_a_jour\\(", code)
+  expect_length(garde, 1L)
+  # La garde vit dans la branche pipeline, apres son `pipeline_targets`.
+  branche <- grep('pipeline_targets\\(req, "sante_zone"\\)', code)
+  expect_length(branche, 1L)
+  expect_true(garde > branche)
+})
