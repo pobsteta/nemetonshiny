@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.7.9001 (dev)
+# nemetonshiny 0.143.8 (2026-09-01)
 
 ### Fixed — Le rapport nommait l'erreur, pas l'endroit
 
@@ -15,6 +15,18 @@ rapport de la chaîne l'affiche désormais (« … — dans `g(42)` »).
 Sans lui, localiser un échec de moteur long coûte un run de plusieurs heures de
 plus. C'est le même raisonnement qu'en v0.143.6, poussé d'un cran : le message
 disait *quoi*, il dit maintenant *où*.
+
+### Ce que la vérification de bout en bout a montré
+
+Le chemin a été rejoué sur un vrai `future`, pas sur un stub : un worker qui
+**réussit et persiste**, puis lève depuis son `on.exit`. Le parent reçoit
+`objet 'con' introuvable — dans fermer_connexion(con_inexistant)`.
+
+Une erreur levée dans l'`on.exit` d'un future fait donc échouer la tâche **alors
+que le corps a rendu son résultat**. C'est exactement la forme observée sur
+Couchey — `ingest_run.json` à `done`, 183 scènes, et la tâche en erreur. La
+queue du worker devient la piste principale ; la cause reste à confirmer au
+prochain run.
 
 # nemetonshiny 0.143.7 (2026-08-31)
 

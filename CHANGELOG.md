@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.8] - 2026-09-01
+
+### Fixed
+
+- **Le rapport de la chaîne nommait l'erreur, pas l'endroit.**
+  `pipeline_task_error()` ajoute `conditionCall()`, qui nomme l'appel fautif et
+  traverse la frontière `future` (vérifié de bout en bout sur un vrai worker).
+  Sur le run Couchey du 2026-08-31, « objet 'con' introuvable » n'était pas
+  localisable : une recherche statique dans les deux paquets n'a rien donné.
+
 ## [0.143.7] - 2026-08-31
 
 ### Changed
