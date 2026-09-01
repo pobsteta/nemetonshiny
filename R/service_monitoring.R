@@ -831,11 +831,21 @@ run_reconfort_async <- function() {
       # Priorite au nom de projet (parent, a jour), repli DB - cf. FAST.
       zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
-      # Composite progress callback: the file writer the parent's
-      # reactivePoll tails, PLUS a worker-side ntfy push on each new
-      # RECONFORT phase (de-duplicated, one per phase name).
-      progress_cb <- .build_reconfort_progress_callback(progress_path,
-                                                        ntfy, i18n)
+      # Moitie « push » SEULE. Sous execution plafonnee, l'enfant ecrit
+      # lui-meme les fichiers `.json` / `.ndjson` ; lui passer le
+      # callback COMPOSITE dupliquerait chaque ligne NDJSON - le piege
+      # deja rencontre sur FORDEAD. Contrairement a FORDEAD, ce worker
+      # n'emet aucun heartbeat propre : il n'a donc pas d'usage pour le
+      # composite, et ne le construit pas.
+      ntfy_cb <- .build_reconfort_ntfy_callback(ntfy, i18n)
+
+      # URL passee a l'enfant plafonne, qui ouvre SA propre connexion
+      # (une DBIConnection ne franchit pas une frontiere de process).
+      child_db_url <- if (nzchar(db_url %||% "")) {
+        db_url
+      } else {
+        .resolve_monitoring_db_url(NULL)
+      }
 
       .ntfy_send(
         ntfy,
@@ -851,14 +861,39 @@ run_reconfort_async <- function() {
         )
       }
 
+      # v0.143.10 - RECONFORT passe en ENFANT PLAFONNE, comme FORDEAD.
+      #
+      # Le 2026-09-01 sur Couchey, `systemd-oomd` a tue le SCOPE ENTIER
+      # (9 processus : RStudio, la session R, les workers) pendant
+      # l'item 82/203 de l'ingestion - « memory pressure for
+      # user@1000.service being 56.87% > 50.00% », scope a 14,5 Go.
+      # Aucun evenement d'erreur : le worker n'a pas leve, il a ete tue.
+      #
+      # Le cœur ne plafonnait QUE le sous-processus Python
+      # (`.reconfort_run_py()` -> `.reconfort_cap_memory()`), au motif
+      # que c'est lui le gourmand. Mais la boucle d'ingestion des 203
+      # scenes est du R PUR (`nemeton:::reconfort_ingest.R`, evenements
+      # `reconfort:ingest_item`) et n'etait plafonnee par rien : le run
+      # est mort AVANT d'atteindre Python. Le raisonnement du cœur
+      # laissait cette phase a decouvert.
+      #
+      # Sous cgroup, un depassement tue l'enfant SEUL, avec une erreur
+      # attrapable - au lieu d'emporter la session de l'utilisateur.
+      # `con` et `progress_callback` ne franchissent pas la frontiere de
+      # process : l'enfant ouvre sa connexion depuis `db_url` et ecrit
+      # lui-meme les fichiers de progression depuis `progress_path`.
       result <- tryCatch(
-        nemeton::run_reconfort_dieback(
-          con               = con,
-          zone_id           = zone_id,
-          cache_dir         = cache_dir,
-          s2_year           = s2_year,
-          output_dir        = output_dir,
-          progress_callback = progress_cb
+        nemeton::run_memory_capped(
+          "run_reconfort_dieback",
+          args = list(
+            zone_id    = zone_id,
+            cache_dir  = cache_dir,
+            s2_year    = s2_year,
+            output_dir = output_dir
+          ),
+          db_url            = child_db_url,
+          progress_path     = progress_path,
+          progress_callback = ntfy_cb
         ),
         error = function(e) {
           .ntfy_send(
@@ -1108,12 +1143,37 @@ run_reconfort_async <- function() {
 #' @noRd
 .build_reconfort_progress_callback <- function(progress_path, ntfy, i18n) {
   file_cb <- .build_progress_writer(progress_path)
-  state   <- new.env(parent = emptyenv())
-  state$last_phase <- ""
+  ntfy_cb <- .build_reconfort_ntfy_callback(ntfy, i18n)
   function(event) {
     if (!is.null(file_cb)) {
       tryCatch(file_cb(event), error = function(e) invisible(NULL))
     }
+    ntfy_cb(event)
+    invisible(NULL)
+  }
+}
+
+
+#' ntfy-only RECONFORT phase callback (no file write)
+#'
+#' Strict mirror of [.build_fordead_ntfy_callback()], et pour la meme
+#' raison : sous execution plafonnee (`nemeton::run_memory_capped()`),
+#' **l'enfant ecrit deja** les fichiers `.json` / `.ndjson` de
+#' progression. Rejouer le callback COMPOSITE dans le parent
+#' dupliquerait chaque evenement - lignes NDJSON en double, console en
+#' double. Le parent ne rejoue donc que le push ntfy.
+#'
+#' La dedup par phase vit dans l'etat `last_phase` de la closure, cote
+#' PARENT : elle survit donc a la mort et au redemarrage de l'enfant.
+#'
+#' @param ntfy `.ntfy_config()` output (or `NULL` -> no-op).
+#' @param i18n A `get_i18n()` translator.
+#' @return A callback `function(event)`.
+#' @noRd
+.build_reconfort_ntfy_callback <- function(ntfy, i18n) {
+  state <- new.env(parent = emptyenv())
+  state$last_phase <- ""
+  function(event) {
     current <- as.character(event$current %||% "")
     if (identical(current, "reconfort:phase")) {
       phase_name <- as.character(event$phase_name %||% "")

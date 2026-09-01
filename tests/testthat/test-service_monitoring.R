@@ -595,3 +595,57 @@ test_that("les fermetures des trois workers passent devant la liberation", {
   # memoire compte le plus.
   expect_length(grep("on\\.exit\\(\\.release_worker_memory\\(\\)", code), 3L)
 })
+
+
+# ---------------------------------------------------------------------------
+# RECONFORT en enfant plafonne (OOM Couchey du 2026-09-01)
+# ---------------------------------------------------------------------------
+
+test_that(".build_reconfort_ntfy_callback ne touche pas au fichier de progression", {
+  # Meme raison que pour FORDEAD : sous `run_memory_capped()` c'est l'ENFANT
+  # qui ecrit les fichiers. Un parent qui ecrirait aussi doublerait chaque
+  # ligne NDJSON - le piege du callback composite, deja paye une fois.
+  withr::with_tempdir({
+    cb <- nemetonshiny:::.build_reconfort_ntfy_callback(NULL, get_i18n("fr"))
+    expect_true(is.function(cb))
+    expect_silent(cb(list(current = "reconfort:phase", phase_name = "ingest")))
+    expect_length(list.files(getwd()), 0L)
+  })
+})
+
+test_that("la dedup de phase RECONFORT vit cote PARENT, donc survit a l'enfant", {
+  # L'etat `last_phase` est dans la closure du parent : si l'enfant plafonne
+  # meurt et redemarre, la phase deja notifiee ne repart pas en push.
+  cb <- nemetonshiny:::.build_reconfort_ntfy_callback(NULL, get_i18n("fr"))
+  expect_silent(cb(list(current = "reconfort:phase", phase_name = "ingest")))
+  expect_silent(cb(list(current = "reconfort:phase", phase_name = "ingest")))
+  # Un evenement d'un autre type ne doit pas non plus lever.
+  expect_silent(cb(list(current = "reconfort:ingest_item", step = "crop")))
+})
+
+test_that("RECONFORT tourne en enfant plafonne, comme FORDEAD", {
+  # Le 2026-09-01 sur Couchey, `systemd-oomd` a tue le SCOPE ENTIER (9
+  # processus) pendant l'item 82/203 de l'ingestion - pression a 56,87 % sur
+  # user@1000.service, scope a 14,5 Go. Aucun evenement d'erreur : le worker
+  # n'a pas leve, il a ete tue.
+  #
+  # Le cœur ne plafonnait QUE le sous-processus Python, au motif que c'est lui
+  # le gourmand. Mais la boucle d'ingestion des 203 scenes est du R pur et le
+  # run est mort AVANT d'atteindre Python.
+  #
+  # Test de source : aucun `testServer` ne rejoue un worker `future`, et
+  # verifier la vraie mise en cgroup demanderait systemd + des heures de run.
+  f <- testthat::test_path("..", "..", "R", "service_monitoring.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  src  <- paste(code, collapse = "\n")
+
+  # Le moteur n'est plus appele en direct dans le worker.
+  expect_false(grepl("nemeton::run_reconfort_dieback\\(", src))
+  # Il passe par le meme mecanisme que FORDEAD.
+  expect_true(grepl('run_memory_capped\\(\\s*\n?\\s*"run_reconfort_dieback"', src))
+  # Et c'est la moitie ntfy qui est rejouee, pas le composite : sinon chaque
+  # ligne NDJSON serait ecrite deux fois.
+  expect_length(grep("progress_callback = ntfy_cb", code), 2L)  # FORDEAD + RECONFORT
+})
