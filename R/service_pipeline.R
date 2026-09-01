@@ -342,7 +342,22 @@ pipeline_task_error <- function(task, defaut = "error") {
     if (is.list(res) && !is.null(res$detail)) as.character(res$detail)[1]
     else if (is.list(res) && !is.null(res$reason)) as.character(res$reason)[1]
     else NULL
-  }, error = function(e) conditionMessage(e))
+  }, error = function(e) {
+    m <- conditionMessage(e)
+    # Le message seul ne suffit pas. « objet 'con' introuvable » (run
+    # Couchey du 2026-08-31, deux moteurs Sante) ne dit PAS dans quel
+    # appel : il a fallu fouiller les deux paquets sans le trouver.
+    # `conditionCall()` le nomme, et il TRAVERSE la frontiere `future`
+    # (verifie : un `stop()` dans un worker rend bien son appel).
+    # Sans lui, savoir « ou » coute un run de plusieurs heures de plus.
+    cl <- tryCatch(conditionCall(e), error = function(...) NULL)
+    if (!is.null(cl)) {
+      d <- tryCatch(paste(utils::head(deparse(cl), 2L), collapse = " "),
+                    error = function(...) "")
+      if (nzchar(d)) m <- paste0(m, " \u2014 dans ", d)
+    }
+    m
+  })
   if (is.null(msg) || !nzchar(msg)) return(defaut)
   # Tronquer : un traceback Python (FORDEAD via reticulate) tiendrait sur des
   # dizaines de lignes et noierait le rapport.

@@ -356,3 +356,26 @@ test_that("pipeline_task_error tronque les tracebacks et retombe sur le defaut",
     nemetonshiny:::pipeline_task_error(list(result = function() NULL), "Erreur"),
     "Erreur")
 })
+
+test_that("pipeline_task_error nomme l'APPEL fautif, pas seulement le message", {
+  # Le run Couchey du 2026-08-31 a rendu « objet 'con' introuvable » sur deux
+  # moteurs Sante. Le message seul n'a pas suffi : la recherche statique dans
+  # les deux paquets n'a rien donne, faute de savoir DANS QUEL appel. Or
+  # `conditionCall()` le nomme et traverse la frontiere `future`. Sans lui,
+  # localiser coute un run de plusieurs heures de plus.
+  tache <- list(result = function() {
+    g <- function(zone) stop("objet 'con' introuvable")
+    g(42)
+  })
+  out <- nemetonshiny:::pipeline_task_error(tache)
+  expect_match(out, "objet 'con' introuvable", fixed = TRUE)
+  expect_match(out, "g(42)", fixed = TRUE)
+})
+
+test_that("un message sans appel reste lisible", {
+  # `stop()` appele au top-level d'un worker n'a pas de `call` : le message
+  # doit sortir seul, sans « dans NULL » ni tiret orphelin.
+  out <- nemetonshiny:::pipeline_task_error(
+    list(result = function() stop(simpleError("cache S2 illisible"))))
+  expect_equal(out, "cache S2 illisible")
+})

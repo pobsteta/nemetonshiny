@@ -1,3 +1,21 @@
+# nemetonshiny 0.143.7.9001 (dev)
+
+### Fixed — Le rapport nommait l'erreur, pas l'endroit
+
+Run Couchey du 2026-08-31 : le correctif v0.143.6 a bien fait remonter la cause
+des deux échecs Santé — **« objet 'con' introuvable »** — mais pas l'endroit.
+Une recherche statique dans les deux paquets (`codetools::findGlobals` sur les
+deux espaces de noms, défauts auto-référents, code construit dynamiquement) n'a
+rien donné : le message seul ne dit pas dans quel appel.
+
+Or `conditionCall()` le nomme, et il **traverse la frontière `future`** —
+vérifié : un `stop()` levé dans un worker rend bien son appel au parent. Le
+rapport de la chaîne l'affiche désormais (« … — dans `g(42)` »).
+
+Sans lui, localiser un échec de moteur long coûte un run de plusieurs heures de
+plus. C'est le même raisonnement qu'en v0.143.6, poussé d'un cran : le message
+disait *quoi*, il dit maintenant *où*.
+
 # nemetonshiny 0.143.7 (2026-08-31)
 
 ### Changed — Le repli CHM en dur rendu au cœur, qui le fait mieux
