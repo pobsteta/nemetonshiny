@@ -1,3 +1,30 @@
+# nemetonshiny 0.143.14 (2026-09-02)
+
+### Changed — « Tout calculer » : le bloc, le bouton, et ce qui se passe au clic
+
+Trois retouches de la section de lancement enchaîné, dans la sidebar de
+l'onglet Sélection.
+
+**L'entête du bloc ne répète plus le bouton.** Le bandeau et le bouton juste
+en dessous portaient le même texte, « Tout calculer », à six pixels d'écart.
+Le bloc s'appelle désormais **« Tableau des actions »** (`pipeline_section_title`,
+FR/EN) : le bloc nomme ce qu'il regroupe, le bouton nomme l'action.
+
+**Le bouton se grise pendant la chaîne.** Il redevient cliquable à la clôture,
+qu'elle vienne de la fin naturelle ou de l'arrêt manuel. Une garde serveur
+double le grisage : un clic resté en vol au moment du démarrage ne peut plus
+écraser le run en cours — ses réponses auraient été rejetées sur le `run_id`,
+laissant une chaîne orpheline tourner sans rien piloter.
+
+**Un toast « Tous les calculs en cours... » s'affiche en bas à droite** pendant
+toute la durée de la chaîne, et se retire à la clôture. C'est le retour immédiat
+qu'exige la règle des actions longues ; le coin bas-droite est celui de toutes
+les notifications de l'app depuis la v0.32.0.
+
+Le grisage et le toast sont pilotés par l'**état du run**, pas par le clic sur
+« Tout calculer » : ce clic-là n'ouvre que la modale de sélection des étapes, et
+griser dès l'ouverture aurait laissé un bouton mort à celui qui annule la modale.
+
 # nemetonshiny 0.143.13 (2026-09-02)
 
 ### Fixed — Le moteur tournait sur 2018 / 2022 sans le dire, quand E-OBS était sauté

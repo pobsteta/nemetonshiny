@@ -45,7 +45,7 @@ mod_pipeline_ui <- function(id) {
         htmltools::div(
           class = "d-flex align-items-center",
           bsicons::bs_icon("play-circle", class = "me-2"),
-          i18n$t("pipeline_button")
+          i18n$t("pipeline_section_title")
         ),
         bsicons::bs_icon("chevron-down", class = "collapse-icon")
       )
@@ -97,6 +97,17 @@ mod_pipeline_server <- function(id, app_state) {
     # ------------------------------------------------------------------
     shiny::observeEvent(input$open, {
       i18n <- i18n_r()
+      # Le bouton est grise pendant la chaine, donc ce chemin n'est pas
+      # atteignable a la souris. La garde couvre le reste : un clic reste en
+      # vol au moment ou la chaine demarre, un `updateActionButton` perdu,
+      # un test qui pousse l'input directement. Sans elle, un second
+      # `pipeline_new_run()` ecraserait le run en cours et ses reponses
+      # seraient rejetees sur le `run_id` - une chaine orpheline.
+      if (!is.null(rv$state) && !pipeline_is_done(rv$state)) {
+        shiny::showNotification(i18n$t("pipeline_running_toast"),
+                                type = "message", duration = 5)
+        return()
+      }
       if (is.null(app_state$current_project)) {
         shiny::showNotification(i18n$t("pipeline_no_project"),
                                 type = "warning", duration = 5)
@@ -154,6 +165,16 @@ mod_pipeline_server <- function(id, app_state) {
       }
       shiny::removeModal()
       rv$state <- pipeline_new_run(etapes, profil = input$profil)
+      # Retour immediat (regle stricte #9) : bouton grise + toast, le temps de
+      # l'operation. Les deux sont pilotes par l'ETAT DU RUN et non par le clic
+      # sur "Tout calculer" : ce clic-la n'ouvre que la modale, et l'annuler
+      # laisserait un bouton mort si on grisait des l'ouverture. Le toast est
+      # persistant (`duration = NULL`) - `.cloturer()` le retire.
+      shiny::updateActionButton(session, "open", disabled = TRUE)
+      shiny::showNotification(
+        i18n$t("pipeline_running_toast"),
+        type = "message", duration = NULL, id = ns("running_notif")
+      )
       cli::cli_alert_info(
         "Pipeline {rv$state$run_id}: {length(etapes)} etape{?s}, profil {input$profil %||% '?'}")
       .emettre()
@@ -213,6 +234,11 @@ mod_pipeline_server <- function(id, app_state) {
       etat <- rv$state
       if (is.null(etat)) return(invisible(NULL))
       i18n <- i18n_r()
+      # Passage OBLIGE des deux sorties - fin naturelle (`.emettre()` sans
+      # etape suivante) et arret manuel (`input$cancel`). Rendre le bouton
+      # ailleurs laisserait un des deux chemins avec un bouton mort.
+      shiny::removeNotification(ns("running_notif"))
+      shiny::updateActionButton(session, "open", disabled = FALSE)
       compte <- pipeline_tally(etat)
       duree <- if (!is.null(etat$ended)) {
         format_elapsed(as.numeric(difftime(etat$ended, etat$started, units = "secs")))
