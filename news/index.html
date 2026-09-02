@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.13</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.14" id="nemetonshiny-014314-2026-09-02">nemetonshiny 0.143.14 (2026-09-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014314-2026-09-02"></a></h2>
+<div class="section level4">
+<h4 id="changed---tout-calculer---le-bloc-le-bouton-et-ce-qui-se-passe-au-clic-0-143-14">Changed — « Tout calculer » : le bloc, le bouton, et ce qui se passe au clic<a class="anchor" aria-label="anchor" href="#changed---tout-calculer---le-bloc-le-bouton-et-ce-qui-se-passe-au-clic-0-143-14"></a></h4>
+<p>Trois retouches de la section de lancement enchaîné, dans la sidebar de l’onglet Sélection.</p>
+<p><strong>L’entête du bloc ne répète plus le bouton.</strong> Le bandeau et le bouton juste en dessous portaient le même texte, « Tout calculer », à six pixels d’écart. Le bloc s’appelle désormais <strong>« Tableau des actions »</strong> (<code>pipeline_section_title</code>, FR/EN) : le bloc nomme ce qu’il regroupe, le bouton nomme l’action.</p>
+<p><strong>Le bouton se grise pendant la chaîne.</strong> Il redevient cliquable à la clôture, qu’elle vienne de la fin naturelle ou de l’arrêt manuel. Une garde serveur double le grisage : un clic resté en vol au moment du démarrage ne peut plus écraser le run en cours — ses réponses auraient été rejetées sur le <code>run_id</code>, laissant une chaîne orpheline tourner sans rien piloter.</p>
+<p><strong>Un toast « Tous les calculs en cours… » s’affiche en bas à droite</strong> pendant toute la durée de la chaîne, et se retire à la clôture. C’est le retour immédiat qu’exige la règle des actions longues ; le coin bas-droite est celui de toutes les notifications de l’app depuis la v0.32.0.</p>
+<p>Le grisage et le toast sont pilotés par l’<strong>état du run</strong>, pas par le clic sur « Tout calculer » : ce clic-là n’ouvre que la modale de sélection des étapes, et griser dès l’ouverture aurait laissé un bouton mort à celui qui annule la modale.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.13" id="nemetonshiny-014313-2026-09-02">nemetonshiny 0.143.13 (2026-09-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014313-2026-09-02"></a></h2>
 <div class="section level4">
