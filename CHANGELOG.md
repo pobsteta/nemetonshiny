@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.13] - 2026-09-02
+
+### Fixed
+
+- **Le moteur de reGénération et le gel R7 tournaient sur les années par défaut
+  (2018 / 2022) sans le signaler** quand l'étape E-OBS était sautée — cas du
+  projet Lajoux. `annees_pipeline()` n'est rempli qu'en cas de succès E-OBS ; le
+  repli lisait les champs du formulaire, et le rapport affichait les deux étapes
+  en vert. Elles nomment désormais les années utilisées et signalent le repli.
+
 ## [0.143.12] - 2026-09-02
 
 ### Fixed

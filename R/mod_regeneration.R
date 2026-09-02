@@ -1748,6 +1748,42 @@ mod_regeneration_server <- function(id, app_state) {
     pipeline_req <- shiny::reactiveVal(NULL)   # etape « regeneration » (moteur)
     gel_pipeline_req <- shiny::reactiveVal(NULL)
     annees_pipeline <- shiny::reactiveVal(NULL)  # annees E-OBS du run en cours
+    # Annees REELLEMENT utilisees par la derniere etape lancee, et d'ou elles
+    # viennent. Cf. `.annees_du_run()`.
+    annees_rapport <- shiny::reactiveVal(NULL)
+
+    # Quelles annees l'etape va-t-elle consommer, et sont-elles DETECTEES ?
+    #
+    # Quand E-OBS est saute - « Detection E-OBS indisponible, saisir les annees
+    # manuellement », cas du projet Lajoux - `annees_pipeline()` reste NULL et
+    # le `%||%` des lanceurs retombe sur les champs du formulaire, dont les
+    # valeurs d'usine sont 2018 et 2022. Le moteur et le gel R7 tournaient donc
+    # sur des annees arbitraires, et le rapport les affichait en VERT sans rien
+    # dire. C'est le mode de defaillance annonce a la livraison de la chaine
+    # (v0.143.0) pour le cas « E-OBS reussit » ; le cas « E-OBS saute » n'avait
+    # rien prevu.
+    #
+    # On ne bloque pas : quelqu'un a pu saisir ses annees expres. On rend le
+    # repli VISIBLE dans le rapport, ce qui est le minimum honnete.
+    .annees_du_run <- function(annees) {
+      na_null <- function(x) {
+        if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+      }
+      list(
+        moyenne   = annees$moyenne  %||% na_null(input$year_moyenne),
+        canicule  = annees$canicule %||% na_null(input$year_canicule),
+        detectees = !is.null(annees$moyenne) && !is.null(annees$canicule)
+      )
+    }
+
+    # Message a joindre a une etape REUSSIE quand ses annees viennent du repli.
+    # NULL quand elles ont ete detectees - une etape normale reste muette.
+    .message_annees <- function() {
+      a <- annees_rapport()
+      if (is.null(a) || isTRUE(a$detectees)) return(NULL)
+      sprintf(i18n$t("pipeline_regen_annees_defaut"),
+              as.character(a$moyenne %||% "?"), as.character(a$canicule %||% "?"))
+    }
 
     # Prerequis communs aux trois etapes. Repond `skipped` et rend FALSE quand
     # l'etape ne peut pas tourner - toute requete reconnue doit repondre.
@@ -1833,6 +1869,7 @@ mod_regeneration_server <- function(id, app_state) {
         return()
       }
       gel_pipeline_req(req)
+      annees_rapport(.annees_du_run(annees_pipeline()))
       if (!isTRUE(.lancer_gel(annees = annees_pipeline()))) {
         gel_pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
@@ -1849,6 +1886,7 @@ mod_regeneration_server <- function(id, app_state) {
         return()
       }
       pipeline_req(req)
+      annees_rapport(.annees_du_run(annees_pipeline()))
       if (!isTRUE(.lancer_moteur_regen(annees = annees_pipeline()))) {
         pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
@@ -1886,7 +1924,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL
+                      if (identical(st, "success")) .message_annees()
                       else pipeline_task_error(frost_task, i18n$t("error")))
       gel_pipeline_req(NULL)
     })
@@ -1922,7 +1960,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (st %in% c("success", "error") && !is.null(req_pipeline)) {
         pipeline_answer(app_state, req_pipeline,
                         if (identical(st, "success")) "ok" else "error",
-                        if (identical(st, "success")) NULL
+                        if (identical(st, "success")) .message_annees()
                         else pipeline_task_error(engine_task, i18n$t("error")))
         pipeline_req(NULL)
       }

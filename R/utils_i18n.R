@@ -5797,6 +5797,10 @@ TRANSLATIONS <- list(
     fr = "Indicateurs non calcul\u00e9s.",
     en = "Indicators not computed."
   ),
+  pipeline_regen_annees_defaut = list(
+    fr = "Ann\u00e9es non d\u00e9tect\u00e9es : lanc\u00e9 sur %s (moyenne) et %s (canicule), valeurs des champs.",
+    en = "Years not detected: run on %s (average) and %s (heatwave), the form's values."
+  ),
   pipeline_skip_zones_a_jour = list(
     fr = "Zones de suivi d\u00e9j\u00e0 \u00e0 jour : les recr\u00e9er changerait leurs identifiants et invaliderait les caches.",
     en = "Monitoring zones already up to date: recreating them would change their ids and invalidate the caches."

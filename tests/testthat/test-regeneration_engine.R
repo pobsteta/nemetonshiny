@@ -1122,3 +1122,50 @@ test_that("les unites traversent le pipeline malgre la variable locale res", {
     expect_true(all(c("sensibilite", "njstress") %in% names(out$units)))
   })
 })
+
+
+# ---------------------------------------------------------------------------
+# Annees E-OBS : le repli sur les valeurs des champs doit se VOIR (Lajoux)
+# ---------------------------------------------------------------------------
+
+test_that("le rapport nomme les annees du repli quand E-OBS a ete saute", {
+  # Sur Lajoux, E-OBS est saute (« Detection E-OBS indisponible ») :
+  # `annees_pipeline()` reste NULL, le `%||%` des lanceurs retombe sur les
+  # champs du formulaire - valeurs d'usine 2018 / 2022 - et le moteur comme le
+  # gel R7 s'affichaient en VERT sans dire sur quelles annees ils avaient
+  # tourne. Un run peut donc decrire une annee moyenne et une canicule sans
+  # rapport avec le climat du projet.
+  #
+  # Test de source : `.annees_du_run()` et `.message_annees()` sont des
+  # fonctions LOCALES du serveur de module, hors du namespace - aucun
+  # `testthat::test_that` ne peut les appeler directement, et `testServer`
+  # n'expose pas les locales d'un serveur.
+  f <- testthat::test_path("..", "..", "R", "mod_regeneration.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  src  <- paste(code, collapse = "\n")
+
+  # Les DEUX etapes qui consomment les annees enregistrent ce qu'elles vont
+  # utiliser avant de lancer.
+  expect_length(grep("annees_rapport\\(\\.annees_du_run\\(", code), 2L)
+
+  # Et les DEUX repondent avec ce message au lieu d'un `NULL` muet.
+  expect_length(grep('identical\\(st, "success"\\)\\) \\.message_annees\\(\\)', code), 2L)
+
+  # `detectees` ne peut valoir TRUE que si les deux annees viennent d'E-OBS :
+  # une seule des deux suffirait a laisser passer un repli silencieux.
+  expect_true(grepl(
+    "detectees = !is\\.null\\(annees\\$moyenne\\) && !is\\.null\\(annees\\$canicule\\)",
+    src))
+})
+
+test_that("la cle i18n du repli porte bien ses deux annees", {
+  for (lg in c("fr", "en")) {
+    tpl <- get_i18n(lg)$t("pipeline_regen_annees_defaut")
+    expect_true(nzchar(tpl))
+    # Deux %s : sans eux, le message annoncerait le repli sans dire lequel.
+    expect_equal(lengths(regmatches(tpl, gregexpr("%s", tpl, fixed = TRUE))), 2L)
+    expect_match(sprintf(tpl, "2018", "2022"), "2018", fixed = TRUE)
+  }
+})

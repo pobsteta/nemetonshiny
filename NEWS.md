@@ -1,3 +1,39 @@
+# nemetonshiny 0.143.13 (2026-09-02)
+
+### Fixed — Le moteur tournait sur 2018 / 2022 sans le dire, quand E-OBS était sauté
+
+Constaté sur le projet **Lajoux**, où la détection E-OBS est indisponible :
+l'étape s'affiche en *Sautée* avec la bonne consigne (« saisir les années
+manuellement »), puis le gel R7 et le moteur s'affichent en **vert** — sans que
+rien n'indique sur quelles années ils ont tourné.
+
+`annees_pipeline()` n'est rempli que si l'étape E-OBS **réussit**. Sautée, il
+reste `NULL`, et le `%||%` des deux lanceurs retombe sur les champs du
+formulaire, dont les valeurs d'usine sont `2018` et `2022` :
+
+```r
+year_moyenne  = annees$moyenne  %||% na_null(input$year_moyenne),
+year_canicule = annees$canicule %||% na_null(input$year_canicule),
+```
+
+Un run pouvait donc décrire une année moyenne et une canicule sans rapport avec
+le climat du projet, et être rapporté réussi. C'est exactement le mode de
+défaillance annoncé à la livraison de la chaîne (v0.143.0) — le câblage traitait
+le cas « E-OBS réussit » et n'avait rien prévu pour « E-OBS est sauté ».
+
+Les deux étapes consommatrices enregistrent désormais les années qu'elles vont
+utiliser et **d'où elles viennent**. Quand elles proviennent du repli, le
+rapport le dit : « Années non détectées : lancé sur 2018 (moyenne) et 2022
+(canicule), valeurs des champs. »
+
+**On ne bloque pas** : quelqu'un a pu saisir ses années exprès, et un résultat
+sur des années choisies vaut mieux qu'un refus. Ce qui manquait n'était pas un
+garde-fou, c'était la visibilité.
+
+`detectees` n'est vrai que si les **deux** années viennent d'E-OBS — une seule
+suffirait à laisser passer un repli silencieux sur l'autre. Un test le verrouille,
+vérifié par mutation.
+
 # nemetonshiny 0.143.12 (2026-09-02)
 
 ### Fixed — Le correctif des zones se sabotait à son premier usage
