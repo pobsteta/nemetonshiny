@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.14] - 2026-09-02
+
 ### Changed
 
 - **Section « Tout calculer » (sidebar Sélection)** : l'entête du bloc s'appelle
