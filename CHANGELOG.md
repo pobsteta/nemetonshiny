@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.12\] - 2026-09-02
+
+### Fixed
+
+- **La garde anti-recréation des zones se sabotait à son premier
+  usage.** `.zones_a_jour()` exigeait le fichier de clé, écrit seulement
+  *après* un enregistrement : au premier run il n’existait pas et la
+  garde déclarait périmées des zones valides. Les zones existantes sans
+  clé sont désormais adoptées (la clé est amorcée, rien n’est recréé).
+
 ## \[0.143.11\] - 2026-09-01
 
 ### Fixed

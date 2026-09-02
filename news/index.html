@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.12" id="nemetonshiny-014312-2026-09-02">nemetonshiny 0.143.12 (2026-09-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014312-2026-09-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-correctif-des-zones-se-sabotait-à-son-premier-usage-0-143-12">Fixed — Le correctif des zones se sabotait à son premier usage<a class="anchor" aria-label="anchor" href="#fixed--le-correctif-des-zones-se-sabotait-%C3%A0-son-premier-usage-0-143-12"></a></h4>
+<p>La v0.143.11 devait empêcher la recréation des zones de suivi. Au premier lancement qui l’a suivie, sur Couchey, elle les a recréées quand même : ids 49-52, et les <strong>106 marqueurs de reprise</strong> qu’on venait de consolider à la main sont repartis en orphelins.</p>
+<p>La cause est dans la garde elle-même. <code>.zones_a_jour()</code> exigeait le fichier de clé — mais ce fichier n’est écrit qu’<strong>après</strong> un enregistrement réussi. Au premier run, il n’existe pas encore : la garde répondait « périmées » sur des zones parfaitement valides. Une fois par projet, le correctif détruisait exactement ce qu’il protégeait.</p>
+<p>Des zones qui existent, portent une strate <code>_tot</code> et n’ont pas de clé sont désormais <strong>adoptées</strong> : on écrit la clé des sources courantes et on ne recrée rien. L’adoption amorce la clé, donc le run suivant passe par le chemin normal.</p>
+<p><strong>Le risque assumé</strong>, écrit dans le code : si les UGF ont changé depuis que ces zones ont été construites, on adopte une géométrie périmée. Il est borné — l’ancien comportement recréait les zones à <em>chaque</em> run, donc des zones présentes viennent forcément du run précédent ; l’adoption n’arrive qu’une fois par projet ; et le bouton de l’onglet réenregistre toujours. Ne pas adopter coûtait des gigaoctets et des heures de re-téléchargement, à chaque projet.</p>
+<p>Deux tests, dont un qui vérifie que l’adoption ne transforme pas « aucune zone » en « à jour » — sinon les moteurs santé partiraient sur un <code>zone_id</code> qui ne désigne rien.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.11" id="nemetonshiny-014311-2026-09-01">nemetonshiny 0.143.11 (2026-09-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014311-2026-09-01"></a></h2>
 <div class="section level4">
