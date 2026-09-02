@@ -5651,6 +5651,20 @@ TRANSLATIONS <- list(
     fr = "Tout calculer",
     en = "Run everything"
   ),
+  # Titre du BLOC de la sidebar, distinct du libelle du bouton qu'il contient.
+  # L'entete repetait "Tout calculer" a l'identique du bouton juste dessous ;
+  # le bloc nomme ce qu'il regroupe (les actions lancables), le bouton nomme
+  # l'action. Cle propre plutot que reemploi de `action_plan_actions_title`
+  # (meme texte FR, autre onglet, autre cycle de vie).
+  pipeline_section_title = list(
+    fr = "Tableau des actions",
+    en = "Action board"
+  ),
+  # Toast persistant pendant toute la chaine - retire par `.cloturer()`.
+  pipeline_running_toast = list(
+    fr = "Tous les calculs en cours...",
+    en = "All computations running..."
+  ),
   pipeline_title = list(
     fr = "Lancer tous les calculs",
     en = "Run every computation"

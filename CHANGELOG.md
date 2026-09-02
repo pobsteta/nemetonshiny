@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.14] - 2026-09-02
+
+### Changed
+
+- **Section « Tout calculer » (sidebar Sélection)** : l'entête du bloc s'appelle
+  désormais **« Tableau des actions »** et ne répète plus le libellé du bouton
+  qu'il contient (nouvelle clé i18n `pipeline_section_title`, FR/EN).
+- **Le bouton « Tout calculer » se grise pendant toute la chaîne** et redevient
+  cliquable à la clôture (fin naturelle *et* arrêt manuel).
+- **Toast « Tous les calculs en cours... » en bas à droite** pendant la chaîne,
+  retiré à la clôture (nouvelle clé i18n `pipeline_running_toast`, FR/EN).
+
+### Fixed
+
+- **Double lancement de la chaîne impossible** : garde serveur sur `input$open`
+  en plus du grisage. Un second `pipeline_new_run()` écrasait le run en cours,
+  dont les réponses étaient ensuite rejetées sur le `run_id`.
+
 ## [0.143.13] - 2026-09-02
 
 ### Fixed
