@@ -821,10 +821,35 @@ test_that(".nemeton_db_connect omits connect_timeout on older db_connect (no err
              stringsAsFactors = FALSE)
 }
 
-test_that("sans cle ecrite, les zones ne sont pas reputees a jour", {
+test_that("des zones existantes sans cle sont ADOPTEES, pas recreees", {
+  # Le defaut du 2026-09-01, verifie par mutation. La cle n'est ecrite
+  # qu'APRES un enregistrement : au premier run suivant la livraison du
+  # correctif, elle n'existe pas encore et la garde repondait « perimees » sur
+  # des zones parfaitement valides. Resultat : les zones etaient recreees, les
+  # identifiants changeaient, et les 106 marqueurs de reprise qu'on venait de
+  # consolider a la main repartaient en orphelins. Le correctif se sabotait a
+  # son premier usage.
   withr::with_tempdir({
     projet <- .zones_fixture(getwd())
-    expect_false(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+    f <- file.path(getwd(), "data", "monitoring_zones_cle.rds")
+    expect_false(file.exists(f))
+
+    expect_true(nemetonshiny:::.zones_a_jour(projet, .zones_df()))
+    # L'adoption AMORCE la cle : le run suivant passe par le chemin normal.
+    expect_true(file.exists(f))
+    expect_identical(readRDS(f), nemetonshiny:::.monitoring_zones_cle(projet))
+  })
+})
+
+test_that("l'adoption n'a lieu que sur des zones REELLES", {
+  # Elle ne doit pas transformer « pas de zone » en « zones a jour » : les
+  # moteurs sante partiraient sur un `zone_id` inexistant.
+  withr::with_tempdir({
+    projet <- .zones_fixture(getwd())
+    expect_false(nemetonshiny:::.zones_a_jour(projet, NULL))
+    expect_false(nemetonshiny:::.zones_a_jour(projet, .zones_df()[0, ]))
+    expect_false(file.exists(file.path(getwd(), "data",
+                                       "monitoring_zones_cle.rds")))
   })
 })
 

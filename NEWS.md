@@ -1,3 +1,33 @@
+# nemetonshiny 0.143.12 (2026-09-02)
+
+### Fixed — Le correctif des zones se sabotait à son premier usage
+
+La v0.143.11 devait empêcher la recréation des zones de suivi. Au premier
+lancement qui l'a suivie, sur Couchey, elle les a recréées quand même : ids
+49-52, et les **106 marqueurs de reprise** qu'on venait de consolider à la main
+sont repartis en orphelins.
+
+La cause est dans la garde elle-même. `.zones_a_jour()` exigeait le fichier de
+clé — mais ce fichier n'est écrit qu'**après** un enregistrement réussi. Au
+premier run, il n'existe pas encore : la garde répondait « périmées » sur des
+zones parfaitement valides. Une fois par projet, le correctif détruisait
+exactement ce qu'il protégeait.
+
+Des zones qui existent, portent une strate `_tot` et n'ont pas de clé sont
+désormais **adoptées** : on écrit la clé des sources courantes et on ne recrée
+rien. L'adoption amorce la clé, donc le run suivant passe par le chemin normal.
+
+**Le risque assumé**, écrit dans le code : si les UGF ont changé depuis que ces
+zones ont été construites, on adopte une géométrie périmée. Il est borné —
+l'ancien comportement recréait les zones à *chaque* run, donc des zones
+présentes viennent forcément du run précédent ; l'adoption n'arrive qu'une fois
+par projet ; et le bouton de l'onglet réenregistre toujours. Ne pas adopter
+coûtait des gigaoctets et des heures de re-téléchargement, à chaque projet.
+
+Deux tests, dont un qui vérifie que l'adoption ne transforme pas « aucune zone »
+en « à jour » — sinon les moteurs santé partiraient sur un `zone_id` qui ne
+désigne rien.
+
 # nemetonshiny 0.143.11 (2026-09-01)
 
 ### Fixed — Les zones de suivi étaient recréées à chaque run, et emportaient tous les caches

@@ -765,6 +765,28 @@ validity_check_for_zone <- function(con, zone_id, units = NULL,
   cle <- .monitoring_zones_cle(project)
   if (is.null(cle)) return(FALSE)
   f <- file.path(project$path, "data", "monitoring_zones_cle.rds")
-  if (!file.exists(f)) return(FALSE)
+  # ADOPTION - v0.143.12. Sans cette branche, le PREMIER run suivant la
+  # livraison de la cle recreait les zones : le fichier n'existe pas encore
+  # (il n'est ecrit qu'APRES un enregistrement), donc la garde repondait
+  # « perimees » sur des zones parfaitement valides. Constate sur Couchey le
+  # 2026-09-01 - les 106 marqueurs de reprise qu'on venait de consolider a la
+  # main sont repartis en orphelins, et le moteur a recommence a zero. Le
+  # correctif se sabotait a son premier usage, une fois par projet.
+  #
+  # Des zones existent, portent une strate `_tot`, et aucune cle ne dit d'ou
+  # elles viennent : on les ADOPTE - on ecrit la cle des sources courantes et
+  # on ne recree rien.
+  #
+  # Le risque assume : si les UGF ont change depuis que ces zones ont ete
+  # construites, on adopte une geometrie perimee. Il est borne. D'une part
+  # l'ancien comportement recreait les zones a CHAQUE run, donc des zones
+  # presentes viennent forcement du run precedent. D'autre part l'adoption
+  # n'arrive qu'une fois par projet, et le bouton de l'onglet reenregistre
+  # toujours. Face a cela, ne pas adopter coutait des gigaoctets et des heures
+  # de re-telechargement a chaque projet.
+  if (!file.exists(f)) {
+    .ecrire_zones_cle(project)
+    return(file.exists(f))
+  }
   identical(tryCatch(readRDS(f), error = function(e) NULL), cle)
 }
