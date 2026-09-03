@@ -1611,3 +1611,94 @@ test_that("les 3 modes affichent roue dentee + etape + chrono sous le bouton", {
     }
   })
 })
+
+# ---------------------------------------------------------------------------
+# Trace des runs en echec (v0.143.15)
+# ---------------------------------------------------------------------------
+# Le NDJSON est la seule trace structuree d'un run. Sur le chemin d'erreur il
+# etait efface, donc detruit a la seconde ou il devenait utile (incident
+# Couchey du 2026-09-03 : RECONFORT echoue apres 20 h, plus rien a lire).
+
+test_that("sans archive, la trace est effacee comme avant", {
+  withr::with_tempdir({
+    writeLines("{}", "run_progress.json")
+    writeLines('{"a":1}', "run_progress.ndjson")
+    writeLines("x", "run_progress.json.tmp")
+
+    nemetonshiny:::.cleanup_progress_file("run_progress.json")
+
+    expect_false(file.exists("run_progress.json"))
+    expect_false(file.exists("run_progress.ndjson"))
+    expect_false(file.exists("run_progress.json.tmp"))
+    expect_length(Sys.glob("*.failed-*"), 0L)
+  })
+})
+
+test_that("avec archive, le JSON et le NDJSON survivent sous un nom horodate", {
+  withr::with_tempdir({
+    writeLines("{}", "run_progress.json")
+    writeLines('{"a":1}', "run_progress.ndjson")
+    writeLines("x", "run_progress.json.tmp")
+
+    nemetonshiny:::.cleanup_progress_file("run_progress.json", archive = TRUE)
+
+    # Les originaux ont bouge - le prochain run ne doit pas les relire comme
+    # s'ils etaient les siens.
+    expect_false(file.exists("run_progress.json"))
+    expect_false(file.exists("run_progress.ndjson"))
+    # Le `.tmp` est un artefact d'ecriture atomique : jete meme en echec.
+    expect_false(file.exists("run_progress.json.tmp"))
+
+    archives <- Sys.glob("*.failed-*")
+    expect_length(archives, 2L)
+    expect_true(any(grepl("^run_progress\\.json\\.failed-", archives)))
+    expect_true(any(grepl("^run_progress\\.ndjson\\.failed-", archives)))
+
+    # Et le CONTENU est intact : archiver sans le contenu ne servirait a rien.
+    ndj <- archives[grepl("ndjson", archives)]
+    expect_identical(readLines(ndj), '{"a":1}')
+  })
+})
+
+test_that("archiver un chemin dont un seul fichier existe ne casse pas", {
+  withr::with_tempdir({
+    # Un echec precoce peut laisser le NDJSON sans le JSON (le writer ecrit
+    # le NDJSON en premier).
+    writeLines('{"a":1}', "run_progress.ndjson")
+    # `expect_silent` serait faux ici : l'archivage ANNONCE ou il a mis la
+    # trace, et c'est le comportement voulu.
+    expect_no_error(
+      suppressMessages(
+        nemetonshiny:::.cleanup_progress_file("run_progress.json", archive = TRUE)
+      )
+    )
+    expect_length(Sys.glob("*.failed-*"), 1L)
+  })
+})
+
+test_that("les archives sont bornees a cinq par fichier de base", {
+  withr::with_tempdir({
+    # Sept archives deja la, horodatage croissant.
+    for (i in 1:7) {
+      writeLines("vieux", sprintf("run_progress.ndjson.failed-2026090%d-120000", i))
+    }
+    nemetonshiny:::.prune_failed_traces("run_progress.ndjson")
+
+    restantes <- sort(Sys.glob("run_progress.ndjson.failed-*"))
+    expect_length(restantes, 5L)
+    # Ce sont les CINQ PLUS RECENTES qui restent : garder les plus vieilles
+    # serait pire que ne rien borner.
+    expect_true(all(grepl("-2026090[3-7]-", restantes)))
+    expect_false(any(grepl("-20260901-|-20260902-", restantes)))
+  })
+})
+
+test_that("le pruning ne touche rien tant qu'on est sous le seuil", {
+  withr::with_tempdir({
+    for (i in 1:3) {
+      writeLines("v", sprintf("run_progress.ndjson.failed-2026090%d-120000", i))
+    }
+    nemetonshiny:::.prune_failed_traces("run_progress.ndjson")
+    expect_length(Sys.glob("run_progress.ndjson.failed-*"), 3L)
+  })
+})
