@@ -1,23 +1,23 @@
-# BRIEF `nemeton` — `PLAN.md` : quatre livraisons app (0.143.11 → 0.143.14)
+# BRIEF `nemeton` — `PLAN.md` : cinq livraisons app (0.143.11 → 0.143.15)
 
 > **Statut** : ouvert, 2026-09-02.
 > **Dépôt concerné** : `nemeton` uniquement — journal du `PLAN.md` racine.
 > **Nature** : documentation seule. **Aucun code cœur, aucune release cœur.**
-> **Contexte** : `nemetonshiny@0.143.14.9000`, `main` à `7efe5211`.
-> Journal cœur à jour jusqu'à l'entrée *App v0.143.10* — les **quatre**
-> suivantes manquent. Mise à jour du 2026-09-02 (soir) : v0.143.14 ajoutée,
-> le brief couvrait initialement 0.143.11 → 0.143.13.
+> **Contexte** : `nemetonshiny@0.143.15.9000`, `main` à `4e760fd2`.
+> Journal cœur à jour jusqu'à l'entrée *App v0.143.10* — les **cinq**
+> suivantes manquent. Le brief couvrait initialement 0.143.11 → 0.143.13 ;
+> v0.143.14 ajoutée le 02/09 au soir, v0.143.15 le 03/09.
 
 ---
 
 ## 0. Où coller
 
 En tête de journal, **au-dessus** de `### 2026-09-02 — v0.194.0 : le plafond
-mémoire passe à 40 %`. Les quatre entrées sont du 01/09 (soirée) et du 02/09 ;
+mémoire passe à 40 %`. Les cinq entrées vont du 01/09 (soirée) au 03/09 ;
 les coller dans l'ordre ci-dessous les laisse en ordre antéchronologique
 correct entre elles.
 
-## 1. Les quatre livraisons
+## 1. Les cinq livraisons
 
 | Release | Commit `main` | Date | Suite app |
 |---|---|---|---|
@@ -25,12 +25,46 @@ correct entre elles.
 | v0.143.12 | `28625639` | 2026-09-02 | 13 374 PASS / 0 FAIL |
 | v0.143.13 | `7886555d` | 2026-09-02 | 13 392 PASS / 0 FAIL |
 | v0.143.14 | `7efe5211` | 2026-09-02 | 0 FAIL / 0 ERROR / 17 SKIP |
+| v0.143.15 | `4e760fd2` | 2026-09-03 | 0 FAIL / 0 ERROR / 17 SKIP |
 
-Toutes taguées par `release.yml`. Cycle dev courant `0.143.14.9000`.
+Toutes taguées par `release.yml`. Cycle dev courant `0.143.15.9000`.
 
 ## 2. Texte à coller
 
 ```markdown
+### 2026-09-03 — App `nemetonshiny` v0.143.15 : la trace d'un run en échec était effacée au moment de servir
+
+Projet **Couchey**. RECONFORT échoue après **20 h 19** de calcul (`exit 1`), et
+il ne reste rien pour comprendre : ni le NDJSON de progression, ni le message
+d'erreur de l'enfant plafonné. Le diagnostic a dû être reconstitué depuis les
+fichiers laissés par IOTA².
+
+`.cleanup_progress_file()` était appelé à l'identique sur les trois sorties —
+succès, annulation **et erreur** — et supprimait le `.json` comme le `.ndjson`.
+Le NDJSON est pourtant la seule trace structurée d'un run : une ligne par item,
+une par phase. Sur le chemin d'erreur, on détruisait la preuve à la seconde où
+elle devenait utile. Les chemins d'échec (FAST, FORDEAD, RECONFORT) archivent
+désormais en `<fichier>.failed-<horodatage>`, cinq archives par fichier de base.
+
+**Ce que l'app ne peut pas réparer seule**, et qui fait l'objet d'un brief
+séparé (`BRIEF-nemeton-trace-enfant-plafonne.md`) : `isolate.R:283` fait
+`std <- if (quiet) NULL else ""`, et `""` hérite d'un parent qui est un worker
+`future` lancé par `parallelly` avec `OUT=/dev/null`. **La sortie de l'enfant
+plafonné part donc dans `/dev/null`** — le message d'erreur est perdu à la
+source. Le NDJSON dit jusqu'où on est allé, jamais pourquoi ça s'est arrêté.
+
+Deux constats de ce run qui méritent le journal :
+
+- **L'ingestion RECONFORT a été parfaite** : 203/203 scènes (51 reprises du
+  cache, 152 téléchargées), zéro échec. Première fois sur ce projet — les
+  quatre tentatives précédentes plafonnaient entre 82 et 109 items. L'adoption
+  des zones (v0.143.12) et l'enfant plafonné (v0.143.10) tiennent toutes deux.
+- **Ce n'était pas la mémoire** : `exit 1` (un dépassement arrive en `-9`/`-15`),
+  `memory.events` du cgroup IOTA² à `max 0 / oom 0`, pic à 11,52 Go sous un
+  plafond de 12.
+
+Suite app : 0 FAIL, 0 ERROR, 17 SKIP. `nemetonshiny@4e760fd2`.
+
 ### 2026-09-02 — App `nemetonshiny` v0.143.14 : « Tout calculer » — grisage, toast, et un bloc qui ne répète plus son bouton
 
 Trois retouches de la section de lancement enchaîné (sidebar Sélection).
@@ -163,7 +197,7 @@ nuit pas. Pour mémoire, c'est ce fichier-là qu'il faut lire, pas `~/.Renviron`
 
 ## 5. À vérifier avant de coller
 
-1. Que les quatre entrées se placent bien au-dessus de *v0.194.0* et restent
+1. Que les cinq entrées se placent bien au-dessus de *v0.194.0* et restent
    antéchronologiques entre elles.
-2. Qu'aucune de ces quatre versions n'est déjà consignée (le journal s'arrêtait à
+2. Qu'aucune de ces cinq versions n'est déjà consignée (le journal s'arrêtait à
    *App v0.143.10* au 2026-09-02 08:50).
