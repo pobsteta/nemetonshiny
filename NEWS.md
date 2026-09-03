@@ -25,7 +25,16 @@ trace du precedent — le defaut meme qu'on venait de corriger sur le NDJSON.
 
 Garde de capacite sur `formals()`, comme pour `package`/`options` ailleurs :
 sur un cœur anterieur l'argument est retire de l'appel, qui redevient
-exactement celui d'avant. Plancher `Imports: nemeton (>= 0.195.0)`.
+exactement celui d'avant.
+
+**Le plancher `Imports:` reste a `nemeton (>= 0.193.0)`.** `log_path` n'existe
+que dans le cœur `0.195.0`, dont la derniere RELEASE est `v0.194.0` — le code
+vit sur `main`, pas sur un tag, et `Remotes: @*release` ne tire que les tags.
+Bumper le plancher rendait l'app non installable (CI PR #174). C'est sans
+consequence : la garde de capacite fait que l'app fonctionne a l'identique sur
+un cœur anterieur, elle y perd seulement le log. Des que `v0.195.0` sera
+publiee, `@*release` la tirera et la fonctionnalite s'activera d'elle-meme,
+sans rien changer ici.
 
 **Ce que ca donne en pratique.** Le run RECONFORT de Couchey qui echouait depuis
 le 31 aout est alle au bout le 2026-09-03 a 21:19 — 10/10 phases, 14 min 48 s,

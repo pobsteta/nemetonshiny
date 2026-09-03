@@ -28,6 +28,29 @@ Merci pour le bonus non demandé (les 5 dernières lignes citées dans le messag
 d'échec). C'est ce qui fait qu'un utilisateur voit la cause sans ouvrir de
 fichier, et ça n'existait pas dans ma demande.
 
+### Une demande, petite : publiez `v0.195.0`
+
+Le plancher `Imports:` de l'app **reste à `nemeton (>= 0.193.0)`**, et pas
+parce qu'on hésite. `0.195.0` vit sur votre `main` ; votre dernière *release*
+est `v0.194.0`. Or l'app tire `Remotes: pobsteta/nemeton@*release`, qui ne
+résout que les **tags de release**. Bumper le plancher a rendu l'app
+non-installable en CI :
+
+```
+! error in pak subprocess
+* deps::.: Can't install dependency pobsteta/nemeton@*release (>= 0.195.0)
+```
+
+Ce n'est pas bloquant : la garde de capacité fait que l'app tourne à
+l'identique sur un cœur antérieur, elle y perd seulement le log. Mais
+**`log_path` restera inerte pour tout le monde sauf les postes en install
+locale** tant que le tag n'existe pas — sur ce poste il fonctionne parce que le
+cœur y est installé depuis la source.
+
+Dès que `v0.195.0` sera publiée, `@*release` la tirera et la fonctionnalité
+s'activera d'elle-même, sans rien changer côté app. On bumpera le plancher à ce
+moment-là.
+
 ## 1. `IOTA2_tasks_status.txt` enregistre aussi les échecs
 
 Votre §1 dit :
