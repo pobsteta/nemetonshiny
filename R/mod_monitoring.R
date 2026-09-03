@@ -4002,7 +4002,7 @@ mod_monitoring_server <- function(id, app_state) {
   }
   if (length(garde) > 0L) {
     cli::cli_alert_info("Trace du run en echec conservee : {.file {garde}}")
-    .prune_failed_traces(c(path, ndjson))
+    .prune_run_traces(c(path, ndjson))
   }
   invisible(NULL)
 }
@@ -4011,9 +4011,13 @@ mod_monitoring_server <- function(id, app_state) {
 # laisse un depot de plus dans le repertoire projet de l'utilisateur, sans
 # limite - on remplacerait un probleme de diagnostic par un probleme de
 # menage.
-.prune_failed_traces <- function(bases, keep = 5L) {
+#
+# v0.143.16 - `motif` : deux familles de traces se bornent de la meme facon,
+# les `.failed-<ts>` (NDJSON archive a l'echec) et les `.prev-<ts>` (log de
+# l'enfant plafonne, tourne au demarrage du run suivant).
+.prune_run_traces <- function(bases, keep = 5L, motif = ".failed-*") {
   for (b in unique(bases)) {
-    archives <- Sys.glob(paste0(b, ".failed-*"))
+    archives <- Sys.glob(paste0(b, motif))
     if (length(archives) <= keep) next
     # Les suffixes sont horodates en `%Y%m%d-%H%M%S` : l'ordre lexicographique
     # EST l'ordre chronologique, pas besoin de `file.info()`.

@@ -1682,7 +1682,7 @@ test_that("les archives sont bornees a cinq par fichier de base", {
     for (i in 1:7) {
       writeLines("vieux", sprintf("run_progress.ndjson.failed-2026090%d-120000", i))
     }
-    nemetonshiny:::.prune_failed_traces("run_progress.ndjson")
+    nemetonshiny:::.prune_run_traces("run_progress.ndjson")
 
     restantes <- sort(Sys.glob("run_progress.ndjson.failed-*"))
     expect_length(restantes, 5L)
@@ -1698,7 +1698,7 @@ test_that("le pruning ne touche rien tant qu'on est sous le seuil", {
     for (i in 1:3) {
       writeLines("v", sprintf("run_progress.ndjson.failed-2026090%d-120000", i))
     }
-    nemetonshiny:::.prune_failed_traces("run_progress.ndjson")
+    nemetonshiny:::.prune_run_traces("run_progress.ndjson")
     expect_length(Sys.glob("run_progress.ndjson.failed-*"), 3L)
   })
 })

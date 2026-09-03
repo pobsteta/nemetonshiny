@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+### Added
+
+- **Log de l'enfant plafonne sur les quatre chemins concernes** (FORDEAD,
+  RECONFORT, calcul des indicateurs, moteur de reGeneration) : `log_path` passe
+  a `nemeton::run_memory_capped()` (cœur >= 0.195.0), fichier
+  `data/<pipeline>_child.log` a nom stable, rotation au demarrage
+  (`.prev-<horodatage>`, cinq conservees). Sans lui, la sortie de l'enfant
+  partait dans le `/dev/null` du worker `future`.
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.193.0)` -> `(>= 0.195.0)`.
+- `.prune_failed_traces()` -> `.prune_run_traces()`, avec un argument `motif`
+  pour borner les deux familles de traces (`.failed-*` et `.prev-*`).
+
 ## [0.143.15] - 2026-09-03
 
 ### Fixed
