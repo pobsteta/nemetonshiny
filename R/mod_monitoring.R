@@ -2577,9 +2577,11 @@ mod_monitoring_server <- function(id, app_state) {
           fast_result_consumed(TRUE)
           shiny::removeNotification(session$ns("ingest_progress"))
           fast_run_start(NULL); fast_run_msg(NULL)   # stoppe le chrono
-          .cleanup_progress_file(ingest_progress_path())
+          # Echec : on ARCHIVE la trace au lieu de l'effacer (cf. le
+          # commentaire de `.cleanup_progress_file`).
+          .cleanup_progress_file(ingest_progress_path(), archive = TRUE)
           ingest_progress_path(NULL)
-          .cleanup_progress_file(ingest_log_path())
+          .cleanup_progress_file(ingest_log_path(), archive = TRUE)
           ingest_log_path(NULL)
           ingest_log_offset(0L)
           shiny::showNotification(
@@ -3076,7 +3078,7 @@ mod_monitoring_server <- function(id, app_state) {
           fordead_result_consumed(TRUE)
           shiny::removeNotification(session$ns("fordead_progress"))
           fordead_run_start(NULL); fordead_run_msg(NULL)   # stoppe le chrono
-          .cleanup_progress_file(fordead_progress_path())
+          .cleanup_progress_file(fordead_progress_path(), archive = TRUE)
           fordead_progress_path(NULL)
           shiny::showNotification(
             .monitoring_run_error_msg(e$message, i18n, "monitoring_health_error"),
@@ -3650,7 +3652,7 @@ mod_monitoring_server <- function(id, app_state) {
           reconfort_result_consumed(TRUE)
           shiny::removeNotification(session$ns("reconfort_progress"))
           reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
-          .cleanup_progress_file(reconfort_progress_path())
+          .cleanup_progress_file(reconfort_progress_path(), archive = TRUE)
           reconfort_progress_path(NULL)
           shiny::showNotification(
             .monitoring_run_error_msg(conditionMessage(e), i18n,
@@ -3958,17 +3960,67 @@ mod_monitoring_server <- function(id, app_state) {
 # v0.70.0 - Etend aussi au NDJSON append-only (brief logs FAST
 # propres). Le path NDJSON est derive du JSON (cf. writer cote
 # `service_monitoring.R::.build_progress_writer`).
-.cleanup_progress_file <- function(path) {
+# v0.143.15 - `archive = TRUE` sur les chemins d'ECHEC.
+#
+# Le NDJSON est la seule trace structuree d'un run : une ligne par item,
+# une par phase, du debut a la fin. L'effacer sur le chemin d'erreur
+# detruisait la preuve a la seconde ou elle devenait utile. Constate sur
+# Couchey le 2026-09-03 : RECONFORT echoue apres 20 h 19 (`exit 1`), et il ne
+# restait ni le NDJSON de 203 items ni le message de l'enfant - la sortie de
+# celui-ci part par ailleurs dans le `/dev/null` du worker `future` (cf. le
+# brief cœur `specs/BRIEF-nemeton-trace-enfant-plafonne.md`). Le diagnostic a
+# du etre reconstitue depuis les fichiers laisses par IOTA2.
+#
+# Sur SUCCES et sur ANNULATION on efface comme avant : il n'y a rien a
+# comprendre, et l'annulation est un geste delibere de l'utilisateur.
+.cleanup_progress_file <- function(path, archive = FALSE) {
   if (is.null(path)) return(invisible(NULL))
   ndjson <- if (grepl("\\.json$", path)) {
     sub("\\.json$", ".ndjson", path)
   } else {
     paste0(path, ".ndjson")
   }
-  tryCatch(
-    unlink(c(path, paste0(path, ".tmp"), ndjson)),
-    error = function(e) invisible(NULL)
-  )
+  # Le `.tmp` est un artefact d'ecriture atomique : jamais d'interet, meme
+  # en echec.
+  tryCatch(unlink(paste0(path, ".tmp")), error = function(e) invisible(NULL))
+
+  if (!isTRUE(archive)) {
+    tryCatch(unlink(c(path, ndjson)), error = function(e) invisible(NULL))
+    return(invisible(NULL))
+  }
+
+  suffixe <- format(Sys.time(), "%Y%m%d-%H%M%S")
+  garde <- character(0)
+  for (f in c(path, ndjson)) {
+    if (!file.exists(f)) next
+    cible <- paste0(f, ".failed-", suffixe)
+    ok <- tryCatch(file.rename(f, cible), error = function(e) FALSE)
+    # Un renommage refuse (volume different, droits) ne doit pas laisser le
+    # fichier en place : le prochain run le relirait comme s'il etait le sien.
+    if (isTRUE(ok)) garde <- c(garde, cible)
+    else tryCatch(unlink(f), error = function(e) invisible(NULL))
+  }
+  if (length(garde) > 0L) {
+    cli::cli_alert_info("Trace du run en echec conservee : {.file {garde}}")
+    .prune_failed_traces(c(path, ndjson))
+  }
+  invisible(NULL)
+}
+
+# Bornage des archives : cinq par fichier de base. Sans cela, chaque echec
+# laisse un depot de plus dans le repertoire projet de l'utilisateur, sans
+# limite - on remplacerait un probleme de diagnostic par un probleme de
+# menage.
+.prune_failed_traces <- function(bases, keep = 5L) {
+  for (b in unique(bases)) {
+    archives <- Sys.glob(paste0(b, ".failed-*"))
+    if (length(archives) <= keep) next
+    # Les suffixes sont horodates en `%Y%m%d-%H%M%S` : l'ordre lexicographique
+    # EST l'ordre chronologique, pas besoin de `file.info()`.
+    # `sort(decreasing)` met les plus recentes en tete ; on jette la queue.
+    trop <- sort(archives, decreasing = TRUE)[-seq_len(keep)]
+    tryCatch(unlink(trop), error = function(e) invisible(NULL))
+  }
   invisible(NULL)
 }
 

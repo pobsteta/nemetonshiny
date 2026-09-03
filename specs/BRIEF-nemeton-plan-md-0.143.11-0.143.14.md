@@ -1,34 +1,60 @@
-# BRIEF `nemeton` — `PLAN.md` : trois livraisons app (0.143.11 → 0.143.13)
+# BRIEF `nemeton` — `PLAN.md` : quatre livraisons app (0.143.11 → 0.143.14)
 
 > **Statut** : ouvert, 2026-09-02.
 > **Dépôt concerné** : `nemeton` uniquement — journal du `PLAN.md` racine.
 > **Nature** : documentation seule. **Aucun code cœur, aucune release cœur.**
-> **Contexte** : `nemetonshiny@0.143.13.9000`, `main` à `7886555d`.
-> Journal cœur à jour jusqu'à l'entrée *App v0.143.10* — les trois suivantes
-> manquent.
+> **Contexte** : `nemetonshiny@0.143.14.9000`, `main` à `7efe5211`.
+> Journal cœur à jour jusqu'à l'entrée *App v0.143.10* — les **quatre**
+> suivantes manquent. Mise à jour du 2026-09-02 (soir) : v0.143.14 ajoutée,
+> le brief couvrait initialement 0.143.11 → 0.143.13.
 
 ---
 
 ## 0. Où coller
 
 En tête de journal, **au-dessus** de `### 2026-09-02 — v0.194.0 : le plafond
-mémoire passe à 40 %`. Les trois entrées sont du 01/09 (soirée) et du 02/09 ;
+mémoire passe à 40 %`. Les quatre entrées sont du 01/09 (soirée) et du 02/09 ;
 les coller dans l'ordre ci-dessous les laisse en ordre antéchronologique
 correct entre elles.
 
-## 1. Les trois livraisons
+## 1. Les quatre livraisons
 
 | Release | Commit `main` | Date | Suite app |
 |---|---|---|---|
 | v0.143.11 | `52a5327a` | 2026-09-01 | 13 367 PASS / 0 FAIL |
 | v0.143.12 | `28625639` | 2026-09-02 | 13 374 PASS / 0 FAIL |
 | v0.143.13 | `7886555d` | 2026-09-02 | 13 392 PASS / 0 FAIL |
+| v0.143.14 | `7efe5211` | 2026-09-02 | 0 FAIL / 0 ERROR / 17 SKIP |
 
-Toutes taguées par `release.yml`. Cycle dev courant `0.143.13.9000`.
+Toutes taguées par `release.yml`. Cycle dev courant `0.143.14.9000`.
 
 ## 2. Texte à coller
 
 ```markdown
+### 2026-09-02 — App `nemetonshiny` v0.143.14 : « Tout calculer » — grisage, toast, et un bloc qui ne répète plus son bouton
+
+Trois retouches de la section de lancement enchaîné (sidebar Sélection).
+
+L'entête du bloc et le bouton juste en dessous portaient le **même texte**,
+« Tout calculer », à six pixels d'écart. Le bloc s'appelle désormais
+« Tableau des actions » : il nomme ce qu'il regroupe, le bouton nomme l'action.
+Clé i18n dédiée (`pipeline_section_title`) plutôt que réemploi de
+`action_plan_actions_title` — même texte FR, autre onglet, autre cycle de vie.
+
+Le bouton **se grise pendant la chaîne** et redevient cliquable à la clôture,
+avec un toast persistant « Tous les calculs en cours... » en bas à droite
+(`pipeline_running_toast`). Une garde serveur double le grisage : un clic resté
+en vol au démarrage écrasait le run en cours, dont les réponses étaient ensuite
+rejetées sur le `run_id` — une chaîne orpheline tournant sans rien piloter.
+
+Le point de conception : grisage et toast sont pilotés par l'**état du run**, pas
+par le clic sur « Tout calculer ». Ce clic-là n'ouvre que la modale de sélection
+des étapes ; griser dès l'ouverture aurait laissé un bouton mort à qui annule la
+modale. La libération vit dans `.cloturer()`, passage obligé des **deux** sorties
+(fin naturelle et arrêt manuel).
+
+Suite app : 0 FAIL, 0 ERROR, 17 SKIP préexistants. `nemetonshiny@7efe5211`.
+
 ### 2026-09-02 — App `nemetonshiny` v0.143.13 : le moteur tournait sur 2018 / 2022 sans le dire
 
 Projet **Lajoux**, où la détection E-OBS est indisponible : l'étape s'affiche en
@@ -137,7 +163,7 @@ nuit pas. Pour mémoire, c'est ce fichier-là qu'il faut lire, pas `~/.Renviron`
 
 ## 5. À vérifier avant de coller
 
-1. Que les trois entrées se placent bien au-dessus de *v0.194.0* et restent
+1. Que les quatre entrées se placent bien au-dessus de *v0.194.0* et restent
    antéchronologiques entre elles.
-2. Qu'aucune de ces trois versions n'est déjà consignée (le journal s'arrêtait à
+2. Qu'aucune de ces quatre versions n'est déjà consignée (le journal s'arrêtait à
    *App v0.143.10* au 2026-09-02 08:50).
