@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.15] - 2026-09-03
+
 ### Fixed
 
 - **La trace d'un run en échec n'est plus effacée.** Les chemins d'erreur de
