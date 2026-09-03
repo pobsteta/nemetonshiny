@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.16] - 2026-09-03
+
 ### Added
 
 - **Log de l'enfant plafonne sur les quatre chemins concernes** (FORDEAD,
@@ -24,6 +26,10 @@ For a narrative, per-feature description of each release, see
 - Plancher `Imports: nemeton (>= 0.193.0)` -> `(>= 0.195.0)`.
 - `.prune_failed_traces()` -> `.prune_run_traces()`, avec un argument `motif`
   pour borner les deux familles de traces (`.failed-*` et `.prev-*`).
+
+- `specs/REPONSE-nemeton-053-trace-enfant-plafonnee.md` : retour au cœur sur sa
+  réponse au brief (deux corrections factuelles, la métrique du pic, et la
+  fragilité `tiles_envelopes` vue des deux côtés).
 
 ## [0.143.15] - 2026-09-03
 
