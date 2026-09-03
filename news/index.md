@@ -1,5 +1,41 @@
 # Changelog
 
+## nemetonshiny 0.143.15 (2026-09-03)
+
+#### Fixed — La trace d’un run en échec était effacée au moment où elle devenait utile
+
+Projet **Couchey**, 2026-09-03 : RECONFORT échoue après **20 h 19** de
+calcul (`exit 1`). Il ne restait rien pour comprendre — ni le NDJSON de
+progression, ni le message d’erreur de l’enfant. Le diagnostic a dû être
+reconstitué depuis les fichiers laissés par IOTA².
+
+`.cleanup_progress_file()` était appelé à l’identique sur les trois
+sorties — succès, annulation **et erreur** — et faisait
+[`unlink()`](https://rdrr.io/r/base/unlink.html) sur le `.json` comme
+sur le `.ndjson`. Or le NDJSON est la seule trace structurée d’un run :
+une ligne par item, une par phase, du début à la fin. Sur le chemin
+d’erreur, on détruisait la preuve à la seconde près où elle servait.
+
+Les chemins d’**échec** (FAST, FORDEAD, RECONFORT) **archivent**
+désormais au lieu d’effacer : `<fichier>.failed-<AAAAMMJJ-HHMMSS>`, dans
+le répertoire projet, avec un message `cli` qui dit où. Cinq archives
+conservées par fichier de base — borner évitait de remplacer un problème
+de diagnostic par un problème de ménage. Succès et annulation effacent
+comme avant : il n’y a rien à comprendre, et l’annulation est un geste
+délibéré.
+
+Le `.tmp` (artefact d’écriture atomique) est jeté dans tous les cas, et
+un renommage refusé retombe sur la suppression — laisser l’original en
+place ferait relire cette trace par le run suivant comme si elle était
+la sienne.
+
+**Ce que ça ne répare pas.** La sortie de l’enfant plafonné part dans le
+`/dev/null` du worker `future`
+([`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html)
+hérite du parent), donc le *message* d’erreur reste perdu. Le NDJSON dit
+jusqu’où on est allé, jamais pourquoi ça s’est arrêté. Correctif demandé
+au cœur : `specs/BRIEF-nemeton-trace-enfant-plafonne.md`.
+
 ## nemetonshiny 0.143.14 (2026-09-02)
 
 #### Changed — « Tout calculer » : le bloc, le bouton, et ce qui se passe au clic

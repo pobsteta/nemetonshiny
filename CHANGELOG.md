@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.15\] - 2026-09-03
+
+### Fixed
+
+- **La trace d’un run en échec n’est plus effacée.** Les chemins
+  d’erreur de FAST, FORDEAD et RECONFORT archivent le JSON et le NDJSON
+  de progression en `<fichier>.failed-<horodatage>` au lieu de les
+  supprimer (cinq archives gardées par fichier de base). Succès et
+  annulation inchangés.
+
+### Added
+
+- `specs/BRIEF-nemeton-trace-enfant-plafonne.md` — brief cœur :
+  rediriger `stdout`/`stderr` de l’enfant plafonné vers un fichier (ils
+  partent dans le `/dev/null` du worker `future`), et investiguer
+  l’arrêt d’IOTA² après `classification` sans production de `final/`.
+
 ## \[0.143.14\] - 2026-09-02
 
 ### Changed

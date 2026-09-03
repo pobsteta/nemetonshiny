@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.14</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.15" id="nemetonshiny-014315-2026-09-03">nemetonshiny 0.143.15 (2026-09-03)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014315-2026-09-03"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-trace-dun-run-en-échec-était-effacée-au-moment-où-elle-devenait-utile-0-143-15">Fixed — La trace d’un run en échec était effacée au moment où elle devenait utile<a class="anchor" aria-label="anchor" href="#fixed--la-trace-dun-run-en-%C3%A9chec-%C3%A9tait-effac%C3%A9e-au-moment-o%C3%B9-elle-devenait-utile-0-143-15"></a></h4>
+<p>Projet <strong>Couchey</strong>, 2026-09-03 : RECONFORT échoue après <strong>20 h 19</strong> de calcul (<code>exit 1</code>). Il ne restait rien pour comprendre — ni le NDJSON de progression, ni le message d’erreur de l’enfant. Le diagnostic a dû être reconstitué depuis les fichiers laissés par IOTA².</p>
+<p><code>.cleanup_progress_file()</code> était appelé à l’identique sur les trois sorties — succès, annulation <strong>et erreur</strong> — et faisait <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code> sur le <code>.json</code> comme sur le <code>.ndjson</code>. Or le NDJSON est la seule trace structurée d’un run : une ligne par item, une par phase, du début à la fin. Sur le chemin d’erreur, on détruisait la preuve à la seconde près où elle servait.</p>
+<p>Les chemins d’<strong>échec</strong> (FAST, FORDEAD, RECONFORT) <strong>archivent</strong> désormais au lieu d’effacer : <code>&lt;fichier&gt;.failed-&lt;AAAAMMJJ-HHMMSS&gt;</code>, dans le répertoire projet, avec un message <code>cli</code> qui dit où. Cinq archives conservées par fichier de base — borner évitait de remplacer un problème de diagnostic par un problème de ménage. Succès et annulation effacent comme avant : il n’y a rien à comprendre, et l’annulation est un geste délibéré.</p>
+<p>Le <code>.tmp</code> (artefact d’écriture atomique) est jeté dans tous les cas, et un renommage refusé retombe sur la suppression — laisser l’original en place ferait relire cette trace par le run suivant comme si elle était la sienne.</p>
+<p><strong>Ce que ça ne répare pas.</strong> La sortie de l’enfant plafonné part dans le <code>/dev/null</code> du worker <code>future</code> (<code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code> hérite du parent), donc le <em>message</em> d’erreur reste perdu. Le NDJSON dit jusqu’où on est allé, jamais pourquoi ça s’est arrêté. Correctif demandé au cœur : <code>specs/BRIEF-nemeton-trace-enfant-plafonne.md</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.14" id="nemetonshiny-014314-2026-09-02">nemetonshiny 0.143.14 (2026-09-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014314-2026-09-02"></a></h2>
 <div class="section level4">
