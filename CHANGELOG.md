@@ -23,9 +23,10 @@ For a narrative, per-feature description of each release, see
 
 ### Changed
 
-- Plancher `Imports:` **inchange** a `nemeton (>= 0.193.0)` : `log_path` n'existe
-  que dans le cœur `0.195.0`, non encore publie en release (derniere : `v0.194.0`).
-  La garde de capacite rend le bump inutile — le log s'activera seul au tag.
+- Plancher `Imports: nemeton (>= 0.193.0)` -> `(>= 0.195.0)`, apres publication
+  de la release cœur `v0.195.0` et verification par `pak::pkg_deps()`. Un premier
+  bump anticipe, alors que `0.195.0` n'existait que sur `main`, avait rendu l'app
+  non-installable (`@*release` ne resout que les tags).
 - `.prune_failed_traces()` -> `.prune_run_traces()`, avec un argument `motif`
   pour borner les deux familles de traces (`.failed-*` et `.prev-*`).
 

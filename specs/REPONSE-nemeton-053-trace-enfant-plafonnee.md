@@ -47,9 +47,11 @@ l'identique sur un cœur antérieur, elle y perd seulement le log. Mais
 locale** tant que le tag n'existe pas — sur ce poste il fonctionne parce que le
 cœur y est installé depuis la source.
 
-Dès que `v0.195.0` sera publiée, `@*release` la tirera et la fonctionnalité
-s'activera d'elle-même, sans rien changer côté app. On bumpera le plancher à ce
-moment-là.
+**Fait** : `v0.195.0` a été publiée le 2026-09-03 à 20:19, `pak::pkg_deps()`
+la résout, et le plancher est passé à `nemeton (>= 0.195.0)`. La demande
+ci-dessus est donc soldée — elle reste écrite parce qu'elle documente pourquoi
+l'ordre compte : le code sur `main` ne suffit pas, seul le tag est visible de
+`@*release`.
 
 ## 1. `IOTA2_tasks_status.txt` enregistre aussi les échecs
 
