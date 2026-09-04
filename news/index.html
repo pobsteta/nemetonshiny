@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.17</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.17" id="nemetonshiny-014317-2026-09-04">nemetonshiny 0.143.17 (2026-09-04)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014317-2026-09-04"></a></h2>
+<div class="section level4">
+<h4 id="changed---tableau-des-actions--contient-enfin-les-actions-0-143-17">Changed — « Tableau des actions » contient enfin les actions<a class="anchor" aria-label="anchor" href="#changed---tableau-des-actions--contient-enfin-les-actions-0-143-17"></a></h4>
+<p>Le bloc s’appelait « Tableau des actions » depuis la v0.143.14 et n’en contenait qu’une seule : « Tout calculer ». Les autres — « Voir les resultats », « Reessayer », « Lancer le calcul » — flottaient <strong>au-dessus</strong>, sans conteneur, alors qu’elles relevent de la meme famille de geste.</p>
+<p>Elles sont desormais <strong>dans</strong> le bloc, au-dessus du lancement de chaine : elles dependent de l’etat du projet (brouillon / en erreur / calcule) et sont donc les plus proches de ce que l’utilisateur vient de faire, tandis que « Tout calculer » est toujours la et ferme la liste. Consequence directe : elles suivent le repli du bloc, ce qui n’etait pas le cas avant.</p>
+<p><code>mod_pipeline_ui()</code> prend un argument <code>actions_ui = NULL</code> — le bloc porte le chrome (entete, repli, chevron), l’appelant garde SON namespace. Le defaut <code>NULL</code> rend exactement l’ancien bloc, verrouille par un test.</p>
+</div>
+<div class="section level4">
+<h4 id="changed---tout-calculer--cede-lemphase-pleine-0-143-17">Changed — « Tout calculer » cede l’emphase pleine<a class="anchor" aria-label="anchor" href="#changed---tout-calculer--cede-lemphase-pleine-0-143-17"></a></h4>
+<p>Consequence du regroupement : deux boutons verts se touchaient dans le bloc, « Voir les resultats » (<code>btn-success</code>) et « Tout calculer » (<code>btn-primary</code>) — meme vert <code>#1B6B1B</code>, les deux classes ayant ete fusionnees. La regle normative des couleurs dit une seule action principale par vue.</p>
+<p>C’est « Tout calculer » qui passe en <code>btn-outline-primary</code>, et deux raisons concordent. D’abord l’usage : a l’etat <code>completed</code>, consulter les resultats est le geste ATTENDU, relancer toute la chaine est l’exception. Ensuite la mecanique, qu’on n’avait pas regardee — <strong>ce bouton ne lance rien</strong>, il ouvre la modale de selection des etapes. Le vrai CTA du lancement, c’est « Lancer la chaine » DANS la modale, et il reste vert plein. Le niveau tertiaire etait donc le bon depuis le debut.</p>
+<p>L’intention reste positive : la bordure porte le sens, ce n’est ni du neutre (<code>outline-secondary</code>) ni de la prudence (<code>outline-danger</code>). Et toujours pas d’ambre — elle signale une provenance, pas un niveau d’action.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--deux-tests-du-chronometre-tombaient-sous-charge-0-143-17">Fixed — Deux tests du chronometre tombaient sous charge<a class="anchor" aria-label="anchor" href="#fixed--deux-tests-du-chronometre-tombaient-sous-charge-0-143-17"></a></h4>
+<p><code>.fmt_elapsed()</code> fait <code>as.integer(difftime(...))</code>, qui <strong>tronque</strong>. Deux tests posaient <code>start &lt;- Sys.time() - N</code> puis attendaient la valeur exacte : juste seulement si moins d’<strong>une seconde</strong> s’ecoulait avant l’appel. Machine chargee, la suite tombait sans qu’aucun code de production soit en cause.</p>
+<p><code>.fmt_elapsed(start, now = Sys.time())</code> : l’horloge devient injectable, le defaut laisse la production strictement inchangee (verifie par un test dedie). Les roles sont separes — <code>test-utils-notif.R</code> verifie le <strong>formatage exact</strong> sur une horloge figee, bornes de troncature comprises (65,999 s -&gt; <code>01:05</code>, 66 s -&gt; <code>01:06</code>), assertions qu’on ne pouvait pas ecrire avec une horloge qui bouge ; <code>test-mod_monitoring.R</code> verifie seulement que le chrono est <strong>cable</strong> sur <code>start</code>. Mutation : debrancher le chrono fait toujours tomber 5 assertions.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.16" id="nemetonshiny-014316-2026-09-03">nemetonshiny 0.143.16 (2026-09-03)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014316-2026-09-03"></a></h2>
 <div class="section level4">
