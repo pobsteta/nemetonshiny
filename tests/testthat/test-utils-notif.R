@@ -1,11 +1,26 @@
 # Tests — helpers de notification unifiés (R/utils_notif.R + .ntfy_title)
 
 test_that(".fmt_elapsed formats MM:SS and H:MM:SS", {
+  # Horloge FIGEE. Avec `now <- Sys.time()` implicite, ces assertions n'etaient
+  # justes que si moins d'une seconde s'ecoulait entre la pose de `now` et
+  # l'appel - `as.integer()` tronque. Sous charge, "01:05" devenait "01:06".
+  now <- as.POSIXct("2026-01-01 12:00:00", tz = "UTC")
   expect_equal(nemetonshiny:::.fmt_elapsed(NULL), "")
-  now <- Sys.time()
-  expect_equal(nemetonshiny:::.fmt_elapsed(now - 65), "01:05")
-  expect_equal(nemetonshiny:::.fmt_elapsed(now - 3661), "1:01:01")
-  expect_equal(nemetonshiny:::.fmt_elapsed(now + 10), "00:00")  # future clampé
+  expect_equal(nemetonshiny:::.fmt_elapsed(now - 65, now = now), "01:05")
+  expect_equal(nemetonshiny:::.fmt_elapsed(now - 3661, now = now), "1:01:01")
+  expect_equal(nemetonshiny:::.fmt_elapsed(now + 10, now = now), "00:00")  # futur clampé
+  # Bornes de troncature, verifiables seulement avec une horloge figee : la
+  # seconde entiere est atteinte a 65 s pile et tient jusqu'a 65,999 s.
+  expect_equal(nemetonshiny:::.fmt_elapsed(now - 65.999, now = now), "01:05")
+  expect_equal(nemetonshiny:::.fmt_elapsed(now - 66, now = now), "01:06")
+})
+
+test_that(".fmt_elapsed garde Sys.time() par defaut", {
+  # La production n'a PAS bouge : sans `now`, l'horloge reste celle du systeme.
+  # Sans cette verification, le defaut aurait pu deriver sans qu'on le voie.
+  t <- Sys.time() - 3
+  val <- nemetonshiny:::.fmt_elapsed(t)
+  expect_match(val, "^00:0[0-9]$")
 })
 
 test_that(".running_notif_content renders spinning gear + label, chrono only with start", {

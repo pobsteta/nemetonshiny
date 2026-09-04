@@ -38,13 +38,22 @@ test_that("le bouton de lancement reste dans la section repliable", {
   expect_gt(pos_panneau, pos_collapse)
 })
 
-test_that("le bouton de lancement porte la couleur d'action principale", {
-  # Regle normative des couleurs : vert = action principale. PAS d'ambre - qui
-  # signale une provenance (contenu genere), pas un niveau d'action - meme si
-  # la chaine se termine par deux generations IA.
+test_that("le bouton de lancement cede l'emphase pleine, sans devenir ambre", {
+  # v0.143.17 : depuis que les actions de projet ont rejoint ce bloc, deux
+  # boutons verts s'y touchaient. La regle normative dit une seule action
+  # principale par vue, et c'est celui-ci qui cede - a l'etat `completed`,
+  # consulter les resultats est le geste attendu.
   withr::local_options(nemeton.app_options = list(language = "fr"))
   html <- as.character(nemetonshiny:::mod_pipeline_ui("pipeline"))
-  expect_true(grepl("btn-primary", html, fixed = TRUE))
+
+  expect_true(grepl("btn-outline-primary", html, fixed = TRUE))
+  # Le vert PLEIN a bien disparu du bouton (la sous-chaine "btn-primary" n'est
+  # pas contenue dans "btn-outline-primary" : le test n'est pas vacant).
+  expect_false(grepl('class="btn-primary', html, fixed = TRUE))
+  # L'intention reste POSITIVE : la bordure porte le sens, ce n'est ni du
+  # neutre (`outline-secondary`) ni de la prudence (`outline-danger`).
+  expect_false(grepl("btn-outline-secondary", html, fixed = TRUE))
+  # Toujours pas d'ambre : elle signale une provenance, pas un niveau d'action.
   expect_false(grepl("btn-ia", html, fixed = TRUE))
 })
 
@@ -153,4 +162,46 @@ test_that("le lancement grise le bouton et pose le toast, la cloture les leve", 
       expect_identical(retraits[[1]]$id, toasts[[1]]$id)
     }
   )
+})
+
+test_that("le bloc accueille les actions de l'appelant, avant le bouton de chaine", {
+  # v0.143.17 : « Voir les resultats » / « Reessayer » / « Lancer le calcul »
+  # flottaient AU-DESSUS du bloc. Un bloc nomme « Tableau des actions » qui n'en
+  # contenait qu'une seule ne tenait pas sa promesse.
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  marqueur <- htmltools::div(id = "sentinelle-actions", "actions de l'appelant")
+  html <- as.character(
+    nemetonshiny:::mod_pipeline_ui("home-pipeline", actions_ui = marqueur))
+
+  pos_collapse <- regexpr('id="home-pipeline-pipeline_collapse"', html, fixed = TRUE)
+  pos_actions  <- regexpr('id="sentinelle-actions"', html, fixed = TRUE)
+  pos_chaine   <- regexpr('id="home-pipeline-open"', html, fixed = TRUE)
+
+  # DANS le corps repliable : hors de lui, les actions resteraient visibles
+  # bloc replie, ce qui est exactement le defaut qu'on corrige.
+  expect_gt(pos_actions, pos_collapse)
+  # AVANT le bouton de chaine : elles dependent de l'etat du projet, il est
+  # toujours la et ferme la liste.
+  expect_lt(pos_actions, pos_chaine)
+})
+
+test_that("sans actions_ui le bloc est inchange", {
+  # Retro-compatibilite : le defaut NULL doit rendre exactement l'ancien bloc,
+  # sinon tout appelant qui ne passe rien verrait sa mise en page bouger.
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  html <- as.character(nemetonshiny:::mod_pipeline_ui("pipeline"))
+  expect_true(grepl('id="pipeline-open"', html, fixed = TRUE))
+  expect_false(grepl("sentinelle-actions", html, fixed = TRUE))
+})
+
+test_that("mod_home place ses actions projet dans le bloc, plus au-dessus", {
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  html <- as.character(nemetonshiny:::mod_home_ui("home"))
+
+  pos_collapse <- regexpr('id="home-pipeline-pipeline_collapse"', html, fixed = TRUE)
+  pos_compute  <- regexpr('id="home-compute_section"', html, fixed = TRUE)
+  pos_chaine   <- regexpr('id="home-pipeline-open"', html, fixed = TRUE)
+
+  expect_gt(pos_compute, pos_collapse)   # dans le bloc
+  expect_lt(pos_compute, pos_chaine)     # avant « Tout calculer »
 })

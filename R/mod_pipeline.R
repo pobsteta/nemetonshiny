@@ -18,9 +18,15 @@ NULL
 #' Chained-run UI (button + progress panel)
 #'
 #' @param id Module namespace ID.
+#' @param actions_ui Optional UI rendered INSIDE the collapsible body, above the
+#'   chain button. `mod_home` y place ses actions de projet (« Voir les
+#'   resultats », « Reessayer », « Lancer le calcul ») : elles flottaient
+#'   au-dessus du bloc alors qu'elles relevent de la meme famille de geste.
+#'   Le bloc porte le chrome (entete, repli, chevron), l'appelant garde SON
+#'   namespace - d'ou le passage par argument plutot qu'un `uiOutput` cable ici.
 #' @return Shiny UI.
 #' @noRd
-mod_pipeline_ui <- function(id) {
+mod_pipeline_ui <- function(id, actions_ui = NULL) {
   ns <- shiny::NS(id)
   opts <- get_app_options()
   i18n <- get_i18n(opts$language)
@@ -55,16 +61,34 @@ mod_pipeline_ui <- function(id) {
       class = "collapse show",
       htmltools::tags$div(
         class = "card-body p-2",
+        # Actions de l'appelant en tete : elles dependent de l'etat du projet
+        # (brouillon / calcule) et sont donc les plus proches de ce que
+        # l'utilisateur vient de faire. Le lancement de la chaine, lui, est
+        # toujours la - il ferme la liste.
+        if (!is.null(actions_ui)) htmltools::div(class = "mb-2", actions_ui),
         htmltools::div(
           class = "d-grid",
-          # Vert : action principale de la vue (cf. regle normative des couleurs
-          # de boutons). Ce n'est PAS de l'ambre : l'ambre signale une
-          # PROVENANCE (contenu genere), pas un niveau d'action - et ce bouton
-          # lance surtout des calculs, dont l'IA n'est que la derniere etape.
+          # v0.143.17 - BLANC A BORDURE VERTE, plus vert plein.
+          #
+          # Depuis que les actions de projet ont rejoint ce bloc, deux boutons
+          # verts s'y touchaient : « Voir les resultats » (`btn-success`) et
+          # celui-ci (`btn-primary`) - meme vert `#1B6B1B`, les deux classes
+          # ayant ete fusionnees. La regle normative dit une seule action
+          # principale par vue.
+          #
+          # C'est celui-ci qui cede, et pas l'autre : a l'etat `completed`,
+          # consulter les resultats est le geste ATTENDU, relancer toute la
+          # chaine est l'exception. `outline-primary` garde l'intention
+          # positive dans la bordure et rend l'emphase pleine a l'action que
+          # l'utilisateur veut vraiment a ce moment-la.
+          #
+          # Toujours PAS d'ambre : l'ambre signale une PROVENANCE (contenu
+          # genere), pas un niveau d'action - et ce bouton lance surtout des
+          # calculs, dont l'IA n'est que la derniere etape.
           shiny::actionButton(
             ns("open"),
             label = i18n$t("pipeline_button"),
-            class = "btn-primary w-100",
+            class = "btn-outline-primary w-100",
             icon = bsicons::bs_icon("play-circle")
           )
         ),

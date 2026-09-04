@@ -1,3 +1,56 @@
+# nemetonshiny 0.143.17 (2026-09-04)
+
+### Changed — « Tableau des actions » contient enfin les actions
+
+Le bloc s'appelait « Tableau des actions » depuis la v0.143.14 et n'en
+contenait qu'une seule : « Tout calculer ». Les autres — « Voir les
+resultats », « Reessayer », « Lancer le calcul » — flottaient **au-dessus**,
+sans conteneur, alors qu'elles relevent de la meme famille de geste.
+
+Elles sont desormais **dans** le bloc, au-dessus du lancement de chaine : elles
+dependent de l'etat du projet (brouillon / en erreur / calcule) et sont donc les
+plus proches de ce que l'utilisateur vient de faire, tandis que « Tout
+calculer » est toujours la et ferme la liste. Consequence directe : elles
+suivent le repli du bloc, ce qui n'etait pas le cas avant.
+
+`mod_pipeline_ui()` prend un argument `actions_ui = NULL` — le bloc porte le
+chrome (entete, repli, chevron), l'appelant garde SON namespace. Le defaut
+`NULL` rend exactement l'ancien bloc, verrouille par un test.
+
+### Changed — « Tout calculer » cede l'emphase pleine
+
+Consequence du regroupement : deux boutons verts se touchaient dans le bloc,
+« Voir les resultats » (`btn-success`) et « Tout calculer » (`btn-primary`) —
+meme vert `#1B6B1B`, les deux classes ayant ete fusionnees. La regle normative
+des couleurs dit une seule action principale par vue.
+
+C'est « Tout calculer » qui passe en `btn-outline-primary`, et deux raisons
+concordent. D'abord l'usage : a l'etat `completed`, consulter les resultats est
+le geste ATTENDU, relancer toute la chaine est l'exception. Ensuite la
+mecanique, qu'on n'avait pas regardee — **ce bouton ne lance rien**, il ouvre
+la modale de selection des etapes. Le vrai CTA du lancement, c'est « Lancer la
+chaine » DANS la modale, et il reste vert plein. Le niveau tertiaire etait donc
+le bon depuis le debut.
+
+L'intention reste positive : la bordure porte le sens, ce n'est ni du neutre
+(`outline-secondary`) ni de la prudence (`outline-danger`). Et toujours pas
+d'ambre — elle signale une provenance, pas un niveau d'action.
+
+### Fixed — Deux tests du chronometre tombaient sous charge
+
+`.fmt_elapsed()` fait `as.integer(difftime(...))`, qui **tronque**. Deux tests
+posaient `start <- Sys.time() - N` puis attendaient la valeur exacte : juste
+seulement si moins d'**une seconde** s'ecoulait avant l'appel. Machine chargee,
+la suite tombait sans qu'aucun code de production soit en cause.
+
+`.fmt_elapsed(start, now = Sys.time())` : l'horloge devient injectable, le
+defaut laisse la production strictement inchangee (verifie par un test dedie).
+Les roles sont separes — `test-utils-notif.R` verifie le **formatage exact**
+sur une horloge figee, bornes de troncature comprises (65,999 s -> `01:05`,
+66 s -> `01:06`), assertions qu'on ne pouvait pas ecrire avec une horloge qui
+bouge ; `test-mod_monitoring.R` verifie seulement que le chrono est **cable**
+sur `start`. Mutation : debrancher le chrono fait toujours tomber 5 assertions.
+
 # nemetonshiny 0.143.16 (2026-09-03)
 
 ### Added — Le log de l'enfant plafonne, pour savoir POURQUOI un run s'arrete

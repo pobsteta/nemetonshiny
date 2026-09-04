@@ -1601,7 +1601,13 @@ test_that("les 3 modes affichent roue dentee + etape + chrono sous le bouton", {
       html <- as.character(output[[t$out]]$html)
       expect_true(grepl("nmt-spin", html, fixed = TRUE))
       expect_true(grepl("font-monospace", html, fixed = TRUE))
-      expect_true(grepl("01:15", html, fixed = TRUE))
+      # Ce test verifie que le chrono est CABLE sur `start`, pas sa valeur au
+      # centieme : entre la pose de `start` et le rendu, `as.integer()` peut
+      # avoir bascule d'une seconde (il tronque). Ce battement a fait tomber la
+      # suite du 2026-09-04 sous charge, sans qu'aucun code de production soit
+      # en cause. L'exactitude du formatage est couverte AILLEURS, de facon
+      # deterministe, par `test-utils-notif.R` avec une horloge figee.
+      expect_match(html, "01:1[5-9]")
       expect_true(grepl(i18n$t(t$key), html, fixed = TRUE))
 
       # Run termine (les handlers remettent start a NULL) -> l'affichage part.
