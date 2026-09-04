@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.17] - 2026-09-04
+
 ### Changed
 
 - **Les actions de projet passent dans le bloc « Tableau des actions »**
