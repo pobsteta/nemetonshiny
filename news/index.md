@@ -1,5 +1,68 @@
 # Changelog
 
+## nemetonshiny 0.143.16 (2026-09-03)
+
+#### Added — Le log de l’enfant plafonne, pour savoir POURQUOI un run s’arrete
+
+Complement direct de la v0.143.15. L’archivage du NDJSON sauvait la
+trace structuree — *jusqu’ou* un run etait alle. Il manquait *pourquoi*
+il s’etait arrete :
+[`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html)
+lancait l’enfant avec `stdout = ""`, c’est-a-dire « heriter du parent »,
+et le parent est un worker `future` que `parallelly` demarre avec
+`OUT=/dev/null`. Le traceback partait a la source.
+
+Le cœur `0.195.0` accepte desormais `log_path`. Les **quatre** chemins
+plafonnes de l’app le posent dans le repertoire projet :
+
+| Chemin                    | Fichier                       |
+|---------------------------|-------------------------------|
+| Suivi sanitaire FORDEAD   | `data/fordead_child.log`      |
+| Suivi sanitaire RECONFORT | `data/reconfort_child.log`    |
+| Calcul des 31 indicateurs | `data/compute_child.log`      |
+| Moteur de reGeneration    | `data/regeneration_child.log` |
+
+Le nom est stable pour qu’on sache ou regarder sans chercher, et la
+rotation a lieu au **demarrage** (`.prev-<horodatage>`, cinq conservees)
+: le cœur gardant le fichier meme en cas de succes, sans rotation le run
+suivant ecraserait la trace du precedent — le defaut meme qu’on venait
+de corriger sur le NDJSON.
+
+Garde de capacite sur
+[`formals()`](https://rdrr.io/r/base/formals.html), comme pour
+`package`/`options` ailleurs : sur un cœur anterieur l’argument est
+retire de l’appel, qui redevient exactement celui d’avant.
+
+Plancher `Imports: nemeton (>= 0.195.0)`, **et l’ordre a compte**. Bumpe
+une premiere fois alors que `0.195.0` ne vivait que sur le `main` du
+cœur, il a rendu l’app non-installable — `Remotes: @*release` ne resout
+que les **tags**, et la derniere release etait `v0.194.0` :
+
+``` R
+* deps::.: Can't install dependency pobsteta/nemeton@*release (>= 0.195.0)
+```
+
+Remis a `0.193.0` (la garde de capacite rendant le bump facultatif),
+puis retabli une fois `v0.195.0` publiee et
+`pak::pkg_deps("…@*release")` verifie.
+
+**Ce que ca donne en pratique.** Le run RECONFORT de Couchey qui
+echouait depuis le 31 aout est alle au bout le 2026-09-03 a 21:19 —
+10/10 phases, 14 min 48 s, les trois rasters masques 2025 produits.
+Trois verrous devaient tomber ensemble : l’adoption des zones
+(v0.143.12) qui a rendu les 203 scenes reprises du cache, la levee du
+blocage CNES, et le redecoupage en 7 chunks du cœur 0.195.0 (pic 11 Go
+au lieu de 11,5 fatals). Les correctifs de tracabilite (v0.143.15 et
+celui-ci) n’ont pas fait passer le run — ils ont rendu les trois causes
+visibles.
+
+#### Changed
+
+- `.prune_failed_traces()` devient `.prune_run_traces()` et prend un
+  `motif` : deux familles de traces se bornent maintenant de la meme
+  facon, les `.failed-<ts>` (NDJSON archive a l’echec) et les
+  `.prev-<ts>` (log tourne).
+
 ## nemetonshiny 0.143.15 (2026-09-03)
 
 #### Fixed — La trace d’un run en échec était effacée au moment où elle devenait utile
