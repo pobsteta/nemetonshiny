@@ -109,19 +109,24 @@ mod_home_ui <- function(id) {
 
       htmltools::hr(class = "my-3"),
 
-      # Compute Button Section (shown when project exists)
-      htmltools::div(
-        id = ns("compute_section"),
-        shiny::uiOutput(ns("compute_button_ui"))
-      ),
-
       # Progress Module (shown during computation)
       mod_progress_ui(ns("progress")),
 
-      # Lancement enchaine de tous les moteurs + generations IA. Place juste
-      # sous le bouton de calcul des indicateurs : c'est la meme famille de
-      # geste (« lancer »), en plus large.
-      mod_pipeline_ui(ns("pipeline")),
+      # Bloc « Tableau des actions » : il REGROUPE desormais les actions de
+      # projet (« Voir les resultats », « Reessayer », « Lancer le calcul »)
+      # et le lancement enchaine. Elles flottaient au-dessus du bloc alors
+      # qu'elles relevent de la meme famille de geste - un bloc qui s'appelle
+      # « Tableau des actions » et qui n'en contient qu'une seule ne tenait
+      # pas sa promesse. L'id `compute_section` est conserve tel quel - rien ne
+      # le cible aujourd'hui (verifie : aucune occurrence en R ni en JS), mais
+      # le changer serait un remaniement gratuit dans un commit qui deplace.
+      mod_pipeline_ui(
+        ns("pipeline"),
+        actions_ui = htmltools::div(
+          id = ns("compute_section"),
+          shiny::uiOutput(ns("compute_button_ui"))
+        )
+      ),
 
       # Carte UGF actions (map-based + global actions)
       # Visible uniquement dans le sous-onglet " Carte UGF " : ces actions
