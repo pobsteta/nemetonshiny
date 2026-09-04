@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.16] - 2026-09-03
+
+### Added
+
+- **Log de l'enfant plafonne sur les quatre chemins concernes** (FORDEAD,
+  RECONFORT, calcul des indicateurs, moteur de reGeneration) : `log_path` passe
+  a `nemeton::run_memory_capped()` (cœur >= 0.195.0), fichier
+  `data/<pipeline>_child.log` a nom stable, rotation au demarrage
+  (`.prev-<horodatage>`, cinq conservees). Sans lui, la sortie de l'enfant
+  partait dans le `/dev/null` du worker `future`.
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.193.0)` -> `(>= 0.195.0)`, apres publication
+  de la release cœur `v0.195.0` et verification par `pak::pkg_deps()`. Un premier
+  bump anticipe, alors que `0.195.0` n'existait que sur `main`, avait rendu l'app
+  non-installable (`@*release` ne resout que les tags).
+- `.prune_failed_traces()` -> `.prune_run_traces()`, avec un argument `motif`
+  pour borner les deux familles de traces (`.failed-*` et `.prev-*`).
+
+- `specs/REPONSE-nemeton-053-trace-enfant-plafonnee.md` : retour au cœur sur sa
+  réponse au brief (deux corrections factuelles, la métrique du pic, et la
+  fragilité `tiles_envelopes` vue des deux côtés).
+
 ## [0.143.15] - 2026-09-03
 
 ### Fixed

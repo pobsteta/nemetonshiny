@@ -164,7 +164,14 @@
     !is.null(rmc) &&
     all(c("package", "options") %in% names(formals(rmc)))
   if (!capped_ok) return(fn(units, project_path, cfg))   # repli : appel direct
-  rmc(
+  # Log de l'enfant (coeur >= 0.195.0). Garde de capacite propre : un coeur peut
+  # savoir plafonner sans savoir journaliser.
+  extra <- list()
+  if ("log_path" %in% names(formals(rmc))) {
+    lp <- .child_log_path(file.path(project_path, "data"), "regeneration")
+    if (!is.null(lp)) extra$log_path <- lp
+  }
+  do.call(rmc, c(list(
     fun     = "run_regeneration_engine",
     package = "nemetonshiny",
     args    = list(units = units, project_path = project_path, cfg = cfg),
@@ -173,7 +180,7 @@
     # 0.183.0, plancher 4 Go) ; MemorySwapMax=0 deja gere cote
     # coeur. Le progress reste le canal disque (engine_status.json/engine.log),
     # poll 1 s inchange : pas de progress_callback necessaire.
-    quiet   = FALSE)
+    quiet   = FALSE), extra))
 }
 
 # Plage d'un axe de la legende bivariee (Contexte regional E-OBS). Utilise la

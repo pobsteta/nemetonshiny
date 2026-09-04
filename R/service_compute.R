@@ -5092,7 +5092,21 @@ get_computation_progress <- function(project_id) {
   # portait sa propre copie ; trois chemins lourds de la meme session tournaient
   # ainsi sous trois plafonds differents. Une fraction reintroduite ici en
   # ferait un quatrieme.
-  rmc(fun = "start_computation", package = "nemetonshiny",
-      args = args, options = list(nemeton.app_options = app_opts),
-      quiet = FALSE)
+  # Log de l'enfant (coeur >= 0.195.0) : sans lui, la sortie du calcul part dans
+  # le `/dev/null` du worker `future` et un echec ne laisse que son code retour.
+  # Garde de capacite separee de `capped_ok` : un coeur peut savoir plafonner
+  # sans savoir journaliser.
+  extra <- list()
+  if ("log_path" %in% names(formals(rmc))) {
+    ppath <- tryCatch(get_project_path(project_id), error = function(e) NULL)
+    # `file.path(NA, "data")` donne la CHAINE "NA/data" : sans ce test on
+    # creerait un repertoire nomme "NA" dans le cwd du worker.
+    lp <- if (length(ppath) == 1L && !is.na(ppath) && nzchar(ppath)) {
+      .child_log_path(file.path(ppath, "data"), "compute")
+    } else NULL
+    if (!is.null(lp)) extra$log_path <- lp
+  }
+  do.call(rmc, c(list(fun = "start_computation", package = "nemetonshiny",
+                      args = args, options = list(nemeton.app_options = app_opts),
+                      quiet = FALSE), extra))
 }

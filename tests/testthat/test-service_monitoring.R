@@ -643,9 +643,108 @@ test_that("RECONFORT tourne en enfant plafonne, comme FORDEAD", {
 
   # Le moteur n'est plus appele en direct dans le worker.
   expect_false(grepl("nemeton::run_reconfort_dieback\\(", src))
-  # Il passe par le meme mecanisme que FORDEAD.
-  expect_true(grepl('run_memory_capped\\(\\s*\n?\\s*"run_reconfort_dieback"', src))
+  # Il passe par le meme mecanisme que FORDEAD. v0.143.16 : l'appel direct a
+  # `nemeton::run_memory_capped()` est remplace par `.run_capped()`, le
+  # passe-plat qui retire `log_path` sur un coeur < 0.195.0. La propriete
+  # verrouillee est inchangee - le moteur tourne dans un enfant plafonne - mais
+  # la surface a bouge, donc le motif aussi.
+  expect_true(grepl('\\.run_capped\\(\\s*\n?\\s*fun = "run_reconfort_dieback"', src))
+  expect_true(grepl('\\.run_capped\\(\\s*\n?\\s*fun = "run_fordead_dieback"', src))
+  # Et les deux passent bien un log d'enfant : c'est ce qui manquait le 03/09.
+  expect_length(grep("log_path = child_log", code), 2L)   # FORDEAD + RECONFORT
   # Et c'est la moitie ntfy qui est rejouee, pas le composite : sinon chaque
   # ligne NDJSON serait ecrite deux fois.
   expect_length(grep("progress_callback = ntfy_cb", code), 2L)  # FORDEAD + RECONFORT
+})
+
+# ---------------------------------------------------------------------------
+# Log de l'enfant plafonne (v0.143.16)
+# ---------------------------------------------------------------------------
+# Le NDJSON dit JUSQU'OU un run est alle, le log de l'enfant dit POURQUOI il
+# s'est arrete. Sans `log_path`, la sortie part dans le `/dev/null` du worker
+# `future` - un run de 20 h peut echouer sans laisser un mot (Couchey, 03/09).
+
+test_that(".child_log_path pose un nom stable et cree le repertoire au besoin", {
+  withr::with_tempdir({
+    p <- nemetonshiny:::.child_log_path(file.path(getwd(), "data"), "reconfort")
+    expect_true(dir.exists("data"))
+    expect_identical(basename(p), "reconfort_child.log")
+    # Rien n'est cree tant que l'enfant n'a pas ecrit : on rend un CHEMIN.
+    expect_false(file.exists(p))
+  })
+})
+
+test_that(".child_log_path fait tourner le log du run precedent", {
+  withr::with_tempdir({
+    dir.create("data")
+    writeLines("trace du run precedent", "data/reconfort_child.log")
+
+    p <- nemetonshiny:::.child_log_path(file.path(getwd(), "data"), "reconfort")
+
+    # Le coeur CONSERVE le fichier meme en cas de succes : sans rotation, le run
+    # suivant ecraserait la trace du precedent.
+    expect_false(file.exists(p))
+    prev <- Sys.glob("data/reconfort_child.log.prev-*")
+    expect_length(prev, 1L)
+    expect_identical(readLines(prev), "trace du run precedent")
+  })
+})
+
+test_that(".child_log_path borne les rotations a cinq", {
+  withr::with_tempdir({
+    dir.create("data")
+    for (i in 1:7) {
+      writeLines("v", sprintf("data/reconfort_child.log.prev-2026090%d-120000", i))
+    }
+    writeLines("courant", "data/reconfort_child.log")
+
+    nemetonshiny:::.child_log_path(file.path(getwd(), "data"), "reconfort")
+
+    restantes <- sort(Sys.glob("data/reconfort_child.log.prev-*"))
+    expect_length(restantes, 5L)
+    # La rotation vient d'en ajouter une (datee d'aujourd'hui) : ce sont les
+    # cinq plus recentes qui restent, les deux plus vieilles ont saute.
+    expect_false(any(grepl("-20260901-|-20260902-", restantes)))
+  })
+})
+
+test_that(".child_log_path rend NULL sur une entree inexploitable", {
+  # Chemin projet non resolu : mieux vaut pas de log qu'un repertoire parasite.
+  expect_null(nemetonshiny:::.child_log_path(NULL, "reconfort"))
+  expect_null(nemetonshiny:::.child_log_path("", "reconfort"))
+  expect_null(nemetonshiny:::.child_log_path(NA_character_, "reconfort"))
+})
+
+test_that(".run_capped retire log_path quand le coeur ne le connait pas", {
+  vus <- NULL
+  # Coeur ANCIEN : la signature ignore `log_path`. Le passer quand meme
+  # leverait « unused argument » et casserait un chemin qui marchait.
+  testthat::local_mocked_bindings(
+    run_memory_capped = function(fun, args = list(), ...) {
+      vus <<- names(list(fun = fun, args = args, ...))
+      "ok"
+    },
+    .package = "nemeton"
+  )
+  testthat::local_mocked_bindings(.capped_accepts_log_path = function() FALSE)
+
+  res <- nemetonshiny:::.run_capped(fun = "f", args = list(),
+                                   log_path = "/tmp/x.log")
+  expect_identical(res, "ok")
+  expect_false("log_path" %in% vus)
+})
+
+test_that(".run_capped transmet log_path quand le coeur le connait", {
+  vus <- NULL
+  testthat::local_mocked_bindings(
+    run_memory_capped = function(fun, args = list(), ...) {
+      vus <<- list(...)
+      "ok"
+    },
+    .package = "nemeton"
+  )
+  testthat::local_mocked_bindings(.capped_accepts_log_path = function() TRUE)
+
+  nemetonshiny:::.run_capped(fun = "f", args = list(), log_path = "/tmp/x.log")
+  expect_identical(vus$log_path, "/tmp/x.log")
 })

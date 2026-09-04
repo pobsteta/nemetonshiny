@@ -27,6 +27,67 @@
 #'
 #' @return A `shiny::ExtendedTask` object.
 #' @noRd
+# ---------------------------------------------------------------------------
+# Log de l'enfant plafonne (v0.143.16, coeur >= 0.195.0)
+# ---------------------------------------------------------------------------
+# `nemeton::run_memory_capped()` lancait l'enfant avec `stdout = ""`, c'est-a-dire
+# « heriter du parent ». Le parent est un worker `future` multisession, que
+# `parallelly` demarre avec `OUT=/dev/null` : la sortie de l'enfant - traceback
+# python d'IOTA2, message d'erreur R - etait donc jetee a la source. Un run de
+# 20 h pouvait echouer sans laisser un mot d'explication (Couchey, 2026-09-03).
+#
+# Le coeur 0.195.0 accepte `log_path` : les deux flux, fusionnes, dans un
+# fichier conserve quel que soit le sort de l'enfant. C'est le pendant du NDJSON
+# archive en v0.143.15 - le NDJSON dit JUSQU'OU on est alle, le log dit
+# POURQUOI ca s'est arrete.
+#
+# Le fichier porte un nom stable (`<pipeline>_child.log`) pour que l'utilisateur
+# et le support sachent ou regarder sans chercher. La rotation a lieu au
+# DEMARRAGE : le coeur conservant le fichier meme en cas de succes, sans
+# rotation le run suivant ecraserait la trace du precedent - exactement le
+# defaut qu'on vient de corriger sur le NDJSON.
+.child_log_path <- function(data_dir, name, keep = 5L) {
+  if (is.null(data_dir) || !is.character(data_dir) || length(data_dir) != 1L ||
+      !nzchar(data_dir)) {
+    return(NULL)
+  }
+  if (!dir.exists(data_dir)) {
+    tryCatch(dir.create(data_dir, recursive = TRUE, showWarnings = FALSE),
+             error = function(e) NULL)
+    if (!dir.exists(data_dir)) return(NULL)
+  }
+  p <- file.path(data_dir, paste0(name, "_child.log"))
+  if (file.exists(p)) {
+    cible <- paste0(p, ".prev-", format(Sys.time(), "%Y%m%d-%H%M%S"))
+    ok <- tryCatch(file.rename(p, cible), error = function(e) FALSE)
+    # Renommage refuse : on efface plutot que de laisser l'enfant APPEND sur la
+    # trace du run precedent - deux runs melanges valent moins qu'un seul.
+    if (!isTRUE(ok)) tryCatch(unlink(p), error = function(e) invisible(NULL))
+    else utils::getFromNamespace(".prune_run_traces", "nemetonshiny")(
+      p, keep = keep, motif = ".prev-*")
+  }
+  p
+}
+
+# Le coeur installe accepte-t-il `log_path` ? Meme motif de garde que
+# `package`/`options` ailleurs dans l'app : on ne casse jamais sur un coeur plus
+# ancien, on perd seulement la trace.
+.capped_accepts_log_path <- function() {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(FALSE)
+  "log_path" %in% names(formals(nemeton::run_memory_capped))
+}
+
+# Appelle `run_memory_capped()` en laissant tomber `log_path` sur un coeur qui
+# ne le connait pas. Sans ce filtre, passer l'argument a un coeur < 0.195.0
+# leverait « unused argument » et casserait un chemin qui marchait.
+.run_capped <- function(...) {
+  a <- list(...)
+  if (!.capped_accepts_log_path()) a$log_path <- NULL
+  do.call(nemeton::run_memory_capped, a)
+}
+
+
+
 run_ingestion_async <- function() {
   # Capture the package source path (when running via devtools::load_all)
   # so the future worker can re-load nemetonshiny - workers don't
@@ -679,9 +740,12 @@ run_fordead_async <- function() {
       #     fichiers .json/.ndjson, le parent les tail et rejoue chaque
       #     evenement dans `ntfy_cb` -> les push ntfy sont preserves).
       # `cancel_path` est inchange : l'enfant poll le meme fichier.
+      # Log de l'enfant : le NDJSON dit jusqu'ou, celui-ci dit pourquoi.
+      child_log <- .child_log_path(dirname(progress_path %||% "."), "fordead")
       result <- tryCatch(
-        nemeton::run_memory_capped(
-          "run_fordead_dieback",
+        .run_capped(
+          fun = "run_fordead_dieback",
+          log_path = child_log,
           args = list(
             zone_id           = zone_id,
             cache_dir         = cache_dir,
@@ -882,9 +946,14 @@ run_reconfort_async <- function() {
       # `con` et `progress_callback` ne franchissent pas la frontiere de
       # process : l'enfant ouvre sa connexion depuis `db_url` et ecrit
       # lui-meme les fichiers de progression depuis `progress_path`.
+      # Log de l'enfant : c'est le chemin qui a manque le 2026-09-03 - IOTA2
+      # meurt, son traceback part dans le `/dev/null` du worker, et l'erreur
+      # remontee ne dit que « exit 1 ».
+      child_log <- .child_log_path(dirname(progress_path %||% "."), "reconfort")
       result <- tryCatch(
-        nemeton::run_memory_capped(
-          "run_reconfort_dieback",
+        .run_capped(
+          fun = "run_reconfort_dieback",
+          log_path = child_log,
           args = list(
             zone_id    = zone_id,
             cache_dir  = cache_dir,
