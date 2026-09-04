@@ -21,6 +21,13 @@ For a narrative, per-feature description of each release, see
   regroupement mettait deux verts cote a cote, et ce bouton n'est pas le CTA du
   lancement — il ouvre la modale, dont le « Lancer la chaine » reste vert plein.
 
+### Fixed
+
+- **Deux tests du chronometre tombaient sous charge** : `.fmt_elapsed()`
+  tronque, et les tests attendaient la seconde exacte dans une fenetre d'une
+  seconde. L'horloge devient injectable (`now = Sys.time()`), le formatage exact
+  est teste sur horloge figee, le rendu ne verifie plus que le cablage.
+
 ## [0.143.16] - 2026-09-03
 
 ### Added

@@ -8,9 +8,15 @@
 
 # Duree ecoulee depuis `start` en "MM:SS" (ou "H:MM:SS" au-dela d'une heure).
 # "" si NULL. Partage par tous les chronos de notif async.
-.fmt_elapsed <- function(start) {
+# `now` injectable (v0.143.17) : `as.integer()` TRONQUE, donc l'ecart entre la
+# pose de `start` et l'appel doit rester sous la seconde pour qu'un test tombe
+# juste. Sous charge il ne l'est pas, et l'assertion cassait sans qu'aucun code
+# de production ne soit en cause (test-mod_monitoring.R:1604, suite du
+# 2026-09-04). Injecter l'horloge rend le formateur deterministe a l'appel ;
+# `Sys.time()` par defaut laisse la production strictement inchangee.
+.fmt_elapsed <- function(start, now = Sys.time()) {
   if (is.null(start)) return("")
-  s <- as.integer(difftime(Sys.time(), start, units = "secs"))
+  s <- as.integer(difftime(now, start, units = "secs"))
   if (s < 0L) s <- 0L
   if (s >= 3600L) {
     sprintf("%d:%02d:%02d", s %/% 3600L, (s %% 3600L) %/% 60L, s %% 60L)

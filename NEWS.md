@@ -36,6 +36,21 @@ L'intention reste positive : la bordure porte le sens, ce n'est ni du neutre
 (`outline-secondary`) ni de la prudence (`outline-danger`). Et toujours pas
 d'ambre — elle signale une provenance, pas un niveau d'action.
 
+### Fixed — Deux tests du chronometre tombaient sous charge
+
+`.fmt_elapsed()` fait `as.integer(difftime(...))`, qui **tronque**. Deux tests
+posaient `start <- Sys.time() - N` puis attendaient la valeur exacte : juste
+seulement si moins d'**une seconde** s'ecoulait avant l'appel. Machine chargee,
+la suite tombait sans qu'aucun code de production soit en cause.
+
+`.fmt_elapsed(start, now = Sys.time())` : l'horloge devient injectable, le
+defaut laisse la production strictement inchangee (verifie par un test dedie).
+Les roles sont separes — `test-utils-notif.R` verifie le **formatage exact**
+sur une horloge figee, bornes de troncature comprises (65,999 s -> `01:05`,
+66 s -> `01:06`), assertions qu'on ne pouvait pas ecrire avec une horloge qui
+bouge ; `test-mod_monitoring.R` verifie seulement que le chrono est **cable**
+sur `start`. Mutation : debrancher le chrono fait toujours tomber 5 assertions.
+
 # nemetonshiny 0.143.16 (2026-09-03)
 
 ### Added — Le log de l'enfant plafonne, pour savoir POURQUOI un run s'arrete
