@@ -194,3 +194,46 @@ test_that("chaque famille du menu affiche son code entre parentheses", {
     }
   }
 })
+
+
+# ---- Pas de definition en double (2026-09-14) ------------------------
+
+test_that("mod_home_ui n'est defini qu'une fois", {
+  # `app_ui.R` portait une copie « Placeholder » de `mod_home_ui`, masquee
+  # par celle de `mod_home.R` (collation alphabetique : le dernier gagne).
+  # Elle n'atteignait donc jamais l'ecran, tout en restant lisible comme si
+  # elle etait la vraie - avec ses propres boutons de fond de carte, oublies
+  # lors du passage au LayersControl.
+  #
+  # Le piege inverse existe dans le MEME fichier : `mod_synthesis_ui` et
+  # `mod_family_ui` portent le meme titre « Placeholder » mais sont, elles,
+  # les implementations VIVANTES. Le titre ne dit rien de l'etat reel :
+  # seule la collation le dit.
+  racine <- testthat::test_path("..", "..", "R")
+  fichiers <- list.files(racine, pattern = "\\.R$", full.names = TRUE)
+
+  compte <- function(nom) {
+    sum(vapply(fichiers, function(f) {
+      any(grepl(paste0("^", nom, " <- function"), readLines(f, warn = FALSE)))
+    }, logical(1)))
+  }
+
+  expect_equal(compte("mod_home_ui"), 1L)
+  expect_equal(compte("mod_synthesis_ui"), 1L)
+  expect_equal(compte("mod_family_ui"), 1L)
+})
+
+
+test_that("les trois UI de modules se construisent", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+
+  testthat::with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    {
+      expect_gt(nchar(as.character(nemetonshiny:::mod_home_ui("t"))), 1000L)
+      expect_gt(nchar(as.character(nemetonshiny:::mod_synthesis_ui("t"))), 1000L)
+      expect_gt(nchar(as.character(nemetonshiny:::mod_family_ui("t", "B"))), 1000L)
+    }
+  )
+})
