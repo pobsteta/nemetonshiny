@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.19.9001 (2026-09-14)
+# nemetonshiny 0.143.20 (2026-09-14)
 
 ### Removed — `mod_home_ui` etait defini deux fois, dont une morte
 
