@@ -1,3 +1,27 @@
+# nemetonshiny 0.143.18.9003 (2026-09-14)
+
+### Changed — les etapes Sante de la chaine portent le nom des moteurs
+
+Boite de dialogue « Lancer tous les calculs » :
+
+| Avant | Apres |
+|---|---|
+| Sante — surveillance rapide | **Sante — FAST** |
+| Sante — diagnostic FORDEAD | **Sante — FORDEAD** |
+
+Les deux autres etapes Sante nommaient deja leur moteur (RECONFORT, creation des
+zones) : la liste devient homogene, et l'intitule correspond a ce que
+l'utilisateur lit partout ailleurs dans l'onglet Suivi sanitaire.
+
+Cote anglais, `Health — rapid surveillance` et `Health — FORDEAD diagnosis`
+suivent le meme alignement. Seules ces deux entrees de `TRANSLATIONS` changent ;
+les cles (`pipeline_step_sante_fast`, `pipeline_step_sante_fordead`) et leur
+unique consommateur (`service_pipeline.R:76-77`) sont inchanges.
+
+Les autres occurrences de « diagnostic FORDEAD » dans l'app sont de la prose
+distincte (infobulles, messages d'erreur, nom de couche) et gardent leur
+formulation.
+
 # nemetonshiny 0.143.18.9002 (2026-09-14)
 
 ### Changed — le choix du fond de carte rejoint le bouton « couches »
