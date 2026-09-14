@@ -1,5 +1,119 @@
 # Changelog
 
+## nemetonshiny 0.143.19 (2026-09-14)
+
+#### Fixed — un arret est un arret : le bandeau fantome de l’ingestion S2
+
+« Arreter les calculs » (Tableau des actions) laissait a l’ecran le
+bandeau `Tuile Sentinel-2 ... (37/396)` de `mod_monitoring`, chronometre
+compris, qui continuait de compter bien apres l’arret. Il etait
+**inclosable** : `duration = NULL` et `closeButton = FALSE`. Seul un
+rechargement de page en venait a bout.
+
+La cause n’etait pas une notification oubliee mais une notification
+**recreee chaque seconde** : l’observer du chrono
+(`invalidateLater(1000)`) republie `ingest_progress` tant que
+`fast_run_start()` est non-NULL. Un `removeNotification()` seul aurait
+ete annule une seconde plus tard — c’est `fast_run_start(NULL)` qui
+coupe la source.
+
+Fond du probleme : deux chemins d’annulation qui s’ignoraient.
+`mod_home` observait `app_state$cancel_computation` seul ;
+`mod_monitoring` n’en avait aucune connaissance
+(`grep cancel_computation R/mod_monitoring.R` : zero occurrence).
+
+#### Changed — `cancel_computation` devient LE signal d’arret de l’app
+
+Les corps des trois handlers d’annulation de `mod_monitoring` sont
+extraits en helpers (`.reset_fast_run()`, `.reset_fordead_run()`,
+`.reset_reconfort_run()`), appeles a la fois par leur bouton d’onglet et
+par un observer sur `app_state$cancel_computation`. Symetriquement, les
+trois boutons posent desormais ce signal : arreter l’ingestion arrete
+aussi la chaine.
+
+- **Les helpers ne reposent JAMAIS le signal** — seuls les boutons le
+  font. Sans cette regle, l’observer bouclerait sur lui-meme.
+- **`fast_prewarm_progress` rejoint la liste des toasts effaces** : elle
+  n’etait retiree que par l’event `fast_prewarm:complete`, donc un arret
+  pendant le prechauffage la laissait a l’ecran par le meme mecanisme.
+- **`mod_home` ne dit plus « Calcul annule » quand rien ne tournait** :
+  le toast est desormais garde par `computing_project_id()`, sinon
+  arreter une simple ingestion S2 aurait annonce l’annulation d’un
+  calcul inexistant.
+
+Asymetrie preexistante signalee au passage : RECONFORT n’ecrit aucun
+`reconfort_cancel.flag` la ou FAST et FORDEAD en posent un. Son
+annulation libere l’UI sans pouvoir interrompre le worker. Non corrige
+ici — le coeur ne poll aucun flag de ce nom.
+
+Tests : 2 nouveaux cas, verifies par mutation (neutraliser l’observer
+partage fait tomber 9 assertions).
+
+#### Changed — le choix du fond de carte rejoint le bouton « couches »
+
+Onglet **Selection**, sous-onglets **Carte cadastrale** (`mod_map`) et
+**Carte UGF** (`mod_ug`) : les deux boutons « OSM » / « Satellite » de
+l’entete sont remplaces par le `LayersControl` natif de Leaflet, dans la
+carte — le meme geste que partout ailleurs (FAST, FORDEAD, RECONFORT,
+desserte, action plan, echantillonnage…).
+
+Ce que ca supprime, au passage : l’ancien montage demandait **trois**
+mecanismes pour ce que le controle natif fait seul — un `clearGroup()` +
+`addProviderTiles()` via `leafletProxy`, un message JS maison
+`toggleBasemapButtons` pour l’etat actif, et un `rv$basemap` cote
+serveur. Ce dernier n’etait **jamais lu**, seulement ecrit, dans les
+deux modules.
+
+Deux details qui comptent :
+
+- **`baseGroups` re-applique sa PREMIERE entree a chaque remontage du
+  widget.** OSM reste donc en tete pour que le defaut ne change pas. Les
+  deux rendus sont statiques (aucune lecture reactive), donc le choix de
+  l’utilisateur survit.
+- **Cote UGF, `baseGroups` est declare DEUX fois.** Le rafraichissement
+  des couleurs de groupe fait `clearControls()` puis re-cree le controle
+  : l’omettre la ferait disparaitre le choix du fond des la premiere
+  mise a jour de legende.
+
+#### Removed — code mort devenu orphelin
+
+- `initBasemapToggle()` et le handler `toggleBasemapButtons`
+  (`inst/app/www/js/custom.js`), plus les regles `.basemap-btn` /
+  `.basemap-btn-active` (`custom.css`) : plus aucun code R ne produit
+  ces elements ni n’envoie ce message.
+- `rv$basemap` dans `mod_map` et `mod_ug`.
+
+Tests : le contrat d’UI s’inverse (les boutons ne doivent PLUS y etre)
+et deux tests serveur qui se terminaient par `expect_true(TRUE)` — donc
+ne testaient rien — sont remplaces par une vraie inspection du widget
+rendu (deux `addProviderTiles`, un `addLayersControl`, `baseGroups` et
+leur ORDRE, les deux fournisseurs). Verifie par mutation : inverser
+l’ordre des fonds fait tomber 2 assertions.
+
+#### Changed — les etapes Sante de la chaine portent le nom des moteurs
+
+Boite de dialogue « Lancer tous les calculs » :
+
+| Avant                       | Apres               |
+|-----------------------------|---------------------|
+| Sante — surveillance rapide | **Sante — FAST**    |
+| Sante — diagnostic FORDEAD  | **Sante — FORDEAD** |
+
+Les deux autres etapes Sante nommaient deja leur moteur (RECONFORT,
+creation des zones) : la liste devient homogene, et l’intitule
+correspond a ce que l’utilisateur lit partout ailleurs dans l’onglet
+Suivi sanitaire.
+
+Cote anglais, `Health — rapid surveillance` et
+`Health — FORDEAD diagnosis` suivent le meme alignement. Seules ces deux
+entrees de `TRANSLATIONS` changent ; les cles
+(`pipeline_step_sante_fast`, `pipeline_step_sante_fordead`) et leur
+unique consommateur (`service_pipeline.R:76-77`) sont inchanges.
+
+Les autres occurrences de « diagnostic FORDEAD » dans l’app sont de la
+prose distincte (infobulles, messages d’erreur, nom de couche) et
+gardent leur formulation.
+
 ## nemetonshiny 0.143.18 (2026-09-14)
 
 #### Fixed — l’analyse IA ne depend plus d’un modele hors palier
@@ -16891,7 +17005,8 @@ référencée nulle part.
 
 #### chore(deps) — bump épingle nemeton à v0.22.1
 
-L’installation de `nemetonshiny` (`remotes::install_github`,
+L’installation de `nemetonshiny`
+([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
 [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
 `devtools::install`) faisait **redescendre** `nemeton` à la version
 `0.22.0`, même quand une version plus récente était déjà installée

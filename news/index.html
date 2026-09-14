@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.18</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.19</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,58 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.19" id="nemetonshiny-014319-2026-09-14">nemetonshiny 0.143.19 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014319-2026-09-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--un-arret-est-un-arret--le-bandeau-fantome-de-lingestion-s2-0-143-19">Fixed — un arret est un arret : le bandeau fantome de l’ingestion S2<a class="anchor" aria-label="anchor" href="#fixed--un-arret-est-un-arret--le-bandeau-fantome-de-lingestion-s2-0-143-19"></a></h4>
+<p>« Arreter les calculs » (Tableau des actions) laissait a l’ecran le bandeau <code>Tuile Sentinel-2 ... (37/396)</code> de <code>mod_monitoring</code>, chronometre compris, qui continuait de compter bien apres l’arret. Il etait <strong>inclosable</strong> : <code>duration = NULL</code> et <code>closeButton = FALSE</code>. Seul un rechargement de page en venait a bout.</p>
+<p>La cause n’etait pas une notification oubliee mais une notification <strong>recreee chaque seconde</strong> : l’observer du chrono (<code>invalidateLater(1000)</code>) republie <code>ingest_progress</code> tant que <code>fast_run_start()</code> est non-NULL. Un <code>removeNotification()</code> seul aurait ete annule une seconde plus tard — c’est <code>fast_run_start(NULL)</code> qui coupe la source.</p>
+<p>Fond du probleme : deux chemins d’annulation qui s’ignoraient. <code>mod_home</code> observait <code>app_state$cancel_computation</code> seul ; <code>mod_monitoring</code> n’en avait aucune connaissance (<code>grep cancel_computation R/mod_monitoring.R</code> : zero occurrence).</p>
+</div>
+<div class="section level4">
+<h4 id="changed--cancel_computation-devient-le-signal-darret-de-lapp-0-143-19">Changed — <code>cancel_computation</code> devient LE signal d’arret de l’app<a class="anchor" aria-label="anchor" href="#changed--cancel_computation-devient-le-signal-darret-de-lapp-0-143-19"></a></h4>
+<p>Les corps des trois handlers d’annulation de <code>mod_monitoring</code> sont extraits en helpers (<code>.reset_fast_run()</code>, <code>.reset_fordead_run()</code>, <code>.reset_reconfort_run()</code>), appeles a la fois par leur bouton d’onglet et par un observer sur <code>app_state$cancel_computation</code>. Symetriquement, les trois boutons posent desormais ce signal : arreter l’ingestion arrete aussi la chaine.</p>
+<ul><li>
+<strong>Les helpers ne reposent JAMAIS le signal</strong> — seuls les boutons le font. Sans cette regle, l’observer bouclerait sur lui-meme.</li>
+<li>
+<strong><code>fast_prewarm_progress</code> rejoint la liste des toasts effaces</strong> : elle n’etait retiree que par l’event <code>fast_prewarm:complete</code>, donc un arret pendant le prechauffage la laissait a l’ecran par le meme mecanisme.</li>
+<li>
+<strong><code>mod_home</code> ne dit plus « Calcul annule » quand rien ne tournait</strong> : le toast est desormais garde par <code>computing_project_id()</code>, sinon arreter une simple ingestion S2 aurait annonce l’annulation d’un calcul inexistant.</li>
+</ul><p>Asymetrie preexistante signalee au passage : RECONFORT n’ecrit aucun <code>reconfort_cancel.flag</code> la ou FAST et FORDEAD en posent un. Son annulation libere l’UI sans pouvoir interrompre le worker. Non corrige ici — le coeur ne poll aucun flag de ce nom.</p>
+<p>Tests : 2 nouveaux cas, verifies par mutation (neutraliser l’observer partage fait tomber 9 assertions).</p>
+</div>
+<div class="section level4">
+<h4 id="changed--le-choix-du-fond-de-carte-rejoint-le-bouton--couches--0-143-19">Changed — le choix du fond de carte rejoint le bouton « couches »<a class="anchor" aria-label="anchor" href="#changed--le-choix-du-fond-de-carte-rejoint-le-bouton--couches--0-143-19"></a></h4>
+<p>Onglet <strong>Selection</strong>, sous-onglets <strong>Carte cadastrale</strong> (<code>mod_map</code>) et <strong>Carte UGF</strong> (<code>mod_ug</code>) : les deux boutons « OSM » / « Satellite » de l’entete sont remplaces par le <code>LayersControl</code> natif de Leaflet, dans la carte — le meme geste que partout ailleurs (FAST, FORDEAD, RECONFORT, desserte, action plan, echantillonnage…).</p>
+<p>Ce que ca supprime, au passage : l’ancien montage demandait <strong>trois</strong> mecanismes pour ce que le controle natif fait seul — un <code>clearGroup()</code> + <code>addProviderTiles()</code> via <code>leafletProxy</code>, un message JS maison <code>toggleBasemapButtons</code> pour l’etat actif, et un <code>rv$basemap</code> cote serveur. Ce dernier n’etait <strong>jamais lu</strong>, seulement ecrit, dans les deux modules.</p>
+<p>Deux details qui comptent :</p>
+<ul><li>
+<strong><code>baseGroups</code> re-applique sa PREMIERE entree a chaque remontage du widget.</strong> OSM reste donc en tete pour que le defaut ne change pas. Les deux rendus sont statiques (aucune lecture reactive), donc le choix de l’utilisateur survit.</li>
+<li>
+<strong>Cote UGF, <code>baseGroups</code> est declare DEUX fois.</strong> Le rafraichissement des couleurs de groupe fait <code>clearControls()</code> puis re-cree le controle : l’omettre la ferait disparaitre le choix du fond des la premiere mise a jour de legende.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="removed--code-mort-devenu-orphelin-0-143-19">Removed — code mort devenu orphelin<a class="anchor" aria-label="anchor" href="#removed--code-mort-devenu-orphelin-0-143-19"></a></h4>
+<ul><li>
+<code>initBasemapToggle()</code> et le handler <code>toggleBasemapButtons</code> (<code>inst/app/www/js/custom.js</code>), plus les regles <code>.basemap-btn</code> / <code>.basemap-btn-active</code> (<code>custom.css</code>) : plus aucun code R ne produit ces elements ni n’envoie ce message.</li>
+<li>
+<code>rv$basemap</code> dans <code>mod_map</code> et <code>mod_ug</code>.</li>
+</ul><p>Tests : le contrat d’UI s’inverse (les boutons ne doivent PLUS y etre) et deux tests serveur qui se terminaient par <code>expect_true(TRUE)</code> — donc ne testaient rien — sont remplaces par une vraie inspection du widget rendu (deux <code>addProviderTiles</code>, un <code>addLayersControl</code>, <code>baseGroups</code> et leur ORDRE, les deux fournisseurs). Verifie par mutation : inverser l’ordre des fonds fait tomber 2 assertions.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--les-etapes-sante-de-la-chaine-portent-le-nom-des-moteurs-0-143-19">Changed — les etapes Sante de la chaine portent le nom des moteurs<a class="anchor" aria-label="anchor" href="#changed--les-etapes-sante-de-la-chaine-portent-le-nom-des-moteurs-0-143-19"></a></h4>
+<p>Boite de dialogue « Lancer tous les calculs » :</p>
+<table class="table"><thead><tr><th>Avant</th>
+<th>Apres</th>
+</tr></thead><tbody><tr><td>Sante — surveillance rapide</td>
+<td><strong>Sante — FAST</strong></td>
+</tr><tr><td>Sante — diagnostic FORDEAD</td>
+<td><strong>Sante — FORDEAD</strong></td>
+</tr></tbody></table><p>Les deux autres etapes Sante nommaient deja leur moteur (RECONFORT, creation des zones) : la liste devient homogene, et l’intitule correspond a ce que l’utilisateur lit partout ailleurs dans l’onglet Suivi sanitaire.</p>
+<p>Cote anglais, <code>Health — rapid surveillance</code> et <code>Health — FORDEAD diagnosis</code> suivent le meme alignement. Seules ces deux entrees de <code>TRANSLATIONS</code> changent ; les cles (<code>pipeline_step_sante_fast</code>, <code>pipeline_step_sante_fordead</code>) et leur unique consommateur (<code>service_pipeline.R:76-77</code>) sont inchanges.</p>
+<p>Les autres occurrences de « diagnostic FORDEAD » dans l’app sont de la prose distincte (infobulles, messages d’erreur, nom de couche) et gardent leur formulation.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.18" id="nemetonshiny-014318-2026-09-14">nemetonshiny 0.143.18 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014318-2026-09-14"></a></h2>
 <div class="section level4">
@@ -7873,7 +7925,7 @@ le tableau remplacé en a 337</code></pre>
 <h2 class="pkg-version" data-toc-text="0.28.3" id="nemetonshiny-0283-2026-05-15">nemetonshiny 0.28.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0283-2026-05-15"></a></h2>
 <div class="section level4">
 <h4 id="choredeps--bump-épingle-nemeton-à-v0221-0-28-3">chore(deps) — bump épingle nemeton à v0.22.1<a class="anchor" aria-label="anchor" href="#choredeps--bump-%C3%A9pingle-nemeton-%C3%A0-v0221-0-28-3"></a></h4>
-<p>L’installation de <code>nemetonshiny</code> (<code>remotes::install_github</code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
+<p>L’installation de <code>nemetonshiny</code> (<code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">remotes::install_github</a></code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
 <p>Cause : le champ <code>Remotes: pobsteta/nemeton@v0.22.0</code> du <code>DESCRIPTION</code> épingle nemeton à exactement ce tag. L’épingle prime sur la borne souple <code>Imports: nemeton (&gt;= 0.22.0)</code>, donc le résolveur de dépendances downgrade systématiquement.</p>
 <p>Correctif : bump de l’épingle vers <code>pobsteta/nemeton@v0.22.1</code> (dernier tag stable côté cœur). Aucun changement de code. Réflexe à adopter pour chaque release <code>nemeton</code> : bumper l’épingle ici dans la foulée (ordre cœur → app de CLAUDE.md).</p>
 </div>

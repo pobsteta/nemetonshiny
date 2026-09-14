@@ -36,7 +36,7 @@ nouvelles** doivent suivre la convention.
     nemetonshiny (ce repo) → Application Shiny/golem : UI, modules, i18n, profils experts, LLM, OAuth2.
     tree_sat_nemeton       → Classification d'essences par Sentinel-1/2 (NDP 0).
     maestro_nemeton        → Classification d'essences par MAESTRO ViT (ortho+MNT, NDP 1+).
-    opencanopynemeton      → Canopy Height Models (CHM) consommés par nemeton (spec 005).
+    opencanopy             → Canopy Height Models (CHM) consommés par nemeton (spec 005).
     platform_nemeton       → Documentation plateforme, ADR, glossaire.
 
 **Règle de dépendance** : les flèches vont **toujours** vers `nemeton`.
