@@ -1,3 +1,43 @@
+# nemetonshiny 0.143.18.9002 (2026-09-14)
+
+### Changed — le choix du fond de carte rejoint le bouton « couches »
+
+Onglet **Selection**, sous-onglets **Carte cadastrale** (`mod_map`) et
+**Carte UGF** (`mod_ug`) : les deux boutons « OSM » / « Satellite » de l'entete
+sont remplaces par le `LayersControl` natif de Leaflet, dans la carte — le meme
+geste que partout ailleurs (FAST, FORDEAD, RECONFORT, desserte, action plan,
+echantillonnage...).
+
+Ce que ca supprime, au passage : l'ancien montage demandait **trois** mecanismes
+pour ce que le controle natif fait seul — un `clearGroup()` + `addProviderTiles()`
+via `leafletProxy`, un message JS maison `toggleBasemapButtons` pour l'etat
+actif, et un `rv$basemap` cote serveur. Ce dernier n'etait **jamais lu**,
+seulement ecrit, dans les deux modules.
+
+Deux details qui comptent :
+
+* **`baseGroups` re-applique sa PREMIERE entree a chaque remontage du widget.**
+  OSM reste donc en tete pour que le defaut ne change pas. Les deux rendus sont
+  statiques (aucune lecture reactive), donc le choix de l'utilisateur survit.
+* **Cote UGF, `baseGroups` est declare DEUX fois.** Le rafraichissement des
+  couleurs de groupe fait `clearControls()` puis re-cree le controle : l'omettre
+  la ferait disparaitre le choix du fond des la premiere mise a jour de legende.
+
+### Removed — code mort devenu orphelin
+
+* `initBasemapToggle()` et le handler `toggleBasemapButtons`
+  (`inst/app/www/js/custom.js`), plus les regles `.basemap-btn` /
+  `.basemap-btn-active` (`custom.css`) : plus aucun code R ne produit ces
+  elements ni n'envoie ce message.
+* `rv$basemap` dans `mod_map` et `mod_ug`.
+
+Tests : le contrat d'UI s'inverse (les boutons ne doivent PLUS y etre) et deux
+tests serveur qui se terminaient par `expect_true(TRUE)` — donc ne testaient
+rien — sont remplaces par une vraie inspection du widget rendu (deux
+`addProviderTiles`, un `addLayersControl`, `baseGroups` et leur ORDRE, les deux
+fournisseurs). Verifie par mutation : inverser l'ordre des fonds fait tomber
+2 assertions.
+
 # nemetonshiny 0.143.18.9001 (2026-09-14)
 
 ### Fixed — un arret est un arret : le bandeau fantome de l'ingestion S2

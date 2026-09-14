@@ -64,7 +64,8 @@ mod_ug_map_panel <- function(id) {
   i18n <- get_i18n(opts$language %||% "fr")
 
   htmltools::tagList(
-    # Header bar with title + basemap toggles (same pattern as mod_map)
+    # Header bar : titre seul. Le choix du fond de carte a rejoint le
+    # LayersControl dans la carte (meme geste que partout ailleurs).
     bslib::card_header(
       class = "d-flex justify-content-between align-items-center py-2",
 
@@ -74,30 +75,6 @@ mod_ug_map_panel <- function(id) {
         i18n$t("ug_map_card_title"),
         class = "fw-semibold"
       ),
-
-      # Controls
-      htmltools::div(
-        class = "d-flex gap-2 align-items-center",
-        htmltools::div(
-          class = "btn-group btn-group-sm",
-          role = "group",
-          `aria-label` = "Basemap selection",
-          htmltools::tags$button(
-            id = ns("basemap_osm"),
-            type = "button",
-            class = "btn action-button basemap-btn basemap-btn-active",
-            `data-val` = 0,
-            "OSM"
-          ),
-          htmltools::tags$button(
-            id = ns("basemap_satellite"),
-            type = "button",
-            class = "btn action-button basemap-btn",
-            `data-val` = 0,
-            "Satellite"
-          )
-        )
-      )
     ),
 
     # Body: leaflet map
@@ -580,17 +557,22 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     # MAP: Render leaflet
     # ================================================================
-    # Basemap state
-    rv$basemap <- "osm"
-
     output$ug_map <- leaflet::renderLeaflet({
       m <- leaflet::leaflet() |>
+        # Deux fonds exclusifs confies au LayersControl. `baseGroups`
+        # re-applique sa PREMIERE entree a chaque remontage du widget :
+        # OSM reste en tete pour que le defaut ne bouge pas. Ce rendu est
+        # statique, donc le choix de l'utilisateur survit.
         leaflet::addProviderTiles(
           leaflet::providers$OpenStreetMap,
-          group = "basemap",
-          layerId = "basemap_tiles"
+          group = "OSM"
+        ) |>
+        leaflet::addProviderTiles(
+          leaflet::providers$Esri.WorldImagery,
+          group = "Satellite"
         ) |>
         leaflet::addLayersControl(
+          baseGroups = c("OSM", "Satellite"),
           # "Selection" is an internal-only visual overlay: we still draw
           # the orange highlight via addPolygons(group = "Selection") and
           # wipe it with clearGroup("Selection"), but it doesn't belong
@@ -634,40 +616,6 @@ mod_ug_server <- function(id, app_state) {
       m
     })
 
-    # ================================================================
-    # MAP: Basemap toggle (OSM / Satellite)
-    # ================================================================
-    shiny::observeEvent(input$basemap_osm, {
-      rv$basemap <- "osm"
-      leaflet::leafletProxy(ns("ug_map")) |>
-        leaflet::clearGroup("basemap") |>
-        leaflet::addProviderTiles(
-          leaflet::providers$OpenStreetMap,
-          group = "basemap",
-          layerId = "basemap_tiles"
-        )
-      session$sendCustomMessage("toggleBasemapButtons", list(
-        osmId = ns("basemap_osm"),
-        satId = ns("basemap_satellite"),
-        active = "osm"
-      ))
-    })
-
-    shiny::observeEvent(input$basemap_satellite, {
-      rv$basemap <- "satellite"
-      leaflet::leafletProxy(ns("ug_map")) |>
-        leaflet::clearGroup("basemap") |>
-        leaflet::addProviderTiles(
-          leaflet::providers$Esri.WorldImagery,
-          group = "basemap",
-          layerId = "basemap_tiles"
-        )
-      session$sendCustomMessage("toggleBasemapButtons", list(
-        osmId = ns("basemap_osm"),
-        satId = ns("basemap_satellite"),
-        active = "satellite"
-      ))
-    })
 
     # ================================================================
     # MAP FOOTER: tenement count and surface summary
@@ -907,7 +855,11 @@ mod_ug_server <- function(id, app_state) {
 
       proxy |>
         leaflet::clearControls() |>
+        # `baseGroups` DOIT etre redeclare ici : `clearControls()` emporte
+        # le controle pose au rendu, et l'omettre ferait disparaitre le
+        # choix du fond au premier rafraichissement de la legende.
         leaflet::addLayersControl(
+          baseGroups = c("OSM", "Satellite"),
           overlayGroups = c("UGF", "Tenements", "Dessin", "Parcellaire ONF"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>

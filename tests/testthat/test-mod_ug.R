@@ -373,3 +373,42 @@ test_that("la carte UGF n'est pas suspendue quand son sous-onglet est cache", {
   expect_true("ug_map" %in% names(demandes))
   expect_false(demandes$ug_map$suspendWhenHidden)
 })
+
+
+# ---- Fond de carte dans le LayersControl (2026-09-14) ----------------
+
+test_that("mod_ug_ui ne porte plus de boutons de fond de carte", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+
+  ui_html <- as.character(nemetonshiny:::mod_ug_ui("test"))
+  expect_false(grepl("basemap_osm", ui_html))
+  expect_false(grepl("basemap_satellite", ui_html))
+  expect_false(grepl("basemap-btn", ui_html))
+})
+
+
+test_that("la carte UGF declare OSM et Satellite, au rendu ET apres clearControls", {
+  # Les deux appels a addLayersControl doivent porter `baseGroups`. Celui
+  # du rafraichissement de legende suit un `clearControls()`, qui emporte
+  # le controle initial : l'oublier ferait disparaitre le choix du fond
+  # des la premiere mise a jour des couleurs de groupe.
+  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"),
+                   warn = FALSE)
+  idx <- grep("leaflet::addLayersControl\\(", src)
+  expect_length(idx, 2L)
+
+  for (i in idx) {
+    bloc <- paste(src[i:min(i + 6L, length(src))], collapse = " ")
+    expect_match(bloc, 'baseGroups = c\\("OSM", "Satellite"\\)')
+  }
+
+  # Et les deux fournisseurs sont bien poses comme groupes.
+  plein <- paste(src, collapse = "\n")
+  expect_match(plein, 'providers\\$OpenStreetMap,\\s*\n\\s*group = "OSM"')
+  expect_match(plein, 'providers\\$Esri\\.WorldImagery,\\s*\n\\s*group = "Satellite"')
+
+  # Plus aucun vestige de l'ancien pilotage par boutons.
+  expect_false(any(grepl("toggleBasemapButtons", src)))
+  expect_false(any(grepl("rv\\$basemap", src)))
+})

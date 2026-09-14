@@ -31,7 +31,7 @@ test_that("mod_map_ui creates namespaced elements", {
   expect_true(grepl("test_ns-clear_selection", ui_html))
 })
 
-test_that("mod_map_ui includes basemap toggle buttons", {
+test_that("mod_map_ui ne porte plus de boutons de fond de carte", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
@@ -39,10 +39,12 @@ test_that("mod_map_ui includes basemap toggle buttons", {
   ui <- nemetonshiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
-  expect_true(grepl("basemap_osm", ui_html))
-  expect_true(grepl("basemap_satellite", ui_html))
-  expect_true(grepl("OSM", ui_html))
-  expect_true(grepl("Satellite", ui_html))
+  # Le choix du fond a rejoint le LayersControl DANS la carte : l'entete
+  # ne doit plus porter de bouton, sinon deux commandes concurrentes
+  # piloteraient le meme etat.
+  expect_false(grepl("basemap_osm", ui_html))
+  expect_false(grepl("basemap_satellite", ui_html))
+  expect_false(grepl("basemap-btn", ui_html))
 })
 
 test_that("mod_map_ui includes clear selection button", {
@@ -121,10 +123,17 @@ test_that("mod_map_ui has proper accessibility attributes", {
   ui <- nemetonshiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
-  # Button group should have aria-label
+  # L'`aria-label` « Basemap selection » a disparu AVEC le groupe de
+  # boutons : le choix du fond est passe dans le LayersControl de
+  # Leaflet, qui porte sa propre accessibilite (radios etiquetees).
+  # Le remplacer par une assertion sur une entete vide n'apprendrait
+  # rien ; on verifie donc le controle qui RESTE dans l'entete.
+  expect_false(grepl("Basemap selection", ui_html))
 
-  expect_true(grepl("aria-label", ui_html))
-  expect_true(grepl("Basemap selection", ui_html))
+  # Le bouton « effacer la selection » garde un nom accessible : sans
+  # `title`, c'est une icone muette pour un lecteur d'ecran.
+  expect_true(grepl("clear_selection", ui_html))
+  expect_true(grepl("title=", ui_html))
 })
 
 # ==============================================================================
@@ -925,10 +934,11 @@ test_that("i18n keys for map module exist in both languages", {
 # Basemap Toggle Tests
 # ==============================================================================
 
-test_that("mod_map_server handles basemap toggle to OSM", {
+test_that("la carte declare OSM et Satellite dans son LayersControl", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
+  skip_if_not_installed("jsonlite")
 
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
@@ -946,68 +956,36 @@ test_that("mod_map_server handles basemap toggle to OSM", {
         clear_map_selection = NULL
       )
 
-      mock_parcels <- shiny::reactiveVal(NULL)
-      mock_commune_geometry <- shiny::reactiveVal(NULL)
-
       shiny::testServer(
         nemetonshiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
-          commune_geometry = mock_commune_geometry,
-          parcels = mock_parcels
+          commune_geometry = shiny::reactiveVal(NULL),
+          parcels = shiny::reactiveVal(NULL)
         ),
         {
-          # Toggle to OSM basemap
-          session$setInputs(basemap_osm = 1)
-          session$flushReact()
+          w <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
+          methodes <- vapply(w$x$calls, function(cl) cl$method, character(1))
 
-          # The server should handle this without error
-          # We cannot easily check the Leaflet proxy calls, but we verify no errors
-          expect_true(TRUE)
-        }
-      )
-    }
-  )
-})
+          # Deux fonds poses comme groupes, et UN controle pour les
+          # departager - c'est le motif de toutes les autres cartes.
+          expect_equal(sum(methodes == "addProviderTiles"), 2L)
+          expect_true("addLayersControl" %in% methodes)
 
-test_that("mod_map_server handles basemap toggle to Satellite", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("bslib")
-  skip_if_not_installed("leaflet")
+          ctrl <- w$x$calls[[which(methodes == "addLayersControl")[1]]]
+          base_groups <- unlist(ctrl$args[[1]])
+          expect_equal(base_groups, c("OSM", "Satellite"))
 
-  with_mocked_bindings(
-    get_app_options = function() list(language = "en"),
-    get_app_config = function(key, default = NULL) {
-      if (key == "max_parcels") return(20L)
-      default
-    },
-    {
-      mock_app_state <- shiny::reactiveValues(
-        language = "en",
-        computation_running = FALSE,
-        commune_transitioning = FALSE,
-        restore_project = NULL,
-        restore_in_progress = FALSE,
-        clear_map_selection = NULL
-      )
+          # L'ORDRE compte : `baseGroups` re-applique sa premiere entree
+          # comme defaut a chaque remontage du widget. OSM en tete.
+          expect_identical(base_groups[1], "OSM")
 
-      mock_parcels <- shiny::reactiveVal(NULL)
-      mock_commune_geometry <- shiny::reactiveVal(NULL)
-
-      shiny::testServer(
-        nemetonshiny:::mod_map_server,
-        args = list(
-          app_state = mock_app_state,
-          commune_geometry = mock_commune_geometry,
-          parcels = mock_parcels
-        ),
-        {
-          # Toggle to Satellite basemap
-          session$setInputs(basemap_satellite = 1)
-          session$flushReact()
-
-          # The server should handle this without error
-          expect_true(TRUE)
+          # Et les deux tuiles visent bien les deux fournisseurs.
+          fournisseurs <- vapply(
+            w$x$calls[methodes == "addProviderTiles"],
+            function(cl) as.character(cl$args[[1]]), character(1)
+          )
+          expect_setequal(fournisseurs, c("OpenStreetMap", "Esri.WorldImagery"))
         }
       )
     }

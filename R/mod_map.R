@@ -40,27 +40,6 @@ mod_map_ui <- function(id) {
       htmltools::div(
         class = "d-flex gap-2 align-items-center",
 
-        # Basemap toggle (use tags$button to avoid Shiny's btn-default class)
-        htmltools::div(
-          class = "btn-group btn-group-sm",
-          role = "group",
-          `aria-label` = "Basemap selection",
-          htmltools::tags$button(
-            id = ns("basemap_osm"),
-            type = "button",
-            class = "btn action-button basemap-btn basemap-btn-active",
-            `data-val` = 0,
-            "OSM"
-          ),
-          htmltools::tags$button(
-            id = ns("basemap_satellite"),
-            type = "button",
-            class = "btn action-button basemap-btn",
-            `data-val` = 0,
-            "Satellite"
-          )
-        ),
-
         # Clear selection button
         shiny::actionButton(
           ns("clear_selection"),
@@ -187,7 +166,6 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
 
     rv <- shiny::reactiveValues(
       selected_ids = character(0),
-      basemap = "osm",
       parcels_zoomed = FALSE,  # Flag to zoom only once per commune
       last_restore_timestamp = NULL, # Track last processed restore request
       last_parcels_change = NULL     # Idem pour app_state$parcels_changed
@@ -224,15 +202,36 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
       leaflet::leaflet() |>
         # Set default view (France)
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6) |>
-        # Add OSM tiles (default basemap)
+        # Fonds de carte - declares comme deux GROUPES exclusifs et
+        # confies au LayersControl de Leaflet, comme partout ailleurs dans
+        # l'app (mod_ug, FAST, FORDEAD, RECONFORT, desserte...). Avant, deux
+        # boutons dans l'entete de la carte pilotaient un `clearGroup()` +
+        # `addProviderTiles()` via `leafletProxy`, avec un message JS maison
+        # pour l'etat actif : trois mecanismes pour ce que le controle natif
+        # fait seul.
         leaflet::addProviderTiles(
           leaflet::providers$OpenStreetMap,
-          group = "basemap",
-          layerId = "basemap_tiles",
+          group = "OSM",
           options = leaflet::providerTileOptions(
             updateWhenZooming = FALSE,
             updateWhenIdle = TRUE
           )
+        ) |>
+        leaflet::addProviderTiles(
+          leaflet::providers$Esri.WorldImagery,
+          group = "Satellite",
+          options = leaflet::providerTileOptions(
+            updateWhenZooming = FALSE,
+            updateWhenIdle = TRUE
+          )
+        ) |>
+        # `baseGroups` re-applique sa PREMIERE entree comme defaut a chaque
+        # remontage du widget : OSM doit donc rester en tete pour que le
+        # defaut ne change pas. Ce rendu est statique (aucune lecture
+        # reactive), donc le choix de l'utilisateur survit.
+        leaflet::addLayersControl(
+          baseGroups = c("OSM", "Satellite"),
+          options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         # Scale bar
         leaflet::addScaleBar(
@@ -259,44 +258,10 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
     # ========================================
     # Basemap Toggle
     # ========================================
-
-    shiny::observeEvent(input$basemap_osm, {
-      rv$basemap <- "osm"
-      cli::cli_alert_info("Switching to OSM basemap")
-
-      leaflet::leafletProxy(ns("map")) |>
-        leaflet::clearGroup("basemap") |>
-        leaflet::addProviderTiles(
-          leaflet::providers$OpenStreetMap,
-          group = "basemap",
-          layerId = "basemap_tiles"
-        )
-
-      session$sendCustomMessage("toggleBasemapButtons", list(
-        osmId = ns("basemap_osm"),
-        satId = ns("basemap_satellite"),
-        active = "osm"
-      ))
-    })
-
-    shiny::observeEvent(input$basemap_satellite, {
-      rv$basemap <- "satellite"
-      cli::cli_alert_info("Switching to Satellite basemap")
-
-      leaflet::leafletProxy(ns("map")) |>
-        leaflet::clearGroup("basemap") |>
-        leaflet::addProviderTiles(
-          leaflet::providers$Esri.WorldImagery,
-          group = "basemap",
-          layerId = "basemap_tiles"
-        )
-
-      session$sendCustomMessage("toggleBasemapButtons", list(
-        osmId = ns("basemap_osm"),
-        satId = ns("basemap_satellite"),
-        active = "satellite"
-      ))
-    })
+    #
+    # Plus d'observer : le LayersControl de Leaflet bascule les deux
+    # groupes cote client. `rv$basemap` a disparu avec eux - il n'etait
+    # jamais LU, seulement ecrit (verifie par grep sur les deux modules).
 
 
     # ========================================
