@@ -10,6 +10,33 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.21] - 2026-09-14
+
+### Added
+
+- Arret cooperatif RECONFORT : le bouton « Arreter » ecrit
+  `reconfort_cancel.flag`, scrute par `nemeton::run_reconfort_dieback()` AUX
+  FRONTIERES DE PHASE (IOTA2 decoupe cote Python, pas de point d'arret plus
+  fin). Le run sort avec `status = "cancelled"`, workdir conserve. Les trois
+  moteurs Sante s'arretent desormais de la meme facon.
+- Deux cles i18n : « arret demande » au clic (le worker termine son etape) et
+  « arrete » a l'arrivee du resultat — deux moments distincts.
+
+### Fixed
+
+- Un run RECONFORT annule serait passe pour un succes : le handler de resultat
+  ne testait pas `result$status`, donc `n_alerts = NA` dans un `sprintf` et un
+  `$rasters` NULL passe au sous-module carte.
+- Le chronometre du toast de succes RECONFORT affichait `0` depuis toujours :
+  le handler lisait `duration_sec` (nom FORDEAD) la ou le coeur rend
+  `elapsed_sec`.
+
+### Note
+
+`nemeton` 0.196.0 n'etant pas encore releasee, `cancel_path` n'est transmis que
+si le coeur installe l'accepte (garde `formals()`), et le plancher reste
+`(>= 0.195.0)`. Garde et plancher a reprendre des la release cœur.
+
 ## [0.143.20] - 2026-09-14
 
 ### Removed
