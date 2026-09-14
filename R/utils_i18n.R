@@ -1798,6 +1798,12 @@ TRANSLATIONS <- list(
     fr = "Cl\u00e9 API non configur\u00e9e. D\u00e9finissez la variable d'environnement {key_var}.",
     en = "API key not configured. Set the {key_var} environment variable."
   ),
+  # Repli de mod\u00e8le LLM (cf. .llm_notify_fallback dans service_llm.R).
+  # Cl\u00e9 en convention NMT (snake_case fran\u00e7ais sans accent).
+  ia_modele_repli = list(
+    fr = "Analyse g\u00e9n\u00e9r\u00e9e avec un mod\u00e8le de repli (%s) : le mod\u00e8le principal est indisponible.",
+    en = "Analysis generated with a fallback model (%s): the primary model is unavailable."
+  ),
   db_not_configured = list(
     fr = "Base de donn\u00e9es non configur\u00e9e \u2014 stockage local des projets (parquet).",
     en = "Database not configured \u2014 projects stored locally (parquet)."
