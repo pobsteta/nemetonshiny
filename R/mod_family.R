@@ -708,15 +708,28 @@ create_llm_chat <- function(system_prompt) {
   models <- get_app_config("llm_models", list())
   model <- models[[provider]]
 
-  switch(provider,
-    anthropic = ellmer::chat_anthropic(system_prompt = system_prompt, model = model),
-    mistral = ellmer::chat_mistral(system_prompt = system_prompt, model = model),
-    openai = ellmer::chat_openai(system_prompt = system_prompt, model = model),
-    google = ellmer::chat_google_gemini(system_prompt = system_prompt, model = model),
-    deepseek = ellmer::chat_deepseek(system_prompt = system_prompt, model = model),
-    ollama = ellmer::chat_ollama(system_prompt = system_prompt, model = model),
+  # Le modele est un PARAMETRE du constructeur, pas une constante : le repli
+  # rappelle ce meme builder avec un autre id (cf. llm_chat_with_fallback).
+  build_chat <- function(m) {
+    switch(provider,
+      anthropic = ellmer::chat_anthropic(system_prompt = system_prompt, model = m),
+      mistral = ellmer::chat_mistral(system_prompt = system_prompt, model = m),
+      openai = ellmer::chat_openai(system_prompt = system_prompt, model = m),
+      google = ellmer::chat_google_gemini(system_prompt = system_prompt, model = m),
+      deepseek = ellmer::chat_deepseek(system_prompt = system_prompt, model = m),
+      ollama = ellmer::chat_ollama(system_prompt = system_prompt, model = m),
+      stop(sprintf("Unknown LLM provider: '%s'", provider))
+    )
+  }
+
+  # Un provider inconnu doit echouer TOUT DE SUITE, comme avant : sans cet
+  # appel, l'erreur ne surgirait qu'au premier $chat(), loin de sa cause.
+  if (!provider %in% c("anthropic", "mistral", "openai", "google",
+                       "deepseek", "ollama")) {
     stop(sprintf("Unknown LLM provider: '%s'", provider))
-  )
+  }
+
+  llm_chat_with_fallback(build_chat, provider, model)
 }
 
 #' Get the environment variable name for an LLM provider's API key
