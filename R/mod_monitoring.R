@@ -3573,18 +3573,28 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Force-unlock : no cooperative cancel in the core, so this only
-    # re-arms the button (the orphaned worker keeps running to completion
-    # in the background).
     # Arret d'un run RECONFORT. Extrait en helper : appele par le bouton
     # de l'onglet ET par le signal d'arret partage (cf. plus bas).
-    # Pas de flag cooperatif ici, contrairement a FAST/FORDEAD : le coeur
-    # ne poll aucun `reconfort_cancel.flag`. On libere donc l'UI sans
-    # pouvoir interrompre le worker - asymetrie preexistante, signalee.
+    #
+    # L'asymetrie signalee ici jusqu'au 2026-09-14 - « le coeur ne poll aucun
+    # reconfort_cancel.flag, on libere l'UI sans pouvoir interrompre le
+    # worker » - est levee : `run_reconfort_dieback(cancel_path=)` existe
+    # depuis nemeton 0.196.0. Les trois moteurs Sante s'arretent maintenant
+    # pour de vrai.
     .reset_reconfort_run <- function() {
+      # Vrai cancel cooperatif, symetrique a FAST et FORDEAD depuis
+      # nemeton 0.196.0 : on ecrit le flag AVANT le force-unlock. Le worker
+      # le scrute aux FRONTIERES DE PHASE (IOTA2 decoupe cote Python, il n'y
+      # a pas de point d'arret plus fin), termine l'etape en cours, puis sort
+      # avec `status = "cancelled"` en conservant son workdir.
+      cancel_path <- .resolve_progress_path(
+        app_state$current_project, "reconfort_cancel.flag")
+      if (!is.null(cancel_path)) {
+        tryCatch(file.create(cancel_path), error = function(e) NULL)
+      }
       force_unlock_reconfort(TRUE)
       for (nid in c("reconfort_progress", "reconfort_error",
-                    "reconfort_complete")) {
+                    "reconfort_complete", "reconfort_cancelled")) {
         shiny::removeNotification(session$ns(nid))
       }
       reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
@@ -3593,6 +3603,16 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_reconfort_cancel, {
       .reset_reconfort_run()
+      # Le bouton ne disait RIEN, contrairement a FAST et FORDEAD. Maintenant
+      # que le flag part, le silence serait pire qu'avant : l'UI se
+      # deverrouille dans l'instant alors que le worker travaille encore une
+      # phase entiere. « Arret demande », donc - pas « arrete ».
+      shiny::showNotification(
+        i18n_r()$t("monitoring_reconfort_run_cancel_requested"),
+        id       = session$ns("reconfort_cancelled"),
+        type     = "warning",
+        duration = 10
+      )
       # Un arret est un arret : on coupe aussi la chaine de calcul.
       app_state$cancel_computation <- Sys.time()
     })
@@ -3648,6 +3668,21 @@ mod_monitoring_server <- function(id, app_state) {
 
       zid <- as.integer(zone_id %||% input$zone_id)
       out <- if (!is.null(cd)) file.path(cd, paste0("output_zone_", zid)) else NULL
+
+      # Purge d'un flag residuel d'un run precedent. SANS CECI, le garde-fou
+      # anti-« phantom cancel » du coeur (.make_cancel_checker) verrait le
+      # flag present a l'entree, DESARMERAIT l'annulation et previendrait par
+      # un warning - le run suivant deviendrait ininterruptible. Symetrique a
+      # FAST (l. 2390) et FORDEAD (l. 2924). Idempotent : `unlink` sur un
+      # fichier absent rend 0 sans erreur.
+      .reconfort_cancel_flag <- .resolve_progress_path(
+        proj, "reconfort_cancel.flag")
+      if (!is.null(.reconfort_cancel_flag) &&
+          file.exists(.reconfort_cancel_flag)) {
+        tryCatch(unlink(.reconfort_cancel_flag, force = TRUE),
+                 error = function(e) NULL)
+      }
+
       reconfort_task$invoke(
         zone_id       = zid,
         cache_dir     = cd,
@@ -3656,6 +3691,7 @@ mod_monitoring_server <- function(id, app_state) {
         progress_path = ppath,
         lang          = app_state$language %||% "fr",
         output_dir    = out,
+        cancel_path   = .reconfort_cancel_flag,
         # Nom de projet (a jour) pour l'en-tete ntfy - cf. FAST.
         project_name  = proj$metadata$name %||% proj$name
       )
@@ -3730,10 +3766,32 @@ mod_monitoring_server <- function(id, app_state) {
         reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
         .cleanup_progress_file(reconfort_progress_path())
         reconfort_progress_path(NULL)
+        # Un run ANNULE entre aussi par ici. Sans cette branche il afficherait
+        # le toast de succes, avec `n_alerts = NA` (donc un sprintf sur NA) et
+        # un `$rasters` NULL passe au sous-module carte. C'etait sans
+        # consequence tant que le coeur ne rendait que « completed » - un
+        # echec abortait ; ca cesse de l'etre des que `cancel_path` est
+        # branche (nemeton >= 0.196.0).
+        if (identical(result$status, "cancelled")) {
+          shiny::showNotification(
+            i18n$t("monitoring_reconfort_cancelled",
+                   label = .reconfort_phase_label(result$phase %||% "", i18n)),
+            id       = session$ns("reconfort_cancelled"),
+            type     = "warning",
+            duration = 8
+          )
+          # Ni `reconfort_refresh()` ni passe-plat carte : il n'y a pas de
+          # nouveau raster. Le cache du run precedent reste affichable.
+          return()
+        }
         shiny::showNotification(
           sprintf(i18n$t("monitoring_reconfort_success"),
                   result$n_alerts %||% result$n_alerts_inserted %||% 0L,
-                  format_elapsed(result$duration_sec %||% 0)),
+                  # Le coeur rend `elapsed_sec` (nom historique de RECONFORT) ;
+                  # `duration_sec` est celui de FORDEAD. Le chrono de ce toast
+                  # affichait donc 0 depuis toujours.
+                  format_elapsed(result$elapsed_sec %||%
+                                 result$duration_sec %||% 0)),
           id = session$ns("reconfort_success"), type = "message", duration = 8
         )
         reconfort_refresh(reconfort_refresh() + 1L)
@@ -4339,7 +4397,7 @@ mod_monitoring_server <- function(id, app_state) {
 
 # Dispatcher for the RECONFORT progress event stream emitted by
 # nemeton::run_reconfort_dieback() (events `reconfort:start|phase|
-# complete|error`). Mirror of .fordead_handle_progress_event ; testable
+# complete|cancelled|error`). Mirror of .fordead_handle_progress_event ; testable
 # directly with a fake session + i18n. Side effects only. `start` / `on_msg`
 # alimentent le chrono unifie (cf. .fordead_handle_progress_event).
 .reconfort_handle_progress_event <- function(ev, session, i18n,
@@ -4421,6 +4479,27 @@ mod_monitoring_server <- function(id, app_state) {
              n = n_alerts, duree = format_elapsed(duration)),
       id       = session$ns("reconfort_complete"),
       type     = "message",
+      duration = 8
+    )
+    return(invisible(NULL))
+  }
+
+  # Emis par le coeur (>= 0.196.0) quand le flag cooperatif est vu a une
+  # frontiere de phase. `phase_name` porte la derniere phase TERMINEE.
+  #
+  # Cet evenement et le resultat (`status = "cancelled"`) disent la meme
+  # chose et arrivent tous deux : ils partagent donc l'id de notification
+  # `reconfort_cancelled`, pour que l'un remplace l'autre au lieu de
+  # s'empiler.
+  if (identical(current, "reconfort:cancelled")) {
+    if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
+    shiny::removeNotification(session$ns("reconfort_progress"))
+    shiny::showNotification(
+      i18n$t("monitoring_reconfort_cancelled",
+             label = .reconfort_phase_label(
+               as.character(ev$phase_name %||% ""), i18n)),
+      id       = session$ns("reconfort_cancelled"),
+      type     = "warning",
       duration = 8
     )
     return(invisible(NULL))

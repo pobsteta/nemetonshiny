@@ -829,9 +829,11 @@ run_fordead_async <- function() {
 #' * `output_dir`    - working dir for intermediate outputs (NULL = core
 #'                     default tempfile)
 #'
-#' Unlike FORDEAD, `nemeton::run_reconfort_dieback()` has no `cancel_path`
-#' parameter - there is no cooperative cancellation; the UI relies on the
-#' force-unlock escape hatch only.
+#' * `cancel_path`   - cooperative cancel flag, polled by the core AT PHASE
+#'                     BOUNDARIES (nemeton >= 0.196.0). IOTA2 chunks on the
+#'                     Python side, so there is no finer checkpoint: the
+#'                     current phase always runs to completion, then the run
+#'                     exits with `status = "cancelled"`, workdir kept.
 #'
 #' On success, `$result()` returns the list produced by the core (carrying
 #' `n_alerts` and run metadata).
@@ -851,6 +853,7 @@ run_reconfort_async <- function() {
                                    s2_year = NULL, db_url = "",
                                    progress_path = NULL, lang = "fr",
                                    output_dir = NULL,
+                                   cancel_path = NULL,
                                    # Nom d'affichage (projet) resolu cote parent
                                    # - cf. run_ingestion_async. NULL -> repli DB.
                                    project_name = NULL) {
@@ -954,11 +957,26 @@ run_reconfort_async <- function() {
         .run_capped(
           fun = "run_reconfort_dieback",
           log_path = child_log,
-          args = list(
-            zone_id    = zone_id,
-            cache_dir  = cache_dir,
-            s2_year    = s2_year,
-            output_dir = output_dir
+          args = c(
+            list(
+              zone_id    = zone_id,
+              cache_dir  = cache_dir,
+              s2_year    = s2_year,
+              output_dir = output_dir
+            ),
+            # GARDE TEMPORAIRE. `cancel_path` existe depuis nemeton 0.196.0,
+            # mais cette version n'est PAS encore releasee : `@*release` ne
+            # tire que les tags, donc un poste frais installe encore 0.195.0,
+            # ou passer l'argument leverait « unused argument » et casserait
+            # tout le run. On ne le passe donc que si le coeur installe
+            # l'accepte - meme idiome que le `progress_callback` d'opencanopy
+            # (service_compute.R:2408).
+            #
+            # A RETIRER, avec ce commentaire, des que le plancher
+            # `Imports: nemeton` passe a (>= 0.196.0).
+            if (!is.null(cancel_path) &&
+                "cancel_path" %in% names(formals(nemeton::run_reconfort_dieback)))
+              list(cancel_path = cancel_path)
           ),
           db_url            = child_db_url,
           progress_path     = progress_path,

@@ -5793,6 +5793,18 @@ TRANSLATIONS <- list(
     fr = "Sant\u00e9 \u2014 FORDEAD",
     en = "Health \u2014 FORDEAD"
   ),
+  # Arret RECONFORT (c\u0153ur >= 0.196.0). DEUX moments distincts : « arret
+  # demande » au clic - le worker termine son etape en cours - puis « arrete »
+  # a l'arrivee de l'evenement ou du resultat. Les confondre reproduirait en
+  # plus discret le bouton menteur que ce correctif supprime.
+  monitoring_reconfort_run_cancel_requested = list(
+    fr = "Arr\u00eat demand\u00e9. RECONFORT termine l'\u00e9tape en cours puis s'arr\u00eate \u2014 IOTA2 d\u00e9coupe c\u00f4t\u00e9 Python, il n'y a pas de point d'arr\u00eat plus fin, et une classification peut demander plusieurs dizaines de minutes. Ce qui a d\u00e9j\u00e0 \u00e9t\u00e9 produit (sc\u00e8nes ing\u00e9r\u00e9es, sorties IOTA2) est conserv\u00e9 et relu par une relance.",
+    en = "Stop requested. RECONFORT finishes the current step then exits \u2014 IOTA2 chunks on the Python side, there is no finer checkpoint, and a classification can take tens of minutes. Whatever was already produced (ingested scenes, IOTA2 outputs) is kept and re-read on a relaunch."
+  ),
+  monitoring_reconfort_cancelled = list(
+    fr = "RECONFORT arr\u00eat\u00e9 apr\u00e8s l'\u00e9tape \u00ab {label} \u00bb. Les sorties de cette \u00e9tape et des pr\u00e9c\u00e9dentes sont conserv\u00e9es.",
+    en = "RECONFORT stopped after the \u201c{label}\u201d step. That step's outputs and the earlier ones are kept."
+  ),
   pipeline_step_sante_reconfort = list(
     fr = "Sant\u00e9 \u2014 RECONFORT",
     en = "Health \u2014 RECONFORT"
