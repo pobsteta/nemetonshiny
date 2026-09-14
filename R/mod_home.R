@@ -1606,10 +1606,17 @@ mod_home_server <- function(id, app_state) {
       # Reset computing state
       computing_project_id(NULL)
 
-      shiny::showNotification(
-        i18n$t("computation_cancelled") %||% "Calcul annul\u00e9",
-        type = "warning"
-      )
+      # Le toast n'est pose QUE si une chaine tournait vraiment. Depuis le
+      # 2026-09-14 ce signal est partage : les boutons d'annulation de
+      # mod_monitoring le posent aussi, pour que « un arret est un arret ».
+      # Sans cette garde, arreter une simple ingestion S2 afficherait
+      # « Calcul annule » alors qu'aucun calcul ne tournait.
+      if (!is.null(project_id)) {
+        shiny::showNotification(
+          i18n$t("computation_cancelled") %||% "Calcul annul\u00e9",
+          type = "warning"
+        )
+      }
     }, ignoreInit = TRUE)
 
     # Handle retry from progress module.

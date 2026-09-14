@@ -125,43 +125,6 @@
   // Basemap Toggle
   // ============================================================
 
-  /**
-   * Handle basemap toggle button group (client-side click)
-   */
-  function initBasemapToggle() {
-    document.addEventListener('click', function(e) {
-      var btn = e.target.closest('.basemap-btn');
-      if (btn) {
-        var btnGroup = btn.closest('.btn-group');
-        if (btnGroup) {
-          btnGroup.querySelectorAll('.basemap-btn').forEach(function(b) {
-            b.classList.remove('basemap-btn-active');
-          });
-          btn.classList.add('basemap-btn-active');
-        }
-      }
-    });
-  }
-
-  /**
-   * Server-driven basemap button toggle
-   */
-  Shiny.addCustomMessageHandler('toggleBasemapButtons', function(data) {
-    var osmBtn = document.getElementById(data.osmId);
-    var satBtn = document.getElementById(data.satId);
-    if (!osmBtn || !satBtn) return;
-
-    osmBtn.classList.remove('basemap-btn-active');
-    satBtn.classList.remove('basemap-btn-active');
-
-    if (data.active === 'osm') {
-      osmBtn.classList.add('basemap-btn-active');
-    } else {
-      satBtn.classList.add('basemap-btn-active');
-    }
-  });
-
-
   // ============================================================
   // Leaflet invalidateSize — force a hidden map to redetect
   // its container dimensions once the tab becomes visible.
@@ -748,7 +711,6 @@
     initFocusTrap();
     initTouchSupport();
     initFormValidation();
-    initBasemapToggle();
     initLiveRegion();
     initTourPersistence();
     initBusyVisibility();

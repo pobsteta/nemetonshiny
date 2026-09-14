@@ -10,6 +10,34 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.19] - 2026-09-14
+
+### Fixed
+
+- Le bandeau « Tuile Sentinel-2 (n/N) » de `mod_monitoring` survivait a
+  « Arreter les calculs » et restait inclosable (`duration = NULL` +
+  `closeButton = FALSE`). Il n'etait pas oublie mais RECREE chaque seconde par
+  l'observer du chrono : seul `fast_run_start(NULL)` en coupe la source.
+
+### Changed
+
+- `app_state$cancel_computation` devient LE signal d'arret de l'app. Les trois
+  handlers d'annulation de `mod_monitoring` (FAST, FORDEAD, RECONFORT) sont
+  extraits en helpers, appeles par leur bouton ET par ce signal ; les trois
+  boutons le posent desormais, donc arreter l'ingestion arrete aussi la chaine.
+- Carte cadastrale (`mod_map`) et Carte UGF (`mod_ug`) : le choix du fond passe
+  des deux boutons d'entete au `LayersControl` natif de Leaflet, comme dans
+  toutes les autres cartes de l'app.
+- Etapes Sante de la chaine « Tout calculer » : « Sante — surveillance rapide »
+  -> « Sante — FAST », « Sante — diagnostic FORDEAD » -> « Sante — FORDEAD ».
+
+### Removed
+
+- `initBasemapToggle()` et le handler `toggleBasemapButtons` (`custom.js`), les
+  regles `.basemap-btn` / `.basemap-btn-active` (`custom.css`), et `rv$basemap`
+  dans les deux modules carte : orphelins apres le passage au LayersControl.
+  `rv$basemap` n'etait de toute facon jamais lu, seulement ecrit.
+
 ## [0.143.18] - 2026-09-14
 
 ### Fixed

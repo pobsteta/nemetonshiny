@@ -2221,8 +2221,15 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    shiny::observeEvent(input$run_cancel, {
-      i18n <- i18n_r()
+    # Arret d'un run FAST (ingestion Sentinel-2). Extrait en helper :
+    # appele par le bouton de l'onglet ET par le signal d'arret partage.
+    #
+    # `fast_run_start(NULL)` n'est pas cosmetique : l'observer du chrono
+    # (plus bas, `invalidateLater(1000)`) RECREE la notification
+    # `ingest_progress` chaque seconde tant qu'il est non-NULL. Un
+    # `removeNotification()` seul serait annule une seconde plus tard -
+    # c'est exactement le bandeau fantome constate le 2026-09-14.
+    .reset_fast_run <- function() {
       # v0.52.0 - Vrai cancel cooperatif. On ecrit le flag AVANT le
       # force-unlock UI : le worker poll ce fichier entre chaque tuile
       # (nemeton@v0.53.0+) et sort proprement a la prochaine iteration
@@ -2239,10 +2246,13 @@ mod_monitoring_server <- function(id, app_state) {
       force_unlock_quick(TRUE)
       # Wipe every in-flight ingestion toast so the screen stops being
       # polluted by the old worker's stream of 403/404 warnings.
+      # `fast_prewarm_progress` est du lot : elle n'etait retiree que par
+      # l'event `fast_prewarm:complete`, donc un arret pendant le
+      # prechauffage la laissait elle aussi a l'ecran.
       for (nid in c("ingest_progress", "ingest_band_failed",
                     "ingest_pc_token", "ingest_error",
                     "ingest_warns", "ingest_zero", "ingest_success",
-                    "ingest_cache_lookup")) {
+                    "ingest_cache_lookup", "fast_prewarm_progress")) {
         shiny::removeNotification(session$ns(nid))
       }
       # Cleanup local progress + log files so the next run starts on a
@@ -2253,13 +2263,41 @@ mod_monitoring_server <- function(id, app_state) {
       .cleanup_progress_file(ingest_log_path())
       ingest_log_path(NULL)
       ingest_log_offset(0L)
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_cancel, {
+      .reset_fast_run()
       shiny::showNotification(
-        i18n$t("monitoring_run_cancel_done"),
+        i18n_r()$t("monitoring_run_cancel_done"),
         id       = session$ns("run_cancel_info"),
         type     = "default",
         duration = 6
       )
+      # Un arret est un arret : on coupe aussi la chaine de calcul.
+      app_state$cancel_computation <- Sys.time()
     })
+
+    # ------------------------------------------------------------------
+    # Signal d'arret partage
+    # ------------------------------------------------------------------
+    # `app_state$cancel_computation` est LE signal d'arret de l'app. Il est
+    # pose par « Arreter les calculs » (Tableau des actions, via
+    # mod_progress) et par les trois boutons d'annulation ci-dessus.
+    #
+    # Avant le 2026-09-14, mod_home l'observait seul : annuler depuis le
+    # Tableau des actions coupait la chaine mais laissait tourner les runs
+    # de ce module, dont le bandeau `ingest_progress` que rien ne pouvait
+    # plus retirer (`duration = NULL` + `closeButton = FALSE`, recree
+    # chaque seconde par l'observer du chrono).
+    #
+    # Les helpers ne reposent JAMAIS `cancel_computation` - seuls les
+    # boutons le font. Sans cette regle, ce simple observer bouclerait.
+    shiny::observeEvent(app_state$cancel_computation, {
+      .reset_fast_run()
+      .reset_fordead_run()
+      .reset_reconfort_run()
+    }, ignoreInit = TRUE)
 
     # v0.85.2.9000 - Sequence d'invocation FAST factorisee : toast
     # persistant -> reset des fichiers progress/console -> invoke du
@@ -2795,7 +2833,9 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    shiny::observeEvent(input$run_health_cancel, {
+    # Arret d'un run FORDEAD. Extrait en helper : appele par le bouton
+    # de l'onglet ET par le signal d'arret partage (cf. plus bas).
+    .reset_fordead_run <- function() {
       i18n <- i18n_r()
       # v0.52.0 - Vrai cancel cooperatif. Symetrique au FAST :
       # ecrit le flag AVANT le force-unlock UI. Le worker FORDEAD
@@ -2815,12 +2855,19 @@ mod_monitoring_server <- function(id, app_state) {
       fordead_run_start(NULL); fordead_run_msg(NULL)   # stoppe le chrono
       .cleanup_progress_file(fordead_progress_path())
       fordead_progress_path(NULL)
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_health_cancel, {
+      .reset_fordead_run()
       shiny::showNotification(
-        i18n$t("monitoring_run_cancel_done"),
+        i18n_r()$t("monitoring_run_cancel_done"),
         id       = session$ns("run_health_cancel_info"),
         type     = "default",
         duration = 6
       )
+      # Un arret est un arret : on coupe aussi la chaine de calcul.
+      app_state$cancel_computation <- Sys.time()
     })
 
     # Helper - kicks off the FORDEAD task with the current sidebar
@@ -3529,13 +3576,25 @@ mod_monitoring_server <- function(id, app_state) {
     # Force-unlock : no cooperative cancel in the core, so this only
     # re-arms the button (the orphaned worker keeps running to completion
     # in the background).
-    shiny::observeEvent(input$run_reconfort_cancel, {
+    # Arret d'un run RECONFORT. Extrait en helper : appele par le bouton
+    # de l'onglet ET par le signal d'arret partage (cf. plus bas).
+    # Pas de flag cooperatif ici, contrairement a FAST/FORDEAD : le coeur
+    # ne poll aucun `reconfort_cancel.flag`. On libere donc l'UI sans
+    # pouvoir interrompre le worker - asymetrie preexistante, signalee.
+    .reset_reconfort_run <- function() {
       force_unlock_reconfort(TRUE)
       for (nid in c("reconfort_progress", "reconfort_error",
                     "reconfort_complete")) {
         shiny::removeNotification(session$ns(nid))
       }
       reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_reconfort_cancel, {
+      .reset_reconfort_run()
+      # Un arret est un arret : on coupe aussi la chaine de calcul.
+      app_state$cancel_computation <- Sys.time()
     })
 
     # `zone_id` : le lancement enchaine l'impose. `input$zone_id` est alimente

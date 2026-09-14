@@ -5786,12 +5786,12 @@ TRANSLATIONS <- list(
     en = "Health \u2014 monitoring zones creation"
   ),
   pipeline_step_sante_fast = list(
-    fr = "Sant\u00e9 \u2014 surveillance rapide",
-    en = "Health \u2014 rapid surveillance"
+    fr = "Sant\u00e9 \u2014 FAST",
+    en = "Health \u2014 FAST"
   ),
   pipeline_step_sante_fordead = list(
-    fr = "Sant\u00e9 \u2014 diagnostic FORDEAD",
-    en = "Health \u2014 FORDEAD diagnosis"
+    fr = "Sant\u00e9 \u2014 FORDEAD",
+    en = "Health \u2014 FORDEAD"
   ),
   pipeline_step_sante_reconfort = list(
     fr = "Sant\u00e9 \u2014 RECONFORT",

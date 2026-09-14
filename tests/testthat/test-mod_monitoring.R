@@ -1708,3 +1708,109 @@ test_that("le pruning ne touche rien tant qu'on est sous le seuil", {
     expect_length(Sys.glob("run_progress.ndjson.failed-*"), 3L)
   })
 })
+
+
+# ---- Signal d'arret partage (2026-09-14) -----------------------------
+#
+# « Un arret est un arret » : `app_state$cancel_computation`, pose par le
+# Tableau des actions comme par les boutons de cet onglet, doit couper les
+# TROIS runs du module. Avant, mod_home l'observait seul et le bandeau
+# `ingest_progress` survivait a l'annulation - recree chaque seconde par
+# l'observer du chrono, et inclosable (`closeButton = FALSE`).
+
+test_that("cancel_computation coupe les trois runs du module monitoring", {
+  skip_if_not_installed("shiny")
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection = function(...) NULL,
+    list_monitoring_zones = function(con) {
+      data.frame(id = integer(0), name = character(0),
+                 stringsAsFactors = FALSE)
+    },
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    {
+      as <- make_fake_app_state()
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = as),
+        {
+          # Un observeEvent sur un app_state EXTERNE ne se declenche pas
+          # tant qu'aucun cycle n'a eu lieu : sans ce premier flush,
+          # l'assertion serait vacante.
+          session$flushReact()
+
+          # Simuler trois runs en vol.
+          fast_run_start(Sys.time());      fast_run_msg("tuile 37/396")
+          fordead_run_start(Sys.time());   fordead_run_msg("phase 2")
+          reconfort_run_start(Sys.time()); reconfort_run_msg("score")
+          session$flushReact()
+
+          expect_false(is.null(fast_run_start()))
+          expect_false(is.null(fordead_run_start()))
+          expect_false(is.null(reconfort_run_start()))
+
+          # ignoreInit = TRUE : il faut une VRAIE transition de valeur.
+          as$cancel_computation <- Sys.time() - 1
+          session$flushReact()
+          as$cancel_computation <- Sys.time()
+          session$flushReact()
+
+          # Le chrono est coupe des trois cotes. C'est `*_run_start` qui
+          # compte, pas `removeNotification` : tant qu'il est non-NULL,
+          # l'observer a `invalidateLater(1000)` republie la notification.
+          expect_null(fast_run_start())
+          expect_null(fordead_run_start())
+          expect_null(reconfort_run_start())
+          expect_null(fast_run_msg())
+          expect_null(fordead_run_msg())
+          expect_null(reconfort_run_msg())
+
+          # Et les boutons « Lancer » sont reutilisables immediatement.
+          expect_true(force_unlock_quick())
+          expect_true(force_unlock_health())
+          expect_true(force_unlock_reconfort())
+        }
+      )
+    }
+  )
+})
+
+
+test_that("les trois helpers de reset existent et sont sans effet de bord croise", {
+  skip_if_not_installed("shiny")
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection = function(...) NULL,
+    list_monitoring_zones = function(con) {
+      data.frame(id = integer(0), name = character(0),
+                 stringsAsFactors = FALSE)
+    },
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$flushReact()
+          fast_run_start(Sys.time())
+          fordead_run_start(Sys.time())
+          reconfort_run_start(Sys.time())
+
+          # Couper FAST ne doit pas couper les deux autres : chaque helper
+          # ne touche qu'a son propre run.
+          .reset_fast_run()
+          expect_null(fast_run_start())
+          expect_false(is.null(fordead_run_start()))
+          expect_false(is.null(reconfort_run_start()))
+
+          .reset_fordead_run()
+          expect_null(fordead_run_start())
+          expect_false(is.null(reconfort_run_start()))
+
+          .reset_reconfort_run()
+          expect_null(reconfort_run_start())
+        }
+      )
+    }
+  )
+})
