@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.17.9001 (2026-09-14)
+# nemetonshiny 0.143.18 (2026-09-14)
 
 ### Fixed — l'analyse IA ne depend plus d'un modele hors palier
 

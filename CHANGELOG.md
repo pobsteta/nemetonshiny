@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.18] - 2026-09-14
+
+### Fixed
+
+- Modele Mistral par defaut hors palier : `mistral-large-latest` ->
+  `mistral-medium-latest`. Le modele existe toujours cote API mais est ferme
+  aux paliers d'entree, ce qui rendait l'analyse IA inutilisable
+  (`HTTP 403 ... not available in your subscription tier`).
+- Modele Anthropic par defaut : `claude-sonnet-4-5-20250929` ->
+  `claude-opus-5` (generation precedente, suffixe de date obsolete).
+
+### Added
+
+- Repli automatique de modele sur refus de palier ou de quota (403/429) :
+  bascule sur `ministral-14b-latest`, puis 8b, puis 3b, et retour au modele
+  configure des que le palier le redonne. Toute autre erreur remonte
+  inchangee ; en cas d'echec total c'est l'erreur d'origine qui remonte ; un
+  repli reussi notifie l'utilisateur (`ia_modele_repli`).
+
 ## [0.143.17] - 2026-09-04
 
 ### Changed
