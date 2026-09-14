@@ -1,3 +1,49 @@
+# nemetonshiny 0.143.18.9001 (2026-09-14)
+
+### Fixed — un arret est un arret : le bandeau fantome de l'ingestion S2
+
+« Arreter les calculs » (Tableau des actions) laissait a l'ecran le bandeau
+`Tuile Sentinel-2 ... (37/396)` de `mod_monitoring`, chronometre compris, qui
+continuait de compter bien apres l'arret. Il etait **inclosable** :
+`duration = NULL` et `closeButton = FALSE`. Seul un rechargement de page en
+venait a bout.
+
+La cause n'etait pas une notification oubliee mais une notification **recreee
+chaque seconde** : l'observer du chrono (`invalidateLater(1000)`) republie
+`ingest_progress` tant que `fast_run_start()` est non-NULL. Un
+`removeNotification()` seul aurait ete annule une seconde plus tard — c'est
+`fast_run_start(NULL)` qui coupe la source.
+
+Fond du probleme : deux chemins d'annulation qui s'ignoraient. `mod_home`
+observait `app_state$cancel_computation` seul ; `mod_monitoring` n'en avait
+aucune connaissance (`grep cancel_computation R/mod_monitoring.R` : zero
+occurrence).
+
+### Changed — `cancel_computation` devient LE signal d'arret de l'app
+
+Les corps des trois handlers d'annulation de `mod_monitoring` sont extraits en
+helpers (`.reset_fast_run()`, `.reset_fordead_run()`,
+`.reset_reconfort_run()`), appeles a la fois par leur bouton d'onglet et par un
+observer sur `app_state$cancel_computation`. Symetriquement, les trois boutons
+posent desormais ce signal : arreter l'ingestion arrete aussi la chaine.
+
+* **Les helpers ne reposent JAMAIS le signal** — seuls les boutons le font.
+  Sans cette regle, l'observer bouclerait sur lui-meme.
+* **`fast_prewarm_progress` rejoint la liste des toasts effaces** : elle n'etait
+  retiree que par l'event `fast_prewarm:complete`, donc un arret pendant le
+  prechauffage la laissait a l'ecran par le meme mecanisme.
+* **`mod_home` ne dit plus « Calcul annule » quand rien ne tournait** : le toast
+  est desormais garde par `computing_project_id()`, sinon arreter une simple
+  ingestion S2 aurait annonce l'annulation d'un calcul inexistant.
+
+Asymetrie preexistante signalee au passage : RECONFORT n'ecrit aucun
+`reconfort_cancel.flag` la ou FAST et FORDEAD en posent un. Son annulation
+libere l'UI sans pouvoir interrompre le worker. Non corrige ici — le coeur ne
+poll aucun flag de ce nom.
+
+Tests : 2 nouveaux cas, verifies par mutation (neutraliser l'observer partage
+fait tomber 9 assertions).
+
 # nemetonshiny 0.143.18 (2026-09-14)
 
 ### Fixed — l'analyse IA ne depend plus d'un modele hors palier
