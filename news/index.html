@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.17</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.18</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.18" id="nemetonshiny-014318-2026-09-14">nemetonshiny 0.143.18 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014318-2026-09-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--lanalyse-ia-ne-depend-plus-dun-modele-hors-palier-0-143-18">Fixed — l’analyse IA ne depend plus d’un modele hors palier<a class="anchor" aria-label="anchor" href="#fixed--lanalyse-ia-ne-depend-plus-dun-modele-hors-palier-0-143-18"></a></h4>
+<p><code>mistral-large-latest</code> etait le modele Mistral par defaut <strong>depuis le premier commit du paquet</strong>, et l’analyse IA renvoyait <code>HTTP 403 Forbidden. This model is not available in your subscription tier</code>. Mesure contre l’API le 2026-09-14 : le modele existe toujours (<code>GET /v1/models/mistral-large-latest</code> -&gt; 200), il est simplement ferme aux paliers d’entree. Le defaut passe a <code>mistral-medium-latest</code>, son successeur dans la gamme.</p>
+<p>Le modele Anthropic par defaut, <code>claude-sonnet-4-5-20250929</code>, est remplace par <code>claude-opus-5</code> : l’ancien identifiant est de generation precedente, et l’API n’attend plus de suffixe de date sur les identifiants courants.</p>
+</div>
+<div class="section level4">
+<h4 id="added--repli-automatique-de-modele-sur-refus-de-palier-ou-de-quota-0-143-18">Added — repli automatique de modele sur refus de palier ou de quota<a class="anchor" aria-label="anchor" href="#added--repli-automatique-de-modele-sur-refus-de-palier-ou-de-quota-0-143-18"></a></h4>
+<p>Sur la meme cle, toute la gamme « premier » repond 403 ou 429 avec <code>x-ratelimit-limit-req-minute: 0</code>, tandis que la famille ministral garde du quota (750 / 188 / 30 req/min pour 3b / 8b / 14b). L’analyse IA bascule desormais seule sur <code>ministral-14b-latest</code>, puis 8b, puis 3b, et revient au modele configure des que le palier le redonne — sans intervention.</p>
+<p>Trois garde-fous :</p>
+<ul><li>
+<strong>Seuls 403 et 429 declenchent le repli.</strong> Une cle invalide, une panne reseau ou un incident fournisseur remontent inchanges : reessayer avec un autre modele remplacerait le diagnostic par l’echec d’un second appel voue au meme sort.</li>
+<li>
+<strong>Quand aucun repli n’aboutit, c’est l’erreur D’ORIGINE qui remonte</strong> — le refus du modele configure, pas celui d’un remplacant que l’utilisateur n’a jamais choisi.</li>
+<li>
+<strong>Un repli reussi se voit</strong> (<code>ia_modele_repli</code>) : ces modeles « edge » sont nettement moins fins pour une analyse par profil expert, et une analyse degradee ne doit pas passer pour une analyse nominale.</li>
+</ul><p>La logique vit dans <code>R/service_llm.R</code> (regle <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a> : pas de logique applicative dans un <code>mod_*.R</code>) et s’accroche a <code>create_llm_chat()</code>, donc les <strong>six</strong> sites d’appel en beneficient sans etre touches — <code>$chat()</code> est la seule methode qu’ils utilisent sur l’objet.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.17" id="nemetonshiny-014317-2026-09-04">nemetonshiny 0.143.17 (2026-09-04)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014317-2026-09-04"></a></h2>
 <div class="section level4">
@@ -7853,7 +7873,7 @@ le tableau remplacé en a 337</code></pre>
 <h2 class="pkg-version" data-toc-text="0.28.3" id="nemetonshiny-0283-2026-05-15">nemetonshiny 0.28.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0283-2026-05-15"></a></h2>
 <div class="section level4">
 <h4 id="choredeps--bump-épingle-nemeton-à-v0221-0-28-3">chore(deps) — bump épingle nemeton à v0.22.1<a class="anchor" aria-label="anchor" href="#choredeps--bump-%C3%A9pingle-nemeton-%C3%A0-v0221-0-28-3"></a></h4>
-<p>L’installation de <code>nemetonshiny</code> (<code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">remotes::install_github</a></code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
+<p>L’installation de <code>nemetonshiny</code> (<code>remotes::install_github</code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
 <p>Cause : le champ <code>Remotes: pobsteta/nemeton@v0.22.0</code> du <code>DESCRIPTION</code> épingle nemeton à exactement ce tag. L’épingle prime sur la borne souple <code>Imports: nemeton (&gt;= 0.22.0)</code>, donc le résolveur de dépendances downgrade systématiquement.</p>
 <p>Correctif : bump de l’épingle vers <code>pobsteta/nemeton@v0.22.1</code> (dernier tag stable côté cœur). Aucun changement de code. Réflexe à adopter pour chaque release <code>nemeton</code> : bumper l’épingle ici dans la foulée (ordre cœur → app de CLAUDE.md).</p>
 </div>

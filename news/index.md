@@ -1,5 +1,51 @@
 # Changelog
 
+## nemetonshiny 0.143.18 (2026-09-14)
+
+#### Fixed — l’analyse IA ne depend plus d’un modele hors palier
+
+`mistral-large-latest` etait le modele Mistral par defaut **depuis le
+premier commit du paquet**, et l’analyse IA renvoyait
+`HTTP 403 Forbidden. This model is not available in your subscription tier`.
+Mesure contre l’API le 2026-09-14 : le modele existe toujours
+(`GET /v1/models/mistral-large-latest` -\> 200), il est simplement ferme
+aux paliers d’entree. Le defaut passe a `mistral-medium-latest`, son
+successeur dans la gamme.
+
+Le modele Anthropic par defaut, `claude-sonnet-4-5-20250929`, est
+remplace par `claude-opus-5` : l’ancien identifiant est de generation
+precedente, et l’API n’attend plus de suffixe de date sur les
+identifiants courants.
+
+#### Added — repli automatique de modele sur refus de palier ou de quota
+
+Sur la meme cle, toute la gamme « premier » repond 403 ou 429 avec
+`x-ratelimit-limit-req-minute: 0`, tandis que la famille ministral garde
+du quota (750 / 188 / 30 req/min pour 3b / 8b / 14b). L’analyse IA
+bascule desormais seule sur `ministral-14b-latest`, puis 8b, puis 3b, et
+revient au modele configure des que le palier le redonne — sans
+intervention.
+
+Trois garde-fous :
+
+- **Seuls 403 et 429 declenchent le repli.** Une cle invalide, une panne
+  reseau ou un incident fournisseur remontent inchanges : reessayer avec
+  un autre modele remplacerait le diagnostic par l’echec d’un second
+  appel voue au meme sort.
+- **Quand aucun repli n’aboutit, c’est l’erreur D’ORIGINE qui remonte**
+  — le refus du modele configure, pas celui d’un remplacant que
+  l’utilisateur n’a jamais choisi.
+- **Un repli reussi se voit** (`ia_modele_repli`) : ces modeles « edge »
+  sont nettement moins fins pour une analyse par profil expert, et une
+  analyse degradee ne doit pas passer pour une analyse nominale.
+
+La logique vit dans `R/service_llm.R` (regle
+[\#2](https://github.com/pobsteta/nemetonshiny/issues/2) : pas de
+logique applicative dans un `mod_*.R`) et s’accroche a
+`create_llm_chat()`, donc les **six** sites d’appel en beneficient sans
+etre touches — `$chat()` est la seule methode qu’ils utilisent sur
+l’objet.
+
 ## nemetonshiny 0.143.17 (2026-09-04)
 
 #### Changed — « Tableau des actions » contient enfin les actions
@@ -16845,8 +16891,7 @@ référencée nulle part.
 
 #### chore(deps) — bump épingle nemeton à v0.22.1
 
-L’installation de `nemetonshiny`
-([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
+L’installation de `nemetonshiny` (`remotes::install_github`,
 [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
 `devtools::install`) faisait **redescendre** `nemeton` à la version
 `0.22.0`, même quand une version plus récente était déjà installée
