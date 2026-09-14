@@ -1814,3 +1814,64 @@ test_that("les trois helpers de reset existent et sont sans effet de bord croise
     }
   )
 })
+
+
+# ---- Arret cooperatif RECONFORT (nemeton >= 0.196.0, 2026-09-14) ------
+
+test_that(".reconfort_handle_progress_event traite reconfort:cancelled", {
+  skip_if_not_installed("shiny")
+
+  captured <- list()
+  recorded <- "sentinel"
+  on_msg   <- function(x) recorded <<- x
+  i18n <- nemetonshiny:::get_i18n("fr")
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, id = NULL, ...) {
+      captured$ui <<- ui; captured$id <<- id; invisible(NULL)
+    },
+    removeNotification = function(...) invisible(NULL),
+    .package = "shiny",
+    {
+      nemetonshiny:::.reconfort_handle_progress_event(
+        ev = list(current = "reconfort:cancelled", zone_id = 7L,
+                  phase_name = "mask", completed = 3L, total = 10L,
+                  elapsed_sec = 42),
+        session = fake_session, i18n = i18n,
+        start = Sys.time() - 42, on_msg = on_msg)
+
+      # Terminal : le ticker du chrono s'arrete.
+      expect_null(recorded)
+
+      # Le toast nomme la derniere phase TERMINEE, pas un code brut.
+      rendered <- as.character(captured$ui)
+      expect_match(rendered, "RECONFORT", fixed = TRUE)
+      expect_match(rendered, nemetonshiny:::.reconfort_phase_label("mask", i18n),
+                   fixed = TRUE)
+
+      # L'evenement et le resultat disent la meme chose et arrivent tous deux :
+      # ils partagent l'id pour que l'un REMPLACE l'autre au lieu de s'empiler.
+      expect_identical(captured$id, "monitoring-reconfort_cancelled")
+    }
+  )
+})
+
+
+test_that("les deux cles i18n de l'arret RECONFORT existent en FR et EN", {
+  for (lg in c("fr", "en")) {
+    i18n <- nemetonshiny:::get_i18n(lg)
+    expect_true(i18n$has("monitoring_reconfort_run_cancel_requested"))
+    expect_true(i18n$has("monitoring_reconfort_cancelled"))
+
+    # « Arret demande » et « arrete » sont DEUX moments distincts : les
+    # confondre reproduirait le bouton menteur que ce correctif supprime.
+    demande <- i18n$t("monitoring_reconfort_run_cancel_requested")
+    expect_true(nchar(demande) > 60L)
+
+    # L'interpolation {label} doit etre consommee, pas affichee telle quelle.
+    rendu <- i18n$t("monitoring_reconfort_cancelled", label = "mask")
+    expect_match(rendu, "mask", fixed = TRUE)
+    expect_false(grepl("{label}", rendu, fixed = TRUE))
+  }
+})
