@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.20</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.21</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,32 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.21" id="nemetonshiny-014321-2026-09-14">nemetonshiny 0.143.21 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014321-2026-09-14"></a></h2>
+<div class="section level4">
+<h4 id="added--reconfort-sarrete-pour-de-vrai-0-143-21">Added — RECONFORT s’arrete pour de vrai<a class="anchor" aria-label="anchor" href="#added--reconfort-sarrete-pour-de-vrai-0-143-21"></a></h4>
+<p><code>nemeton</code> 0.196.0 donne un <code>cancel_path</code> a <code>run_reconfort_dieback()</code>. Le bouton « Arreter » de RECONFORT ecrit desormais <code>reconfort_cancel.flag</code>, que le coeur scrute <strong>aux frontieres de phase</strong> : IOTA2 decoupe cote Python, il n’y a pas de point d’arret plus fin. La phase en cours va donc a son terme — une classification peut demander plusieurs dizaines de minutes — puis le run sort avec <code>status = "cancelled"</code>, workdir conserve et relisible par une relance.</p>
+<p>Les trois moteurs Sante (FAST, FORDEAD, RECONFORT) s’arretent maintenant de la meme facon. L’asymetrie signalee en v0.143.19 est levee.</p>
+<ul><li>
+<strong>Le bouton ne disait rien</strong> ; il dit maintenant « <strong>arret demande</strong> », pas « arrete ». Ce sont deux moments distincts, et les confondre reproduirait en plus discret le bouton menteur que ce correctif supprime. Le toast final arrive avec l’evenement <code>reconfort:cancelled</code> ou le resultat, et partage son id pour remplacer le premier au lieu de s’empiler.</li>
+<li>
+<strong>Le flag residuel est purge avant chaque lancement.</strong> Sans cela, le garde-fou anti-« phantom cancel » du coeur verrait le flag present a l’entree, DESARMERAIT l’annulation, et le run suivant deviendrait ininterruptible.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--un-run-annule-serait-passe-pour-un-succes-0-143-21">Fixed — un run annule serait passe pour un succes<a class="anchor" aria-label="anchor" href="#fixed--un-run-annule-serait-passe-pour-un-succes-0-143-21"></a></h4>
+<p>Le handler de resultat RECONFORT ne testait pas <code>result$status</code>. C’etait sans consequence tant que le coeur ne rendait que <code>"completed"</code> (un echec abortait) ; des le branchement de <code>cancel_path</code>, un run annule serait entre dans la branche de succes, avec <code>n_alerts = NA</code> — donc un <code>sprintf</code> sur <code>NA</code> — et un <code>$rasters</code> NULL passe au sous-module carte. Une branche <code>cancelled</code> precede desormais.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-chronometre-du-toast-de-succes-affichait-depuis-toujours-0-143-21">Fixed — le chronometre du toast de succes affichait 0 depuis toujours<a class="anchor" aria-label="anchor" href="#fixed--le-chronometre-du-toast-de-succes-affichait-depuis-toujours-0-143-21"></a></h4>
+<p>Le handler lisait <code>result$duration_sec</code> ; le coeur rend <code>elapsed_sec</code> dans ses quatre formes de retour, et ce depuis bien avant 0.196.0. <code>duration_sec</code> est le nom de FORDEAD, pas celui de RECONFORT. Bug present, sans rapport avec l’annulation, corrige en passant.</p>
+</div>
+<div class="section level4">
+<h4 id="note--garde-temporaire-et-plancher-non-bumpe-0-143-21">Note — garde temporaire, et plancher NON bumpe<a class="anchor" aria-label="anchor" href="#note--garde-temporaire-et-plancher-non-bumpe-0-143-21"></a></h4>
+<p><code>nemeton</code> 0.196.0 <strong>n’est pas encore releasee</strong> : elle vit sur la branche <code>feat/reconfort-cancel-path</code>, sans tag. Or <code>Remotes: @*release</code> ne tire que les tags — un poste frais installerait 0.195.0, ou passer <code>cancel_path</code> leverait « unused argument » et casserait tout le run.</p>
+<p><code>cancel_path</code> n’est donc transmis que si le coeur installe l’accepte (<code>"cancel_path" %in% names(formals(...))</code>), meme idiome que le <code>progress_callback</code> d’opencanopy. Le plancher reste <code>nemeton (&gt;= 0.195.0)</code>.</p>
+<p><strong>A faire des que la release cœur est publiee</strong> : retirer la garde et son commentaire dans <code>service_monitoring.R</code>, bumper le plancher a <code>(&gt;= 0.196.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.20" id="nemetonshiny-014320-2026-09-14">nemetonshiny 0.143.20 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014320-2026-09-14"></a></h2>
 <div class="section level4">

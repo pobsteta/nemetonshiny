@@ -1,5 +1,63 @@
 # Changelog
 
+## nemetonshiny 0.143.21 (2026-09-14)
+
+#### Added — RECONFORT s’arrete pour de vrai
+
+`nemeton` 0.196.0 donne un `cancel_path` a `run_reconfort_dieback()`. Le
+bouton « Arreter » de RECONFORT ecrit desormais `reconfort_cancel.flag`,
+que le coeur scrute **aux frontieres de phase** : IOTA2 decoupe cote
+Python, il n’y a pas de point d’arret plus fin. La phase en cours va
+donc a son terme — une classification peut demander plusieurs dizaines
+de minutes — puis le run sort avec `status = "cancelled"`, workdir
+conserve et relisible par une relance.
+
+Les trois moteurs Sante (FAST, FORDEAD, RECONFORT) s’arretent maintenant
+de la meme facon. L’asymetrie signalee en v0.143.19 est levee.
+
+- **Le bouton ne disait rien** ; il dit maintenant « **arret demande**
+  », pas « arrete ». Ce sont deux moments distincts, et les confondre
+  reproduirait en plus discret le bouton menteur que ce correctif
+  supprime. Le toast final arrive avec l’evenement `reconfort:cancelled`
+  ou le resultat, et partage son id pour remplacer le premier au lieu de
+  s’empiler.
+- **Le flag residuel est purge avant chaque lancement.** Sans cela, le
+  garde-fou anti-« phantom cancel » du coeur verrait le flag present a
+  l’entree, DESARMERAIT l’annulation, et le run suivant deviendrait
+  ininterruptible.
+
+#### Fixed — un run annule serait passe pour un succes
+
+Le handler de resultat RECONFORT ne testait pas `result$status`. C’etait
+sans consequence tant que le coeur ne rendait que `"completed"` (un
+echec abortait) ; des le branchement de `cancel_path`, un run annule
+serait entre dans la branche de succes, avec `n_alerts = NA` — donc un
+`sprintf` sur `NA` — et un `$rasters` NULL passe au sous-module carte.
+Une branche `cancelled` precede desormais.
+
+#### Fixed — le chronometre du toast de succes affichait 0 depuis toujours
+
+Le handler lisait `result$duration_sec` ; le coeur rend `elapsed_sec`
+dans ses quatre formes de retour, et ce depuis bien avant 0.196.0.
+`duration_sec` est le nom de FORDEAD, pas celui de RECONFORT. Bug
+present, sans rapport avec l’annulation, corrige en passant.
+
+#### Note — garde temporaire, et plancher NON bumpe
+
+`nemeton` 0.196.0 **n’est pas encore releasee** : elle vit sur la
+branche `feat/reconfort-cancel-path`, sans tag. Or `Remotes: @*release`
+ne tire que les tags — un poste frais installerait 0.195.0, ou passer
+`cancel_path` leverait « unused argument » et casserait tout le run.
+
+`cancel_path` n’est donc transmis que si le coeur installe l’accepte
+(`"cancel_path" %in% names(formals(...))`), meme idiome que le
+`progress_callback` d’opencanopy. Le plancher reste
+`nemeton (>= 0.195.0)`.
+
+**A faire des que la release cœur est publiee** : retirer la garde et
+son commentaire dans `service_monitoring.R`, bumper le plancher a
+`(>= 0.196.0)`.
+
 ## nemetonshiny 0.143.20 (2026-09-14)
 
 #### Removed — `mod_home_ui` etait defini deux fois, dont une morte
