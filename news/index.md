@@ -1,5 +1,29 @@
 # Changelog
 
+## nemetonshiny 0.143.20 (2026-09-14)
+
+#### Removed — `mod_home_ui` etait defini deux fois, dont une morte
+
+`app_ui.R` portait une copie de `mod_home_ui` intitulee « Placeholder »,
+**masquee** par celle de `mod_home.R` (collation alphabetique : le
+dernier charge gagne). Elle n’atteignait donc jamais l’ecran — tout en
+restant lisible comme si elle etait la vraie, avec ses propres boutons «
+OSM » / « Satellite » et un `uiOutput("map_placeholder")` que rien ne
+rendait. Ces boutons avaient d’ailleurs survecu au passage au
+LayersControl (v0.143.19) : personne ne les avait vus, puisqu’ils ne
+s’affichaient pas.
+
+Les 114 lignes partent. Un test verrouille l’unicite des trois
+`mod_*_ui` definies dans ce fichier.
+
+**Le piege inverse vit dans le meme fichier**, et il a failli couter
+cher : `mod_synthesis_ui` et `mod_family_ui` portent le meme titre «
+Placeholder » mais sont, elles, les implementations **VIVANTES** — elles
+n’existent nulle part ailleurs. Les supprimer « par coherence » aurait
+casse deux onglets. Le titre roxygen ne dit rien de l’etat reel d’une
+fonction ; seule la collation le dit, et c’est ce que le nouveau test
+mesure.
+
 ## nemetonshiny 0.143.19 (2026-09-14)
 
 #### Fixed — un arret est un arret : le bandeau fantome de l’ingestion S2

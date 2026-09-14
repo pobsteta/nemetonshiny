@@ -12,6 +12,25 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.20\] - 2026-09-14
+
+### Removed
+
+- `app_ui.R` portait une copie « Placeholder » de `mod_home_ui`, masquee
+  par celle de `mod_home.R` (collation alphabetique : le dernier charge
+  gagne). Elle n’atteignait jamais l’ecran tout en restant lisible comme
+  la vraie — avec ses propres boutons « OSM » / « Satellite », qui
+  avaient survecu au passage au LayersControl de la 0.143.19 faute
+  d’etre visibles. 114 lignes.
+
+### Added
+
+- Test verrouillant l’unicite de definition des trois `mod_*_ui`
+  d’`app_ui.R` et leur construction. `mod_synthesis_ui` et
+  `mod_family_ui` portent le meme titre « Placeholder » mais sont les
+  implementations VIVANTES : le titre roxygen ne dit rien de l’etat reel
+  d’une fonction, seule la collation le dit.
+
 ## \[0.143.19\] - 2026-09-14
 
 ### Fixed

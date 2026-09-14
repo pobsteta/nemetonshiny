@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.19</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.20</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.20" id="nemetonshiny-014320-2026-09-14">nemetonshiny 0.143.20 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014320-2026-09-14"></a></h2>
+<div class="section level4">
+<h4 id="removed--mod_home_ui-etait-defini-deux-fois-dont-une-morte-0-143-20">Removed — <code>mod_home_ui</code> etait defini deux fois, dont une morte<a class="anchor" aria-label="anchor" href="#removed--mod_home_ui-etait-defini-deux-fois-dont-une-morte-0-143-20"></a></h4>
+<p><code>app_ui.R</code> portait une copie de <code>mod_home_ui</code> intitulee « Placeholder », <strong>masquee</strong> par celle de <code>mod_home.R</code> (collation alphabetique : le dernier charge gagne). Elle n’atteignait donc jamais l’ecran — tout en restant lisible comme si elle etait la vraie, avec ses propres boutons « OSM » / « Satellite » et un <code>uiOutput("map_placeholder")</code> que rien ne rendait. Ces boutons avaient d’ailleurs survecu au passage au LayersControl (v0.143.19) : personne ne les avait vus, puisqu’ils ne s’affichaient pas.</p>
+<p>Les 114 lignes partent. Un test verrouille l’unicite des trois <code>mod_*_ui</code> definies dans ce fichier.</p>
+<p><strong>Le piege inverse vit dans le meme fichier</strong>, et il a failli couter cher : <code>mod_synthesis_ui</code> et <code>mod_family_ui</code> portent le meme titre « Placeholder » mais sont, elles, les implementations <strong>VIVANTES</strong> — elles n’existent nulle part ailleurs. Les supprimer « par coherence » aurait casse deux onglets. Le titre roxygen ne dit rien de l’etat reel d’une fonction ; seule la collation le dit, et c’est ce que le nouveau test mesure.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.19" id="nemetonshiny-014319-2026-09-14">nemetonshiny 0.143.19 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014319-2026-09-14"></a></h2>
 <div class="section level4">
