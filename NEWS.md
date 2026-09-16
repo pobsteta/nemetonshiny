@@ -1,3 +1,40 @@
+# nemetonshiny 0.143.21.9002 (2026-09-16)
+
+### Added — l'etat de la chaine est ecrit sur disque
+
+`data/pipeline_state.json`, a cote de `progress_state.json`, reecrit a **chaque
+transition**. Il nomme l'etape courante, l'index, et le statut de chacune des
+etapes avec ses horodatages :
+
+```json
+{ "index": 2, "total": 3, "current_step": "desserte", "done": false,
+  "steps": [ { "id": "indicateurs", "status": "ok",      ... },
+             { "id": "desserte",    "status": "running", ... },
+             { "id": "ia_plan",     "status": "pending", ... } ] }
+```
+
+C'est exactement ce qui manquait le 2026-09-16 : la chaine d'Aumur figee sur une
+etape, tout le travail abouti, et **rien a lire** pour savoir laquelle. L'etat
+ne vivait qu'en memoire.
+
+Trois choix qui comptent :
+
+* **Un setter unique.** Les quatre transitions passaient par une assignation
+  directe de `rv$state` ; elles passent maintenant par `.poser_etat()`, qui
+  assigne ET persiste. Il aurait suffi d'un oubli pour que le journal mente. Un
+  test verrouille l'absence d'assignation directe.
+* **Best-effort, par construction.** Un run ne doit pas mourir parce que son
+  journal n'a pas pu s'ecrire (disque plein, projet en lecture seule, dossier
+  efface). L'echec est signale une fois, la chaine continue. Symetriquement, un
+  journal corrompu rend `NULL` avec un avertissement : il ne devient pas un
+  second incident.
+* **Ce n'est PAS un format de reprise.** La chaine ne se reprend pas, et relire
+  ce fichier ne relance rien. Il sert au diagnostic, et le dit.
+
+Les fonctions vivent dans `service_pipeline.R` (regle #2) ; la serialisation est
+separee de l'ecriture (`pipeline_state_payload()`), donc testable sans toucher
+au disque.
+
 # nemetonshiny 0.143.21.9001 (2026-09-16)
 
 ### Fixed — un moteur Sante annule ne passe plus pour une reussite

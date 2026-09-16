@@ -444,3 +444,138 @@ test_that("une reponse NORMALE reste silencieuse et avance le curseur", {
   )
   expect_identical(nemetonshiny:::pipeline_current_step(out), "desserte")
 })
+
+
+# ---- Persistance de l'etat de run (2026-09-16) -----------------------
+
+test_that("pipeline_state_path rend NULL sans projet exploitable", {
+  expect_null(nemetonshiny:::pipeline_state_path(NULL))
+  expect_null(nemetonshiny:::pipeline_state_path(list()))
+  expect_null(nemetonshiny:::pipeline_state_path(list(path = "")))
+})
+
+
+test_that("pipeline_state_payload nomme l'etape courante et chaque statut", {
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte", "ia_plan"),
+                                        profil = "generalist")
+  st <- nemetonshiny:::pipeline_mark_running(st)
+  st <- nemetonshiny:::pipeline_record(st, "indicateurs", "ok")
+  st <- nemetonshiny:::pipeline_mark_running(st)
+
+  p <- nemetonshiny:::pipeline_state_payload(st)
+
+  # Ce que le diagnostic du 2026-09-16 n'a PAS pu lire : sur quoi la chaine
+  # attend, et ou en est le curseur.
+  expect_identical(p$current_step, "desserte")
+  expect_identical(p$index, 2L)
+  expect_identical(p$total, 3L)
+  expect_false(p$done)
+  expect_identical(p$profil, "generalist")
+
+  statuts <- vapply(p$steps, function(s) s$status, character(1))
+  expect_identical(statuts, c("ok", "running", "pending"))
+
+  # Dates lisibles par un humain, pas des secondes depuis l'epoque.
+  expect_match(p$steps[[1]]$ended, "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$")
+  expect_null(p$steps[[3]]$started)
+  expect_null(p$ended)          # run non termine
+})
+
+
+test_that("pipeline_state_payload marque un run termine", {
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs"))
+  st <- nemetonshiny:::pipeline_mark_running(st)
+  st <- nemetonshiny:::pipeline_record(st, "indicateurs", "ok")
+
+  p <- nemetonshiny:::pipeline_state_payload(st)
+  expect_true(p$done)
+  expect_null(p$current_step)
+  expect_false(is.null(p$ended))
+})
+
+
+test_that("save puis read rendent le meme etat", {
+  withr::with_tempdir({
+    dir.create("data")
+    proj <- list(path = getwd())
+
+    st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte"))
+    st <- nemetonshiny:::pipeline_mark_running(st)
+    st <- nemetonshiny:::pipeline_record(st, "indicateurs", "error", "boum")
+
+    expect_true(nemetonshiny:::pipeline_state_save(st, proj))
+    expect_true(file.exists(file.path("data", "pipeline_state.json")))
+
+    relu <- nemetonshiny:::pipeline_state_read(proj)
+    expect_identical(relu$run_id, st$run_id)
+    expect_identical(relu$current_step, "desserte")
+    expect_identical(relu$steps[[1]]$status, "error")
+    expect_identical(relu$steps[[1]]$message, "boum")
+  })
+})
+
+
+test_that("l'ecriture est best-effort : un echec n'interrompt pas le run", {
+  # Un run ne doit pas mourir parce que son journal n'a pas pu s'ecrire.
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs"))
+
+  # Projet sans chemin exploitable -> pas d'ecriture, pas d'erreur.
+  expect_false(nemetonshiny:::pipeline_state_save(st, NULL))
+  expect_false(nemetonshiny:::pipeline_state_save(st, list(path = "")))
+
+  # Etat NULL -> rien a ecrire, pas d'erreur.
+  withr::with_tempdir({
+    dir.create("data")
+    expect_false(nemetonshiny:::pipeline_state_save(NULL, list(path = getwd())))
+  })
+})
+
+
+test_that("un journal corrompu rend NULL au lieu de lever", {
+  withr::with_tempdir({
+    dir.create("data")
+    proj <- list(path = getwd())
+    writeLines("{ ceci n'est pas du JSON", file.path("data", "pipeline_state.json"))
+
+    # Un journal illisible ne doit pas devenir un second incident.
+    expect_warning(relu <- nemetonshiny:::pipeline_state_read(proj), "illisible")
+    expect_null(relu)
+  })
+})
+
+
+test_that("un run bloque laisse sur disque de quoi le diagnostiquer", {
+  # Le scenario d'Aumur : une etape repond hors de son tour, le curseur
+  # reste en place, la chaine parait avancer. Le journal doit nommer
+  # l'etape sur laquelle on attend.
+  withr::with_tempdir({
+    dir.create("data")
+    proj <- list(path = getwd())
+
+    st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte", "ia_plan"))
+    st <- nemetonshiny:::pipeline_mark_running(st)
+    suppressWarnings(
+      st <- nemetonshiny:::pipeline_record(st, "ia_plan", "ok")   # hors tour
+    )
+    nemetonshiny:::pipeline_state_save(st, proj)
+
+    relu <- nemetonshiny:::pipeline_state_read(proj)
+    expect_identical(relu$current_step, "indicateurs")   # on attend ICI
+    expect_false(relu$done)
+    statuts <- vapply(relu$steps, function(s) s$status, character(1))
+    expect_identical(statuts, c("running", "pending", "ok"))
+  })
+})
+
+
+test_that("toute transition de mod_pipeline passe par le setter persistant", {
+  # Quatre transitions ecrivaient `rv$state` en direct. Il a suffi qu'une
+  # seule oublie la persistance pour que le journal mente ; le setter la rend
+  # non-optionnelle, et ce test empeche de revenir en arriere.
+  src <- readLines(testthat::test_path("..", "..", "R", "mod_pipeline.R"),
+                   warn = FALSE)
+  directes <- grep("rv\\$state <- ", src, value = TRUE)
+  expect_length(directes, 1L)                       # celle du setter lui-meme
+  expect_match(directes[1], "nouvel_etat", fixed = TRUE)
+  expect_true(any(grepl("pipeline_state_save", src, fixed = TRUE)))
+})
