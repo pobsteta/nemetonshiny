@@ -160,12 +160,43 @@ pipeline_is_done <- function(state) {
 #' @noRd
 pipeline_record <- function(state, step_id, status = "ok", message = NULL) {
   if (is.null(state)) return(state)
-  if (!step_id %in% state$steps) return(state)
+
+  # Les trois rejets ci-dessous etaient MUETS. Or ils sont le mode de
+  # defaillance decrit en tete de ce fichier : une reponse qui n'avance pas le
+  # curseur laisse la chaine « en cours » pour toujours, sans rien afficher.
+  # Le 2026-09-16, un run d'Aumur est reste bloque sur une etape alors que tout
+  # le travail avait abouti - et l'etat vivant en memoire, il n'est rien reste
+  # a lire. Ces avertissements sont la trace qui manquait.
+  courante <- pipeline_current_step(state)
+
+  if (!step_id %in% state$steps) {
+    cli::cli_warn(c(
+      "Pipeline: reponse pour une etape hors run : {.val {step_id}}.",
+      i = "Etape courante : {.val {courante %||% 'aucune (run termine)'}}.",
+      i = "Reponse ignoree, le curseur ne bouge pas."
+    ))
+    return(state)
+  }
   if (!status %in% PIPELINE_STATUSES) status <- "error"
 
   deja <- state$results[[step_id]]
   if (!is.null(deja) && !identical(deja$status, "running")) {
+    cli::cli_warn(c(
+      "Pipeline: seconde reponse pour {.val {step_id}}, deja tranchee \
+       en {.val {deja$status}}.",
+      i = "Etape courante : {.val {courante %||% 'aucune (run termine)'}}.",
+      i = "Reponse ignoree, le curseur ne bouge pas."
+    ))
     return(state)   # deja tranchee : une reponse tardive ne rejoue pas
+  }
+  if (!identical(courante, step_id)) {
+    cli::cli_warn(c(
+      "Pipeline: {.val {step_id}} repond hors de son tour.",
+      i = "Etape courante : {.val {courante %||% 'aucune (run termine)'}}.",
+      i = "Le resultat est enregistre mais le curseur RESTE sur l'etape \
+           courante - la chaine ne progressera plus tant que celle-ci n'aura \
+           pas repondu."
+    ))
   }
 
   state$results[[step_id]] <- list(

@@ -379,3 +379,68 @@ test_that("un message sans appel reste lisible", {
     list(result = function() stop(simpleError("cache S2 illisible"))))
   expect_equal(out, "cache S2 illisible")
 })
+
+
+# ---- Les rejets du curseur ne sont plus muets (2026-09-16) -----------
+#
+# Le protocole en tete de service_pipeline.R nomme le mode de defaillance :
+# un module qui ne repond pas bloque la chaine « sans rien afficher a
+# l'utilisateur ». Les trois rejets de `pipeline_record()` etaient dans ce
+# cas. Constate sur Aumur le 2026-09-16 : chaine figee sur une etape alors
+# que tout le travail avait abouti, et l'etat vivant en memoire, plus rien
+# a lire apres coup.
+
+test_that("pipeline_record avertit sur une reponse hors run", {
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte"))
+  st <- nemetonshiny:::pipeline_mark_running(st)
+
+  expect_warning(
+    out <- nemetonshiny:::pipeline_record(st, "etape_inconnue", "ok"),
+    "hors run"
+  )
+  # Etat inchange : ni resultat enregistre, ni curseur deplace.
+  expect_identical(nemetonshiny:::pipeline_current_step(out), "indicateurs")
+  expect_null(out$results[["etape_inconnue"]])
+})
+
+
+test_that("pipeline_record avertit sur une reponse hors de son tour", {
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte", "ia_plan"))
+  st <- nemetonshiny:::pipeline_mark_running(st)
+
+  expect_warning(
+    out <- nemetonshiny:::pipeline_record(st, "ia_plan", "ok"),
+    "hors de son tour"
+  )
+  # Le resultat EST enregistre - mais le curseur ne bouge pas. C'est tout le
+  # piege : la chaine parait avancer alors qu'elle est bloquee.
+  expect_identical(out$results[["ia_plan"]]$status, "ok")
+  expect_identical(nemetonshiny:::pipeline_current_step(out), "indicateurs")
+})
+
+
+test_that("pipeline_record avertit sur une seconde reponse", {
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte"))
+  st <- nemetonshiny:::pipeline_mark_running(st)
+  st <- nemetonshiny:::pipeline_record(st, "indicateurs", "ok")
+
+  expect_warning(
+    out <- nemetonshiny:::pipeline_record(st, "indicateurs", "error"),
+    "seconde reponse"
+  )
+  # La premiere decision tient : une reponse tardive ne rejoue pas.
+  expect_identical(out$results[["indicateurs"]]$status, "ok")
+})
+
+
+test_that("une reponse NORMALE reste silencieuse et avance le curseur", {
+  st <- nemetonshiny:::pipeline_new_run(c("indicateurs", "desserte"))
+  st <- nemetonshiny:::pipeline_mark_running(st)
+
+  # Le silence est la moitie du contrat : un avertissement sur le chemin
+  # nominal noierait les trois autres.
+  expect_no_warning(
+    out <- nemetonshiny:::pipeline_record(st, "indicateurs", "ok")
+  )
+  expect_identical(nemetonshiny:::pipeline_current_step(out), "desserte")
+})

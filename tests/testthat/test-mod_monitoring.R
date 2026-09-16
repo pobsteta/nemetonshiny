@@ -1875,3 +1875,31 @@ test_that("les deux cles i18n de l'arret RECONFORT existent en FR et EN", {
     expect_false(grepl("{label}", rendu, fixed = TRUE))
   }
 })
+
+
+# ---- Un run Sante annule ne passe plus pour « ok » (2026-09-16) -------
+
+test_that(".sante_pipeline_statut distingue annulation et succes", {
+  f <- nemetonshiny:::.sante_pipeline_statut
+
+  # Le coeur rend `status = "cancelled"` SANS lever (monitoring.R:489,
+  # fordead_pipeline.R:812, reconfort_pipeline.R:862) : pour l'ExtendedTask
+  # c'est un "success". Sans cette distinction, la chaine enregistrait « ok »
+  # pour une etape que l'utilisateur venait d'arreter.
+  expect_identical(f("success", TRUE),  "cancelled")
+  expect_identical(f("success", FALSE), "ok")
+  expect_identical(f("error",   FALSE), "error")
+
+  # Une tache en erreur reste une erreur, quoi que dise le resultat : on ne
+  # peut pas lire le `status` d'un resultat qui n'existe pas.
+  expect_identical(f("error", TRUE), "error")
+
+  # Defaut prudent : tout etat non-"success" est une erreur.
+  expect_identical(f("running", FALSE), "error")
+  expect_identical(f(NULL, FALSE), "error")
+
+  # Et le statut rendu appartient bien au vocabulaire de la chaine.
+  for (st in list(c("success", TRUE), c("success", FALSE), c("error", FALSE))) {
+    expect_true(f(st[1], as.logical(st[2])) %in% nemetonshiny:::PIPELINE_STATUSES)
+  }
+})
