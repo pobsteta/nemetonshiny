@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.22.9001 (2026-09-17)
+# nemetonshiny 0.143.23 (2026-09-17)
 
 ### Changed — RECONFORT s'arrete vraiment : la garde de version tombe
 
