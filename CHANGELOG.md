@@ -12,6 +12,30 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.22\] - 2026-09-17
+
+### Fixed
+
+- Un moteur Sante **annule** n’est plus enregistre « ok » dans la
+  chaine. Le coeur rend `status = "cancelled"` sans lever, donc
+  l’`ExtendedTask` est en `"success"` : le rapport final annoncait une
+  reussite la ou rien n’avait ete produit. Defaut preexistant sur FAST
+  et FORDEAD, etendu a RECONFORT par le cablage de `cancel_path` en
+  0.143.21 ; corrige pour les trois.
+
+### Added
+
+- Les trois rejets de `pipeline_record()` avertissent au lieu d’etre
+  muets, en nommant l’etape fautive ET le curseur attendu. Le plus
+  traitre — « repond hors de son tour » — enregistre le resultat sans
+  avancer le curseur : la chaine parait progresser alors qu’elle est
+  bloquee. Le chemin nominal reste silencieux.
+- `data/pipeline_state.json` : l’etat de la chaine est ecrit a chaque
+  transition (etape courante, index, statut et horodatages de chaque
+  etape). L’etat ne vivait qu’en memoire, et un run bloque ne laissait
+  aucune trace. Ecriture best-effort, lecture tolerante a un fichier
+  corrompu. Ce n’est pas un format de reprise.
+
 ## \[0.143.21\] - 2026-09-14
 
 ### Added

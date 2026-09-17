@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.21</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.22</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,44 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.22" id="nemetonshiny-014322-2026-09-17">nemetonshiny 0.143.22 (2026-09-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014322-2026-09-17"></a></h2>
+<div class="section level4">
+<h4 id="fixed--un-moteur-sante-annule-ne-passe-plus-pour-une-reussite-0-143-22">Fixed — un moteur Sante annule ne passe plus pour une reussite<a class="anchor" aria-label="anchor" href="#fixed--un-moteur-sante-annule-ne-passe-plus-pour-une-reussite-0-143-22"></a></h4>
+<p>Le coeur rend <code>status = "cancelled"</code> <strong>sans lever</strong> (<code>monitoring.R:489</code>, <code>fordead_pipeline.R:812</code>, <code>reconfort_pipeline.R:862</code>). Pour une <code>ExtendedTask</code> c’est donc un <code>"success"</code>, et la chaine enregistrait <strong>« ok »</strong> pour une etape que l’utilisateur venait d’arreter : le rapport final annoncait une reussite la ou rien n’avait ete produit.</p>
+<p>Defaut <strong>preexistant sur FAST et FORDEAD</strong> ; etendu a RECONFORT par le cablage de <code>cancel_path</code> en v0.143.21. Corrige pour les trois d’un coup, l’observateur etant commun. La decision sort en helper pur <code>.sante_pipeline_statut()</code> — elle se teste sans session ni <code>ExtendedTask</code>, la ou l’observateur en manipule trois.</p>
+</div>
+<div class="section level4">
+<h4 id="added--les-rejets-du-curseur-de-chaine-ne-sont-plus-muets-0-143-22">Added — les rejets du curseur de chaine ne sont plus muets<a class="anchor" aria-label="anchor" href="#added--les-rejets-du-curseur-de-chaine-ne-sont-plus-muets-0-143-22"></a></h4>
+<p>Le protocole en tete de <code>service_pipeline.R</code> nomme son propre mode de defaillance : un module qui ne repond pas « bloque la chaine sur cette etape, sans rien afficher a l’utilisateur ». Les trois rejets de <code>pipeline_record()</code> etaient exactement dans ce cas — silencieux.</p>
+<p>Ils avertissent desormais, en nommant l’etape fautive ET le curseur attendu :</p>
+<ul><li>
+<strong>reponse hors run</strong> — etape absente de la selection ;</li>
+<li>
+<strong>reponse hors de son tour</strong> — le resultat est enregistre mais le curseur RESTE en place ; c’est le cas le plus traitre, la chaine parait avancer alors qu’elle est bloquee ;</li>
+<li>
+<strong>seconde reponse</strong> — une decision deja prise ne se rejoue pas.</li>
+</ul><p>Le chemin nominal reste <strong>silencieux</strong> : un avertissement de plus y noierait les trois autres. Un test le verrouille.</p>
+<p>Constate sur Aumur le 2026-09-16 : chaine figee sur une etape alors que la synthese, les 12 commentaires de famille et le plan de 15 actions avaient tous abouti. L’etat de chaine vivant en memoire, il ne restait rien a lire apres coup. Ces avertissements sont la trace qui manquait — la persistance de l’etat reste a faire.</p>
+</div>
+<div class="section level4">
+<h4 id="added--letat-de-la-chaine-est-ecrit-sur-disque-0-143-22">Added — l’etat de la chaine est ecrit sur disque<a class="anchor" aria-label="anchor" href="#added--letat-de-la-chaine-est-ecrit-sur-disque-0-143-22"></a></h4>
+<p><code>data/pipeline_state.json</code>, a cote de <code>progress_state.json</code>, reecrit a <strong>chaque transition</strong>. Il nomme l’etape courante, l’index, et le statut de chacune des etapes avec ses horodatages :</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">{</span> <span class="dt">"index"</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span> <span class="dt">"total"</span><span class="fu">:</span> <span class="dv">3</span><span class="fu">,</span> <span class="dt">"current_step"</span><span class="fu">:</span> <span class="st">"desserte"</span><span class="fu">,</span> <span class="dt">"done"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="dt">"steps"</span><span class="fu">:</span> <span class="ot">[</span> <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"indicateurs"</span><span class="fu">,</span> <span class="dt">"status"</span><span class="fu">:</span> <span class="st">"ok"</span><span class="fu">,</span>      <span class="er">...</span> <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>             <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"desserte"</span><span class="fu">,</span>    <span class="dt">"status"</span><span class="fu">:</span> <span class="st">"running"</span><span class="fu">,</span> <span class="er">...</span> <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>             <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ia_plan"</span><span class="fu">,</span>     <span class="dt">"status"</span><span class="fu">:</span> <span class="st">"pending"</span><span class="fu">,</span> <span class="er">...</span> <span class="fu">}</span> <span class="ot">]</span> <span class="fu">}</span></span></code></pre></div>
+<p>C’est exactement ce qui manquait le 2026-09-16 : la chaine d’Aumur figee sur une etape, tout le travail abouti, et <strong>rien a lire</strong> pour savoir laquelle. L’etat ne vivait qu’en memoire.</p>
+<p>Trois choix qui comptent :</p>
+<ul><li>
+<strong>Un setter unique.</strong> Les quatre transitions passaient par une assignation directe de <code>rv$state</code> ; elles passent maintenant par <code>.poser_etat()</code>, qui assigne ET persiste. Il aurait suffi d’un oubli pour que le journal mente. Un test verrouille l’absence d’assignation directe.</li>
+<li>
+<strong>Best-effort, par construction.</strong> Un run ne doit pas mourir parce que son journal n’a pas pu s’ecrire (disque plein, projet en lecture seule, dossier efface). L’echec est signale une fois, la chaine continue. Symetriquement, un journal corrompu rend <code>NULL</code> avec un avertissement : il ne devient pas un second incident.</li>
+<li>
+<strong>Ce n’est PAS un format de reprise.</strong> La chaine ne se reprend pas, et relire ce fichier ne relance rien. Il sert au diagnostic, et le dit.</li>
+</ul><p>Les fonctions vivent dans <code>service_pipeline.R</code> (regle <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a>) ; la serialisation est separee de l’ecriture (<code>pipeline_state_payload()</code>), donc testable sans toucher au disque.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.21" id="nemetonshiny-014321-2026-09-14">nemetonshiny 0.143.21 (2026-09-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014321-2026-09-14"></a></h2>
 <div class="section level4">
@@ -178,7 +216,7 @@
 </tr></tbody></table><p>Le nom est stable pour qu’on sache ou regarder sans chercher, et la rotation a lieu au <strong>demarrage</strong> (<code>.prev-&lt;horodatage&gt;</code>, cinq conservees) : le cœur gardant le fichier meme en cas de succes, sans rotation le run suivant ecraserait la trace du precedent — le defaut meme qu’on venait de corriger sur le NDJSON.</p>
 <p>Garde de capacite sur <code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code>, comme pour <code>package</code>/<code>options</code> ailleurs : sur un cœur anterieur l’argument est retire de l’appel, qui redevient exactement celui d’avant.</p>
 <p>Plancher <code>Imports: nemeton (&gt;= 0.195.0)</code>, <strong>et l’ordre a compte</strong>. Bumpe une premiere fois alors que <code>0.195.0</code> ne vivait que sur le <code>main</code> du cœur, il a rendu l’app non-installable — <code>Remotes: @*release</code> ne resout que les <strong>tags</strong>, et la derniere release etait <code>v0.194.0</code> :</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="sc">*</span> deps<span class="sc">::</span>.<span class="sc">:</span> Can<span class="st">'t install dependency pobsteta/nemeton@*release (&gt;= 0.195.0)</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="sc">*</span> deps<span class="sc">::</span>.<span class="sc">:</span> Can<span class="st">'t install dependency pobsteta/nemeton@*release (&gt;= 0.195.0)</span></span></code></pre></div>
 <p>Remis a <code>0.193.0</code> (la garde de capacite rendant le bump facultatif), puis retabli une fois <code>v0.195.0</code> publiee et <code>pak::pkg_deps("…@*release")</code> verifie.</p>
 <p><strong>Ce que ca donne en pratique.</strong> Le run RECONFORT de Couchey qui echouait depuis le 31 aout est alle au bout le 2026-09-03 a 21:19 — 10/10 phases, 14 min 48 s, les trois rasters masques 2025 produits. Trois verrous devaient tomber ensemble : l’adoption des zones (v0.143.12) qui a rendu les 203 scenes reprises du cache, la levee du blocage CNES, et le redecoupage en 7 chunks du cœur 0.195.0 (pic 11 Go au lieu de 11,5 fatals). Les correctifs de tracabilite (v0.143.15 et celui-ci) n’ont pas fait passer le run — ils ont rendu les trois causes visibles.</p>
 </div>
@@ -216,8 +254,8 @@
 <h4 id="fixed--le-moteur-tournait-sur--sans-le-dire-quand-e-obs-était-sauté-0-143-13">Fixed — Le moteur tournait sur 2018 / 2022 sans le dire, quand E-OBS était sauté<a class="anchor" aria-label="anchor" href="#fixed--le-moteur-tournait-sur--sans-le-dire-quand-e-obs-%C3%A9tait-saut%C3%A9-0-143-13"></a></h4>
 <p>Constaté sur le projet <strong>Lajoux</strong>, où la détection E-OBS est indisponible : l’étape s’affiche en <em>Sautée</em> avec la bonne consigne (« saisir les années manuellement »), puis le gel R7 et le moteur s’affichent en <strong>vert</strong> — sans que rien n’indique sur quelles années ils ont tourné.</p>
 <p><code>annees_pipeline()</code> n’est rempli que si l’étape E-OBS <strong>réussit</strong>. Sautée, il reste <code>NULL</code>, et le <code>%||%</code> des deux lanceurs retombe sur les champs du formulaire, dont les valeurs d’usine sont <code>2018</code> et <code>2022</code> :</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>year_moyenne  <span class="ot">=</span> annees<span class="sc">$</span>moyenne  <span class="sc">%||%</span> <span class="fu">na_null</span>(input<span class="sc">$</span>year_moyenne),</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>year_canicule <span class="ot">=</span> annees<span class="sc">$</span>canicule <span class="sc">%||%</span> <span class="fu">na_null</span>(input<span class="sc">$</span>year_canicule),</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>year_moyenne  <span class="ot">=</span> annees<span class="sc">$</span>moyenne  <span class="sc">%||%</span> <span class="fu">na_null</span>(input<span class="sc">$</span>year_moyenne),</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>year_canicule <span class="ot">=</span> annees<span class="sc">$</span>canicule <span class="sc">%||%</span> <span class="fu">na_null</span>(input<span class="sc">$</span>year_canicule),</span></code></pre></div>
 <p>Un run pouvait donc décrire une année moyenne et une canicule sans rapport avec le climat du projet, et être rapporté réussi. C’est exactement le mode de défaillance annoncé à la livraison de la chaîne (v0.143.0) — le câblage traitait le cas « E-OBS réussit » et n’avait rien prévu pour « E-OBS est sauté ».</p>
 <p>Les deux étapes consommatrices enregistrent désormais les années qu’elles vont utiliser et <strong>d’où elles viennent</strong>. Quand elles proviennent du repli, le rapport le dit : « Années non détectées : lancé sur 2018 (moyenne) et 2022 (canicule), valeurs des champs. »</p>
 <p><strong>On ne bloque pas</strong> : quelqu’un a pu saisir ses années exprès, et un résultat sur des années choisies vaut mieux qu’un refus. Ce qui manquait n’était pas un garde-fou, c’était la visibilité.</p>
@@ -262,7 +300,7 @@
 <h4 id="fixed--le-contrôle-dintégrité-était-rejoué-en-entier-réseau-inchangé-0-143-11">Fixed — Le contrôle d’intégrité était rejoué en entier, réseau inchangé<a class="anchor" aria-label="anchor" href="#fixed--le-contr%C3%B4le-dint%C3%A9grit%C3%A9-%C3%A9tait-rejou%C3%A9-en-entier-r%C3%A9seau-inchang%C3%A9-0-143-11"></a></h4>
 <p>51 min sur Couchey (17 056 tronçons), à <strong>chaque</strong> lancement de la chaîne. Le résultat était pourtant déjà sur le disque : <code>run_desserte_integrite()</code> écrit <code>integrite.rds</code>, et ce fichier est relu — mais uniquement pour réafficher le panneau à la réouverture du projet. Le lancement, lui, ne le consultait jamais.</p>
 <p>Ce n’était pas une décision, c’était un chaînon manquant :</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">.load_cached_desserte</span><span class="op">(</span><span class="va">project_path</span>, <span class="va">params</span><span class="op">)</span>   <span class="co"># clé : les paramètres</span></span>
 <span><span class="fu">.load_cached_integrite</span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>             <span class="co"># aucune clé</span></span></code></pre></div>
 <p>Le lecteur de la desserte compare les paramètres et refuse un cache calculé autrement. Celui de l’intégrité ne prend aucune clé : il sait répondre « le fichier existe », pas « il est encore valable ». Impossible de s’en servir pour décider de sauter.</p>
@@ -299,7 +337,7 @@
 <h4 id="fixed---objet-con-introuvable---les-deux-onexit-du-worker-étaient-dans-le-mauvais-ordre-0-143-9">Fixed — « objet ‘con’ introuvable » : les deux <code>on.exit</code> du worker étaient dans le mauvais ordre<a class="anchor" aria-label="anchor" href="#fixed---objet-con-introuvable---les-deux-onexit-du-worker-%C3%A9taient-dans-le-mauvais-ordre-0-143-9"></a></h4>
 <p>Cause trouvée, reproduite, corrigée. Le défaut qui faisait échouer les moteurs Santé <strong>après</strong> qu’ils aient fait et persisté leur travail — 13 h 40 et 4 h 10 au premier run, <code>ingest_run.json</code> à <code>done</code>, 183 scènes, 51 alertes en base.</p>
 <p>Chaque worker enregistre <code>.release_worker_memory()</code> en tête de corps, puis la fermeture de sa connexion :</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit</a></span><span class="op">(</span><span class="fu">.release_worker_memory</span><span class="op">(</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>   <span class="co"># 1er enregistré</span></span>
 <span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu">get_monitoring_db_connection</span><span class="op">(</span>db_url <span class="op">=</span> <span class="va">db_url</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit</a></span><span class="op">(</span><span class="fu">close_monitoring_db_connection</span><span class="op">(</span><span class="va">con</span><span class="op">)</span>, add <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>   <span class="co"># 2e</span></span></code></pre></div>
@@ -339,7 +377,7 @@
 <h4 id="changed--le-repli-chm-en-dur-rendu-au-cœur-qui-le-fait-mieux-0-143-7">Changed — Le repli CHM en dur rendu au cœur, qui le fait mieux<a class="anchor" aria-label="anchor" href="#changed--le-repli-chm-en-dur-rendu-au-c%C5%93ur-qui-le-fait-mieux-0-143-7"></a></h4>
 <p><code>nemeton</code> v0.192.2 avait appris à résoudre <code>cache/layers/opencanopy/</code> ; v0.193.0 lui ajoute l’argument qui manquait, <code>validate</code>. Les deux morceaux du contournement que l’app portait depuis la v0.141.x rentrent donc chez eux.</p>
 <p><code>.project_chm()</code> ne sonde plus aucun chemin. Il passe son garde de contenu au résolveur, qui <strong>saute</strong> un candidat refusé et continue à la source suivante :</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">nemeton</span><span class="fu">::</span><span class="fu"><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">resolve_project_chm</a></span><span class="op">(</span><span class="va">path</span>, validate <span class="op">=</span> <span class="va">.chm_exploitable</span><span class="op">)</span></span></code></pre></div>
 <p>Le repli inter-sources n’est pas seulement préservé, il est <strong>meilleur</strong> : il balaie les six candidats CHM du cœur dans leur ordre (LiDAR HD d’abord, ADR-007) au lieu des trois noms de fichiers écrits à la main — dont un, <code>chm.tif</code>, n’existe pas dans ce répertoire : le témoin s’appelle <code>chm_1_5m.tif</code>. La liste était fausse d’un tiers.</p>
 <p>Ce qui <strong>reste ici</strong>, et doit y rester : <code>.chm_exploitable()</code>. C’est un garde de <strong>contenu</strong>, pas de chemin, et son seuil de 5 m est celui de <code>segment_houppiers()</code>, pas une constante du cœur. Le cœur rend le premier chemin qui matche sans regarder ce qu’il y a dedans ; un modèle de hauteur plat (le cas « Fordead ») le satisfait, et le plan d’échantillonnage tirerait sans strate de hauteur.</p>
@@ -5678,7 +5716,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="migration-0-69-0">Migration<a class="anchor" aria-label="anchor" href="#migration-0-69-0"></a></h4>
 <p><strong>Pas de migration automatique</strong> (décision UX consciente). Sur les projets existants ayant déjà préchauffé un <code>cache/layers/fast/</code>, l’ancien répertoire restera orphelin sur disque. Le nouveau code créera <code>cache/layers/fast_sampling/</code> à la prochaine demande de validation_sampling. Suppression manuelle de l’ancien recommandée pour récupérer l’espace disque :</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-rf</span> <span class="op">&lt;</span>projet<span class="op">&gt;</span>/cache/layers/fast/</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="détails-techniques-0-69-0">Détails techniques<a class="anchor" aria-label="anchor" href="#d%C3%A9tails-techniques-0-69-0"></a></h4>
@@ -5907,7 +5945,7 @@ Current Memory Usage: 17.1G</code></pre>
 <div class="section level4">
 <h4 id="added--observabilité-rag-cli_inform-par-perspective-0-61-1">Added — Observabilité RAG (<code>cli_inform</code> par perspective)<a class="anchor" aria-label="anchor" href="#added--observabilit%C3%A9-rag-cli_inform-par-perspective-0-61-1"></a></h4>
 <p>Ajout d’une ligne de log par appel <code>rag_context()</code> réussi, dans <code>R/service_rag.R</code> juste après le retrieve cœur :</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli_inform</a></span><span class="op">(</span><span class="st">"RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Pourquoi</strong> : sans ce log, un corpus muet (0 chunk au-dessus du seuil) ressemblait à un cas où <code>rag_context()</code> court-circuitait avant le retrieve (opt-out, corpus indisponible, situation_text vide…). Désormais on distingue :</p>
 <ul><li>
@@ -5994,7 +6032,7 @@ Current Memory Usage: 17.1G</code></pre>
 <p>Le test <code>test-mod_monitoring.R::"register click invokes register_project_as_zone and persists zone_id in app_state"</code> failait sur ses 3 assertions (lignes 944-946) parce que l’observer du bouton « Enregistrer la zone » était passé d’un <code>observeEvent(input$register)</code> direct à un <code>observe() |&gt; bindEvent(input$register, input$register_inline, ignoreInit = TRUE)</code> lors de l’ajout du bouton inline (commit 3f1059d).</p>
 <p>En <code>testServer</code>, <code>session$setInputs(register = 1L)</code> posé directement est traité comme l’état d’init par <code>bindEvent(ignoreInit = TRUE)</code> — l’observer ne se déclenche pas, <code>register_project_as_zone</code> n’est jamais appelé, <code>captured_project</code> reste <code>NULL</code> et les 3 assertions cascadent.</p>
 <p><strong>Fix</strong> : matérialiser une transition d’input avant la vraie valeur :</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span>  <span class="co"># init</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">setInputs</span><span class="op">(</span>register <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># vrai clic, fire l'observer</span></span></code></pre></div>
 <p>Identique au pattern qu’un <code>actionButton</code> réel suit (init à 0, incrément à chaque clic). Aucun changement de code de prod — c’est strictement un fix de fidélité du harness de test.</p>
@@ -6315,7 +6353,7 @@ Current Memory Usage: 17.1G</code></pre>
    threshold_nbr = as.numeric(th$nbr))</code></pre>
 <p>La carte d’alertes FAST restait vide après chaque ingestion.</p>
 <p><strong>Cause</strong> : <code>nemeton@v0.55.0</code> (spec 017) a <strong>délibérément</strong> simplifié <code>read_fast_alert_raster()</code> en mono-index — la combinaison historique NDVI+NBR a été abandonnée. La nouvelle signature est :</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">read_fast_alert_raster</span><span class="op">(</span><span class="va">con</span>, <span class="va">zone_id</span>,</span>
 <span>                       index     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NDVI"</span>, <span class="st">"NBR"</span><span class="op">)</span>,   <span class="co"># un seul</span></span>
 <span>                       threshold <span class="op">=</span> <span class="cn">NULL</span>,               <span class="co"># un seul</span></span>
@@ -6332,7 +6370,7 @@ Current Memory Usage: 17.1G</code></pre>
 <h4 id="fixed--plan-dactions--tableau-rendu-vide-régression-v05210-0-52-12">Fixed — Plan d’actions : tableau rendu VIDE (régression v0.52.10)<a class="anchor" aria-label="anchor" href="#fixed--plan-dactions--tableau-rendu-vide-r%C3%A9gression-v05210-0-52-12"></a></h4>
 <p><strong>Symptôme</strong> : sur la vue « Carte + Tableau » du Plan d’actions, le tableau ne contient AUCUNE ligne, alors que l’en-tête indique correctement « N action(s) après filtres » et que les KPI badges + sparkline cumulatif fonctionnent.</p>
 <p><strong>Cause (régression v0.52.10)</strong> : le JS callback ajouté pour le dblclick sur la cellule commentaire passait à <code>DT::datatable(callback = ...)</code> une fonction COMPLÈTE :</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="kw">function</span>(table) { table<span class="op">.</span><span class="fu">on</span>(<span class="st">'dblclick.dt'</span><span class="op">,</span> <span class="op">...</span>)<span class="op">;</span> }</span></code></pre></div>
 <p>Or <code><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">DT::datatable</a></code> wrappe <strong>automatiquement</strong> le callback fourni dans <code>function(table) { … }</code>. Le résultat était une fonction-dans-une-fonction où : 1. Le handler <code>dblclick</code> est dans une fonction INTERNE jamais appelée → handler jamais enregistré. 2. La fonction externe ne fait <code>return table;</code> → DataTables casse silencieusement son pipeline d’initialisation → tableau RENDU SANS LIGNES alors que <code>data.frame</code> a bien N lignes.</p>
 <p><strong>Fix</strong> : le callback passe désormais juste le <strong>corps</strong> de fonction (pas de wrapper <code>function(table) { ... }</code>), avec un <code>return table;</code> final. DT applique son propre wrapper et le pipeline init reprend normalement.</p>
 <p><code>R/mod_action_plan.R</code>. Cycle dev <code>0.52.11</code> → <code>0.52.11.9001</code> → release stable <strong><code>v0.52.12</code></strong> (PATCH, fix régression urgent).</p>
@@ -8300,7 +8338,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>
