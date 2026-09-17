@@ -1,4 +1,42 @@
-# nemetonshiny 0.143.21.9002 (2026-09-16)
+# nemetonshiny 0.143.22 (2026-09-17)
+
+### Fixed — un moteur Sante annule ne passe plus pour une reussite
+
+Le coeur rend `status = "cancelled"` **sans lever** (`monitoring.R:489`,
+`fordead_pipeline.R:812`, `reconfort_pipeline.R:862`). Pour une `ExtendedTask`
+c'est donc un `"success"`, et la chaine enregistrait **« ok »** pour une etape
+que l'utilisateur venait d'arreter : le rapport final annoncait une reussite la
+ou rien n'avait ete produit.
+
+Defaut **preexistant sur FAST et FORDEAD** ; etendu a RECONFORT par le cablage
+de `cancel_path` en v0.143.21. Corrige pour les trois d'un coup, l'observateur
+etant commun. La decision sort en helper pur `.sante_pipeline_statut()` — elle
+se teste sans session ni `ExtendedTask`, la ou l'observateur en manipule trois.
+
+
+### Added — les rejets du curseur de chaine ne sont plus muets
+
+Le protocole en tete de `service_pipeline.R` nomme son propre mode de
+defaillance : un module qui ne repond pas « bloque la chaine sur cette etape,
+sans rien afficher a l'utilisateur ». Les trois rejets de `pipeline_record()`
+etaient exactement dans ce cas — silencieux.
+
+Ils avertissent desormais, en nommant l'etape fautive ET le curseur attendu :
+
+* **reponse hors run** — etape absente de la selection ;
+* **reponse hors de son tour** — le resultat est enregistre mais le curseur
+  RESTE en place ; c'est le cas le plus traitre, la chaine parait avancer alors
+  qu'elle est bloquee ;
+* **seconde reponse** — une decision deja prise ne se rejoue pas.
+
+Le chemin nominal reste **silencieux** : un avertissement de plus y noierait les
+trois autres. Un test le verrouille.
+
+Constate sur Aumur le 2026-09-16 : chaine figee sur une etape alors que la
+synthese, les 12 commentaires de famille et le plan de 15 actions avaient tous
+abouti. L'etat de chaine vivant en memoire, il ne restait rien a lire apres
+coup. Ces avertissements sont la trace qui manquait — la persistance de l'etat
+reste a faire.
 
 ### Added — l'etat de la chaine est ecrit sur disque
 
@@ -34,45 +72,6 @@ Trois choix qui comptent :
 Les fonctions vivent dans `service_pipeline.R` (regle #2) ; la serialisation est
 separee de l'ecriture (`pipeline_state_payload()`), donc testable sans toucher
 au disque.
-
-# nemetonshiny 0.143.21.9001 (2026-09-16)
-
-### Fixed — un moteur Sante annule ne passe plus pour une reussite
-
-Le coeur rend `status = "cancelled"` **sans lever** (`monitoring.R:489`,
-`fordead_pipeline.R:812`, `reconfort_pipeline.R:862`). Pour une `ExtendedTask`
-c'est donc un `"success"`, et la chaine enregistrait **« ok »** pour une etape
-que l'utilisateur venait d'arreter : le rapport final annoncait une reussite la
-ou rien n'avait ete produit.
-
-Defaut **preexistant sur FAST et FORDEAD** ; etendu a RECONFORT par le cablage
-de `cancel_path` en v0.143.21. Corrige pour les trois d'un coup, l'observateur
-etant commun. La decision sort en helper pur `.sante_pipeline_statut()` — elle
-se teste sans session ni `ExtendedTask`, la ou l'observateur en manipule trois.
-
-### Added — les rejets du curseur de chaine ne sont plus muets
-
-Le protocole en tete de `service_pipeline.R` nomme son propre mode de
-defaillance : un module qui ne repond pas « bloque la chaine sur cette etape,
-sans rien afficher a l'utilisateur ». Les trois rejets de `pipeline_record()`
-etaient exactement dans ce cas — silencieux.
-
-Ils avertissent desormais, en nommant l'etape fautive ET le curseur attendu :
-
-* **reponse hors run** — etape absente de la selection ;
-* **reponse hors de son tour** — le resultat est enregistre mais le curseur
-  RESTE en place ; c'est le cas le plus traitre, la chaine parait avancer alors
-  qu'elle est bloquee ;
-* **seconde reponse** — une decision deja prise ne se rejoue pas.
-
-Le chemin nominal reste **silencieux** : un avertissement de plus y noierait les
-trois autres. Un test le verrouille.
-
-Constate sur Aumur le 2026-09-16 : chaine figee sur une etape alors que la
-synthese, les 12 commentaires de famille et le plan de 15 actions avaient tous
-abouti. L'etat de chaine vivant en memoire, il ne restait rien a lire apres
-coup. Ces avertissements sont la trace qui manquait — la persistance de l'etat
-reste a faire.
 
 # nemetonshiny 0.143.21 (2026-09-14)
 
