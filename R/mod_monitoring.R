@@ -515,10 +515,33 @@ mod_monitoring_server <- function(id, app_state) {
         req <- shiny::isolate(item$rv())
         if (is.null(req)) next
         if (!item$st %in% c("success", "error")) next
-        pipeline_answer(app_state, req,
-                        if (identical(item$st, "success")) "ok" else "error",
-                        if (identical(item$st, "success")) NULL
-                        else pipeline_task_error(item$tk, i18n$t("error")))
+
+        # Un run ANNULE rend une liste `status = "cancelled"` SANS lever (coeur
+        # : monitoring.R:489, fordead_pipeline.R:812, reconfort_pipeline.R:862).
+        # Pour l'ExtendedTask c'est donc un "success", et la chaine enregistrait
+        # « ok » pour une etape que l'utilisateur venait d'arreter : le rapport
+        # final annoncait une reussite la ou rien n'avait ete produit.
+        #
+        # Defaut PREEXISTANT sur FAST et FORDEAD ; etendu a RECONFORT par le
+        # cablage de `cancel_path` en v0.143.21. Corrige ici pour les trois
+        # d'un coup, l'observateur etant commun.
+        #
+        # `result()` n'est lu que sur un "success" (sur "error" il re-leve).
+        # Le `shiny.silent.error` doit remonter et non etre avale : c'est lui
+        # qui signale « pas encore pret » a Shiny (meme idiome l. 3745).
+        annule <- identical(item$st, "success") && identical(
+          tryCatch(item$tk$result()$status,
+                   error = function(e) {
+                     if (inherits(e, "shiny.silent.error")) stop(e)
+                     NULL
+                   }),
+          "cancelled")
+
+        statut <- .sante_pipeline_statut(item$st, annule)
+        pipeline_answer(
+          app_state, req, statut,
+          if (identical(statut, "error"))
+            pipeline_task_error(item$tk, i18n$t("error")) else NULL)
         item$rv(NULL)
       }
     })
@@ -4388,6 +4411,28 @@ mod_monitoring_server <- function(id, app_state) {
 # mapprod, collect, postprocess, persist} - each has an i18n key
 # `monitoring_reconfort_phase_<name>` ; an unknown name falls back to a
 # Title-Cased version of the raw key.
+# Statut de chaine d'un moteur Sante, a partir de l'etat de l'ExtendedTask et
+# du fait que le resultat porte `status = "cancelled"`.
+#
+# Extrait en fonction PURE parce que l'observateur qui l'utilise tourne sur
+# trois vraies `ExtendedTask` : la decision, elle, se teste sans session ni
+# tache. Les trois moteurs partagent cette table.
+#
+#   tache "error"                      -> "error"
+#   tache "success" + resultat annule  -> "cancelled"
+#   tache "success"                    -> "ok"
+#
+# @param task_status Character. `ExtendedTask$status()`.
+# @param annule Logical. Le resultat porte-t-il `status = "cancelled"` ?
+# @return Un element de `PIPELINE_STATUSES`.
+# @noRd
+.sante_pipeline_statut <- function(task_status, annule = FALSE) {
+  if (!identical(task_status, "success")) return("error")
+  if (isTRUE(annule)) return("cancelled")
+  "ok"
+}
+
+
 .reconfort_phase_label <- function(phase_name, i18n) {
   if (!nzchar(phase_name)) return("")
   key <- paste0("monitoring_reconfort_phase_", phase_name)

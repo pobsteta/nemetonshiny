@@ -188,7 +188,7 @@ mod_pipeline_server <- function(id, app_state) {
         return()
       }
       shiny::removeModal()
-      rv$state <- pipeline_new_run(etapes, profil = input$profil)
+      .poser_etat(pipeline_new_run(etapes, profil = input$profil))
       # Retour immediat (regle stricte #9) : bouton grise + toast, le temps de
       # l'operation. Les deux sont pilotes par l'ETAT DU RUN et non par le clic
       # sur "Tout calculer" : ce clic-la n'ouvre que la modale, et l'annuler
@@ -204,6 +204,15 @@ mod_pipeline_server <- function(id, app_state) {
       .emettre()
     })
 
+    # Toute transition passe par ICI. Assigner `rv$state` en direct
+    # marcherait, mais il a suffi d'un oubli pour qu'un run bloque ne laisse
+    # aucune trace : le setter rend la persistance non-optionnelle.
+    .poser_etat <- function(nouvel_etat) {
+      rv$state <- nouvel_etat
+      pipeline_state_save(nouvel_etat, app_state$current_project)
+      invisible(nouvel_etat)
+    }
+
     # Poste la requete de l'etape courante, ou cloture le run.
     .emettre <- function() {
       etat <- rv$state
@@ -212,7 +221,7 @@ mod_pipeline_server <- function(id, app_state) {
         .cloturer()
         return(invisible(NULL))
       }
-      rv$state <- pipeline_mark_running(etat)
+      .poser_etat(pipeline_mark_running(etat))
       app_state$pipeline_request <- list(
         run_id  = etat$run_id,
         step_id = cur,
@@ -237,7 +246,7 @@ mod_pipeline_server <- function(id, app_state) {
 
       cli::cli_alert_info(
         "Pipeline {etat$run_id}: {rep$step_id} -> {rep$status}")
-      rv$state <- pipeline_record(etat, rep$step_id, rep$status, rep$message)
+      .poser_etat(pipeline_record(etat, rep$step_id, rep$status, rep$message))
       .emettre()
     })
 
@@ -247,7 +256,7 @@ mod_pipeline_server <- function(id, app_state) {
     shiny::observeEvent(input$cancel, {
       i18n <- i18n_r()
       if (is.null(rv$state)) return()
-      rv$state <- pipeline_cancel(rv$state)
+      .poser_etat(pipeline_cancel(rv$state))
       app_state$pipeline_request <- NULL
       shiny::showNotification(i18n$t("pipeline_cancelled_notice"),
                               type = "warning", duration = 6)

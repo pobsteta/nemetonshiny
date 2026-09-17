@@ -160,12 +160,43 @@ pipeline_is_done <- function(state) {
 #' @noRd
 pipeline_record <- function(state, step_id, status = "ok", message = NULL) {
   if (is.null(state)) return(state)
-  if (!step_id %in% state$steps) return(state)
+
+  # Les trois rejets ci-dessous etaient MUETS. Or ils sont le mode de
+  # defaillance decrit en tete de ce fichier : une reponse qui n'avance pas le
+  # curseur laisse la chaine « en cours » pour toujours, sans rien afficher.
+  # Le 2026-09-16, un run d'Aumur est reste bloque sur une etape alors que tout
+  # le travail avait abouti - et l'etat vivant en memoire, il n'est rien reste
+  # a lire. Ces avertissements sont la trace qui manquait.
+  courante <- pipeline_current_step(state)
+
+  if (!step_id %in% state$steps) {
+    cli::cli_warn(c(
+      "Pipeline: reponse pour une etape hors run : {.val {step_id}}.",
+      i = "Etape courante : {.val {courante %||% 'aucune (run termine)'}}.",
+      i = "Reponse ignoree, le curseur ne bouge pas."
+    ))
+    return(state)
+  }
   if (!status %in% PIPELINE_STATUSES) status <- "error"
 
   deja <- state$results[[step_id]]
   if (!is.null(deja) && !identical(deja$status, "running")) {
+    cli::cli_warn(c(
+      "Pipeline: seconde reponse pour {.val {step_id}}, deja tranchee \
+       en {.val {deja$status}}.",
+      i = "Etape courante : {.val {courante %||% 'aucune (run termine)'}}.",
+      i = "Reponse ignoree, le curseur ne bouge pas."
+    ))
     return(state)   # deja tranchee : une reponse tardive ne rejoue pas
+  }
+  if (!identical(courante, step_id)) {
+    cli::cli_warn(c(
+      "Pipeline: {.val {step_id}} repond hors de son tour.",
+      i = "Etape courante : {.val {courante %||% 'aucune (run termine)'}}.",
+      i = "Le resultat est enregistre mais le curseur RESTE sur l'etape \
+           courante - la chaine ne progressera plus tant que celle-ci n'aura \
+           pas repondu."
+    ))
   }
 
   state$results[[step_id]] <- list(
@@ -363,4 +394,126 @@ pipeline_task_error <- function(task, defaut = "error") {
   # dizaines de lignes et noierait le rapport.
   msg <- gsub("\\s+", " ", .strip_ansi(msg))
   if (nchar(msg) > 300) paste0(substr(msg, 1, 300), " [...]") else msg
+}
+
+
+# =============================================================================
+# Persistance de l'etat de run
+# =============================================================================
+#
+# L'etat vivait UNIQUEMENT en memoire (`rv$state` de mod_pipeline). Un run
+# bloque ne laissait donc aucune trace : le 2026-09-16 sur Aumur, la chaine
+# est restee figee sur une etape alors que la synthese, les 12 commentaires de
+# famille et le plan de 15 actions avaient tous abouti - et il n'est rien reste
+# a lire pour dire LAQUELLE n'avait pas repondu.
+#
+# Le fichier est ecrit a chaque transition, a cote de `progress_state.json`.
+# Il est fait pour etre lu par un humain apres coup : statuts en clair, dates
+# ISO, etape courante nommee. Ce n'est PAS un format de reprise - la chaine ne
+# se reprend pas, et le relire ne relance rien.
+
+#' Path of the run-state file for a project
+#'
+#' @param project A project list (needs `$path`), or NULL.
+#' @return Absolute path, or NULL when the project has no directory.
+#' @noRd
+pipeline_state_path <- function(project) {
+  chemin <- tryCatch(project$path, error = function(e) NULL)
+  if (is.null(chemin) || !nzchar(chemin)) return(NULL)
+  data_dir <- file.path(chemin, "data")
+  if (!dir.exists(data_dir)) {
+    ok <- tryCatch(
+      dir.create(data_dir, recursive = TRUE, showWarnings = FALSE),
+      error = function(e) FALSE)
+    if (!isTRUE(ok) && !dir.exists(data_dir)) return(NULL)
+  }
+  file.path(data_dir, "pipeline_state.json")
+}
+
+
+# Date -> chaine ISO, ou NULL. `NULL` traverse `toJSON(null = "null")` et
+# reste lisible ; un POSIXct brut sortirait en secondes depuis l'epoque.
+.pipeline_iso <- function(x) {
+  if (is.null(x) || length(x) == 0L || all(is.na(x))) return(NULL)
+  format(as.POSIXct(x), "%Y-%m-%d %H:%M:%S")
+}
+
+
+#' Serialise a run state into the shape written to disk
+#'
+#' Kept separate from the write so the shape can be tested without touching
+#' the filesystem.
+#'
+#' @param state A run state, or NULL.
+#' @return A named list ready for `jsonlite::toJSON()`, or NULL.
+#' @noRd
+pipeline_state_payload <- function(state) {
+  if (is.null(state)) return(NULL)
+  courante <- pipeline_current_step(state)
+  list(
+    run_id       = state$run_id,
+    profil       = state$profil,
+    started      = .pipeline_iso(state$started),
+    ended        = .pipeline_iso(state$ended),
+    index        = as.integer(state$index),
+    total        = length(state$steps),
+    current_step = courante,
+    done         = pipeline_is_done(state),
+    steps = lapply(state$steps, function(id) {
+      r <- state$results[[id]]
+      list(
+        id      = id,
+        status  = if (is.null(r)) "pending" else r$status,
+        message = if (is.null(r)) NULL else r$message,
+        started = if (is.null(r)) NULL else .pipeline_iso(r$started),
+        ended   = if (is.null(r)) NULL else .pipeline_iso(r$ended)
+      )
+    })
+  )
+}
+
+
+#' Write the run state next to the project's other progress files
+#'
+#' Best-effort by construction: a run must never mourir parce que son journal
+#' n'a pas pu s'ecrire (disque plein, projet lu seul, repertoire efface sous
+#' les pieds). L'echec est signale une fois et la chaine continue.
+#'
+#' @param state A run state, or NULL.
+#' @param project A project list, or NULL.
+#' @return `TRUE` when written, `FALSE` otherwise (invisibly).
+#' @noRd
+pipeline_state_save <- function(state, project) {
+  chemin <- pipeline_state_path(project)
+  if (is.null(chemin) || is.null(state)) return(invisible(FALSE))
+  ok <- tryCatch({
+    jsonlite::write_json(pipeline_state_payload(state), chemin,
+                         auto_unbox = TRUE, null = "null", pretty = TRUE)
+    TRUE
+  }, error = function(e) {
+    cli::cli_warn("Pipeline: etat non persiste ({.path {chemin}}) : {conditionMessage(e)}")
+    FALSE
+  })
+  invisible(ok)
+}
+
+
+#' Read back a persisted run state
+#'
+#' For diagnosis: says which step a stalled run was waiting on. Returns NULL
+#' rather than raising when the file is absent or unreadable - a corrupted
+#' journal must not become a second incident.
+#'
+#' @param project A project list, or NULL.
+#' @return The parsed payload, or NULL.
+#' @noRd
+pipeline_state_read <- function(project) {
+  chemin <- pipeline_state_path(project)
+  if (is.null(chemin) || !file.exists(chemin)) return(NULL)
+  tryCatch(
+    jsonlite::read_json(chemin, simplifyVector = FALSE),
+    error = function(e) {
+      cli::cli_warn("Pipeline: etat illisible ({.path {chemin}}) : {conditionMessage(e)}")
+      NULL
+    })
 }
