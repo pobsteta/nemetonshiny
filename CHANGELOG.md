@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.23\] - 2026-09-17
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.196.0)`. La garde
+  [`formals()`](https://rdrr.io/r/base/formals.html) posee en 0.143.21 —
+  qui n’envoyait `cancel_path` que si le coeur installe l’acceptait, la
+  v0.196.0 n’etant alors pas releasee — est retiree avec son
+  commentaire. L’argument est passe directement, comme pour FAST et
+  FORDEAD.
+- L’arret cooperatif RECONFORT devient **effectif** : jusqu’ici
+  l’argument etait omis en silence sur un poste en 0.195.0, donc le
+  bouton « Arreter » ecrivait son flag sans que personne ne le lise.
+
 ## \[0.143.22\] - 2026-09-17
 
 ### Fixed

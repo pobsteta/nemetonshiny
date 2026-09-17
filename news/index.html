@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.22</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.23</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.23" id="nemetonshiny-014323-2026-09-17">nemetonshiny 0.143.23 (2026-09-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014323-2026-09-17"></a></h2>
+<div class="section level4">
+<h4 id="changed--reconfort-sarrete-vraiment--la-garde-de-version-tombe-0-143-23">Changed — RECONFORT s’arrete vraiment : la garde de version tombe<a class="anchor" aria-label="anchor" href="#changed--reconfort-sarrete-vraiment--la-garde-de-version-tombe-0-143-23"></a></h4>
+<p><code>nemeton</code> <strong>v0.196.0 est publiee</strong> (tag du 2026-09-14 15:14 ; <code>pak</code> resout bien <code>@*release</code> vers elle). Les deux gestes annonces en 0.143.21 sont faits :</p>
+<ul><li>la garde <code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code> qui n’envoyait <code>cancel_path</code> que si le coeur installe l’acceptait <strong>disparait</strong>, avec son commentaire. L’argument est passe directement, comme pour FAST et FORDEAD ;</li>
+<li>le plancher passe a <code>Imports: nemeton (&gt;= 0.196.0)</code>.</li>
+</ul><p>Ce que ca change a l’usage : jusqu’ici l’argument etait <strong>omis en silence</strong> sur un poste en 0.195.0 — le bouton « Arreter » de RECONFORT ecrivait bien son flag, mais personne ne le lisait. L’arret cooperatif devient effectif.</p>
+<p>Verifie de bout en bout : coeur installe en 0.196.0, <code>cancel_path</code> present dans ses <code>formals</code>, plancher satisfait, <code>ExtendedTask</code> construite.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.22" id="nemetonshiny-014322-2026-09-17">nemetonshiny 0.143.22 (2026-09-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014322-2026-09-17"></a></h2>
 <div class="section level4">
