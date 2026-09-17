@@ -1,3 +1,55 @@
+# nemetonshiny 0.143.23.9001 (2026-09-17)
+
+### Added — `R/service_python.R` : un registre, un runner, une regle
+
+Quatre stacks Python cohabitent dans l'app (opencanopy, FORDEAD, RECONFORT,
+rvt-py) et `reticulate` lie un interpreteur **une fois par processus**, sans
+jamais le relier. Aucun reglage global ne peut les servir tous, parce que leurs
+exigences se **contredisent** : opencanopy veut `RETICULATE_PYTHON` epinglee
+sur son env conda, FORDEAD la veut **absente** — le coeur le documente
+(`nemeton/R/fordead_python.R:336-343`), une variable definie « ecrase
+silencieusement `use_python()` / `use_virtualenv()` meme avec
+`required = TRUE` ».
+
+La seule reponse qui les concilie est architecturale, et l'app la pratiquait
+deja sans la nommer : **un moteur = un processus, interpreteur epingle a la
+creation**. Elle est desormais ecrite, outillee et testee.
+
+* **`engine_python(moteur)`** — registre `.PYTHON_ENGINES` moteur ->
+  interpreteur, en remplacement de `.resolve_opencanopy_python()` qui ne
+  savait resoudre qu'Open-Canopy. Ordre : option explicite, variable d'env,
+  env conda, balayage des racines d'installation. Rend `NA` sur un moteur
+  inconnu **sans lever** : un moteur absent est un mode degrade, pas un crash.
+* **`run_with_python(moteur, func, args, on_line)`** — la forme generique du
+  sous-processus `callr` que le chemin CHM pratiquait depuis la spec 005.
+  `R_ENVIRON_USER = ""` n'y est pas decoratif : sans lui, une
+  `RETICULATE_PYTHON` restee dans le `.Renviron` de l'utilisateur ecraserait
+  l'epinglage qu'on vient de poser, et l'enfant lierait le mauvais
+  interpreteur **en annoncant le bon**.
+* **Un test gele l'etat connu** : toute NOUVELLE liaison `reticulate` en
+  processus fait echouer `test-service_python.R`, en nommant le fichier
+  fautif. Seul `service_rvt.R` est sur la liste, avec la raison ecrite (il
+  tourne dans un worker `future` ou aucun autre moteur Python ne tourne).
+
+`.run_opencanopy_chm()` passe par le runner generique. Son repli **en
+processus** ne s'emprunte plus que si l'isolation n'a pas pu avoir lieu du tout
+(env introuvable, `callr` absent) — pas si le pipeline lui-meme a echoue,
+auquel cas le rejouer en session echouerait pareil en abimant la session au
+passage.
+
+Les trois tests de resolution migrent vers `engine_python()` : le contrat a
+change de nom et de place, il n'a pas disparu.
+
+### Note — d'ou vient ce chantier
+
+D'un echec en direct : un script lance depuis cette session s'est heurte a
+`reticulate is already bound to a different Python` (un env **uv ephemere**,
+que `reticulate` s'attribue quand rien n'est configure). C'est tres
+probablement aussi l'explication du « `ModuleNotFoundError: No module named
+'torch'` non reproductible » que le brief `opencanopy` du 2026-08-27 signalait
+au §6 sans pouvoir l'expliquer : ce n'est pas un etat de session mysterieux,
+c'est `reticulate` qui gagne la course a la liaison.
+
 # nemetonshiny 0.143.23 (2026-09-17)
 
 ### Changed — RECONFORT s'arrete vraiment : la garde de version tombe

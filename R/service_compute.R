@@ -2353,19 +2353,6 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 # coexist with the FORDEAD reticulate workload (a different env) in the
 # same app session. Order: explicit option / env var, reticulate's conda
 # resolver, then the usual conda/mamba install roots.
-.resolve_opencanopy_python <- function() {
-  cand <- getOption("nemetonshiny.opencanopy_python",
-                    Sys.getenv("OPENCANOPY_PYTHON", ""))
-  if (nzchar(cand) && file.exists(cand)) return(cand)
-  env <- getOption("nemetonshiny.opencanopy_condaenv", "open_canopy")
-  p <- tryCatch(reticulate::conda_python(env), error = function(e) NA_character_)
-  if (length(p) == 1L && !is.na(p) && file.exists(p)) return(p)
-  for (root in c("miniforge3", "mambaforge", "miniconda3", "anaconda3")) {
-    fp <- file.path(path.expand("~"), root, "envs", env, "bin", "python")
-    if (file.exists(fp)) return(fp)
-  }
-  NA_character_
-}
 
 # Forward one line of subprocess output. Open-Canopy's structured progress
 # events are emitted by the child as tagged JSON lines (`__CHM_EV__{...}`);
@@ -2396,47 +2383,44 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 # through `progress_callback` (the app bottom-right messages). Falls back to
 # in-process when callr or the env Python is unavailable.
 .run_opencanopy_chm <- function(aoi_path, oc_dir, chm_path, progress_callback) {
-  py <- .resolve_opencanopy_python()
-  if (!is.na(py) && requireNamespace("callr", quietly = TRUE)) {
-    cli::cli_alert_info(
-      "Running opencanopy::pipeline_aoi_to_chm in an isolated R session \\
-       (RETICULATE_PYTHON = {py})...")
-    px <- callr::r_bg(
-      func = function(aoi_path, output_dir, chm_path) {
-        pa <- list(aoi_path = aoi_path, output_dir = output_dir)
-        if ("progress_callback" %in%
-            names(formals(opencanopy::pipeline_aoi_to_chm))) {
-          pa$progress_callback <- function(ev) {
-            cat("__CHM_EV__",
-                jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null"),
-                "\n", sep = "")
-          }
-        }
-        pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pa)
-        terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
-        invisible(TRUE)
-      },
-      args = list(aoi_path = aoi_path, output_dir = oc_dir, chm_path = chm_path),
-      env  = c(callr::rcmd_safe_env(),
-               RETICULATE_PYTHON = py, R_ENVIRON_USER = ""),
-      stdout = "|", stderr = "2>&1", supervise = TRUE
-    )
-    repeat {
-      px$poll_io(250)
-      for (ln in px$read_output_lines()) .chm_forward_line(ln, progress_callback)
-      if (!px$is_alive()) break
+  # Le corps de l'enfant DOIT etre auto-suffisant : il traverse une frontiere
+  # de processus et ne capture rien d'ici. Les evenements de progression
+  # repartent en lignes JSON taguees, que `.chm_forward_line()` rejoue cote
+  # parent dans `progress_callback`.
+  enfant <- function(aoi_path, output_dir, chm_path) {
+    pa <- list(aoi_path = aoi_path, output_dir = output_dir)
+    if ("progress_callback" %in% names(formals(opencanopy::pipeline_aoi_to_chm))) {
+      pa$progress_callback <- function(ev) {
+        cat("__CHM_EV__",
+            jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null"),
+            "\n", sep = "")
+      }
     }
-    for (ln in px$read_output_lines()) .chm_forward_line(ln, progress_callback)
-    px$get_result()  # rethrows the child error, if any
-    return(invisible(TRUE))
+    pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pa)
+    terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
+    invisible(TRUE)
   }
-  if (is.na(py)) {
-    cli::cli_alert_warning(
-      "Open-Canopy Python env not found; running in-process (may fail if \\
-       reticulate is already bound elsewhere). Set \\
-       options(nemetonshiny.opencanopy_python=) or OPENCANOPY_PYTHON.")
-  }
-  cli::cli_alert_info("Running opencanopy::pipeline_aoi_to_chm (may take several minutes)...")
+
+  res <- tryCatch(
+    run_with_python(
+      "opencanopy", enfant,
+      args    = list(aoi_path = aoi_path, output_dir = oc_dir, chm_path = chm_path),
+      on_line = function(ln) .chm_forward_line(ln, progress_callback)
+    ),
+    error = function(e) e
+  )
+  if (!inherits(res, "error")) return(invisible(TRUE))
+
+  # Repli EN PROCESSUS, et il est risque : il lie cette session a
+  # l'interpreteur que `reticulate` trouvera, DEFINITIVEMENT. On ne l'emprunte
+  # que si l'isolation n'a pas pu avoir lieu du tout (env introuvable, callr
+  # absent) - pas si le pipeline lui-meme a echoue, auquel cas le rejouer ici
+  # echouerait pareil en abimant la session au passage.
+  if (!grepl("not found|is required", conditionMessage(res))) stop(res)
+
+  cli::cli_alert_warning(
+    "Isolation impossible ({conditionMessage(res)}) ; execution EN PROCESSUS. \\
+     Cette session sera liee a l'interpreteur que reticulate choisira.")
   pipe_args <- list(aoi_path = aoi_path, output_dir = oc_dir)
   if ("progress_callback" %in% names(formals(opencanopy::pipeline_aoi_to_chm))) {
     pipe_args$progress_callback <- progress_callback

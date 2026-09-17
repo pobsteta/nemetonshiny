@@ -1,24 +1,31 @@
-# test-opencanopy-python.R — Open-Canopy reticulate env resolution
-#   (isolated subprocess so open_canopy + FORDEAD reticulate envs coexist)
+# test-opencanopy-python.R — resolution de l'env reticulate d'Open-Canopy
+#
+# La resolution elle-meme a demenage dans `R/service_python.R` : elle n'est
+# plus specifique a Open-Canopy mais portee par un registre moteur ->
+# interpreteur (`engine_python()`), pour que le prochain moteur Python herite
+# du meme mecanisme au lieu d'etre cable a la main. Les trois contrats
+# ci-dessous sont ceux d'avant, rejoues sur la nouvelle fonction.
+# Le reste du fichier couvre `.chm_forward_line()`, qui reste dans
+# `service_compute.R`.
 
-test_that(".resolve_opencanopy_python honours the explicit option", {
+test_that("engine_python honours the explicit option", {
   tf <- withr::local_tempfile(fileext = ".py"); file.create(tf)
   withr::local_options(nemetonshiny.opencanopy_python = tf)
-  expect_identical(nemetonshiny:::.resolve_opencanopy_python(), tf)
+  expect_identical(nemetonshiny:::engine_python("opencanopy"), tf)
 })
 
-test_that(".resolve_opencanopy_python honours OPENCANOPY_PYTHON", {
+test_that("engine_python honours OPENCANOPY_PYTHON", {
   tf <- withr::local_tempfile(fileext = ".py"); file.create(tf)
   withr::local_options(nemetonshiny.opencanopy_python = NULL)
   withr::local_envvar(OPENCANOPY_PYTHON = tf)
-  expect_identical(nemetonshiny:::.resolve_opencanopy_python(), tf)
+  expect_identical(nemetonshiny:::engine_python("opencanopy"), tf)
 })
 
-test_that(".resolve_opencanopy_python ignores a non-existent override", {
+test_that("engine_python ignores a non-existent override", {
   withr::local_options(nemetonshiny.opencanopy_python = "/no/such/python")
   withr::local_envvar(OPENCANOPY_PYTHON = "")
   expect_false(
-    identical(nemetonshiny:::.resolve_opencanopy_python(), "/no/such/python"))
+    identical(nemetonshiny:::engine_python("opencanopy"), "/no/such/python"))
 })
 
 
