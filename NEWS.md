@@ -1,3 +1,22 @@
+# nemetonshiny 0.143.23 (2026-09-17)
+
+### Changed — RECONFORT s'arrete vraiment : la garde de version tombe
+
+`nemeton` **v0.196.0 est publiee** (tag du 2026-09-14 15:14 ; `pak` resout bien
+`@*release` vers elle). Les deux gestes annonces en 0.143.21 sont faits :
+
+* la garde `formals()` qui n'envoyait `cancel_path` que si le coeur installe
+  l'acceptait **disparait**, avec son commentaire. L'argument est passe
+  directement, comme pour FAST et FORDEAD ;
+* le plancher passe a `Imports: nemeton (>= 0.196.0)`.
+
+Ce que ca change a l'usage : jusqu'ici l'argument etait **omis en silence** sur
+un poste en 0.195.0 — le bouton « Arreter » de RECONFORT ecrivait bien son flag,
+mais personne ne le lisait. L'arret cooperatif devient effectif.
+
+Verifie de bout en bout : coeur installe en 0.196.0, `cancel_path` present dans
+ses `formals`, plancher satisfait, `ExtendedTask` construite.
+
 # nemetonshiny 0.143.22 (2026-09-17)
 
 ### Fixed — un moteur Sante annule ne passe plus pour une reussite
