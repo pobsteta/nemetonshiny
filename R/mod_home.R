@@ -1738,12 +1738,40 @@ mod_home_server <- function(id, app_state) {
         shiny::insertUI(
           selector = "body",
           where = "beforeEnd",
-          ui = htmltools::tags$script(htmltools::HTML("
-            setTimeout(function() {
-              // Trigger Shiny to start tour after UI is ready
-              Shiny.setInputValue('home-tour_ready', Date.now());
-            }, 500);
-          ")),
+          # Le tour ne demarre plus sur un delai aveugle. `collapse('show')`
+          # est ANIME : pendant la transition, la page se reorganise sous le
+          # tour, et driver.js cadre une geometrie deja perimee - c'est ce
+          # qui donnait des cadres a cote a la premiere ouverture, quand
+          # rien n'est en cache et que tout arrive en meme temps.
+          #
+          # On attend donc `shown.bs.collapse` sur les deux sections. Piege :
+          # une section DEJA ouverte n'emet rien, l'attente ne se resoudrait
+          # jamais - d'ou le test d'etat prealable et le repli a 1,2 s, qui
+          # garantit que le tour demarre quoi qu'il arrive.
+          ui = htmltools::tags$script(htmltools::HTML(sprintf("
+            (function(){
+              var ids = ['%s', '%s'];
+              var restants = 0, parti = false;
+              var go = function(){
+                if (parti) { return; }
+                parti = true;
+                requestAnimationFrame(function(){ requestAnimationFrame(function(){
+                  Shiny.setInputValue('home-tour_ready', Date.now());
+                }); });
+              };
+              ids.forEach(function(id){
+                var el = document.getElementById(id);
+                if (!el || el.classList.contains('show')) { return; }
+                restants++;
+                el.addEventListener('shown.bs.collapse', function h(){
+                  el.removeEventListener('shown.bs.collapse', h);
+                  if (--restants <= 0) { go(); }
+                });
+              });
+              if (restants === 0) { go(); }
+              setTimeout(go, 1200);
+            })();
+          ", ns("search_collapse"), "home-project-project_collapse"))),
           immediate = TRUE,
           session = session
         )

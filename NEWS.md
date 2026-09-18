@@ -1,3 +1,40 @@
+# nemetonshiny 0.143.24.9001 (2026-09-18)
+
+### Fixed — le tour guide cadrait a cote, surtout a la premiere ouverture
+
+Deux causes, toutes deux des mesures prises trop tot.
+
+**A chaque changement d'onglet.** `.tour_switch_tab_js()` cliquait le lien de
+nav et laissait driver.js cadrer dans la foulee. Or cliquer ACTIVE l'onglet, il
+ne le MESURE pas : un `.tab-pane` masque est en `display: none`, ses elements
+ont des dimensions **nulles** jusqu'a ce que le navigateur l'ait pose, et
+Bootstrap 5 ajoute une transition `.fade` par-dessus. Le cadre visait donc une
+geometrie qui n'existait pas encore — sur la plupart des etapes.
+
+On attend desormais `shown.bs.tab`, emis par Bootstrap **apres** la transition,
+puis on force une re-mesure via un evenement `resize` : driver.js l'ecoute deja
+(`bind()` -> `onResize()` -> `refresh()`) et ne re-mesure que si un tour est
+actif. Aucun interne de cicerone n'est touche, donc rien a reprendre si le
+paquet evolue.
+
+**A la premiere ouverture.** Le demarrage reposait sur un `setTimeout(500)`
+aveugle apres `collapse('show')` — lui-meme **anime**. La page se reorganisait
+sous le tour pendant qu'il se cadrait, et c'est la premiere ouverture qui
+souffrait le plus, quand rien n'est en cache et que tout arrive ensemble. Le
+declenchement est desormais pilote par `shown.bs.collapse` sur les deux
+sections.
+
+Les deux correctifs portent un **repli temporise**, et ce n'est pas de la
+prudence decorative : une section (ou un onglet) **deja ouverte n'emet aucun
+evenement**, et l'attente ne se resoudrait jamais — le tour ne demarrerait
+plus du tout. Une garde d'idempotence evite que repli et evenement declenchent
+la re-mesure deux fois.
+
+Tests : 3 cas, verifies par mutation. La premiere version de l'assertion etait
+**vacante** — elle cherchait la chaine « shown.bs.tab », qui figure aussi dans
+le `removeEventListener`, et passait donc en retirant l'ecoute. Elle vise
+maintenant `addEventListener('shown.bs.tab'`.
+
 # nemetonshiny 0.143.24 (2026-09-18)
 
 ### Added — le verdict « CHM suspect » du cœur est enfin lu
