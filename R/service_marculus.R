@@ -460,6 +460,43 @@ marculus_sync_json <- function(contexts) {
 #' @param project_id Character. Project identifier.
 #' @return Invisibly the number of crowns written, `0` when nothing was.
 #' @noRd
+# Ecrit le verdict « CHM suspect » du cœur dans les metadonnees du projet.
+#
+# Le cœur (>= 0.191.1) sait dire qu'un modele de hauteur est vraisemblablement
+# une prediction ratee se faisant passer pour une coupe rase. Il le disait dans
+# le vide : rien cote app ne lisait `chm_suspect`.
+#
+# Portee reelle du garde-fou : un projet SANS couverture LiDAR. Avec du LiDAR,
+# `resolve_project_chm(validate = .chm_exploitable)` a deja ecarte l'ortho
+# plate en amont (le projet " Fordead " est en `chm_source: lidar_hd` pour
+# cette raison). Sans repli possible, en revanche, l'app affichait un volume
+# nul sans rien dire.
+.persist_chm_verdict <- function(project_id, hp) {
+  v <- attr(hp, "chm_verdict")
+  if (is.null(v) && inherits(hp, "chm_suspect_vide")) v <- attr(hp, "verdict")
+  if (is.null(v)) return(invisible(FALSE))
+  tryCatch({
+    update_project_metadata(project_id, list(
+      chm_suspect      = isTRUE(v$suspect),
+      chm_suspect_max  = if (isTRUE(v$suspect)) v$chm_max else NULL,
+      chm_suspect_frac = if (isTRUE(v$suspect)) v$frac_low else NULL
+    ))
+    if (isTRUE(v$suspect)) {
+      cli::cli_warn(c(
+        "CHM suspect sur le projet {.val {project_id}}.",
+        i = "Le modele de hauteur ressemble a une prediction ratee plutot \\
+             qu'a une coupe rase ; le volume bois sera nul a tort.",
+        i = "Hauteur maximale du CHM : {.val {v$chm_max}} m."
+      ))
+    }
+    TRUE
+  }, error = function(e) {
+    cli::cli_warn("Verdict CHM non persiste : {conditionMessage(e)}")
+    FALSE
+  })
+}
+
+
 precompute_houppiers <- function(project_id) {
   if (!requireNamespace("nemeton", quietly = TRUE) ||
       !exists("segment_houppiers", envir = asNamespace("nemeton"),
@@ -474,7 +511,13 @@ precompute_houppiers <- function(project_id) {
   aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
 
   hp <- .marculus_segment_houppiers(chm, aoi)
-  if (is.null(hp)) return(invisible(0L))
+
+  # Persister le verdict AVANT de sortir : un CHM suspect qui ne rend aucun
+  # houppier est precisement le cas ou l'utilisateur doit etre prevenu, et
+  # c'est aussi celui ou l'on sortait le plus tot.
+  .persist_chm_verdict(project_id, hp)
+
+  if (is.null(hp) || inherits(hp, "chm_suspect_vide")) return(invisible(0L))
 
   dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
   if (file.exists(out_path)) unlink(out_path)
@@ -590,9 +633,27 @@ precompute_houppiers <- function(project_id) {
       cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
       NULL
     })
-  if (!inherits(out, "sf") || nrow(out) == 0L) return(NULL)
+  # `attr(out, "chm_suspect")` est pose par le cœur (>= 0.191.1) : « ce modele
+  # de hauteur est vraisemblablement une prediction ratee qui se fait passer
+  # pour une coupe rase ». Le sous-ensemble `out[, "h_max"]` ci-dessous DETRUIT
+  # les attributs, et le verdict se perdait la - alors que c'est justement le
+  # cas VIDE qui a le plus besoin de le porter. On le capture avant, on le
+  # remet apres.
+  verdict <- list(
+    suspect  = isTRUE(attr(out, "chm_suspect")),
+    chm_max  = attr(out, "chm_max"),
+    frac_low = attr(out, "chm_frac_low")
+  )
+  if (!inherits(out, "sf") || nrow(out) == 0L) {
+    # Zero houppier ET CHM suspect : c'est la combinaison qui doit remonter,
+    # pas disparaitre dans un `NULL` muet.
+    return(if (verdict$suspect) structure(list(), class = "chm_suspect_vide",
+                                          verdict = verdict) else NULL)
+  }
   if (!("h_max" %in% names(out))) return(NULL)
-  .marculus_to_4326(out[, "h_max", drop = FALSE])
+  res <- .marculus_to_4326(out[, "h_max", drop = FALSE])
+  attr(res, "chm_verdict") <- verdict
+  res
 }
 
 

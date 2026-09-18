@@ -701,3 +701,108 @@ test_that(".chm_exploitable survit a un echantillon sans colonne", {
   # plus rien - le cœur ne tranche plus apres nous, il accepte.
   expect_true(nemetonshiny:::.chm_exploitable(r))
 })
+
+
+# ---- Verdict « CHM suspect » du cœur (2026-09-18) --------------------
+#
+# Le cœur (>= 0.191.1) estampille `attr(x, "chm_suspect")` : « ce modele de
+# hauteur est vraisemblablement une prediction ratee se faisant passer pour
+# une coupe rase ». Il le disait dans le vide - rien cote app ne le lisait.
+
+test_that(".persist_chm_verdict ecrit le verdict dans les metadonnees", {
+  vu <- NULL
+  testthat::with_mocked_bindings(
+    update_project_metadata = function(project_id, updates, ...) {
+      vu <<- updates; TRUE
+    },
+    {
+      hp <- structure(list(), chm_verdict = list(
+        suspect = TRUE, chm_max = 0.2, frac_low = 0.98))
+      expect_true(nemetonshiny:::.persist_chm_verdict("p1", hp))
+      expect_true(vu$chm_suspect)
+      expect_equal(vu$chm_suspect_max, 0.2)
+      expect_equal(vu$chm_suspect_frac, 0.98)
+    }
+  )
+})
+
+
+test_that("un CHM sain persiste un verdict NEGATIF, pas rien", {
+  # Ecrire FALSE compte autant qu'ecrire TRUE : sans cela, un projet
+  # anciennement suspect garderait son bandeau apres correction du CHM.
+  vu <- NULL
+  testthat::with_mocked_bindings(
+    update_project_metadata = function(project_id, updates, ...) {
+      vu <<- updates; TRUE
+    },
+    {
+      hp <- structure(list(), chm_verdict = list(
+        suspect = FALSE, chm_max = NULL, frac_low = NULL))
+      nemetonshiny:::.persist_chm_verdict("p1", hp)
+      expect_false(vu$chm_suspect)
+      expect_null(vu$chm_suspect_max)
+    }
+  )
+})
+
+
+test_that("le cas VIDE porte quand meme son verdict", {
+  # Zero houppier ET CHM suspect : c'est la combinaison qui doit remonter.
+  # Avant, elle disparaissait dans un NULL muet - or c'est le cas vide qui a
+  # le plus besoin de porter le diagnostic.
+  vu <- NULL
+  testthat::with_mocked_bindings(
+    update_project_metadata = function(project_id, updates, ...) {
+      vu <<- updates; TRUE
+    },
+    {
+      hp <- structure(list(), class = "chm_suspect_vide",
+                      verdict = list(suspect = TRUE, chm_max = 0.19,
+                                     frac_low = 1))
+      expect_true(nemetonshiny:::.persist_chm_verdict("p1", hp))
+      expect_true(vu$chm_suspect)
+      expect_equal(vu$chm_suspect_max, 0.19)
+    }
+  )
+})
+
+
+test_that(".persist_chm_verdict ne fait rien sans verdict, et ne leve pas", {
+  appele <- FALSE
+  testthat::with_mocked_bindings(
+    update_project_metadata = function(...) { appele <<- TRUE; TRUE },
+    {
+      expect_false(nemetonshiny:::.persist_chm_verdict("p1", NULL))
+      expect_false(nemetonshiny:::.persist_chm_verdict("p1", list()))
+      expect_false(appele)
+    }
+  )
+})
+
+
+test_that("une ecriture de metadonnees en echec n'interrompt pas le calcul", {
+  # Un calcul d'indicateurs ne doit pas mourir parce que son verdict n'a pas
+  # pu s'ecrire.
+  testthat::with_mocked_bindings(
+    update_project_metadata = function(...) stop("disque plein"),
+    {
+      hp <- structure(list(), chm_verdict = list(suspect = TRUE,
+                                                 chm_max = 0.2, frac_low = 1))
+      expect_warning(
+        res <- nemetonshiny:::.persist_chm_verdict("p1", hp),
+        "non persiste")
+      expect_false(res)
+    }
+  )
+})
+
+
+test_that("les deux cles i18n du bandeau existent en FR et EN", {
+  for (lg in c("fr", "en")) {
+    i18n <- nemetonshiny:::get_i18n(lg)
+    expect_true(i18n$has("chm_suspect_avertissement"))
+    expect_true(i18n$has("chm_suspect_hauteur_max"))
+    # Le format porte bien un %f : sans lui, sprintf rendrait le litteral.
+    expect_match(i18n$t("chm_suspect_hauteur_max"), "%.2f", fixed = TRUE)
+  }
+})

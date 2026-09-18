@@ -1804,6 +1804,15 @@ TRANSLATIONS <- list(
     fr = "Analyse g\u00e9n\u00e9r\u00e9e avec un mod\u00e8le de repli (%s) : le mod\u00e8le principal est indisponible.",
     en = "Analysis generated with a fallback model (%s): the primary model is unavailable."
   ),
+  # Verdict « CHM suspect » du cœur (>= 0.191.1), enfin consomme par l'app.
+  chm_suspect_avertissement = list(
+    fr = "Mod\u00e8le de hauteur suspect : il ressemble \u00e0 une pr\u00e9diction rat\u00e9e plut\u00f4t qu'\u00e0 une coupe rase. Le volume de bois (P1) est probablement nul \u00e0 tort \u2014 v\u00e9rifiez avant de conclure \u00ab absence d'arbres \u00bb.",
+    en = "Suspicious height model: it looks like a failed prediction rather than a clear-cut. Timber volume (P1) is likely zero by mistake \u2014 check before reading it as \u00ab no trees \u00bb."
+  ),
+  chm_suspect_hauteur_max = list(
+    fr = "Hauteur maximale du mod\u00e8le : %.2f m.",
+    en = "Height model maximum: %.2f m."
+  ),
   db_not_configured = list(
     fr = "Base de donn\u00e9es non configur\u00e9e \u2014 stockage local des projets (parquet).",
     en = "Database not configured \u2014 projects stored locally (parquet)."
