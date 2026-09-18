@@ -21,7 +21,8 @@ mock_search_server <- function(id, app_state) {
   )
 }
 
-mock_map_server <- function(id, app_state, commune_geometry, parcels) {
+mock_map_server <- function(id, app_state, commune_geometry, parcels,
+                            active_tab = NULL) {
   list(
     selected_parcels = shiny::reactive(NULL),
     selection_count = shiny::reactive(0)
@@ -164,7 +165,8 @@ test_that("mod_home_server initializes and returns expected reactive list", {
         commune_geometry = shiny::reactive(NULL)
       )
     },
-    mod_map_server = function(id, app_state, commune_geometry, parcels) {
+    mod_map_server = function(id, app_state, commune_geometry, parcels,
+                              active_tab = NULL) {
       list(
         selected_parcels = shiny::reactive(data.frame(id = "p1")),
         selection_count = shiny::reactive(1L)
@@ -208,9 +210,10 @@ test_that("mod_home_server delegates to all child modules", {
       called$search <<- TRUE
       mock_search_server(id, app_state)
     },
-    mod_map_server = function(id, app_state, commune_geometry, parcels) {
+    mod_map_server = function(id, app_state, commune_geometry, parcels,
+                              active_tab = NULL) {
       called$map <<- TRUE
-      mock_map_server(id, app_state, commune_geometry, parcels)
+      mock_map_server(id, app_state, commune_geometry, parcels, active_tab)
     },
     mod_project_server = function(id, app_state, selected_parcels, commune_geometry = shiny::reactive(NULL)) {
       called$project <<- TRUE

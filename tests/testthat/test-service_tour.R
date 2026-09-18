@@ -165,3 +165,53 @@ test_that("app_ui does not error when the app option lacks a language", {
   withr::local_options(nemeton.app_options = list(project_dir = tempdir()))
   expect_no_error(as.character(nemetonshiny:::app_ui(list())))
 })
+
+
+# --- Cadrage : re-mesure apres la transition d'onglet (2026-09-18) ---------
+#
+# Cliquer ACTIVE l'onglet, ne le MESURE pas. Un `.tab-pane` masque est en
+# `display: none` : ses elements ont des dimensions nulles jusqu'a ce que le
+# navigateur l'ait pose, et Bootstrap 5 ajoute une transition `.fade`.
+# driver.js cadrait donc une geometrie qui n'existait pas encore.
+
+test_that(".tour_switch_tab_js attend shown.bs.tab avant de re-mesurer", {
+  js <- nemetonshiny:::.tour_switch_tab_js("synthesis")
+
+  # L'attente porte sur l'evenement Bootstrap, pas sur un delai suppose.
+  # Viser `addEventListener` et non la simple chaine « shown.bs.tab » :
+  # celle-ci apparait aussi dans le `removeEventListener`, et l'assertion
+  # passait donc meme en retirant l'ecoute (constate par mutation).
+  expect_match(js, "addEventListener('shown.bs.tab'", fixed = TRUE)
+  # La re-mesure passe par `resize`, que driver.js ecoute deja
+  # (bind -> onResize -> refresh) : aucun interne de cicerone n'est touche.
+  expect_match(js, "dispatchEvent", fixed = TRUE)
+  expect_match(js, "resize", fixed = TRUE)
+  # Le clic reste la, evidemment.
+  expect_match(js, ".click()", fixed = TRUE)
+})
+
+
+test_that(".tour_switch_tab_js garde un repli si l'onglet est deja actif", {
+  # Piege : sur un onglet DEJA actif, le clic n'emet aucun `shown.bs.tab`.
+  # Sans repli, l'attente ne se resoudrait jamais et l'etape resterait mal
+  # cadree - pire qu'avant le correctif.
+  js <- nemetonshiny:::.tour_switch_tab_js("selection")
+  expect_match(js, "setTimeout", fixed = TRUE)
+  # et une garde d'idempotence, pour que le repli et l'evenement ne
+  # declenchent pas la re-mesure deux fois.
+  expect_match(js, "__done", fixed = TRUE)
+})
+
+
+test_that(".tour_switch_tab_js reste une expression de fonction equilibree", {
+  # Le contrat de cicerone n'a pas change : `new Function("return " + js)()`.
+  for (tab in c("selection", "synthesis", "monitoring")) {
+    js <- nemetonshiny:::.tour_switch_tab_js(tab)
+    expect_match(js, "^function\\(\\)\\{", perl = TRUE)
+    expect_equal(lengths(regmatches(js, gregexpr("{", js, fixed = TRUE))),
+                 lengths(regmatches(js, gregexpr("}", js, fixed = TRUE))))
+    expect_equal(lengths(regmatches(js, gregexpr("(", js, fixed = TRUE))),
+                 lengths(regmatches(js, gregexpr(")", js, fixed = TRUE))))
+    expect_match(js, sprintf('data-value=\"%s\"', tab), fixed = TRUE)
+  }
+})

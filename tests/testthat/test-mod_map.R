@@ -1158,3 +1158,59 @@ test_that("mod_map_server handles multiple rapid selections", {
 
 # Drain async callbacks to prevent testServer session accumulation
 later::run_now(0)
+
+
+# ---- Recadrage au retour sur l'onglet (2026-09-18) -------------------
+#
+# Un `.tab-pane` masque est en `display: none` : la carte leaflet y perd ses
+# dimensions. Revenir de « Carte UGF » a « Carte cadastrale » laissait la
+# carte decentree du projet - `input$main_tabs` n'etait observe nulle part.
+
+test_that(".map_bbox_recadrage prefere les parcelles a la commune", {
+  skip_if_not_installed("sf")
+
+  carre <- function(x0, y0, c) sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(x0, y0), c(x0 + c, y0), c(x0 + c, y0 + c), c(x0, y0 + c), c(x0, y0)
+    ))), crs = 4326))
+
+  parcelles <- carre(2, 46, 0.1)
+  commune   <- carre(0, 40, 5)
+
+  b <- nemetonshiny:::.map_bbox_recadrage(parcelles, commune)
+  # Le projet, pas la commune entiere : c'est sur les parcelles qu'on revient.
+  expect_equal(as.numeric(b[["xmin"]]), 2)
+  expect_equal(as.numeric(b[["xmax"]]), 2.1)
+})
+
+
+test_that(".map_bbox_recadrage retombe sur la commune, puis sur NULL", {
+  skip_if_not_installed("sf")
+
+  commune <- sf::st_sf(id = 1L, geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+    c(0, 40), c(1, 40), c(1, 41), c(0, 41), c(0, 40)))), crs = 4326))
+
+  # Pas de parcelles -> la commune.
+  b <- nemetonshiny:::.map_bbox_recadrage(NULL, commune)
+  expect_equal(as.numeric(b[["xmin"]]), 0)
+
+  # Un sf VIDE compte comme absent : `nrow == 0` n'a pas de bbox exploitable.
+  vide <- commune[0, ]
+  expect_equal(as.numeric(nemetonshiny:::.map_bbox_recadrage(vide, commune)[["xmin"]]), 0)
+
+  # Ni l'un ni l'autre -> NULL, et surtout pas une erreur : on se contentera
+  # alors de rendre ses dimensions a la carte.
+  expect_null(nemetonshiny:::.map_bbox_recadrage(NULL, NULL))
+  expect_null(nemetonshiny:::.map_bbox_recadrage(vide, vide))
+  expect_null(nemetonshiny:::.map_bbox_recadrage("pas du sf", 42))
+})
+
+
+test_that("mod_map_server accepte active_tab et garde un defaut", {
+  # Le defaut NULL preserve les appelants existants : sans lui, tout appel
+  # a quatre arguments casserait.
+  f <- formals(nemetonshiny:::mod_map_server)
+  expect_true("active_tab" %in% names(f))
+  expect_null(eval(f$active_tab))
+})

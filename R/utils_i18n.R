@@ -1813,6 +1813,13 @@ TRANSLATIONS <- list(
     fr = "Hauteur maximale du mod\u00e8le : %.2f m.",
     en = "Height model maximum: %.2f m."
   ),
+  # Invalidation des indicateurs apres un changement d'echelle ou de sens
+  # (spec 048). Dire POURQUOI le projet repasse en brouillon, et que les
+  # scores d'avant et d'apres ne sont pas comparables.
+  indicateurs_invalides = list(
+    fr = "Les indicateurs de ce projet ont \u00e9t\u00e9 calcul\u00e9s avant une correction d'\u00e9chelle du c\u0153ur : ils sont invalid\u00e9s et doivent \u00eatre recalcul\u00e9s. Paysage, Dynamique temporelle et \u00c9nergie vont changer \u2014 une comparaison avec les scores pr\u00e9c\u00e9dents n'aurait pas de sens.",
+    en = "This project's indicators were computed before a core rescaling: they are invalidated and must be recomputed. Landscape, Temporal dynamics and Energy will change \u2014 comparing with the previous scores would be meaningless."
+  ),
   db_not_configured = list(
     fr = "Base de donn\u00e9es non configur\u00e9e \u2014 stockage local des projets (parquet).",
     en = "Database not configured \u2014 projects stored locally (parquet)."

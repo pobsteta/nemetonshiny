@@ -101,8 +101,39 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
 #' valide : `new Function("return function(){...}")()` renvoie la fonction.
 #' @noRd
 .tour_switch_tab_js <- function(tab) {
+  # Cliquer suffit a ACTIVER l'onglet, pas a le MESURER. Un `.tab-pane`
+  # masque est en `display: none` : ses elements ont des dimensions NULLES
+  # jusqu'a ce que le navigateur ait pose le panneau, et Bootstrap 5 ajoute
+  # une transition `.fade` par-dessus. Or driver.js cadre l'element dans la
+  # foulee de `on_highlight_started` - il mesurait donc une geometrie qui
+  # n'existait pas encore, d'ou des cadres a cote sur la plupart des etapes
+  # (constate le 2026-09-18, surtout a la premiere ouverture ou rien n'est
+  # encore en cache).
+  #
+  # On attend donc `shown.bs.tab`, que Bootstrap emet APRES la transition,
+  # puis on force une re-mesure. Le canal choisi est l'evenement `resize` :
+  # driver.js l'ecoute deja (`bind()` -> `onResize()` -> `refresh()`) et ne
+  # re-mesure QUE si un tour est actif (`isActivated`). Aucun interne de
+  # cicerone n'est touche, donc rien a reprendre si le paquet evolue.
+  #
+  # Le repli a 250 ms n'est pas de la ceinture-bretelles : si l'onglet vise
+  # est DEJA actif, le clic ne declenche aucun `shown.bs.tab` et l'attente
+  # ne se resoudrait jamais.
   sprintf(
-    "function(){var __l=document.querySelector('#main_nav a[data-value=\"%s\"]'); if(__l){__l.click();}}",
+    paste0(
+      "function(){",
+      "var __l=document.querySelector('#main_nav a[data-value=\"%s\"]');",
+      "if(!__l){return;}",
+      "var __r=function(){try{window.dispatchEvent(new Event('resize'));}catch(e){}};",
+      "var __done=false;",
+      "var __h=function(){if(__done){return;}__done=true;",
+      "__l.removeEventListener('shown.bs.tab',__h);",
+      "requestAnimationFrame(function(){requestAnimationFrame(__r);});};",
+      "__l.addEventListener('shown.bs.tab',__h);",
+      "__l.click();",
+      "setTimeout(__h,250);",
+      "}"
+    ),
     tab
   )
 }
