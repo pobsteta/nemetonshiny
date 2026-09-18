@@ -199,7 +199,28 @@ mod_synthesis_server <- function(id, app_state) {
         shiny::tags$span(
           class = paste0("badge bg-", if (meta$status == "completed") "success" else "secondary"),
           i18n$t(paste0("status_", meta$status))
-        )
+        ),
+
+        # Verdict du cœur : ce modele de hauteur ressemble a une prediction
+        # ratee plutot qu'a une coupe rase. Sans ce bandeau, l'app affiche un
+        # volume bois nul comme s'il s'agissait d'une mesure - et rien ne
+        # distingue « il n'y a pas d'arbres » de « le modele n'en a pas vu ».
+        # Ne se declenche que faute de repli LiDAR : avec du LiDAR,
+        # `resolve_project_chm()` a deja ecarte l'ortho plate en amont.
+        if (isTRUE(meta$chm_suspect)) {
+          htmltools::div(
+            class = "alert alert-warning small mt-2 mb-0 py-2",
+            bsicons::bs_icon("exclamation-triangle", class = "me-1"),
+            i18n$t("chm_suspect_avertissement"),
+            if (!is.null(meta$chm_suspect_max)) {
+              htmltools::div(
+                class = "text-muted mt-1",
+                sprintf(i18n$t("chm_suspect_hauteur_max"),
+                        as.numeric(meta$chm_suspect_max))
+              )
+            }
+          )
+        }
       )
     })
 

@@ -1,3 +1,32 @@
+# nemetonshiny 0.143.23.9002 (2026-09-18)
+
+### Added — le verdict « CHM suspect » du cœur est enfin lu
+
+`nemeton` (>= 0.191.1) estampille `attr(x, "chm_suspect")` sur la sortie de
+`segment_houppiers()` : « ce modele de hauteur est vraisemblablement une
+prediction ratee se faisant passer pour une coupe rase ». Il le disait **dans
+le vide** — `grep chm_suspect R/` ne rendait rien.
+
+* Le verdict est **capture avant le sous-ensemble `sf`**, qui detruisait les
+  attributs, puis persiste dans les metadonnees du projet.
+* **Le cas VIDE le porte aussi** : zero houppier + CHM suspect est precisement
+  la combinaison qui doit remonter, et c'etait celle qui disparaissait dans un
+  `NULL` muet.
+* **Un verdict negatif est ecrit comme un positif** : sans cela, un projet
+  anciennement suspect garderait son bandeau apres correction du CHM.
+* Un bandeau d'avertissement s'affiche dans la Synthese, nommant l'indicateur
+  fausse (P1, volume bois) et la hauteur maximale du modele.
+* L'ecriture est best-effort : un calcul d'indicateurs ne meurt pas parce que
+  son verdict n'a pas pu s'ecrire.
+
+**Portee reelle, et elle est plus etroite que prevu** : le garde-fou ne mord
+que sur un projet **sans couverture LiDAR**. Avec du LiDAR,
+`resolve_project_chm(validate = .chm_exploitable)` a deja ecarte l'ortho plate
+en amont — c'est pour cette raison que le projet « Fordead » est en
+`chm_source: lidar_hd` et n'affiche aucun faux zero. Sans repli possible, en
+revanche, l'app montrait un volume nul comme s'il s'agissait d'une mesure, et
+rien ne distinguait « il n'y a pas d'arbres » de « le modele n'en a pas vu ».
+
 # nemetonshiny 0.143.23.9001 (2026-09-17)
 
 ### Added — `R/service_python.R` : un registre, un runner, une regle
