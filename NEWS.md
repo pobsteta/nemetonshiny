@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.23.9002 (2026-09-18)
+# nemetonshiny 0.143.24 (2026-09-18)
 
 ### Added — le verdict « CHM suspect » du cœur est enfin lu
 
@@ -27,7 +27,6 @@ en amont — c'est pour cette raison que le projet « Fordead » est en
 revanche, l'app montrait un volume nul comme s'il s'agissait d'une mesure, et
 rien ne distinguait « il n'y a pas d'arbres » de « le modele n'en a pas vu ».
 
-# nemetonshiny 0.143.23.9001 (2026-09-17)
 
 ### Added — `R/service_python.R` : un registre, un runner, une regle
 
