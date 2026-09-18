@@ -771,7 +771,12 @@ mod_home_server <- function(id, app_state) {
       "map",
       app_state = app_state,
       commune_geometry = search_result$commune_geometry,
-      parcels = parcels
+      parcels = parcels,
+      # Le sous-onglet actif, pour que la carte se redonne ses dimensions et
+      # recadre en revenant. `navset_card_tab` masque les panneaux en
+      # `display: none` : la carte y perd ses dimensions, et rien ne les lui
+      # rendait (`input$main_tabs` n'etait observe nulle part).
+      active_tab = shiny::reactive(input$main_tabs)
     )
 
     # ========================================

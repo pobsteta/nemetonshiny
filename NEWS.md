@@ -1,3 +1,31 @@
+# nemetonshiny 0.143.24.9002 (2026-09-18)
+
+### Fixed — la carte cadastrale ne se recadrait plus au retour d'onglet
+
+Basculer sur « Carte UGF » puis revenir sur « Carte cadastrale » laissait la
+carte decentree du projet.
+
+`navset_card_tab` masque les panneaux en `display: none` : la carte leaflet y
+a des dimensions **nulles**. Tout ce qui lui arrive pendant ce temps — proxy,
+polygones, recadrage — s'applique a un conteneur de taille zero, et au retour
+la vue reste fausse. La carte UGF traitait deja son cas (`mod_ug.R:929`) ; la
+carte cadastrale, non : **`input$main_tabs` n'etait observe nulle part**.
+
+`mod_map_server()` prend desormais un `active_tab` (defaut `NULL`, les
+appelants existants sont preserves) et, au retour sur l'onglet, redonne ses
+dimensions a la carte **puis la recadre**. Les deux comptent :
+`invalidateSize()` seul restaure la taille, pas la vue.
+
+Le cadrage vise les **parcelles du projet** d'abord, la commune a defaut, et ne
+fait rien s'il n'y a ni l'une ni l'autre — un `sf` vide compte comme absent.
+Cette decision sort en helper pur `.map_bbox_recadrage()` : l'observateur vit
+derriere un `later::later()` et un proxy leaflet, la decision se teste sans
+rien de tout cela.
+
+Tests : 3 cas, verifies par mutation. Trois mocks de `mod_map_server` dans
+`test-05mod_home.R` ont suivi la signature — un mock qui ment sur le contrat
+qu'il imite ne protege rien.
+
 # nemetonshiny 0.143.24.9001 (2026-09-18)
 
 ### Fixed — le tour guide cadrait a cote, surtout a la premiere ouverture

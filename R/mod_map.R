@@ -112,7 +112,27 @@ mod_map_ui <- function(id) {
 #'   - selection_count: Reactive integer
 #'
 #' @noRd
-mod_map_server <- function(id, app_state, commune_geometry, parcels) {
+# Sur quoi recadrer en revenant sur l'onglet : les parcelles du projet
+# d'abord, la commune a defaut, rien si ni l'une ni l'autre.
+#
+# Extrait en fonction PURE : l'observateur qui l'utilise vit derriere un
+# `later::later()` et un proxy leaflet, la decision se teste sans rien de
+# tout cela.
+#
+# @param parcels Un `sf` de parcelles, ou NULL.
+# @param commune Un `sf` de commune, ou NULL.
+# @return Une bbox `sf`, ou NULL quand il n'y a rien a cadrer.
+# @noRd
+.map_bbox_recadrage <- function(parcels, commune) {
+  utilisable <- function(x) inherits(x, "sf") && nrow(x) > 0L
+  geom <- if (utilisable(parcels)) parcels else if (utilisable(commune)) commune else NULL
+  if (is.null(geom)) return(NULL)
+  tryCatch(sf::st_bbox(geom), error = function(e) NULL)
+}
+
+
+mod_map_server <- function(id, app_state, commune_geometry, parcels,
+                           active_tab = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -195,6 +215,47 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
 
 
     # ========================================
+    # ================================================================
+    # Retour sur l'onglet : redonner ses dimensions A LA CARTE, et sa vue
+    # ================================================================
+    # Un `.tab-pane` masque est en `display: none` : sa carte leaflet a des
+    # dimensions NULLES. Tout ce qui lui arrive pendant ce temps (proxy,
+    # polygones, recadrage) s'applique a un conteneur de taille zero, et au
+    # retour la carte reste sur une vue fausse - c'est le symptome constate
+    # le 2026-09-18 : revenir de « Carte UGF » a « Carte cadastrale » laissait
+    # la carte decentree du projet.
+    #
+    # `invalidateSize()` SEUL ne suffit pas : il restaure les dimensions, pas
+    # la vue. Il faut donc recadrer derriere, comme le fait deja la carte UGF
+    # (mod_ug.R:929). Le delai de 0,3 s laisse le panneau se poser avant la
+    # mesure - meme raison que pour le tour guide.
+    if (!is.null(active_tab)) {
+      shiny::observeEvent(active_tab(), {
+        if (!identical(active_tab(), "cadastral")) return()
+
+        # Cadrer sur le projet : les parcelles d'abord, la commune a defaut.
+        # Sans l'une ni l'autre il n'y a rien a recadrer - on se contente
+        # alors de rendre ses dimensions a la carte.
+        bbox <- .map_bbox_recadrage(
+          tryCatch(parcels(), error = function(e) NULL),
+          tryCatch(commune_geometry(), error = function(e) NULL))
+
+        later::later(function() {
+          session$sendCustomMessage("leafletInvalidateSize",
+                                    list(id = session$ns("map")))
+          if (!is.null(bbox)) {
+            leaflet::leafletProxy("map", session = session) |>
+              leaflet::fitBounds(
+                lng1 = as.numeric(bbox[["xmin"]]),
+                lat1 = as.numeric(bbox[["ymin"]]),
+                lng2 = as.numeric(bbox[["xmax"]]),
+                lat2 = as.numeric(bbox[["ymax"]])
+              )
+          }
+        }, delay = 0.3)
+      }, ignoreInit = TRUE)
+    }
+
     # Base Map Rendering
     # ========================================
 
