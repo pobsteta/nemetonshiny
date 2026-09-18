@@ -1,0 +1,16 @@
+# Source availability status (spec 032, brief A5)
+
+Why an indicator is empty, kept as a \*\*named cause\*\* rather than a
+sentence.
+
+Four situations used to leave \`build_lst_layer()\` through the same
+\`NULL\`: the source is off, the credentials are missing, the AOI is
+outside coverage, or the fetch failed. The last two are the ones that
+matter and the ones the interface could not tell apart - yet "no
+Thermocity scene over a forest commune" is the normal case, and "the
+catalogue is unreachable" is a fault. Showing the same blank for both
+makes a fault look normal and a normality look like a fault.
+
+The cause comes from the core (\`nemeton::theia_source_status()\`),
+which owns the catalogue knowledge; the app only stores it and
+translates it.

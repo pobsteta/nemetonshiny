@@ -1,0 +1,25 @@
+# ONF forest-parcel service (spec 046)
+
+Application-side wiring for the \*\*ONF forest parcels\*\* (the
+"parcellaire forestier"). In public forests the \*cadastral\* parcel is
+not the management unit: the \*forest\* parcel is, and it is the one
+materialised on the ground. The core owns the whole acquisition
+(\`nemeton::load_onf_parcelles_source()\`) and the whole crossing
+arithmetic (\`nemeton::croiser_parcelles_onf()\`); this file only turns
+their output into a project, so \`mod_ug\` stays free of business logic
+(rules \#1 and \#2).
+
+One path: \[onf_projet_croise()\]. The cadastral selection is
+\*\*kept\*\* (it is the user's property) and each UGF is described as
+the pieces of cadastral parcels it is made of.
+
+A second path existed until v0.130.0.9001 -
+\`onf_projet_from_parcelles()\`, which had the forest parcels
+\*replace\* the cadastral ones. It was removed rather than kept: fed the
+same area, it produced the same UGF while throwing away the cadastral
+composition (hence \`part_ugf\`, the "you only hold 40 that forest
+parcel"). A lossy special case of the crossing, and a destructive one.
+
+The WFS is reachable over \*\*HTTP only\*\*; every call therefore
+happens server-side, never from the browser (mixed content would be
+blocked).

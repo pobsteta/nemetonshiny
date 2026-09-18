@@ -12,6 +12,34 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.25\] - 2026-09-18
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.197.0)`. `INDICATOR_SENSE_VERSION`
+  passe a 3 : L1 s’inverse, T1 recoit une borne de 200 ans, E1/E2
+  s’alignent sur P1 (spec 048 §9-§11). Les indicateurs calcules avant
+  sont invalides a la premiere ouverture — un parquet perime reste
+  LISIBLE, donc `compute_all_indicators()` le relirait et sauterait le
+  recalcul.
+- `load_project()` porte `indicators_invalidated` et un bandeau nomme
+  les trois familles qui changent : l’utilisateur voyait son projet
+  repasser en brouillon sans explication.
+
+### Fixed
+
+- Le tour guide cadrait a cote. Cliquer ACTIVE un onglet mais ne le
+  MESURE pas : un `.tab-pane` masque est en `display: none`, dimensions
+  nulles, plus une transition `.fade`. On attend `shown.bs.tab` puis on
+  force une re-mesure via `resize`, que driver.js ecoute deja. Le
+  demarrage, lui, reposait sur un `setTimeout` aveugle apres un
+  `collapse('show')` anime : il suit desormais `shown.bs.collapse`.
+- La carte cadastrale ne se recadrait pas au retour de l’onglet UGF :
+  `input$main_tabs` n’etait observe nulle part. `invalidateSize()` seul
+  restaure la taille, pas la vue — il faut recadrer derriere.
+- `cli_alert_warning()` concatenait les puces d’un vecteur ; seul
+  `cli_warn()` les rend sur des lignes distinctes.
+
 ## \[0.143.24\] - 2026-09-18
 
 ### Added

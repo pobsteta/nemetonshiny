@@ -1,5 +1,116 @@
 # Changelog
 
+## nemetonshiny 0.143.25 (2026-09-18)
+
+#### Changed — trois echelles changent cote cœur : L1, T1, E1/E2 (spec 048)
+
+Implemente le brief `2026-09-18-l1-sens-inverse.md`. Plancher
+`Imports: nemeton (>= 0.197.0)`.
+
+Le brief est clair sur le perimetre app : **aucune logique metier a
+ecrire**. Une chose a faire, une a ne surtout pas faire, une a dire.
+
+**A faire — invalider.** `INDICATOR_SENSE_VERSION` passe de 2 a 3. Un
+`indicators.parquet` calcule avant reste parfaitement LISIBLE : memes
+colonnes, memes types, aucune erreur au chargement.
+`compute_all_indicators()` le relirait donc, constaterait le travail
+fait, et sauterait le recalcul en propageant des `famille_paysage`,
+`famille_temporelle` et `famille_energie` faux. L’invalidation unique se
+declenche a la premiere ouverture apres la montee de version.
+
+**A ne pas faire — reinverser.** Le cœur rend deja L1 dans le bon sens ;
+une inversion cote app annulerait la correction **en silence**. Verifie
+: l’app n’inverse rien, et un test le gele — il balaie tout `R/` a la
+recherche d’un `100 - <indicateur>` sur L1, T1, E1, E2 ou la famille
+Paysage. Le piege est reel : les slugs de la famille L sont **croises**
+(spec 045), et inverser `indicateur_l1_sylvosphere` retournerait le
+**morcellement** sur les jeux non migres.
+
+**A dire — et c’est ce qui manquait vraiment.** L’utilisateur voyait son
+projet repasser en brouillon sans explication : le seul signal etait un
+`cli` dans la console, que personne ne lit depuis l’interface.
+`load_project()` porte desormais `indicators_invalidated` sur le SEUL
+chargement qui vient de jeter le parquet perime, et un bandeau nomme les
+trois familles qui changent en avertissant qu’une comparaison avec les
+scores precedents n’aurait pas de sens.
+
+Ce que l’utilisateur va constater : **Paysage baisse** sur les parcelles
+morcelees ou bordees de bati ; **Ancienneté cesse d’etre saturee** (tout
+ce qui depassait 100 ans valait 100, desormais 150 ans -\> 75) ;
+**Energie baisse** sur les peuplements ordinaires et s’aligne sur P1 —
+E1, E2 et P1 doivent afficher la meme valeur sur une parcelle donnee.
+`N3`, `famille_naturalite`, `L2` et `L3` sont inchanges ; si `N3` bouge,
+c’est qu’une double inversion s’est glissee quelque part.
+
+#### Fixed — les puces du message d’invalidation etaient concatenees
+
+`cli_alert_warning()` concatene un vecteur au lieu d’en rendre les
+puces. Seul `cli_warn()` rend les `i =` sur des lignes distinctes.
+
+#### Fixed — la carte cadastrale ne se recadrait plus au retour d’onglet
+
+Basculer sur « Carte UGF » puis revenir sur « Carte cadastrale »
+laissait la carte decentree du projet.
+
+`navset_card_tab` masque les panneaux en `display: none` : la carte
+leaflet y a des dimensions **nulles**. Tout ce qui lui arrive pendant ce
+temps — proxy, polygones, recadrage — s’applique a un conteneur de
+taille zero, et au retour la vue reste fausse. La carte UGF traitait
+deja son cas (`mod_ug.R:929`) ; la carte cadastrale, non :
+**`input$main_tabs` n’etait observe nulle part**.
+
+`mod_map_server()` prend desormais un `active_tab` (defaut `NULL`, les
+appelants existants sont preserves) et, au retour sur l’onglet, redonne
+ses dimensions a la carte **puis la recadre**. Les deux comptent :
+`invalidateSize()` seul restaure la taille, pas la vue.
+
+Le cadrage vise les **parcelles du projet** d’abord, la commune a
+defaut, et ne fait rien s’il n’y a ni l’une ni l’autre — un `sf` vide
+compte comme absent. Cette decision sort en helper pur
+`.map_bbox_recadrage()` : l’observateur vit derriere un
+[`later::later()`](https://later.r-lib.org/reference/later.html) et un
+proxy leaflet, la decision se teste sans rien de tout cela.
+
+Tests : 3 cas, verifies par mutation. Trois mocks de `mod_map_server`
+dans `test-05mod_home.R` ont suivi la signature — un mock qui ment sur
+le contrat qu’il imite ne protege rien.
+
+#### Fixed — le tour guide cadrait a cote, surtout a la premiere ouverture
+
+Deux causes, toutes deux des mesures prises trop tot.
+
+**A chaque changement d’onglet.** `.tour_switch_tab_js()` cliquait le
+lien de nav et laissait driver.js cadrer dans la foulee. Or cliquer
+ACTIVE l’onglet, il ne le MESURE pas : un `.tab-pane` masque est en
+`display: none`, ses elements ont des dimensions **nulles** jusqu’a ce
+que le navigateur l’ait pose, et Bootstrap 5 ajoute une transition
+`.fade` par-dessus. Le cadre visait donc une geometrie qui n’existait
+pas encore — sur la plupart des etapes.
+
+On attend desormais `shown.bs.tab`, emis par Bootstrap **apres** la
+transition, puis on force une re-mesure via un evenement `resize` :
+driver.js l’ecoute deja (`bind()` -\> `onResize()` -\> `refresh()`) et
+ne re-mesure que si un tour est actif. Aucun interne de cicerone n’est
+touche, donc rien a reprendre si le paquet evolue.
+
+**A la premiere ouverture.** Le demarrage reposait sur un
+`setTimeout(500)` aveugle apres `collapse('show')` — lui-meme **anime**.
+La page se reorganisait sous le tour pendant qu’il se cadrait, et c’est
+la premiere ouverture qui souffrait le plus, quand rien n’est en cache
+et que tout arrive ensemble. Le declenchement est desormais pilote par
+`shown.bs.collapse` sur les deux sections.
+
+Les deux correctifs portent un **repli temporise**, et ce n’est pas de
+la prudence decorative : une section (ou un onglet) **deja ouverte
+n’emet aucun evenement**, et l’attente ne se resoudrait jamais — le tour
+ne demarrerait plus du tout. Une garde d’idempotence evite que repli et
+evenement declenchent la re-mesure deux fois.
+
+Tests : 3 cas, verifies par mutation. La premiere version de l’assertion
+etait **vacante** — elle cherchait la chaine « shown.bs.tab », qui
+figure aussi dans le `removeEventListener`, et passait donc en retirant
+l’ecoute. Elle vise maintenant `addEventListener('shown.bs.tab'`.
+
 ## nemetonshiny 0.143.24 (2026-09-18)
 
 #### Added — le verdict « CHM suspect » du cœur est enfin lu

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.24</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.25</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,39 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.25" id="nemetonshiny-014325-2026-09-18">nemetonshiny 0.143.25 (2026-09-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014325-2026-09-18"></a></h2>
+<div class="section level4">
+<h4 id="changed--trois-echelles-changent-cote-cœur--l1-t1-e1e2-spec-0-143-25">Changed — trois echelles changent cote cœur : L1, T1, E1/E2 (spec 048)<a class="anchor" aria-label="anchor" href="#changed--trois-echelles-changent-cote-c%C5%93ur--l1-t1-e1e2-spec-0-143-25"></a></h4>
+<p>Implemente le brief <code>2026-09-18-l1-sens-inverse.md</code>. Plancher <code>Imports: nemeton (&gt;= 0.197.0)</code>.</p>
+<p>Le brief est clair sur le perimetre app : <strong>aucune logique metier a ecrire</strong>. Une chose a faire, une a ne surtout pas faire, une a dire.</p>
+<p><strong>A faire — invalider.</strong> <code>INDICATOR_SENSE_VERSION</code> passe de 2 a 3. Un <code>indicators.parquet</code> calcule avant reste parfaitement LISIBLE : memes colonnes, memes types, aucune erreur au chargement. <code>compute_all_indicators()</code> le relirait donc, constaterait le travail fait, et sauterait le recalcul en propageant des <code>famille_paysage</code>, <code>famille_temporelle</code> et <code>famille_energie</code> faux. L’invalidation unique se declenche a la premiere ouverture apres la montee de version.</p>
+<p><strong>A ne pas faire — reinverser.</strong> Le cœur rend deja L1 dans le bon sens ; une inversion cote app annulerait la correction <strong>en silence</strong>. Verifie : l’app n’inverse rien, et un test le gele — il balaie tout <code>R/</code> a la recherche d’un <code>100 - &lt;indicateur&gt;</code> sur L1, T1, E1, E2 ou la famille Paysage. Le piege est reel : les slugs de la famille L sont <strong>croises</strong> (spec 045), et inverser <code>indicateur_l1_sylvosphere</code> retournerait le <strong>morcellement</strong> sur les jeux non migres.</p>
+<p><strong>A dire — et c’est ce qui manquait vraiment.</strong> L’utilisateur voyait son projet repasser en brouillon sans explication : le seul signal etait un <code>cli</code> dans la console, que personne ne lit depuis l’interface. <code>load_project()</code> porte desormais <code>indicators_invalidated</code> sur le SEUL chargement qui vient de jeter le parquet perime, et un bandeau nomme les trois familles qui changent en avertissant qu’une comparaison avec les scores precedents n’aurait pas de sens.</p>
+<p>Ce que l’utilisateur va constater : <strong>Paysage baisse</strong> sur les parcelles morcelees ou bordees de bati ; <strong>Ancienneté cesse d’etre saturee</strong> (tout ce qui depassait 100 ans valait 100, desormais 150 ans -&gt; 75) ; <strong>Energie baisse</strong> sur les peuplements ordinaires et s’aligne sur P1 — E1, E2 et P1 doivent afficher la meme valeur sur une parcelle donnee. <code>N3</code>, <code>famille_naturalite</code>, <code>L2</code> et <code>L3</code> sont inchanges ; si <code>N3</code> bouge, c’est qu’une double inversion s’est glissee quelque part.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--les-puces-du-message-dinvalidation-etaient-concatenees-0-143-25">Fixed — les puces du message d’invalidation etaient concatenees<a class="anchor" aria-label="anchor" href="#fixed--les-puces-du-message-dinvalidation-etaient-concatenees-0-143-25"></a></h4>
+<p><code>cli_alert_warning()</code> concatene un vecteur au lieu d’en rendre les puces. Seul <code>cli_warn()</code> rend les <code>i =</code> sur des lignes distinctes.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--la-carte-cadastrale-ne-se-recadrait-plus-au-retour-donglet-0-143-25">Fixed — la carte cadastrale ne se recadrait plus au retour d’onglet<a class="anchor" aria-label="anchor" href="#fixed--la-carte-cadastrale-ne-se-recadrait-plus-au-retour-donglet-0-143-25"></a></h4>
+<p>Basculer sur « Carte UGF » puis revenir sur « Carte cadastrale » laissait la carte decentree du projet.</p>
+<p><code>navset_card_tab</code> masque les panneaux en <code>display: none</code> : la carte leaflet y a des dimensions <strong>nulles</strong>. Tout ce qui lui arrive pendant ce temps — proxy, polygones, recadrage — s’applique a un conteneur de taille zero, et au retour la vue reste fausse. La carte UGF traitait deja son cas (<code>mod_ug.R:929</code>) ; la carte cadastrale, non : <strong><code>input$main_tabs</code> n’etait observe nulle part</strong>.</p>
+<p><code>mod_map_server()</code> prend desormais un <code>active_tab</code> (defaut <code>NULL</code>, les appelants existants sont preserves) et, au retour sur l’onglet, redonne ses dimensions a la carte <strong>puis la recadre</strong>. Les deux comptent : <code>invalidateSize()</code> seul restaure la taille, pas la vue.</p>
+<p>Le cadrage vise les <strong>parcelles du projet</strong> d’abord, la commune a defaut, et ne fait rien s’il n’y a ni l’une ni l’autre — un <code>sf</code> vide compte comme absent. Cette decision sort en helper pur <code>.map_bbox_recadrage()</code> : l’observateur vit derriere un <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later()</a></code> et un proxy leaflet, la decision se teste sans rien de tout cela.</p>
+<p>Tests : 3 cas, verifies par mutation. Trois mocks de <code>mod_map_server</code> dans <code>test-05mod_home.R</code> ont suivi la signature — un mock qui ment sur le contrat qu’il imite ne protege rien.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-tour-guide-cadrait-a-cote-surtout-a-la-premiere-ouverture-0-143-25">Fixed — le tour guide cadrait a cote, surtout a la premiere ouverture<a class="anchor" aria-label="anchor" href="#fixed--le-tour-guide-cadrait-a-cote-surtout-a-la-premiere-ouverture-0-143-25"></a></h4>
+<p>Deux causes, toutes deux des mesures prises trop tot.</p>
+<p><strong>A chaque changement d’onglet.</strong> <code>.tour_switch_tab_js()</code> cliquait le lien de nav et laissait driver.js cadrer dans la foulee. Or cliquer ACTIVE l’onglet, il ne le MESURE pas : un <code>.tab-pane</code> masque est en <code>display: none</code>, ses elements ont des dimensions <strong>nulles</strong> jusqu’a ce que le navigateur l’ait pose, et Bootstrap 5 ajoute une transition <code>.fade</code> par-dessus. Le cadre visait donc une geometrie qui n’existait pas encore — sur la plupart des etapes.</p>
+<p>On attend desormais <code>shown.bs.tab</code>, emis par Bootstrap <strong>apres</strong> la transition, puis on force une re-mesure via un evenement <code>resize</code> : driver.js l’ecoute deja (<code>bind()</code> -&gt; <code>onResize()</code> -&gt; <code>refresh()</code>) et ne re-mesure que si un tour est actif. Aucun interne de cicerone n’est touche, donc rien a reprendre si le paquet evolue.</p>
+<p><strong>A la premiere ouverture.</strong> Le demarrage reposait sur un <code>setTimeout(500)</code> aveugle apres <code>collapse('show')</code> — lui-meme <strong>anime</strong>. La page se reorganisait sous le tour pendant qu’il se cadrait, et c’est la premiere ouverture qui souffrait le plus, quand rien n’est en cache et que tout arrive ensemble. Le declenchement est desormais pilote par <code>shown.bs.collapse</code> sur les deux sections.</p>
+<p>Les deux correctifs portent un <strong>repli temporise</strong>, et ce n’est pas de la prudence decorative : une section (ou un onglet) <strong>deja ouverte n’emet aucun evenement</strong>, et l’attente ne se resoudrait jamais — le tour ne demarrerait plus du tout. Une garde d’idempotence evite que repli et evenement declenchent la re-mesure deux fois.</p>
+<p>Tests : 3 cas, verifies par mutation. La premiere version de l’assertion etait <strong>vacante</strong> — elle cherchait la chaine « shown.bs.tab », qui figure aussi dans le <code>removeEventListener</code>, et passait donc en retirant l’ecoute. Elle vise maintenant <code>addEventListener('shown.bs.tab'</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.24" id="nemetonshiny-014324-2026-09-18">nemetonshiny 0.143.24 (2026-09-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014324-2026-09-18"></a></h2>
 <div class="section level4">
