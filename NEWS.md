@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.24.9003 (2026-09-18)
+# nemetonshiny 0.143.25 (2026-09-18)
 
 ### Changed — trois echelles changent cote cœur : L1, T1, E1/E2 (spec 048)
 
@@ -43,7 +43,6 @@ quelque part.
 `cli_alert_warning()` concatene un vecteur au lieu d'en rendre les puces. Seul
 `cli_warn()` rend les `i =` sur des lignes distinctes.
 
-# nemetonshiny 0.143.24.9002 (2026-09-18)
 
 ### Fixed — la carte cadastrale ne se recadrait plus au retour d'onglet
 
@@ -71,7 +70,6 @@ Tests : 3 cas, verifies par mutation. Trois mocks de `mod_map_server` dans
 `test-05mod_home.R` ont suivi la signature — un mock qui ment sur le contrat
 qu'il imite ne protege rien.
 
-# nemetonshiny 0.143.24.9001 (2026-09-18)
 
 ### Fixed — le tour guide cadrait a cote, surtout a la premiere ouverture
 
