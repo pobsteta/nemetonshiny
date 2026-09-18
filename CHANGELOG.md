@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.24\] - 2026-09-18
+
+### Added
+
+- `R/service_python.R` : registre `engine_python()` moteur -\>
+  interpreteur et runner isole `run_with_python()`. `reticulate` lie un
+  interpreteur une fois par processus et les quatre stacks Python de
+  l’app ont des exigences contradictoires (opencanopy veut
+  `RETICULATE_PYTHON` epinglee, FORDEAD la veut absente) : la regle « un
+  moteur = un processus » est desormais ecrite, outillee et gelee par un
+  test qui nomme tout fichier ajoutant une liaison en processus.
+- Le verdict `chm_suspect` du cœur (\>= 0.191.1) est lu, persiste dans
+  les metadonnees et affiche en bandeau dans la Synthese. Il ne mord que
+  sans couverture LiDAR : avec du LiDAR,
+  `resolve_project_chm(validate=)` ecarte deja l’ortho plate en amont.
+
 ## \[0.143.23\] - 2026-09-17
 
 ### Changed

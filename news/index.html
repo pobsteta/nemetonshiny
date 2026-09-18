@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.23</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.24</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,38 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.24" id="nemetonshiny-014324-2026-09-18">nemetonshiny 0.143.24 (2026-09-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014324-2026-09-18"></a></h2>
+<div class="section level4">
+<h4 id="added--le-verdict--chm-suspect--du-cœur-est-enfin-lu-0-143-24">Added — le verdict « CHM suspect » du cœur est enfin lu<a class="anchor" aria-label="anchor" href="#added--le-verdict--chm-suspect--du-c%C5%93ur-est-enfin-lu-0-143-24"></a></h4>
+<p><code>nemeton</code> (&gt;= 0.191.1) estampille <code>attr(x, "chm_suspect")</code> sur la sortie de <code>segment_houppiers()</code> : « ce modele de hauteur est vraisemblablement une prediction ratee se faisant passer pour une coupe rase ». Il le disait <strong>dans le vide</strong> — <code>grep chm_suspect R/</code> ne rendait rien.</p>
+<ul><li>Le verdict est <strong>capture avant le sous-ensemble <code>sf</code></strong>, qui detruisait les attributs, puis persiste dans les metadonnees du projet.</li>
+<li>
+<strong>Le cas VIDE le porte aussi</strong> : zero houppier + CHM suspect est precisement la combinaison qui doit remonter, et c’etait celle qui disparaissait dans un <code>NULL</code> muet.</li>
+<li>
+<strong>Un verdict negatif est ecrit comme un positif</strong> : sans cela, un projet anciennement suspect garderait son bandeau apres correction du CHM.</li>
+<li>Un bandeau d’avertissement s’affiche dans la Synthese, nommant l’indicateur fausse (P1, volume bois) et la hauteur maximale du modele.</li>
+<li>L’ecriture est best-effort : un calcul d’indicateurs ne meurt pas parce que son verdict n’a pas pu s’ecrire.</li>
+</ul><p><strong>Portee reelle, et elle est plus etroite que prevu</strong> : le garde-fou ne mord que sur un projet <strong>sans couverture LiDAR</strong>. Avec du LiDAR, <code>resolve_project_chm(validate = .chm_exploitable)</code> a deja ecarte l’ortho plate en amont — c’est pour cette raison que le projet « Fordead » est en <code>chm_source: lidar_hd</code> et n’affiche aucun faux zero. Sans repli possible, en revanche, l’app montrait un volume nul comme s’il s’agissait d’une mesure, et rien ne distinguait « il n’y a pas d’arbres » de « le modele n’en a pas vu ».</p>
+</div>
+<div class="section level4">
+<h4 id="added--rservice_pythonr--un-registre-un-runner-une-regle-0-143-24">Added — <code>R/service_python.R</code> : un registre, un runner, une regle<a class="anchor" aria-label="anchor" href="#added--rservice_pythonr--un-registre-un-runner-une-regle-0-143-24"></a></h4>
+<p>Quatre stacks Python cohabitent dans l’app (opencanopy, FORDEAD, RECONFORT, rvt-py) et <code>reticulate</code> lie un interpreteur <strong>une fois par processus</strong>, sans jamais le relier. Aucun reglage global ne peut les servir tous, parce que leurs exigences se <strong>contredisent</strong> : opencanopy veut <code>RETICULATE_PYTHON</code> epinglee sur son env conda, FORDEAD la veut <strong>absente</strong> — le coeur le documente (<code>nemeton/R/fordead_python.R:336-343</code>), une variable definie « ecrase silencieusement <code>use_python()</code> / <code>use_virtualenv()</code> meme avec <code>required = TRUE</code> ».</p>
+<p>La seule reponse qui les concilie est architecturale, et l’app la pratiquait deja sans la nommer : <strong>un moteur = un processus, interpreteur epingle a la creation</strong>. Elle est desormais ecrite, outillee et testee.</p>
+<ul><li>
+<strong><code>engine_python(moteur)</code></strong> — registre <code>.PYTHON_ENGINES</code> moteur -&gt; interpreteur, en remplacement de <code>.resolve_opencanopy_python()</code> qui ne savait resoudre qu’Open-Canopy. Ordre : option explicite, variable d’env, env conda, balayage des racines d’installation. Rend <code>NA</code> sur un moteur inconnu <strong>sans lever</strong> : un moteur absent est un mode degrade, pas un crash.</li>
+<li>
+<strong><code>run_with_python(moteur, func, args, on_line)</code></strong> — la forme generique du sous-processus <code>callr</code> que le chemin CHM pratiquait depuis la spec 005. <code>R_ENVIRON_USER = ""</code> n’y est pas decoratif : sans lui, une <code>RETICULATE_PYTHON</code> restee dans le <code>.Renviron</code> de l’utilisateur ecraserait l’epinglage qu’on vient de poser, et l’enfant lierait le mauvais interpreteur <strong>en annoncant le bon</strong>.</li>
+<li>
+<strong>Un test gele l’etat connu</strong> : toute NOUVELLE liaison <code>reticulate</code> en processus fait echouer <code>test-service_python.R</code>, en nommant le fichier fautif. Seul <code>service_rvt.R</code> est sur la liste, avec la raison ecrite (il tourne dans un worker <code>future</code> ou aucun autre moteur Python ne tourne).</li>
+</ul><p><code>.run_opencanopy_chm()</code> passe par le runner generique. Son repli <strong>en processus</strong> ne s’emprunte plus que si l’isolation n’a pas pu avoir lieu du tout (env introuvable, <code>callr</code> absent) — pas si le pipeline lui-meme a echoue, auquel cas le rejouer en session echouerait pareil en abimant la session au passage.</p>
+<p>Les trois tests de resolution migrent vers <code>engine_python()</code> : le contrat a change de nom et de place, il n’a pas disparu.</p>
+</div>
+<div class="section level4">
+<h4 id="note--dou-vient-ce-chantier-0-143-24">Note — d’ou vient ce chantier<a class="anchor" aria-label="anchor" href="#note--dou-vient-ce-chantier-0-143-24"></a></h4>
+<p>D’un echec en direct : un script lance depuis cette session s’est heurte a <code>reticulate is already bound to a different Python</code> (un env <strong>uv ephemere</strong>, que <code>reticulate</code> s’attribue quand rien n’est configure). C’est tres probablement aussi l’explication du « <code>ModuleNotFoundError: No module named 'torch'</code> non reproductible » que le brief <code>opencanopy</code> du 2026-08-27 signalait au §6 sans pouvoir l’expliquer : ce n’est pas un etat de session mysterieux, c’est <code>reticulate</code> qui gagne la course a la liaison.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.23" id="nemetonshiny-014323-2026-09-17">nemetonshiny 0.143.23 (2026-09-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014323-2026-09-17"></a></h2>
 <div class="section level4">
