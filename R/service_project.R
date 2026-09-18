@@ -1089,7 +1089,10 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
   # recalcul en propageant des `famille_risque` faux. L'invalidation a lieu ICI,
   # avant `load_indicators()` ci-dessous - sinon on chargerait les valeurs
   # perimees qu'on vient de supprimer du disque.
-  .perf_time("indicator_sense", tryCatch(
+  # Le verdict est CONSERVE : sans lui, l'utilisateur voit son projet repasser
+  # en brouillon sans explication - le seul signal etait un `cli` dans la
+  # console, que personne ne lit depuis l'interface.
+  sens_invalide <- .perf_time("indicator_sense", tryCatch(
     ensure_indicator_sense_current(project_id, metadata),
     error = function(e) {
       cli::cli_warn("Verification du sens des indicateurs impossible : {conditionMessage(e)}")
@@ -1100,6 +1103,10 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
   project <- list(
     id = project_id,
     path = project_path,
+    # TRUE quand CE chargement vient d'invalider les indicateurs : le module
+    # d'accueil s'en sert pour prevenir, une fois. Non persiste - c'est un
+    # fait du chargement courant, pas un etat du projet.
+    indicators_invalidated = isTRUE(sens_invalide),
     metadata = metadata,
     parcels = .perf_time("load_parcels", load_parcels(project_id)),
     commune_geometry = .perf_time("load_commune_geometry", load_commune_geometry(project_id)),

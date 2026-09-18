@@ -146,7 +146,7 @@ ensure_project_migrated <- function(project_id, projet = NULL) {
 #'   famille.
 #'
 #' @noRd
-INDICATOR_SENSE_VERSION <- 2L
+INDICATOR_SENSE_VERSION <- 3L
 
 
 #' Invalidate indicators computed before an indicator changed direction
@@ -185,9 +185,16 @@ ensure_indicator_sense_current <- function(project_id, metadata = NULL) {
                           "data", "indicators.parquet"))
 
   if (a_invalider) {
-    cli::cli_alert_warning(
-      "Projet {project_id} : indicateurs calcul\u00e9s avant l'inversion des \\
-       risques (spec 048), invalid\u00e9s - un recalcul est n\u00e9cessaire.")
+    # `cli_alert_warning()` CONCATENE un vecteur ; seul `cli_warn()` rend les
+    # puces `i =` sur des lignes distinctes.
+    cli::cli_warn(c(
+      "Projet {project_id} : indicateurs calcul\u00e9s avant un changement \\
+       d'\u00e9chelle ou de sens (spec 048), invalid\u00e9s - un recalcul est \\
+       n\u00e9cessaire.",
+      i = "v2 : inversion des risques R1-R5 et T3.",
+      i = "v3 : inversion de L1 (effet de lisi\u00e8re), borne 200 ans sur T1, \\
+           E1/E2 align\u00e9s sur P1."
+    ))
     tryCatch(invalidate_indicators(project_id),
              error = function(e) cli::cli_warn(
                "Invalidation impossible : {conditionMessage(e)}"))

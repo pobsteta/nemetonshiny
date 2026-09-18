@@ -1692,6 +1692,27 @@ mod_home_server <- function(id, app_state) {
     }, ignoreInit = TRUE)
 
     # ========================================
+    # ================================================================
+    # Indicateurs invalides par une montee de version du cœur
+    # ================================================================
+    # `load_project()` porte `indicators_invalidated = TRUE` sur le SEUL
+    # chargement qui vient de jeter le parquet perime (spec 048). Sans ce
+    # message, l'utilisateur voit son projet repasser en brouillon sans
+    # raison : le seul signal etait un `cli` dans la console, que personne ne
+    # lit depuis l'interface.
+    #
+    # Un observateur unique plutot qu'un message a chacun des quatre points
+    # de chargement : le drapeau n'est vrai que sur ce chargement-la, donc il
+    # ne se repete pas de lui-meme.
+    shiny::observeEvent(app_state$current_project, {
+      if (!isTRUE(app_state$current_project$indicators_invalidated)) return()
+      shiny::showNotification(
+        get_i18n(app_state$language)$t("indicateurs_invalides"),
+        type = "warning",
+        duration = 15
+      )
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
     # Guided Tour (cicerone)
     # ========================================
 

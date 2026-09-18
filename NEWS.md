@@ -1,3 +1,48 @@
+# nemetonshiny 0.143.24.9003 (2026-09-18)
+
+### Changed — trois echelles changent cote cœur : L1, T1, E1/E2 (spec 048)
+
+Implemente le brief `2026-09-18-l1-sens-inverse.md`. Plancher
+`Imports: nemeton (>= 0.197.0)`.
+
+Le brief est clair sur le perimetre app : **aucune logique metier a ecrire**.
+Une chose a faire, une a ne surtout pas faire, une a dire.
+
+**A faire — invalider.** `INDICATOR_SENSE_VERSION` passe de 2 a 3. Un
+`indicators.parquet` calcule avant reste parfaitement LISIBLE : memes colonnes,
+memes types, aucune erreur au chargement. `compute_all_indicators()` le relirait
+donc, constaterait le travail fait, et sauterait le recalcul en propageant des
+`famille_paysage`, `famille_temporelle` et `famille_energie` faux. L'invalidation
+unique se declenche a la premiere ouverture apres la montee de version.
+
+**A ne pas faire — reinverser.** Le cœur rend deja L1 dans le bon sens ; une
+inversion cote app annulerait la correction **en silence**. Verifie : l'app
+n'inverse rien, et un test le gele — il balaie tout `R/` a la recherche d'un
+`100 - <indicateur>` sur L1, T1, E1, E2 ou la famille Paysage. Le piege est
+reel : les slugs de la famille L sont **croises** (spec 045), et inverser
+`indicateur_l1_sylvosphere` retournerait le **morcellement** sur les jeux non
+migres.
+
+**A dire — et c'est ce qui manquait vraiment.** L'utilisateur voyait son projet
+repasser en brouillon sans explication : le seul signal etait un `cli` dans la
+console, que personne ne lit depuis l'interface. `load_project()` porte
+desormais `indicators_invalidated` sur le SEUL chargement qui vient de jeter le
+parquet perime, et un bandeau nomme les trois familles qui changent en
+avertissant qu'une comparaison avec les scores precedents n'aurait pas de sens.
+
+Ce que l'utilisateur va constater : **Paysage baisse** sur les parcelles
+morcelees ou bordees de bati ; **Ancienneté cesse d'etre saturee** (tout ce qui
+depassait 100 ans valait 100, desormais 150 ans -> 75) ; **Energie baisse** sur
+les peuplements ordinaires et s'aligne sur P1 — E1, E2 et P1 doivent afficher la
+meme valeur sur une parcelle donnee. `N3`, `famille_naturalite`, `L2` et `L3`
+sont inchanges ; si `N3` bouge, c'est qu'une double inversion s'est glissee
+quelque part.
+
+### Fixed — les puces du message d'invalidation etaient concatenees
+
+`cli_alert_warning()` concatene un vecteur au lieu d'en rendre les puces. Seul
+`cli_warn()` rend les `i =` sur des lignes distinctes.
+
 # nemetonshiny 0.143.24.9002 (2026-09-18)
 
 ### Fixed — la carte cadastrale ne se recadrait plus au retour d'onglet
