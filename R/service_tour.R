@@ -23,22 +23,55 @@
 #   monitoring  -> mode de suivi (FAST / FORDEAD / RECONFORT)
 #   familles    -> vue d'une famille d'indicateurs (Carbone, representative)
 #
-# ANCRES : ce sont des ids stables. Les `uiOutput`/cards/inputs cibles
-# sont TOUJOURS presents dans le DOM (un `uiOutput` vide reste un
-# conteneur) - on evite deliberement les boutons conditionnels (ex.
+# ANCRES : ce sont des ids stables, et ils doivent etre STATIQUES. Present
+# dans le DOM ne suffit pas : driver.js mesure l'element JUSTE APRES la
+# bascule d'onglet, et un `uiOutput` porte par un onglet jusque-la masque est
+# encore SUSPENDU (Shiny ne le rend qu'apres un aller-retour serveur). Il
+# mesure donc 0 de haut, `canHighlight()` est faux, et driver SAUTE l'etape
+# en silence - le popover reste sur l'etape precedente, ce que l'utilisateur
+# lit comme un tour bloque. Mesure du 2026-09-19 : `synthesis-project_summary`
+# = 447x0 et `famille_carbone-maps_row` = 1408x0 a l'instant du cadrage, la
+# ou une carte ou une sidebar statique mesure sa vraie geometrie. On ancre
+# donc sur des conteneurs statiques (`summary_card`, `family_header`,
+# sidebars, inputs) et on evite les boutons conditionnels (ex.
 # `start_compute`, rendu seulement en statut draft). Si un module renomme
 # une ancre, mettre a jour ici ET le test d'inventaire
 # (`test-service_tour.R`).
+#
+# ONGLETS RESTREINTS : l'app renvoie sur l'Accueil toute navigation vers
+# Synthese ou une famille tant que le projet n'est pas `completed`
+# (cf. `.tab_requires_completed_project`). Le tour ne doit donc pas y aller
+# dans cet etat : il declenchait un aller-retour serveur qui ramenait
+# l'onglet sous le cadre - le fameux " ca tremble ".
+
+#' Does a `main_nav` tab require a completed project?
+#'
+#' Single source of truth for the navigation guard in [app_server()] AND for
+#' the guided-tour step filter: the two MUST agree, or the tour walks into a
+#' tab the app immediately navigates away from.
+#'
+#' @param tab A `main_nav` value.
+#' @return `TRUE` when the tab is only reachable with a completed project.
+#' @noRd
+.tab_requires_completed_project <- function(tab) {
+  if (length(tab) != 1L || is.na(tab)) return(FALSE)
+  identical(tab, "synthesis") || grepl("^famille_", tab)
+}
 
 #' Build the ordered guided-tour step specs.
 #'
+#' Steps on tabs that need a completed project are dropped unless the project
+#' actually is completed - see `.tab_requires_completed_project()`.
+#'
 #' @param i18n A translator from [get_i18n()].
 #' @param max_parcels Integer interpolated into the map step description.
+#' @param project_status Current `app_state$project_status` (`NULL` when no
+#'   project is loaded).
 #' @return A list of step specs, each a list with `el` (namespaced id),
 #'   `title`, `description` and `tab` (the `main_nav` value to activate).
 #' @noRd
-build_tour_steps <- function(i18n, max_parcels = 30L) {
-  list(
+build_tour_steps <- function(i18n, max_parcels = 30L, project_status = NULL) {
+  steps <- list(
     # ----- Accueil (onboarding creation de projet) -----
     list(tab = "selection", el = "home-search_card",
          title = i18n$t("tour_search_title"),
@@ -59,7 +92,7 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
          title = i18n$t("tour_create_title"),
          description = i18n$t("tour_create_desc")),
     # ----- 1 step cle par onglet -----
-    list(tab = "synthesis", el = "synthesis-project_summary",
+    list(tab = "synthesis", el = "synthesis-summary_card",
          title = i18n$t("tour_synthesis_title"),
          description = i18n$t("tour_synthesis_desc")),
     list(tab = "action_plan", el = "action_plan-action_sidebar",
@@ -71,10 +104,12 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
     list(tab = "monitoring", el = "monitoring-mode",
          title = i18n$t("tour_monitoring_title"),
          description = i18n$t("tour_monitoring_desc")),
-    list(tab = "famille_carbone", el = "famille_carbone-maps_row",
+    list(tab = "famille_carbone", el = "famille_carbone-family_header",
          title = i18n$t("tour_families_title"),
          description = i18n$t("tour_families_desc"))
   )
+  if (identical(project_status, "completed")) return(steps)
+  Filter(function(s) !.tab_requires_completed_project(s$tab), steps)
 }
 
 #' JS (run in cicerone's `on_highlight_started`) switching the active
@@ -162,12 +197,15 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
 #'
 #' @param i18n A translator from [get_i18n()].
 #' @param max_parcels Integer for the map step.
+#' @param project_status Current `app_state$project_status`, forwarded to
+#'   [build_tour_steps()] so restricted tabs are skipped.
 #' @return A `cicerone::Cicerone` R6 object with every step chained, or
 #'   NULL when cicerone is unavailable.
 #' @noRd
-build_tour_guide <- function(i18n, max_parcels = 30L) {
+build_tour_guide <- function(i18n, max_parcels = 30L, project_status = NULL) {
   if (!requireNamespace("cicerone", quietly = TRUE)) return(NULL)
-  steps <- build_tour_steps(i18n, max_parcels = max_parcels)
+  steps <- build_tour_steps(i18n, max_parcels = max_parcels,
+                            project_status = project_status)
   guide <- cicerone::Cicerone$new()
   for (s in steps) {
     # `is_id = TRUE` (cicerone default) -> el is treated as an #id.

@@ -1748,8 +1748,12 @@ mod_home_server <- function(id, app_state) {
       # below (collapse opening, JS-timed auto-start, restart) stay here.
       do_start_tour <- function() {
         tryCatch({
+          # Le statut conditionne les etapes : Synthese et les familles ne
+          # sont atteignables qu'avec un projet `completed` - les proposer
+          # avant declencherait le renvoi vers l'Accueil (app_server).
           guide <- build_tour_guide(
-            i18n, max_parcels = get_app_config("max_parcels", 30L))
+            i18n, max_parcels = get_app_config("max_parcels", 30L),
+            project_status = app_state$project_status)
           if (is.null(guide)) return(invisible(NULL))
           guide$init(session = session)$start()
         }, error = function(e) {
