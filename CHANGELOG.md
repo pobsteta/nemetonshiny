@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.26\] - 2026-09-19
+
+### Fixed
+
+- Tour guide : le clic synthetique de bascule d’onglet remontait jusqu’a
+  `window`, ou driver.js l’interpretait comme un clic hors popover et
+  fermait le tour (`reset()`). L’etape suivante s’affichait encore, mais
+  `isActivated` etait FALSE : ni « Suivant », ni « Fermer », ni le
+  clavier ne repondaient, et la re-mesure `resize` etait inoperante. Le
+  clic est etouffe au niveau de `document`, apres le handler delegue de
+  Bootstrap.
+- Tour guide : l’etape « Recherche » etait ancree sur
+  `home-search_collapse` (le corps repliable seul), laissant le titre «
+  Rechercher une commune… » sous le voile sombre. Nouvelle ancre
+  `home-search_card`, la carte entiere.
+
 ## \[0.143.25\] - 2026-09-18
 
 ### Changed

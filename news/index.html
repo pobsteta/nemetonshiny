@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.25</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.26</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.26" id="nemetonshiny-014326-2026-09-19">nemetonshiny 0.143.26 (2026-09-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014326-2026-09-19"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-tour-guide-mourait-a-la-deuxieme-etape-0-143-26">Fixed — le tour guide mourait a la deuxieme etape<a class="anchor" aria-label="anchor" href="#fixed--le-tour-guide-mourait-a-la-deuxieme-etape-0-143-26"></a></h4>
+<p>Deux defauts distincts, tous deux visibles des l’ouverture du tour.</p>
+<p><strong>1. Plus rien n’etait cliquable apres « Suivant ».</strong> driver.js (embarque dans cicerone) ecoute les clics sur <code>window</code> : des qu’un element est mis en avant, tout clic hors du popover et hors de cet element ferme le tour (<code>allowClose</code> vaut TRUE). Or la bascule d’onglet du tour passe par un clic synthetique sur le lien de nav, emis <strong>pendant</strong> <code>on_highlight_started</code> — donc alors que l’etape precedente est encore l’element courant. driver appelait <code>reset()</code>, puis la suite de <code>highlight()</code> reaffichait quand meme popover et cadre : l’etape 2 s’affichait, mais <code>isActivated</code> etait repasse a FALSE et ni « Suivant », ni « Fermer », ni les fleches du clavier ne repondaient plus. La premiere etape y echappait seulement parce qu’aucun element n’etait encore mis en avant. Le clic est desormais etouffe au niveau de <code>document</code>, <strong>apres</strong> le handler delegue de Bootstrap : l’onglet bascule normalement, l’evenement n’atteint jamais driver.js. Mesure dans Chrome : <code>isActivated</code> reste TRUE a l’etape 2, l’onglet bascule, et la re-mesure <code>resize</code> (qui exige <code>isActivated</code>) redevient effective.</p>
+<p><strong>2. Le titre « Rechercher une commune… » restait sous le voile.</strong> L’etape etait ancree sur <code>home-search_collapse</code>, le corps repliable <strong>seul</strong> : l’en-tete de la carte ne faisait pas partie de l’element mis en avant et restait donc assombri. L’ancre est desormais <code>home-search_card</code>, la carte entiere.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.25" id="nemetonshiny-014325-2026-09-18">nemetonshiny 0.143.25 (2026-09-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014325-2026-09-18"></a></h2>
 <div class="section level4">

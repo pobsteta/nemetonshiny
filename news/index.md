@@ -1,5 +1,34 @@
 # Changelog
 
+## nemetonshiny 0.143.26 (2026-09-19)
+
+#### Fixed — le tour guide mourait a la deuxieme etape
+
+Deux defauts distincts, tous deux visibles des l’ouverture du tour.
+
+**1. Plus rien n’etait cliquable apres « Suivant ».** driver.js
+(embarque dans cicerone) ecoute les clics sur `window` : des qu’un
+element est mis en avant, tout clic hors du popover et hors de cet
+element ferme le tour (`allowClose` vaut TRUE). Or la bascule d’onglet
+du tour passe par un clic synthetique sur le lien de nav, emis
+**pendant** `on_highlight_started` — donc alors que l’etape precedente
+est encore l’element courant. driver appelait `reset()`, puis la suite
+de `highlight()` reaffichait quand meme popover et cadre : l’etape 2
+s’affichait, mais `isActivated` etait repasse a FALSE et ni « Suivant »,
+ni « Fermer », ni les fleches du clavier ne repondaient plus. La
+premiere etape y echappait seulement parce qu’aucun element n’etait
+encore mis en avant. Le clic est desormais etouffe au niveau de
+`document`, **apres** le handler delegue de Bootstrap : l’onglet bascule
+normalement, l’evenement n’atteint jamais driver.js. Mesure dans Chrome
+: `isActivated` reste TRUE a l’etape 2, l’onglet bascule, et la
+re-mesure `resize` (qui exige `isActivated`) redevient effective.
+
+**2. Le titre « Rechercher une commune… » restait sous le voile.**
+L’etape etait ancree sur `home-search_collapse`, le corps repliable
+**seul** : l’en-tete de la carte ne faisait pas partie de l’element mis
+en avant et restait donc assombri. L’ancre est desormais
+`home-search_card`, la carte entiere.
+
 ## nemetonshiny 0.143.25 (2026-09-18)
 
 #### Changed — trois echelles changent cote cœur : L1, T1, E1/E2 (spec 048)
