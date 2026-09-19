@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.27</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.28</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.28" id="nemetonshiny-014328-2026-09-19">nemetonshiny 0.143.28 (2026-09-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014328-2026-09-19"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-tremblement-de-letape--plan-daction--0-143-28">Fixed — le tremblement de l’etape « Plan d’action »<a class="anchor" aria-label="anchor" href="#fixed--le-tremblement-de-letape--plan-daction--0-143-28"></a></h4>
+<p>Derniere piece du tour guide, et la plus instructive : une boucle de retroaction entre driver.js et bslib, mesuree dans l’app reelle.</p>
+<p>La sidebar du Plan d’actions fait <strong>793 px de haut dans une fenetre de 900</strong>. driver.js pose son popover A COTE de l’element cadre ; face a un element presque aussi haut que la fenetre, il n’a plus la place et le sort de l’ecran (<code>top = -24</code>). La page se met alors a osciller entre <strong>avec</strong> et <strong>sans</strong> barre de defilement — mesure : <code>innerWidth - clientWidth</code> alterne 0 / 15 px, ~25 fois en 3,5 s. Chaque bascule reveille le <code>ResizeObserver</code> de bslib, qui redispatche un <code>resize</code>, que driver.js ecoute pour se recadrer. La boucle s’entretient seule : <strong>326 evenements en 6,4 s</strong>, le cadre oscillant de 1 a 2 px et le popover de 15 px. C’est exactement le tremblement signale, et il ne touchait QUE cette etape (mesure comparative : 0 evenement sur toutes les autres ancres).</p>
+<p>L’etape est desormais ancree sur la carte « Tableau des actions » (322x641) et non sur la sidebar qui la contient, avec <code>position = "left"</code> : le popover se cale a gauche de la carte au lieu d’etre pousse hors champ. Meme mesure apres correctif : <strong>0 evenement</strong>, geometrie strictement stable, popover entierement visible. Sur le tour complet, le compteur global tombe de ~130 a 60.</p>
+<p>Regle a retenir, consignee dans <code>service_tour.R</code> : <strong>une ancre de tour ne doit pas remplir la fenetre</strong>. <code>action_table_card()</code> gagne un parametre <code>card_id</code> optionnel pour permettre d’ancrer la carte entiere — en-tete compris, donc au-dessus du voile.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.27" id="nemetonshiny-014327-2026-09-19">nemetonshiny 0.143.27 (2026-09-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014327-2026-09-19"></a></h2>
 <div class="section level4">
