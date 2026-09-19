@@ -13,7 +13,10 @@
 )
 
 test_that("build_tour_steps yields a well-formed, i18n-resolved spec", {
-  steps <- nemetonshiny:::build_tour_steps(nemetonshiny:::get_i18n("fr"), 30L)
+  # Catalogue COMPLET : `project_status = "completed"` est le seul etat ou
+  # toutes les etapes sont proposees (cf. onglets restreints plus bas).
+  steps <- nemetonshiny:::build_tour_steps(
+    nemetonshiny:::get_i18n("fr"), 30L, project_status = "completed")
   expect_gte(length(steps), 11L)
   for (s in steps) {
     expect_true(all(c("el", "title", "description", "tab") %in% names(s)))
@@ -36,7 +39,8 @@ test_that("build_tour_steps yields a well-formed, i18n-resolved spec", {
 })
 
 test_that("build_tour_steps resolves identically in EN", {
-  steps_en <- nemetonshiny:::build_tour_steps(nemetonshiny:::get_i18n("en"), 30L)
+  steps_en <- nemetonshiny:::build_tour_steps(
+    nemetonshiny:::get_i18n("en"), 30L, project_status = "completed")
   for (s in steps_en) {
     expect_false(grepl("not found", s$title, ignore.case = TRUE))
     expect_false(grepl("^tour_[a-z_]+$", s$title))
@@ -46,7 +50,8 @@ test_that("build_tour_steps resolves identically in EN", {
 test_that("every tour anchor id still exists in the app UI", {
   skip_if_not_installed("bslib")
   ui_html <- as.character(nemetonshiny:::app_ui(list()))
-  steps <- nemetonshiny:::build_tour_steps(nemetonshiny:::get_i18n("fr"), 30L)
+  steps <- nemetonshiny:::build_tour_steps(
+    nemetonshiny:::get_i18n("fr"), 30L, project_status = "completed")
 
   # `home-project-create_project` is rendered server-side (mod_project's
   # action_button renderUI, create mode) — its static proxy is the
@@ -61,6 +66,85 @@ test_that("every tour anchor id still exists in the app UI", {
   }
   # Proxy container for the server-rendered create button.
   expect_true(grepl('id="home-project-action_button"', ui_html, fixed = TRUE))
+})
+
+
+test_that("les ancres du tour sont STATIQUES, pas des sorties serveur", {
+  skip_if_not_installed("bslib")
+  # Mesure du 2026-09-19 : un `uiOutput` porte par un onglet masque est
+  # SUSPENDU. Il ne rend rien avant un aller-retour serveur, donc il mesure
+  # 0 de haut a l'instant ou driver.js cadre l'etape (`synthesis-project_summary`
+  # = 447x0, `famille_carbone-maps_row` = 1408x0) : `canHighlight()` est faux
+  # et l'etape est sautee EN SILENCE. Une ancre doit donc etre un conteneur
+  # statique. Seule exception : `home-project-create_project`, rendu cote
+  # serveur mais sur l'onglet DEJA visible (output non suspendu).
+  ui_html <- as.character(nemetonshiny:::app_ui(list()))
+  steps <- nemetonshiny:::build_tour_steps(
+    nemetonshiny:::get_i18n("fr"), 30L, project_status = "completed")
+  for (s in steps) {
+    if (identical(s$el, "home-project-create_project")) next
+    i <- regexpr(paste0('id="', s$el, '"'), ui_html, fixed = TRUE)
+    expect_gt(i, 0)
+    # la balise porteuse de l'id : de son '<' jusqu'au '>' suivant
+    debut <- max(gregexpr("<", substr(ui_html, 1, i), fixed = TRUE)[[1]])
+    balise <- substr(ui_html, debut, debut + regexpr(">", substr(ui_html, debut, nchar(ui_html)), fixed = TRUE) - 1L)
+    expect_false(
+      grepl("shiny-html-output", balise, fixed = TRUE),
+      info = paste("ancre de tour rendue cote serveur (mesure 0 a froid):", s$el)
+    )
+  }
+})
+
+
+# --- Onglets restreints : le tour ne doit pas y aller sans projet ----------
+
+test_that(".tab_requires_completed_project reconnait Synthese et les familles", {
+  f <- nemetonshiny:::.tab_requires_completed_project
+  expect_true(f("synthesis"))
+  expect_true(f("famille_carbone"))
+  expect_true(f("famille_naturalite"))
+  expect_false(f("selection"))
+  expect_false(f("action_plan"))
+  expect_false(f("terrain"))
+  expect_false(f("monitoring"))
+  expect_false(f("regeneration"))
+  # entrees degenerees : ne jamais restreindre par accident
+  expect_false(f(NULL))
+  expect_false(f(character(0)))
+  expect_false(f(NA_character_))
+})
+
+test_that("les etapes d'onglets restreints sautent tant que le projet n'est pas termine", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  onglets <- function(statut) {
+    vapply(nemetonshiny:::build_tour_steps(i18n, 30L, project_status = statut),
+           function(s) s$tab, character(1))
+  }
+  # Sans projet (cas de l'auto-demarrage) : ni Synthese ni famille. Sinon
+  # l'app renvoie sur l'Accueil (app_server) pendant que driver.js cadre.
+  for (statut in list(NULL, "none", "draft", "computing")) {
+    tabs <- onglets(statut)
+    expect_false("synthesis" %in% tabs, info = paste("statut:", statut %||% "NULL"))
+    expect_false(any(grepl("^famille_", tabs)), info = paste("statut:", statut %||% "NULL"))
+    # les onglets libres, eux, restent couverts
+    for (t in c("selection", "action_plan", "terrain", "monitoring")) {
+      expect_true(t %in% tabs)
+    }
+  }
+  # Projet termine : les deux etapes reviennent.
+  tabs <- onglets("completed")
+  expect_true("synthesis" %in% tabs)
+  expect_true("famille_carbone" %in% tabs)
+})
+
+test_that("app_server partage le predicat du filtre (pas de liste dupliquee)", {
+  # Les deux listes DOIVENT coincider : c'est leur divergence qui envoyait le
+  # tour sur un onglet d'ou l'app le renvoyait aussitot.
+  src <- readLines(testthat::test_path("..", "..", "R", "app_server.R"),
+                   warn = FALSE, encoding = "UTF-8")
+  expect_true(any(grepl(".tab_requires_completed_project", src, fixed = TRUE)))
+  # et plus aucune liste en dur cote app_server
+  expect_false(any(grepl('grep("^famille_"', src, fixed = TRUE)))
 })
 
 test_that("build_tour_guide returns a cicerone guide when available", {

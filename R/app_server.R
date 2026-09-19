@@ -254,13 +254,17 @@ app_server <- function(input, output, session) {
 
   # Redirect to selection tab only if user tries to navigate to
   # restricted tabs (synthesis, families) before project is completed.
+  #
+  # Le predicat vit dans `service_tour.R` et sert AUSSI a filtrer les etapes
+  # du tour guide : les deux listes doivent coincider, sinon le tour emmene
+  # l'utilisateur sur un onglet d'ou l'app le renvoie aussitot (l'onglet
+  # s'affiche puis saute - c'est ce qui donnait l'impression d'un tour qui
+  # tremble, puis d'une etape muette, driver.js ne pouvant plus cadrer).
   shiny::observeEvent(input$main_nav, {
     tab <- input$main_nav
     status <- app_state$project_status
 
-    # Synthesis and family tabs require completed project
-    restricted <- c("synthesis", grep("^famille_", tab, value = TRUE))
-    if (tab %in% restricted && status != "completed") {
+    if (.tab_requires_completed_project(tab) && !identical(status, "completed")) {
       shiny::updateNavbarPage(session, "main_nav", selected = "selection")
     }
   })

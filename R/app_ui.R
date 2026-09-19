@@ -321,7 +321,14 @@ mod_synthesis_ui <- function(id) {
     row_heights = c("auto", 1),
 
     # Top row: Downloads, summary, and global score
+    #
+    # `summary_card` est l'ancre du tour guide. Elle porte la CARTE, pas le
+    # `uiOutput("project_summary")` qu'elle contient : un output suspendu sur
+    # un onglet masque ne rend rien avant un aller-retour serveur, donc il
+    # mesure 0 de haut a l'instant ou driver.js cadre l'etape - qui serait
+    # alors sautee en silence. Une ancre de tour doit etre STATIQUE.
     bslib::card(
+      id = ns("summary_card"),
       bslib::card_header(i18n$t("synthesis_title")),
       bslib::card_body(
         bslib::layout_columns(
@@ -646,7 +653,10 @@ mod_family_ui <- function(id, family_code) {
 
   htmltools::tagList(
     # Family header
+    # `family_header` est l'ancre du tour guide : statique, donc mesurable des
+    # l'affichage de l'onglet (cf. `summary_card` dans mod_synthesis_ui).
     htmltools::div(
+      id = ns("family_header"),
       class = "d-flex align-items-center mb-3",
       bsicons::bs_icon(family$icon, class = "me-2"),
       htmltools::span(family_name, class = "fw-bold me-2"),

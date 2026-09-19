@@ -1,3 +1,42 @@
+# nemetonshiny 0.143.27 (2026-09-19)
+
+### Fixed — le tour guide entrait dans des onglets que l'app lui interdit
+
+Suite du correctif 0.143.26. Une fois le tour reste vivant, deux etapes sur
+onze restaient muettes, et l'onglet vise s'affichait avant de sauter en
+arriere — « ca tremble puis ca reste bloque ». Les deux symptomes ont la meme
+racine, mesuree dans l'app reelle pilotee en Chrome sans tete.
+
+**L'app interdit Synthese et les familles tant que le projet n'est pas
+`completed`** : `app_server` renvoie alors la navigation sur l'Accueil. Le tour
+auto-demarre precisement dans cet etat (visiteur sans projet) et proposait
+malgre tout ces deux etapes. Il declenchait donc son propre renvoi : l'onglet
+s'affiche, l'aller-retour serveur le ramene sur l'Accueil, et le cadre saute.
+Le predicat de restriction vit desormais dans `service_tour.R`
+(`.tab_requires_completed_project`) et sert **aux deux** cotes — la garde de
+navigation ET le filtre des etapes — de sorte que les deux listes ne peuvent
+plus diverger. Sans projet termine, le tour couvre l'Accueil, le Plan d'action,
+le Terrain et le Suivi ; les deux etapes reviennent des que le projet est
+calcule.
+
+**Une ancre de tour doit etre STATIQUE.** Present dans le DOM ne suffit pas :
+un `uiOutput` porte par un onglet jusque-la masque est SUSPENDU par Shiny — il
+ne rend rien avant un aller-retour serveur. Il mesure donc 0 de haut a
+l'instant ou driver.js cadre l'etape, `canHighlight()` est faux, et driver
+saute l'etape **en silence** : le popover reste sur l'etape precedente, ce que
+l'utilisateur lit comme un tour bloque. Mesure a l'instant du cadrage :
+`synthesis-project_summary` = 447x0 et `famille_carbone-maps_row` = 1408x0,
+la ou une carte ou une sidebar statique donne sa vraie geometrie. Les deux
+ancres deviennent donc `synthesis-summary_card` (la carte « Synthese du
+projet ») et `famille_carbone-family_header` (l'en-tete de famille). Un test
+verrouille la regle pour toutes les ancres : aucune ne doit etre un conteneur
+`shiny-html-output`.
+
+Verification, meme scenario qu'avant/apres dans l'app reelle : 9 etapes,
+`isActivated` vrai de bout en bout, chaque cadre colle a son ancre (stage =
+element + 10 px), plus aucun retour d'onglet, et fin de tour propre (voile et
+cadre retires, popover masque).
+
 # nemetonshiny 0.143.26 (2026-09-19)
 
 ### Fixed — le tour guide mourait a la deuxieme etape
