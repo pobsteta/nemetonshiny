@@ -43,9 +43,18 @@ mod_action_plan_ui <- function(id) {
   action_panel_id <- ns("actions_collapse")
   # `action_table_card()` (R/utils_ui.R) porte cet en-tete : c'est le bloc de
   # reference, repris tel quel par la Desserte et la reGeneration.
+  # `card_id` est l'ancre du tour guide : la CARTE, pas la sidebar qui la
+  # contient. Mesure du 2026-09-19 : ancre sur `action_sidebar` (370x793 dans
+  # une fenetre de 900), driver.js n'a plus la place de poser son popover et
+  # le sort de l'ecran (top = -24) ; la page bascule alors sans fin entre avec
+  # et sans barre de defilement, chaque bascule reveille le ResizeObserver de
+  # bslib qui redispatche un `resize`, que driver.js ecoute pour se recadrer -
+  # 122 evenements en 2 s, soit le tremblement signale. Ancree sur cette carte
+  # (322x641), la meme mesure donne 0.
   action_panel <- action_table_card(
     action_panel_id,
     i18n$t("action_plan_actions_title"),
+    card_id = ns("actions_card"),
 
         # ---- Selection ---------------------------------------------
         htmltools::tags$h6(class = "mt-1",

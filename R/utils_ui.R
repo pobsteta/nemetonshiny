@@ -26,6 +26,10 @@ NULL
 #' @param ... UI elements placed in the card body.
 #' @param icon Character. bsicons name shown before the title.
 #' @param open Logical. Whether the body starts unfolded.
+#' @param card_id Character or NULL. Id of the OUTER card (header + body).
+#'   Only needed when something must target the whole card rather than its
+#'   collapsible body - the guided tour does, so that the header stays above
+#'   the overlay instead of being left in the dark.
 #' @param card_class Character. Classes of the outer card.
 #' @param body_class Character. Classes of the card body.
 #'
@@ -37,9 +41,11 @@ action_table_card <- function(collapse_id,
                               ...,
                               icon = "clipboard-check",
                               open = TRUE,
+                              card_id = NULL,
                               card_class = "card mb-3",
                               body_class = "card-body p-3") {
   htmltools::tags$div(
+    id = card_id,
     class = card_class,
     # En-tete cliquable : c'est LUI qui replie le corps, d'ou le curseur main.
     htmltools::tags$div(
