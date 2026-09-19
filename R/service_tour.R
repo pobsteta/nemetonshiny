@@ -40,7 +40,7 @@
 build_tour_steps <- function(i18n, max_parcels = 30L) {
   list(
     # ----- Accueil (onboarding creation de projet) -----
-    list(tab = "selection", el = "home-search_collapse",
+    list(tab = "selection", el = "home-search_card",
          title = i18n$t("tour_search_title"),
          description = i18n$t("tour_search_desc")),
     list(tab = "selection", el = "home-map-map_card",
@@ -99,6 +99,19 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
 #' compilation des steps (driver.js se retrouve " no steps to iterate ") et
 #' donc la bascule d'onglet du tour. L'envelopper en `function(){...}` la rend
 #' valide : `new Function("return function(){...}")()` renvoie la fonction.
+#'
+#' IMPORTANT (2) - le clic doit etre ETOUFFE avant `window`. driver.js ecoute
+#' les clics sur `window` (`bind()` -> `onClick`) et, des qu'un element est
+#' deja mis en avant, tout clic hors du popover et hors de cet element
+#' declenche `reset()` (`allowClose` vaut TRUE par defaut). Or notre clic de
+#' bascule part DANS `on_highlight_started`, c.-a-d. pendant que le step
+#' precedent est encore l'element courant : driver fermait donc le tour, puis
+#' la suite de `highlight()` reaffichait quand meme popover et cadre. D'ou le
+#' symptome observe (2026-09-19) : l'etape 2 s'affiche, mais `isActivated` est
+#' repasse a FALSE et plus rien n'est cliquable - ni Suivant, ni Fermer, ni
+#' les fleches du clavier - et la re-mesure `resize` ci-dessous devenait elle
+#' aussi inoperante. La premiere etape y echappait seulement parce qu'aucun
+#' element n'etait encore mis en avant (`hasHighlightedElement()` faux).
 #' @noRd
 .tour_switch_tab_js <- function(tab) {
   # Cliquer suffit a ACTIVER l'onglet, pas a le MESURER. Un `.tab-pane`
@@ -130,7 +143,14 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
       "__l.removeEventListener('shown.bs.tab',__h);",
       "requestAnimationFrame(function(){requestAnimationFrame(__r);});};",
       "__l.addEventListener('shown.bs.tab',__h);",
-      "__l.click();",
+      # Le clic synthetique ne doit PAS remonter jusqu'a `window` : driver.js
+      # y ecoute les clics et fermerait le tour (voir commentaire ci-dessus).
+      # On le stoppe au niveau de `document`, APRES le handler delegue de
+      # Bootstrap (enregistre au chargement, donc avant celui-ci) : l'onglet
+      # bascule normalement, mais l'evenement n'atteint jamais driver.js.
+      "var __s=function(ev){ev.stopPropagation();};",
+      "document.addEventListener('click',__s,false);",
+      "try{__l.click();}finally{document.removeEventListener('click',__s,false);}",
       "setTimeout(__h,250);",
       "}"
     ),

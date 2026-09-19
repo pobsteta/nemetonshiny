@@ -70,7 +70,11 @@ mod_home_ui <- function(id) {
       ),
 
       # Search Section (collapsible)
+      # `search_card` porte la CARTE ENTIERE (en-tete + corps). C'est l'ancre
+      # du tour guide : ancre sur `search_collapse` (le corps seul), le cadre
+      # laissait le titre « Rechercher une commune... » sous le voile sombre.
       htmltools::tags$div(
+        id = ns("search_card"),
         class = "card mb-3",
         htmltools::tags$div(
           class = "card-header bg-primary text-white py-2",
