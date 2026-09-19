@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.26</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.27</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.27" id="nemetonshiny-014327-2026-09-19">nemetonshiny 0.143.27 (2026-09-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014327-2026-09-19"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-tour-guide-entrait-dans-des-onglets-que-lapp-lui-interdit-0-143-27">Fixed — le tour guide entrait dans des onglets que l’app lui interdit<a class="anchor" aria-label="anchor" href="#fixed--le-tour-guide-entrait-dans-des-onglets-que-lapp-lui-interdit-0-143-27"></a></h4>
+<p>Suite du correctif 0.143.26. Une fois le tour reste vivant, deux etapes sur onze restaient muettes, et l’onglet vise s’affichait avant de sauter en arriere — « ca tremble puis ca reste bloque ». Les deux symptomes ont la meme racine, mesuree dans l’app reelle pilotee en Chrome sans tete.</p>
+<p><strong>L’app interdit Synthese et les familles tant que le projet n’est pas <code>completed</code></strong> : <code>app_server</code> renvoie alors la navigation sur l’Accueil. Le tour auto-demarre precisement dans cet etat (visiteur sans projet) et proposait malgre tout ces deux etapes. Il declenchait donc son propre renvoi : l’onglet s’affiche, l’aller-retour serveur le ramene sur l’Accueil, et le cadre saute. Le predicat de restriction vit desormais dans <code>service_tour.R</code> (<code>.tab_requires_completed_project</code>) et sert <strong>aux deux</strong> cotes — la garde de navigation ET le filtre des etapes — de sorte que les deux listes ne peuvent plus diverger. Sans projet termine, le tour couvre l’Accueil, le Plan d’action, le Terrain et le Suivi ; les deux etapes reviennent des que le projet est calcule.</p>
+<p><strong>Une ancre de tour doit etre STATIQUE.</strong> Present dans le DOM ne suffit pas : un <code>uiOutput</code> porte par un onglet jusque-la masque est SUSPENDU par Shiny — il ne rend rien avant un aller-retour serveur. Il mesure donc 0 de haut a l’instant ou driver.js cadre l’etape, <code>canHighlight()</code> est faux, et driver saute l’etape <strong>en silence</strong> : le popover reste sur l’etape precedente, ce que l’utilisateur lit comme un tour bloque. Mesure a l’instant du cadrage : <code>synthesis-project_summary</code> = 447x0 et <code>famille_carbone-maps_row</code> = 1408x0, la ou une carte ou une sidebar statique donne sa vraie geometrie. Les deux ancres deviennent donc <code>synthesis-summary_card</code> (la carte « Synthese du projet ») et <code>famille_carbone-family_header</code> (l’en-tete de famille). Un test verrouille la regle pour toutes les ancres : aucune ne doit etre un conteneur <code>shiny-html-output</code>.</p>
+<p>Verification, meme scenario qu’avant/apres dans l’app reelle : 9 etapes, <code>isActivated</code> vrai de bout en bout, chaque cadre colle a son ancre (stage = element + 10 px), plus aucun retour d’onglet, et fin de tour propre (voile et cadre retires, popover masque).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.26" id="nemetonshiny-014326-2026-09-19">nemetonshiny 0.143.26 (2026-09-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014326-2026-09-19"></a></h2>
 <div class="section level4">

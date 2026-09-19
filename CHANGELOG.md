@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.27\] - 2026-09-19
+
+### Fixed
+
+- Tour guide : les etapes Synthese et Famille etaient proposees alors
+  que l’app renvoie sur l’Accueil toute navigation vers ces onglets tant
+  que le projet n’est pas `completed`. Le tour declenchait donc son
+  propre renvoi - l’onglet s’affichait puis sautait. Le predicat de
+  restriction (`.tab_requires_completed_project`) est desormais partage
+  entre la garde de navigation d’`app_server` et le filtre des etapes.
+- Tour guide : une ancre rendue cote serveur mesure 0 de haut a
+  l’instant du cadrage (un `uiOutput` porte par un onglet masque est
+  suspendu par Shiny), `canHighlight()` est faux et driver.js saute
+  l’etape en silence sans toucher au popover. Ancres desormais statiques
+  : `synthesis-summary_card` et `famille_carbone-family_header`.
+
 ## \[0.143.26\] - 2026-09-19
 
 ### Fixed
