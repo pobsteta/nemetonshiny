@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.27.9001 (2026-09-19)
+# nemetonshiny 0.143.28 (2026-09-19)
 
 ### Fixed — le tremblement de l'etape « Plan d'action »
 

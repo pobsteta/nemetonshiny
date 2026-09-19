@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.28] - 2026-09-19
+
+### Fixed
+
+- Tour guide : l'etape « Plan d'action » tremblait sans fin. La sidebar ancree
+  fait 793 px de haut dans une fenetre de 900 : driver.js, faute de place,
+  poussait son popover hors de l'ecran, la page oscillait entre avec et sans
+  barre de defilement, et chaque bascule reveillait le `ResizeObserver` de
+  bslib qui redispatchait un `resize` que driver.js ecoutait pour se recadrer
+  (326 evenements en 6,4 s). L'etape est desormais ancree sur la carte
+  « Tableau des actions » avec `position = "left"` : 0 evenement, geometrie
+  stable, popover entierement visible.
+
+### Changed
+
+- `action_table_card()` accepte un `card_id` optionnel, pour ancrer la carte
+  entiere (en-tete compris) plutot que son seul corps repliable.
+
 ## [0.143.27] - 2026-09-19
 
 ### Fixed
