@@ -337,3 +337,48 @@ test_that("l'etape Recherche cadre la carte entiere, en-tete compris", {
   expect_true(grepl(
     nemetonshiny:::get_i18n("fr")$t("search_commune"), entete, fixed = TRUE))
 })
+
+
+# --- Taille de l'ancre : le tremblement du Plan d'actions (2026-09-19) ------
+
+test_that("l'etape Plan d'action cadre la carte, pas la sidebar qui la contient", {
+  skip_if_not_installed("bslib")
+  steps <- nemetonshiny:::build_tour_steps(
+    nemetonshiny:::get_i18n("fr"), 30L, project_status = "completed")
+  etape <- Filter(function(s) identical(s$tab, "action_plan"), steps)[[1]]
+
+  # Regression mesuree : ancree sur `action_plan-action_sidebar` (370x793 dans
+  # une fenetre de 900), driver.js pousse son popover hors de l'ecran
+  # (top = -24) ; la page oscille entre avec et sans barre de defilement, le
+  # ResizeObserver de bslib redispatche un `resize` a chaque bascule et
+  # driver.js se recadre - 122 evenements en 2 s, sans fin. Sur la carte
+  # (322x641), la meme mesure donne 0.
+  expect_identical(etape$el, "action_plan-actions_card")
+  expect_false(grepl("sidebar", etape$el, fixed = TRUE))
+
+  # Et comme pour la carte de recherche : c'est la carte ENTIERE, donc son
+  # en-tete « Tableau des actions » reste au-dessus du voile.
+  ui_html <- as.character(nemetonshiny:::app_ui(list()))
+  i_card <- regexpr('id="action_plan-actions_card"', ui_html, fixed = TRUE)
+  i_body <- regexpr('id="action_plan-actions_collapse"', ui_html, fixed = TRUE)
+  expect_gt(i_card, 0)
+  expect_gt(i_body, i_card)
+  entete <- substr(ui_html, i_card, i_body)
+  expect_true(grepl("card-header", entete, fixed = TRUE))
+  expect_true(grepl(
+    nemetonshiny:::get_i18n("fr")$t("action_plan_actions_title"),
+    entete, fixed = TRUE))
+})
+
+test_that("action_table_card ne pose un id que si on lui en donne un", {
+  # `card_id` est optionnel : les autres appelants (Accessibilite, Desserte,
+  # reGeneration) ne doivent pas se retrouver avec un `id` vide ou duplique.
+  sans <- as.character(nemetonshiny:::action_table_card("x_collapse", "T"))
+  # la balise OUVRANTE (la carte) ne porte pas d'id - le corps repliable, si
+  premiere <- substr(sans, 1, regexpr(">", sans, fixed = TRUE))
+  expect_false(grepl("id=", premiere, fixed = TRUE))
+  expect_true(grepl('class="card mb-3"', premiere, fixed = TRUE))
+  avec <- as.character(
+    nemetonshiny:::action_table_card("x_collapse", "T", card_id = "x_card"))
+  expect_true(grepl('id="x_card"', avec, fixed = TRUE))
+})

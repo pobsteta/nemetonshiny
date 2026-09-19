@@ -38,6 +38,19 @@
 # une ancre, mettre a jour ici ET le test d'inventaire
 # (`test-service_tour.R`).
 #
+# TAILLE DE L'ANCRE : une ancre ne doit pas remplir la fenetre. driver.js
+# pose son popover A COTE de l'element cadre ; face a un element presque aussi
+# haut que la fenetre, il le pousse HORS de l'ecran (mesure : ancre
+# `action_plan-action_sidebar`, 370x793 dans 900 de haut -> popover a
+# top = -24). La page se met alors a osciller entre avec et sans barre de
+# defilement, et chaque bascule reveille le ResizeObserver de bslib, qui
+# redispatche un `resize` - que driver.js ecoute pour se recadrer. La boucle
+# s'entretient : 122 evenements en 2 s, ~50 par seconde, sans fin. C'est le
+# tremblement signale le 2026-09-19, et il ne touchait QUE cette etape
+# (0 evenement sur toutes les autres ancres, mesure comparative). Ancrer sur
+# la carte « Tableau des actions » (322x641) au lieu de la sidebar qui la
+# contient ramene la mesure a 0.
+#
 # ONGLETS RESTREINTS : l'app renvoie sur l'Accueil toute navigation vers
 # Synthese ou une famille tant que le projet n'est pas `completed`
 # (cf. `.tab_requires_completed_project`). Le tour ne doit donc pas y aller
@@ -95,7 +108,13 @@ build_tour_steps <- function(i18n, max_parcels = 30L, project_status = NULL) {
     list(tab = "synthesis", el = "synthesis-summary_card",
          title = i18n$t("tour_synthesis_title"),
          description = i18n$t("tour_synthesis_desc")),
-    list(tab = "action_plan", el = "action_plan-action_sidebar",
+    # `position = "left"` : la carte est collee au bord DROIT de la fenetre et
+    # mesure 641 de haut. Au placement par defaut, driver.js pose le popover
+    # au-dessus et le haut du texte sort de l'ecran (mesure : top = -21 avec
+    # la description reelle, plus longue que le gabarit de test). A gauche, il
+    # se cale au niveau de la carte et tient entierement dans la fenetre.
+    list(tab = "action_plan", el = "action_plan-actions_card",
+         position = "left",
          title = i18n$t("tour_action_plan_title"),
          description = i18n$t("tour_action_plan_desc")),
     list(tab = "terrain", el = "sampling-sidebar",
@@ -215,6 +234,8 @@ build_tour_guide <- function(i18n, max_parcels = 30L, project_status = NULL) {
       el                  = s$el,
       title               = s$title,
       description         = s$description,
+      # `position` est optionnel : NULL laisse driver.js choisir.
+      position            = s$position,
       on_highlight_started = .tour_switch_tab_js(s$tab)
     )
   }

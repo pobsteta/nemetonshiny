@@ -1,3 +1,34 @@
+# nemetonshiny 0.143.28 (2026-09-19)
+
+### Fixed — le tremblement de l'etape « Plan d'action »
+
+Derniere piece du tour guide, et la plus instructive : une boucle de
+retroaction entre driver.js et bslib, mesuree dans l'app reelle.
+
+La sidebar du Plan d'actions fait **793 px de haut dans une fenetre de 900**.
+driver.js pose son popover A COTE de l'element cadre ; face a un element
+presque aussi haut que la fenetre, il n'a plus la place et le sort de l'ecran
+(`top = -24`). La page se met alors a osciller entre **avec** et **sans** barre
+de defilement — mesure : `innerWidth - clientWidth` alterne 0 / 15 px, ~25 fois
+en 3,5 s. Chaque bascule reveille le `ResizeObserver` de bslib, qui redispatche
+un `resize`, que driver.js ecoute pour se recadrer. La boucle s'entretient
+seule : **326 evenements en 6,4 s**, le cadre oscillant de 1 a 2 px et le
+popover de 15 px. C'est exactement le tremblement signale, et il ne touchait
+QUE cette etape (mesure comparative : 0 evenement sur toutes les autres
+ancres).
+
+L'etape est desormais ancree sur la carte « Tableau des actions »
+(322x641) et non sur la sidebar qui la contient, avec `position = "left"` :
+le popover se cale a gauche de la carte au lieu d'etre pousse hors champ.
+Meme mesure apres correctif : **0 evenement**, geometrie strictement stable,
+popover entierement visible. Sur le tour complet, le compteur global tombe de
+~130 a 60.
+
+Regle a retenir, consignee dans `service_tour.R` : **une ancre de tour ne doit
+pas remplir la fenetre**. `action_table_card()` gagne un parametre `card_id`
+optionnel pour permettre d'ancrer la carte entiere — en-tete compris, donc
+au-dessus du voile.
+
 # nemetonshiny 0.143.27 (2026-09-19)
 
 ### Fixed — le tour guide entrait dans des onglets que l'app lui interdit
