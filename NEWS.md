@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.25.9001 (2026-09-19)
+# nemetonshiny 0.143.26 (2026-09-19)
 
 ### Fixed — le tour guide mourait a la deuxieme etape
 
