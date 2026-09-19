@@ -215,3 +215,41 @@ test_that(".tour_switch_tab_js reste une expression de fonction equilibree", {
     expect_match(js, sprintf('data-value=\"%s\"', tab), fixed = TRUE)
   }
 })
+
+
+# --- Clic de bascule : ne doit pas fermer le tour (2026-09-19) -------------
+
+test_that(".tour_switch_tab_js etouffe le clic avant window", {
+  js <- nemetonshiny:::.tour_switch_tab_js("synthesis")
+  # Regression : driver.js ecoute les clics sur `window` et appelle reset()
+  # pour tout clic hors popover / hors element mis en avant (allowClose vaut
+  # TRUE). Notre clic de bascule partant PENDANT on_highlight_started - alors
+  # que le step precedent est encore l'element courant - il fermait le tour :
+  # l'etape suivante s'affichait mais plus rien n'y etait cliquable.
+  expect_match(js, "document.addEventListener('click'", fixed = TRUE)
+  expect_match(js, "stopPropagation", fixed = TRUE)
+  # L'ecoute est retiree dans la foulee, sinon elle etoufferait aussi les
+  # clics suivants de l'utilisateur.
+  expect_match(js, "finally{document.removeEventListener('click'", fixed = TRUE)
+})
+
+
+test_that("l'etape Recherche cadre la carte entiere, en-tete compris", {
+  skip_if_not_installed("bslib")
+  steps <- nemetonshiny:::build_tour_steps(nemetonshiny:::get_i18n("fr"), 30L)
+  # Ancre sur `home-search_collapse` (le corps repliable seul), le cadre
+  # laissait le titre « Rechercher une commune... » sous le voile sombre.
+  expect_identical(steps[[1]]$el, "home-search_card")
+
+  ui_html <- as.character(nemetonshiny:::app_ui(list()))
+  # Le titre doit se trouver ENTRE l'ouverture de la carte et l'ouverture du
+  # corps repliable : c'est ce qui prouve qu'il est bien dans l'element ancre.
+  i_card <- regexpr('id="home-search_card"', ui_html, fixed = TRUE)
+  i_body <- regexpr('id="home-search_collapse"', ui_html, fixed = TRUE)
+  expect_gt(i_card, 0)
+  expect_gt(i_body, i_card)
+  entete <- substr(ui_html, i_card, i_body)
+  expect_true(grepl("card-header", entete, fixed = TRUE))
+  expect_true(grepl(
+    nemetonshiny:::get_i18n("fr")$t("search_commune"), entete, fixed = TRUE))
+})
