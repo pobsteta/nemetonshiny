@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.26.9001 (2026-09-19)
+# nemetonshiny 0.143.27 (2026-09-19)
 
 ### Fixed — le tour guide entrait dans des onglets que l'app lui interdit
 
