@@ -482,18 +482,19 @@ test_that("un modele de hauteur sans vegetation n'est pas retenu", {
 test_that("la segmentation garde son emprise et son budget de cellules", {
   # De v0.140.0 a v0.140.1 l'appel etait bride par un `max_cells` force a 5e6,
   # qui coutait la resolution (0,50 m travaille a 2 m). Il ne doit pas revenir.
-  # L'emprise, elle, est appliquee COTE APP depuis v0.144.x : le chemin `aoi =`
-  # du cœur 0.198.0 casse lidR et empoisonne le processus (teste plus bas).
+  # L'emprise est de nouveau confiee au cœur (>= 0.199.2), qui garde entiers
+  # les houppiers a cheval ; le contournement de v0.144.1 (processus `callr`
+  # neuf + filtrage cote app) est retire.
   f <- testthat::test_path("..", "..", "R", "service_marculus.R")
   testthat::skip_if_not(file.exists(f), "sources R absentes")
   code <- readLines(f, warn = FALSE)
   code <- code[!grepl("^\\s*#", code)]
 
   expect_false(any(grepl("MARCULUS_HOUPPIER_MAX_CELLS", code, fixed = TRUE)))
-  # L'emprise du projet est toujours calculee et transmise au wrapper...
   expect_true(any(grepl(".marculus_aoi(projet)", code, fixed = TRUE)))
-  # ... qui l'applique lui-meme.
-  expect_true(any(grepl(".houppiers_dans_emprise(out, aoi)", code, fixed = TRUE)))
+  expect_true(any(grepl("segment_houppiers(chm, aoi = aoi)", code, fixed = TRUE)))
+  expect_false(any(grepl("callr::r(", code, fixed = TRUE)))
+  expect_false(any(grepl(".houppiers_dans_emprise", code, fixed = TRUE)))
 })
 
 
@@ -822,65 +823,19 @@ test_that("une parcelle au contour croise donne quand meme une emprise", {
   expect_true(all(sf::st_is_valid(aoi)))
 })
 
-test_that("le cœur est appele sans emprise, l'emprise est appliquee apres", {
-  # Deux houppiers en Lambert-93 : l'un a cheval sur l'emprise (garde ENTIER),
-  # l'autre loin (ecarte).
-  carre <- function(x0, y0, d = 10) sf::st_polygon(list(rbind(
-    c(x0, y0), c(x0 + d, y0), c(x0 + d, y0 + d), c(x0, y0 + d), c(x0, y0))))
-  hp <- sf::st_sf(h_max = c(20, 30),
-                  geometry = sf::st_sfc(carre(600005, 6700000),
-                                        carre(601000, 6701000), crs = 2154))
-  aoi <- sf::st_sf(geometry = sf::st_sfc(carre(600000, 6699990, 10),
-                                         crs = 2154))
+test_that("le cœur recoit l'emprise, dans le processus", {
   recu <- "non appele"
+  hp <- sf::st_sf(h_max = 20, geometry = sf::st_sfc(
+    sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))),
+    crs = 2154))
   testthat::local_mocked_bindings(
     segment_houppiers = function(chm, aoi = NULL, ...) {
-      recu <<- if (is.null(aoi)) "NULL" else "emprise"
+      recu <<- aoi
       hp
     },
     .package = "nemeton"
   )
-  out <- nemetonshiny:::.marculus_segment_houppiers("chm", aoi = aoi)
-  expect_equal(recu, "NULL")
+  out <- nemetonshiny:::.marculus_segment_houppiers("chm", aoi = "emprise")
+  expect_equal(recu, "emprise")
   expect_equal(out$h_max, 20)
-  # Selection, pas decoupe : le houppier a cheval garde sa surface entiere.
-  expect_equal(as.numeric(sf::st_area(sf::st_transform(out, 2154))), 100,
-               tolerance = 1e-3)
-})
-
-test_that("sans emprise, tous les houppiers sont gardes", {
-  hp <- sf::st_sf(h_max = c(20, 30), geometry = sf::st_sfc(
-    sf::st_point(c(600000, 6700000)), sf::st_point(c(601000, 6701000)),
-    crs = 2154))
-  expect_equal(nrow(nemetonshiny:::.houppiers_dans_emprise(hp, NULL)), 2L)
-})
-
-test_that("un CHM sur disque est segmente dans un processus neuf, par son chemin", {
-  skip_if_not_installed("callr")
-  f <- withr::local_tempfile(fileext = ".tif")
-  terra::writeRaster(terra::rast(nrows = 2, ncols = 2, vals = 1:4,
-                                 crs = "EPSG:2154"), f)
-  recu <- NULL
-  testthat::local_mocked_bindings(
-    r = function(func, args, ...) { recu <<- args; "ISOLE" },
-    .package = "callr"
-  )
-  testthat::local_mocked_bindings(
-    segment_houppiers = function(...) "EN_PROCESSUS",
-    .package = "nemeton"
-  )
-  expect_equal(nemetonshiny:::.segmenter_houppiers_isole(terra::rast(f)), "ISOLE")
-  expect_equal(normalizePath(recu$src), normalizePath(f))
-})
-
-test_that("un CHM en memoire est segmente dans le processus courant", {
-  testthat::local_mocked_bindings(
-    segment_houppiers = function(chm, aoi = NULL, ...) {
-      if (!is.null(aoi)) stop("emprise inattendue")
-      "EN_PROCESSUS"
-    },
-    .package = "nemeton"
-  )
-  mem <- terra::rast(nrows = 2, ncols = 2, vals = 1:4, crs = "EPSG:2154")
-  expect_equal(nemetonshiny:::.segmenter_houppiers_isole(mem), "EN_PROCESSUS")
 })
