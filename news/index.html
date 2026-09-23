@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.31</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.144.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.144.0" id="nemetonshiny-01440-2026-09-23">nemetonshiny 0.144.0 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01440-2026-09-23"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-note-s4-dbdatatype-ne-saffiche-plus-a-la-sauvegarde-en-base-0-144-0">Fixed — la note S4 <code>dbDataType</code> ne s’affiche plus a la sauvegarde en base<a class="anchor" aria-label="anchor" href="#fixed--la-note-s4-dbdatatype-ne-saffiche-plus-a-la-sauvegarde-en-base-0-144-0"></a></h4>
+<p>A la premiere sauvegarde d’un projet dans PostGIS, la console affichait : « Note : methode avec la signature ‘DBIObject#sf’ choisie pour la fonction ‘dbDataType’, signature cible ‘PqConnection#sf’ ». Ce n’est pas une erreur : <code>sf</code> et <code>RPostgres</code> definissent tous deux cette methode, et R signale une fois par session laquelle il retient. Le choix est le bon (celui de <code>sf</code>, qui type la geometrie). Le <code><a href="https://r-spatial.github.io/sf/reference/st_write.html" class="external-link">sf::st_write()</a></code> de <code>db_save_parcels()</code> est desormais entoure de <code><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages()</a></code>, puisque <code>quiet = TRUE</code> ne couvre pas un message du dispatch S4. Un test simule la note ; sans le correctif, il echoue.</p>
+<p>Les deux « Avis : [minmax] min and max values not available » qui l’accompagnaient viennent du cœur, et un brief lui est adresse (<code>briefs/vers-nemeton/2026-09-23-reconfort-include-range-inerte.md</code>). Avec <code>include_range = TRUE</code>, <code>reconfort_cache_manifest()</code> appelle <code><a href="https://rspatial.github.io/terra/reference/minmax.html" class="external-link">terra::minmax()</a></code> sans <code>compute = TRUE</code> sur des GeoTIFF iota2 qui ne stockent pas leurs statistiques. Le calcul renvoie <code>NaN</code> et le manifeste garde les bornes statiques. Sur <code>ltcp</code> zone 9, le score est donc affiche sur 1-100 au lieu de sa plage reelle 24-58. Rien a changer cote app : elle passe deja <code>include_range = TRUE</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.31" id="nemetonshiny-014331-2026-09-23">nemetonshiny 0.143.31 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014331-2026-09-23"></a></h2>
 <div class="section level4">
