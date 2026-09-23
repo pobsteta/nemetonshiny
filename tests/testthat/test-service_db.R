@@ -159,3 +159,31 @@ test_that("les migrations SQL déclarent les tables *_states persistées par l'a
   # Index de requête (project_id, version).
   expect_match(plan_sql, "idx_action_plan_states_project", fixed = TRUE)
 })
+
+
+test_that("db_save_parcels ne laisse pas passer la note S4 de dbDataType", {
+  # `sf` et `RPostgres` definissent tous deux `dbDataType` : au premier
+  # st_write de la session, R emet « Note : methode avec la signature
+  # 'DBIObject#sf' choisie... » par message(). Bruit console, pas une erreur.
+  parcels <- sf::st_sf(
+    id = "p1",
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))), crs = 3035)
+  )
+  ecrit <- FALSE
+  testthat::local_mocked_bindings(
+    dbGetQuery = function(...) data.frame(id = "uuid-1"),
+    dbExecute  = function(...) 0L,
+    .package = "DBI"
+  )
+  testthat::local_mocked_bindings(
+    st_write = function(...) {
+      message("Note : methode avec la signature 'DBIObject#sf' choisie")
+      ecrit <<- TRUE
+      invisible(NULL)
+    },
+    .package = "sf"
+  )
+  expect_no_message(db_save_parcels(con = NULL, "proj", parcels))
+  expect_true(ecrit)
+})

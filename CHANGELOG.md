@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.144.0] - 2026-09-23
+
+Jalon mineur qui regroupe le lot « Suivi sanitaire et CI » des 0.143.29 a
+0.143.31 : plus de recalcul au retour sur l'onglet, stack d'indice de la
+Carte FAST en cache disque (cœur 0.198.0), CI entierement verte (`tests`,
+`R-CMD-check` et `coverage`) pour la premiere fois depuis le 2026-09-14.
+
+### Fixed
+
+- Sauvegarde en base : la note S4 « methode avec la signature 'DBIObject#sf'
+  choisie pour dbDataType » ne s'affiche plus en console. `sf` et `RPostgres`
+  definissent tous deux cette methode ; le choix est correct. Le
+  `sf::st_write()` de `db_save_parcels()` est entoure de `suppressMessages()`.
+
 ## [0.143.31] - 2026-09-23
 
 ### Changed

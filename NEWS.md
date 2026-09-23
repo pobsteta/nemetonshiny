@@ -1,3 +1,26 @@
+# nemetonshiny 0.144.0 (2026-09-23)
+
+### Fixed — la note S4 `dbDataType` ne s'affiche plus a la sauvegarde en base
+
+A la premiere sauvegarde d'un projet dans PostGIS, la console affichait :
+« Note : methode avec la signature 'DBIObject#sf' choisie pour la fonction
+'dbDataType', signature cible 'PqConnection#sf' ». Ce n'est pas une erreur :
+`sf` et `RPostgres` definissent tous deux cette methode, et R signale une fois
+par session laquelle il retient. Le choix est le bon (celui de `sf`, qui type
+la geometrie). Le `sf::st_write()` de `db_save_parcels()` est desormais
+entoure de `suppressMessages()`, puisque `quiet = TRUE` ne couvre pas un
+message du dispatch S4. Un test simule la note ; sans le correctif, il echoue.
+
+Les deux « Avis : [minmax] min and max values not available » qui
+l'accompagnaient viennent du cœur, et un brief lui est adresse
+(`briefs/vers-nemeton/2026-09-23-reconfort-include-range-inerte.md`). Avec
+`include_range = TRUE`, `reconfort_cache_manifest()` appelle
+`terra::minmax()` sans `compute = TRUE` sur des GeoTIFF iota2 qui ne stockent
+pas leurs statistiques. Le calcul renvoie `NaN` et le manifeste garde les
+bornes statiques. Sur `ltcp` zone 9, le score est donc affiche sur 1-100 au
+lieu de sa plage reelle 24-58. Rien a changer cote app : elle passe deja
+`include_range = TRUE`.
+
 # nemetonshiny 0.143.31 (2026-09-23)
 
 ### Changed — la « Carte FAST » garde son stack d'indice sur disque (cœur 0.198.0)
