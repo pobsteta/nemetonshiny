@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.144.2\] - 2026-09-23
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.199.2)`.
+- Houppiers : l’app appelle de nouveau
+  `segment_houppiers(chm, aoi = emprise)` dans le processus, puisque le
+  cœur 0.199.2 passe une copie `stars` a lidR. Le contournement de la
+  0.144.1 est retire (processus `callr` neuf et filtrage d’emprise cote
+  app). « Reconfort » : 80 982 houppiers en 54 s (185 s avant).
+- RECONFORT : la couche de probabilite devient « Probabilite d’atteinte
+  » (P(deperissant) + P(tres deperissant), 0-1000), avec son infobulle.
+  Les avis `[minmax]` disparaissent (cœur 0.199.0).
+
 ## \[0.144.1\] - 2026-09-23
 
 ### Added

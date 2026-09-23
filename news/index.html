@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.144.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.144.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.144.2" id="nemetonshiny-01442-2026-09-23">nemetonshiny 0.144.2 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01442-2026-09-23"></a></h2>
+<div class="section level4">
+<h4 id="changed--montee-vers-nemeton--houppiers-et-reconfort-0-144-2">Changed — montee vers <code>nemeton</code> 0.199.2 : houppiers et RECONFORT<a class="anchor" aria-label="anchor" href="#changed--montee-vers-nemeton--houppiers-et-reconfort-0-144-2"></a></h4>
+<p>Plancher <code>Imports: nemeton (&gt;= 0.199.2)</code>. Ce cycle consomme les reponses du cœur aux deux briefs du jour (<code>briefs/vers-nemetonshiny/2026-09-23-consolide-nemeton-0.199.2.md</code>).</p>
+<p><strong>Houppiers : le contournement de la 0.144.1 est retire.</strong> Le cœur a trouve la cause : sous un plan <code>future</code> a 2 workers ou plus, celui de l’app, lidR convertissait le CHM en <code><a href="https://rdrr.io/pkg/raster/man/raster.html" class="external-link">raster::raster()</a></code>, et son CRS PROJ4 ne valait plus EPSG:2154 pour <code>sf</code>. Le processus <code>callr</code> reussissait parce qu’il demarrait en plan sequentiel. Le cœur 0.199.2 passe desormais une copie <code>stars</code> a lidR. L’app appelle donc de nouveau <code>segment_houppiers(chm, aoi = emprise)</code>, dans le processus. Le processus neuf et le filtrage d’emprise applicatif sont retires ; le cœur garde entiers les houppiers qui touchent l’emprise (<code>emprise = "intersecte"</code>). La reparation de l’emprise (<code>st_make_valid()</code> en 2154) est conservee.</p>
+<p>Mesure sur « Reconfort », apres <code>load_project()</code> et sous <code>plan(multisession, workers = 4)</code> : <strong>80 982 houppiers en 54 s</strong>, contre 185 s avec le contournement, qui segmentait toute la mosaique.</p>
+<p><strong>RECONFORT : la couche de probabilite devient P(atteinte).</strong> Le cœur 0.199.0 la decrit comme P(deperissant) + P(tres deperissant), sur 0-1000, « haut = mauvais », dans un fichier a une bande. Le libelle devient « Probabilite d’atteinte » / « Probability of dieback », et l’infobulle le decrit (elle parlait de « confiance de la classification »). Les deux avis <code>[minmax] min and max values not available</code> ne s’affichent plus a l’ouverture d’un projet.</p>
+<p>A savoir : les runs RECONFORT existants ont ete produits avec des probabilites ecretees a 255 (defaut iota2 <a href="https://github.com/pobsteta/nemetonshiny/issues/12" class="external-link">#12</a>, corrige cote cœur). Leur score continu est compresse, par exemple 24-58 au lieu de 1-100 sur « Reconfort », et leur P(atteinte) plafonne a 510. Le cœur le signale une fois par session dans la console. Il faut relancer RECONFORT sur ces projets : Fordead z5, Reconfort z9, Couchey z49 et Aumur z53.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.144.1" id="nemetonshiny-01441-2026-09-23">nemetonshiny 0.144.1 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01441-2026-09-23"></a></h2>
 <div class="section level4">
