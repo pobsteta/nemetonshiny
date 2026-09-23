@@ -279,7 +279,7 @@ mod_pipeline_server <- function(id, app_state) {
       shiny::showNotification(
         htmltools::tagList(
           bsicons::bs_icon("check2-circle", class = "me-2"),
-          sprintf("%s — %s", i18n$t("pipeline_done"),
+          sprintf("%s \u2014 %s", i18n$t("pipeline_done"),
                   sprintf(i18n$t("pipeline_report_summary_fmt"),
                           compte[["ok"]], compte[["error"]],
                           compte[["skipped"]], duree))

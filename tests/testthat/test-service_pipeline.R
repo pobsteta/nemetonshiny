@@ -572,8 +572,9 @@ test_that("toute transition de mod_pipeline passe par le setter persistant", {
   # Quatre transitions ecrivaient `rv$state` en direct. Il a suffi qu'une
   # seule oublie la persistance pour que le journal mente ; le setter la rend
   # non-optionnelle, et ce test empeche de revenir en arriere.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_pipeline.R"),
-                   warn = FALSE)
+  f <- testthat::test_path("..", "..", "R", "mod_pipeline.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes (package installe)")
+  src <- readLines(f, warn = FALSE)
   directes <- grep("rv\\$state <- ", src, value = TRUE)
   expect_length(directes, 1L)                       # celle du setter lui-meme
   expect_match(directes[1], "nouvel_etat", fixed = TRUE)

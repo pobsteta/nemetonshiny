@@ -393,8 +393,9 @@ test_that("la carte UGF declare OSM et Satellite, au rendu ET apres clearControl
   # du rafraichissement de legende suit un `clearControls()`, qui emporte
   # le controle initial : l'oublier ferait disparaitre le choix du fond
   # des la premiere mise a jour des couleurs de groupe.
-  src <- readLines(testthat::test_path("..", "..", "R", "mod_ug.R"),
-                   warn = FALSE)
+  f <- testthat::test_path("..", "..", "R", "mod_ug.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes (package installe)")
+  src <- readLines(f, warn = FALSE)
   idx <- grep("leaflet::addLayersControl\\(", src)
   expect_length(idx, 2L)
 

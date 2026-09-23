@@ -1426,7 +1426,7 @@ mod_home_server <- function(id, app_state) {
               pipeline_req(NULL)
             }
           }, error = function(e) {
-            cli::cli_warn("pipeline: reponse « indicateurs » impossible : {conditionMessage(e)}")
+            cli::cli_warn("pipeline: reponse \u00ab indicateurs \u00bb impossible : {conditionMessage(e)}")
           })
 
           shiny::showNotification(
