@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.31.9001 (2026-09-23)
+# nemetonshiny 0.144.0 (2026-09-23)
 
 ### Fixed — la note S4 `dbDataType` ne s'affiche plus a la sauvegarde en base
 
