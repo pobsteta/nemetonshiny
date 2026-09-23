@@ -251,6 +251,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # publique : un simple lecteur de `stack_rv`.
     stack_rv      <- shiny::reactiveVal(NULL)
     pixel_stack_r <- shiny::reactive(stack_rv())
+    # Signature (cache, scenes, indice) du dernier stack construit avec
+    # succes. L'onglet actif est une dependance de l'observer ci-dessous :
+    # sans cette memoire, chaque retour sur « Suivi sanitaire » relancait
+    # `build_index_stack` - ~9 s bloquantes sur 327 scenes (projet armn,
+    # mesure 2026-09-23) - pour reconstruire le meme stack.
+    stack_sig <- NULL
 
     shiny::observe({
       # Dependances : recalcul quand l'un de ces reactifs change.
@@ -266,8 +272,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       sdf <- shiny::isolate(scenes_df_r())
       idx <- shiny::isolate(input$index)
       if (is.null(cd) || is.null(sdf) || !nrow(sdf)) {
+        stack_sig <<- NULL
         loading(FALSE)
         stack_rv(NULL)
+        return()
+      }
+      sig <- rlang::hash(list(cd, sdf$scene_id, idx))
+      if (identical(sig, stack_sig) && !is.null(shiny::isolate(stack_rv()))) {
         return()
       }
       # Flag AVANT le flush pour que l'overlay / l'indicateur s'affichent ;
@@ -286,6 +297,8 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           }
         )
         if (!is.null(out)) last_stack_error(NULL)  # clear on success
+        # Un echec n'est pas memorise : le retour suivant retentera.
+        stack_sig <<- if (is.null(out)) NULL else sig
         shiny::withReactiveDomain(session, shiny::isolate(stack_rv(out)))
       }, once = TRUE)
     })

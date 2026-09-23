@@ -301,3 +301,103 @@ test_that("non-trend map click does NOT invoke extract_pixel_trend", {
     }
   )
 })
+
+
+# ---- Retour sur l'onglet : pas de recalcul sans changement d'entree ----
+
+.fast_raster_tab_harness <- function(mask_fn, code) {
+  mask_tif <- withr::local_tempfile(fileext = ".tif", .local_envir = parent.frame())
+  # Raster georeference (Lambert-93) : la carte le reprojette pour le peindre.
+  r <- terra::rast(nrows = 2, ncols = 2, crs = "EPSG:2154",
+                   xmin = 950000, xmax = 950020, ymin = 6620000, ymax = 6620020,
+                   vals = c(0, 1, 2, 4))
+  terra::writeRaster(r, mask_tif)
+  testthat::local_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "CON",
+    close_monitoring_db_connection = function(...) invisible(NULL),
+    .compute_fast_mask = function(con, zone, index, ...) mask_fn(index, mask_tif),
+    .env = parent.frame()
+  )
+}
+
+test_that("returning to the Suivi tab does not recompute an unchanged FAST raster", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+
+  calls <- new.env(); calls$index <- character(0)
+  .fast_raster_tab_harness(function(index, tif) {
+    calls$index <- c(calls$index, index)
+    tif
+  })
+  proj <- .fast_trend_test_project()
+  app_state <- shiny::reactiveValues(language = "fr",
+                                     active_main_tab = "monitoring",
+                                     current_project = proj)
+  shiny::testServer(
+    nemetonshiny:::mod_monitoring_fast_alerts_server,
+    args = list(
+      app_state    = app_state,
+      zone_id_r    = shiny::reactive("5"),
+      date_range_r = shiny::reactive(as.Date(c("2017-01-01", "2025-12-31"))),
+      thresholds_r = shiny::reactive(list(ndvi = 0.6, nbr = 0.5, ndmi = 0.2,
+                                          window_days = 30L))
+    ),
+    {
+      session$setInputs(mode = "count", index = "NDVI")
+      session$elapse(500)  # seuils debounces (400 ms)
+      session$flushReact()
+      expect_equal(calls$index, "NDVI")
+      expect_false(session$getReturned()$computing())
+
+      # Aller-retour d'onglet, rien d'autre ne change.
+      app_state$active_main_tab <- "home"
+      session$flushReact()
+      app_state$active_main_tab <- "monitoring"
+      session$flushReact()
+      expect_equal(calls$index, "NDVI")
+      expect_false(session$getReturned()$computing())
+
+      # Un vrai changement d'entree recalcule toujours.
+      session$setInputs(index = "NBR")
+      session$flushReact()
+      expect_equal(calls$index, c("NDVI", "NBR"))
+    }
+  )
+})
+
+test_that("a failed FAST raster is retried on the next tab entry", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+
+  calls <- new.env(); calls$n <- 0L
+  .fast_raster_tab_harness(function(index, tif) {
+    calls$n <- calls$n + 1L
+    NULL  # le coeur n'a rien produit
+  })
+  proj <- .fast_trend_test_project()
+  app_state <- shiny::reactiveValues(language = "fr",
+                                     active_main_tab = "monitoring",
+                                     current_project = proj)
+  shiny::testServer(
+    nemetonshiny:::mod_monitoring_fast_alerts_server,
+    args = list(
+      app_state    = app_state,
+      zone_id_r    = shiny::reactive("5"),
+      date_range_r = shiny::reactive(as.Date(c("2017-01-01", "2025-12-31"))),
+      thresholds_r = shiny::reactive(list(ndvi = 0.6, nbr = 0.5, ndmi = 0.2,
+                                          window_days = 30L))
+    ),
+    {
+      session$setInputs(mode = "count", index = "NDVI")
+      session$elapse(500)
+      session$flushReact()
+      n0 <- calls$n
+      expect_gte(n0, 1L)
+      app_state$active_main_tab <- "home"
+      session$flushReact()
+      app_state$active_main_tab <- "monitoring"
+      session$flushReact()
+      expect_equal(calls$n, n0 + 1L)
+    }
+  )
+})
