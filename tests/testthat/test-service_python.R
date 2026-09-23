@@ -110,8 +110,9 @@ test_that("aucune nouvelle liaison reticulate en processus", {
     "use_condaenv|use_virtualenv|py_eval)\\s*\\("
   )
 
-  fichiers <- list.files(testthat::test_path("..", "..", "R"),
-                         pattern = "\\.R$", full.names = TRUE)
+  racine <- testthat::test_path("..", "..", "R")
+  testthat::skip_if_not(dir.exists(racine), "sources R absentes (package installe)")
+  fichiers <- list.files(racine, pattern = "\\.R$", full.names = TRUE)
   coupables <- character(0)
   for (f in fichiers) {
     src <- readLines(f, warn = FALSE)

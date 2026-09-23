@@ -140,8 +140,9 @@ test_that("les etapes d'onglets restreints sautent tant que le projet n'est pas 
 test_that("app_server partage le predicat du filtre (pas de liste dupliquee)", {
   # Les deux listes DOIVENT coincider : c'est leur divergence qui envoyait le
   # tour sur un onglet d'ou l'app le renvoyait aussitot.
-  src <- readLines(testthat::test_path("..", "..", "R", "app_server.R"),
-                   warn = FALSE, encoding = "UTF-8")
+  f <- testthat::test_path("..", "..", "R", "app_server.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes (package installe)")
+  src <- readLines(f, warn = FALSE, encoding = "UTF-8")
   expect_true(any(grepl(".tab_requires_completed_project", src, fixed = TRUE)))
   # et plus aucune liste en dur cote app_server
   expect_false(any(grepl('grep("^famille_"', src, fixed = TRUE)))
