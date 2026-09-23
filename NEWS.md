@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.28.9002 (2026-09-23)
+# nemetonshiny 0.143.29 (2026-09-23)
 
 ### Fixed — la Carte des actions n'etait pas cadree sur le projet
 
@@ -25,8 +25,6 @@ d'E1 (0,3) et d'E2 (0,75). Le cœur v0.197.0 les a alignees sur 1,32 (spec
 048 §11), et le plancher `nemeton (>= 0.197.0)` date de 0.143.25 : les
 releases 0.143.25 a 0.143.28 sont donc parties avec un `R-CMD-check` rouge
 (`release.yml` n'en depend pas). Tests mis a jour, aucun code touche.
-
-# nemetonshiny 0.143.28.9001 (2026-09-23)
 
 ### Fixed — revenir sur « Suivi sanitaire » ne relance plus les calculs
 
