@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.29.9001 (2026-09-23)
+# nemetonshiny 0.143.30 (2026-09-23)
 
 ### Fixed — `R-CMD-check` reste rouge : cinq tests lisaient `R/` sans garde
 
