@@ -1,3 +1,41 @@
+# nemetonshiny 0.144.2 (2026-09-23)
+
+### Changed — montee vers `nemeton` 0.199.2 : houppiers et RECONFORT
+
+Plancher `Imports: nemeton (>= 0.199.2)`. Ce cycle consomme les reponses du
+cœur aux deux briefs du jour
+(`briefs/vers-nemetonshiny/2026-09-23-consolide-nemeton-0.199.2.md`).
+
+**Houppiers : le contournement de la 0.144.1 est retire.** Le cœur a trouve
+la cause : sous un plan `future` a 2 workers ou plus, celui de l'app, lidR
+convertissait le CHM en `raster::raster()`, et son CRS PROJ4 ne valait plus
+EPSG:2154 pour `sf`. Le processus `callr` reussissait parce qu'il demarrait en
+plan sequentiel. Le cœur 0.199.2 passe desormais une copie `stars` a lidR.
+L'app appelle donc de nouveau `segment_houppiers(chm, aoi = emprise)`, dans
+le processus. Le processus neuf et le filtrage d'emprise applicatif sont
+retires ; le cœur garde entiers les houppiers qui touchent l'emprise
+(`emprise = "intersecte"`). La reparation de l'emprise (`st_make_valid()` en
+2154) est conservee.
+
+Mesure sur « Reconfort », apres `load_project()` et sous
+`plan(multisession, workers = 4)` : **80 982 houppiers en 54 s**, contre
+185 s avec le contournement, qui segmentait toute la mosaique.
+
+**RECONFORT : la couche de probabilite devient P(atteinte).** Le cœur 0.199.0
+la decrit comme P(deperissant) + P(tres deperissant), sur 0-1000, « haut =
+mauvais », dans un fichier a une bande. Le libelle devient « Probabilite
+d'atteinte » / « Probability of dieback », et l'infobulle le decrit (elle
+parlait de « confiance de la classification »). Les deux avis
+`[minmax] min and max values not available` ne s'affichent plus a l'ouverture
+d'un projet.
+
+A savoir : les runs RECONFORT existants ont ete produits avec des
+probabilites ecretees a 255 (defaut iota2 #12, corrige cote cœur). Leur score
+continu est compresse, par exemple 24-58 au lieu de 1-100 sur « Reconfort »,
+et leur P(atteinte) plafonne a 510. Le cœur le signale une fois par session
+dans la console. Il faut relancer RECONFORT sur ces projets : Fordead z5,
+Reconfort z9, Couchey z49 et Aumur z53.
+
 # nemetonshiny 0.144.1 (2026-09-23)
 
 ### Fixed — l'export Marculus repart avec sa couche de houppiers

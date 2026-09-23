@@ -4433,9 +4433,11 @@ TRANSLATIONS <- list(
     fr = "Classes de sant\u00e9",
     en = "Health classes"
   ),
+  # nemeton >= 0.199.0 : la couche `probability` est P(atteinte) =
+  # P(deperissant) + P(tres deperissant), une bande, 0-1000, haut = mauvais.
   reconfort_couche_proba = list(
-    fr = "Probabilit\u00e9",
-    en = "Probability"
+    fr = "Probabilit\u00e9 d'atteinte",
+    en = "Probability of dieback"
   ),
   # Info-bulles " i " par couche (parite FORDEAD).
   reconfort_couche_score_info = list(
@@ -4447,8 +4449,8 @@ TRANSLATIONS <- list(
     en = "Health-class classification (1-healthy transparent, 2-declining, 3-severely declining). Only affected pixels are painted."
   ),
   reconfort_couche_proba_info = list(
-    fr = "Probabilit\u00e9 / confiance de la classification du mod\u00e8le. \u00c9chelle de couleur par quantiles.",
-    en = "Model classification probability / confidence. Quantile colour scale."
+    fr = "Probabilit\u00e9 que le pixel soit d\u00e9p\u00e9rissant ou tr\u00e8s d\u00e9p\u00e9rissant (somme des deux classes), de 0 \u00e0 1000 ; plus c'est haut, plus c'est grave. \u00c9chelle de couleur par quantiles.",
+    en = "Probability that the pixel is declining or severely declining (sum of both classes), 0 to 1000; higher is worse. Quantile colour scale."
   ),
   monitoring_run_reconfort_btn = list(
     fr = "Lancer le diagnostic RECONFORT",
