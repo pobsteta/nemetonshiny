@@ -12,6 +12,30 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.29\] - 2026-09-23
+
+### Fixed
+
+- Suivi sanitaire : revenir sur l’onglet relancait les deux calculs
+  (Carte FAST ~9 s bloquantes via `build_index_stack()`, alertes FAST +
+  toast + repeint). `mod_monitoring_fast_alerts` et
+  `mod_monitoring_pixel_map` memorisent la signature des entrees du
+  dernier calcul reussi ; meme signature = aucun recalcul, un echec est
+  retente.
+- Plan d’actions : la Carte des actions montrait le monde entier apres
+  un changement de projet fait depuis un autre onglet (carte masquee,
+  dimensions nulles). Le cadrage est differe puis applique apres
+  `invalidateSize` a l’arrivee sur l’onglet.
+- CI `R-CMD-check` : sept tests de `normalize_indicator` verifiaient
+  encore les anciennes bornes E1/E2, alignees sur 1,32 par le cœur
+  v0.197.0.
+
+### Changed
+
+- Commentaire de `.compute_fast_mask()` corrige : le masque 0-4 est
+  reclasse et reecrit par le cœur a chaque appel, seul le raster continu
+  est en cache.
+
 ## \[0.143.28\] - 2026-09-19
 
 ### Fixed
