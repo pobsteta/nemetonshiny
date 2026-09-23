@@ -230,3 +230,99 @@ test_that("carte visible : cadrage immediat, rien en attente", {
     }
   )
 })
+
+
+# ---- Suppression des actions selectionnees -----------------------------
+
+.plan_trois_actions <- function(project_id) {
+  plan <- init_empty_action_plan(project_id)
+  for (id in c("a1", "a2", "a3")) {
+    plan <- add_action_to_plan(plan, list(
+      id = id, ug_id = "ug1", type = "eclaircie", annee_cible = 2L,
+      priorite = "moyenne", statut = "proposee"), ug_ids = "ug1")
+  }
+  plan
+}
+
+test_that("le bouton Supprimer la selection est sous Ajouter, en outline-danger", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  pos_add <- regexpr('id="ap-add_action"', h, fixed = TRUE)
+  pos_del <- regexpr('id="ap-delete_selected"', h, fixed = TRUE)
+  expect_true(pos_add > 0 && pos_del > pos_add)
+  bouton <- regmatches(h, regexpr('<button[^>]*id="ap-delete_selected"[^>]*>', h))
+  expect_match(bouton, "btn-outline-danger", fixed = TRUE)
+})
+
+test_that("supprimer la selection retire les lignes choisies et sauvegarde", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  sauve <- NULL
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) .plan_trois_actions(project_id),
+    save_action_plan = function(project_id, plan) { sauve <<- plan; TRUE }
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5),
+    auth = list(authenticated = TRUE, user_roles = character())
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      expect_length(plan_rv()$actions, 3L)
+      ids <- actions_df_all()$id
+      # Lignes 1 et 3 selectionnees, puis confirmation dans la modale.
+      session$setInputs(action_table_rows_selected = c(1L, 3L))
+      session$setInputs(delete_selected = 1)
+      expect_setequal(delete_pending_rv(), ids[c(1L, 3L)])
+      session$setInputs(delete_run = 1)
+      expect_equal(vapply(plan_rv()$actions, `[[`, "", "id"), ids[2L])
+      expect_equal(length(sauve$actions), 1L)
+      expect_length(delete_pending_rv(), 0L)
+    }
+  )
+})
+
+test_that("sans selection ou en lecture seule, rien n'est supprime", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  sauve <- NULL
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) .plan_trois_actions(project_id),
+    save_action_plan = function(project_id, plan) { sauve <<- plan; TRUE }
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5),
+    auth = list(authenticated = TRUE, user_roles = character())
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      # Aucune ligne selectionnee : pas de modale, rien en attente.
+      session$setInputs(delete_selected = 1)
+      expect_length(delete_pending_rv(), 0L)
+
+      # Selection faite, puis le projet passe en lecture seule avant la
+      # confirmation : la garde est rejouee au moment de supprimer.
+      session$setInputs(action_table_rows_selected = 2L)
+      session$setInputs(delete_selected = 2)
+      expect_length(delete_pending_rv(), 1L)
+      app_state$readonly <- TRUE
+      session$setInputs(delete_run = 1)
+      expect_length(plan_rv()$actions, 3L)
+      expect_null(sauve)
+    }
+  )
+})
