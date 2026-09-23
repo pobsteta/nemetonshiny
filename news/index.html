@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.30</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.31</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.31" id="nemetonshiny-014331-2026-09-23">nemetonshiny 0.143.31 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014331-2026-09-23"></a></h2>
+<div class="section level4">
+<h4 id="changed--la--carte-fast--garde-son-stack-dindice-sur-disque-cœur-0-143-31">Changed — la « Carte FAST » garde son stack d’indice sur disque (cœur 0.198.0)<a class="anchor" aria-label="anchor" href="#changed--la--carte-fast--garde-son-stack-dindice-sur-disque-c%C5%93ur-0-143-31"></a></h4>
+<p>Suite de la 0.143.29 : l’app ne reconstruisait plus le stack en revenant sur l’onglet, mais le payait encore a chaque nouvelle session et a chaque changement d’indice, y compris pour revenir a un indice deja affiche. Le cœur 0.198.0 met ce stack en cache (reponse au brief du 2026-09-23). La Carte FAST appelle maintenant <code>build_index_stack(..., cache_result = TRUE)</code>. Le cache se trouve dans <code>&lt;projet&gt;/cache/layers/index_stack</code>, emplacement par defaut du cœur, et compte au plus 8 stacks d’environ 230 Mo chacun.</p>
+<p>Mesure sur <code>armn</code> (327 scenes, NDVI, cache ecrit dans un repertoire temporaire) : <strong>39,5 s</strong> au premier appel (calcul + ecriture, cache disque froid), <strong>0,22 s</strong> au second, avec un resultat identique (noms, dates, attribut <code>index</code>, valeurs).</p>
+<p><code>parallel</code> reste a <code>FALSE</code>, sur recommandation du cœur : sans plan multisession permanent, furrr tourne en sequentiel et n’ajoute que le cout de <code>wrap</code>/<code>unwrap</code>.</p>
+<p>Les masques FAST sont desormais nommes par leur contenu, cote cœur : deux calculs differents ne peuvent plus ecraser le meme fichier, et un calcul identique reutilise le fichier existant. Le commentaire de <code>.compute_fast_mask()</code> est mis a jour en consequence. L’app ne lisait aucun nom de masque ; rien d’autre ne change.</p>
+<p>Plancher <code>Imports: nemeton (&gt;= 0.198.0)</code>. Deux tests : le contrat de signature du cœur, et l’appel avec <code>cache_result = TRUE</code> sans <code>parallel</code> (echoue si l’argument est retire).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--le-job-ci-coverage-echouait-sur-deux-des-gardes-de-la-0-143-31">Fixed — le job CI <code>coverage</code> echouait sur deux des gardes de la 0.143.30<a class="anchor" aria-label="anchor" href="#fixed--le-job-ci-coverage-echouait-sur-deux-des-gardes-de-la-0-143-31"></a></h4>
+<p><code>coverage</code> ne demarre que si <code>R-CMD-check</code> passe ; il etait donc saute depuis le 14 septembre. Reveille par la 0.143.30, il echouait sur <code>test-app_ui</code> et <code>test-service_python</code>. Leur garde testait l’existence du dossier <code>../../R</code>. Sous covr, ce dossier existe, mais c’est celui du paquet installe : il ne contient que <code>nemetonshiny.rdb</code>, aucun <code>.R</code>. Les deux tests comptaient alors zero fichier et echouaient. Ils sont maintenant sautes quand aucune source <code>.R</code> n’est trouvee. Verifie dans trois situations : sources presentes (566 reussites), dossier absent et dossier installe (0 echec, tests sautes).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.30" id="nemetonshiny-014330-2026-09-23">nemetonshiny 0.143.30 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014330-2026-09-23"></a></h2>
 <div class="section level4">
