@@ -1,4 +1,4 @@
-# nemetonshiny 0.144.0.9002 (2026-09-23)
+# nemetonshiny 0.144.1 (2026-09-23)
 
 ### Fixed — l'export Marculus repart avec sa couche de houppiers
 
@@ -44,8 +44,6 @@ Tests : l'emprise d'un contour croise, l'appel sans emprise suivi de la
 selection (houppier a cheval garde entier), et l'aiguillage entre processus
 neuf (CHM sur disque) et processus courant (CHM en memoire). Les mutations
 sont detectees.
-
-# nemetonshiny 0.144.0.9001 (2026-09-23)
 
 ### Added — supprimer les actions selectionnees du Plan d'actions
 
