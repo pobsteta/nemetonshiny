@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.144.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.144.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,32 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.144.1" id="nemetonshiny-01441-2026-09-23">nemetonshiny 0.144.1 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01441-2026-09-23"></a></h2>
+<div class="section level4">
+<h4 id="fixed--lexport-marculus-repart-avec-sa-couche-de-houppiers-0-144-1">Fixed — l’export Marculus repart avec sa couche de houppiers<a class="anchor" aria-label="anchor" href="#fixed--lexport-marculus-repart-avec-sa-couche-de-houppiers-0-144-1"></a></h4>
+<p>Depuis fin aout, aucun projet ne produisait plus de houppiers au calcul des indicateurs, et « Telecharger vers Marculus » partait sans couche <code>houppier</code>. Chaque <code>compute_child.log</code> portait « Segmentation des houppiers : st_crs(x) == st_crs(y) n’est pas TRUE ». Le cache de « Fordead » datait du 26 aout ; « Reconfort » n’en avait jamais eu.</p>
+<p>Deux causes se cumulaient.</p>
+<ol style="list-style-type: decimal"><li>
+<strong>L’emprise tombait a <code>NULL</code> sans rien signaler.</strong> Un contour de parcelle qui se recoupe faisait echouer l’union en WGS84 (s2 : « Edge 0 crosses edge 3 »), et <code>.marculus_aoi()</code> avalait l’erreur. Le contour est maintenant repare (<code>st_make_valid()</code>) en Lambert-93 avant l’union, et un echec produit un avertissement au lieu d’un <code>NULL</code> muet.</li>
+<li>
+<strong>Le cœur echoue selon l’etat du processus.</strong> Avec <code>nemeton</code> 0.198.0, <code>segment_houppiers()</code> fait echouer lidR (<code>dalponte2016()</code> -&gt; <code>st_crop()</code>) des que le CHM est recadre. Il echoue meme sans emprise des que <code>load_project()</code> a tourne dans le meme processus, ce qui est toujours le cas au calcul. Dans un processus neuf et sans emprise, il reussit (mesure 5 fois). L’app appelle donc le cœur <strong>dans un processus R neuf</strong> (<code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, le CHM transmis par son chemin), sans emprise. Elle garde ensuite les houppiers qui <strong>touchent</strong> l’emprise, entiers, sans les decouper. Brief au cœur : <code>briefs/vers-nemeton/2026-09-23-houppiers-aoi-etat.md</code>.</li>
+</ol><p>Mesure sur « Reconfort » (25 dalles LiDAR HD a 0,5 m) : 280 218 houppiers segmentes en 185 s, 85 300 gardes dans l’emprise. Les 11 GeoPackages du lot portent desormais <code>parcelle</code> + <code>houppier</code>, par exemple 7 321 houppiers pour la parcelle 1116.</p>
+<p><strong>Pour en profiter</strong>, il faut recalculer les indicateurs du projet : les houppiers sont precalcules a ce moment-la, pas au telechargement.</p>
+<p>Hors correctif, deux points s’expliquent par la conception : le fond orthophoto n’est <strong>jamais</strong> exporte (Marculus prendrait une table de tuiles pour son fond hors ligne, et les orthos du projet pesent des gigaoctets), et la couche <code>parcelle</code> de chaque GeoPackage contient les parcelles cadastrales <strong>de l’UGF du chantier</strong>, pas le parcellaire entier du projet.</p>
+<p>Tests : l’emprise d’un contour croise, l’appel sans emprise suivi de la selection (houppier a cheval garde entier), et l’aiguillage entre processus neuf (CHM sur disque) et processus courant (CHM en memoire). Les mutations sont detectees.</p>
+</div>
+<div class="section level4">
+<h4 id="added--supprimer-les-actions-selectionnees-du-plan-dactions-0-144-1">Added — supprimer les actions selectionnees du Plan d’actions<a class="anchor" aria-label="anchor" href="#added--supprimer-les-actions-selectionnees-du-plan-dactions-0-144-1"></a></h4>
+<p>Jusqu’ici, aucune action ne pouvait etre supprimee depuis l’app. Un bouton « Supprimer la selection » apparait desormais dans la barre laterale droite du Plan d’actions, sous « Ajouter une action ». Il supprime les lignes selectionnees dans le tableau des actions. La selection peut aussi venir d’un clic sur une UGF de la carte, qui selectionne ses actions.</p>
+<ul><li>Une modale de confirmation liste les actions visees : UGF, type, annee, avec au plus dix lignes suivies de « … et N autre(s) ». La suppression ne se fait qu’au clic sur le bouton rouge « Supprimer ».</li>
+<li>Les identifiants sont figes a l’ouverture de la modale. Un clic sur la carte pendant qu’elle est affichee ne change donc pas ce qui sera supprime.</li>
+<li>Chaque action supprimee laisse sa propre entree <code>delete</code> dans l’audit du plan, via le nouveau helper <code>delete_actions_from_plan()</code>. Celui-ci ignore les identifiants deja absents au lieu d’interrompre le lot.</li>
+<li>La garde de lecture seule (role ou verrou du projet) s’applique a l’ouverture de la modale ET au moment de la confirmation.</li>
+<li>Apres suppression, la selection est videe, dans le tableau comme en surbrillance sur la carte.</li>
+</ul><p>Couleurs conformes a la charte : <code>btn-outline-danger</code> dans la barre laterale (action auxiliaire de prudence), <code>btn-danger</code> pour la confirmation. Sept nouvelles cles i18n <code>action_plan_delete_*</code>. Cinq tests : deux pour le service, trois pour le module (position et classe du bouton, suppression effective, absence de selection et lecture seule). Les deux mutations (garde retiree, suppression sans effet) sont detectees.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.144.0" id="nemetonshiny-01440-2026-09-23">nemetonshiny 0.144.0 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01440-2026-09-23"></a></h2>
 <div class="section level4">

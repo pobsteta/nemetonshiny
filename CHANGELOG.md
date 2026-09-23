@@ -12,6 +12,27 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.144.1\] - 2026-09-23
+
+### Added
+
+- Plan d’actions : bouton « Supprimer la selection » sous « Ajouter une
+  action » (`btn-outline-danger`), avec une modale de confirmation
+  (`btn-danger`) qui liste les actions visees. Chaque suppression est
+  tracee dans l’audit, via `delete_actions_from_plan()`, et la garde de
+  lecture seule s’applique a l’ouverture ET a la confirmation.
+
+### Fixed
+
+- Export Marculus : la couche `houppier` manquait depuis fin aout, car
+  la segmentation echouait a chaque calcul. L’emprise est maintenant
+  reparee (`st_make_valid()` en 2154 avant l’union) et
+  `segment_houppiers()` est appele sans emprise dans un processus R neuf
+  (`callr`). L’emprise est appliquee ensuite, cote app, par selection. «
+  Reconfort » : 85 300 houppiers, et les 11 GeoPackages portent
+  `houppier`. Il faut recalculer les indicateurs pour regenerer le
+  cache.
+
 ## \[0.144.0\] - 2026-09-23
 
 Jalon mineur qui regroupe le lot « Suivi sanitaire et CI » des 0.143.29
