@@ -1,4 +1,4 @@
-# nemetonshiny 0.144.1.9001 (2026-09-23)
+# nemetonshiny 0.144.2 (2026-09-23)
 
 ### Changed — montee vers `nemeton` 0.199.2 : houppiers et RECONFORT
 
