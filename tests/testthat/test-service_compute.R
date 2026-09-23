@@ -1573,8 +1573,9 @@ test_that("normalize_indicator handles indicateur_p1_volume correctly", {
 })
 
 test_that("normalize_indicator handles indicateur_e1_bois_energie correctly", {
-  # indicateur_e1_bois_energie: ref_max = 0.3 tep/ha/yr
-  values <- c(0, 0.15, 0.3, 0.6)
+  # indicateur_e1_bois_energie: ref_max = 1.32 t (coeur v0.197.0, spec 048
+  # §11 : E1 au plafond de P1 ; l'ancien 0.3 saturait des 182 m3/ha).
+  values <- c(0, 0.66, 1.32, 2.64)
   normalized <- nemetonshiny:::normalize_indicator("indicateur_e1_bois_energie", values)
 
   expect_equal(normalized[1], 0)
@@ -1584,8 +1585,9 @@ test_that("normalize_indicator handles indicateur_e1_bois_energie correctly", {
 })
 
 test_that("normalize_indicator handles indicateur_e2_evitement correctly", {
-  # indicateur_e2_evitement: ref_max = 0.75 tCO2/ha/yr
-  values <- c(0, 0.375, 0.75, 1.5)
+  # indicateur_e2_evitement: ref_max = 1.32 (coeur v0.197.0, aligne sur E1
+  # dont il se deduit, E2 = E1 x 0,999 ; l'ancien 0.75 saturait a 455 m3/ha).
+  values <- c(0, 0.66, 1.32, 2.64)
   normalized <- nemetonshiny:::normalize_indicator("indicateur_e2_evitement", values)
 
   expect_equal(normalized[1], 0)
@@ -2416,12 +2418,11 @@ test_that("normalize_indicator handles NA values", {
 })
 
 test_that("normalize_indicator scales energy indicators", {
-  # indicateur_e1_bois_energie ref_max = 0.3
-  result <- nemetonshiny:::normalize_indicator("indicateur_e1_bois_energie", c(0, 0.15, 0.3))
+  # E1 et E2 partagent ref_max = 1.32 depuis le coeur v0.197.0 (spec 048 §11)
+  result <- nemetonshiny:::normalize_indicator("indicateur_e1_bois_energie", c(0, 0.66, 1.32))
   expect_equal(result, c(0, 50, 100))
 
-  # indicateur_e2_evitement ref_max = 0.75
-  result2 <- nemetonshiny:::normalize_indicator("indicateur_e2_evitement", c(0, 0.375, 0.75))
+  result2 <- nemetonshiny:::normalize_indicator("indicateur_e2_evitement", c(0, 0.66, 1.32))
   expect_equal(result2, c(0, 50, 100))
 })
 

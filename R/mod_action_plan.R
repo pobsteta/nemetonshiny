@@ -438,6 +438,15 @@ mod_action_plan_ui <- function(id) {
   )
 }
 
+# La carte des actions est-elle affichee ? Onglet principal « Plan
+# d'actions » et sous-onglet « Carte + Tableau » (le defaut tant que le
+# sous-onglet n'a pas encore ete rapporte par le navigateur).
+# @noRd
+.action_plan_map_visible <- function(main_tab, inner_tab) {
+  identical(main_tab, "action_plan") &&
+    identical(inner_tab %||% "map_table", "map_table")
+}
+
 #' Action Plan Module Server
 #'
 #' @param id Character. Module namespace ID.
@@ -493,7 +502,14 @@ mod_action_plan_server <- function(id, app_state) {
     # Module-local state (e.g. last-fitted bbox signature, project id).
     rv_state <- shiny::reactiveValues(last_bbox_sig = NULL,
                                       last_project_id = NULL,
+                                      pending_fit_bbox = NULL,
                                       pending_chat_actions = NULL)
+
+    # La carte n'a de dimensions que lorsqu'elle est affichee : onglet
+    # principal « Plan d'actions » ET sous-onglet « Carte + Tableau ».
+    map_visible <- function() {
+      .action_plan_map_visible(app_state$active_main_tab, input$inner_nav)
+    }
 
     shiny::observe({
       project <- app_state$current_project
@@ -501,6 +517,7 @@ mod_action_plan_server <- function(id, app_state) {
         plan_rv(NULL)
         rv_state$last_bbox_sig <- NULL
         rv_state$last_project_id <- NULL
+        rv_state$pending_fit_bbox <- NULL
         return()
       }
       if (!identical(rv_state$last_project_id, project$id)) {
@@ -799,14 +816,47 @@ mod_action_plan_server <- function(id, app_state) {
       if (!is.null(bbox)) {
         sig <- paste(round(bbox, 4), collapse = "_")
         if (!identical(rv_state$last_bbox_sig, sig)) {
-          proxy |> leaflet::fitBounds(
-            lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
-            lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
-          )
+          # Carte masquee (changement de projet depuis un autre onglet) : ses
+          # dimensions sont NULLES, un `fitBounds` y cadrerait le monde
+          # entier - et la signature, deja posee, empecherait tout recadrage
+          # au retour. On differe donc le cadrage jusqu'a l'affichage.
+          if (shiny::isolate(map_visible())) {
+            proxy |> leaflet::fitBounds(
+              lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
+              lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
+            )
+            rv_state$pending_fit_bbox <- NULL
+          } else {
+            rv_state$pending_fit_bbox <- bbox
+          }
           rv_state$last_bbox_sig <- sig
         }
       }
     })
+
+    # Arrivee sur la carte : lui rendre ses dimensions, puis appliquer le
+    # cadrage differe s'il y en a un. `invalidateSize()` seul restaure la
+    # taille, pas la vue (meme constat que mod_map.R et mod_ug.R). Sans
+    # cadrage en attente, la vue choisie par l'utilisateur est conservee.
+    # Le delai laisse le panneau se poser avant la mesure.
+    shiny::observeEvent(list(app_state$active_main_tab, input$inner_nav), {
+      if (!map_visible()) return()
+      bbox <- rv_state$pending_fit_bbox
+      rv_state$pending_fit_bbox <- NULL
+      later::later(function() {
+        session$sendCustomMessage("leafletInvalidateSize",
+                                  list(id = ns("map")))
+        if (!is.null(bbox)) {
+          leaflet::leafletProxy(ns("map"), session = session) |>
+            leaflet::fitBounds(
+              lng1 = as.numeric(bbox[["xmin"]]),
+              lat1 = as.numeric(bbox[["ymin"]]),
+              lng2 = as.numeric(bbox[["xmax"]]),
+              lat2 = as.numeric(bbox[["ymax"]])
+            )
+        }
+      }, delay = 0.3)
+    }, ignoreInit = TRUE)
 
     # Map click on UGF -> select that UGF (toggle) AND propagate the
     # selection to the action table: every row whose ug_id is in the

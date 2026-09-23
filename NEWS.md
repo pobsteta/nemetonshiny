@@ -1,3 +1,31 @@
+# nemetonshiny 0.143.28.9002 (2026-09-23)
+
+### Fixed — la Carte des actions n'etait pas cadree sur le projet
+
+Apres un changement de projet, arriver sur « Plan d'actions » montrait le
+monde entier, les UGF reduites a un point. Meme mecanisme que la carte
+cadastrale (0.143.25). Le changement de projet se fait depuis un autre
+onglet : la carte est alors masquee (`display: none`), donc ses dimensions
+sont nulles. Le `fitBounds` qu'elle recevait y cadrait le monde. La
+signature de bbox etait pourtant enregistree, si bien que rien ne recadrait
+au retour.
+
+Quand la carte est masquee, le cadrage est desormais **differe** au lieu
+d'etre perdu. A l'arrivee sur l'onglet principal ET sur le sous-onglet
+« Carte + Tableau », la carte recupere ses dimensions (`invalidateSize`),
+puis le cadrage en attente s'applique. S'il n'y a aucun cadrage en attente,
+la vue choisie par l'utilisateur est conservee.
+
+Trois tests (dont deux `testServer`), verifies par mutation.
+
+### Fixed — la CI `R-CMD-check` etait rouge depuis le plancher cœur 0.197.0
+
+Sept tests de `normalize_indicator` verifiaient encore les anciennes bornes
+d'E1 (0,3) et d'E2 (0,75). Le cœur v0.197.0 les a alignees sur 1,32 (spec
+048 §11), et le plancher `nemeton (>= 0.197.0)` date de 0.143.25 : les
+releases 0.143.25 a 0.143.28 sont donc parties avec un `R-CMD-check` rouge
+(`release.yml` n'en depend pas). Tests mis a jour, aucun code touche.
+
 # nemetonshiny 0.143.28.9001 (2026-09-23)
 
 ### Fixed — revenir sur « Suivi sanitaire » ne relance plus les calculs

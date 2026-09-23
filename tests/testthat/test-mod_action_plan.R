@@ -147,3 +147,86 @@ test_that("aucune surface generatrice ne reste au vert", {
     expect_true(any(grepl("btn-ia", code, fixed = TRUE)), info = b$f)
   }
 })
+
+# ---------------------------------------------------------------------------
+# Cadrage de la carte des actions quand elle est masquee
+# ---------------------------------------------------------------------------
+# Changer de projet depuis un autre onglet envoyait `fitBounds` a une carte
+# masquee (dimensions nulles) : elle cadrait le monde entier, et la signature
+# de bbox deja posee empechait tout recadrage au retour sur l'onglet.
+
+test_that(".action_plan_map_visible exige l'onglet ET le sous-onglet carte", {
+  vis <- nemetonshiny:::.action_plan_map_visible
+  expect_true(vis("action_plan", "map_table"))
+  expect_true(vis("action_plan", NULL))   # sous-onglet pas encore rapporte
+  expect_false(vis("action_plan", "kanban"))
+  expect_false(vis("selection", "map_table"))
+  expect_false(vis(NULL, NULL))
+})
+
+.action_plan_ug_sf <- function(x0) {
+  poly <- sf::st_polygon(list(rbind(c(x0, 46), c(x0 + 0.01, 46),
+                                    c(x0 + 0.01, 46.01), c(x0, 46.01),
+                                    c(x0, 46))))
+  sf::st_sf(ug_id = "ug1", label = "UGF 1",
+            geometry = sf::st_sfc(poly, crs = 4326))
+}
+
+test_that("un projet charge carte masquee est cadre a l'arrivee sur l'onglet", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(projet$x0),
+    load_action_plan = function(project_id) init_empty_action_plan(project_id)
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "selection",
+    current_project = list(id = "p1", x0 = 5)
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$setInputs(map_color_by = "priorite")
+      session$flushReact()
+      # Carte masquee : le cadrage est differe, pas perdu.
+      expect_false(is.null(rv_state$pending_fit_bbox))
+      expect_equal(as.numeric(rv_state$pending_fit_bbox[["xmin"]]), 5)
+
+      # Changement de projet, toujours depuis un autre onglet.
+      app_state$current_project <- list(id = "p2", x0 = 6)
+      session$flushReact()
+      expect_equal(as.numeric(rv_state$pending_fit_bbox[["xmin"]]), 6)
+
+      # Arrivee sur le Plan d'actions : le cadrage en attente est consomme.
+      app_state$active_main_tab <- "action_plan"
+      session$flushReact()
+      expect_null(rv_state$pending_fit_bbox)
+    }
+  )
+})
+
+test_that("carte visible : cadrage immediat, rien en attente", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(projet$x0),
+    load_action_plan = function(project_id) init_empty_action_plan(project_id)
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5)
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$setInputs(map_color_by = "priorite", inner_nav = "map_table")
+      session$flushReact()
+      expect_null(rv_state$pending_fit_bbox)
+      expect_false(is.null(rv_state$last_bbox_sig))
+    }
+  )
+})
