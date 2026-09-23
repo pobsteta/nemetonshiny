@@ -111,8 +111,10 @@ test_that("aucune nouvelle liaison reticulate en processus", {
   )
 
   racine <- testthat::test_path("..", "..", "R")
-  testthat::skip_if_not(dir.exists(racine), "sources R absentes (package installe)")
   fichiers <- list.files(racine, pattern = "\\.R$", full.names = TRUE)
+  # Sous covr, `../../R` existe mais c'est celui du paquet installe (.rdb) :
+  # tester le dossier ne suffit pas, il faut des sources.
+  testthat::skip_if(length(fichiers) == 0L, "sources R absentes (package installe)")
   coupables <- character(0)
   for (f in fichiers) {
     src <- readLines(f, warn = FALSE)

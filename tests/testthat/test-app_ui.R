@@ -210,8 +210,10 @@ test_that("mod_home_ui n'est defini qu'une fois", {
   # les implementations VIVANTES. Le titre ne dit rien de l'etat reel :
   # seule la collation le dit.
   racine <- testthat::test_path("..", "..", "R")
-  testthat::skip_if_not(dir.exists(racine), "sources R absentes (package installe)")
   fichiers <- list.files(racine, pattern = "\\.R$", full.names = TRUE)
+  # Sous covr, `../../R` existe mais c'est celui du paquet installe (.rdb) :
+  # tester le dossier ne suffit pas, il faut des sources.
+  testthat::skip_if(length(fichiers) == 0L, "sources R absentes (package installe)")
 
   compte <- function(nom) {
     sum(vapply(fichiers, function(f) {

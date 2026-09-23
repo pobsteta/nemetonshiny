@@ -1,3 +1,46 @@
+# nemetonshiny 0.143.31 (2026-09-23)
+
+### Changed — la « Carte FAST » garde son stack d'indice sur disque (cœur 0.198.0)
+
+Suite de la 0.143.29 : l'app ne reconstruisait plus le stack en revenant sur
+l'onglet, mais le payait encore a chaque nouvelle session et a chaque
+changement d'indice, y compris pour revenir a un indice deja affiche. Le cœur
+0.198.0 met ce stack en cache (reponse au brief du 2026-09-23). La Carte FAST
+appelle maintenant `build_index_stack(..., cache_result = TRUE)`. Le cache se
+trouve dans `<projet>/cache/layers/index_stack`, emplacement par defaut du
+cœur, et compte au plus 8 stacks d'environ 230 Mo chacun.
+
+Mesure sur `armn` (327 scenes, NDVI, cache ecrit dans un repertoire
+temporaire) : **39,5 s** au premier appel (calcul + ecriture, cache disque
+froid), **0,22 s** au second, avec un resultat identique (noms, dates,
+attribut `index`, valeurs).
+
+`parallel` reste a `FALSE`, sur recommandation du cœur : sans plan
+multisession permanent, furrr tourne en sequentiel et n'ajoute que le cout
+de `wrap`/`unwrap`.
+
+Les masques FAST sont desormais nommes par leur contenu, cote cœur : deux
+calculs differents ne peuvent plus ecraser le meme fichier, et un calcul
+identique reutilise le fichier existant. Le commentaire de
+`.compute_fast_mask()` est mis a jour en consequence. L'app ne lisait aucun
+nom de masque ; rien d'autre ne change.
+
+Plancher `Imports: nemeton (>= 0.198.0)`. Deux tests : le contrat de
+signature du cœur, et l'appel avec `cache_result = TRUE` sans `parallel`
+(echoue si l'argument est retire).
+
+### Fixed — le job CI `coverage` echouait sur deux des gardes de la 0.143.30
+
+`coverage` ne demarre que si `R-CMD-check` passe ; il etait donc saute
+depuis le 14 septembre. Reveille par la 0.143.30, il echouait sur
+`test-app_ui` et `test-service_python`. Leur garde testait l'existence du
+dossier `../../R`. Sous covr, ce dossier existe, mais c'est celui du paquet
+installe : il ne contient que `nemetonshiny.rdb`, aucun `.R`. Les deux tests
+comptaient alors zero fichier et echouaient. Ils sont maintenant sautes quand
+aucune source `.R` n'est trouvee. Verifie dans trois situations : sources
+presentes (566 reussites), dossier absent et dossier installe (0 echec, tests
+sautes).
+
 # nemetonshiny 0.143.30 (2026-09-23)
 
 ### Fixed — `R-CMD-check` reste rouge : cinq tests lisaient `R/` sans garde
