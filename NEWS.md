@@ -1,3 +1,38 @@
+# nemetonshiny 0.143.28.9001 (2026-09-23)
+
+### Fixed — revenir sur « Suivi sanitaire » ne relance plus les calculs
+
+Chaque arrivee sur l'onglet relancait les deux calculs du Suivi, meme quand
+rien n'avait change depuis la visite precedente : le toast « calcul en
+cours », puis une interface figee. La cause est la meme dans les deux
+modules. L'onglet actif fait partie des dependances de leur observateur (c'est
+le garde qui evite de calculer depuis l'Accueil), mais rien ne verifiait si
+les entrees avaient bouge.
+
+Mesure sur le projet `armn` (327 scenes Sentinel-2, cache chaud) :
+
+- **Carte FAST** : `build_index_stack()` reconstruisait le stack a chaque
+  entree, **~9 s** bloquantes (8,75 / 9,20 / 9,37 s). Rien ne le met en cache.
+- **Alertes FAST** : `compute_fast_alert_mask()` prenait **~0,12 s**, mais
+  il reecrivait un masque, relancait le toast et repeignait la carte.
+
+Chaque module garde maintenant la signature des entrees de son dernier calcul
+reussi : projet, zone, dates, seuils, indice, mode, parametres de tendance et
+rafraichissement pour les alertes ; cache, scenes et indice pour la carte.
+Revenir sur l'onglet avec la meme signature ne declenche plus rien. Un echec
+n'est pas memorise : le calcul est retente a l'entree suivante. Tout
+changement d'entree recalcule comme avant, et le calcul reste differe tant que
+l'onglet n'est pas ouvert.
+
+Le commentaire de `.compute_fast_mask()` est corrige au passage : il
+affirmait que le resultat etait reutilise sans recalcul. C'est faux pour le
+masque 0-4, que le cœur reclasse et reecrit a chaque appel ; seul le raster
+continu intermediaire est en cache.
+
+Quatre tests (`testServer`) couvrent l'aller-retour d'onglet sans recalcul,
+le recalcul sur changement d'indice, et la nouvelle tentative apres un echec.
+Sans le correctif, ils echouent.
+
 # nemetonshiny 0.143.28 (2026-09-19)
 
 ### Fixed — le tremblement de l'etape « Plan d'action »

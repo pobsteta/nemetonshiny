@@ -59,10 +59,13 @@
 #'
 #' Thin wrapper around `nemeton::compute_fast_alert_mask()` centralising the
 #' argument plumbing shared by the displayed raster (`raster_r`) and the trend
-#' cache pre-warming observer, so the two call sites never drift. Persists a
-#' TIF per (index, parameters) and returns its path (idempotent: a cached
-#' result is reused, no recompute). No error handling here - callers wrap it
-#' so they can route failures to their own UI feedback.
+#' cache pre-warming observer, so the two call sites never drift. Returns the
+#' path of the persisted 0-4 mask. Only the intermediate continuous raster is
+#' content-addressed on the core side: the mask itself is re-classified and
+#' re-written (timestamped TIF) on every call, so callers must not rely on
+#' this function to skip work - see `.fast_raster_signature()`. No error
+#' handling here - callers wrap it so they can route failures to their own UI
+#' feedback.
 #' @noRd
 .compute_fast_mask <- function(con, zone, index, threshold, dr, mode,
                                window_days, months, min_years, alpha,
@@ -85,6 +88,18 @@
     result_cache_dir = result_cache,
     parallel         = TRUE
   )
+}
+
+#' Signature of the inputs of one displayed FAST alert raster
+#'
+#' Two calls with the same signature produce the same mask, so the module
+#' can skip the recompute when the user merely comes back to the tab.
+#' @param project The current project (its path identifies the cache).
+#' @param ... Every other input of the computation.
+#' @return A character hash.
+#' @noRd
+.fast_raster_signature <- function(project, ...) {
+  rlang::hash(list(project$path %||% project$project_path, ...))
 }
 
 #' Alertes FAST sub-tab UI
@@ -492,6 +507,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # s'en sert pour afficher " calcul en cours " au lieu d'un faux
     # " zone saine " tant que le raster n'est pas pret.
     computing_rv <- shiny::reactiveVal(FALSE)
+    # Signature des entrees du dernier raster calcule avec succes. L'onglet
+    # actif fait partie des dependances de l'observer ci-dessous (garde
+    # « pas de calcul hors Suivi ») : sans cette memoire, chaque retour sur
+    # l'onglet relancait le calcul, la notification et la repeinture de la
+    # carte alors que rien n'avait change.
+    computed_sig <- NULL
 
     # v0.88.x - Notification " calcul en cours " + calcul differe : au
     # changement d'indice / mode / zone / dates / seuils / params trend, on
@@ -516,11 +537,23 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       active_tab <- app_state$active_main_tab
       zone <- shiny::isolate(zone_id_r())
       if (is.null(zone) || !isTRUE(nzchar(zone))) {
+        computed_sig <<- NULL
         computing_rv(FALSE)
         raster_rv(NULL)
         return()
       }
       if (!identical(active_tab, "monitoring")) {
+        return()
+      }
+      # Retour sur l'onglet sans changement d'entree : le raster affiche est
+      # deja le bon, on ne recalcule rien.
+      sig <- shiny::isolate(.fast_raster_signature(
+        app_state$current_project, zone, date_range_r(), thresholds_deb(),
+        input$index, input$mode, input$trend_months, input$trend_min_years,
+        input$trend_alpha, refresh_r()
+      ))
+      if (identical(sig, computed_sig) &&
+          !is.null(shiny::isolate(raster_rv()))) {
         return()
       }
       # Marque l'etat " calcul en cours " AVANT le flush, pour que le
@@ -533,9 +566,13 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       computing_rv(TRUE)
       session$onFlushed(function() {
         on.exit(computing_rv(FALSE), add = TRUE)
-        shiny::withReactiveDomain(
-          session, shiny::isolate(raster_rv(compute_fast_raster()))
+        out <- shiny::withReactiveDomain(
+          session, shiny::isolate(compute_fast_raster())
         )
+        # Un echec (NULL) n'est pas memorise : le retour suivant sur
+        # l'onglet retentera le calcul.
+        computed_sig <<- if (is.null(out)) NULL else sig
+        shiny::withReactiveDomain(session, shiny::isolate(raster_rv(out)))
       }, once = TRUE)
     })
 
