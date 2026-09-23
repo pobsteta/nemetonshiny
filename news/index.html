@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.29</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.143.30</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.143.30" id="nemetonshiny-014330-2026-09-23">nemetonshiny 0.143.30 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014330-2026-09-23"></a></h2>
+<div class="section level4">
+<h4 id="fixed--r-cmd-check-reste-rouge--cinq-tests-lisaient-r-sans-garde-0-143-30">Fixed — <code>R-CMD-check</code> reste rouge : cinq tests lisaient <code>R/</code> sans garde<a class="anchor" aria-label="anchor" href="#fixed--r-cmd-check-reste-rouge--cinq-tests-lisaient-r-sans-garde-0-143-30"></a></h4>
+<p>La 0.143.29 a remis le job <code>tests</code> au vert, mais <code>R-CMD-check</code> echoue toujours, et ce depuis le 14 septembre (<code>0fc7a5e1</code>), pas depuis le plancher cœur 0.197.0 comme l’affirmait l’entree precedente. Les echecs <code>normalize_indicator</code> s’y ajoutaient seulement.</p>
+<p>La cause restante : cinq tests lisent les sources <code>R/*.R</code> (<code>test-mod_ug</code>, <code>test-service_pipeline</code>, <code>test-service_tour</code>, <code>test-app_ui</code>, <code>test-service_python</code>). Sous <code>R CMD check</code>, les tests tournent contre le paquet installe, et ce repertoire n’existe pas. Ils prennent maintenant la garde deja utilisee ailleurs dans le repo (<code>skip_if_not(file.exists(...), "sources R absentes")</code>). Verifie dans les deux cas : 566 reussites avec les sources, 0 echec et les cinq tests sautes sans elles.</p>
+<p>Deux caracteres non-ASCII hors commentaire (<code>R/mod_home.R</code>, <code>R/mod_pipeline.R</code>) passent en <code>\uXXXX</code>, ce qui leve l’avertissement correspondant du check. L’avertissement sur <code>lidR</code> et <code>opencanopy</code>, appeles sans etre declares dans DESCRIPTION, reste ouvert.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.143.29" id="nemetonshiny-014329-2026-09-23">nemetonshiny 0.143.29 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-014329-2026-09-23"></a></h2>
 <div class="section level4">

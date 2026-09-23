@@ -1,5 +1,28 @@
 # Changelog
 
+## nemetonshiny 0.143.30 (2026-09-23)
+
+#### Fixed — `R-CMD-check` reste rouge : cinq tests lisaient `R/` sans garde
+
+La 0.143.29 a remis le job `tests` au vert, mais `R-CMD-check` echoue
+toujours, et ce depuis le 14 septembre (`0fc7a5e1`), pas depuis le
+plancher cœur 0.197.0 comme l’affirmait l’entree precedente. Les echecs
+`normalize_indicator` s’y ajoutaient seulement.
+
+La cause restante : cinq tests lisent les sources `R/*.R`
+(`test-mod_ug`, `test-service_pipeline`, `test-service_tour`,
+`test-app_ui`, `test-service_python`). Sous `R CMD check`, les tests
+tournent contre le paquet installe, et ce repertoire n’existe pas. Ils
+prennent maintenant la garde deja utilisee ailleurs dans le repo
+(`skip_if_not(file.exists(...), "sources R absentes")`). Verifie dans
+les deux cas : 566 reussites avec les sources, 0 echec et les cinq tests
+sautes sans elles.
+
+Deux caracteres non-ASCII hors commentaire (`R/mod_home.R`,
+`R/mod_pipeline.R`) passent en `\uXXXX`, ce qui leve l’avertissement
+correspondant du check. L’avertissement sur `lidR` et `opencanopy`,
+appeles sans etre declares dans DESCRIPTION, reste ouvert.
+
 ## nemetonshiny 0.143.29 (2026-09-23)
 
 #### Fixed — la Carte des actions n’etait pas cadree sur le projet

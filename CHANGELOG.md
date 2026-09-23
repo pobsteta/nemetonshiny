@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.143.30\] - 2026-09-23
+
+### Fixed
+
+- CI `R-CMD-check` rouge depuis `0fc7a5e1` (2026-09-14) : cinq tests
+  lisaient les sources `R/*.R`, absentes du paquet installe sous
+  `R CMD check` (`test-mod_ug`, `test-service_pipeline`,
+  `test-service_tour`, `test-app_ui`, `test-service_python`). Garde
+  `skip_if_not(file.exists(...))` du repo.
+- NEWS 0.143.29 : le rouge CI datait du 14 septembre, pas du plancher
+  cœur 0.197.0.
+
+### Changed
+
+- Deux caracteres non-ASCII hors commentaire (`R/mod_home.R`,
+  `R/mod_pipeline.R`) passent en `\uXXXX`.
+
 ## \[0.143.29\] - 2026-09-23
 
 ### Fixed
