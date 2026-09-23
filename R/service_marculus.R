@@ -561,33 +561,16 @@ precompute_houppiers <- function(project_id) {
   out[, "h_max", drop = FALSE]
 }
 
-#' Segment crowns on a CHM, best-effort
-#'
-#' Bounded by the AOI: the cached CHM is a whole LiDAR HD tile, far larger than
-#' the project. Measured on Couchey - 1 674 ha of tile for 536 ha of parcels -
-#' segmenting everything yields 46 158 crowns against 22 435, most of the
-#' surplus standing in forests belonging to somebody else. The time is much the
-#' same either way, which is precisely why this runs at computation time.
-#'
-#' **Falls back to the whole tile when the bounded call fails.** On
-#' `nemeton 0.184.0.9000` the `aoi` path aborts with
-#' `st_crs(x) == st_crs(y) is not TRUE`, raised inside lidR once the CHM has
-#' been cropped - reproduced twice, and not cured by handing the AOI in the
-#' raster's own CRS (`specs/BRIEF-nemeton-houppiers-aoi-crs.md`). Segmenting
-#' everything costs the same time and yields crowns standing in other people's
-#' forests, but each context is clipped to its own parcels before writing, so
-#' the surplus never reaches the phone. A feature that degrades beats a feature
-#' that disappears.
-#'
-#' @param chm Path to the height model.
-#' @param aoi Optional `sf` limiting the segmentation.
-#' @return An `sf` in EPSG:4326 carrying `h_max`, or `NULL`.
-#' @noRd
 #' Outline of everything a project covers
 #'
 #' Union of the tenements, or of the parcels when no tenement exists yet.
 #' Buffered by 10 m so a crown standing on the boundary is still segmented -
 #' the marker walking the edge sees those trees too.
+#'
+#' Projected to Lambert-93 and repaired BEFORE the union. In WGS84 the union
+#' goes through s2, which rejects a self-crossing ring outright ("Loop 0 is not
+#' valid: Edge 0 crosses edge 3"); on "Reconfort" one tenement had such a
+#' ring, the union failed, and the AOI silently came back `NULL`.
 #'
 #' @param project The loaded project.
 #' @return An `sf` of one polygon, or `NULL`.
@@ -600,10 +583,12 @@ precompute_houppiers <- function(project_id) {
   } else NULL
   if (is.null(src)) return(NULL)
   tryCatch({
-    u <- sf::st_union(sf::st_geometry(src))
-    metrique <- sf::st_transform(u, 2154)
-    sf::st_sf(geometry = sf::st_buffer(metrique, 10))
-  }, error = function(e) NULL)
+    g <- sf::st_make_valid(sf::st_transform(sf::st_geometry(src), 2154))
+    sf::st_sf(geometry = sf::st_buffer(sf::st_union(g), 10))
+  }, error = function(e) {
+    cli::cli_warn("Emprise des houppiers non calculable : {conditionMessage(e)}")
+    NULL
+  })
 }
 
 
@@ -612,8 +597,10 @@ precompute_houppiers <- function(project_id) {
 #' @description
 #' Bounded by the AOI: the cached height model is a whole LiDAR HD tile, far
 #' larger than the project - 1 169 ha of tiles for 637 ha of parcels on
-#' "Fordead". The core keeps a boundary crown whole (`emprise = "intersecte"`),
-#' so a tree straddling the edge is a tree, not a fraction of one.
+#' "Fordead". Since v0.144.x the bound is applied HERE, after an unbounded core
+#' call (see the comment in the body): the crowns meeting the outline are kept
+#' whole by [.houppiers_dans_emprise()], so a tree straddling the edge is a
+#' tree, not a fraction of one.
 #'
 #' **A forced `max_cells` lived here from v0.140.0 to v0.141.0**, along with
 #' `aoi = NULL`, because that was the only path measured as working: lidR
@@ -627,8 +614,20 @@ precompute_houppiers <- function(project_id) {
 #' @return An `sf` of crowns carrying `h_max`, in WGS84, or `NULL`.
 #' @noRd
 .marculus_segment_houppiers <- function(chm, aoi = NULL) {
+  # Le cœur est appele SANS emprise, dans un processus R NEUF, et l'emprise
+  # est appliquee ici, apres. Sur `nemeton 0.198.0`, dans le processus de
+  # l'app, `segment_houppiers()` fait echouer lidR sur `st_crs(x) == st_crs(y)`
+  # (`dalponte2016()` -> `crop_special_its()` -> `st_crop()`) :
+  #   - des que le CHM est recadre (chemin `aoi =`, ou recadrage prealable) ;
+  #   - et meme SANS emprise, des que `load_project()` a tourne avant dans le
+  #     processus - ce qui est toujours le cas au calcul des indicateurs.
+  # Dans un processus neuf, sans emprise, la mosaique complete passe :
+  # 280 218 houppiers en ~170 s sur « Reconfort » (mesure 5 fois). Aucun
+  # projet n'avait plus produit de houppiers : le cache de « Fordead » date du
+  # 2026-08-26, ses calculs suivants ont echoue de la meme facon.
+  # Brief : `briefs/vers-nemeton/2026-09-23-houppiers-aoi-etat.md`.
   out <- tryCatch(
-    nemeton::segment_houppiers(chm, aoi = aoi),
+    .segmenter_houppiers_isole(chm),
     error = function(e) {
       cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
       NULL
@@ -651,9 +650,63 @@ precompute_houppiers <- function(project_id) {
                                           verdict = verdict) else NULL)
   }
   if (!("h_max" %in% names(out))) return(NULL)
+  out <- .houppiers_dans_emprise(out, aoi)
+  if (nrow(out) == 0L) return(NULL)
   res <- .marculus_to_4326(out[, "h_max", drop = FALSE])
   attr(res, "chm_verdict") <- verdict
   res
+}
+
+
+#' Run the core segmentation in a fresh R process
+#'
+#' @description
+#' Workaround for a process-state defect of `nemeton::segment_houppiers()`
+#' (see [.marculus_segment_houppiers()]): the same call that fails inside the
+#' app's process succeeds in a new one. The CHM crosses the process boundary
+#' by its **file path** - a `SpatRaster` is a pointer and does not serialise -
+#' and the crowns come back as an `sf`, attributes (`chm_suspect`) included.
+#'
+#' Falls back to an in-process call when the CHM has no single file source
+#' (in-memory raster) or when `callr` is not installed.
+#'
+#' @param chm A `SpatRaster`.
+#' @return What `nemeton::segment_houppiers(chm, aoi = NULL)` returns.
+#' @noRd
+.segmenter_houppiers_isole <- function(chm) {
+  src <- tryCatch(terra::sources(chm), error = function(e) character(0))
+  isolable <- length(src) == 1L && nzchar(src) && file.exists(src) &&
+    requireNamespace("callr", quietly = TRUE)
+  if (!isolable) return(nemeton::segment_houppiers(chm, aoi = NULL))
+  callr::r(
+    function(src) nemeton::segment_houppiers(terra::rast(src), aoi = NULL),
+    args = list(src = src),
+    env  = callr::rcmd_safe_env(),
+    show = FALSE
+  )
+}
+
+
+#' Keep the crowns that meet the project outline, whole
+#'
+#' Selection, never clipping - the core's own `emprise = "intersecte"`
+#' contract: a crown straddling the boundary keeps its whole outline. Done in
+#' the crowns' projected CRS (planar GEOS), before the WGS84 reprojection.
+#'
+#' @param houppiers An `sf` of crowns in the CHM's CRS.
+#' @param aoi The project outline (`sf`), or `NULL` to keep everything.
+#' @return An `sf`, possibly empty.
+#' @noRd
+.houppiers_dans_emprise <- function(houppiers, aoi) {
+  if (is.null(aoi) || !inherits(aoi, c("sf", "sfc"))) return(houppiers)
+  tryCatch({
+    zone <- sf::st_union(sf::st_transform(sf::st_geometry(aoi),
+                                          sf::st_crs(houppiers)))
+    sf::st_filter(houppiers, zone, .predicate = sf::st_intersects)
+  }, error = function(e) {
+    cli::cli_warn("Emprise des houppiers non appliqu\u00e9e : {conditionMessage(e)}")
+    houppiers
+  })
 }
 
 

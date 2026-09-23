@@ -1,3 +1,50 @@
+# nemetonshiny 0.144.0.9002 (2026-09-23)
+
+### Fixed — l'export Marculus repart avec sa couche de houppiers
+
+Depuis fin aout, aucun projet ne produisait plus de houppiers au calcul des
+indicateurs, et « Telecharger vers Marculus » partait sans couche `houppier`.
+Chaque `compute_child.log` portait « Segmentation des houppiers :
+st_crs(x) == st_crs(y) n'est pas TRUE ». Le cache de « Fordead » datait du
+26 aout ; « Reconfort » n'en avait jamais eu.
+
+Deux causes se cumulaient.
+
+1. **L'emprise tombait a `NULL` sans rien signaler.** Un contour de parcelle
+   qui se recoupe faisait echouer l'union en WGS84 (s2 : « Edge 0 crosses
+   edge 3 »), et `.marculus_aoi()` avalait l'erreur. Le contour est maintenant
+   repare (`st_make_valid()`) en Lambert-93 avant l'union, et un echec produit
+   un avertissement au lieu d'un `NULL` muet.
+2. **Le cœur echoue selon l'etat du processus.** Avec `nemeton` 0.198.0,
+   `segment_houppiers()` fait echouer lidR (`dalponte2016()` ->
+   `st_crop()`) des que le CHM est recadre. Il echoue meme sans emprise des
+   que `load_project()` a tourne dans le meme processus, ce qui est toujours
+   le cas au calcul. Dans un processus neuf et sans emprise, il reussit
+   (mesure 5 fois). L'app appelle donc le cœur **dans un processus R neuf**
+   (`callr::r()`, le CHM transmis par son chemin), sans emprise. Elle garde
+   ensuite les houppiers qui **touchent** l'emprise, entiers, sans les
+   decouper. Brief au cœur :
+   `briefs/vers-nemeton/2026-09-23-houppiers-aoi-etat.md`.
+
+Mesure sur « Reconfort » (25 dalles LiDAR HD a 0,5 m) : 280 218 houppiers
+segmentes en 185 s, 85 300 gardes dans l'emprise. Les 11 GeoPackages du lot
+portent desormais `parcelle` + `houppier`, par exemple 7 321 houppiers pour
+la parcelle 1116.
+
+**Pour en profiter**, il faut recalculer les indicateurs du projet : les
+houppiers sont precalcules a ce moment-la, pas au telechargement.
+
+Hors correctif, deux points s'expliquent par la conception : le fond
+orthophoto n'est **jamais** exporte (Marculus prendrait une table de tuiles
+pour son fond hors ligne, et les orthos du projet pesent des gigaoctets), et
+la couche `parcelle` de chaque GeoPackage contient les parcelles cadastrales
+**de l'UGF du chantier**, pas le parcellaire entier du projet.
+
+Tests : l'emprise d'un contour croise, l'appel sans emprise suivi de la
+selection (houppier a cheval garde entier), et l'aiguillage entre processus
+neuf (CHM sur disque) et processus courant (CHM en memoire). Les mutations
+sont detectees.
+
 # nemetonshiny 0.144.0.9001 (2026-09-23)
 
 ### Added — supprimer les actions selectionnees du Plan d'actions
