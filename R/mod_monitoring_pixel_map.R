@@ -256,6 +256,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # sans cette memoire, chaque retour sur « Suivi sanitaire » relancait
     # `build_index_stack` - ~9 s bloquantes sur 327 scenes (projet armn,
     # mesure 2026-09-23) - pour reconstruire le meme stack.
+    #
+    # Depuis nemeton 0.198.0 le stack est AUSSI en cache disque
+    # (`cache_result = TRUE`, sous `<project>/cache/layers/index_stack`) :
+    # la memoire de signature evite l'appel dans la session, le cache disque
+    # evite le recalcul entre sessions et au retour sur un indice deja vu
+    # (relecture ~0,05 s au lieu de ~9 s, mesure cœur sur armn).
     stack_sig <- NULL
 
     shiny::observe({
@@ -287,7 +293,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       session$onFlushed(function() {
         on.exit(loading(FALSE), add = TRUE)
         out <- tryCatch(
-          nemeton::build_index_stack(cd, sdf, index = idx),
+          # `parallel = FALSE` (defaut) : sans plan multisession permanent,
+          # furrr tournerait en sequentiel avec le surcout wrap/unwrap
+          # (reponse cœur 2026-09-23). Le repertoire de cache par defaut
+          # est `dirname(cd)/index_stack`, soit `cache/layers/index_stack`.
+          nemeton::build_index_stack(cd, sdf, index = idx,
+                                     cache_result = TRUE),
           error = function(e) {
             msg <- conditionMessage(e)
             cli::cli_alert_warning(sprintf(

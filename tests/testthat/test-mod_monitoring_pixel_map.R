@@ -87,7 +87,7 @@ test_that("scenes_df enumerates populated cache dirs, date parsed from scene id"
   # 2 doivent apparaître dans scenes_df avec leur date parsée.
   captured <- list()
   testthat::with_mocked_bindings(
-    build_index_stack = function(cache_dir, scenes_df, index) {
+    build_index_stack = function(cache_dir, scenes_df, index, ...) {
       captured$scenes_df <<- scenes_df
       captured$index     <<- index
       NULL  # don't try to actually build a SpatRaster
@@ -137,7 +137,7 @@ test_that("returned list exposes a loading reactive, FALSE once the stack settle
   # un flush complet (le calcul différé s'exécute et se termine), `loading`
   # doit être retombé à FALSE et le stack présent.
   testthat::with_mocked_bindings(
-    build_index_stack = function(cache_dir, scenes_df, index) "STACK_OK",
+    build_index_stack = function(cache_dir, scenes_df, index, ...) "STACK_OK",
     .package = "nemeton",
     {
       proj <- list(path = withr::local_tempdir())
@@ -388,7 +388,7 @@ test_that("returning to the Suivi tab does not rebuild an unchanged stack", {
   # `build_index_stack` - ~9 s bloquantes sur un vrai cache de 327 scenes.
   calls <- new.env(); calls$n <- 0L; calls$index <- character(0)
   testthat::with_mocked_bindings(
-    build_index_stack = function(cache_dir, scenes_df, index) {
+    build_index_stack = function(cache_dir, scenes_df, index, ...) {
       calls$n <- calls$n + 1L
       calls$index <- c(calls$index, index)
       paste0("STACK_", index)
@@ -468,4 +468,55 @@ test_that("a failed stack build is retried on the next tab entry", {
       )
     }
   )
+})
+
+
+# ---- Cache disque du stack (nemeton >= 0.198.0) -----------------------
+
+test_that("le cœur expose le cache disque de build_index_stack", {
+  # Contrat de la reponse cœur 2026-09-23 : sans ces arguments, l'appel de
+  # la Carte FAST echouerait en « unused argument ».
+  args <- names(formals(nemeton::build_index_stack))
+  expect_true(all(c("cache_result", "result_cache_dir", "parallel") %in% args))
+})
+
+test_that("la Carte FAST demande le cache disque du stack, sans parallel", {
+  skip_if_not_installed("shiny")
+  .skip_if_no_pixel_map()
+
+  recu <- NULL
+  testthat::with_mocked_bindings(
+    build_index_stack = function(cache_dir, scenes_df, index, ...) {
+      recu <<- list(...)
+      "STACK_OK"
+    },
+    .package = "nemeton",
+    {
+      proj <- list(path = withr::local_tempdir())
+      cd   <- file.path(proj$path, "cache", "layers", "sentinel2")
+      dir.create(cd, recursive = TRUE)
+      sid  <- "S2A_MSIL2A_20250610T103021_T31TGM"
+      dir.create(file.path(cd, sid))
+      file.create(file.path(cd, sid, "B08.tif"))
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_pixel_map_server,
+        args = list(
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             active_main_tab = "monitoring",
+                                             current_project = proj),
+          mode_input = shiny::reactive("quick")
+        ),
+        {
+          session$setInputs(index = "NDVI")
+          session$flushReact()
+          expect_equal(session$getReturned()$pixel_stack(), "STACK_OK")
+        }
+      )
+    }
+  )
+  expect_false(is.null(recu))
+  expect_true(isTRUE(recu$cache_result))
+  # Le repertoire par defaut du cœur (`cache/layers/index_stack`) convient.
+  expect_null(recu$result_cache_dir)
+  expect_false(isTRUE(recu$parallel))
 })

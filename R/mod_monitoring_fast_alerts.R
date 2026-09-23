@@ -60,12 +60,14 @@
 #' Thin wrapper around `nemeton::compute_fast_alert_mask()` centralising the
 #' argument plumbing shared by the displayed raster (`raster_r`) and the trend
 #' cache pre-warming observer, so the two call sites never drift. Returns the
-#' path of the persisted 0-4 mask. Only the intermediate continuous raster is
-#' content-addressed on the core side: the mask itself is re-classified and
-#' re-written (timestamped TIF) on every call, so callers must not rely on
-#' this function to skip work - see `.fast_raster_signature()`. No error
-#' handling here - callers wrap it so they can route failures to their own UI
-#' feedback.
+#' path of the persisted 0-4 mask. Since nemeton 0.198.0 both the continuous
+#' raster (D6 cache) and the mask are content-addressed on the core side: the
+#' mask is written as `fast_alert_<INDEX>_<mode>_<hash16>.tif`, so an identical
+#' call returns the same path without rewriting the file, and two different
+#' calls can no longer overwrite each other. The mask is still re-classified
+#' on every call (cheap, ~0.1 s warm), so `.fast_raster_signature()` remains
+#' what spares the toast and the repaint. No error handling here - callers
+#' wrap it so they can route failures to their own UI feedback.
 #' @noRd
 .compute_fast_mask <- function(con, zone, index, threshold, dr, mode,
                                window_days, months, min_years, alpha,
