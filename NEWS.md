@@ -1,4 +1,4 @@
-# nemetonshiny 0.143.30.9002 (2026-09-23)
+# nemetonshiny 0.143.31 (2026-09-23)
 
 ### Changed — la « Carte FAST » garde son stack d'indice sur disque (cœur 0.198.0)
 
@@ -28,8 +28,6 @@ nom de masque ; rien d'autre ne change.
 Plancher `Imports: nemeton (>= 0.198.0)`. Deux tests : le contrat de
 signature du cœur, et l'appel avec `cache_result = TRUE` sans `parallel`
 (echoue si l'argument est retire).
-
-# nemetonshiny 0.143.30.9001 (2026-09-23)
 
 ### Fixed — le job CI `coverage` echouait sur deux des gardes de la 0.143.30
 

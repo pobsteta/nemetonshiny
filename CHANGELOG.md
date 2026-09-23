@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.143.31] - 2026-09-23
+
+### Changed
+
+- Carte FAST : `build_index_stack(..., cache_result = TRUE)` (cœur 0.198.0),
+  cache sous `<projet>/cache/layers/index_stack`. Mesure `armn` (327 scenes) :
+  39,5 s au premier appel, 0,22 s ensuite, resultat identique. `parallel`
+  reste a `FALSE`.
+- Commentaire de `.compute_fast_mask()` aligne sur les masques FAST nommes par
+  contenu (cœur 0.198.0).
+- Plancher `Imports: nemeton (>= 0.198.0)`.
+
+### Fixed
+
+- CI `coverage` : sous covr, `../../R` est le `R/` du paquet installe (`.rdb`
+  seul) ; `test-app_ui` et `test-service_python` sautent desormais quand
+  aucune source `.R` n'est trouvee, au lieu de tester l'existence du dossier.
+
 ## [0.143.30] - 2026-09-23
 
 ### Fixed
