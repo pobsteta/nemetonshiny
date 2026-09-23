@@ -1,3 +1,17 @@
+# nemetonshiny 0.143.30.9001 (2026-09-23)
+
+### Fixed — le job CI `coverage` echouait sur deux des gardes de la 0.143.30
+
+`coverage` ne demarre que si `R-CMD-check` passe ; il etait donc saute
+depuis le 14 septembre. Reveille par la 0.143.30, il echouait sur
+`test-app_ui` et `test-service_python`. Leur garde testait l'existence du
+dossier `../../R`. Sous covr, ce dossier existe, mais c'est celui du paquet
+installe : il ne contient que `nemetonshiny.rdb`, aucun `.R`. Les deux tests
+comptaient alors zero fichier et echouaient. Ils sont maintenant sautes quand
+aucune source `.R` n'est trouvee. Verifie dans trois situations : sources
+presentes (566 reussites), dossier absent et dossier installe (0 echec, tests
+sautes).
+
 # nemetonshiny 0.143.30 (2026-09-23)
 
 ### Fixed — `R-CMD-check` reste rouge : cinq tests lisaient `R/` sans garde
