@@ -424,3 +424,30 @@ test_that("actions_to_dataframe derives bilan_eur correctly", {
   expect_equal(df$bilan_eur[3], 600)
   expect_true(is.na(df$bilan_eur[4]))
 })
+
+test_that("delete_actions_from_plan retire plusieurs actions, une entree d'audit chacune", {
+  plan <- nemetonshiny:::init_empty_action_plan("p")
+  for (id in c("a1", "a2", "a3")) {
+    plan <- nemetonshiny:::add_action_to_plan(plan, make_action(id = id),
+                                              ug_ids = "ug_1")
+  }
+  res <- nemetonshiny:::delete_actions_from_plan(plan, c("a1", "a3"),
+                                                 user = "dave")
+  expect_equal(res$n_deleted, 2L)
+  expect_equal(vapply(res$plan$actions, `[[`, "", "id"), "a2")
+  del <- Filter(function(e) e$op == "delete", res$plan$audit)
+  expect_setequal(vapply(del, `[[`, "", "action_id"), c("a1", "a3"))
+  expect_true(all(vapply(del, `[[`, "", "user") == "dave"))
+})
+
+test_that("delete_actions_from_plan ignore les ids inconnus, NA et doublons", {
+  plan <- nemetonshiny:::init_empty_action_plan("p")
+  plan <- nemetonshiny:::add_action_to_plan(plan, make_action(id = "a1"),
+                                            ug_ids = "ug_1")
+  res <- nemetonshiny:::delete_actions_from_plan(
+    plan, c("a1", "a1", "fantome", NA))
+  expect_equal(res$n_deleted, 1L)
+  expect_length(res$plan$actions, 0L)
+  vide <- nemetonshiny:::delete_actions_from_plan(res$plan, character())
+  expect_equal(vide$n_deleted, 0L)
+})

@@ -426,6 +426,28 @@ TRANSLATIONS <- list(
   action_plan_color_priority = list(fr = "Priorit\u00e9", en = "Priority"),
   action_plan_generate_all = list(fr = "G\u00e9n\u00e9rer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
+  action_plan_delete_selected = list(fr = "Supprimer la s\u00e9lection", en = "Delete selection"),
+  action_plan_delete_pick = list(
+    fr = "S\u00e9lectionnez au moins une action dans le tableau.",
+    en = "Select at least one row in the table."
+  ),
+  action_plan_delete_title_fmt = list(
+    fr = "Supprimer %d action(s) ?",
+    en = "Delete %d action(s)?"
+  ),
+  action_plan_delete_body = list(
+    fr = "Les actions suivantes seront retir\u00e9es du plan. Chaque suppression reste trac\u00e9e dans l'historique du plan.",
+    en = "The following actions will be removed from the plan. Each deletion stays recorded in the plan history."
+  ),
+  action_plan_delete_more_fmt = list(
+    fr = "\u2026 et %d autre(s).",
+    en = "\u2026 and %d more."
+  ),
+  action_plan_delete_run = list(fr = "Supprimer", en = "Delete"),
+  action_plan_delete_ok_fmt = list(
+    fr = "%d action(s) supprim\u00e9e(s).",
+    en = "%d action(s) deleted."
+  ),
   action_plan_map_pending = list(
     fr = "La carte interactive sera disponible avec la story S4.",
     en = "The interactive map will be available with story S4."

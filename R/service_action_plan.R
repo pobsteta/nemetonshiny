@@ -441,6 +441,30 @@ delete_action_from_plan <- function(plan, action_id, user = NULL) {
 }
 
 
+#' Delete several actions at once
+#'
+#' Used by the "delete selection" button of the action table. Each removal
+#' goes through [delete_action_from_plan()], so every deleted action leaves
+#' its own `"delete"` audit entry, exactly as a one-by-one deletion would.
+#' IDs no longer in the plan (e.g. removed meanwhile) are skipped silently
+#' rather than aborting the whole batch.
+#'
+#' @param plan List. Plan.
+#' @param action_ids Character. IDs to remove.
+#' @param user Character. Acting user.
+#' @return List with `plan` (updated plan) and `n_deleted` (integer).
+#' @noRd
+delete_actions_from_plan <- function(plan, action_ids, user = NULL) {
+  n <- 0L
+  for (aid in unique(stats::na.omit(as.character(action_ids)))) {
+    if (is.na(find_action_index(plan, aid))) next
+    plan <- delete_action_from_plan(plan, aid, user = user)
+    n <- n + 1L
+  }
+  list(plan = plan, n_deleted = n)
+}
+
+
 #' Bulk upsert: insert new actions and update existing ones (matched by id)
 #'
 #' Useful for LLM-generated batches where some actions may already exist.

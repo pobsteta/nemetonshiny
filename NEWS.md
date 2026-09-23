@@ -1,3 +1,33 @@
+# nemetonshiny 0.144.0.9001 (2026-09-23)
+
+### Added — supprimer les actions selectionnees du Plan d'actions
+
+Jusqu'ici, aucune action ne pouvait etre supprimee depuis l'app. Un bouton
+« Supprimer la selection » apparait desormais dans la barre laterale droite du
+Plan d'actions, sous « Ajouter une action ». Il supprime les lignes
+selectionnees dans le tableau des actions. La selection peut aussi venir d'un
+clic sur une UGF de la carte, qui selectionne ses actions.
+
+- Une modale de confirmation liste les actions visees : UGF, type, annee,
+  avec au plus dix lignes suivies de « … et N autre(s) ». La suppression ne
+  se fait qu'au clic sur le bouton rouge « Supprimer ».
+- Les identifiants sont figes a l'ouverture de la modale. Un clic sur la carte
+  pendant qu'elle est affichee ne change donc pas ce qui sera supprime.
+- Chaque action supprimee laisse sa propre entree `delete` dans l'audit du
+  plan, via le nouveau helper `delete_actions_from_plan()`. Celui-ci ignore
+  les identifiants deja absents au lieu d'interrompre le lot.
+- La garde de lecture seule (role ou verrou du projet) s'applique a
+  l'ouverture de la modale ET au moment de la confirmation.
+- Apres suppression, la selection est videe, dans le tableau comme en
+  surbrillance sur la carte.
+
+Couleurs conformes a la charte : `btn-outline-danger` dans la barre laterale
+(action auxiliaire de prudence), `btn-danger` pour la confirmation. Sept
+nouvelles cles i18n `action_plan_delete_*`. Cinq tests : deux pour le
+service, trois pour le module (position et classe du bouton, suppression
+effective, absence de selection et lecture seule). Les deux mutations
+(garde retiree, suppression sans effet) sont detectees.
+
 # nemetonshiny 0.144.0 (2026-09-23)
 
 ### Fixed — la note S4 `dbDataType` ne s'affiche plus a la sauvegarde en base

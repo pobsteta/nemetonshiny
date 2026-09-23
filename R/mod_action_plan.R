@@ -90,7 +90,16 @@ mod_action_plan_ui <- function(id) {
           ns("add_action"),
           label = i18n$t("action_plan_add"),
           icon = shiny::icon("plus"),
-          class = "btn-sm btn-outline-primary w-100 mb-3"
+          class = "btn-sm btn-outline-primary w-100 mb-2"
+        ),
+        # Outline-danger : action auxiliaire de prudence. Le rouge plein
+        # (`btn-danger`) est reserve au bouton de confirmation de la modale,
+        # la ou la suppression a reellement lieu.
+        shiny::actionButton(
+          ns("delete_selected"),
+          label = i18n$t("action_plan_delete_selected"),
+          icon = shiny::icon("trash"),
+          class = "btn-sm btn-outline-danger w-100 mb-3"
         ),
 
         # ---- Exports -----------------------------------------------
@@ -2583,6 +2592,76 @@ mod_action_plan_server <- function(id, app_state) {
       plan_rv(new_plan)
       shiny::showNotification(i18n$t("action_plan_add_ok"),
                               type = "message", duration = 3)
+    })
+
+    # Suppression des actions selectionnees dans le tableau. Les ids sont
+    # figes a l'ouverture de la modale : la selection peut changer pendant
+    # que la modale est affichee (clic carte), la confirmation doit porter
+    # sur ce que l'utilisateur a vu.
+    delete_pending_rv <- shiny::reactiveVal(character())
+
+    shiny::observeEvent(input$delete_selected, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      sel_rows <- input$action_table_rows_selected
+      df <- actions_df_all()
+      sel_rows <- sel_rows[sel_rows >= 1L & sel_rows <= nrow(df)]
+      if (length(sel_rows) == 0L || nrow(df) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_delete_pick"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      sub <- df[sel_rows, , drop = FALSE]
+      delete_pending_rv(as.character(sub$id))
+
+      n_show <- min(nrow(sub), 10L)
+      items <- lapply(seq_len(n_show), function(i) {
+        lbl <- if (is.na(sub$ug_label[i])) sub$ug_id[i] else sub$ug_label[i]
+        htmltools::tags$li(paste(
+          lbl, "\u2014", sub$type[i],
+          if (!is.na(sub$annee_realisation[i]))
+            paste0("(", sub$annee_realisation[i], ")") else ""
+        ))
+      })
+      more <- nrow(sub) - n_show
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(i18n$t("action_plan_delete_title_fmt"), nrow(sub)),
+        size = "m", easyClose = TRUE,
+        shiny::p(i18n$t("action_plan_delete_body")),
+        htmltools::tags$ul(items),
+        if (more > 0L)
+          shiny::p(class = "text-muted",
+                   sprintf(i18n$t("action_plan_delete_more_fmt"), more)),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("delete_run"),
+                              label = i18n$t("action_plan_delete_run"),
+                              icon = shiny::icon("trash"),
+                              class = "btn-danger")
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$delete_run, {
+      shiny::removeModal()
+      if (deny_if_readonly()) return()
+      ids <- delete_pending_rv()
+      delete_pending_rv(character())
+      if (length(ids) == 0L) return()
+      i18n <- get_i18n(app_state$language)
+      res <- delete_actions_from_plan(plan_rv(), ids,
+                                      user = Sys.info()[["user"]] %||% "user")
+      if (res$n_deleted == 0L) return()
+      save_action_plan(app_state$current_project$id, res$plan)
+      plan_rv(res$plan)
+      # Les lignes supprimees ne doivent pas laisser une selection orpheline
+      # (ni sur le tableau, ni en surbrillance sur la carte).
+      selected_ug_rv(character())
+      DT::selectRows(DT::dataTableProxy("action_table"), NULL)
+      shiny::showNotification(
+        sprintf(i18n$t("action_plan_delete_ok_fmt"), res$n_deleted),
+        type = "message", duration = 3
+      )
     })
 
     invisible(NULL)
