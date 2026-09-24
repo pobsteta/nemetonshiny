@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.144.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.145.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.145.0" id="nemetonshiny-01450-2026-09-24">nemetonshiny 0.145.0 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01450-2026-09-24"></a></h2>
+<div class="section level4">
+<h4 id="fixed---telecharger-vers-marculus---s---s-0-145-0">Fixed — « Telecharger vers Marculus » : 133 s -&gt; 9 s<a class="anchor" aria-label="anchor" href="#fixed---telecharger-vers-marculus---s---s-0-145-0"></a></h4>
+<p>Avec ses houppiers revenus, l’export de « Reconfort » (20 chantiers, 80 982 houppiers) prenait 133 s, pendant lesquelles la session Shiny restait figee. Il prend maintenant <strong>9,4 s</strong>, pour un contenu identique : les memes 63 887 houppiers repartis dans les memes GeoPackages, chacun avec ses trois couches (<code>parcelle</code>, <code>desserte</code>, <code>houppier</code>). Trois causes, mesurees :</p>
+<ol style="list-style-type: decimal"><li>
+<strong>Le decoupage des houppiers par chantier : 81 s, soit 96 % du profil R.</strong> Pour chacun des 20 chantiers, <code>st_intersects()</code> testait les 80 982 houppiers en WGS84, donc via s2, qui reconstruisait une geometrie spherique pour chaque houppier a chaque appel. Les houppiers sont maintenant projetes en Lambert-93 <strong>une fois</strong>, puis testes contre toutes les emprises en <strong>un seul</strong> <code>st_intersects()</code> GEOS plan, l’index portant sur les 20 emprises : <strong>2,3 s</strong>. Nouveau helper <code>.marculus_houppiers_par_zone()</code> ; <code>marculus_write_action_gpkg()</code> recoit les houppiers deja filtres (<code>houppiers_filtres = TRUE</code>).</li>
+<li>
+<strong>Les ecritures GeoPackage : 31,2 s d’horloge pour 2,7 s de CPU.</strong> SQLite forcait une ecriture disque a chaque transaction. Ces GeoPackages sont temporaires (zippes puis effaces) : <code>OGR_SQLITE_SYNCHRONOUS = OFF</code>, passe par appel via <code>config_options</code> sans toucher a l’environnement de la session, ramene les ecritures a <strong>1,4 s</strong>.</li>
+<li>
+<strong><code>zip -9</code> : 6,5 s</strong>, contre 1,7 s en <code>-6</code> (le niveau par defaut), pour une archive plus lourde de 0,7 % seulement (19,3 Mo).</li>
+</ol><p>Tests : repartition entre plusieurs chantiers (houppier a cheval garde entier, chantier vide, CRS conserve), absence de refiltrage d’un GeoPackage deja filtre, et options d’ecriture. Mutations detectees.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.144.2" id="nemetonshiny-01442-2026-09-23">nemetonshiny 0.144.2 (2026-09-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01442-2026-09-23"></a></h2>
 <div class="section level4">

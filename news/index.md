@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.145.0 (2026-09-24)
+
+#### Fixed — « Telecharger vers Marculus » : 133 s -\> 9 s
+
+Avec ses houppiers revenus, l’export de « Reconfort » (20 chantiers, 80
+982 houppiers) prenait 133 s, pendant lesquelles la session Shiny
+restait figee. Il prend maintenant **9,4 s**, pour un contenu identique
+: les memes 63 887 houppiers repartis dans les memes GeoPackages, chacun
+avec ses trois couches (`parcelle`, `desserte`, `houppier`). Trois
+causes, mesurees :
+
+1.  **Le decoupage des houppiers par chantier : 81 s, soit 96 % du
+    profil R.** Pour chacun des 20 chantiers, `st_intersects()` testait
+    les 80 982 houppiers en WGS84, donc via s2, qui reconstruisait une
+    geometrie spherique pour chaque houppier a chaque appel. Les
+    houppiers sont maintenant projetes en Lambert-93 **une fois**, puis
+    testes contre toutes les emprises en **un seul** `st_intersects()`
+    GEOS plan, l’index portant sur les 20 emprises : **2,3 s**. Nouveau
+    helper `.marculus_houppiers_par_zone()` ;
+    `marculus_write_action_gpkg()` recoit les houppiers deja filtres
+    (`houppiers_filtres = TRUE`).
+2.  **Les ecritures GeoPackage : 31,2 s d’horloge pour 2,7 s de CPU.**
+    SQLite forcait une ecriture disque a chaque transaction. Ces
+    GeoPackages sont temporaires (zippes puis effaces) :
+    `OGR_SQLITE_SYNCHRONOUS = OFF`, passe par appel via `config_options`
+    sans toucher a l’environnement de la session, ramene les ecritures a
+    **1,4 s**.
+3.  **`zip -9` : 6,5 s**, contre 1,7 s en `-6` (le niveau par defaut),
+    pour une archive plus lourde de 0,7 % seulement (19,3 Mo).
+
+Tests : repartition entre plusieurs chantiers (houppier a cheval garde
+entier, chantier vide, CRS conserve), absence de refiltrage d’un
+GeoPackage deja filtre, et options d’ecriture. Mutations detectees.
+
 ## nemetonshiny 0.144.2 (2026-09-23)
 
 #### Changed — montee vers `nemeton` 0.199.2 : houppiers et RECONFORT

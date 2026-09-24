@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.145.0\] - 2026-09-24
+
+Jalon mineur qui clot le lot « Plan d’actions + Marculus » des 0.144.1 a
+0.144.2 : suppression des actions selectionnees, houppiers de nouveau
+produits et exportes (cœur 0.199.2), couche RECONFORT « Probabilite
+d’atteinte », et export Marculus 14 fois plus rapide.
+
+### Fixed
+
+- « Telecharger vers Marculus » : 133 s -\> 9,4 s sur « Reconfort »,
+  pour un contenu identique. Repartition des houppiers par chantier en
+  une passe GEOS plane (81 s -\> 2,3 s), GeoPackages temporaires ecrits
+  sans synchronisation SQLite (31,2 s -\> 1,4 s), `zip -6` au lieu de
+  `-9` (6,5 s -\> 1,7 s).
+
 ## \[0.144.2\] - 2026-09-23
 
 ### Changed
