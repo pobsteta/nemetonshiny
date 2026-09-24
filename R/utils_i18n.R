@@ -581,6 +581,14 @@ TRANSLATIONS <- list(
     fr = "%d contexte(s) de martelage, %d GeoPackage(s), feuille pr\u00e9-remplie de %d essences. Ouvrir le .marsync sur le t\u00e9l\u00e9phone, puis rattacher un GeoPackage \u00e0 chaque contexte.",
     en = "%d marking context(s), %d GeoPackage(s), sheet pre-filled with %d species. Open the .marsync on the phone, then attach a GeoPackage to each context."
   ),
+  marculus_ortho_running_fmt = list(
+    fr = "Pr\u00e9paration du fond ortho 20 cm de %d chantier(s)\u2026 Le t\u00e9l\u00e9chargement partira seul \u00e0 la fin.",
+    en = "Preparing the 20 cm orthophoto basemap of %d work site(s)\u2026 The download will start on its own when done."
+  ),
+  marculus_ortho_partiel_fmt = list(
+    fr = "Fond ortho pr\u00e9par\u00e9 pour %d chantier(s) sur %d : les autres partent sans ortho (OSM et Satellite restent disponibles).",
+    en = "Orthophoto basemap prepared for %d of %d work site(s): the others ship without it (OSM and Satellite remain available)."
+  ),
   marculus_export_empty = list(
     fr = "Aucune action ne d\u00e9signe de tiges (\u00e9claircie, coupe rase, d\u00e9pressage, observation) : rien \u00e0 envoyer.",
     en = "No action designates stems (thinning, clear-cut, respacing, observation): nothing to send."

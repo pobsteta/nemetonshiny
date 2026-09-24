@@ -129,12 +129,21 @@ mod_action_plan_ui <- function(id) {
                              auto_unbox = TRUE)
           )
         ),
+        # Marculus : le bouton VISIBLE prepare d'abord les fonds ortho 20 cm
+        # manquants (tache de fond, ~40 s par chantier), puis clique lui-meme
+        # sur le `downloadButton` masque. Un `downloadHandler` est synchrone :
+        # y construire les fonds gelerait la session plusieurs minutes.
+        shiny::actionButton(
+          ns("prepare_marculus"),
+          label = i18n$t("action_plan_download_marculus"),
+          icon = shiny::icon("mobile-screen"),
+          class = "btn-sm btn-outline-success w-100 mb-2"
+        ),
         htmltools::tagAppendAttributes(
           shiny::downloadButton(
             ns("download_marculus"),
             label = i18n$t("action_plan_download_marculus"),
-            icon = shiny::icon("mobile-screen"),
-            class = "btn-sm btn-outline-success w-100 mb-2"
+            class = "d-none"
           ),
           onclick = sprintf(
             "nemetonShowDownloadToast(%s);",
@@ -1776,6 +1785,89 @@ mod_action_plan_server <- function(id, app_state) {
     # `.marsync` portant tous les contextes. Cote telephone, ce dernier passe
     # par la FUSION (union par UUID), pas par la restauration de sauvegarde -
     # rien n'est ecrase, les tiges deja saisies survivent.
+
+    # --- Fonds ortho 20 cm : preparation en tache de fond ---------------------
+    # Un fond par UGF de chantier, mis en cache (`cache/layers/ortho_marculus/`).
+    # Le clic ne lance le worker que pour les fonds MANQUANTS ; quand tout est
+    # en cache, le telechargement part aussitot.
+    .dev_pkg_path <- tryCatch(
+      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+        find.package("nemetonshiny") else NULL,
+      error = function(e) NULL
+    )
+    marculus_ortho_task <- shiny::ExtendedTask$new(
+      function(travaux, dev_path, app_opts) {
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory",
+                                          "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          utils::getFromNamespace("marculus_ortho_preparer", "nemetonshiny")(travaux)
+        }, seed = TRUE)
+      })
+
+    .telecharger_marculus <- function() {
+      session$sendCustomMessage("nemetonClickElement",
+                                list(id = session$ns("download_marculus")))
+    }
+
+    shiny::observeEvent(input$prepare_marculus, {
+      i18n <- get_i18n(app_state$language)
+      if (identical(marculus_ortho_task$status(), "running")) return()
+      project <- app_state$current_project
+      actions <- marculus_eligible_actions(plan_rv() %||% list())
+      if (is.null(project) || length(actions) == 0L) {
+        shiny::showNotification(i18n$t("marculus_export_empty"),
+                                type = "warning", duration = 10)
+        return()
+      }
+      manquants <- tryCatch(marculus_ortho_manquants(project, actions),
+                            error = function(e) list())
+      if (length(manquants) == 0L) {
+        .telecharger_marculus()
+        return()
+      }
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = session$ns("prepare_marculus"), disabled = TRUE))
+      shiny::showNotification(
+        .running_notif_content(sprintf(i18n$t("marculus_ortho_running_fmt"),
+                                       length(manquants))),
+        id = session$ns("marculus_ortho_notif"), type = "message",
+        duration = NULL)
+      tryCatch(
+        marculus_ortho_task$invoke(manquants, .dev_pkg_path, get_app_options()),
+        error = function(e) {
+          shiny::removeNotification(session$ns("marculus_ortho_notif"))
+          session$sendCustomMessage("nemetonSetDisabled",
+            list(id = session$ns("prepare_marculus"), disabled = FALSE))
+          .telecharger_marculus()
+        })
+    })
+
+    shiny::observeEvent(marculus_ortho_task$status(), {
+      st <- marculus_ortho_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n <- get_i18n(app_state$language)
+      shiny::removeNotification(session$ns("marculus_ortho_notif"))
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = session$ns("prepare_marculus"), disabled = FALSE))
+      res <- tryCatch(marculus_ortho_task$result(), error = function(e) NULL)
+      n_total <- res$n_total %||% NA_integer_
+      n_ok    <- res$n_ok %||% 0L
+      # Un fond manquant n'empeche pas l'export : le chantier part sans table
+      # de tuiles, et Marculus garde OSM et Satellite. On le dit.
+      if (is.null(res) || !isTRUE(n_ok == n_total)) {
+        shiny::showNotification(
+          sprintf(i18n$t("marculus_ortho_partiel_fmt"), n_ok,
+                  if (is.na(n_total)) 0L else n_total),
+          type = "warning", duration = 10)
+      }
+      .telecharger_marculus()
+    }, ignoreInit = TRUE)
 
     output$download_marculus <- shiny::downloadHandler(
       filename = function() {

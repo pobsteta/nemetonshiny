@@ -1,3 +1,47 @@
+# nemetonshiny 0.146.0 (2026-09-24)
+
+### Added — fond ortho 20 cm dans chaque GeoPackage Marculus
+
+Chaque chantier exporte vers Marculus emporte maintenant son **fond
+orthophoto IGN 20 cm** (`HR.ORTHOIMAGERY.ORTHOPHOTOS`), sur les parcelles de
+son UGF elargies de 50 m. Sur le telephone, la carte propose alors
+**OSM -> Satellite -> Ortho** : Marculus n'offre « Ortho » que si le
+GeoPackage contient une table de tuiles (`CarteScreen.kt`), et il prend la
+premiere. Le fond est ecrit dans la grille Web Mercator standard
+(`GoogleMapsCompatible`, zoom 19, soit ~20 cm a nos latitudes), avec ses
+niveaux inferieurs jusqu'au zoom 13, pour qu'il reste visible en dezoomant.
+
+Un tel fond coute ~40 s par chantier : c'est trop pour un
+`downloadHandler`, qui est synchrone. Le bouton « Telecharger vers Marculus »
+prepare donc d'abord les fonds **manquants** dans une tache de fond
+(`ExtendedTask`, toast de progression, bouton desactive), puis declenche lui-meme
+le telechargement. Les fonds sont mis en cache par UGF
+(`cache/layers/ortho_marculus/`), sous un nom qui porte l'empreinte de
+l'emprise : une UGF redecoupee est reconstruite. Un fond qui echoue (WMS
+injoignable) n'empeche pas l'export : ce chantier part sans ortho, et un
+toast le signale.
+
+Mesure sur « Reconfort » : **16 fonds prepares en 239 s** la premiere fois
+(93 Mo de cache, tuiles WMS telechargees 4 par 4) ; l'export prend ensuite
+**13 s** et produit 20 GeoPackages avec ortho, dans un zip de 111 Mo.
+
+Nouveau service `R/service_marculus_ortho.R`, nouveau handler JS
+`nemetonClickElement`, deux cles i18n. 25 tests pour le service (emprise alignee
+sur la grille, cache, decoupage WMS, construction hors ligne, echec sans fichier
+partiel, fond en cache non modifie) et 2 pour le module. Les mutations sont
+detectees.
+
+### Fixed — la date de martelage exportee etait en l'an 1, 2, 3...
+
+`annee_cible` est un **decalage** depuis l'annee en cours : le tableau du Plan
+d'actions affiche `annee + annee_cible`. L'export Marculus en faisait
+directement une annee civile, et les contextes arrivaient avec une date de
+martelage au 1er janvier de l'an 1 a 13. Ils portent maintenant l'annee
+reelle (2027 a 2046 sur « Reconfort »). Une valeur qui est deja une annee
+civile (>= 1000) est gardee telle quelle. Les tests existants ne passaient que
+des annees civiles, ce qui masquait le defaut : un test avec un vrai decalage
+est ajoute.
+
 # nemetonshiny 0.145.0 (2026-09-24)
 
 ### Fixed — « Telecharger vers Marculus » : 133 s -> 9 s

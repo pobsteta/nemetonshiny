@@ -899,3 +899,19 @@ test_that("un GeoPackage deja filtre n'est pas refiltre", {
   expect_equal(appels, 0L)
   expect_true("houppier" %in% sf::st_layers(f)$name)
 })
+
+test_that("la date de martelage est l'annee REELLE de l'action, pas son decalage", {
+  # `annee_cible` est un decalage depuis l'annee en cours. L'export en faisait
+  # une annee civile : Marculus recevait des martelages en l'an 3.
+  a <- list(id = "act_1", ug_id = "ug_1", type = "eclaircie",
+            annee_cible = 3L, statut = "proposee")
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    a, list(metadata = list(name = "P")), essences = character(0))
+  annee <- as.integer(format(as.POSIXct(ctx$dateMartelage / 1000,
+                                        origin = "1970-01-01", tz = "UTC"), "%Y"))
+  expect_equal(annee, as.integer(format(Sys.Date(), "%Y")) + 3L)
+
+  expect_equal(nemetonshiny:::.marculus_annee_civile(2L, base = 2026L), 2028L)
+  expect_equal(nemetonshiny:::.marculus_annee_civile(2030L, base = 2026L), 2030L)
+  expect_true(is.na(nemetonshiny:::.marculus_annee_civile(NULL)))
+})
