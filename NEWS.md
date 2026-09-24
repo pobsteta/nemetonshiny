@@ -1,4 +1,4 @@
-# nemetonshiny 0.146.0.9001 (2026-09-24)
+# nemetonshiny 0.146.1 (2026-09-24)
 
 ### Fixed — « Telecharger vers Marculus » ne telechargeait rien (v0.146.0)
 
