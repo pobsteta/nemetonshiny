@@ -761,21 +761,22 @@
 
 
   /**
-   * Server-driven enable/disable of a button by id, WITHOUT rewriting its
-   * content. updateActionButton() blanks an input_task_button's label (icon +
-   * text + busy states live in inner spans it overwrites); toggling `disabled`
-   * on the <button> greys it out while preserving the label.
-   */
-  /**
    * Server-driven click on an element by id. Lets an async task end by
    * triggering a hidden `downloadButton` (a downloadHandler cannot wait for
-   * an ExtendedTask by itself).
+   * an ExtendedTask by itself). The hidden output must be declared
+   * `suspendWhenHidden = FALSE`, or Shiny never gives the link its href.
    */
   Shiny.addCustomMessageHandler('nemetonClickElement', function(data) {
     var el = document.getElementById(data.id);
     if (el) el.click();
   });
 
+  /**
+   * Server-driven enable/disable of a button by id, WITHOUT rewriting its
+   * content. updateActionButton() blanks an input_task_button's label (icon +
+   * text + busy states live in inner spans it overwrites); toggling `disabled`
+   * on the <button> greys it out while preserving the label.
+   */
   Shiny.addCustomMessageHandler('nemetonSetDisabled', function(data) {
     var el = document.getElementById(data.id);
     if (!el) return;

@@ -363,3 +363,14 @@ test_that("fonds deja en cache : aucune tache de fond n'est lancee", {
     }
   )
 })
+
+test_that("le lien Marculus masque est rendu malgre son masquage", {
+  # Sans `suspendWhenHidden = FALSE`, Shiny ne rendait pas le lien cache : il
+  # restait `disabled` sans href, et le clic du serveur ne telechargeait rien
+  # (v0.146.0, constate sous Chrome headless).
+  f <- testthat::test_path("..", "..", "R", "mod_action_plan.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  expect_true(any(grepl('outputOptions(output, "download_marculus", suspendWhenHidden = FALSE)',
+                        code, fixed = TRUE)))
+})
