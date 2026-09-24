@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.146.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.146.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.146.1" id="nemetonshiny-01461-2026-09-24">nemetonshiny 0.146.1 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01461-2026-09-24"></a></h2>
+<div class="section level4">
+<h4 id="fixed---telecharger-vers-marculus--ne-telechargeait-rien-v01460-0-146-1">Fixed — « Telecharger vers Marculus » ne telechargeait rien (v0.146.0)<a class="anchor" aria-label="anchor" href="#fixed---telecharger-vers-marculus--ne-telechargeait-rien-v01460-0-146-1"></a></h4>
+<p>Depuis la 0.146.0, le bouton visible prepare les fonds ortho puis clique sur un <code>downloadButton</code> <strong>masque</strong>. Or Shiny suspend le rendu d’une sortie invisible : ce lien restait <code>disabled</code>, sans <code>href</code>, et le clic envoye par le serveur ne menait nulle part. Constate dans un harnais sous Chrome headless (le vrai module, le vrai <code>custom.js</code>, le projet « Reconfort ») : le lien Marculus avait un <code>href</code> vide, alors que ceux du GeoPackage et du PDF, visibles, etaient rendus. La sortie est desormais declaree <code>suspendWhenHidden = FALSE</code>. Verifie dans le meme harnais : clic sur le bouton, puis clic automatique sur le lien, puis archive telechargee (122 Mo).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--deux-chantiers-identiques-secrasaient-dans-le-lot-0-146-1">Fixed — deux chantiers identiques s’ecrasaient dans le lot<a class="anchor" aria-label="anchor" href="#fixed--deux-chantiers-identiques-secrasaient-dans-le-lot-0-146-1"></a></h4>
+<p>Deux actions du meme type sur la meme UGF (« Reconfort » : deux eclaircies sur trois UGF) donnaient le meme nom de contexte, donc le meme fichier. Le second GeoPackage ecrasait le premier (20 contextes pour 17 fichiers), et le telephone listait deux contextes indiscernables. Les doublons prennent maintenant leur annee, par exemple « … eclaircie (2027) », puis un rang, « (2030 <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a>) », quand l’annee ne suffit pas. Resultat : 20 contextes, 20 GeoPackages, chacun rattache a son fichier. Les noms uniques restent inchanges.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.146.0" id="nemetonshiny-01460-2026-09-24">nemetonshiny 0.146.0 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01460-2026-09-24"></a></h2>
 <div class="section level4">

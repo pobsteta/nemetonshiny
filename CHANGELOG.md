@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.146.1\] - 2026-09-24
+
+### Fixed
+
+- « Telecharger vers Marculus » ne telechargeait rien en 0.146.0 : le
+  `downloadButton` masque, que le serveur clique apres la preparation
+  des fonds ortho, n’etait pas rendu par Shiny (sortie invisible
+  suspendue : `href` vide). Il est desormais declare
+  `suspendWhenHidden = FALSE` ; le correctif est verifie sous Chrome
+  headless.
+- Export Marculus : deux actions du meme type sur la meme UGF
+  partageaient leur nom de contexte et leur fichier (20 contextes pour
+  17 GeoPackages sur « Reconfort »). Les doublons prennent leur annee,
+  puis un rang.
+
 ## \[0.146.0\] - 2026-09-24
 
 ### Added
