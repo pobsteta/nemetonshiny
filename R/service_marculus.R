@@ -1033,7 +1033,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   # le GeoPackage sans table de tuiles - Marculus garde OSM et Satellite.
   orthos <- marculus_ortho_travaux(project, actions)
   ortho_par_ug <- stats::setNames(
-    lapply(orthos, function(t) if (file.exists(t$chemin)) t$chemin else NULL),
+    lapply(orthos, function(t) .marculus_ortho_reparer(t$chemin)),
     vapply(orthos, function(t) t$ug_id, character(1)))
 
   # Deux actions du meme type sur la meme UGF portaient le meme nom, donc le

@@ -213,12 +213,58 @@ marculus_ortho_construire <- function(bbox, chemin) {
     sf::gdal_addo(part, overviews = c(2, 4, 8, 16, 32, 64), method = "AVERAGE",
                   options = c(TABLE = MARCULUS_ORTHO$table),
                   config_options = c(OGR_SQLITE_SYNCHRONOUS = "OFF"))
+    if (!.marculus_ortho_matrices_pleines(part)) {
+      cli::cli_abort("Matrices de tuiles vides non retir\u00e9es.")
+    }
     if (!file.rename(part, chemin)) cli::cli_abort("Renommage impossible.")
     chemin
   }, error = function(e) {
     cli::cli_warn("Fond ortho non pr\u00e9par\u00e9 : {conditionMessage(e)}")
     unlink(sub("\\.gpkg$", ".part.gpkg", chemin))
     NULL
+  })
+}
+
+#' Drop the tile matrices that hold no tile
+#'
+#' @description
+#' With `TILING_SCHEME=GoogleMapsCompatible`, GDAL declares a tile matrix for
+#' EVERY zoom level from 0 to the native one (19), while tiles only exist from
+#' the lowest overview up (13). Marculus reprojects the table on first display
+#' (`TileReprojection.reproject()`, NGA geopackage 6.7.4), which walks every
+#' matrix: on an empty one `TileDao.getBoundingBox(zoom)` is `null`, and
+#' `TileBoundingBoxUtils.getTileGrid()` dereferences it - a
+#' `NullPointerException` that `ouvrirOrtho()` swallows, so "Ortho" never
+#' appears on the phone (v0.146.x). Reproduced with the desktop NGA library on
+#' a "Reconfort" basemap; once the 13 empty matrices are gone, the same call
+#' reprojects its 106 tiles, zooms 13 to 19.
+#'
+#' Needs `RSQLite` (Suggests). Without it the basemap is NOT shipped: a tile
+#' table the phone cannot open is worse than none.
+#'
+#' @param gpkg Path to the basemap GeoPackage.
+#' @return `TRUE` when every remaining matrix holds tiles.
+#' @noRd
+.marculus_ortho_matrices_pleines <- function(gpkg) {
+  if (!requireNamespace("DBI", quietly = TRUE) ||
+      !requireNamespace("RSQLite", quietly = TRUE)) {
+    cli::cli_warn("Fond ortho : {.pkg RSQLite} requis pour un GeoPackage lisible par Marculus.")
+    return(FALSE)
+  }
+  tryCatch({
+    con <- DBI::dbConnect(RSQLite::SQLite(), gpkg)
+    on.exit(DBI::dbDisconnect(con), add = TRUE)
+    table <- MARCULUS_ORTHO$table
+    DBI::dbExecute(con, sprintf(
+      "DELETE FROM gpkg_tile_matrix WHERE table_name = '%s' AND zoom_level NOT IN (SELECT DISTINCT zoom_level FROM \"%s\")",
+      table, table))
+    vides <- DBI::dbGetQuery(con, sprintf(
+      "SELECT COUNT(*) AS n FROM gpkg_tile_matrix WHERE table_name = '%s' AND zoom_level NOT IN (SELECT DISTINCT zoom_level FROM \"%s\")",
+      table, table))$n
+    identical(as.integer(vides), 0L)
+  }, error = function(e) {
+    cli::cli_warn("Fond ortho : {conditionMessage(e)}")
+    FALSE
   })
 }
 
@@ -239,4 +285,19 @@ marculus_ortho_preparer <- function(travaux) {
     }
   }
   list(n_total = length(travaux), n_ok = n_ok)
+}
+
+#' Repair basemaps cached by v0.146.0 / v0.146.1
+#'
+#' Those still carry the empty tile matrices that make Marculus fail (see
+#' [.marculus_ortho_matrices_pleines()]). Cheap - one SQL statement per file,
+#' no download - so the export runs it on every basemap it ships; a basemap
+#' that cannot be repaired is left out rather than shipped broken.
+#'
+#' @param chemin Path to a cached basemap.
+#' @return `chemin`, or `NULL` when it could not be made readable.
+#' @noRd
+.marculus_ortho_reparer <- function(chemin) {
+  if (is.null(chemin) || !file.exists(chemin)) return(NULL)
+  if (.marculus_ortho_matrices_pleines(chemin)) chemin else NULL
 }

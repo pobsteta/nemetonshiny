@@ -1,5 +1,14 @@
 # Fond ortho 20 cm des GeoPackages Marculus (R/service_marculus_ortho.R)
 
+# Nombre de matrices de tuiles declarees sans aucune tuile.
+.matrices_vides <- function(gpkg) {
+  con <- DBI::dbConnect(RSQLite::SQLite(), gpkg)
+  on.exit(DBI::dbDisconnect(con))
+  as.integer(DBI::dbGetQuery(con, paste(
+    "SELECT COUNT(*) AS n FROM gpkg_tile_matrix WHERE table_name = 'ortho'",
+    "AND zoom_level NOT IN (SELECT DISTINCT zoom_level FROM ortho)"))$n)
+}
+
 .parcelle_orleans <- function(dx = 0) {
   sf::st_sf(proprietaire = "Commune", geometry = sf::st_sfc(
     sf::st_polygon(list(rbind(
@@ -89,6 +98,9 @@ test_that("le fond est construit en table de tuiles Web Mercator, zoom 19", {
   r <- terra::rast(paste0("GPKG:", chemin, ":ortho"))
   expect_equal(terra::crs(r, describe = TRUE)$code, "3857")
   expect_equal(terra::res(r)[1], res, tolerance = 1e-6)
+  # Aucune matrice sans tuile : Marculus (NGA) plante sur une matrice vide.
+  skip_if_not_installed("RSQLite")
+  expect_equal(.matrices_vides(chemin), 0L)
 })
 
 test_that("un echec WMS ne laisse aucun fond a moitie ecrit", {
@@ -128,4 +140,25 @@ test_that("le fond en cache devient la base du GeoPackage du chantier", {
   expect_silent(terra::rast(paste0("GPKG:", f, ":ortho")))
   # Le fond en cache n'est pas modifie par l'ajout des couches vecteur.
   expect_identical(unname(tools::md5sum(base)), unname(empreinte))
+})
+
+test_that("un fond de la v0.146.0 est repare avant d'etre expedie", {
+  # GoogleMapsCompatible declare les zooms 0 a 19 ; sans tuile aux bas zooms,
+  # NGA leve une NullPointerException et Marculus n'affiche jamais l'ortho.
+  skip_if_not_installed("RSQLite")
+  res <- nemetonshiny:::.marculus_ortho_res()
+  base <- file.path(withr::local_tempdir(), "ancien.gpkg")
+  r <- terra::rast(nrows = 256, ncols = 256, nlyrs = 3, vals = 128,
+                   xmin = 0, xmax = 256 * res, ymin = 0, ymax = 256 * res,
+                   crs = "EPSG:3857")
+  tif <- tempfile(fileext = ".tif")
+  terra::writeRaster(r, tif, datatype = "INT1U")
+  sf::gdal_utils("translate", tif, base, quiet = TRUE, options = c(
+    "-of", "GPKG", "-co", "RASTER_TABLE=ortho",
+    "-co", "TILING_SCHEME=GoogleMapsCompatible", "-co", "TILE_FORMAT=JPEG"))
+  expect_gt(.matrices_vides(base), 0L)                 # le defaut, reproduit
+  expect_equal(nemetonshiny:::.marculus_ortho_reparer(base), base)
+  expect_equal(.matrices_vides(base), 0L)
+  expect_silent(terra::rast(paste0("GPKG:", base, ":ortho")))
+  expect_null(nemetonshiny:::.marculus_ortho_reparer(file.path(tempdir(), "absent.gpkg")))
 })
