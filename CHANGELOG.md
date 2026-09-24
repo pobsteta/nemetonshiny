@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.146.2] - 2026-09-24
+
+### Fixed
+
+- Marculus ne proposait jamais le fond « Ortho ». GDAL (`GoogleMapsCompatible`)
+  declare des matrices de tuiles vides pour les zooms 0 a 12 ; la
+  reprojection NGA de Marculus leve une `NullPointerException` sur une
+  matrice vide. Ces matrices sont maintenant retirees a la construction du
+  fond, et les fonds deja en cache sont repares a l'export. Reproduit puis
+  verifie avec la bibliotheque NGA de bureau (`geopackage-core` 6.6.7).
+
 ## [0.146.1] - 2026-09-24
 
 ### Fixed
