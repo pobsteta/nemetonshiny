@@ -12,6 +12,25 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.146.0\] - 2026-09-24
+
+### Added
+
+- Export Marculus : chaque GeoPackage de chantier emporte le fond
+  orthophoto IGN 20 cm (`HR.ORTHOIMAGERY.ORTHOPHOTOS`, zoom 19 Web
+  Mercator avec sa pyramide), sur les parcelles de l’UGF + 50 m.
+  Marculus propose alors OSM -\> Satellite -\> Ortho. Les fonds
+  manquants sont prepares en tache de fond (`ExtendedTask`) au clic, mis
+  en cache par UGF (`cache/layers/ortho_marculus/`), puis le
+  telechargement se declenche seul. « Reconfort » : 16 fonds en 239 s la
+  premiere fois, export 13 s, zip 111 Mo.
+
+### Fixed
+
+- Export Marculus : `dateMartelage` etait au 1er janvier de l’an 1 a 13,
+  car `annee_cible` (un decalage) etait lu comme une annee civile. Les
+  contextes portent maintenant l’annee reelle.
+
 ## \[0.145.0\] - 2026-09-24
 
 Jalon mineur qui clot le lot « Plan d’actions + Marculus » des 0.144.1 a

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.145.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.146.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.146.0" id="nemetonshiny-01460-2026-09-24">nemetonshiny 0.146.0 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01460-2026-09-24"></a></h2>
+<div class="section level4">
+<h4 id="added--fond-ortho-cm-dans-chaque-geopackage-marculus-0-146-0">Added — fond ortho 20 cm dans chaque GeoPackage Marculus<a class="anchor" aria-label="anchor" href="#added--fond-ortho-cm-dans-chaque-geopackage-marculus-0-146-0"></a></h4>
+<p>Chaque chantier exporte vers Marculus emporte maintenant son <strong>fond orthophoto IGN 20 cm</strong> (<code>HR.ORTHOIMAGERY.ORTHOPHOTOS</code>), sur les parcelles de son UGF elargies de 50 m. Sur le telephone, la carte propose alors <strong>OSM -&gt; Satellite -&gt; Ortho</strong> : Marculus n’offre « Ortho » que si le GeoPackage contient une table de tuiles (<code>CarteScreen.kt</code>), et il prend la premiere. Le fond est ecrit dans la grille Web Mercator standard (<code>GoogleMapsCompatible</code>, zoom 19, soit ~20 cm a nos latitudes), avec ses niveaux inferieurs jusqu’au zoom 13, pour qu’il reste visible en dezoomant.</p>
+<p>Un tel fond coute ~40 s par chantier : c’est trop pour un <code>downloadHandler</code>, qui est synchrone. Le bouton « Telecharger vers Marculus » prepare donc d’abord les fonds <strong>manquants</strong> dans une tache de fond (<code>ExtendedTask</code>, toast de progression, bouton desactive), puis declenche lui-meme le telechargement. Les fonds sont mis en cache par UGF (<code>cache/layers/ortho_marculus/</code>), sous un nom qui porte l’empreinte de l’emprise : une UGF redecoupee est reconstruite. Un fond qui echoue (WMS injoignable) n’empeche pas l’export : ce chantier part sans ortho, et un toast le signale.</p>
+<p>Mesure sur « Reconfort » : <strong>16 fonds prepares en 239 s</strong> la premiere fois (93 Mo de cache, tuiles WMS telechargees 4 par 4) ; l’export prend ensuite <strong>13 s</strong> et produit 20 GeoPackages avec ortho, dans un zip de 111 Mo.</p>
+<p>Nouveau service <code>R/service_marculus_ortho.R</code>, nouveau handler JS <code>nemetonClickElement</code>, deux cles i18n. 25 tests pour le service (emprise alignee sur la grille, cache, decoupage WMS, construction hors ligne, echec sans fichier partiel, fond en cache non modifie) et 2 pour le module. Les mutations sont detectees.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--la-date-de-martelage-exportee-etait-en-lan-0-146-0">Fixed — la date de martelage exportee etait en l’an 1, 2, 3…<a class="anchor" aria-label="anchor" href="#fixed--la-date-de-martelage-exportee-etait-en-lan-0-146-0"></a></h4>
+<p><code>annee_cible</code> est un <strong>decalage</strong> depuis l’annee en cours : le tableau du Plan d’actions affiche <code>annee + annee_cible</code>. L’export Marculus en faisait directement une annee civile, et les contextes arrivaient avec une date de martelage au 1er janvier de l’an 1 a 13. Ils portent maintenant l’annee reelle (2027 a 2046 sur « Reconfort »). Une valeur qui est deja une annee civile (&gt;= 1000) est gardee telle quelle. Les tests existants ne passaient que des annees civiles, ce qui masquait le defaut : un test avec un vrai decalage est ajoute.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.145.0" id="nemetonshiny-01450-2026-09-24">nemetonshiny 0.145.0 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01450-2026-09-24"></a></h2>
 <div class="section level4">
