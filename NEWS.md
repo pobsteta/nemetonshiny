@@ -1,3 +1,29 @@
+# nemetonshiny 0.146.0.9001 (2026-09-24)
+
+### Fixed — « Telecharger vers Marculus » ne telechargeait rien (v0.146.0)
+
+Depuis la 0.146.0, le bouton visible prepare les fonds ortho puis clique sur
+un `downloadButton` **masque**. Or Shiny suspend le rendu d'une sortie
+invisible : ce lien restait `disabled`, sans `href`, et le clic envoye par le
+serveur ne menait nulle part. Constate dans un harnais sous Chrome headless
+(le vrai module, le vrai `custom.js`, le projet « Reconfort ») : le lien
+Marculus avait un `href` vide, alors que ceux du GeoPackage et du PDF,
+visibles, etaient rendus. La sortie est desormais declaree
+`suspendWhenHidden = FALSE`. Verifie dans le meme harnais : clic sur le
+bouton, puis clic automatique sur le lien, puis archive telechargee
+(122 Mo).
+
+### Fixed — deux chantiers identiques s'ecrasaient dans le lot
+
+Deux actions du meme type sur la meme UGF (« Reconfort » : deux eclaircies
+sur trois UGF) donnaient le meme nom de contexte, donc le meme fichier. Le
+second GeoPackage ecrasait le premier (20 contextes pour 17 fichiers), et le
+telephone listait deux contextes indiscernables. Les doublons prennent
+maintenant leur annee, par exemple « … eclaircie (2027) », puis un rang,
+« (2030 #2) », quand l'annee ne suffit pas. Resultat : 20 contextes,
+20 GeoPackages, chacun rattache a son fichier. Les noms uniques restent
+inchanges.
+
 # nemetonshiny 0.146.0 (2026-09-24)
 
 ### Added — fond ortho 20 cm dans chaque GeoPackage Marculus

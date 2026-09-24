@@ -1908,6 +1908,14 @@ mod_action_plan_server <- function(id, app_state) {
       }
     )
 
+    # Le lien de telechargement Marculus est MASQUE (`d-none`) : seul le
+    # serveur le clique, a la fin de la preparation des fonds. Or Shiny
+    # suspend le rendu d'une sortie invisible - le lien restait `disabled`,
+    # sans `href`, et le clic ne telechargeait rien (constate v0.146.0, mesure
+    # sous Chrome headless : `href=""` quand les liens GPKG / PDF, visibles,
+    # etaient rendus).
+    shiny::outputOptions(output, "download_marculus", suspendWhenHidden = FALSE)
+
     # ============================================================
     # S13 - Per-UGF PDF report
     # ============================================================

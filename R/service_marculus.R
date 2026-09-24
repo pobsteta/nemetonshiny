@@ -180,10 +180,13 @@ MARCULUS_STATUTS <- c(
 #'   is inert until the app learns to open a bundle
 #'   (`specs/BRIEF-marculus-import-zip.md`). It is what would let the phone pair
 #'   context and file by itself, instead of thirteen manual attachments.
+#' @param suffixe Optional text appended to the name, to tell apart two
+#'   contexts that would otherwise read the same (see
+#'   [.marculus_suffixes_doublons()]).
 #' @return A named list, ready for `jsonlite::toJSON()`.
 #' @noRd
 marculus_context_from_action <- function(action, project, essences = character(0),
-                                         gpkg_nom = NULL) {
+                                         gpkg_nom = NULL, suffixe = NULL) {
   nom_projet <- project$metadata$name %||% project$id
   ug <- .marculus_ug_label(project, action$ug_id, nom_projet)
   type <- action$type %||% "autre"
@@ -192,6 +195,7 @@ marculus_context_from_action <- function(action, project, essences = character(0
   # Le nom porte l'UGF ET l'action : sur le telephone, la liste des contextes
   # est plate, et « Dabo » repete douze fois ne se navigue pas.
   nom <- sprintf("%s - %s - %s", nom_projet, ug, libelle)
+  if (!is.null(suffixe) && nzchar(suffixe)) nom <- paste(nom, suffixe)
 
   statut <- unname(MARCULUS_STATUTS[action$statut %||% "proposee"])
   if (is.na(statut) || is.null(statut)) statut <- "PROPOSEE"
@@ -935,6 +939,35 @@ marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
   if (a >= 1000L) a else base + a
 }
 
+#' Suffixes telling apart contexts that would share a name
+#'
+#' Two actions of the same type on the same UGF (two thinnings on parcel 1114,
+#' say) produced the same context name, hence the same GeoPackage file name:
+#' in the bundle the second file overwrote the first, and the phone listed two
+#' indistinguishable contexts. Measured on "Reconfort": 20 contexts, 17 file
+#' names. Duplicates now take their calendar year, `(2039)`, then a rank,
+#' `(2039 #2)`, when the year does not separate them either. A context with
+#' a unique name keeps it unchanged.
+#'
+#' @param noms Character. The provisional context names, in plan order.
+#' @param annees Integer. Calendar year of each action (`NA` allowed).
+#' @return Character, parallel to `noms`: `""` or the suffix to append.
+#' @noRd
+.marculus_suffixes_doublons <- function(noms, annees) {
+  out <- rep("", length(noms))
+  dup <- duplicated(noms) | duplicated(noms, fromLast = TRUE)
+  if (!any(dup)) return(out)
+  a <- ifelse(is.na(annees), "", as.character(annees))
+  cle <- paste(noms, a, sep = "\r")
+  rang <- stats::ave(seq_along(cle), cle, FUN = seq_along)
+  multi <- duplicated(cle) | duplicated(cle, fromLast = TRUE)
+  out[dup] <- ifelse(multi[dup],
+                     sprintf("(%s#%d)", ifelse(nzchar(a[dup]), paste0(a[dup], " "), ""),
+                             rang[dup]),
+                     sprintf("(%s)", a[dup]))
+  out
+}
+
 #' Actions of a plan that become marking contexts
 #'
 #' @param plan The action plan.
@@ -1003,6 +1036,14 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
     lapply(orthos, function(t) if (file.exists(t$chemin)) t$chemin else NULL),
     vapply(orthos, function(t) t$ug_id, character(1)))
 
+  # Deux actions du meme type sur la meme UGF portaient le meme nom, donc le
+  # meme fichier : le second GeoPackage ecrasait le premier.
+  suffixes <- .marculus_suffixes_doublons(
+    vapply(actions, function(a) marculus_context_from_action(
+      a, project, essences = essences)$nom, character(1)),
+    vapply(actions, function(a) .marculus_annee_civile(a$annee_cible),
+           integer(1)))
+
   contexts <- list()
   n_gpkg <- 0L
   for (i in seq_along(actions)) {
@@ -1011,11 +1052,13 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
     # porte. Lisible - un operateur qui rattache a la main lit le nom du
     # chantier - et sans accent ni espace, pour traverser un ZIP et un systeme
     # de fichiers Android sans surprise.
-    provisoire <- marculus_context_from_action(a, project, essences = essences)
+    provisoire <- marculus_context_from_action(a, project, essences = essences,
+                                               suffixe = suffixes[i])
     nom_gpkg <- paste0(gsub("[^A-Za-z0-9_-]+", "_", provisoire$nom), ".gpkg")
 
     ctx <- marculus_context_from_action(a, project, essences = essences,
-                                        gpkg_nom = nom_gpkg)
+                                        gpkg_nom = nom_gpkg,
+                                        suffixe = suffixes[i])
     contexts[[length(contexts) + 1L]] <- ctx
     ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
                                      desserte = desserte,

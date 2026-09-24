@@ -915,3 +915,18 @@ test_that("la date de martelage est l'annee REELLE de l'action, pas son decalage
   expect_equal(nemetonshiny:::.marculus_annee_civile(2030L, base = 2026L), 2030L)
   expect_true(is.na(nemetonshiny:::.marculus_annee_civile(NULL)))
 })
+
+test_that("deux chantiers identiques ne partagent plus leur nom ni leur fichier", {
+  # « Reconfort » : deux eclaircies sur trois UGF, 20 contextes pour 17 noms
+  # de fichier - le second GeoPackage ecrasait le premier.
+  f <- nemetonshiny:::.marculus_suffixes_doublons
+  expect_equal(f(c("A", "B", "A"), c(2027L, 2028L, 2032L)),
+               c("(2027)", "", "(2032)"))
+  expect_equal(f(c("C", "C"), c(2030L, 2030L)), c("(2030 #1)", "(2030 #2)"))
+  expect_equal(f(c("A", "B"), c(NA, NA)), c("", ""))
+
+  a <- list(id = "x", ug_id = "ug_1", type = "eclaircie", statut = "proposee")
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    a, list(metadata = list(name = "P")), suffixe = "(2039)")
+  expect_match(ctx$nom, "eclaircie \\(2039\\)$")
+})
