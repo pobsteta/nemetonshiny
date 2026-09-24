@@ -1,4 +1,4 @@
-# nemetonshiny 0.145.0.9001 (2026-09-24)
+# nemetonshiny 0.146.0 (2026-09-24)
 
 ### Added — fond ortho 20 cm dans chaque GeoPackage Marculus
 
