@@ -56,6 +56,16 @@ MARCULUS_LAYER_PARCELLES <- "parcelle"
 MARCULUS_LAYER_DESSERTE  <- "desserte"
 MARCULUS_LAYER_HOUPPIER  <- "houppier"
 
+#' GDAL options for the bundle's GeoPackages
+#'
+#' `OGR_SQLITE_SYNCHRONOUS = OFF` : SQLite ne force plus l'ecriture disque a
+#' chaque transaction. Ces GeoPackages sont TEMPORAIRES - zippes puis effaces
+#' dans la foulee - et la durabilite en cas de coupure n'y sert a rien. Mesure
+#' sur « Reconfort » (20 contextes) : ecritures 31,2 s -> 1,4 s.
+#'
+#' @noRd
+MARCULUS_GPKG_CONFIG <- c(OGR_SQLITE_SYNCHRONOUS = "OFF")
+
 #' Field separators of the encoded `essences` column
 #'
 #' Marculus stores the marking sheet's columns in one string:
@@ -794,21 +804,26 @@ precompute_houppiers <- function(project_id) {
 #'   project (it is read once, not once per action).
 #' @param houppiers Optional `sf` of crowns for the whole project; each context
 #'   keeps those its parcels cover.
+#' @param houppiers_filtres Logical. `TRUE` when `houppiers` already holds
+#'   this context's crowns only - [marculus_export_bundle()] filters every
+#'   context in one pass and must not pay the per-context test again.
 #' @return Invisibly `TRUE` when the parcel layer was written.
 #' @noRd
 marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
-                                       houppiers = NULL) {
+                                       houppiers = NULL,
+                                       houppiers_filtres = FALSE) {
   par <- .marculus_parcelles(project, action$ug_id)
   if (is.null(par)) return(invisible(FALSE))
 
   if (file.exists(file)) unlink(file)
   sf::st_write(par, file, layer = MARCULUS_LAYER_PARCELLES, quiet = TRUE,
-               driver = "GPKG")
+               driver = "GPKG", config_options = MARCULUS_GPKG_CONFIG)
 
   if (inherits(desserte, "sf") && nrow(desserte) > 0L) {
     tryCatch(
       sf::st_write(desserte, file, layer = MARCULUS_LAYER_DESSERTE,
-                   append = FALSE, quiet = TRUE),
+                   append = FALSE, quiet = TRUE,
+                   config_options = MARCULUS_GPKG_CONFIG),
       error = function(e) {
         cli::cli_warn("Couche desserte non ecrite : {conditionMessage(e)}")
       }
@@ -818,11 +833,13 @@ marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
   # Les houppiers du CHANTIER seulement : la couche du projet entier pese pour
   # rien dans les douze autres GeoPackages, et le telephone n'a que faire des
   # arbres d'une parcelle qu'il n'ouvrira pas.
-  hp <- .marculus_clip_houppiers(houppiers, par)
+  hp <- if (isTRUE(houppiers_filtres)) houppiers
+        else .marculus_clip_houppiers(houppiers, par)
   if (inherits(hp, "sf") && nrow(hp) > 0L) {
     tryCatch(
       sf::st_write(hp, file, layer = MARCULUS_LAYER_HOUPPIER,
-                   append = FALSE, quiet = TRUE),
+                   append = FALSE, quiet = TRUE,
+                   config_options = MARCULUS_GPKG_CONFIG),
       error = function(e) {
         cli::cli_warn("Couche houppier non ecrite : {conditionMessage(e)}")
       }
@@ -842,13 +859,47 @@ marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
 #' @return An `sf`, or `NULL`.
 #' @noRd
 .marculus_clip_houppiers <- function(houppiers, parcelles) {
-  if (!inherits(houppiers, "sf") || nrow(houppiers) == 0L) return(NULL)
-  if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) return(NULL)
-  hit <- tryCatch(
-    lengths(sf::st_intersects(houppiers, sf::st_union(parcelles))) > 0L,
-    error = function(e) NULL)
-  if (is.null(hit) || !any(hit)) return(NULL)
-  houppiers[hit, , drop = FALSE]
+  .marculus_houppiers_par_zone(houppiers, list(parcelles))[[1L]]
+}
+
+#' Split a project's crowns between several zones, in one pass
+#'
+#' @description
+#' The Marculus bundle used to test the 80 982 crowns of "Reconfort" against
+#' each of its 20 contexts in turn, in WGS84 - that is, through s2, which
+#' rebuilt a spherical geometry for every crown on every call: 81 s of a
+#' 122 s export, 96 % of the profile. Here the crowns are projected to
+#' Lambert-93 ONCE and tested against every zone in a single planar GEOS
+#' `st_intersects()`, the index built on the handful of zones rather than on
+#' the crowns: 2.3 s for the whole bundle, the same crowns in every context.
+#'
+#' Intersection, not clipping - see [.marculus_clip_houppiers()].
+#'
+#' @param houppiers An `sf` of crowns (any CRS), or `NULL`.
+#' @param zones A list of `sf` (one per zone: the parcels of a context).
+#' @return A list parallel to `zones`: an `sf` of crowns in `houppiers`' own
+#'   CRS, or `NULL` when none (or when the zone is empty or unusable).
+#' @noRd
+.marculus_houppiers_par_zone <- function(houppiers, zones) {
+  vide <- rep(list(NULL), length(zones))
+  if (!inherits(houppiers, "sf") || nrow(houppiers) == 0L) return(vide)
+  ok <- vapply(zones, function(z) inherits(z, "sf") && nrow(z) > 0L, logical(1))
+  if (!any(ok)) return(vide)
+  hits <- tryCatch({
+    g <- sf::st_transform(sf::st_geometry(houppiers), 2154)
+    u <- do.call(c, lapply(zones[ok], function(z) sf::st_union(
+      sf::st_make_valid(sf::st_transform(sf::st_geometry(z), 2154)))))
+    sf::st_intersects(u, g)
+  }, error = function(e) {
+    cli::cli_warn("Houppiers non r\u00e9partis par chantier : {conditionMessage(e)}")
+    NULL
+  })
+  if (is.null(hits)) return(vide)
+  out <- vide
+  out[ok] <- lapply(hits, function(ix) {
+    if (length(ix) == 0L) NULL else houppiers[sort(ix), , drop = FALSE]
+  })
+  out
 }
 
 #' Actions of a plan that become marking contexts
@@ -904,9 +955,16 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   unlink(tmp, recursive = TRUE)
   dir.create(tmp, recursive = TRUE, showWarnings = FALSE)
 
+  # Houppiers de chaque chantier, calcules en UNE passe pour tout le lot
+  # (cf. `.marculus_houppiers_par_zone()` : 81 s -> 2,3 s sur « Reconfort »).
+  hp_par_action <- .marculus_houppiers_par_zone(
+    houppiers,
+    lapply(actions, function(a) .marculus_parcelles(project, a$ug_id)))
+
   contexts <- list()
   n_gpkg <- 0L
-  for (a in actions) {
+  for (i in seq_along(actions)) {
+    a <- actions[[i]]
     # Le nom du fichier se decide AVANT le contexte, puisque le contexte le
     # porte. Lisible - un operateur qui rattache a la main lit le nom du
     # chantier - et sans accent ni espace, pour traverser un ZIP et un systeme
@@ -918,15 +976,19 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
                                         gpkg_nom = nom_gpkg)
     contexts[[length(contexts) + 1L]] <- ctx
     ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
-                                     desserte = desserte, houppiers = houppiers)
+                                     desserte = desserte,
+                                     houppiers = hp_par_action[[i]],
+                                     houppiers_filtres = TRUE)
     if (isTRUE(ok)) n_gpkg <- n_gpkg + 1L
   }
 
   writeLines(marculus_sync_json(contexts),
              file.path(tmp, paste0(project$metadata$name %||% project_id, ".marsync")))
 
+  # `-6` (niveau par defaut de zip) et non `-9` : 1,7 s au lieu de 6,5 s sur
+  # « Reconfort », pour une archive plus lourde de 0,7 % seulement.
   utils::zip(zipfile = file, files = list.files(tmp, full.names = TRUE),
-             flags = "-j9Xq")
+             flags = "-j6Xq")
   unlink(tmp, recursive = TRUE)
 
   invisible(list(n_contexts = length(contexts), n_gpkg = n_gpkg,

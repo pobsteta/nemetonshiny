@@ -839,3 +839,63 @@ test_that("le cœur recoit l'emprise, dans le processus", {
   expect_equal(recu, "emprise")
   expect_equal(out$h_max, 20)
 })
+
+
+# ---- Performance de l'export (v0.144.2.9001) ---------------------------
+
+test_that("les houppiers sont repartis entre chantiers en une passe", {
+  # Carres de ~100 m autour d'Orleans, en WGS84 comme le cache.
+  carre <- function(x0, y0, d = 0.001) sf::st_polygon(list(rbind(
+    c(x0, y0), c(x0 + d, y0), c(x0 + d, y0 + d), c(x0, y0 + d), c(x0, y0))))
+  hp <- sf::st_sf(h_max = c(20, 25, 30), geometry = sf::st_sfc(
+    carre(1.9000, 47.9000),              # dans A
+    carre(1.9105, 47.9000),              # a cheval sur B, garde entier
+    carre(1.9500, 47.9500),              # nulle part
+    crs = 4326))
+  zone_a <- sf::st_sf(id = "a", geometry = sf::st_sfc(carre(1.899, 47.899, 0.003), crs = 4326))
+  zone_b <- sf::st_sf(id = "b", geometry = sf::st_sfc(carre(1.911, 47.899, 0.003), crs = 4326))
+
+  out <- nemetonshiny:::.marculus_houppiers_par_zone(hp, list(zone_a, zone_b, NULL))
+  expect_length(out, 3L)
+  expect_equal(out[[1]]$h_max, 20)
+  expect_equal(out[[2]]$h_max, 25)
+  expect_null(out[[3]])
+  # Rendus dans le CRS du cache, geometrie entiere.
+  expect_equal(sf::st_crs(out[[2]])$epsg, 4326L)
+  expect_equal(as.numeric(sf::st_area(out[[2]])),
+               as.numeric(sf::st_area(hp[2, ])), tolerance = 1e-6)
+
+  expect_equal(nemetonshiny:::.marculus_houppiers_par_zone(NULL, list(zone_a)),
+               list(NULL))
+})
+
+test_that("le lot filtre une fois et ne refiltre pas par chantier", {
+  f <- testthat::test_path("..", "..", "R", "service_marculus.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- readLines(f, warn = FALSE)
+  code <- code[!grepl("^\\s*#", code)]
+  expect_true(any(grepl("hp_par_action <- .marculus_houppiers_par_zone(",
+                        code, fixed = TRUE)))
+  expect_true(any(grepl("houppiers_filtres = TRUE", code, fixed = TRUE)))
+  # Ecritures sans synchronisation disque, et zip au niveau par defaut.
+  expect_equal(sum(grepl("config_options = MARCULUS_GPKG_CONFIG", code,
+                         fixed = TRUE)), 3L)
+  expect_true(any(grepl('flags = "-j6Xq"', code, fixed = TRUE)))
+})
+
+test_that("un GeoPackage deja filtre n'est pas refiltre", {
+  poly <- sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0))))
+  par <- sf::st_sf(proprietaire = "x", geometry = sf::st_sfc(poly, crs = 4326))
+  hp  <- sf::st_sf(h_max = 20, geometry = sf::st_sfc(poly, crs = 4326))
+  appels <- 0L
+  testthat::local_mocked_bindings(
+    .marculus_parcelles = function(project, ug_id) par,
+    .marculus_clip_houppiers = function(...) { appels <<- appels + 1L; NULL }
+  )
+  f <- withr::local_tempfile(fileext = ".gpkg")
+  nemetonshiny:::marculus_write_action_gpkg(list(), list(ug_id = "u"), f,
+                                            houppiers = hp,
+                                            houppiers_filtres = TRUE)
+  expect_equal(appels, 0L)
+  expect_true("houppier" %in% sf::st_layers(f)$name)
+})
