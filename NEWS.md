@@ -1,4 +1,4 @@
-# nemetonshiny 0.146.1.9001 (2026-09-24)
+# nemetonshiny 0.146.2 (2026-09-24)
 
 ### Fixed — l'ortho ne s'affichait pas dans Marculus
 
@@ -23,8 +23,9 @@ zooms 13 a 19).
   de fond du tout.
 - Les fonds deja en cache (v0.146.0-0.146.1) sont repares a l'export par une
   seule requete SQL, sans rien retelecharger.
-- Verifie sur les 20 GeoPackages de « Reconfort » tels qu'ils partent vers le
-  telephone : tous s'ouvrent avec la bibliotheque NGA.
+- Verifie sur les GeoPackages de « Reconfort » tels qu'ils partent vers le
+  telephone : au moment de la release, 11 sur 20 avaient ete ouverts avec la
+  bibliotheque NGA, tous avec succes. Les 9 derniers etaient encore en cours.
 
 A savoir : la premiere ouverture d'un chantier reprojette encore ses tuiles
 dans Marculus, meme si elles sont deja en Web Mercator. Sur PC, cela prend
