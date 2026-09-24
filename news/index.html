@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.146.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.146.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.146.2" id="nemetonshiny-01462-2026-09-24">nemetonshiny 0.146.2 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01462-2026-09-24"></a></h2>
+<div class="section level4">
+<h4 id="fixed--lortho-ne-saffichait-pas-dans-marculus-0-146-2">Fixed — l’ortho ne s’affichait pas dans Marculus<a class="anchor" aria-label="anchor" href="#fixed--lortho-ne-saffichait-pas-dans-marculus-0-146-2"></a></h4>
+<p>Le fond ortho arrivait bien dans les GeoPackages, mais Marculus ne proposait jamais « Ortho » : le bouton de fond passait de Satellite a OSM. Avec <code>TILING_SCHEME=GoogleMapsCompatible</code>, GDAL declare une matrice de tuiles pour chaque zoom de 0 a 19, alors que les tuiles n’existent qu’aux zooms 13 a 19. A la premiere ouverture, Marculus reprojette la table (<code>TileReprojection.reproject()</code>, NGA geopackage 6.7.4) en parcourant toutes les matrices. Sur une matrice vide, <code>TileDao.getBoundingBox(zoom)</code> vaut <code>null</code>, puis <code>getTileGrid()</code> leve une <code>NullPointerException</code>, que <code>ouvrirOrtho()</code> avale.</p>
+<p>Reproduit sur PC avec la bibliotheque NGA de bureau (<code>geopackage-core</code> 6.6.7, la version de Marculus) sur un fond de « Reconfort » : meme exception, meme pile d’appels. Sans les 13 matrices vides, la reprojection reussit (106 tuiles, zooms 13 a 19).</p>
+<ul><li>Les matrices vides sont retirees a la construction du fond (<code>.marculus_ortho_matrices_pleines()</code>, qui demande <code>RSQLite</code>). Sans <code>RSQLite</code>, le fond n’est pas expedie : une table illisible vaut moins que pas de fond du tout.</li>
+<li>Les fonds deja en cache (v0.146.0-0.146.1) sont repares a l’export par une seule requete SQL, sans rien retelecharger.</li>
+<li>Verifie sur les GeoPackages de « Reconfort » tels qu’ils partent vers le telephone : au moment de la release, 11 sur 20 avaient ete ouverts avec la bibliotheque NGA, tous avec succes. Les 9 derniers etaient encore en cours.</li>
+</ul><p>A savoir : la premiere ouverture d’un chantier reprojette encore ses tuiles dans Marculus, meme si elles sont deja en Web Mercator. Sur PC, cela prend 23 a 86 s selon le chantier ; ce sera plus long sur un telephone. Un brief est adresse a Marculus pour sauter cette etape inutile (<code>briefs/vers-marculus/2026-09-24-ortho-deja-web-mercator.md</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.146.1" id="nemetonshiny-01461-2026-09-24">nemetonshiny 0.146.1 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01461-2026-09-24"></a></h2>
 <div class="section level4">
