@@ -203,7 +203,12 @@ marculus_context_from_action <- function(action, project, essences = character(0
   # date que porte une action. Un 1er janvier n'est pas une date de chantier -
   # l'operateur la corrigera - mais laisser le champ vide priverait la liste de
   # son tri, qui est par date de martelage decroissante.
-  annee <- suppressWarnings(as.integer(action$annee_cible %||% NA))
+  #
+  # `annee_cible` est un DECALAGE (1..horizon) depuis l'annee en cours, pas une
+  # annee civile : le tableau du Plan d'actions affiche `annee + annee_cible`.
+  # Jusqu'en v0.145.0 l'export en faisait directement une annee, et Marculus
+  # recevait des martelages au 1er janvier de l'an 1, 2, ... 13.
+  annee <- .marculus_annee_civile(action$annee_cible)
   date_martelage <- if (!is.na(annee)) {
     round(as.numeric(as.POSIXct(sprintf("%d-01-01", annee), tz = "UTC")) * 1000)
   } else NULL
@@ -807,15 +812,25 @@ precompute_houppiers <- function(project_id) {
 #' @param houppiers_filtres Logical. `TRUE` when `houppiers` already holds
 #'   this context's crowns only - [marculus_export_bundle()] filters every
 #'   context in one pass and must not pay the per-context test again.
+#' @param ortho Optional path to a cached basemap GeoPackage (one tile table,
+#'   see `R/service_marculus_ortho.R`). It becomes the BASE of the context's
+#'   GeoPackage, the vector layers being added next to its tiles: Marculus
+#'   then offers "Ortho" after OSM and Satellite.
 #' @return Invisibly `TRUE` when the parcel layer was written.
 #' @noRd
 marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
                                        houppiers = NULL,
-                                       houppiers_filtres = FALSE) {
+                                       houppiers_filtres = FALSE,
+                                       ortho = NULL) {
   par <- .marculus_parcelles(project, action$ug_id)
   if (is.null(par)) return(invisible(FALSE))
 
   if (file.exists(file)) unlink(file)
+  # Le fond ortho en cache sert de BASE : copier un fichier de tuiles deja
+  # construit coute ~0,1 s, le reconstruire ~40 s par chantier.
+  if (is.character(ortho) && length(ortho) == 1L && file.exists(ortho)) {
+    file.copy(ortho, file)
+  }
   sf::st_write(par, file, layer = MARCULUS_LAYER_PARCELLES, quiet = TRUE,
                driver = "GPKG", config_options = MARCULUS_GPKG_CONFIG)
 
@@ -902,6 +917,24 @@ marculus_write_action_gpkg <- function(project, action, file, desserte = NULL,
   out
 }
 
+#' Calendar year of an action's target
+#'
+#' `annee_cible` is an offset from the current year (the action table shows
+#' `current year + annee_cible`, `PLAN_BASE_YEAR()` in `mod_action_plan.R`).
+#' A value that already looks like a calendar year (>= 1000) is kept as is, so
+#' a plan written by another tool with real years is not pushed centuries out.
+#'
+#' @param annee_cible The action's `annee_cible`.
+#' @param base Integer. Reference year, the current one by default.
+#' @return Integer calendar year, or `NA`.
+#' @noRd
+.marculus_annee_civile <- function(annee_cible,
+                                   base = as.integer(format(Sys.Date(), "%Y"))) {
+  a <- suppressWarnings(as.integer(annee_cible %||% NA))
+  if (length(a) != 1L || is.na(a)) return(NA_integer_)
+  if (a >= 1000L) a else base + a
+}
+
 #' Actions of a plan that become marking contexts
 #'
 #' @param plan The action plan.
@@ -961,6 +994,15 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
     houppiers,
     lapply(actions, function(a) .marculus_parcelles(project, a$ug_id)))
 
+  # Fonds ortho DEJA en cache, par UGF. L'export ne les construit jamais : la
+  # preparation (~40 s par chantier) tourne en tache de fond avant lui
+  # (`marculus_ortho_preparer()`, lancee par le module). Un fond absent laisse
+  # le GeoPackage sans table de tuiles - Marculus garde OSM et Satellite.
+  orthos <- marculus_ortho_travaux(project, actions)
+  ortho_par_ug <- stats::setNames(
+    lapply(orthos, function(t) if (file.exists(t$chemin)) t$chemin else NULL),
+    vapply(orthos, function(t) t$ug_id, character(1)))
+
   contexts <- list()
   n_gpkg <- 0L
   for (i in seq_along(actions)) {
@@ -978,7 +1020,8 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
     ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
                                      desserte = desserte,
                                      houppiers = hp_par_action[[i]],
-                                     houppiers_filtres = TRUE)
+                                     houppiers_filtres = TRUE,
+                                     ortho = ortho_par_ug[[a$ug_id %||% ""]])
     if (isTRUE(ok)) n_gpkg <- n_gpkg + 1L
   }
 
@@ -994,5 +1037,6 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   invisible(list(n_contexts = length(contexts), n_gpkg = n_gpkg,
                  n_essences = length(essences),
                  has_desserte = !is.null(desserte),
-                 n_houppiers = if (is.null(houppiers)) 0L else nrow(houppiers)))
+                 n_houppiers = if (is.null(houppiers)) 0L else nrow(houppiers),
+                 n_ortho = sum(!vapply(ortho_par_ug, is.null, logical(1)))))
 }

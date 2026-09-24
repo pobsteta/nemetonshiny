@@ -326,3 +326,40 @@ test_that("sans selection ou en lecture seule, rien n'est supprime", {
     }
   )
 })
+
+
+# ---- Marculus : fond ortho prepare avant le telechargement -------------
+
+test_that("le bouton Marculus visible prepare, le telechargement est masque", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  bouton <- regmatches(h, regexpr('<button[^>]*id="ap-prepare_marculus"[^>]*>', h))
+  expect_length(bouton, 1L)
+  telech <- regmatches(h, regexpr('<a[^>]*id="ap-download_marculus"[^>]*>', h))
+  expect_match(telech, "d-none", fixed = TRUE)
+})
+
+test_that("fonds deja en cache : aucune tache de fond n'est lancee", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) .plan_trois_actions(project_id),
+    marculus_ortho_manquants = function(project, actions) list()
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5)
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      session$setInputs(prepare_marculus = 1)
+      expect_identical(marculus_ortho_task$status(), "initial")
+    }
+  )
+})

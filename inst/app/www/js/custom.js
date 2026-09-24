@@ -766,6 +766,16 @@
    * text + busy states live in inner spans it overwrites); toggling `disabled`
    * on the <button> greys it out while preserving the label.
    */
+  /**
+   * Server-driven click on an element by id. Lets an async task end by
+   * triggering a hidden `downloadButton` (a downloadHandler cannot wait for
+   * an ExtendedTask by itself).
+   */
+  Shiny.addCustomMessageHandler('nemetonClickElement', function(data) {
+    var el = document.getElementById(data.id);
+    if (el) el.click();
+  });
+
   Shiny.addCustomMessageHandler('nemetonSetDisabled', function(data) {
     var el = document.getElementById(data.id);
     if (!el) return;
