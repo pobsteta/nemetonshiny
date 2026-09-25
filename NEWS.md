@@ -1,3 +1,20 @@
+# nemetonshiny 0.151.0.9001 (2026-09-25)
+
+### Fixed — reimporter un martelage apporte enfin les volumes des tiges
+
+Sur « Reconfort », les actions avaient bien leur volume total (244,7 m3 et
+151,4 m3), mais les 141 tiges stockees n'en portaient aucun. Le tableau et la
+carte de la fiche restaient donc sans volume. Les tiges avaient d'abord ete
+importees depuis des CSV au format 2, sans volumes, puis reimportees depuis
+des CSV au format 3. Les memes tiges revenaient, avec le meme `uuid` et le meme
+`modifie`. A egalite, la fusion gardait la version **deja stockee**, celle sans
+volume.
+
+La version tout juste importee gagne desormais a egalite de `modifie`. Il suffit
+de **reimporter** les fichiers : les tiges recuperent leurs volumes, leur
+methode de cubage et leur mode de mesure. Un test couvre ce cas, et la mutation
+est detectee.
+
 # nemetonshiny 0.151.0 (2026-09-25)
 
 ### Added — la fiche d'une action martelee : plan, diagramme par classe, tableau

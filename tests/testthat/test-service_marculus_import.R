@@ -362,3 +362,23 @@ test_that("le mode du contexte est recopie sur les tiges importees", {
                                                       tiges = .tiges("u1")))
   expect_equal(lu$tiges$mode, "CIRCONFERENCE")
 })
+
+test_that("reimporter une tige avec ses volumes les ajoute (meme modifie)", {
+  # Un CSV au format 2, puis le meme au format 3 : memes uuid, meme modifie.
+  # La version stockee (sans volume) gagnait, et la fiche restait sans volume.
+  proj <- withr::local_tempdir(); dir.create(file.path(proj, "data"))
+  testthat::local_mocked_bindings(
+    get_project_path = function(id) proj,
+    load_action_plan = function(id) .plan_a1(),
+    save_action_plan = function(id, plan) TRUE
+  )
+  ctx <- data.frame(id = "a1", nom = "A", statut = "REALISEE",
+                    dateMartelage = NA, modifie = 1)
+  nemetonshiny:::marculus_importer("p", .marsync(proj, "v2.marsync", ctx, .tiges("u1")))
+  t3 <- .tiges("u1"); t3$volumeTigeM3 <- 0.87; t3$cubage <- "SCHAEFFER_RAPIDE:8"
+  nemetonshiny:::marculus_importer("p", .marsync(proj, "v3.marsync", ctx, t3))
+  st <- nemetonshiny:::marculus_charger_tiges("p")
+  expect_equal(nrow(st), 1L)
+  expect_equal(st$volumeTigeM3, 0.87)
+  expect_equal(st$cubage, "SCHAEFFER_RAPIDE:8")
+})
