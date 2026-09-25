@@ -1,3 +1,24 @@
+# nemetonshiny 0.148.3.9001 (2026-09-25)
+
+### Fixed — import Marculus : un fichier vide est dit vide
+
+Deux televersements de CSV, le 2026-09-25, ont affiche « Fichier illisible :
+ce n'est pas un export Marculus (.marsync ou sauvegarde JSON) ». Les fichiers
+recus par l'app faisaient **0 octet** : le contenu manquait des l'origine, par
+exemple a cause d'une copie depuis le telephone interrompue ou d'une
+synchronisation pas terminee. Le format n'etait donc pas en cause. Le message
+envoyait pourtant chercher de ce cote, et ne citait meme pas le CSV.
+
+- Un fichier vide recoit maintenant son propre message : « Fichier vide
+  (0 octet), rien a importer : verifiez qu'il a bien ete copie depuis le
+  telephone ».
+- Le message « illisible » cite les trois formats acceptes : `.marsync`,
+  sauvegarde JSON et CSV de contexte au format 2.
+- Les messages donnent le **nom d'origine** du fichier, et non le nom
+  temporaire que Shiny lui attribue (`0.csv`).
+
+Un test couvre le cas du fichier vide.
+
 # nemetonshiny 0.148.3 (2026-09-25)
 
 ### Fixed — import CSV Marculus : la qualite du fix sous une seule forme

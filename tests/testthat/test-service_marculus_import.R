@@ -209,3 +209,14 @@ test_that("une date de martelage vide dans le CSV laisse la date du plan", {
                                                 lu$tiges, annee_base = 2026L)
   expect_null(r$plan$actions[[1]]$date_martelage)
 })
+
+test_that("un fichier vide est signale comme vide, pas comme illisible", {
+  # Deux televersements reels de 0 octet (2026-09-25) tombaient dans
+  # « illisible », qui faisait chercher un probleme de format.
+  d <- withr::local_tempdir()
+  f <- file.path(d, "0.csv"); file.create(f)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$vides, "0.csv")
+  expect_length(lu$illisibles, 0L)
+  expect_length(lu$csv_anciens, 0L)
+})

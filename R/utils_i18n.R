@@ -604,12 +604,16 @@ TRANSLATIONS <- list(
     en = "%d context(s) with no matching action in this project: ignored."
   ),
   marculus_import_erreur = list(
-    fr = "Fichier illisible : ce n'est pas un export Marculus (.marsync ou sauvegarde JSON).",
-    en = "Unreadable file: not a Marculus export (.marsync or JSON backup)."
+    fr = "Fichier illisible : ce n'est pas un export Marculus (.marsync, sauvegarde JSON ou CSV de contexte au format 2).",
+    en = "Unreadable file: not a Marculus export (.marsync, JSON backup or format-2 context CSV)."
   ),
   marculus_import_csv_ancien = list(
     fr = "CSV de l'ancien format (sans identifiants), non importable : r\u00e9exportez-le depuis une version de Marculus qui \u00e9crit FormatCsv;2, ou partagez le .marsync :",
     en = "Old-format CSV (no identifiers), not importable: re-export it from a Marculus version that writes FormatCsv;2, or share the .marsync:"
+  ),
+  marculus_import_vide_fichier = list(
+    fr = "Fichier vide (0 octet), rien \u00e0 importer : v\u00e9rifiez qu'il a bien \u00e9t\u00e9 copi\u00e9 depuis le t\u00e9l\u00e9phone (synchronisation termin\u00e9e) :",
+    en = "Empty file (0 bytes), nothing to import: check it was fully copied from the phone (sync finished):"
   ),
   marculus_import_vide = list(
     fr = "Aucun contexte de ce projet dans les fichiers import\u00e9s.",

@@ -69,8 +69,15 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
 #' @noRd
 marculus_lire_exports <- function(chemins) {
   ctx <- list(); tig <- list(); illisibles <- character()
-  csv_anciens <- character()
+  csv_anciens <- character(); vides <- character()
   for (p in chemins) {
+    # Un fichier vide arrive tel quel (transfert du telephone interrompu,
+    # synchronisation cloud pas encore faite) : le dire, plutot que
+    # « illisible », qui fait chercher un probleme de format.
+    if (!file.exists(p) || isTRUE(file.size(p) == 0)) {
+      vides <- c(vides, basename(p))
+      next
+    }
     if (.marculus_est_csv(p)) {
       lu <- .marculus_lire_csv(p)
       if (identical(lu, "format1")) { csv_anciens <- c(csv_anciens, basename(p)); next }
@@ -108,8 +115,9 @@ marculus_lire_exports <- function(chemins) {
   }
   tiges <- if (length(tig)) do.call(rbind, tig) else .marculus_tiges_vides()
   list(contextes = contextes, tiges = .marculus_tiges_union(tiges),
-       n_fichiers = length(chemins) - length(illisibles) - length(csv_anciens),
-       illisibles = illisibles, csv_anciens = csv_anciens)
+       n_fichiers = length(chemins) - length(illisibles) - length(csv_anciens) -
+         length(vides),
+       illisibles = illisibles, csv_anciens = csv_anciens, vides = vides)
 }
 
 # Un CSV Marculus commence par `Contexte;` ; le JSON par `{`.
@@ -362,7 +370,7 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
   vide <- list(plan = NULL, n_actions = 0L, n_orphelins = 0L,
                n_tiges_nouvelles = 0L, n_tiges = 0L,
                illisibles = lu$illisibles, csv_anciens = lu$csv_anciens,
-               ids = character())
+               vides = lu$vides, ids = character())
   if (nrow(lu$contextes) == 0L) return(vide)
 
   avant <- marculus_charger_tiges(project_id)
@@ -379,5 +387,5 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
   list(plan = res$plan, n_actions = res$n_actions,
        n_orphelins = res$n_orphelins, n_tiges_nouvelles = n_nouvelles,
        n_tiges = nrow(tiges), illisibles = lu$illisibles,
-       csv_anciens = lu$csv_anciens, ids = res$ids)
+       csv_anciens = lu$csv_anciens, vides = lu$vides, ids = res$ids)
 }

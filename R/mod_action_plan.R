@@ -1911,6 +1911,10 @@ mod_action_plan_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(f) || !nrow(f) || is.null(project$id)) return()
       shiny::removeModal()
+      # `datapath` est renomme par Shiny (0.csv, 1.marsync...) : on garde le nom
+      # d'origine pour les messages.
+      noms <- stats::setNames(f$name, basename(f$datapath))
+      nom_origine <- function(x) unname(ifelse(x %in% names(noms), noms[x], x))
       res <- tryCatch(
         marculus_importer(project$id, f$datapath,
                           user = Sys.info()[["user"]] %||% "user"),
@@ -1920,14 +1924,21 @@ mod_action_plan_server <- function(id, app_state) {
         })
       # Un CSV de l'ancien format n'a ni id de contexte ni uuid de tige : le
       # dire, avec la marche a suivre, plutot qu'un « fichier illisible ».
+      if (length(res$vides %||% character())) {
+        shiny::showNotification(
+          paste(i18n$t("marculus_import_vide_fichier"),
+                paste(nom_origine(res$vides), collapse = ", ")),
+          type = "warning", duration = 15)
+      }
       if (length(res$csv_anciens %||% character())) {
         shiny::showNotification(
           paste(i18n$t("marculus_import_csv_ancien"),
-                paste(res$csv_anciens, collapse = ", ")),
+                paste(nom_origine(res$csv_anciens), collapse = ", ")),
           type = "warning", duration = 15)
       }
       if (is.null(res) || is.null(res$plan)) {
-        if (!length(res$csv_anciens %||% character())) {
+        if (!length(res$csv_anciens %||% character()) &&
+            !length(res$vides %||% character())) {
           shiny::showNotification(i18n$t("marculus_import_erreur"),
                                   type = "error", duration = 10)
         }
@@ -1953,7 +1964,7 @@ mod_action_plan_server <- function(id, app_state) {
       if (length(res$illisibles)) {
         shiny::showNotification(
           paste(i18n$t("marculus_import_erreur"),
-                paste(res$illisibles, collapse = ", ")),
+                paste(nom_origine(res$illisibles), collapse = ", ")),
           type = "warning", duration = 10)
       }
       .marculus_montrer_synthese(i18n)
