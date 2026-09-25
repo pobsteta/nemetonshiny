@@ -19,7 +19,7 @@
 # Le terrain fait foi : statut et date du telephone remplacent ceux de l'app,
 # l'audit du plan garde l'ancienne valeur.
 #
-# Troisieme forme (Marculus apres v0.47.0, commit 8848a67) : le CSV de contexte en
+# Troisieme forme (Marculus v0.48.0) : le CSV de contexte en
 # `FormatCsv;2` (`ExportCsv.kt`), qui porte les memes cles (ContexteId, Uuid,
 # Statut, DateMartelage, Modifie) et se lit donc comme un `.marsync`. Un CSV
 # sans `FormatCsv` (format 1) n'a ni id ni uuid : il est refuse.
@@ -119,6 +119,20 @@ marculus_lire_exports <- function(chemins) {
   length(l1) == 1L && startsWith(sub("^\ufeff", "", l1), "Contexte;")
 }
 
+# Qualite du fix GNSS : le CSV ecrit le LIBELLE (`QualiteFix.libelle`, « RTK
+# fixe »), le `.marsync` le NOM de l'enum (`RTK_FIXE`) - reponse Marculus
+# v0.48.0. On ramene tout au nom, pour qu'une meme tige ne revienne pas sous
+# deux formes selon le fichier (`FixGnss.kt`).
+MARCULUS_QUALITE_FIX <- c(
+  "Pas de fix" = "INVALIDE", "Autonome" = "AUTONOME", "DGPS" = "DGPS",
+  "PPS" = "PPS", "RTK fixe" = "RTK_FIXE", "RTK flottant" = "RTK_FLOAT",
+  "Estim\u00e9" = "ESTIME", "Manuel" = "MANUEL", "Simulation" = "SIMULATION"
+)
+.marculus_qualite_fix_nom <- function(x) {
+  nom <- unname(MARCULUS_QUALITE_FIX[x])
+  ifelse(is.na(nom), x, nom)
+}
+
 # Millisecondes depuis l'epoque d'un horodatage ISO-8601 (`Instant.toString()`,
 # fraction de seconde facultative, suffixe Z).
 .marculus_iso_ms <- function(x) {
@@ -182,7 +196,8 @@ marculus_lire_exports <- function(chemins) {
           quantite = as.integer(jr$Quantite), hauteurTexte = jr$Hauteur,
           qualiteArbre = jr$QualiteArbre, latitude = num(jr$Latitude),
           longitude = num(jr$Longitude), operateur = jr$Operateur,
-          parcelle = jr$Parcelle, qualiteFix = jr$QualiteFix,
+          parcelle = jr$Parcelle,
+          qualiteFix = .marculus_qualite_fix_nom(jr$QualiteFix),
           precisionM = num(jr$Precision_m), modifie = num(jr$Modifie),
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]

@@ -165,6 +165,8 @@ test_that("un CSV FormatCsv;2 se lit comme un .marsync", {
   expect_equal(nrow(lu$tiges), 3L)
   expect_equal(lu$tiges$latitude[1], 47.912345)
   expect_equal(lu$tiges$parcelle[1], "B 7")
+  # Libelle du CSV ramene au nom de l'enum, comme dans le .marsync.
+  expect_equal(lu$tiges$qualiteFix[1], "RTK_FIXE")
   expect_equal(lu$tiges$horodatage[2], .ms("2027-10-15 08:13:04.25"), tolerance = 1)
   expect_equal(nemetonshiny:::marculus_totaux(lu$tiges)$tiges, 1L)
 
