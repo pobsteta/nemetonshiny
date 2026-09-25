@@ -632,6 +632,12 @@ TRANSLATIONS <- list(
     fr = "%d tige(s) d\u00e9sign\u00e9e(s)",
     en = "%d stem(s) designated"
   ),
+  marculus_fiche_volume_fmt = list(fr = "%s bois fort", en = "%s merchantable"),
+  marculus_col_volume = list(fr = "Volume (m\u00b3)", en = "Volume (m\u00b3)"),
+  marculus_non_cubees_fmt = list(
+    fr = "%d tige(s) non cub\u00e9e(s) (EMERGE sans hauteur saisie) : volume sous-estim\u00e9.",
+    en = "%d stem(s) not measured for volume (EMERGE with no height entered): volume underestimated."
+  ),
   marculus_fiche_biodiv_fmt = list(
     fr = "dont %d Biodiversit\u00e9",
     en = "incl. %d Biodiversity"

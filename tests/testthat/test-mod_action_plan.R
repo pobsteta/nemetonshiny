@@ -459,3 +459,22 @@ test_that("la fiche Kanban affiche le martelage sous le commentaire", {
   expect_null(nemetonshiny:::.kanban_ligne_martelage(
     list(date_martelage = NA, nb_tiges = 12L, nb_tiges_biodiversite = NA), i18n))
 })
+
+test_that("fiche et synthese affichent le volume martele", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  row <- list(date_martelage = "2027-10-15", nb_tiges = 42L,
+              nb_tiges_biodiversite = 3L, volume_martele_m3 = 38.64)
+  h <- as.character(nemetonshiny:::.kanban_ligne_martelage(row, i18n))
+  expect_match(h, "dont 3 Biodiversité · 38,6 m³ bois fort", fixed = TRUE)
+
+  sub <- data.frame(essence = c("Hêtre", "Sapin"), classe = c(40L, 20L),
+                    tiges = c(2L, 1L), volume_m3 = c(1.74, 0.2))
+  t <- as.character(nemetonshiny:::.marculus_synthese_table(sub, i18n))
+  expect_match(t, "Volume (m³)", fixed = TRUE)
+  expect_match(t, ">1,74</td>", fixed = TRUE)
+  expect_match(t, ">1,94</td>", fixed = TRUE)
+  # Sans volume exporte, pas de colonne Volume.
+  sub$volume_m3 <- NA_real_
+  t2 <- as.character(nemetonshiny:::.marculus_synthese_table(sub, i18n))
+  expect_false(grepl("Volume (m³)", t2, fixed = TRUE))
+})

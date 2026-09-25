@@ -1989,11 +1989,19 @@ mod_action_plan_server <- function(id, app_state) {
           lbl <- if (is.na(a$ug_label[1])) a$ug_id[1] else a$ug_label[1]
           paste(lbl, "\u2014", a$type[1])
         } else cid
+        nc <- if (nrow(a)) a$nb_tiges_non_cubees[1] else NA_integer_
+        vol <- if ("volume_m3" %in% names(sub) && any(!is.na(sub$volume_m3)))
+          sum(sub$volume_m3, na.rm = TRUE) else NA_real_
         htmltools::tagList(
           htmltools::tags$h6(class = "mt-3", titre, " ",
             htmltools::tags$span(class = "badge bg-secondary",
-              sprintf(i18n$t("marculus_synthese_total_fmt"), sum(sub$tiges)))),
-          .marculus_synthese_table(sub, i18n))
+              sprintf(i18n$t("marculus_synthese_total_fmt"), sum(sub$tiges))),
+            if (!is.na(vol)) htmltools::tags$span(class = "badge bg-success ms-1",
+              .format_m3(vol, i18n))),
+          .marculus_synthese_table(sub, i18n),
+          if (isTRUE(nc > 0L))
+            htmltools::p(class = "small text-warning-emphasis mb-1",
+                         sprintf(i18n$t("marculus_non_cubees_fmt"), nc)))
       })
       # Defilement DANS la fenetre (`modal-dialog-scrollable`) : titre et
       # « Fermer » restent visibles quel que soit le nombre d'actions.
@@ -2021,13 +2029,17 @@ mod_action_plan_server <- function(id, app_state) {
       if (!nrow(pts)) return()
       date <- format(as.POSIXct(pts$horodatage / 1000, origin = "1970-01-01"),
                      "%Y-%m-%d")
+      vol_txt <- ifelse(is.na(pts$volumeTigeM3), "",
+        paste0("<br>", i18n$t("marculus_col_volume"), " : ",
+               vapply(pts$volumeTigeM3, function(v) .format_m3(v, i18n), ""),
+               ifelse(is.na(pts$cubage), "", paste0(" (", htmltools::htmlEscape(pts$cubage), ")"))))
       popup <- sprintf(
-        "<b>%s</b> \u2014 %s %s<br>%s : %s<br>%s : %s<br>%s",
+        "<b>%s</b> \u2014 %s %s<br>%s : %s<br>%s : %s<br>%s%s",
         htmltools::htmlEscape(pts$essence), i18n$t("marculus_col_classe"),
         pts$classe,
         i18n$t("marculus_col_hauteur"), htmltools::htmlEscape(ifelse(is.na(pts$hauteurTexte), "-", pts$hauteurTexte)),
         i18n$t("marculus_col_qualite"), htmltools::htmlEscape(ifelse(is.na(pts$qualiteArbre), "-", pts$qualiteArbre)),
-        date)
+        date, vol_txt)
       proxy |> leaflet::addCircleMarkers(
         lng = pts$longitude, lat = pts$latitude, group = groupe,
         radius = 4, stroke = TRUE, weight = 1, color = "#ffffff",
@@ -2975,11 +2987,17 @@ coerce_table_value <- function(field, raw) {
     htmltools::tags$td(class = paste("text-end", if (gras) "fw-semibold"),
                        if (is.na(v)) "" else v)
   }
+  # Colonne Volume (m3 bois fort tige, net) quand le telephone l'a exporte.
+  a_vol <- "volume_m3" %in% names(sub) && any(!is.na(sub$volume_m3))
+  vol_ess <- function(e) sum(sub$volume_m3[sub$essence == e], na.rm = TRUE)
+  cell_vol <- function(v) htmltools::tags$td(class = "text-end text-success-emphasis",
+                                             .format_m3(v, i18n, unite = FALSE))
   lignes <- lapply(essences, function(e) {
     vals <- vapply(classes, function(c) cell(e, c), integer(1))
     htmltools::tags$tr(htmltools::tags$th(scope = "row", e),
                        lapply(vals, num),
-                       num(sum(vals, na.rm = TRUE), gras = TRUE))
+                       num(sum(vals, na.rm = TRUE), gras = TRUE),
+                       if (a_vol) cell_vol(vol_ess(e)))
   })
   tot_col <- vapply(classes, function(c) sum(sub$tiges[sub$classe == c]), integer(1))
   htmltools::div(
@@ -2989,12 +3007,23 @@ coerce_table_value <- function(field, raw) {
       htmltools::tags$thead(htmltools::tags$tr(
         htmltools::tags$th(i18n$t("marculus_col_essence")),
         lapply(classes, function(c) htmltools::tags$th(class = "text-end", c)),
-        htmltools::tags$th(class = "text-end", i18n$t("marculus_col_total")))),
+        htmltools::tags$th(class = "text-end", i18n$t("marculus_col_total")),
+        if (a_vol) htmltools::tags$th(class = "text-end", i18n$t("marculus_col_volume")))),
       htmltools::tags$tbody(lignes),
       htmltools::tags$tfoot(htmltools::tags$tr(
         htmltools::tags$th(i18n$t("marculus_col_total")),
         lapply(tot_col, num, gras = TRUE),
-        num(sum(tot_col), gras = TRUE)))))
+        num(sum(tot_col), gras = TRUE),
+        if (a_vol) cell_vol(sum(sub$volume_m3, na.rm = TRUE))))))
+}
+
+#' Format a volume in cubic metres for the UI (decimal comma in French)
+#' @noRd
+.format_m3 <- function(v, i18n, unite = TRUE) {
+  x <- formatC(v, format = "f", digits = if (abs(v) < 10) 2 else 1,
+               big.mark = if (identical(i18n$language, "fr")) "\u202f" else ",",
+               decimal.mark = if (identical(i18n$language, "fr")) "," else ".")
+  if (unite) paste(x, "m\u00b3") else x
 }
 
 
@@ -3022,10 +3051,15 @@ coerce_table_value <- function(field, raw) {
     morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_date_fmt"),
                                     format(dm, fmt)))
   }
+  vol <- suppressWarnings(as.numeric(row$volume_martele_m3 %||% NA_real_))
   if (length(n) == 1L && !is.na(n)) {
     morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_tiges_fmt"), n))
     if (length(bio) == 1L && !is.na(bio)) {
       morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_biodiv_fmt"), bio))
+    }
+    if (length(vol) == 1L && !is.na(vol)) {
+      morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_volume_fmt"),
+                                      .format_m3(vol, i18n)))
     }
   }
   htmltools::div(

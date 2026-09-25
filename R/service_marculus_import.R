@@ -19,7 +19,7 @@
 # Le terrain fait foi : statut et date du telephone remplacent ceux de l'app,
 # l'audit du plan garde l'ancienne valeur.
 #
-# Troisieme forme (Marculus v0.48.0) : le CSV de contexte en
+# Troisieme forme (Marculus v0.48.0, volumes en format 3 ensuite) : le CSV de contexte en
 # `FormatCsv;2` (`ExportCsv.kt`), qui porte les memes cles (ContexteId, Uuid,
 # Statut, DateMartelage, Modifie) et se lit donc comme un `.marsync`. Un CSV
 # sans `FormatCsv` (format 1) n'a ni id ni uuid : il est refuse.
@@ -43,8 +43,17 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              longitude = numeric(0), operateur = character(0),
              parcelle = character(0), qualiteFix = character(0),
              precisionM = numeric(0), modifie = numeric(0),
+             # Volumes calcules sur le telephone (Marculus, format 3) : valeurs
+             # UNITAIRES, pour une tige. NA quand le fichier n'en porte pas.
+             volumeTigeM3 = numeric(0), volumeHouppierM3 = numeric(0),
+             volumeTotalM3 = numeric(0), surfaceTerriereM2 = numeric(0),
+             cubage = character(0),
              stringsAsFactors = FALSE)
 }
+
+# Colonnes de volume d'un contexte (totaux NETS calcules sur le telephone).
+MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeTotalM3",
+                               "surfaceTerriereTotaleM2", "nbTigesNonCubees")
 
 # Aligne un data.frame de tiges sur les colonnes attendues (champs optionnels
 # absents -> NA), dans l'ordre de `.marculus_tiges_vides()`.
@@ -94,20 +103,28 @@ marculus_lire_exports <- function(chemins) {
       next
     }
     c0 <- j$contextes
-    ctx[[length(ctx) + 1L]] <- data.frame(
+    d0 <- data.frame(
       id            = as.character(c0$id),
       nom           = as.character(c0$nom %||% NA_character_),
       statut        = as.character(c0$statut %||% NA_character_),
       dateMartelage = as.numeric(c0$dateMartelage %||% NA_real_),
       modifie       = as.numeric(c0$modifie %||% 0),
       stringsAsFactors = FALSE)
+    for (v in MARCULUS_VOLUMES_CONTEXTE) {
+      d0[[v]] <- suppressWarnings(as.numeric(c0[[v]] %||% NA_real_))
+    }
+    ctx[[length(ctx) + 1L]] <- d0
     if (is.data.frame(j$tiges) && nrow(j$tiges) > 0L) {
       tig[[length(tig) + 1L]] <- .marculus_tiges_normaliser(j$tiges)
     }
   }
-  contextes <- if (length(ctx)) do.call(rbind, ctx) else
-    data.frame(id = character(0), nom = character(0), statut = character(0),
-               dateMartelage = numeric(0), modifie = numeric(0))
+  contextes <- if (length(ctx)) do.call(rbind, ctx) else {
+    vide_ctx <- data.frame(id = character(0), nom = character(0),
+                           statut = character(0), dateMartelage = numeric(0),
+                           modifie = numeric(0))
+    for (v in MARCULUS_VOLUMES_CONTEXTE) vide_ctx[[v]] <- numeric(0)
+    vide_ctx
+  }
   # Un meme contexte partage deux fois : garder sa version la plus recente.
   if (nrow(contextes) > 1L) {
     contextes <- contextes[order(-contextes$modifie), , drop = FALSE]
@@ -185,6 +202,11 @@ MARCULUS_QUALITE_FIX <- c(
         as.numeric(as.POSIXct(dm, tz = "UTC")) * 1000 else NA_real_,
       modifie       = suppressWarnings(as.numeric(entete$Modifie %||% 0)),
       stringsAsFactors = FALSE)
+    # Format 3 : totaux nets du telephone ; absents au format 2 (NA).
+    for (v in MARCULUS_VOLUMES_CONTEXTE) {
+      cle <- paste0(toupper(substr(v, 1, 1)), substring(v, 2))
+      contexte[[v]] <- suppressWarnings(as.numeric(entete[[cle]] %||% NA))
+    }
 
     j <- which(trimws(lignes) == "JOURNAL")[1]
     tiges <- .marculus_tiges_vides()
@@ -207,6 +229,11 @@ MARCULUS_QUALITE_FIX <- c(
           parcelle = jr$Parcelle,
           qualiteFix = .marculus_qualite_fix_nom(jr$QualiteFix),
           precisionM = num(jr$Precision_m), modifie = num(jr$Modifie),
+          volumeTigeM3 = num(jr$VolumeTigeM3 %||% NA),
+          volumeHouppierM3 = num(jr$VolumeHouppierM3 %||% NA),
+          volumeTotalM3 = num(jr$VolumeTotalM3 %||% NA),
+          surfaceTerriereM2 = num(jr$SurfaceTerriereM2 %||% NA),
+          cubage = jr$Cubage %||% NA_character_,
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]
       }
@@ -281,7 +308,8 @@ marculus_charger_tiges <- function(project_id) {
 marculus_totaux <- function(tiges) {
   tiges <- .marculus_tiges_normaliser(tiges)
   vide <- data.frame(contexteId = character(0), essence = character(0),
-                     classe = integer(0), tiges = integer(0))
+                     classe = integer(0), tiges = integer(0),
+                     volume_m3 = numeric(0))
   if (nrow(tiges) == 0L) return(vide)
   delta <- ifelse(toupper(tiges$action) == "ANNULATION", -1L, 1L) *
     as.integer(tiges$quantite)
@@ -291,8 +319,52 @@ marculus_totaux <- function(tiges) {
                                     classe = tiges$classe),
                           FUN = sum)
   names(agg)[4] <- "tiges"
+  vol <- .marculus_volumes_nets(tiges)
+  agg <- merge(agg, vol, by = c("contexteId", "essence", "classe"),
+               all.x = TRUE, sort = FALSE)
   agg <- agg[agg$tiges != 0L, , drop = FALSE]
   agg[order(agg$contexteId, agg$essence, agg$classe), , drop = FALSE]
+}
+
+#' Net volume of each case (context x species x class), Marculus' rule
+#'
+#' Same algorithm as `VolumesMartelage.totaux()` on the phone: stems are
+#' stacked per case in time order (then uuid), and a cancellation removes the
+#' LAST counted stems of its case, with their volume - not the volume of its own
+#' entry, which may lack the height EMERGE needs.
+#'
+#' @param tiges A stems data.frame carrying unit volumes.
+#' @return A data.frame `contexteId, essence, classe, volume_m3` (bois fort
+#'   tige, net), `NA` when no stem of the case carries a volume.
+#' @noRd
+.marculus_volumes_nets <- function(tiges) {
+  vide <- data.frame(contexteId = character(0), essence = character(0),
+                     classe = integer(0), volume_m3 = numeric(0))
+  if (nrow(tiges) == 0L) return(vide)
+  tiges <- tiges[order(tiges$contexteId, tiges$essence, tiges$classe,
+                       tiges$horodatage, tiges$uuid), , drop = FALSE]
+  cle <- paste(tiges$contexteId, tiges$essence, tiges$classe, sep = "\r")
+  res <- lapply(split(seq_len(nrow(tiges)), factor(cle, levels = unique(cle))),
+                function(ix) {
+    t <- tiges[ix, , drop = FALSE]
+    pile_v <- numeric(0); pile_n <- integer(0)
+    for (k in seq_len(nrow(t))) {
+      n <- as.integer(t$quantite[k])
+      if (toupper(t$action[k]) == "ANNULATION") {
+        while (n > 0L && length(pile_n)) {
+          m <- length(pile_n); r <- min(n, pile_n[m])
+          pile_n[m] <- pile_n[m] - r; n <- n - r
+          if (pile_n[m] == 0L) { pile_n <- pile_n[-m]; pile_v <- pile_v[-m] }
+        }
+      } else {
+        pile_v <- c(pile_v, t$volumeTigeM3[k]); pile_n <- c(pile_n, n)
+      }
+    }
+    v <- if (all(is.na(t$volumeTigeM3))) NA_real_ else sum(pile_v * pile_n, na.rm = TRUE)
+    data.frame(contexteId = t$contexteId[1], essence = t$essence[1],
+               classe = t$classe[1], volume_m3 = v)
+  })
+  do.call(rbind, res)
 }
 
 #' Net number of "Biodiversite" stems per context
@@ -361,13 +433,29 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
       if (offset >= 1L && offset <= horizon) upd$annee_cible <- offset
     }
 
-    if (cid %in% names(n_par_ctx)) {
+    q_vol <- NULL
+    vt <- contextes$volumeTigeTotalM3[i] %||% NA
+    if (length(vt) == 1L && !is.na(vt)) {
+      # Totaux du telephone, qui font foi : bois fort tige dans `volume_m3`
+      # (colonne Volume, bilan), et une copie `volume_martele_m3` pour la
+      # fiche, qui ne doit jamais montrer une estimation IA comme un martelage.
+      q_vol <- list(
+        volume_m3 = round(vt, 4),
+        volume_martele_m3 = round(vt, 4),
+        volume_total_m3 = round(contextes$volumeTotalM3[i], 4),
+        surface_terriere_m2 = round(contextes$surfaceTerriereTotaleM2[i], 4),
+        nb_tiges_non_cubees = as.integer(contextes$nbTigesNonCubees[i]))
+    }
+    if (cid %in% names(n_par_ctx) || !is.null(q_vol)) {
       q <- action$quantite %||% list()
+      for (k in names(q_vol)) q[[k]] <- q_vol[[k]]
+    }
+    if (cid %in% names(n_par_ctx)) {
       q$nb_tiges <- as.integer(n_par_ctx[[cid]])
       q$nb_tiges_biodiversite <- as.integer(n_biodiv[cid] %||% 0L)
       if (is.na(q$nb_tiges_biodiversite)) q$nb_tiges_biodiversite <- 0L
-      upd$quantite <- q
     }
+    if (cid %in% names(n_par_ctx) || !is.null(q_vol)) upd$quantite <- q
 
     # Ne garder que ce qui change : un reimport identique ne touche a rien.
     upd <- upd[!vapply(names(upd), function(k) identical(action[[k]], upd[[k]]),

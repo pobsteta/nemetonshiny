@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.150.0] - 2026-09-25
+
+Jalon mineur : les volumes du martelage reviennent de Marculus, qui reste la
+seule source du calcul.
+
+### Added
+
+- Import Marculus : volumes unitaires par tige et totaux nets par contexte
+  (`.marsync` et CSV `FormatCsv;3`). Les totaux font foi pour l'action :
+  `volume_m3` (bois fort, qui alimente le bilan), `volume_martele_m3`,
+  `volume_total_m3`, `surface_terriere_m2` et `nb_tiges_non_cubees`. Le volume
+  net par case suit la regle d'annulation de Marculus. Les volumes
+  s'affichent sur la fiche Kanban, dans la synthese (colonne Volume, tiges non
+  cubees) et dans l'infobulle des tiges sur la carte. Le format 2, sans
+  volumes, reste accepte.
+
 ## [0.149.0] - 2026-09-25
 
 Jalon mineur : le retour Marculus est lisible dans le Plan d'actions.
