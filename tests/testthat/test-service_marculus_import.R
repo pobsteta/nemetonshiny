@@ -333,3 +333,32 @@ test_that("un CSV FormatCsv;3 apporte totaux et volumes unitaires", {
   expect_equal(lu$tiges$cubage[1], "SCHAEFFER_RAPIDE:8")
   expect_equal(nemetonshiny:::marculus_totaux(lu$tiges)$volume_m3, 1.74)
 })
+
+test_that("les tiges designees suivent la regle d'annulation de Marculus", {
+  t <- data.frame(uuid = paste0("u", 1:5), contexteId = "a1", essence = "H",
+                  classe = 40L,
+                  action = c("PLUS", "PLUS", "ANNULATION", "PLUS", "ANNULATION"),
+                  horodatage = 1:5, quantite = c(1L, 2L, 1L, 1L, 1L), modifie = 1)
+  d <- nemetonshiny:::marculus_tiges_designees(t, "a1")
+  expect_equal(d$uuid, c("u1", "u2"))
+  expect_equal(d$quantite, c(1L, 1L))            # u2 : 2 - 1 annulee
+  expect_equal(nrow(nemetonshiny:::marculus_tiges_designees(t, "autre")), 0L)
+})
+
+test_that("les categories PB/BM/GB/TGB suivent les seuils par defaut de Marculus", {
+  f <- nemetonshiny:::marculus_categorie
+  expect_equal(f(c(20, 25, 30, 45, 50, 65, 70, 90), "DIAMETRE"),
+               c("PB", "PB", "BM", "BM", "GB", "GB", "TGB", "TGB"))
+  # Circonference ramenee au diametre : 150 / pi = 47,7 cm -> GB.
+  expect_equal(f(c(80, 150), "CIRCONFERENCE"), c("PB", "GB"))
+  expect_equal(f(30, NA), "BM")                  # mode inconnu : diametre
+})
+
+test_that("le mode du contexte est recopie sur les tiges importees", {
+  d <- withr::local_tempdir()
+  ctx <- data.frame(id = "a1", nom = "A", statut = "REALISEE",
+                    dateMartelage = NA, modifie = 1, mode = "CIRCONFERENCE")
+  lu <- nemetonshiny:::marculus_lire_exports(.marsync(d, contextes = ctx,
+                                                      tiges = .tiges("u1")))
+  expect_equal(lu$tiges$mode, "CIRCONFERENCE")
+})

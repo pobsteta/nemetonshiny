@@ -761,6 +761,18 @@
 
 
   /**
+   * htmlwidgets inside a modal. DT and leaflet postpone their rendering while
+   * their container has no size (DT `lazyRender`), which is the case during
+   * the modal's opening animation. htmlwidgets resumes them on
+   * `shown.htmlwidgets` / `shown.bs.tab` / `shown.bs.collapse`, but not on
+   * `shown.bs.modal`: without this relay the Marculus detail dialog showed an
+   * empty map and no table (Chrome headless, v0.150.0.9001).
+   */
+  $(document).on('shown.bs.modal', function(e) {
+    $(e.target).trigger('shown.htmlwidgets');
+  });
+
+  /**
    * Server-driven click on an element by id. Lets an async task end by
    * triggering a hidden `downloadButton` (a downloadHandler cannot wait for
    * an ExtendedTask by itself). The hidden output must be declared

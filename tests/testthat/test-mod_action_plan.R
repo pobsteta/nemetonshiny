@@ -478,3 +478,25 @@ test_that("fiche et synthese affichent le volume martele", {
   t2 <- as.character(nemetonshiny:::.marculus_synthese_table(sub, i18n))
   expect_false(grepl("Volume (m³)", t2, fixed = TRUE))
 })
+
+test_that("la fiche Martelage porte carte, diagramme et tableau", {
+  skip_if_not_installed("plotly")
+  t <- data.frame(uuid = paste0("u", 1:3), contexteId = "a1",
+                  essence = c("Hêtre", "Hêtre", "Sapin"),
+                  classe = c(25L, 50L, 70L), action = "PLUS", horodatage = 1:3,
+                  quantite = 1L, latitude = c(47.9, 47.901, NA),
+                  longitude = c(1.9, 1.901, NA), modifie = 1,
+                  volumeTigeM3 = c(0.3, 1.5, 2.8), mode = "DIAMETRE")
+  t <- nemetonshiny:::.marculus_tiges_normaliser(t)
+  ug <- sf::st_sf(ug_id = "ug_1", geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+    c(1.899, 47.899), c(1.902, 47.899), c(1.902, 47.902), c(1.899, 47.902),
+    c(1.899, 47.899)))), crs = 4326))
+  f <- nemetonshiny:::.marculus_fiche_martelage(t, ug, nemetonshiny:::get_i18n("fr"))
+  h <- as.character(htmltools::renderTags(f)$html)
+  expect_match(h, "leaflet", fixed = TRUE)
+  expect_match(h, "plotly", fixed = TRUE)
+  expect_match(h, "datatables", fixed = TRUE)
+  # Trois classes, trois categories distinctes (PB, GB, TGB) dans le diagramme.
+  expect_match(h, "(PB)", fixed = TRUE)
+  expect_match(h, "(TGB)", fixed = TRUE)
+})

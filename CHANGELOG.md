@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.151.0] - 2026-09-25
+
+### Added
+
+- Kanban : un double-clic sur une fiche martelee ajoute, sous le formulaire
+  d'edition, une section « Martelage ». Elle comprend :
+  - un plan de situation de l'UGF et des tiges georeferencees ;
+  - un diagramme debout, une barre par essence empilee par classe, aux
+    couleurs PB/BM/GB/TGB de Marculus ;
+  - le tableau des tiges designees, annulations deduites.
+  Les categories suivent les seuils par defaut de Marculus, et le mode de
+  mesure est recopie sur les tiges a l'import.
+
+### Fixed
+
+- Les widgets DT et leaflet places dans une fenetre restaient vides :
+  `custom.js` relaie maintenant `shown.bs.modal` vers `shown.htmlwidgets`.
+
 ## [0.150.0] - 2026-09-25
 
 Jalon mineur : les volumes du martelage reviennent de Marculus, qui reste la

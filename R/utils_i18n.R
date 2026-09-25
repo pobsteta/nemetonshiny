@@ -642,6 +642,26 @@ TRANSLATIONS <- list(
     fr = "dont %d Biodiversit\u00e9",
     en = "incl. %d Biodiversity"
   ),
+  marculus_fiche_titre = list(fr = "Martelage", en = "Marking"),
+  marculus_plan_situation = list(fr = "Plan de situation", en = "Location map"),
+  marculus_graph_classes = list(
+    fr = "Tiges par essence et par classe",
+    en = "Stems by species and class"
+  ),
+  marculus_tableau_tiges = list(fr = "Tiges d\u00e9sign\u00e9es", en = "Designated stems"),
+  marculus_seuils_note = list(
+    fr = "Annulations d\u00e9duites. Cat\u00e9gories aux seuils par d\u00e9faut de Marculus (diam\u00e8tre) : PB < 27,5 cm \u2264 BM < 47,5 \u2264 GB < 67,5 \u2264 TGB.",
+    en = "Cancellations applied. Categories at Marculus' default thresholds (diameter): PB < 27.5 cm \u2264 BM < 47.5 \u2264 GB < 67.5 \u2264 TGB."
+  ),
+  marculus_fond_satellite = list(fr = "Satellite", en = "Satellite"),
+  marculus_dt_info = list(
+    fr = "Tiges _START_ \u00e0 _END_ sur _TOTAL_",
+    en = "Stems _START_ to _END_ of _TOTAL_"
+  ),
+  marculus_col_date = list(fr = "Date", en = "Date"),
+  marculus_col_categorie = list(fr = "Cat\u00e9gorie", en = "Category"),
+  marculus_col_parcelle = list(fr = "Parcelle", en = "Parcel"),
+  marculus_col_fix = list(fr = "Fix GNSS", en = "GNSS fix"),
   marculus_couche_tiges = list(fr = "Tiges martel\u00e9es", en = "Marked stems"),
   marculus_ortho_running_fmt = list(
     fr = "Pr\u00e9paration du fond ortho 20 cm de %d chantier(s)\u2026 Le t\u00e9l\u00e9chargement partira seul \u00e0 la fin.",
