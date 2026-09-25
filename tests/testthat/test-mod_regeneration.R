@@ -65,7 +65,7 @@ test_that("run enriches UGF via the service and exposes the result", {
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        map_layer = "indice_priorite_regen",
         hydric_only = FALSE, forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
@@ -141,7 +141,7 @@ test_that("changing the target species live-re-prioritises without a full run", 
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        map_layer = "indice_priorite_regen",
         hydric_only = FALSE, forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       # Sans résultat, changer l'essence ne déclenche aucune re-priorisation.
@@ -186,7 +186,7 @@ test_that("a read-only project gates the run action before the service", {
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        map_layer = "indice_priorite_regen",
         hydric_only = FALSE, forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
@@ -238,7 +238,7 @@ test_that("opening a project with a cached biljou restores the result", {
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        map_layer = "indice_priorite_regen",
         forest_type = "feuillu", year_moyenne = 2018, year_canicule = 2022,
         lai_max = NA, species = "")
 
@@ -503,7 +503,7 @@ test_that("R7 (gel) survives a re-analysis via input$run", {
     nemetonshiny:::mod_regeneration_server,
     args = list(app_state = as),
     {
-      session$setInputs(map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+      session$setInputs(map_layer = "indice_priorite_regen",
         hydric_only = FALSE, forest_type = "feuillu", year_moyenne = NA,
         year_canicule = NA, lai_max = NA, species = "")
       # Simuler un R7 déjà calculé sur le résultat courant (avant le re-run).
@@ -740,7 +740,7 @@ test_that("recompute_context purge le cache des 3 vues et re-déclenche le calcu
 
 .regen_sel_inputs <- function(session) {
   session$setInputs(
-    map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+    map_layer = "indice_priorite_regen",
     hydric_only = FALSE, forest_type = "feuillu",
     year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
   session$setInputs(run = 1)

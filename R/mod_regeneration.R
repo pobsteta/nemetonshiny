@@ -670,12 +670,11 @@ mod_regeneration_ui <- function(id) {
                 htmltools::div(
                   class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
                   htmltools::tags$span(i18n$t("regen_table_card_title")),
+                  # La case « Masquer les UG mal couvertes » est retiree : toutes
+                  # les UG sont affichees, et la colonne « Couverture (%) » dit
+                  # sur quelle part de sa surface chacune a ete modelisee.
                   htmltools::div(
                     class = "d-flex align-items-center gap-3",
-                    htmltools::div(
-                      class = "mb-0",
-                      shiny::checkboxInput(ns("filter_coverage"),
-                        i18n$t("regen_filter_coverage"), value = TRUE)),
                     shiny::actionButton(ns("clear_selection"),
                       i18n$t("regen_clear_selection"),
                       icon = shiny::icon("eraser"),
@@ -2397,8 +2396,8 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # Source UNIQUE du tableau : memes lignes et meme ordre pour le rendu DT, le
-    # mapping clic->ligne et la/les fiche(s) parcelle. Le filtre couverture agit
-    # ici -> les index de lignes DT restent coherents avec les fiches.
+    # mapping clic->ligne et la/les fiche(s) parcelle. Plus de filtre de
+    # couverture (case retiree) : toutes les UG, couverture en colonne.
     regen_table_df <- shiny::reactive({
       res <- rv$result
       shiny::req(res)
@@ -2406,12 +2405,7 @@ mod_regeneration_server <- function(id, app_state) {
       cols <- intersect(c("ug_id", "priorite", "indice_priorite_regen", "sensibilite",
         "rang_sensibilite", "njstress", "istress", "deb_stress", "rew_min",
         "d_tmax", "d_vpd", "couverture_pct"), names(df))
-      df <- df[, cols, drop = FALSE]
-      if (isTRUE(input$filter_coverage) && "couverture_pct" %in% names(df)) {
-        keep <- is.na(df$couverture_pct) | df$couverture_pct >= 50
-        df <- df[keep, , drop = FALSE]
-      }
-      df
+      df[, cols, drop = FALSE]
     })
 
     # Clic carte -> toggle l'UGF dans la selection + surligne la/les ligne(s)

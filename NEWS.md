@@ -17,6 +17,11 @@ presentation de celui du Plan d'actions :
 - **Hauteur** : le tableau prend 60 % de la colonne et les fiches 40 %
   (contre 50/50 auparavant), pour que les lignes et la pagination tiennent.
 - **Traduction** : tous les libelles du tableau passent par l'i18n.
+- **Case « Masquer les UG mal couvertes » retiree** : elle masquait du tableau
+  et des fiches les UG dont moins de 50 % de la surface a ete modelisee
+  (`couverture_pct`, part de l'UG couverte par la grille microclimatique). Le
+  tableau affiche desormais toutes les UG ; la colonne « Couverture (%) » dit
+  sur quelle part de sa surface chacune a ete calculee.
 
 L'ordre des lignes est inchange, donc le lien ligne -> carte -> fiche parcelle
 aussi. Verifie sous Chrome headless sur une copie de « Reconfort » : la

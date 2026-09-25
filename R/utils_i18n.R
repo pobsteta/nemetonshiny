@@ -5736,7 +5736,6 @@ TRANSLATIONS <- list(
     en = "Legend (bottom-right of the map): red = high value, hence a critical situation; green = favourable. The ramp is bounded by the minimum and maximum of the displayed units \u2014 colours are relative to the project, not absolute."
   ),
   regen_table_section = list(fr = "Tableau des UGF", en = "UGF table"),
-  regen_filter_coverage = list(fr = "Masquer les UG mal couvertes", en = "Hide poorly covered units"),
   regen_parcel_sheet = list(fr = "Fiche parcelle", en = "Unit sheet"),
   regen_map_table_view = list(fr = "Carte + Tableau", en = "Map + Table"),
   regen_map_card_title = list(fr = "Carte", en = "Map"),
