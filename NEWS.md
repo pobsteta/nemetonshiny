@@ -1,4 +1,4 @@
-# nemetonshiny 0.148.3.9001 (2026-09-25)
+# nemetonshiny 0.149.0 (2026-09-25)
 
 ### Changed — retour Marculus : fiche Kanban, statut realise, synthese lisible
 
