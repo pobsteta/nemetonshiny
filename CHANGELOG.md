@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.147.0\] - 2026-09-25
+
+Jalon mineur : l’aller-retour avec Marculus est complet. Les chantiers
+partent vers le telephone, avec leur fond ortho 20 cm (v0.146.x), et
+leur martelage revient dans le Plan d’actions.
+
+### Added
+
+- Plan d’actions : bouton « Importer les donnees Marculus ». Il accepte
+  les `.marsync` et la sauvegarde JSON, unit les tiges par `uuid` et
+  apparie chaque contexte a son action par `id`. Le terrain fait foi :
+  statut, `date_martelage`, `annee_cible` quand elle reste valide, et
+  nombre de tiges net (PLUS - ANNULATION), le tout audite. S’y ajoutent
+  une couche « Tiges martelees » sur la carte et une synthese par
+  essence et par classe. L’export suivant reutilise la date revenue du
+  terrain.
+
 ## \[0.146.2\] - 2026-09-24
 
 ### Fixed

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.146.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.147.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.147.0" id="nemetonshiny-01470-2026-09-25">nemetonshiny 0.147.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01470-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="added--importer-le-martelage-marculus-dans-le-plan-dactions-0-147-0">Added — importer le martelage Marculus dans le Plan d’actions<a class="anchor" aria-label="anchor" href="#added--importer-le-martelage-marculus-dans-le-plan-dactions-0-147-0"></a></h4>
+<p>Un bouton « Importer les donnees Marculus » rejoint la barre laterale droite du Plan d’actions, sous « Telecharger vers Marculus ». Il ferme la boucle : les chantiers partent vers le telephone, et leur martelage revient dans le plan.</p>
+<ul><li>
+<strong>Fichiers acceptes</strong> : les <code>.marsync</code> partages depuis le telephone (un par contexte) et la sauvegarde complete, au meme format JSON. Plusieurs fichiers sont acceptes a la fois. Les tiges sont unies par <code>uuid</code>, comme sur le telephone : reimporter un partage ne double rien.</li>
+<li>
+<strong>Appariement</strong> : un contexte exporte par Nemeton porte l’<code>id</code> de son action. Un contexte cree a la main sur le telephone n’a pas d’action : il est compte et signale, pas applique.</li>
+<li>
+<strong>Actions mises a jour, le terrain fait foi</strong> : statut Kanban, date de martelage (<code>date_martelage</code>, reutilisee par l’export suivant), annee cible quand elle reste dans l’horizon du plan, et nombre de tiges martelees (<code>quantite$nb_tiges</code>). Ce nombre est net des annulations, selon la regle du telephone (PLUS - ANNULATION). Chaque changement passe par l’audit, qui garde l’ancienne valeur. Un reimport identique ne modifie rien.</li>
+<li>
+<strong>Carte</strong> : une couche « Tiges martelees » affiche les tiges geolocalisees, avec l’essence, la classe, la hauteur, la qualite et la date au clic. Les annulations, qui retirent un compte sans designer une tige, ne sont pas dessinees. Les tiges sont stockees dans le projet (<code>data/marculus_tiges.json</code>).</li>
+<li>
+<strong>Synthese</strong> : apres l’import, une modale donne pour chaque action le nombre de tiges par essence et par classe, comme la feuille de martelage du telephone.</li>
+</ul><p>Nouveau service <code>R/service_marculus_import.R</code>, 19 cles i18n. Tests : 23 pour le service (totaux nets, union par <code>uuid</code>, terrain qui fait foi, audit, reimport neutre, date de l’annee en cours, fichier illisible, date reprise a l’export) et 2 pour le module. Mutations detectees. Parcours verifie sous Chrome headless sur une copie de « Reconfort » : modale, televersement, import, synthese, couche de tiges sur la carte.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.146.2" id="nemetonshiny-01462-2026-09-24">nemetonshiny 0.146.2 (2026-09-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01462-2026-09-24"></a></h2>
 <div class="section level4">
