@@ -1,4 +1,4 @@
-# nemetonshiny 0.149.0.9001 (2026-09-25)
+# nemetonshiny 0.150.0 (2026-09-25)
 
 ### Added — les volumes du martelage reviennent de Marculus
 
