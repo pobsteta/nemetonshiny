@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.148.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.148.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.148.1" id="nemetonshiny-01481-2026-09-25">nemetonshiny 0.148.1 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01481-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="changed--la-feuille-de-martelage-arrive-en-couleurs-celles-de-marculus-0-148-1">Changed — la feuille de martelage arrive en couleurs, celles de Marculus<a class="anchor" aria-label="anchor" href="#changed--la-feuille-de-martelage-arrive-en-couleurs-celles-de-marculus-0-148-1"></a></h4>
+<p>Jusqu’ici, l’export vers Marculus envoyait toutes les essences en blanc sur noir : sur le telephone, les colonnes de la feuille de martelage se ressemblaient toutes. Chaque essence porte desormais sa couleur, tiree du referentiel chromatique <strong>BD Foret® V2</strong>, celui dont Marculus derive ses propres couleurs (<code>Referentiels.COULEURS_ESSENCES_DEFAUT</code>, <code>docs/essences-bdforet-v2.html</code>).</p>
+<ul><li>
+<strong>Couleur par famille</strong> : les chenes decidus en bleu, le hetre en indigo, le sapin en grenat, le douglas en brique, le pin sylvestre en orange, les autres feuillus en bleu-gris, etc. L’epicea prend le rouge-orange, comme dans Marculus, pour se distinguer du sapin, que la BD Foret regroupe avec lui.</li>
+<li>
+<strong>Pas deux colonnes identiques</strong> : deux essences d’une meme famille, comme le chene sessile et le chene pedoncule, ou le frene, l’erable et le charme (tous « autre feuillu »), recoivent des <strong>nuances</strong> de la couleur de famille, plus claires puis plus foncees. Elles restent donc reconnaissables, sans se confondre.</li>
+<li>
+<strong>Texte lisible</strong> : blanc ou noir, selon le meilleur contraste WCAG, avec au moins 4,5:1 sur les dix essences des profils de groupe.</li>
+</ul><p>Les couleurs sont encodees comme Marculus les stocke : entier ARGB signe, comme le donne <code>Color.toArgb()</code>. Tests : couleurs du referentiel, nuances distinctes, absence de doublon, format ARGB, contraste. Controle sur l’export reel de « Reconfort ».</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.148.0" id="nemetonshiny-01480-2026-09-25">nemetonshiny 0.148.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01480-2026-09-25"></a></h2>
 <div class="section level4">
