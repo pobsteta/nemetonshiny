@@ -1,4 +1,4 @@
-# nemetonshiny 0.148.0.9001 (2026-09-25)
+# nemetonshiny 0.148.1 (2026-09-25)
 
 ### Changed — la feuille de martelage arrive en couleurs, celles de Marculus
 
