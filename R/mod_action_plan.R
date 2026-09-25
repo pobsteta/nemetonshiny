@@ -1577,10 +1577,23 @@ mod_action_plan_server <- function(id, app_state) {
           i18n$t(paste0("action_plan_status_", s)), character(1))
       )
 
-      shiny::showModal(shiny::modalDialog(
+      # Section « Martelage » quand le retour Marculus porte des tiges pour
+      # cette action : plan de situation, diagramme par classe, tableau.
+      designees <- tryCatch(
+        marculus_tiges_designees(marculus_tiges_rv(), action_id),
+        error = function(e) NULL)
+      martelage <- if (!is.null(designees) && nrow(designees)) {
+        ug <- tryCatch({
+          sf <- ug_sf_4326()
+          sf[sf$ug_id == act$ug_id, , drop = FALSE]
+        }, error = function(e) NULL)
+        .marculus_fiche_martelage(designees, ug, i18n)
+      }
+
+      m <- shiny::modalDialog(
         title = i18n$t("action_plan_kanban_edit_title"),
         easyClose = TRUE,
-        size = "l",
+        size = if (is.null(martelage)) "l" else "xl",
         bslib::layout_columns(
           col_widths = c(4, 4, 4),
           shiny::selectInput(
@@ -1609,6 +1622,7 @@ mod_action_plan_server <- function(id, app_state) {
           rows = 6, width = "100%",
           resize = "vertical"
         ),
+        martelage,
         footer = htmltools::tagList(
           shiny::modalButton(i18n$t("cancel")),
           shiny::actionButton(
@@ -1618,7 +1632,12 @@ mod_action_plan_server <- function(id, app_state) {
             class = "btn-primary"
           )
         )
-      ))
+      )
+      if (!is.null(martelage)) {
+        m <- htmltools::tagQuery(m)$find(".modal-dialog")$
+          addClass("modal-dialog-scrollable")$allTags()
+      }
+      shiny::showModal(m)
     }
 
     # Observers : dblclick sur carte kanban ET dblclick sur cellule
@@ -3067,5 +3086,169 @@ coerce_table_value <- function(field, raw) {
     style = "white-space: normal;",
     bsicons::bs_icon("tree", class = "me-1"),
     paste(morceaux, collapse = " \u00b7 ")
+  )
+}
+
+
+#' Colours of Marculus' wood size categories (`StatutHistoriqueScreen.kt`)
+#' @noRd
+MARCULUS_COULEURS_CATEGORIES <- c(PB = "#0072B2", BM = "#009E73",
+                                  GB = "#E69F00", TGB = "#D55E00")
+
+#' "Martelage" section of an action's detail dialog
+#'
+#' Three views of the stems the marker designated (cancellations applied,
+#' `marculus_tiges_designees()`):
+#'  * a location map: the action's UGF and its geolocated stems, coloured by
+#'    species with the colours the export sent to the phone, fitted to the
+#'    parcel;
+#'  * an upright bar chart: one bar per species, stacked by class, each class
+#'    in the colour of its PB/BM/GB/TGB category, lightened for the smallest
+#'    class of the category - the phone's "detail par classe" (Statut screen),
+#'    stood up;
+#'  * the table of designated stems.
+#'
+#' @param tiges Designated stems of the action.
+#' @param ug The action's UGF, an `sf` in EPSG:4326 (possibly empty).
+#' @param i18n An i18n object.
+#' @return A `tagList`.
+#' @noRd
+.marculus_fiche_martelage <- function(tiges, ug, i18n) {
+  fr <- identical(i18n$language, "fr")
+  tiges$categorie <- marculus_categorie(tiges$classe, tiges$mode)
+  essences <- sort(unique(tiges$essence))
+  coul <- .marculus_couleurs_essences(essences)
+  hex_ess <- stats::setNames(
+    sprintf("#%06X", bitwAnd(coul$fond, 0xFFFFFF)), essences)
+  n_tot <- sum(tiges$quantite)
+
+  # -- Plan de situation --------------------------------------------------
+  pts <- tiges[!is.na(tiges$latitude) & !is.na(tiges$longitude), , drop = FALSE]
+  carte <- leaflet::leaflet(height = 380) |>
+    leaflet::addProviderTiles(leaflet::providers$OpenStreetMap, group = "OSM") |>
+    leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery,
+                              group = i18n$t("marculus_fond_satellite"))
+  if (inherits(ug, "sf") && nrow(ug)) {
+    carte <- carte |> leaflet::addPolygons(
+      data = ug, color = "#333333", weight = 2, fillOpacity = 0.08)
+  }
+  if (nrow(pts)) {
+    popup <- sprintf("<b>%s</b> \u2014 %s %s (%s)%s",
+      htmltools::htmlEscape(pts$essence), i18n$t("marculus_col_classe"),
+      pts$classe, pts$categorie,
+      ifelse(is.na(pts$volumeTigeM3), "",
+             paste0("<br>", vapply(pts$volumeTigeM3,
+                                   function(v) .format_m3(v, i18n), ""))))
+    carte <- carte |> leaflet::addCircleMarkers(
+      lng = pts$longitude, lat = pts$latitude, radius = 5, weight = 1,
+      color = "#ffffff", fillColor = unname(hex_ess[pts$essence]),
+      fillOpacity = 0.95, popup = popup) |>
+      leaflet::addLegend("bottomright", colors = unname(hex_ess),
+                         labels = names(hex_ess), opacity = 0.95)
+  }
+  bb <- NULL
+  if (inherits(ug, "sf") && nrow(ug)) bb <- as.numeric(sf::st_bbox(ug))
+  if (nrow(pts)) {
+    bp <- c(min(pts$longitude), min(pts$latitude), max(pts$longitude), max(pts$latitude))
+    bb <- if (is.null(bb)) bp else c(min(bb[1], bp[1]), min(bb[2], bp[2]),
+                                     max(bb[3], bp[3]), max(bb[4], bp[4]))
+  }
+  if (!is.null(bb)) carte <- leaflet::fitBounds(carte, bb[1], bb[2], bb[3], bb[4])
+  carte <- leaflet::addLayersControl(
+    carte, baseGroups = c("OSM", i18n$t("marculus_fond_satellite")),
+    options = leaflet::layersControlOptions(collapsed = TRUE))
+  # La carte nait pendant l'animation d'ouverture de la fenetre, sans largeur :
+  # son cadrage echoue et elle reste vide (constate sous Chrome headless). On
+  # la recale une fois la fenetre affichee.
+  carte <- htmlwidgets::onRender(carte, "
+    function(el, x, bb) {
+      var map = this;
+      var recaler = function() {
+        map.invalidateSize();
+        if (bb) map.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]], {padding: [12, 12]});
+      };
+      setTimeout(recaler, 400);
+      $(el).closest('.modal').on('shown.bs.modal', recaler);
+    }", data = bb)
+
+  # -- Diagramme par classe, empile, debout ---------------------------------
+  classes <- sort(unique(tiges$classe))
+  cat_classe <- marculus_categorie(classes, tiges$mode[1])
+  couleur_classe <- vapply(seq_along(classes), function(i) {
+    membres <- classes[cat_classe == cat_classe[i]]
+    f <- if (length(membres) > 1L) (match(classes[i], membres) - 1) / (length(membres) - 1) else 0
+    base <- grDevices::col2rgb(MARCULUS_COULEURS_CATEGORIES[[cat_classe[i]]])[, 1]
+    clair <- base + (255 - base) * 0.22
+    v <- round(clair + (base - clair) * f)
+    sprintf("#%02X%02X%02X", v[1], v[2], v[3])
+  }, character(1))
+  fig <- plotly::plot_ly(height = 380)
+  vus <- character()
+  for (i in seq_along(classes)) {
+    n <- vapply(essences, function(e)
+      sum(tiges$quantite[tiges$essence == e & tiges$classe == classes[i]]), numeric(1))
+    if (!any(n > 0)) next
+    fig <- plotly::add_bars(fig, x = essences, y = n, name = classes[i],
+      marker = list(color = couleur_classe[i],
+                    line = list(color = "#ffffff", width = 1)),
+      legendgroup = cat_classe[i],
+      legendgrouptitle = if (!cat_classe[i] %in% vus) list(text = cat_classe[i]),
+      hovertemplate = paste0("%{x}<br>", i18n$t("marculus_col_classe"), " ",
+                             classes[i], " (", cat_classe[i], ") : %{y}<extra></extra>"))
+    vus <- c(vus, cat_classe[i])
+  }
+  tot_ess <- vapply(essences, function(e) sum(tiges$quantite[tiges$essence == e]), numeric(1))
+  fig <- plotly::layout(fig, barmode = "stack",
+    xaxis = list(title = ""), yaxis = list(title = i18n$t("marculus_col_tiges")),
+    legend = list(title = list(text = i18n$t("marculus_col_classe")), tracegroupgap = 6),
+    annotations = lapply(seq_along(essences), function(k) list(
+      x = essences[k], y = tot_ess[k], text = tot_ess[k], showarrow = FALSE,
+      yanchor = "bottom", font = list(size = 12))),
+    margin = list(t = 20)) |>
+    plotly::config(displaylogo = FALSE)
+
+  # -- Tableau des tiges designees ----------------------------------------
+  horo <- as.POSIXct(tiges$horodatage / 1000, origin = "1970-01-01")
+  num <- function(v, d) ifelse(is.na(v), "", formatC(v, format = "f", digits = d,
+                               decimal.mark = if (fr) "," else "."))
+  tab <- data.frame(
+    date = format(horo, if (fr) "%d/%m/%Y %H:%M" else "%Y-%m-%d %H:%M"),
+    essence = tiges$essence, classe = tiges$classe,
+    categorie = tiges$categorie, quantite = tiges$quantite,
+    hauteur = ifelse(is.na(tiges$hauteurTexte), "", tiges$hauteurTexte),
+    qualite = ifelse(is.na(tiges$qualiteArbre), "", tiges$qualiteArbre),
+    volume = num(tiges$volumeTigeM3, 3),
+    parcelle = ifelse(is.na(tiges$parcelle), "", tiges$parcelle),
+    fix = ifelse(is.na(tiges$qualiteFix), "", tiges$qualiteFix),
+    stringsAsFactors = FALSE)
+  names(tab) <- c(i18n$t("marculus_col_date"), i18n$t("marculus_col_essence"),
+                  i18n$t("marculus_col_classe"), i18n$t("marculus_col_categorie"),
+                  i18n$t("marculus_col_tiges"), i18n$t("marculus_col_hauteur"),
+                  i18n$t("marculus_col_qualite"), i18n$t("marculus_col_volume"),
+                  i18n$t("marculus_col_parcelle"), i18n$t("marculus_col_fix"))
+  table <- DT::datatable(tab, rownames = FALSE, class = "compact stripe",
+    options = list(pageLength = 15, lengthChange = FALSE, scrollX = TRUE,
+                   dom = "tip",
+                   # Libelles en clair : la traduction en ligne (CDN) retardait
+                   # l'initialisation du tableau dans la fenetre.
+                   language = list(
+                     info = i18n$t("marculus_dt_info"),
+                     infoEmpty = "",
+                     paginate = list(previous = "\u2039", `next` = "\u203a")),
+                   order = list(list(0, "asc"))))
+
+  htmltools::tagList(
+    htmltools::tags$hr(),
+    htmltools::tags$h5(class = "mb-1", bsicons::bs_icon("tree", class = "me-1"),
+                       i18n$t("marculus_fiche_titre"), " ",
+                       htmltools::tags$span(class = "badge bg-secondary",
+                         sprintf(i18n$t("marculus_synthese_total_fmt"), n_tot))),
+    htmltools::p(class = "small text-muted mb-2", i18n$t("marculus_seuils_note")),
+    bslib::layout_columns(
+      col_widths = c(6, 6),
+      htmltools::div(htmltools::tags$h6(i18n$t("marculus_plan_situation")), carte),
+      htmltools::div(htmltools::tags$h6(i18n$t("marculus_graph_classes")), fig)),
+    htmltools::tags$h6(class = "mt-2", i18n$t("marculus_tableau_tiges")),
+    table
   )
 }

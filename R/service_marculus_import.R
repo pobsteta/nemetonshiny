@@ -48,6 +48,9 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              volumeTigeM3 = numeric(0), volumeHouppierM3 = numeric(0),
              volumeTotalM3 = numeric(0), surfaceTerriereM2 = numeric(0),
              cubage = character(0),
+             # Mode de mesure du CONTEXTE (DIAMETRE / CIRCONFERENCE), recopie
+             # sur chaque tige a l'import : il dit comment lire `classe`.
+             mode = character(0),
              stringsAsFactors = FALSE)
 }
 
@@ -115,7 +118,12 @@ marculus_lire_exports <- function(chemins) {
     }
     ctx[[length(ctx) + 1L]] <- d0
     if (is.data.frame(j$tiges) && nrow(j$tiges) > 0L) {
-      tig[[length(tig) + 1L]] <- .marculus_tiges_normaliser(j$tiges)
+      t0 <- .marculus_tiges_normaliser(j$tiges)
+      modes <- stats::setNames(
+        rep_len(as.character(c0$mode %||% NA_character_), nrow(c0)),
+        as.character(c0$id))
+      t0$mode <- unname(modes[t0$contexteId])
+      tig[[length(tig) + 1L]] <- t0
     }
   }
   contextes <- if (length(ctx)) do.call(rbind, ctx) else {
@@ -234,6 +242,7 @@ MARCULUS_QUALITE_FIX <- c(
           volumeTotalM3 = num(jr$VolumeTotalM3 %||% NA),
           surfaceTerriereM2 = num(jr$SurfaceTerriereM2 %||% NA),
           cubage = jr$Cubage %||% NA_character_,
+          mode = entete$Mode %||% NA_character_,
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]
       }
@@ -503,4 +512,66 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
        n_orphelins = res$n_orphelins, n_tiges_nouvelles = n_nouvelles,
        n_tiges = nrow(tiges), illisibles = lu$illisibles,
        csv_anciens = lu$csv_anciens, vides = lu$vides, ids = res$ids)
+}
+
+
+# ---- Fiche d'une action : tiges designees et categories ------------------
+
+#' Stems still designated after cancellations, for one context
+#'
+#' Marculus' rule (`VolumesMartelage.totaux()`): per case (species x class),
+#' stems are stacked in time order and a cancellation removes the LAST ones.
+#' What is left is the list the marker actually designated.
+#'
+#' @param tiges All stems of the project.
+#' @param contexte_id Character. The context (= action) id.
+#' @return The PLUS rows still standing, `quantite` reduced when a
+#'   cancellation took part of an entry, in time order.
+#' @noRd
+marculus_tiges_designees <- function(tiges, contexte_id) {
+  tiges <- .marculus_tiges_normaliser(tiges)
+  t <- tiges[tiges$contexteId == contexte_id, , drop = FALSE]
+  if (nrow(t) == 0L) return(t)
+  t <- t[order(t$horodatage, t$uuid), , drop = FALSE]
+  garde <- integer(0); reste <- integer(0)
+  piles <- list()
+  for (k in seq_len(nrow(t))) {
+    cle <- paste(t$essence[k], t$classe[k], sep = "\r")
+    n <- as.integer(t$quantite[k])
+    if (toupper(t$action[k]) == "ANNULATION") {
+      p <- piles[[cle]] %||% integer(0)
+      while (n > 0L && length(p)) {
+        i <- p[length(p)]; r <- min(n, reste[i])
+        reste[i] <- reste[i] - r; n <- n - r
+        if (reste[i] == 0L) p <- p[-length(p)]
+      }
+      piles[[cle]] <- p
+    } else {
+      garde <- c(garde, k); reste <- c(reste, n)
+      piles[[cle]] <- c(piles[[cle]] %||% integer(0), length(garde))
+    }
+  }
+  out <- t[garde, , drop = FALSE]
+  out$quantite <- reste
+  out[out$quantite > 0L, , drop = FALSE]
+}
+
+#' Wood size category of a class, as Marculus files it
+#'
+#' Default thresholds of `SeuilsCategories.DEFAUT` (Marculus), on the
+#' DIAMETER: PB < 27.5 cm <= BM < 47.5 <= GB < 67.5 <= TGB. A circumference
+#' class is brought back to a diameter first (classe / pi). The phone lets the
+#' operator change these thresholds; they are not exported, so the defaults
+#' apply here.
+#'
+#' @param classe Integer class.
+#' @param mode `"DIAMETRE"` (default when unknown) or `"CIRCONFERENCE"`.
+#' @return Character `PB`, `BM`, `GB` or `TGB`.
+#' @noRd
+marculus_categorie <- function(classe, mode = "DIAMETRE") {
+  mode <- rep_len(as.character(mode), length(classe))
+  mode <- ifelse(is.na(mode), "DIAMETRE", toupper(mode))
+  d <- ifelse(mode == "CIRCONFERENCE", classe / pi, classe)
+  as.character(cut(d, c(-Inf, 27.5, 47.5, 67.5, Inf),
+                   labels = c("PB", "BM", "GB", "TGB"), right = FALSE))
 }
