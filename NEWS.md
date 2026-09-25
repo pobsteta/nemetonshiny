@@ -1,4 +1,4 @@
-# nemetonshiny 0.148.2.9001 (2026-09-25)
+# nemetonshiny 0.148.3 (2026-09-25)
 
 ### Fixed — import CSV Marculus : la qualite du fix sous une seule forme
 
