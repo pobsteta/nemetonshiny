@@ -1,4 +1,4 @@
-# nemetonshiny 0.150.0.9001 (2026-09-25)
+# nemetonshiny 0.151.0 (2026-09-25)
 
 ### Added — la fiche d'une action martelee : plan, diagramme par classe, tableau
 
