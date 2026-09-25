@@ -1178,3 +1178,15 @@ test_that("export_terrain : sans sélection -> toutes les UGF ; sans résultat -
     expect_equal(nrow(saved$plots), 3L)
   })
 })
+
+test_that("le tableau reGeneration montre l'UGF lisible, dans le meme ordre", {
+  df <- data.frame(ug_id = c("ug_2", "ug_1", "ug_9"), priorite = c("haute", "basse", "moyenne"),
+                   indice_priorite_regen = c(50.123, 49.5, 51), couverture_pct = c(100, 40, NA))
+  labels <- c(ug_1 = "Forêt A — parcelle 1", ug_2 = "Forêt A — parcelle 2")
+  out <- nemetonshiny:::.regen_table_display(df, labels, nemetonshiny:::get_i18n("fr"))
+  expect_equal(names(out)[1], "UGF")
+  # Libelle quand il existe, identifiant sinon ; ORDRE des lignes inchange.
+  expect_equal(out[[1]], c("Forêt A — parcelle 2", "Forêt A — parcelle 1", "ug_9"))
+  expect_equal(out[["Indice priorité"]], c(50.12, 49.5, 51))
+  expect_true("Couverture (%)" %in% names(out))
+})

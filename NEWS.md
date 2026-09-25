@@ -1,5 +1,29 @@
 # nemetonshiny 0.151.2.9001 (2026-09-25)
 
+### Changed — reGeneration : le tableau des UGF comme celui du Plan d'actions
+
+Dans reGeneration, sous-onglet « Carte + Tableau », le tableau des UGF adopte la
+presentation de celui du Plan d'actions :
+
+- **Colonne « UGF »** : la premiere colonne donne le libelle lisible
+  (« Foret domaniale d'Orleans -- parcelle 1115 »), et non plus l'identifiant
+  interne `ug_id`, qui sert de repli quand une UGF n'a pas de libelle. Les
+  autres en-tetes sont traduits via les cles `regen_col_*`, et les valeurs
+  arrondies a 2 decimales.
+- **Recherche en regex** en haut du tableau, par exemple `parcelle 11|haute`.
+- **Sous le tableau** : le nombre de lignes affichees (5, 10, 25, 50,
+  toutes) et la pagination « Prec. 1 2 3 ... Suiv. », en vert selon le theme,
+  avec le compte d'UGF a droite.
+- **Hauteur** : le tableau prend 60 % de la colonne et les fiches 40 %
+  (contre 50/50 auparavant), pour que les lignes et la pagination tiennent.
+- **Traduction** : tous les libelles du tableau passent par l'i18n.
+
+L'ordre des lignes est inchange, donc le lien ligne -> carte -> fiche parcelle
+aussi. Verifie sous Chrome headless sur une copie de « Reconfort » : la
+recherche `parcelle 110|parcelle 111` ramene le tableau de 24 a 13 UGF. Un
+test verifie le libelle, le repli sur l'identifiant et l'ordre des lignes.
+
+
 ### Added — un « i » explicatif sur Annee, Type et Priorite
 
 Dans « Couche affichee », a droite de la carte des actions, chaque choix

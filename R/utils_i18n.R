@@ -5745,6 +5745,17 @@ TRANSLATIONS <- list(
   regen_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
   regen_rew_chronicle = list(fr = "Chronique REW (r\u00e9serve en eau)", en = "REW chronicle (water reserve)"),
   regen_col_ugid = list(fr = "UGF", en = "Unit"),
+  regen_dt_search = list(
+    fr = "Rechercher (regex, ex. parcelle 11|haute) :",
+    en = "Search (regex, e.g. parcel 11|high):"
+  ),
+  regen_dt_info = list(fr = "_TOTAL_ UGF", en = "_TOTAL_ unit(s)"),
+  regen_dt_info_empty = list(fr = "0 UGF", en = "0 units"),
+  regen_dt_length = list(fr = "Afficher _MENU_", en = "Show _MENU_"),
+  regen_dt_zero = list(fr = "Aucune UGF ne correspond.", en = "No matching unit."),
+  regen_dt_prev = list(fr = "Pr\u00e9c.", en = "Prev."),
+  regen_dt_next = list(fr = "Suiv.", en = "Next"),
+  regen_dt_all = list(fr = "Toutes", en = "All"),
   regen_col_priorite = list(fr = "Priorit\u00e9", en = "Priority"),
   regen_col_indice = list(fr = "Indice priorit\u00e9", en = "Priority index"),
   regen_col_sensibilite = list(fr = "Sensibilit\u00e9", en = "Sensitivity"),
