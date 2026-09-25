@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.151.3] - 2026-09-25
+
+### Added
+
+- Plan d'actions : un « i » explicatif sur Annee, Type et Priorite (« Couche
+  affichee »), qui dit comment la couleur d'une UGF a plusieurs actions est
+  choisie.
+
+### Changed
+
+- Plan d'actions : la courbe du bilan cumule et les totaux passent sous le
+  tableau des actions.
+- reGeneration : le tableau des UGF adopte la presentation de celui du Plan
+  d'actions (libelle UGF en premiere colonne, recherche en regex, nombre de
+  lignes et pagination sous le tableau, 60 % de la hauteur), et s'intitule
+  « Tableau des actions ».
+
+### Removed
+
+- reGeneration : la case « Masquer les UG mal couvertes » (toutes les UG sont
+  affichees, la colonne Couverture reste) et la case « Bilan hydrique seul
+  (rapide) » (l'analyse est toujours complete).
+
 ## [0.151.2] - 2026-09-25
 
 ### Changed

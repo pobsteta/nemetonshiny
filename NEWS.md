@@ -1,4 +1,4 @@
-# nemetonshiny 0.151.2.9001 (2026-09-25)
+# nemetonshiny 0.151.3 (2026-09-25)
 
 ### Changed — Plan d'actions : le graphique du bilan passe sous le tableau
 
