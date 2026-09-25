@@ -1,3 +1,32 @@
+# nemetonshiny 0.148.0.9001 (2026-09-25)
+
+### Changed — la feuille de martelage arrive en couleurs, celles de Marculus
+
+Jusqu'ici, l'export vers Marculus envoyait toutes les essences en blanc sur
+noir : sur le telephone, les colonnes de la feuille de martelage se
+ressemblaient toutes. Chaque essence porte desormais sa couleur, tiree du
+referentiel chromatique **BD Foret® V2**, celui dont Marculus derive ses
+propres couleurs (`Referentiels.COULEURS_ESSENCES_DEFAUT`,
+`docs/essences-bdforet-v2.html`).
+
+- **Couleur par famille** : les chenes decidus en bleu, le hetre en indigo,
+  le sapin en grenat, le douglas en brique, le pin sylvestre en orange, les
+  autres feuillus en bleu-gris, etc. L'epicea prend le rouge-orange, comme
+  dans Marculus, pour se distinguer du sapin, que la BD Foret regroupe avec
+  lui.
+- **Pas deux colonnes identiques** : deux essences d'une meme famille, comme
+  le chene sessile et le chene pedoncule, ou le frene, l'erable et le charme
+  (tous « autre feuillu »), recoivent des **nuances** de la couleur de
+  famille, plus claires puis plus foncees. Elles restent donc reconnaissables,
+  sans se confondre.
+- **Texte lisible** : blanc ou noir, selon le meilleur contraste WCAG, avec
+  au moins 4,5:1 sur les dix essences des profils de groupe.
+
+Les couleurs sont encodees comme Marculus les stocke : entier ARGB signe,
+comme le donne `Color.toArgb()`. Tests : couleurs du referentiel, nuances
+distinctes, absence de doublon, format ARGB, contraste. Controle sur l'export
+reel de « Reconfort ».
+
 # nemetonshiny 0.148.0 (2026-09-25)
 
 ### Added — « Importer de Marculus » accepte les CSV de contexte (FormatCsv;2)

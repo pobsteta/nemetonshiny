@@ -930,3 +930,38 @@ test_that("deux chantiers identiques ne partagent plus leur nom ni leur fichier"
     a, list(metadata = list(name = "P")), suffixe = "(2039)")
   expect_match(ctx$nom, "eclaircie \\(2039\\)$")
 })
+
+test_that("les essences exportees portent les couleurs BD Foret V2 de Marculus", {
+  hex <- function(x) sprintf("#%06X", bitwAnd(x, 0xFFFFFF))
+  e <- c("Hêtre", "Chêne sessile", "Chêne pédonculé",
+         "Sapin pectiné", "Épicéa commun", "Douglas",
+         "Pin sylvestre", "Frêne", "Érable sycomore", "Charme",
+         "Essence inconnue")
+  c <- nemetonshiny:::.marculus_couleurs_essences(e)
+  f <- hex(c$fond)
+  # Couleurs du referentiel (Referentiels.kt de Marculus).
+  expect_equal(f[1:2], c("#5061B8", "#2A7FA6"))
+  expect_equal(f[4:7], c("#94304D", "#C2502F", "#B23B39", "#D07A2E"))
+  # Deux chenes : deux colonnes distinctes, mais toutes deux du registre bleu.
+  expect_false(f[3] == f[2])
+  expect_true(grepl("^#[0-9A-F]{6}$", f[3]))
+  # Aucune colonne en double sur la feuille.
+  expect_equal(length(unique(f)), length(f))
+  # ARGB signe opaque, comme Color.toArgb() : alpha 0xFF => entier negatif.
+  expect_true(all(c$fond < 0L))
+  expect_true(all(c$texte %in% c(-1L, -16777216L)))
+  # Texte lisible : contraste WCAG d'au moins 4,5:1 sur chaque fond.
+  rgb <- grDevices::col2rgb(f) / 255
+  lin <- ifelse(rgb <= 0.03928, rgb / 12.92, ((rgb + 0.055) / 1.055)^2.4)
+  L <- colSums(lin * c(0.2126, 0.7152, 0.0722))
+  ctr <- ifelse(c$texte == -1L, 1.05 / (L + 0.05), (L + 0.05) / 0.05)
+  expect_true(all(ctr >= 4.5))
+})
+
+test_that("le champ essences porte une couleur par colonne, plus un blanc uniforme", {
+  e <- nemetonshiny:::.marculus_encode_essences(c("Hêtre", "Douglas"))
+  champs <- strsplit(strsplit(e, "\u001e", fixed = TRUE)[[1]], "\u001f", fixed = TRUE)
+  expect_equal(vapply(champs, `[`, "", 1), c("Hêtre", "Douglas"))
+  expect_false(identical(champs[[1]][2], champs[[2]][2]))
+  expect_false(any(vapply(champs, `[`, "", 2) == "-1"))
+})
