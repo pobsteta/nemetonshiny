@@ -426,6 +426,7 @@ TRANSLATIONS <- list(
   action_plan_color_priority = list(fr = "Priorit\u00e9", en = "Priority"),
   action_plan_generate_all = list(fr = "G\u00e9n\u00e9rer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
+  action_plan_map_layer = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
   action_plan_delete_selected = list(fr = "Supprimer la s\u00e9lection", en = "Delete selection"),
   action_plan_delete_pick = list(
     fr = "S\u00e9lectionnez au moins une action dans le tableau.",

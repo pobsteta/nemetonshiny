@@ -500,3 +500,16 @@ test_that("la fiche Martelage porte carte, diagramme et tableau", {
   expect_match(h, "(PB)", fixed = TRUE)
   expect_match(h, "(TGB)", fixed = TRUE)
 })
+
+test_that("le choix de coloration vit dans une barre laterale droite", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  # Comme la carte de reGeneration : sidebar a droite, toujours ouverte, carte
+  # dans la zone principale et radio dans le panneau.
+  expect_true(grepl(paste0('(?s)sidebar-right[^>]*data-open-desktop="always"',
+                           '.*?id="ap-map".*?<aside class="sidebar"',
+                           '.*?id="ap-map_color_by"'), h, perl = TRUE))
+  expect_match(h, "Couche affich\u00e9e", fixed = TRUE)
+})

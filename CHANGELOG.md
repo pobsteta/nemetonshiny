@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.151.2] - 2026-09-25
+
+### Changed
+
+- Plan d'actions, « Carte + Tableau » : le choix de coloration (Annee,
+  Type, Priorite) quitte l'en-tete de la carte pour une barre laterale droite
+  « Couche affichee », toujours ouverte, comme la carte de reGeneration.
+
 ## [0.151.1] - 2026-09-25
 
 ### Fixed

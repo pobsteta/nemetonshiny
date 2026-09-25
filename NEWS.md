@@ -1,3 +1,20 @@
+# nemetonshiny 0.151.2 (2026-09-25)
+
+### Changed — Plan d'actions : le choix de coloration passe a droite de la carte
+
+Dans le sous-onglet « Carte + Tableau », le choix de coloration (Annee, Type,
+Priorite) quitte l'en-tete de la carte, ou il se serrait contre le titre. Il
+passe dans une barre laterale **a droite de la carte**, titree **« Couche
+affichee »**, comme la carte de reGeneration : `layout_sidebar`, barre toujours
+ouverte, boutons a la verticale. La barre ne fait que 150 px et la marge
+autour de la carte est reduite, pour que la carte garde sa largeur face au
+tableau. L'identifiant `map_color_by` et le comportement sont inchanges.
+
+Verifie sous Chrome headless : dans une fenetre de 1900 px, la carte mesure
+534 x 1048 px avec le panneau a sa droite, et le passage a « Type » recolore
+la carte et sa legende. Un test verrouille la structure : barre a droite,
+toujours ouverte, carte dans la zone principale et choix dans le panneau.
+
 # nemetonshiny 0.151.1 (2026-09-25)
 
 ### Fixed — reimporter un martelage apporte enfin les volumes des tiges
