@@ -582,8 +582,8 @@ TRANSLATIONS <- list(
     en = "%d marking context(s), %d GeoPackage(s), sheet pre-filled with %d species. Open the .marsync on the phone, then attach a GeoPackage to each context."
   ),
   action_plan_import_marculus = list(
-    fr = "Importer les donn\u00e9es Marculus",
-    en = "Import Marculus data"
+    fr = "Importer de Marculus",
+    en = "Import from Marculus"
   ),
   marculus_import_title = list(
     fr = "Importer le martelage Marculus",
