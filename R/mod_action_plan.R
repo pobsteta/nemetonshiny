@@ -151,6 +151,14 @@ mod_action_plan_ui <- function(id) {
                              auto_unbox = TRUE)
           )
         ),
+        # Retour du martelage : les `.marsync` partages depuis le telephone
+        # mettent a jour les actions et posent les tiges sur la carte.
+        shiny::actionButton(
+          ns("import_marculus"),
+          label = i18n$t("action_plan_import_marculus"),
+          icon = shiny::icon("file-import"),
+          class = "btn-sm btn-outline-primary w-100 mb-2"
+        ),
         htmltools::tagAppendAttributes(
           shiny::downloadButton(
             ns("download_pdf"),
@@ -481,6 +489,12 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     plan_rv <- shiny::reactiveVal(NULL)
+    # Tiges martelees revenues de Marculus (`data/marculus_tiges.json`).
+    marculus_tiges_rv <- shiny::reactiveVal(NULL)
+    # Nom de la couche dans le controle Leaflet (libelle affiche).
+    MARCULUS_GROUPE_TIGES <- function() {
+      get_i18n(shiny::isolate(app_state$language) %||% "fr")$t("marculus_couche_tiges")
+    }
 
     # ------------------------------------------------------------
     # S15 -- permissions
@@ -550,6 +564,8 @@ mod_action_plan_server <- function(id, app_state) {
         }
       )
       plan_rv(plan)
+      marculus_tiges_rv(tryCatch(marculus_charger_tiges(project$id),
+                                 error = function(e) NULL))
     })
 
     ug_sf_4326 <- shiny::reactive({
@@ -653,7 +669,7 @@ mod_action_plan_server <- function(id, app_state) {
           group = "basemap"
         ) |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Selection"),
+          overlayGroups = c("UGF", "Selection", MARCULUS_GROUPE_TIGES()),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -1868,6 +1884,134 @@ mod_action_plan_server <- function(id, app_state) {
       }
       .telecharger_marculus()
     }, ignoreInit = TRUE)
+
+    # --- Import du retour Marculus ------------------------------------------
+    shiny::observeEvent(input$import_marculus, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("marculus_import_title"), size = "m", easyClose = TRUE,
+        shiny::p(class = "text-muted", i18n$t("marculus_import_help")),
+        shiny::fileInput(ns("marculus_fichiers"), i18n$t("marculus_import_fichiers"),
+                         multiple = TRUE, accept = c(".marsync", ".json")),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("marculus_import_run"),
+                              label = i18n$t("marculus_import_run"),
+                              icon = shiny::icon("file-import"),
+                              class = "btn-primary")
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$marculus_import_run, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      f <- input$marculus_fichiers
+      project <- app_state$current_project
+      if (is.null(f) || !nrow(f) || is.null(project$id)) return()
+      shiny::removeModal()
+      res <- tryCatch(
+        marculus_importer(project$id, f$datapath,
+                          user = Sys.info()[["user"]] %||% "user"),
+        error = function(e) {
+          cli::cli_warn("Import Marculus : {conditionMessage(e)}")
+          NULL
+        })
+      if (is.null(res) || is.null(res$plan)) {
+        shiny::showNotification(i18n$t("marculus_import_erreur"),
+                                type = "error", duration = 10)
+        return()
+      }
+      plan_rv(res$plan)
+      marculus_tiges_rv(marculus_charger_tiges(project$id))
+      if (res$n_actions == 0L && res$n_tiges_nouvelles == 0L &&
+          res$n_orphelins > 0L) {
+        shiny::showNotification(i18n$t("marculus_import_vide"),
+                                type = "warning", duration = 10)
+      } else {
+        shiny::showNotification(
+          sprintf(i18n$t("marculus_import_ok_fmt"), res$n_actions,
+                  res$n_tiges_nouvelles, res$n_tiges),
+          type = "message", duration = 10)
+      }
+      if (res$n_orphelins > 0L) {
+        shiny::showNotification(
+          sprintf(i18n$t("marculus_import_orphelins_fmt"), res$n_orphelins),
+          type = "warning", duration = 10)
+      }
+      if (length(res$illisibles)) {
+        shiny::showNotification(
+          paste(i18n$t("marculus_import_erreur"),
+                paste(res$illisibles, collapse = ", ")),
+          type = "warning", duration = 10)
+      }
+      .marculus_montrer_synthese(i18n)
+    })
+
+    # Synthese : tiges par essence et par classe, action par action - la
+    # feuille de martelage du telephone, relue dans l'app.
+    .marculus_montrer_synthese <- function(i18n) {
+      tot <- marculus_totaux(marculus_tiges_rv())
+      plan <- plan_rv()
+      ids <- vapply(plan$actions %||% list(), function(a) a$id %||% "", "")
+      tot <- tot[tot$contexteId %in% ids, , drop = FALSE]
+      if (nrow(tot) == 0L) return()
+      df_act <- actions_df_all()
+      blocs <- lapply(unique(tot$contexteId), function(cid) {
+        sub <- tot[tot$contexteId == cid, , drop = FALSE]
+        a <- df_act[df_act$id == cid, , drop = FALSE]
+        titre <- if (nrow(a)) {
+          lbl <- if (is.na(a$ug_label[1])) a$ug_id[1] else a$ug_label[1]
+          paste(lbl, "\u2014", a$type[1])
+        } else cid
+        htmltools::tagList(
+          htmltools::tags$h6(class = "mt-3", titre, " ",
+            htmltools::tags$span(class = "badge bg-secondary",
+              sprintf(i18n$t("marculus_synthese_total_fmt"), sum(sub$tiges)))),
+          htmltools::tags$table(
+            class = "table table-sm table-striped mb-1",
+            htmltools::tags$thead(htmltools::tags$tr(
+              htmltools::tags$th(i18n$t("marculus_col_essence")),
+              htmltools::tags$th(i18n$t("marculus_col_classe")),
+              htmltools::tags$th(class = "text-end", i18n$t("marculus_col_tiges")))),
+            htmltools::tags$tbody(lapply(seq_len(nrow(sub)), function(i) {
+              htmltools::tags$tr(htmltools::tags$td(sub$essence[i]),
+                                 htmltools::tags$td(sub$classe[i]),
+                                 htmltools::tags$td(class = "text-end", sub$tiges[i]))
+            }))))
+      })
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("marculus_synthese_title"), size = "l", easyClose = TRUE,
+        blocs, footer = shiny::modalButton(i18n$t("close"))))
+    }
+
+    # Couche des tiges geolocalisees (les annulations, qui ne designent pas
+    # une tige precise mais retirent un compte, ne sont pas dessinees).
+    shiny::observe({
+      tiges <- marculus_tiges_rv()
+      i18n <- get_i18n(app_state$language)
+      groupe <- MARCULUS_GROUPE_TIGES()
+      proxy <- leaflet::leafletProxy(ns("map"))
+      proxy |> leaflet::clearGroup(groupe)
+      if (is.null(tiges) || !nrow(tiges)) return()
+      pts <- tiges[toupper(tiges$action) != "ANNULATION" &
+                   !is.na(tiges$latitude) & !is.na(tiges$longitude), , drop = FALSE]
+      if (!nrow(pts)) return()
+      date <- format(as.POSIXct(pts$horodatage / 1000, origin = "1970-01-01"),
+                     "%Y-%m-%d")
+      popup <- sprintf(
+        "<b>%s</b> \u2014 %s %s<br>%s : %s<br>%s : %s<br>%s",
+        htmltools::htmlEscape(pts$essence), i18n$t("marculus_col_classe"),
+        pts$classe,
+        i18n$t("marculus_col_hauteur"), htmltools::htmlEscape(ifelse(is.na(pts$hauteurTexte), "-", pts$hauteurTexte)),
+        i18n$t("marculus_col_qualite"), htmltools::htmlEscape(ifelse(is.na(pts$qualiteArbre), "-", pts$qualiteArbre)),
+        date)
+      proxy |> leaflet::addCircleMarkers(
+        lng = pts$longitude, lat = pts$latitude, group = groupe,
+        radius = 4, stroke = TRUE, weight = 1, color = "#ffffff",
+        fillColor = "#8e24aa", fillOpacity = 0.9, popup = popup)
+    })
 
     output$download_marculus <- shiny::downloadHandler(
       filename = function() {

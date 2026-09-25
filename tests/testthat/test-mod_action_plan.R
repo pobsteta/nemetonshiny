@@ -374,3 +374,61 @@ test_that("le lien Marculus masque est rendu malgre son masquage", {
   expect_true(any(grepl('outputOptions(output, "download_marculus", suspendWhenHidden = FALSE)',
                         code, fixed = TRUE)))
 })
+
+
+# ---- Import du retour Marculus ------------------------------------------
+
+test_that("le bouton d'import Marculus suit l'export, en outline-primary", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  bouton <- regmatches(h, regexpr('<button[^>]*id="ap-import_marculus"[^>]*>', h))
+  expect_match(bouton, "btn-outline-primary", fixed = TRUE)
+  expect_true(regexpr('id="ap-prepare_marculus"', h) < regexpr('id="ap-import_marculus"', h))
+})
+
+test_that("importer un .marsync met le plan et les tiges a jour", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  proj <- withr::local_tempdir(); dir.create(file.path(proj, "data"))
+  plan0 <- .plan_trois_actions("p1")
+  sauve <- NULL
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) sauve %||% plan0,
+    save_action_plan = function(project_id, plan) { sauve <<- plan; TRUE },
+    get_project_path = function(id) proj
+  )
+  f <- file.path(proj, "retour.marsync")
+  jsonlite::write_json(list(
+    version = 3,
+    contextes = data.frame(id = "a2", nom = "A2", statut = "REALISEE",
+                           dateMartelage = NA, modifie = 1),
+    tiges = data.frame(uuid = c("u1", "u2"), contexteId = "a2",
+                       essence = "Chene", classe = 40L, action = "PLUS",
+                       horodatage = 1:2, quantite = 1L, latitude = 47.9,
+                       longitude = 1.9, modifie = 1)),
+    f, auto_unbox = TRUE, na = "null")
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5),
+    auth = list(authenticated = TRUE, user_roles = character())
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      session$setInputs(marculus_fichiers = data.frame(
+        name = "retour.marsync", size = file.size(f), type = "",
+        datapath = f, stringsAsFactors = FALSE))
+      session$setInputs(marculus_import_run = 1)
+      a2 <- Filter(function(a) a$id == "a2", plan_rv()$actions)[[1]]
+      expect_equal(a2$statut, "realisee")
+      expect_equal(a2$quantite$nb_tiges, 2L)
+      expect_equal(nrow(marculus_tiges_rv()), 2L)
+      expect_false(is.null(sauve))
+    }
+  )
+})

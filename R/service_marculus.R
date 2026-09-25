@@ -216,6 +216,12 @@ marculus_context_from_action <- function(action, project, essences = character(0
   date_martelage <- if (!is.na(annee)) {
     round(as.numeric(as.POSIXct(sprintf("%d-01-01", annee), tz = "UTC")) * 1000)
   } else NULL
+  # Une date revenue du terrain (import Marculus, `date_martelage`) prime sur
+  # le 1er janvier deduit de l'annee : l'aller-retour ne la perd pas.
+  dm <- suppressWarnings(as.Date(action$date_martelage %||% NA_character_))
+  if (length(dm) == 1L && !is.na(dm)) {
+    date_martelage <- round(as.numeric(as.POSIXct(format(dm), tz = "UTC")) * 1000)
+  }
 
   ctx <- list(
     id           = action$id %||% paste0("act-", ug),

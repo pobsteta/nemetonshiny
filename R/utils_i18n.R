@@ -581,6 +581,44 @@ TRANSLATIONS <- list(
     fr = "%d contexte(s) de martelage, %d GeoPackage(s), feuille pr\u00e9-remplie de %d essences. Ouvrir le .marsync sur le t\u00e9l\u00e9phone, puis rattacher un GeoPackage \u00e0 chaque contexte.",
     en = "%d marking context(s), %d GeoPackage(s), sheet pre-filled with %d species. Open the .marsync on the phone, then attach a GeoPackage to each context."
   ),
+  action_plan_import_marculus = list(
+    fr = "Importer les donn\u00e9es Marculus",
+    en = "Import Marculus data"
+  ),
+  marculus_import_title = list(
+    fr = "Importer le martelage Marculus",
+    en = "Import Marculus marking"
+  ),
+  marculus_import_help = list(
+    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, ou sauvegarde compl\u00e8te (JSON). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
+    en = ".marsync files shared from the phone, or a full backup (JSON). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
+  ),
+  marculus_import_fichiers = list(fr = "Fichiers Marculus", en = "Marculus files"),
+  marculus_import_run = list(fr = "Importer", en = "Import"),
+  marculus_import_ok_fmt = list(
+    fr = "Import Marculus : %d action(s) mise(s) \u00e0 jour, %d tige(s) nouvelle(s) (%d au total).",
+    en = "Marculus import: %d action(s) updated, %d new stem(s) (%d in total)."
+  ),
+  marculus_import_orphelins_fmt = list(
+    fr = "%d contexte(s) sans action correspondante dans ce projet : ignor\u00e9(s).",
+    en = "%d context(s) with no matching action in this project: ignored."
+  ),
+  marculus_import_erreur = list(
+    fr = "Fichier illisible : ce n'est pas un export Marculus (.marsync ou sauvegarde JSON).",
+    en = "Unreadable file: not a Marculus export (.marsync or JSON backup)."
+  ),
+  marculus_import_vide = list(
+    fr = "Aucun contexte de ce projet dans les fichiers import\u00e9s.",
+    en = "No context of this project in the imported files."
+  ),
+  marculus_synthese_title = list(fr = "Synth\u00e8se du martelage", en = "Marking summary"),
+  marculus_synthese_total_fmt = list(fr = "%d tige(s)", en = "%d stem(s)"),
+  marculus_col_essence = list(fr = "Essence", en = "Species"),
+  marculus_col_classe = list(fr = "Classe", en = "Class"),
+  marculus_col_tiges = list(fr = "Tiges", en = "Stems"),
+  marculus_col_hauteur = list(fr = "Hauteur", en = "Height"),
+  marculus_col_qualite = list(fr = "Qualit\u00e9", en = "Quality"),
+  marculus_couche_tiges = list(fr = "Tiges martel\u00e9es", en = "Marked stems"),
   marculus_ortho_running_fmt = list(
     fr = "Pr\u00e9paration du fond ortho 20 cm de %d chantier(s)\u2026 Le t\u00e9l\u00e9chargement partira seul \u00e0 la fin.",
     en = "Preparing the 20 cm orthophoto basemap of %d work site(s)\u2026 The download will start on its own when done."
