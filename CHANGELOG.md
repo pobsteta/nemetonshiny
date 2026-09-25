@@ -12,6 +12,14 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.147.1\] - 2026-09-25
+
+### Changed
+
+- Plan d’actions : le bouton d’import s’appelle « Importer de Marculus »
+  (en : « Import from Marculus »), pendant de « Telecharger vers
+  Marculus ».
+
 ## \[0.147.0\] - 2026-09-25
 
 Jalon mineur : l’aller-retour avec Marculus est complet. Les chantiers
