@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.151.4\] - 2026-09-25
+
+### Added
+
+- Plan d’actions : sous le graphique du bilan, un bloc « Fiches des UGF
+  selectionnees » (actions triees par annee, resume du martelage,
+  commentaire libre par UGF enregistre dans
+  `data/action_plan_ug_comments.json`) et un bouton IA qui recopie le
+  dernier conseil « Affiner le plan » dans les commentaires des UGF
+  selectionnees.
+
 ## \[0.151.3\] - 2026-09-25
 
 ### Added

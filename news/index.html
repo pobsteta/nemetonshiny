@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.151.4" id="nemetonshiny-01514-2026-09-25">nemetonshiny 0.151.4 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01514-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="added--plan-dactions--fiches-des-ugf-selectionnees-sous-le-graphique-0-151-4">Added — Plan d’actions : fiches des UGF selectionnees sous le graphique<a class="anchor" aria-label="anchor" href="#added--plan-dactions--fiches-des-ugf-selectionnees-sous-le-graphique-0-151-4"></a></h4>
+<p>Comme dans reGeneration, selectionner une ou plusieurs lignes du tableau des actions affiche, sous le graphique du bilan, un bloc « Fiches des UGF selectionnees » : une fiche par UGF (une par ligne) avec ses actions triees par annee (annee, type, statut, priorite, volume, bilan), le resume du martelage Marculus s’il existe, et un <strong>commentaire libre</strong> par UGF. Les commentaires sont enregistres a part du plan (<code>data/action_plan_ug_comments.json</code>, ecriture atomique, sauvegarde differee d’une seconde) et ne sont pas modifiables en lecture seule. Le bouton ambre « Inserer le conseil IA dans les UGF selectionnees » recopie le dernier message de « Affiner le plan » (bloc JSON retire) dans le commentaire de chaque UGF selectionnee. Verifie sous Chrome headless : fiches affichees, tableaux sans debordement, commentaire persiste puis relu.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.151.3" id="nemetonshiny-01513-2026-09-25">nemetonshiny 0.151.3 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01513-2026-09-25"></a></h2>
 <div class="section level4">
