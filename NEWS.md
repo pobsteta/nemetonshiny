@@ -1,3 +1,20 @@
+# nemetonshiny 0.151.2.9001 (2026-09-25)
+
+### Added — un « i » explicatif sur Annee, Type et Priorite
+
+Dans « Couche affichee », a droite de la carte des actions, chaque choix
+porte un « i » (`info_popover_in_label()`) : un clic ouvre l'explication sans
+changer de couche. Chacun dit comment la couleur d'une UGF est choisie quand
+elle porte plusieurs actions :
+
+- **Annee** : la prochaine echeance, c'est-a-dire l'annee la plus proche
+  parmi ses actions (clair = proche, fonce = lointaine) ;
+- **Type** : le premier type par ordre alphabetique ;
+- **Priorite** : la plus haute (rouge, orange, vert).
+
+Dans les trois cas, le gris signale une UGF sans valeur. Un test verifie les
+trois « i ».
+
 # nemetonshiny 0.151.2 (2026-09-25)
 
 ### Changed — Plan d'actions : le choix de coloration passe a droite de la carte

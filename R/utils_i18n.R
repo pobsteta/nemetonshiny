@@ -427,6 +427,18 @@ TRANSLATIONS <- list(
   action_plan_generate_all = list(fr = "G\u00e9n\u00e9rer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
   action_plan_map_layer = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
+  action_plan_color_year_info = list(
+    fr = "Chaque UGF prend la couleur de sa prochaine \u00e9ch\u00e9ance : l'ann\u00e9e de r\u00e9alisation la plus proche parmi ses actions (clair = proche, fonc\u00e9 = lointaine). Gris : aucune action dat\u00e9e. Survolez une UGF pour toutes ses ann\u00e9es.",
+    en = "Each unit takes the colour of its next deadline: the nearest year among its actions (light = near, dark = far). Grey: no dated action. Hover a unit for all its years."
+  ),
+  action_plan_color_type_info = list(
+    fr = "Couleur du type d'action de l'UGF. Si elle en porte plusieurs, c'est le premier par ordre alphab\u00e9tique qui colore : survolez l'UGF pour la liste compl\u00e8te. Gris : aucune action.",
+    en = "Colour of the unit's action type. When it has several, the first in alphabetical order is used: hover the unit for the full list. Grey: no action."
+  ),
+  action_plan_color_priority_info = list(
+    fr = "Couleur de la priorit\u00e9 la plus haute parmi les actions de l'UGF : rouge = haute, orange = moyenne, vert = basse. Gris : aucune priorit\u00e9 renseign\u00e9e.",
+    en = "Colour of the highest priority among the unit's actions: red = high, orange = medium, green = low. Grey: no priority set."
+  ),
   action_plan_delete_selected = list(fr = "Supprimer la s\u00e9lection", en = "Delete selection"),
   action_plan_delete_pick = list(
     fr = "S\u00e9lectionnez au moins une action dans le tableau.",
