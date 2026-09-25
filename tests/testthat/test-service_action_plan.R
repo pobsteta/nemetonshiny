@@ -451,3 +451,21 @@ test_that("delete_actions_from_plan ignore les ids inconnus, NA et doublons", {
   vide <- nemetonshiny:::delete_actions_from_plan(res$plan, character())
   expect_equal(vide$n_deleted, 0L)
 })
+
+test_that("les commentaires par UGF se sauvegardent a part du plan", {
+  proj <- withr::local_tempdir(); dir.create(file.path(proj, "data"))
+  testthat::local_mocked_bindings(get_project_path = function(id) proj)
+  expect_equal(nemetonshiny:::load_ug_comments("p"), list())
+  expect_true(nemetonshiny:::save_ug_comments("p", list(ug_1 = "Voir lisiere", ug_2 = "")))
+  expect_equal(nemetonshiny:::load_ug_comments("p"), list(ug_1 = "Voir lisiere"))
+  expect_true(file.exists(file.path(proj, "data", "action_plan_ug_comments.json")))
+  expect_false(file.exists(file.path(proj, "data", "action_plan.json")))
+})
+
+test_that("le conseil IA insere perd son bloc JSON d'actions", {
+  txt <- "Eclaircir la parcelle 12 en 2028.\n\n```json\n{\"actions\": []}\n```\nPuis surveiller."
+  out <- nemetonshiny:::.texte_conseil_ia(txt)
+  expect_false(grepl("actions", out, fixed = TRUE))
+  expect_match(out, "Eclaircir la parcelle 12 en 2028.", fixed = TRUE)
+  expect_match(out, "Puis surveiller.", fixed = TRUE)
+})

@@ -535,3 +535,57 @@ test_that("le graphique du bilan est sous le tableau des actions", {
   expect_true(regexpr('id="ap-action_table"', h, fixed = TRUE) <
               regexpr('id="ap-balance_summary"', h, fixed = TRUE))
 })
+
+test_that("la fiche d'une UGF liste ses actions et son commentaire", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  act <- data.frame(annee_realisation = c(2029L, 2027L), type = c("eclaircie", "plantation"),
+                    statut = c("validee", "proposee"), priorite = c("haute", "basse"),
+                    volume_m3 = c(150, NA), bilan_eur = c(12000, -3000),
+                    date_martelage = NA, nb_tiges = NA_integer_,
+                    nb_tiges_biodiversite = NA_integer_, volume_martele_m3 = NA_real_)
+  h <- as.character(nemetonshiny:::.ug_sheet("ug_1", "Forêt A — parcelle 1", act,
+                                              "Voir lisière", shiny::NS("ap"), i18n))
+  expect_match(h, "Forêt A — parcelle 1", fixed = TRUE)
+  # Actions triees par annee : 2027 avant 2029.
+  expect_true(regexpr("2027", h) < regexpr("2029", h))
+  expect_match(h, "Voir lisière", fixed = TRUE)
+  expect_match(h, 'id="ap-apcom_ug_1"', fixed = TRUE)
+  vide <- as.character(nemetonshiny:::.ug_sheet("ug_9", NA, act[0, ], "", shiny::NS("ap"), i18n))
+  expect_match(vide, "Aucune action sur cette UGF.", fixed = TRUE)
+})
+
+test_that("selectionner une UGF affiche sa fiche, le conseil IA s'insere", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  proj <- withr::local_tempdir(); dir.create(file.path(proj, "data"))
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) .plan_trois_actions(project_id),
+    save_action_plan = function(project_id, plan) TRUE,
+    get_project_path = function(id) proj
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5),
+    auth = list(authenticated = TRUE, user_roles = character())
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      expect_match(output$ug_sheets$html, "Sélectionnez une UGF", fixed = TRUE)
+      session$setInputs(action_table_rows_selected = 1L)
+      expect_equal(selected_ug_rv(), "ug1")
+      expect_match(output$ug_sheets$html, "UGF 1", fixed = TRUE)
+      expect_match(output$ug_sheets$html, "eclaircie", fixed = TRUE)
+      # Sans conseil IA : rien n'est insere.
+      session$setInputs(ug_comment_insert_ai = 1)
+      expect_null(ug_comments_rv()[["ug1"]])
+      chat_history_rv(list(list(role = "assistant",
+        text = "Prioriser la lisiere.\n```json\n{\"actions\": []}\n```")))
+      session$setInputs(ug_comment_insert_ai = 2)
+      expect_equal(ug_comments_rv()[["ug1"]], "Prioriser la lisiere.")
+    }
+  )
+})

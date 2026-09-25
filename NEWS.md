@@ -1,3 +1,20 @@
+# nemetonshiny 0.151.4 (2026-09-25)
+
+### Added — Plan d'actions : fiches des UGF selectionnees sous le graphique
+
+Comme dans reGeneration, selectionner une ou plusieurs lignes du tableau des
+actions affiche, sous le graphique du bilan, un bloc « Fiches des UGF
+selectionnees » : une fiche par UGF (une par ligne) avec ses actions triees
+par annee (annee, type, statut, priorite, volume, bilan), le resume du
+martelage Marculus s'il existe, et un **commentaire libre** par UGF. Les
+commentaires sont enregistres a part du plan (`data/action_plan_ug_comments.json`,
+ecriture atomique, sauvegarde differee d'une seconde) et ne sont pas
+modifiables en lecture seule. Le bouton ambre « Inserer le conseil IA dans
+les UGF selectionnees » recopie le dernier message de « Affiner le plan »
+(bloc JSON retire) dans le commentaire de chaque UGF selectionnee. Verifie
+sous Chrome headless : fiches affichees, tableaux sans debordement,
+commentaire persiste puis relu.
+
 # nemetonshiny 0.151.3 (2026-09-25)
 
 ### Changed — Plan d'actions : le graphique du bilan passe sous le tableau
