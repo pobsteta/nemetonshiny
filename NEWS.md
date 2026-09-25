@@ -1,4 +1,4 @@
-# nemetonshiny 0.147.1.9001 (2026-09-25)
+# nemetonshiny 0.148.0 (2026-09-25)
 
 ### Added — « Importer de Marculus » accepte les CSV de contexte (FormatCsv;2)
 
