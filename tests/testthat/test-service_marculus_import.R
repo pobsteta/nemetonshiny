@@ -253,3 +253,83 @@ test_that("les tiges Biodiversite sont comptees, nettes des annulations", {
   df <- nemetonshiny:::actions_to_dataframe(r$plan)
   expect_equal(df$nb_tiges_biodiversite, 1L)
 })
+
+
+# ---- Volumes calcules sur le telephone (Marculus, format 3) ---------------
+
+test_that("les totaux de volume du .marsync vont dans l'action, le terrain fait foi", {
+  d <- withr::local_tempdir()
+  t <- .tiges(c("u1", "u2"))
+  t$volumeTigeM3 <- c(1.2, 0.8); t$volumeHouppierM3 <- 0.1
+  t$volumeTotalM3 <- c(1.3, 0.9); t$surfaceTerriereM2 <- 0.14
+  t$cubage <- "EMERGE"
+  f <- .marsync(d, contextes = data.frame(
+    id = "a1", nom = "A", statut = "REALISEE", dateMartelage = NA, modifie = 1,
+    volumeTigeTotalM3 = 2.0, volumeTotalM3 = 2.2,
+    surfaceTerriereTotaleM2 = 0.28, nbTigesNonCubees = 1), tiges = t)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$contextes$volumeTigeTotalM3, 2.0)
+  expect_equal(lu$tiges$volumeTigeM3, c(1.2, 0.8))
+  expect_equal(lu$tiges$cubage, c("EMERGE", "EMERGE"))
+  r <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu$contextes,
+                                                lu$tiges, annee_base = 2026L)
+  q <- r$plan$actions[[1]]$quantite
+  expect_equal(q$volume_m3, 2.0)
+  expect_equal(q$volume_martele_m3, 2.0)
+  expect_equal(q$volume_total_m3, 2.2)
+  expect_equal(q$surface_terriere_m2, 0.28)
+  expect_equal(q$nb_tiges_non_cubees, 1L)
+  df <- nemetonshiny:::actions_to_dataframe(r$plan)
+  expect_equal(df$volume_m3, 2.0)
+  expect_equal(df$volume_martele_m3, 2.0)
+})
+
+test_that("sans volumes (format 2), le volume de l'action n'est pas touche", {
+  lu <- list(contextes = data.frame(id = "a1", nom = "A", statut = "REALISEE",
+                                    dateMartelage = NA, modifie = 1,
+                                    volumeTigeTotalM3 = NA, volumeTotalM3 = NA,
+                                    surfaceTerriereTotaleM2 = NA,
+                                    nbTigesNonCubees = NA,
+                                    stringsAsFactors = FALSE),
+             tiges = .tiges("u1"))
+  plan <- .plan_a1(); plan$actions[[1]]$quantite <- list(volume_m3 = 55)
+  r <- nemetonshiny:::marculus_appliquer_retour(plan, lu$contextes, lu$tiges,
+                                                annee_base = 2026L)
+  expect_equal(r$plan$actions[[1]]$quantite$volume_m3, 55)
+  expect_null(r$plan$actions[[1]]$quantite$volume_martele_m3)
+})
+
+test_that("une annulation retire le volume de la DERNIERE tige de sa case", {
+  # Regle de VolumesMartelage.totaux() : l'annulation (saisie sans hauteur,
+  # donc 0 m3 en EMERGE) retire la tige de 0,8 m3 empilee en dernier.
+  t <- rbind(.tiges("u1"), .tiges("u2"), .tiges("u3", action = "ANNULATION"))
+  t$horodatage <- 1:3
+  t$volumeTigeM3 <- c(1.2, 0.8, 0)
+  tot <- nemetonshiny:::marculus_totaux(t)
+  expect_equal(tot$tiges, 1L)
+  expect_equal(tot$volume_m3, 1.2)
+})
+
+test_that("un CSV FormatCsv;3 apporte totaux et volumes unitaires", {
+  d <- withr::local_tempdir()
+  f <- file.path(d, "v3.csv")
+  writeLines(c(
+    "Contexte;Parcelle 12", "FormatCsv;3", "ContexteId;a1", "Statut;REALISEE",
+    "DateMartelage;2027-10-15", "Modifie;1790000000000",
+    "Tarif;SCHAEFFER_RAPIDE", "TarifNumero;8", "CoefficientForme;0.5",
+    "VolumeTigeTotalM3;1.7400", "VolumeTotalM3;1.7400",
+    "SurfaceTerriereTotaleM2;0.2893", "NbTigesNonCubees;0",
+    "Mode;DIAMETRE", "Increment;1", "",
+    "TOTAUX", "Essence;Classe;Total", "Hetre;40;2", "",
+    "JOURNAL",
+    "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m;Uuid;Parcelle;Modifie;VolumeTigeM3;VolumeHouppierM3;VolumeTotalM3;SurfaceTerriereM2;Cubage",
+    "2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;u1;;1;0.870000;0.000000;0.870000;0.144641;SCHAEFFER_RAPIDE:8",
+    "2027-10-15T08:01:00Z;Hetre;40;PLUS;1;;;;;PO;;;u2;;2;0.870000;0.000000;0.870000;0.144641;SCHAEFFER_RAPIDE:8"
+  ), f)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$contextes$volumeTigeTotalM3, 1.74)
+  expect_equal(lu$contextes$nbTigesNonCubees, 0)
+  expect_equal(lu$tiges$volumeTigeM3, c(0.87, 0.87))
+  expect_equal(lu$tiges$cubage[1], "SCHAEFFER_RAPIDE:8")
+  expect_equal(nemetonshiny:::marculus_totaux(lu$tiges)$volume_m3, 1.74)
+})

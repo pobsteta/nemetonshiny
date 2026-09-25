@@ -676,6 +676,8 @@ actions_to_dataframe <- function(plan) {
     surface_ha = numeric(),
     nb_tiges = integer(),
     nb_tiges_biodiversite = integer(),
+    volume_martele_m3 = numeric(),
+    nb_tiges_non_cubees = integer(),
     rdi = numeric(),
     cout_eur = numeric(),
     revenu_eur = numeric(),
@@ -718,6 +720,10 @@ actions_to_dataframe <- function(plan) {
       nb_tiges     = suppressWarnings(as.integer(a$quantite$nb_tiges   %||% NA_integer_)),
       nb_tiges_biodiversite = suppressWarnings(as.integer(
         a$quantite$nb_tiges_biodiversite %||% NA_integer_)),
+      volume_martele_m3 = suppressWarnings(as.numeric(
+        a$quantite$volume_martele_m3 %||% NA_real_)),
+      nb_tiges_non_cubees = suppressWarnings(as.integer(
+        a$quantite$nb_tiges_non_cubees %||% NA_integer_)),
       rdi          = suppressWarnings(as.numeric(a$quantite$rdi        %||% NA_real_)),
       cout_eur     = cout,
       revenu_eur   = revenu,
