@@ -1,5 +1,82 @@
 # Changelog
 
+## nemetonshiny 0.151.3 (2026-09-25)
+
+#### Changed — Plan d’actions : le graphique du bilan passe sous le tableau
+
+Dans la carte « Tableau des actions », la courbe du bilan cumule et les
+totaux (cout, revenu, bilan, surface) etaient au-dessus du tableau. Ils
+sont maintenant **sous** le tableau, juste apres la pagination. Le corps
+de la carte n’est plus en mode « remplissage » : sinon, le tableau
+s’etirait sur toute la hauteur et renvoyait le graphique tout en bas de
+la carte. Verifie sous Chrome headless (pagination jusqu’a 521 px,
+totaux a partir de 538 px) ; un test verifie l’ordre tableau puis
+graphique.
+
+#### Changed — reGeneration : le tableau des UGF s’intitule « Tableau des actions »
+
+La carte du tableau de la colonne droite s’intitulait « UGF ». Elle
+s’intitule maintenant « Tableau des actions » (nouvelle cle
+`regen_table_title`). Le panneau vert des exports garde son titre, et
+les fiches parcelles leur titre « UGF … ».
+
+#### Removed — reGeneration : la case « Bilan hydrique seul (rapide) »
+
+La case disparait de la barre laterale gauche : l’analyse lancee depuis
+l’onglet est toujours complete (bilan hydrique et microclimat), comme
+elle l’etait deja avec la case decochee, le reglage par defaut. L’option
+reste dans le service
+(`run_regeneration(cfg = list(hydric_only = TRUE))`) pour un appel
+programmatique ; ses tests sont inchanges. La cle i18n
+`regen_run_hydric_only` est supprimee.
+
+#### Changed — reGeneration : le tableau des UGF comme celui du Plan d’actions
+
+Dans reGeneration, sous-onglet « Carte + Tableau », le tableau des UGF
+adopte la presentation de celui du Plan d’actions :
+
+- **Colonne « UGF »** : la premiere colonne donne le libelle lisible («
+  Foret domaniale d’Orleans – parcelle 1115 »), et non plus
+  l’identifiant interne `ug_id`, qui sert de repli quand une UGF n’a pas
+  de libelle. Les autres en-tetes sont traduits via les cles
+  `regen_col_*`, et les valeurs arrondies a 2 decimales.
+- **Recherche en regex** en haut du tableau, par exemple
+  `parcelle 11|haute`.
+- **Sous le tableau** : le nombre de lignes affichees (5, 10, 25, 50,
+  toutes) et la pagination « Prec. 1 2 3 … Suiv. », en vert selon le
+  theme, avec le compte d’UGF a droite.
+- **Hauteur** : le tableau prend 60 % de la colonne et les fiches 40 %
+  (contre 50/50 auparavant), pour que les lignes et la pagination
+  tiennent.
+- **Traduction** : tous les libelles du tableau passent par l’i18n.
+- **Case « Masquer les UG mal couvertes » retiree** : elle masquait du
+  tableau et des fiches les UG dont moins de 50 % de la surface a ete
+  modelisee (`couverture_pct`, part de l’UG couverte par la grille
+  microclimatique). Le tableau affiche desormais toutes les UG ; la
+  colonne « Couverture (%) » dit sur quelle part de sa surface chacune a
+  ete calculee.
+
+L’ordre des lignes est inchange, donc le lien ligne -\> carte -\> fiche
+parcelle aussi. Verifie sous Chrome headless sur une copie de «
+Reconfort » : la recherche `parcelle 110|parcelle 111` ramene le tableau
+de 24 a 13 UGF. Un test verifie le libelle, le repli sur l’identifiant
+et l’ordre des lignes.
+
+#### Added — un « i » explicatif sur Annee, Type et Priorite
+
+Dans « Couche affichee », a droite de la carte des actions, chaque choix
+porte un « i » (`info_popover_in_label()`) : un clic ouvre l’explication
+sans changer de couche. Chacun dit comment la couleur d’une UGF est
+choisie quand elle porte plusieurs actions :
+
+- **Annee** : la prochaine echeance, c’est-a-dire l’annee la plus proche
+  parmi ses actions (clair = proche, fonce = lointaine) ;
+- **Type** : le premier type par ordre alphabetique ;
+- **Priorite** : la plus haute (rouge, orange, vert).
+
+Dans les trois cas, le gris signale une UGF sans valeur. Un test verifie
+les trois « i ».
+
 ## nemetonshiny 0.151.2 (2026-09-25)
 
 #### Changed — Plan d’actions : le choix de coloration passe a droite de la carte

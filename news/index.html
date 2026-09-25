@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,49 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.151.3" id="nemetonshiny-01513-2026-09-25">nemetonshiny 0.151.3 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01513-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="changed--plan-dactions--le-graphique-du-bilan-passe-sous-le-tableau-0-151-3">Changed — Plan d’actions : le graphique du bilan passe sous le tableau<a class="anchor" aria-label="anchor" href="#changed--plan-dactions--le-graphique-du-bilan-passe-sous-le-tableau-0-151-3"></a></h4>
+<p>Dans la carte « Tableau des actions », la courbe du bilan cumule et les totaux (cout, revenu, bilan, surface) etaient au-dessus du tableau. Ils sont maintenant <strong>sous</strong> le tableau, juste apres la pagination. Le corps de la carte n’est plus en mode « remplissage » : sinon, le tableau s’etirait sur toute la hauteur et renvoyait le graphique tout en bas de la carte. Verifie sous Chrome headless (pagination jusqu’a 521 px, totaux a partir de 538 px) ; un test verifie l’ordre tableau puis graphique.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--regeneration--le-tableau-des-ugf-sintitule--tableau-des-actions--0-151-3">Changed — reGeneration : le tableau des UGF s’intitule « Tableau des actions »<a class="anchor" aria-label="anchor" href="#changed--regeneration--le-tableau-des-ugf-sintitule--tableau-des-actions--0-151-3"></a></h4>
+<p>La carte du tableau de la colonne droite s’intitulait « UGF ». Elle s’intitule maintenant « Tableau des actions » (nouvelle cle <code>regen_table_title</code>). Le panneau vert des exports garde son titre, et les fiches parcelles leur titre « UGF … ».</p>
+</div>
+<div class="section level4">
+<h4 id="removed--regeneration--la-case--bilan-hydrique-seul-rapide--0-151-3">Removed — reGeneration : la case « Bilan hydrique seul (rapide) »<a class="anchor" aria-label="anchor" href="#removed--regeneration--la-case--bilan-hydrique-seul-rapide--0-151-3"></a></h4>
+<p>La case disparait de la barre laterale gauche : l’analyse lancee depuis l’onglet est toujours complete (bilan hydrique et microclimat), comme elle l’etait deja avec la case decochee, le reglage par defaut. L’option reste dans le service (<code>run_regeneration(cfg = list(hydric_only = TRUE))</code>) pour un appel programmatique ; ses tests sont inchanges. La cle i18n <code>regen_run_hydric_only</code> est supprimee.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--regeneration--le-tableau-des-ugf-comme-celui-du-plan-dactions-0-151-3">Changed — reGeneration : le tableau des UGF comme celui du Plan d’actions<a class="anchor" aria-label="anchor" href="#changed--regeneration--le-tableau-des-ugf-comme-celui-du-plan-dactions-0-151-3"></a></h4>
+<p>Dans reGeneration, sous-onglet « Carte + Tableau », le tableau des UGF adopte la presentation de celui du Plan d’actions :</p>
+<ul><li>
+<strong>Colonne « UGF »</strong> : la premiere colonne donne le libelle lisible (« Foret domaniale d’Orleans – parcelle 1115 »), et non plus l’identifiant interne <code>ug_id</code>, qui sert de repli quand une UGF n’a pas de libelle. Les autres en-tetes sont traduits via les cles <code>regen_col_*</code>, et les valeurs arrondies a 2 decimales.</li>
+<li>
+<strong>Recherche en regex</strong> en haut du tableau, par exemple <code>parcelle 11|haute</code>.</li>
+<li>
+<strong>Sous le tableau</strong> : le nombre de lignes affichees (5, 10, 25, 50, toutes) et la pagination « Prec. 1 2 3 … Suiv. », en vert selon le theme, avec le compte d’UGF a droite.</li>
+<li>
+<strong>Hauteur</strong> : le tableau prend 60 % de la colonne et les fiches 40 % (contre 50/50 auparavant), pour que les lignes et la pagination tiennent.</li>
+<li>
+<strong>Traduction</strong> : tous les libelles du tableau passent par l’i18n.</li>
+<li>
+<strong>Case « Masquer les UG mal couvertes » retiree</strong> : elle masquait du tableau et des fiches les UG dont moins de 50 % de la surface a ete modelisee (<code>couverture_pct</code>, part de l’UG couverte par la grille microclimatique). Le tableau affiche desormais toutes les UG ; la colonne « Couverture (%) » dit sur quelle part de sa surface chacune a ete calculee.</li>
+</ul><p>L’ordre des lignes est inchange, donc le lien ligne -&gt; carte -&gt; fiche parcelle aussi. Verifie sous Chrome headless sur une copie de « Reconfort » : la recherche <code>parcelle 110|parcelle 111</code> ramene le tableau de 24 a 13 UGF. Un test verifie le libelle, le repli sur l’identifiant et l’ordre des lignes.</p>
+</div>
+<div class="section level4">
+<h4 id="added--un--i--explicatif-sur-annee-type-et-priorite-0-151-3">Added — un « i » explicatif sur Annee, Type et Priorite<a class="anchor" aria-label="anchor" href="#added--un--i--explicatif-sur-annee-type-et-priorite-0-151-3"></a></h4>
+<p>Dans « Couche affichee », a droite de la carte des actions, chaque choix porte un « i » (<code>info_popover_in_label()</code>) : un clic ouvre l’explication sans changer de couche. Chacun dit comment la couleur d’une UGF est choisie quand elle porte plusieurs actions :</p>
+<ul><li>
+<strong>Annee</strong> : la prochaine echeance, c’est-a-dire l’annee la plus proche parmi ses actions (clair = proche, fonce = lointaine) ;</li>
+<li>
+<strong>Type</strong> : le premier type par ordre alphabetique ;</li>
+<li>
+<strong>Priorite</strong> : la plus haute (rouge, orange, vert).</li>
+</ul><p>Dans les trois cas, le gris signale une UGF sans valeur. Un test verifie les trois « i ».</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.151.2" id="nemetonshiny-01512-2026-09-25">nemetonshiny 0.151.2 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01512-2026-09-25"></a></h2>
 <div class="section level4">
