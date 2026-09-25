@@ -783,3 +783,76 @@ can_edit_action_plan <- function(auth_state) {
   any(c("proprietaire", "editeur", "owner", "editor",
         "admin", "manager") %in% tolower(roles))
 }
+
+
+# ===========================================================================
+# Commentaires par UGF (fiches UGF du Plan d'actions)
+# ===========================================================================
+#
+# Un commentaire libre par UGF, dans un fichier A PART du plan
+# (`data/action_plan_ug_comments.json`), sur le modele des commentaires de
+# reGeneration. Le plan est reecrit depuis sa copie en memoire par de nombreux
+# gestes (edition, Kanban, import Marculus...) : un commentaire range dedans
+# pourrait etre ecrase par une copie anterieure, et chaque frappe
+# re-rendrait le tableau et les fiches.
+
+#' Path of a project's per-UGF action plan comments
+#' @noRd
+.ug_comments_path <- function(project_id) {
+  path <- tryCatch(get_project_path(project_id), error = function(e) NULL)
+  if (is.null(path)) return(NULL)
+  file.path(path, "data", "action_plan_ug_comments.json")
+}
+
+#' Load the per-UGF comments of an action plan
+#'
+#' @param project_id Character.
+#' @return A named list `ug_id -> text` (empty comments dropped).
+#' @noRd
+load_ug_comments <- function(project_id) {
+  p <- .ug_comments_path(project_id)
+  if (is.null(p) || !file.exists(p)) return(list())
+  out <- tryCatch(jsonlite::read_json(p, simplifyVector = FALSE),
+                  error = function(e) NULL)
+  if (!is.list(out) || !length(out)) return(list())
+  out <- lapply(out, function(x) as.character(x %||% ""))
+  out[nzchar(unlist(out, use.names = FALSE))]
+}
+
+#' Save the per-UGF comments of an action plan, atomically
+#'
+#' @param project_id Character.
+#' @param comments Named list `ug_id -> text`.
+#' @return Logical.
+#' @noRd
+save_ug_comments <- function(project_id, comments) {
+  p <- .ug_comments_path(project_id)
+  if (is.null(p)) return(FALSE)
+  comments <- lapply(comments %||% list(), function(x) as.character(x %||% ""))
+  comments <- comments[nzchar(unlist(comments, use.names = FALSE))]
+  dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
+  tmp <- paste0(p, ".tmp")
+  ok <- tryCatch({
+    jsonlite::write_json(if (length(comments)) comments else structure(list(), names = character(0)),
+                         tmp, auto_unbox = TRUE, pretty = TRUE)
+    file.rename(tmp, p)
+  }, error = function(e) {
+    cli::cli_warn("Commentaires UGF non sauvegard\u00e9s : {conditionMessage(e)}")
+    FALSE
+  })
+  isTRUE(ok)
+}
+
+#' Plain text of an AI chat answer, for a comment
+#'
+#' The "Affiner le plan" answers may carry a fenced JSON block of proposed
+#' actions, meant for the "apply" button: it has nothing to do in a
+#' free-text comment.
+#'
+#' @param txt Character.
+#' @return Character, trimmed.
+#' @noRd
+.texte_conseil_ia <- function(txt) {
+  txt <- gsub("(?s)```(json)?\\s*.*?```", "", txt %||% "", perl = TRUE)
+  trimws(gsub("\n{3,}", "\n\n", txt))
+}

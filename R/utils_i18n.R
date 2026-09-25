@@ -427,6 +427,29 @@ TRANSLATIONS <- list(
   action_plan_generate_all = list(fr = "G\u00e9n\u00e9rer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
   action_plan_map_layer = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
+  action_plan_ug_sheets_title = list(fr = "Fiches UGF s\u00e9lectionn\u00e9es", en = "Selected unit sheets"),
+  action_plan_ug_select_hint = list(
+    fr = "S\u00e9lectionnez une UGF dans le tableau ou sur la carte.",
+    en = "Select a unit in the table or on the map."
+  ),
+  action_plan_ug_no_action = list(fr = "Aucune action sur cette UGF.", en = "No action on this unit."),
+  action_plan_ug_comment_label = list(fr = "Commentaire de l'UGF", en = "Unit comment"),
+  action_plan_ug_comment_ph = list(
+    fr = "Notes, consignes, conseil IA ins\u00e9r\u00e9\u2026",
+    en = "Notes, instructions, inserted AI advice\u2026"
+  ),
+  action_plan_ug_insert_ai = list(
+    fr = "Ins\u00e9rer le conseil IA dans les UGF s\u00e9lectionn\u00e9es",
+    en = "Insert AI advice into selected units"
+  ),
+  action_plan_ug_no_advice = list(
+    fr = "Aucun conseil IA : posez d'abord une question dans \u00ab Affiner le plan avec l'IA \u00bb.",
+    en = "No AI advice yet: ask a question in \u201cRefine the plan with AI\u201d first."
+  ),
+  action_plan_ug_inserted_fmt = list(
+    fr = "Conseil IA ins\u00e9r\u00e9 dans %d UGF.",
+    en = "AI advice inserted into %d unit(s)."
+  ),
   action_plan_color_year_info = list(
     fr = "Chaque UGF prend la couleur de sa prochaine \u00e9ch\u00e9ance : l'ann\u00e9e de r\u00e9alisation la plus proche parmi ses actions (clair = proche, fonc\u00e9 = lointaine). Gris : aucune action dat\u00e9e. Survolez une UGF pour toutes ses ann\u00e9es.",
     en = "Each unit takes the colour of its next deadline: the nearest year among its actions (light = near, dark = far). Grey: no dated action. Hover a unit for all its years."

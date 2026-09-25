@@ -424,6 +424,13 @@ mod_action_plan_ui <- function(id) {
               htmltools::div(
                 class = "border-top mt-2 pt-2",
                 shiny::uiOutput(ns("balance_summary"))
+              ),
+              # Fiches des UGF selectionnees (tableau ou carte), sous le
+              # graphique : actions de l'UGF, martelage, commentaire libre.
+              htmltools::div(
+                class = "border-top mt-2 pt-2",
+                htmltools::tags$h6(class = "mb-2", i18n$t("action_plan_ug_sheets_title")),
+                shiny::uiOutput(ns("ug_sheets"))
               )
             )
           )
@@ -1925,6 +1932,100 @@ mod_action_plan_server <- function(id, app_state) {
       .telecharger_marculus()
     }, ignoreInit = TRUE)
 
+    # --- Fiches UGF selectionnees -------------------------------------------
+    # Commentaire libre par UGF, dans un fichier a part du plan (voir
+    # `load_ug_comments()`), charge au changement de projet et sauvegarde
+    # apres une seconde de repos.
+    ug_comments_rv <- shiny::reactiveVal(list())
+    shiny::observeEvent(app_state$current_project, {
+      pid <- tryCatch(app_state$current_project$id, error = function(e) NULL)
+      ug_comments_rv(if (is.null(pid)) list() else
+        tryCatch(load_ug_comments(pid), error = function(e) list()))
+    }, ignoreNULL = FALSE)
+    ug_comments_deb <- shiny::debounce(shiny::reactive(ug_comments_rv()), 1000)
+    shiny::observeEvent(ug_comments_deb(), {
+      pid <- tryCatch(app_state$current_project$id, error = function(e) NULL)
+      if (is.null(pid)) return()
+      save_ug_comments(pid, ug_comments_deb())
+    }, ignoreInit = TRUE)
+
+    # Un observateur par zone de commentaire, cree a la premiere selection de
+    # l'UGF (les zones sont rendues dynamiquement).
+    ug_comment_obs <- new.env(parent = emptyenv())
+    shiny::observe({
+      for (ug in selected_ug_rv()) {
+        key <- .ug_comment_key(ug)
+        if (isTRUE(ug_comment_obs[[key]])) next
+        ug_comment_obs[[key]] <- TRUE
+        local({
+          ug_l <- ug; key_l <- key
+          shiny::observeEvent(input[[key_l]], {
+            if (project_is_readonly(app_state)) return()
+            cur <- ug_comments_rv()
+            cur[[ug_l]] <- input[[key_l]] %||% ""
+            ug_comments_rv(cur)
+          }, ignoreInit = TRUE)
+        })
+      }
+    })
+
+    # Insere la derniere reponse de « Affiner le plan avec l'IA » dans le
+    # commentaire de TOUTES les UGF selectionnees (remplace le contenu,
+    # modifiable ensuite).
+    shiny::observeEvent(input$ug_comment_insert_ai, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      sel <- selected_ug_rv()
+      if (!length(sel)) {
+        shiny::showNotification(i18n$t("action_plan_ug_select_hint"), type = "warning")
+        return()
+      }
+      hist <- chat_history_rv()
+      rep <- Filter(function(m) identical(m$role, "assistant"), hist)
+      conseil <- if (length(rep)) .texte_conseil_ia(rep[[length(rep)]]$text) else ""
+      if (!nzchar(conseil)) {
+        shiny::showNotification(i18n$t("action_plan_ug_no_advice"), type = "warning")
+        return()
+      }
+      cur <- ug_comments_rv()
+      for (ug in sel) {
+        cur[[ug]] <- conseil
+        shiny::updateTextAreaInput(session, .ug_comment_key(ug), value = conseil)
+      }
+      ug_comments_rv(cur)
+      shiny::showNotification(sprintf(i18n$t("action_plan_ug_inserted_fmt"), length(sel)),
+                              type = "message", duration = 4)
+    })
+
+    output$ug_sheets <- shiny::renderUI({
+      i18n <- get_i18n(app_state$language)
+      sel <- selected_ug_rv()
+      if (!length(sel)) {
+        return(htmltools::div(class = "text-muted fst-italic small",
+                              i18n$t("action_plan_ug_select_hint")))
+      }
+      df <- actions_df_all()
+      sf <- ug_sf_4326()
+      labels <- if (!is.null(sf)) stats::setNames(as.character(sf$label), as.character(sf$ug_id))
+                else character(0)
+      comments <- shiny::isolate(ug_comments_rv())
+      readonly <- project_is_readonly(app_state)
+      htmltools::tagList(
+        htmltools::div(class = "mb-2",
+          shiny::actionButton(ns("ug_comment_insert_ai"),
+            i18n$t("action_plan_ug_insert_ai"),
+            # Insere un contenu GENERE : accent ambre, comme toute surface IA.
+            icon = bsicons::bs_icon("stars"), class = "btn-sm btn-ia")),
+        htmltools::div(class = "row",
+          # Une fiche par ligne : la carte « Tableau des actions » partage sa
+          # largeur avec la carte ; sur deux colonnes, le tableau des actions
+          # (6 colonnes) debordait sur la fiche voisine.
+          lapply(sel, function(ug) htmltools::div(class = "col-12",
+            .ug_sheet(ug, labels[ug], df[!is.na(df$ug_id) & df$ug_id == ug, , drop = FALSE],
+                      comments[[ug]] %||% "", ns, i18n, readonly))))
+      )
+    })
+
     # --- Import du retour Marculus ------------------------------------------
     shiny::observeEvent(input$import_marculus, {
       if (deny_if_readonly()) return()
@@ -3271,4 +3372,77 @@ MARCULUS_COULEURS_CATEGORIES <- c(PB = "#0072B2", BM = "#009E73",
     htmltools::tags$h6(class = "mt-2", i18n$t("marculus_tableau_tiges")),
     table
   )
+}
+
+
+#' Input id of the comment zone of a UGF sheet
+#' @noRd
+.ug_comment_key <- function(ug) {
+  paste0("apcom_", gsub("[^A-Za-z0-9]", "_", as.character(ug)))
+}
+
+#' Sheet of one selected UGF (Plan d'actions)
+#'
+#' The UGF's actions (year, type, status, priority, volume, balance), the
+#' marking summary of those that were marked with Marculus, then a free-text
+#' comment for the UGF.
+#'
+#' @param ug Character. UGF id.
+#' @param label Character. Readable UGF label (may be `NA`).
+#' @param actions Rows of `actions_df_all()` for this UGF.
+#' @param comment Character. Current comment.
+#' @param ns Namespace function.
+#' @param i18n An i18n object.
+#' @param readonly Logical. The comment zone is read-only too.
+#' @return A tag.
+#' @noRd
+.ug_sheet <- function(ug, label, actions, comment, ns, i18n, readonly = FALSE) {
+  titre <- if (length(label) == 1L && !is.na(label) && nzchar(label)) label else ug
+  actions <- actions[order(actions$annee_realisation, na.last = TRUE), , drop = FALSE]
+  num <- function(v) if (is.na(v)) "" else format(round(v), big.mark = "\u202f",
+                                                   scientific = FALSE)
+  tableau <- if (nrow(actions)) {
+    htmltools::div(class = "table-responsive",
+    htmltools::tags$table(class = "table table-sm small mb-1",
+      htmltools::tags$thead(htmltools::tags$tr(
+        htmltools::tags$th(i18n$t("action_plan_col_annee")),
+        htmltools::tags$th(i18n$t("action_plan_col_type")),
+        htmltools::tags$th(i18n$t("action_plan_col_statut")),
+        htmltools::tags$th(i18n$t("action_plan_col_priorite")),
+        htmltools::tags$th(class = "text-end", i18n$t("action_plan_col_volume")),
+        htmltools::tags$th(class = "text-end", i18n$t("action_plan_col_bilan")))),
+      htmltools::tags$tbody(lapply(seq_len(nrow(actions)), function(i) {
+        a <- actions[i, , drop = FALSE]
+        b <- a$bilan_eur
+        htmltools::tags$tr(
+          htmltools::tags$td(if (is.na(a$annee_realisation)) "" else a$annee_realisation),
+          htmltools::tags$td(a$type %||% ""),
+          htmltools::tags$td(a$statut %||% ""),
+          htmltools::tags$td(a$priorite %||% ""),
+          htmltools::tags$td(class = "text-end", num(a$volume_m3)),
+          htmltools::tags$td(class = "text-end",
+            style = if (!is.na(b)) sprintf("color:%s;font-weight:600;",
+                                           if (b < 0) "#b91c1c" else "#15803d"),
+            num(b)))
+      }))))
+  } else {
+    htmltools::div(class = "text-muted small fst-italic mb-1",
+                   i18n$t("action_plan_ug_no_action"))
+  }
+  martelages <- if (nrow(actions)) lapply(seq_len(nrow(actions)), function(i)
+    .kanban_ligne_martelage(actions[i, , drop = FALSE], i18n))
+  key <- .ug_comment_key(ug)
+  zone <- htmltools::div(class = "mt-2 mb-3",
+    htmltools::tags$label(class = "form-label small fw-bold mb-1", `for` = ns(key),
+                          i18n$t("action_plan_ug_comment_label")),
+    htmltools::tagAppendAttributes(
+      shiny::textAreaInput(ns(key), label = NULL, value = comment,
+                           placeholder = i18n$t("action_plan_ug_comment_ph"),
+                           rows = 4, width = "100%", resize = "vertical"),
+      .cssSelector = "textarea", readonly = if (isTRUE(readonly)) NA))
+  htmltools::div(class = "border rounded p-2 mb-2",
+    htmltools::tags$div(class = "fw-bold mb-1", titre),
+    tableau,
+    martelages,
+    zone)
 }
