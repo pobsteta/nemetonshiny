@@ -1,5 +1,23 @@
 # Changelog
 
+## nemetonshiny 0.148.3 (2026-09-25)
+
+#### Fixed — import CSV Marculus : la qualite du fix sous une seule forme
+
+Marculus a livre le CSV `FormatCsv;2` dans sa **v0.48.0** (reponse
+`briefs/traites/2026-09-25-reponse-marculus-csv-format-2.md`). Sa
+colonne `QualiteFix` garde le **libelle** (« RTK fixe », « Estime »…),
+alors que le `.marsync` porte le **nom** de l’enum (`RTK_FIXE`,
+`ESTIME`…). Une meme tige pouvait donc revenir sous deux formes selon le
+fichier importe. Les libelles du CSV sont maintenant ramenes au nom de
+l’enum, selon la table de `FixGnss.kt`. Un test le verifie.
+
+Le brief Marculus « l’export ecrit CIRCONFERENCE » (Marculus v0.49.0)
+etait deja traite par la v0.148.2 : contextes en `DIAMETRE`, classes de
+20 a 90 par pas de 5, verifies sur les 20 contextes de « Reconfort ». La
+reponse est deposee dans
+`briefs/vers-marculus/2026-09-25-reponse-export-mode-diametre.md`.
+
 ## nemetonshiny 0.148.2 (2026-09-25)
 
 #### Changed — les contextes Marculus partent au diametre, 20 a 90 cm

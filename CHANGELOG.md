@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.148.3\] - 2026-09-25
+
+### Fixed
+
+- Import CSV Marculus (`FormatCsv;2`, Marculus v0.48.0) : la colonne
+  `QualiteFix` porte le libelle (« RTK fixe »), alors que le `.marsync`
+  porte le nom de l’enum (`RTK_FIXE`). Le libelle est desormais ramene
+  au nom, pour qu’une meme tige garde une seule forme quel que soit le
+  fichier.
+
 ## \[0.148.2\] - 2026-09-25
 
 ### Changed

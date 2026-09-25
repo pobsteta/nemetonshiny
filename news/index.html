@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.148.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.148.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.148.3" id="nemetonshiny-01483-2026-09-25">nemetonshiny 0.148.3 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01483-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="fixed--import-csv-marculus--la-qualite-du-fix-sous-une-seule-forme-0-148-3">Fixed — import CSV Marculus : la qualite du fix sous une seule forme<a class="anchor" aria-label="anchor" href="#fixed--import-csv-marculus--la-qualite-du-fix-sous-une-seule-forme-0-148-3"></a></h4>
+<p>Marculus a livre le CSV <code>FormatCsv;2</code> dans sa <strong>v0.48.0</strong> (reponse <code>briefs/traites/2026-09-25-reponse-marculus-csv-format-2.md</code>). Sa colonne <code>QualiteFix</code> garde le <strong>libelle</strong> (« RTK fixe », « Estime »…), alors que le <code>.marsync</code> porte le <strong>nom</strong> de l’enum (<code>RTK_FIXE</code>, <code>ESTIME</code>…). Une meme tige pouvait donc revenir sous deux formes selon le fichier importe. Les libelles du CSV sont maintenant ramenes au nom de l’enum, selon la table de <code>FixGnss.kt</code>. Un test le verifie.</p>
+<p>Le brief Marculus « l’export ecrit CIRCONFERENCE » (Marculus v0.49.0) etait deja traite par la v0.148.2 : contextes en <code>DIAMETRE</code>, classes de 20 a 90 par pas de 5, verifies sur les 20 contextes de « Reconfort ». La reponse est deposee dans <code>briefs/vers-marculus/2026-09-25-reponse-export-mode-diametre.md</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.148.2" id="nemetonshiny-01482-2026-09-25">nemetonshiny 0.148.2 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01482-2026-09-25"></a></h2>
 <div class="section level4">
