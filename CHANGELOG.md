@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.151.1] - 2026-09-25
+
+### Fixed
+
+- Import Marculus : une tige reimportee avec ses volumes (CSV au format 3
+  apres un format 2, meme `uuid` et meme `modifie`) remplace desormais la
+  version stockee sans volume. Il suffit de reimporter les fichiers pour que
+  les tiges recuperent leurs volumes.
+
 ## [0.151.0] - 2026-09-25
 
 ### Added

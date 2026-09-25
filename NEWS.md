@@ -1,4 +1,4 @@
-# nemetonshiny 0.151.0.9001 (2026-09-25)
+# nemetonshiny 0.151.1 (2026-09-25)
 
 ### Fixed — reimporter un martelage apporte enfin les volumes des tiges
 
