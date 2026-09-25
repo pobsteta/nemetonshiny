@@ -1,5 +1,51 @@
 # Changelog
 
+## nemetonshiny 0.151.0 (2026-09-25)
+
+#### Added — la fiche d’une action martelee : plan, diagramme par classe, tableau
+
+Un double-clic sur une fiche du Kanban ouvre la fenetre d’edition de
+l’action. Quand l’action a des tiges importees de Marculus, une section
+**Martelage** s’ajoute sous le formulaire, dans une fenetre plus large
+et defilante :
+
+- **Plan de situation** : l’UGF de l’action et ses tiges georeferencees,
+  colorees par essence avec les couleurs envoyees au telephone, cadre
+  sur la parcelle. Fonds OSM ou satellite. L’infobulle d’une tige donne
+  l’essence, la classe, la categorie et le volume.
+- **Diagramme debout, empile par classe** : une barre par essence,
+  empilee par classe de PB (en bas) a TGB, chaque classe dans la couleur
+  de sa categorie, eclaircie pour la plus petite classe de la categorie.
+  C’est le « detail par classe » de l’ecran Statut de Marculus, avec les
+  memes couleurs et la meme nuance, mais redresse. Le total de l’essence
+  s’affiche au-dessus de chaque barre, et la legende est groupee par
+  categorie.
+- **Tableau des tiges designees** : date, essence, classe, categorie,
+  quantite, hauteur, qualite, volume, parcelle et fix GNSS.
+
+Les tiges affichees sont celles qui restent **apres les annulations**,
+selon la regle de Marculus : une annulation retire la derniere tige de
+sa case (`marculus_tiges_designees()`). Les categories suivent les
+seuils par defaut de Marculus (`SeuilsCategories.DEFAUT`) : PB \< 27,5
+cm \<= BM \< 47,5 \<= GB \< 67,5 \<= TGB, en diametre. Une circonference
+est ramenee au diametre, et le mode de mesure du contexte est desormais
+recopie sur chaque tige a l’import. Les seuils reglables sur le
+telephone ne sont pas exportes : ce sont donc ceux par defaut qui
+s’appliquent.
+
+Correctif general au passage : dans une fenetre, les widgets DT et
+leaflet restaient vides. Ils reportent leur rendu tant que leur
+conteneur n’a pas de taille, ce qui est le cas pendant l’animation
+d’ouverture, et htmlwidgets ne les relance pas sur `shown.bs.modal`. Un
+relais dans `custom.js` declenche `shown.htmlwidgets` a l’ouverture de
+toute fenetre.
+
+Verifie sous Chrome headless (vrai module, vrais scripts du Kanban,
+copie de « Reconfort », 40 tiges) : le double-clic ouvre la fiche, la
+carte charge ses tuiles et ses 41 formes, le diagramme dessine 42
+segments groupes PB, BM, GB et TGB, et le tableau pagine « Tiges 1 a 15
+sur 40 ».
+
 ## nemetonshiny 0.150.0 (2026-09-25)
 
 #### Added — les volumes du martelage reviennent de Marculus
