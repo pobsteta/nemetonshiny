@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.148.2\] - 2026-09-25
+
+### Changed
+
+- Export Marculus : les contextes partent au diametre, avec des classes
+  de 20 a 90 cm par pas de 5, les valeurs par defaut d’un contexte cree
+  dans Marculus. Jusqu’ici, ils partaient en circonference, de 20 a 200
+  cm.
+
 ## \[0.148.1\] - 2026-09-25
 
 ### Changed
