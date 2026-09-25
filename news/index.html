@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.147.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.148.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.148.0" id="nemetonshiny-01480-2026-09-25">nemetonshiny 0.148.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01480-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="added---importer-de-marculus--accepte-les-csv-de-contexte-formatcsv2-0-148-0">Added — « Importer de Marculus » accepte les CSV de contexte (FormatCsv;2)<a class="anchor" aria-label="anchor" href="#added---importer-de-marculus--accepte-les-csv-de-contexte-formatcsv2-0-148-0"></a></h4>
+<p>Marculus ecrit desormais, dans son CSV de contexte, les cles qui lui manquaient (commit <code>8848a67</code>, publie apres Marculus v0.47.0 ; brief <code>briefs/vers-marculus/2026-09-25-csv-importable-nemeton.md</code>) :</p>
+<ul><li>en-tete : <code>FormatCsv;2</code>, <code>ContexteId</code>, <code>Statut</code>, <code>DateMartelage</code>, <code>Modifie</code> ;</li>
+<li>journal : colonnes <code>Uuid</code>, <code>Parcelle</code> et <code>Modifie</code> en fin de ligne.</li>
+</ul><p>L’import les lit comme un <code>.marsync</code> :</p>
+<ul><li>l’action est retrouvee par <code>ContexteId</code> ;</li>
+<li>les tiges sont unies par <code>Uuid</code>, donc un CSV et un <code>.marsync</code> du meme contexte ne se doublent pas ;</li>
+<li>le terrain fait foi pour le statut et la date ;</li>
+<li>les tiges nouvelles apparaissent sur la carte et dans la synthese.</li>
+</ul><p>La modale d’import accepte maintenant <code>.marsync</code>, <code>.json</code> et <code>.csv</code>. Un CSV de l’ancien format, sans <code>FormatCsv</code>, donc sans identifiants, est refuse. Un message dedie invite alors a le reexporter ou a partager le <code>.marsync</code>, au lieu d’un « fichier illisible ».</p>
+<p>Tests (fixtures conformes a <code>ExportCsv.kt</code>) : lecture complete, avec un nom a <code>;</code> echappe, un horodatage avec ou sans fraction de seconde, un point decimal et la parcelle ; application a l’action ; union CSV + <code>.marsync</code> sans doublon ; format 1 signale a part ; date vide sans effet.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.147.1" id="nemetonshiny-01471-2026-09-25">nemetonshiny 0.147.1 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01471-2026-09-25"></a></h2>
 <div class="section level4">

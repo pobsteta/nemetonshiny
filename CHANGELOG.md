@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.148.0\] - 2026-09-25
+
+### Added
+
+- « Importer de Marculus » accepte les CSV de contexte en `FormatCsv;2`
+  (Marculus apres v0.47.0). L’action est retrouvee par `ContexteId` et
+  les tiges sont unies par `Uuid` : un CSV et un `.marsync` du meme
+  contexte ne se doublent pas. Le terrain fait foi. Un CSV de l’ancien
+  format est refuse, avec un message dedie. La modale accepte
+  `.marsync`, `.json` et `.csv`.
+
 ## \[0.147.1\] - 2026-09-25
 
 ### Changed
