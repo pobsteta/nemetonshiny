@@ -1,3 +1,12 @@
+# nemetonshiny 0.147.1 (2026-09-25)
+
+### Changed — bouton « Importer de Marculus »
+
+Le bouton d'import du Plan d'actions s'appelle desormais « Importer de
+Marculus » (en : « Import from Marculus »), au lieu de « Importer les donnees
+Marculus ». Il fait ainsi pendant a « Telecharger vers Marculus », juste
+au-dessus.
+
 # nemetonshiny 0.147.0 (2026-09-25)
 
 ### Added — importer le martelage Marculus dans le Plan d'actions
