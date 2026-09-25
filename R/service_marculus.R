@@ -99,19 +99,104 @@ MARCULUS_STATUTS <- c(
 #' @param essences Character vector of species labels. Empty is legitimate:
 #'   the phone then shows an empty sheet, and the operator adds the columns.
 #'   That is the honest default while the project carries no species layer.
-#' @param fond,texte Integer ARGB colours applied to every column.
+#'   Each column gets its BD Foret colour ([.marculus_couleurs_essences()]).
 #' @return A length-1 character, `""` for no species.
 #' @noRd
-.marculus_encode_essences <- function(essences,
-                                      fond = -1L, texte = -16777216L) {
+.marculus_encode_essences <- function(essences) {
   essences <- essences[!is.na(essences) & nzchar(essences)]
   if (length(essences) == 0L) return("")
+  coul <- .marculus_couleurs_essences(essences)
   paste(
-    vapply(essences, function(nom) {
-      paste(nom, as.integer(fond), as.integer(texte), sep = MARCULUS_US)
+    vapply(seq_along(essences), function(i) {
+      paste(essences[i], coul$fond[i], coul$texte[i], sep = MARCULUS_US)
     }, character(1)),
     collapse = MARCULUS_RS
   )
+}
+
+#' BD Foret V2 colour of a species name, as Marculus picks them
+#'
+#' @description
+#' Marculus colours each column of its marking sheet from the BD Foret V2
+#' chromatic reference (`marculus/docs/essences-bdforet-v2.html`,
+#' `Referentiels.COULEURS_ESSENCES_DEFAUT`). Until v0.148.0 the export sent
+#' every species white on black, so the phone showed a uniform sheet. The name
+#' is matched on its family (all oaks share the deciduous-oak blue, all
+#' Scots pines the Scots-pine orange...), with Marculus' own deviation: spruce
+#' takes the red-orange, to part it from fir, which BD Foret groups with it.
+#'
+#' @param nom Character. A species name, accents allowed.
+#' @return A `#RRGGBB` string, or `NA` when the family is not in the reference.
+#' @noRd
+.marculus_couleur_bdforet <- function(nom) {
+  n <- tolower(iconv(nom, to = "ASCII//TRANSLIT"))
+  regles <- list(
+    c("chene vert|chene-liege|chene liege|chene kermes", "#AEAD3C"),
+    c("chene",                                         "#2A7FA6"),
+    c("hetre",                                         "#5061B8"),
+    c("chataignier",                                   "#4FA15A"),
+    c("robinier",                                      "#86B23F"),
+    c("peuplier",                                      "#2FA1B0"),
+    c("sapin",                                         "#94304D"),
+    c("epicea",                                        "#C2502F"),
+    c("douglas",                                       "#B23B39"),
+    c("meleze",                                        "#C2502F"),
+    c("pin a crochets|pin cembro|cembro",              "#9E3A66"),
+    c("pin sylvestre",                                 "#D07A2E"),
+    c("laricio|pin noir",                              "#D98E2A"),
+    c("pin maritime",                                  "#E0A52C"),
+    c("pin d.alep|alep",                               "#E8C234"),
+    c("^pin|\\bpin\\b",                              "#C2A877"),
+    c("cedre|if\\b|thuya|cypres|tsuga|genevrier|resineux|conifere", "#AE9381")
+  )
+  for (r in regles) if (grepl(r[1], n)) return(r[2])
+  NA_character_
+}
+
+#' Background and text colours of the exported species, one per column
+#'
+#' Each species takes its BD Foret colour ([.marculus_couleur_bdforet()]); a
+#' species outside the reference takes "Autre feuillu pur". Species that
+#' would then share a colour (sessile and pedunculate oak; ash, maple and
+#' hornbeam, all "other broadleaf") get, from the second one on, a NUANCE of
+#' that family colour - lighter, then darker, then lighter still: two columns
+#' that look alike are columns where a stem lands in the wrong one, but two
+#' oaks should still read as oaks. Text is white on a dark background, black
+#' on a light one (relative luminance, WCAG).
+#'
+#' @param essences Character. Species names, in column order.
+#' @return A list of two integer vectors, `fond` and `texte`: signed 32-bit
+#'   ARGB, as `Color.toArgb()` gives them on Android.
+#' @noRd
+.marculus_couleurs_essences <- function(essences) {
+  famille <- vapply(essences, .marculus_couleur_bdforet, character(1),
+                    USE.NAMES = FALSE)
+  famille[is.na(famille)] <- "#7E8E9C"
+  # Nuance k d'une couleur : melange vers le blanc (k impair) ou le noir
+  # (k pair), de plus en plus fort.
+  nuance <- function(h, k) {
+    if (k == 0L) return(h)
+    v <- grDevices::col2rgb(h)[, 1]
+    t <- min(0.3 * ceiling(k / 2), 0.75)
+    cible <- if (k %% 2L == 1L) 255 else 0
+    v <- round(v + (cible - v) * t)
+    sprintf("#%02X%02X%02X", v[1], v[2], v[3])
+  }
+  rang <- stats::ave(seq_along(famille), famille, FUN = seq_along) - 1L
+  hex <- mapply(nuance, famille, rang, USE.NAMES = FALSE)
+  rgb <- grDevices::col2rgb(hex) / 255
+  lin <- ifelse(rgb <= 0.03928, rgb / 12.92, ((rgb + 0.055) / 1.055)^2.4)
+  lum <- 0.2126 * lin[1, ] + 0.7152 * lin[2, ] + 0.0722 * lin[3, ]
+  argb <- function(h) {
+    v <- 0xFF000000 + strtoi(substr(h, 2, 7), 16L)
+    as.integer(v - 2^32)
+  }
+  list(fond  = vapply(hex, argb, integer(1), USE.NAMES = FALSE),
+       # Texte au meilleur contraste WCAG : blanc (1,05 / (L + 0,05)) ou noir
+       # ((L + 0,05) / 0,05). Un seuil fixe mettait du blanc a 2,6:1 sur le bleu
+       # clair du chene pedoncule.
+       texte = ifelse((lum + 0.05) / 0.05 > 1.05 / (lum + 0.05),
+                      -16777216L, -1L))
 }
 
 #' Human designation of a tenement group, for a context name

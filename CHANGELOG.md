@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.148.1] - 2026-09-25
+
+### Changed
+
+- Export Marculus : chaque essence de la feuille de martelage porte sa
+  couleur BD Foret V2, comme dans Marculus (`Referentiels.kt`). Les essences
+  d'une meme famille recoivent des nuances de la couleur de famille, et le
+  texte est blanc ou noir selon le meilleur contraste WCAG (au moins 4,5:1).
+  Jusqu'ici, toutes les colonnes arrivaient en blanc sur noir.
+
 ## [0.148.0] - 2026-09-25
 
 ### Added
