@@ -373,15 +373,21 @@ mod_action_plan_ui <- function(id) {
                 sidebar = bslib::sidebar(
                   position = "right", open = "always", width = 150,
                   htmltools::tags$strong(i18n$t("action_plan_map_layer")),
+                  # Un « i » par couche : il dit comment la couleur d'une UGF
+                  # est choisie quand elle porte plusieurs actions.
+                  # `info_popover_in_label()` : un clic sur le « i » ne
+                  # selectionne pas la couche.
                   shiny::radioButtons(
                     ns("map_color_by"),
                     label = NULL,
-                    choices = stats::setNames(
-                      c("annee", "type", "priorite"),
-                      c(i18n$t("action_plan_color_year"),
-                        i18n$t("action_plan_color_type"),
-                        i18n$t("action_plan_color_priority"))
-                    ),
+                    choiceValues = c("annee", "type", "priorite"),
+                    choiceNames = lapply(
+                      c("year", "type", "priority"),
+                      function(k) htmltools::tagList(
+                        i18n$t(paste0("action_plan_color_", k)), " ",
+                        info_popover_in_label(
+                          i18n$t(paste0("action_plan_color_", k, "_info")),
+                          placement = "left"))),
                     selected = "annee"
                   )
                 ),
@@ -407,14 +413,18 @@ mod_action_plan_ui <- function(id) {
               )
             ),
             bslib::card_body(
+              # Pas de remplissage : en mode fillable, le tableau s'etirait
+              # sur toute la hauteur et renvoyait le graphique en bas de carte.
+              fillable = FALSE,
               # Read-only banner (S15) -- reactive on auth changes.
               shiny::uiOutput(ns("readonly_banner")),
-              # Cumulative balance sparkline + totals strip on top
+              DT::dataTableOutput(ns("action_table")),
+              # Graphique du bilan cumule + totaux SOUS le tableau : le tableau
+              # passe en premier, le graphique le resume ensuite.
               htmltools::div(
-                class = "border-bottom mb-2 pb-2",
+                class = "border-top mt-2 pt-2",
                 shiny::uiOutput(ns("balance_summary"))
-              ),
-              DT::dataTableOutput(ns("action_table"))
+              )
             )
           )
         )

@@ -513,3 +513,25 @@ test_that("le choix de coloration vit dans une barre laterale droite", {
                            '.*?id="ap-map_color_by"'), h, perl = TRUE))
   expect_match(h, "Couche affich\u00e9e", fixed = TRUE)
 })
+
+test_that("Annee, Type et Priorite portent chacun leur « i » explicatif", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  debut <- regexpr('id="ap-map_color_by"', h, fixed = TRUE)
+  fin <- regexpr("</aside>", substring(h, debut), fixed = TRUE)
+  bloc <- substr(h, debut, debut + fin)
+  # Un « i » par couche, dans le libelle (un clic ne selectionne pas la couche).
+  expect_equal(lengths(regmatches(bloc, gregexpr("<bslib-popover", bloc))), 3L)
+  expect_match(h, "prochaine \u00e9ch\u00e9ance", fixed = TRUE)
+})
+
+test_that("le graphique du bilan est sous le tableau des actions", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  expect_true(regexpr('id="ap-action_table"', h, fixed = TRUE) <
+              regexpr('id="ap-balance_summary"', h, fixed = TRUE))
+})

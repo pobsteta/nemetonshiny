@@ -65,8 +65,8 @@ test_that("run enriches UGF via the service and exposes the result", {
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
-        hydric_only = FALSE, forest_type = "feuillu",
+        map_layer = "indice_priorite_regen",
+        forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
 
@@ -141,8 +141,8 @@ test_that("changing the target species live-re-prioritises without a full run", 
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
-        hydric_only = FALSE, forest_type = "feuillu",
+        map_layer = "indice_priorite_regen",
+        forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       # Sans résultat, changer l'essence ne déclenche aucune re-priorisation.
       session$setInputs(species = "quercus_robur")
@@ -186,8 +186,8 @@ test_that("a read-only project gates the run action before the service", {
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
-        hydric_only = FALSE, forest_type = "feuillu",
+        map_layer = "indice_priorite_regen",
+        forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
       expect_false(ran$hit)        # service jamais appelé en lecture seule
@@ -238,7 +238,7 @@ test_that("opening a project with a cached biljou restores the result", {
     args = list(app_state = as),
     {
       session$setInputs(
-        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        map_layer = "indice_priorite_regen",
         forest_type = "feuillu", year_moyenne = 2018, year_canicule = 2022,
         lai_max = NA, species = "")
 
@@ -503,8 +503,8 @@ test_that("R7 (gel) survives a re-analysis via input$run", {
     nemetonshiny:::mod_regeneration_server,
     args = list(app_state = as),
     {
-      session$setInputs(map_layer = "indice_priorite_regen", filter_coverage = TRUE,
-        hydric_only = FALSE, forest_type = "feuillu", year_moyenne = NA,
+      session$setInputs(map_layer = "indice_priorite_regen",
+        forest_type = "feuillu", year_moyenne = NA,
         year_canicule = NA, lai_max = NA, species = "")
       # Simuler un R7 déjà calculé sur le résultat courant (avant le re-run).
       prior <- units
@@ -740,8 +740,8 @@ test_that("recompute_context purge le cache des 3 vues et re-déclenche le calcu
 
 .regen_sel_inputs <- function(session) {
   session$setInputs(
-    map_layer = "indice_priorite_regen", filter_coverage = TRUE,
-    hydric_only = FALSE, forest_type = "feuillu",
+    map_layer = "indice_priorite_regen",
+    forest_type = "feuillu",
     year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
   session$setInputs(run = 1)
 }
@@ -1177,4 +1177,36 @@ test_that("export_terrain : sans sélection -> toutes les UGF ; sans résultat -
     expect_equal(saved$n, 1L)
     expect_equal(nrow(saved$plots), 3L)
   })
+})
+
+test_that("le tableau reGeneration montre l'UGF lisible, dans le meme ordre", {
+  df <- data.frame(ug_id = c("ug_2", "ug_1", "ug_9"), priorite = c("haute", "basse", "moyenne"),
+                   indice_priorite_regen = c(50.123, 49.5, 51), couverture_pct = c(100, 40, NA))
+  labels <- c(ug_1 = "Forêt A — parcelle 1", ug_2 = "Forêt A — parcelle 2")
+  out <- nemetonshiny:::.regen_table_display(df, labels, nemetonshiny:::get_i18n("fr"))
+  expect_equal(names(out)[1], "UGF")
+  # Libelle quand il existe, identifiant sinon ; ORDRE des lignes inchange.
+  expect_equal(out[[1]], c("Forêt A — parcelle 2", "Forêt A — parcelle 1", "ug_9"))
+  expect_equal(out[["Indice priorité"]], c(50.12, 49.5, 51))
+  expect_true("Couverture (%)" %in% names(out))
+})
+
+test_that("la sidebar reGeneration n'a plus la case « Bilan hydrique seul »", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_regeneration_ui("rg")))
+  expect_false(grepl('id="rg-hydric_only"', h, fixed = TRUE))
+  expect_false(grepl('id="rg-filter_coverage"', h, fixed = TRUE))
+  expect_true(grepl('id="rg-run"', h, fixed = TRUE))
+})
+
+test_that("le tableau des UGF de reGeneration est titre « Tableau des actions »", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_regeneration_ui("rg")))
+  debut <- regexpr('id="rg-table"', h, fixed = TRUE)
+  avant <- substr(h, max(1, debut - 3000), debut)
+  expect_match(avant, "Tableau des actions", fixed = TRUE)
 })

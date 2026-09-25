@@ -489,8 +489,9 @@ mod_regeneration_ui <- function(id) {
       # regional " vit dans l'onglet carte " Contexte regional (E-OBS) ".
       shiny::uiOutput(ns("params_recap")),
 
-      shiny::checkboxInput(ns("hydric_only"), i18n$t("regen_run_hydric_only"),
-        value = FALSE),
+      # La case « Bilan hydrique seul (rapide) » est retiree : l'analyse est
+      # toujours complete (bilan hydrique + microclimat). L'option reste dans
+      # le service (`cfg$hydric_only`), pour un appel programmatique.
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
         class = "btn-primary w-100 regen-calc-btn", icon = bsicons::bs_icon("play-fill")),
 
@@ -654,26 +655,27 @@ mod_regeneration_ui <- function(id) {
               )
             )
           ),
-          # --- Colonne droite : Tableau (moitie haute) + Fiches (moitie basse) --
+          # --- Colonne droite : Tableau (60 %) + Fiches (40 %) --------------------
           # Pile verticale calee sur la hauteur de la carte (70vh). Chaque carte
-          # prend 50 % (flex:1) et fait defiler son contenu (min-height:0 requis
-          # pour qu'un enfant flex puisse retrecir sous son contenu).
+          # fait defiler son contenu (min-height:0 requis pour qu'un enfant flex
+          # puisse retrecir sous son contenu). Le tableau prend 60 % : a 50 %,
+          # ses 5 lignes et sa pagination (sous le tableau, comme le Plan
+          # d'actions) ne tenaient pas sans defiler.
           htmltools::div(
             style = htmltools::css(display = "flex", `flex-direction` = "column",
               height = "70vh", gap = "0.5rem"),
             bslib::card(
               full_screen = TRUE,
-              style = "flex:1 1 0; min-height:0;",
+              style = "flex:3 1 0; min-height:0;",
               bslib::card_header(
                 htmltools::div(
                   class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-                  htmltools::tags$span(i18n$t("regen_table_card_title")),
+                  htmltools::tags$span(i18n$t("regen_table_title")),
+                  # La case « Masquer les UG mal couvertes » est retiree : toutes
+                  # les UG sont affichees, et la colonne « Couverture (%) » dit
+                  # sur quelle part de sa surface chacune a ete modelisee.
                   htmltools::div(
                     class = "d-flex align-items-center gap-3",
-                    htmltools::div(
-                      class = "mb-0",
-                      shiny::checkboxInput(ns("filter_coverage"),
-                        i18n$t("regen_filter_coverage"), value = TRUE)),
                     shiny::actionButton(ns("clear_selection"),
                       i18n$t("regen_clear_selection"),
                       icon = shiny::icon("eraser"),
@@ -684,7 +686,7 @@ mod_regeneration_ui <- function(id) {
             ),
             bslib::card(
               full_screen = TRUE,
-              style = "flex:1 1 0; min-height:0;",
+              style = "flex:2 1 0; min-height:0;",
               bslib::card_header(i18n$t("regen_selected_sheets")),
               bslib::card_body(
                 class = "overflow-auto",
@@ -1063,7 +1065,7 @@ mod_regeneration_server <- function(id, app_state) {
         forest_type = input$forest_type %||% "feuillu",
         lai_max = na_null(regen_params_r()$lai_max),
         species = if (nzchar(input$species %||% "")) input$species else NULL,
-        hydric_only = isTRUE(input$hydric_only)
+        hydric_only = FALSE
       )
 
       # withProgress affiche un overlay immediat (retour visible avant le calcul
@@ -1993,7 +1995,7 @@ mod_regeneration_server <- function(id, app_state) {
             forest_type = input$forest_type %||% "feuillu",
             lai_max = na_null(regen_params_r()$lai_max),
             species = if (nzchar(input$species %||% "")) input$species else NULL,
-            hydric_only = isTRUE(input$hydric_only))
+            hydric_only = FALSE)
           res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
                           error = function(e) NULL)
           if (!is.null(res)) {
@@ -2395,8 +2397,8 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # Source UNIQUE du tableau : memes lignes et meme ordre pour le rendu DT, le
-    # mapping clic->ligne et la/les fiche(s) parcelle. Le filtre couverture agit
-    # ici -> les index de lignes DT restent coherents avec les fiches.
+    # mapping clic->ligne et la/les fiche(s) parcelle. Plus de filtre de
+    # couverture (case retiree) : toutes les UG, couverture en colonne.
     regen_table_df <- shiny::reactive({
       res <- rv$result
       shiny::req(res)
@@ -2404,12 +2406,7 @@ mod_regeneration_server <- function(id, app_state) {
       cols <- intersect(c("ug_id", "priorite", "indice_priorite_regen", "sensibilite",
         "rang_sensibilite", "njstress", "istress", "deb_stress", "rew_min",
         "d_tmax", "d_vpd", "couverture_pct"), names(df))
-      df <- df[, cols, drop = FALSE]
-      if (isTRUE(input$filter_coverage) && "couverture_pct" %in% names(df)) {
-        keep <- is.na(df$couverture_pct) | df$couverture_pct >= 50
-        df <- df[keep, , drop = FALSE]
-      }
-      df
+      df[, cols, drop = FALSE]
     })
 
     # Clic carte -> toggle l'UGF dans la selection + surligne la/les ligne(s)
@@ -2789,23 +2786,52 @@ mod_regeneration_server <- function(id, app_state) {
       .regen_ctx_ombro_plot(cs$clim_rr, cs$clim_t, cs$temp_is_tg, i18n)
     })
 
+    # Libelles lisibles des UGF (« Foret domaniale d'Orleans -- parcelle 1111 »),
+    # comme dans le Plan d'actions : `ug_id` est un identifiant interne.
+    ug_labels_r <- shiny::reactive({
+      project <- app_state$current_project
+      if (is.null(project)) return(character(0))
+      sf <- tryCatch(if (has_ug_data(project)) ug_build_sf(project) else NULL,
+                     error = function(e) NULL)
+      if (!inherits(sf, "sf") || !nrow(sf) || is.null(sf$label)) return(character(0))
+      stats::setNames(as.character(sf$label), as.character(sf$ug_id))
+    })
+
+    # Meme presentation que le tableau du Plan d'actions : UGF lisible en
+    # premiere colonne, recherche en regex en haut, nombre de lignes et
+    # pagination SOUS le tableau, compte a droite. Les lignes restent dans
+    # l'ordre de `regen_table_df()` : le lien ligne -> carte -> fiche en depend.
     output$table <- DT::renderDataTable({
       df <- regen_table_df()
+      display <- .regen_table_display(df, ug_labels_r(), i18n)
       order_col <- if ("rang_sensibilite" %in% names(df)) "rang_sensibilite" else NULL
-      DT::datatable(df, rownames = FALSE,
+      DT::datatable(display, rownames = FALSE,
+        class = "display compact stripe hover nowrap",
         selection = list(mode = "multiple", target = "row"),
-        options = list(pageLength = 15, scrollX = TRUE,
-          # Localisation des libelles DT (boite de recherche, pagination...)
-          language = if (identical(i18n$language, "fr")) {
-            list(
-              search = "Rechercher :",
-              info = "_TOTAL_ UGF",
-              lengthMenu = "Afficher _MENU_ UGF"
-            )
-          } else {
-            list()
-          },
-          order = if (!is.null(order_col)) list(list(which(names(df) == order_col) - 1, "asc")) else list()))
+        options = list(
+          pageLength = 5,
+          lengthMenu = list(c(5, 10, 25, 50, -1),
+                            c("5", "10", "25", "50", i18n$t("regen_dt_all"))),
+          dom = paste0(
+            '<"top"f>rt',
+            '<"d-flex justify-content-between align-items-center pt-2 dt-bottom-row"',
+              '<"d-flex gap-3 align-items-center"lp>',
+              'i',
+            '>'),
+          scrollX = TRUE,
+          search = list(regex = TRUE, caseInsensitive = TRUE, smart = FALSE),
+          columnDefs = list(list(targets = "_all", className = "dt-truncate")),
+          language = list(
+            search = i18n$t("regen_dt_search"),
+            info = i18n$t("regen_dt_info"),
+            infoEmpty = i18n$t("regen_dt_info_empty"),
+            infoFiltered = "",
+            lengthMenu = i18n$t("regen_dt_length"),
+            zeroRecords = i18n$t("regen_dt_zero"),
+            paginate = list(previous = i18n$t("regen_dt_prev"),
+                            `next` = i18n$t("regen_dt_next"))),
+          order = if (!is.null(order_col))
+            list(list(which(names(df) == order_col) - 1, "asc")) else list()))
     })
 
     # ============================================================
@@ -3084,4 +3110,37 @@ mod_regeneration_server <- function(id, app_state) {
 
     list(result = shiny::reactive(rv$result))
   })
+}
+
+
+#' Display version of the reGeneration table
+#'
+#' Same rows, same order as `regen_table_df()` (the row -> map -> sheet link
+#' relies on it); only the presentation changes: the readable UGF label replaces
+#' `ug_id` in the first column (falling back to the id), numbers are rounded,
+#' and column names come from the `regen_col_*` keys.
+#'
+#' @param df The table from `regen_table_df()`.
+#' @param labels Named character vector `ug_id -> label`.
+#' @param i18n An i18n object.
+#' @return A data.frame.
+#' @noRd
+.regen_table_display <- function(df, labels, i18n) {
+  out <- df
+  if ("ug_id" %in% names(out)) {
+    id <- as.character(out$ug_id)
+    lbl <- unname(labels[id])
+    out$ug_id <- ifelse(is.na(lbl) | !nzchar(lbl), id, lbl)
+  }
+  num <- vapply(out, is.numeric, logical(1))
+  out[num] <- lapply(out[num], function(x) round(x, 2))
+  cle <- c(ug_id = "ugid", priorite = "priorite", indice_priorite_regen = "indice",
+           sensibilite = "sensibilite", rang_sensibilite = "rang",
+           njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
+           rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
+           couverture_pct = "couverture")
+  names(out) <- vapply(names(out), function(n)
+    if (n %in% names(cle)) i18n$t(paste0("regen_col_", cle[[n]])) else n,
+    character(1))
+  out
 }

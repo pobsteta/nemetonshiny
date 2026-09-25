@@ -427,6 +427,18 @@ TRANSLATIONS <- list(
   action_plan_generate_all = list(fr = "G\u00e9n\u00e9rer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
   action_plan_map_layer = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
+  action_plan_color_year_info = list(
+    fr = "Chaque UGF prend la couleur de sa prochaine \u00e9ch\u00e9ance : l'ann\u00e9e de r\u00e9alisation la plus proche parmi ses actions (clair = proche, fonc\u00e9 = lointaine). Gris : aucune action dat\u00e9e. Survolez une UGF pour toutes ses ann\u00e9es.",
+    en = "Each unit takes the colour of its next deadline: the nearest year among its actions (light = near, dark = far). Grey: no dated action. Hover a unit for all its years."
+  ),
+  action_plan_color_type_info = list(
+    fr = "Couleur du type d'action de l'UGF. Si elle en porte plusieurs, c'est le premier par ordre alphab\u00e9tique qui colore : survolez l'UGF pour la liste compl\u00e8te. Gris : aucune action.",
+    en = "Colour of the unit's action type. When it has several, the first in alphabetical order is used: hover the unit for the full list. Grey: no action."
+  ),
+  action_plan_color_priority_info = list(
+    fr = "Couleur de la priorit\u00e9 la plus haute parmi les actions de l'UGF : rouge = haute, orange = moyenne, vert = basse. Gris : aucune priorit\u00e9 renseign\u00e9e.",
+    en = "Colour of the highest priority among the unit's actions: red = high, orange = medium, green = low. Grey: no priority set."
+  ),
   action_plan_delete_selected = list(fr = "Supprimer la s\u00e9lection", en = "Delete selection"),
   action_plan_delete_pick = list(
     fr = "S\u00e9lectionnez au moins une action dans le tableau.",
@@ -5385,7 +5397,6 @@ TRANSLATIONS <- list(
   regen_buffer = list(fr = "Buffer contexte r\u00e9gional (km)", en = "Regional context buffer (km)"),
   regen_buffer_help = list(fr = "\u00c9largit l'emprise du contexte climatique (rasters E-OBS) autour de la for\u00eat pour situer la maille dans son environnement r\u00e9gional.", en = "Widens the climate context extent (E-OBS rasters) around the forest to place the plot within its regional setting."),
   regen_run = list(fr = "Lancer l'analyse", en = "Run analysis"),
-  regen_run_hydric_only = list(fr = "Bilan hydrique seul (rapide)", en = "Water balance only (fast)"),
   regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
   regen_restore_loading = list(fr = "Chargement des cartes reG\u00e9n\u00e9ration\u2026", en = "Loading reGeneration maps\u2026"),
   regen_context_opacity = list(fr = "Opacit\u00e9 E-OBS", en = "E-OBS opacity"),
@@ -5724,15 +5735,26 @@ TRANSLATIONS <- list(
     en = "Legend (bottom-right of the map): red = high value, hence a critical situation; green = favourable. The ramp is bounded by the minimum and maximum of the displayed units \u2014 colours are relative to the project, not absolute."
   ),
   regen_table_section = list(fr = "Tableau des UGF", en = "UGF table"),
-  regen_filter_coverage = list(fr = "Masquer les UG mal couvertes", en = "Hide poorly covered units"),
   regen_parcel_sheet = list(fr = "Fiche parcelle", en = "Unit sheet"),
   regen_map_table_view = list(fr = "Carte + Tableau", en = "Map + Table"),
   regen_map_card_title = list(fr = "Carte", en = "Map"),
   regen_table_card_title = list(fr = "UGF", en = "UGF"),
+  regen_table_title = list(fr = "Tableau des actions", en = "Actions table"),
   regen_selected_sheets = list(fr = "Fiches parcelles s\u00e9lectionn\u00e9es", en = "Selected unit sheets"),
   regen_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
   regen_rew_chronicle = list(fr = "Chronique REW (r\u00e9serve en eau)", en = "REW chronicle (water reserve)"),
   regen_col_ugid = list(fr = "UGF", en = "Unit"),
+  regen_dt_search = list(
+    fr = "Rechercher (regex, ex. parcelle 11|haute) :",
+    en = "Search (regex, e.g. parcel 11|high):"
+  ),
+  regen_dt_info = list(fr = "_TOTAL_ UGF", en = "_TOTAL_ unit(s)"),
+  regen_dt_info_empty = list(fr = "0 UGF", en = "0 units"),
+  regen_dt_length = list(fr = "Afficher _MENU_", en = "Show _MENU_"),
+  regen_dt_zero = list(fr = "Aucune UGF ne correspond.", en = "No matching unit."),
+  regen_dt_prev = list(fr = "Pr\u00e9c.", en = "Prev."),
+  regen_dt_next = list(fr = "Suiv.", en = "Next"),
+  regen_dt_all = list(fr = "Toutes", en = "All"),
   regen_col_priorite = list(fr = "Priorit\u00e9", en = "Priority"),
   regen_col_indice = list(fr = "Indice priorit\u00e9", en = "Priority index"),
   regen_col_sensibilite = list(fr = "Sensibilit\u00e9", en = "Sensitivity"),
