@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.149.0\] - 2026-09-25
+
+Jalon mineur : le retour Marculus est lisible dans le Plan d’actions.
+
+### Changed
+
+- Un contexte revenu avec des tiges designees fait passer son action a «
+  Realisee » dans le Kanban.
+- La fiche Kanban affiche, sous le commentaire, la date du martelage, le
+  nombre de tiges designees et, parmi elles, les tiges « Biodiversite »
+  (`quantite$nb_tiges_biodiversite`, net des annulations).
+- La synthese d’import prend la forme d’une feuille (une ligne par
+  essence, une colonne par classe, des totaux) dans une fenetre
+  defilante. Le bilan de l’import s’y affiche, au lieu d’un toast qui
+  masquait « Fermer ».
+
+### Fixed
+
+- Import Marculus : un fichier vide (0 octet) est signale comme vide, et
+  non comme « illisible ». Le message d’erreur cite aussi le CSV au
+  format 2, et les messages donnent le nom d’origine des fichiers.
+
 ## \[0.148.3\] - 2026-09-25
 
 ### Fixed

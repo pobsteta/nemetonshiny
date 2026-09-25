@@ -1,5 +1,54 @@
 # Changelog
 
+## nemetonshiny 0.149.0 (2026-09-25)
+
+#### Changed — retour Marculus : fiche Kanban, statut realise, synthese lisible
+
+- **Le martelage fait passer l’action a « Realisee »** dans le Kanban :
+  un contexte revenu avec au moins une tige designee (compte net \> 0)
+  change de colonne, meme si le telephone l’a laisse en « Planifiee ».
+  Un contexte sans tige garde le statut du telephone.
+- **La fiche Kanban montre le martelage** sous le commentaire, par
+  exemple « Martelage du 15/10/2027 · 10 tige(s) designee(s) · dont 1
+  Biodiversite ». Le compte « Biodiversite » est celui des tiges de
+  qualite `Biodiversite` (arbres-habitats, a cavites, bois mort sur
+  pied), net des annulations. Il est garde dans l’action
+  (`quantite$nb_tiges_biodiversite`) et expose par
+  `actions_to_dataframe()`, comme `date_martelage`. La ligne n’apparait
+  qu’apres un martelage : un nombre de tiges seul peut venir du plan IA.
+- **La synthese ne deborde plus de la page** : elle prend la forme de la
+  feuille de martelage, avec une ligne par essence, une colonne par
+  classe et des totaux, au lieu d’une ligne par couple essence x classe
+  (25 lignes pour une eclaircie). Elle defile a l’interieur de la
+  fenetre (`modal-dialog-scrollable`), et le bouton « Fermer » reste
+  visible. Le bilan de l’import s’affiche dans la fenetre : en toast, il
+  recouvrait « Fermer ».
+
+Verifie sous Chrome headless sur une copie de « Reconfort », dans une
+fenetre de 900 px : la fenetre s’arrete a 839 px, aucun toast ne la
+recouvre, et la fiche importee passe en « Realisee » avec sa ligne de
+martelage.
+
+#### Fixed — import Marculus : un fichier vide est dit vide
+
+Deux televersements de CSV, le 2026-09-25, ont affiche « Fichier
+illisible : ce n’est pas un export Marculus (.marsync ou sauvegarde
+JSON) ». Les fichiers recus par l’app faisaient **0 octet** : le contenu
+manquait des l’origine, par exemple a cause d’une copie depuis le
+telephone interrompue ou d’une synchronisation pas terminee. Le format
+n’etait donc pas en cause. Le message envoyait pourtant chercher de ce
+cote, et ne citait meme pas le CSV.
+
+- Un fichier vide recoit maintenant son propre message : « Fichier vide
+  (0 octet), rien a importer : verifiez qu’il a bien ete copie depuis le
+  telephone ».
+- Le message « illisible » cite les trois formats acceptes : `.marsync`,
+  sauvegarde JSON et CSV de contexte au format 2.
+- Les messages donnent le **nom d’origine** du fichier, et non le nom
+  temporaire que Shiny lui attribue (`0.csv`).
+
+Un test couvre le cas du fichier vide.
+
 ## nemetonshiny 0.148.3 (2026-09-25)
 
 #### Fixed — import CSV Marculus : la qualite du fix sous une seule forme

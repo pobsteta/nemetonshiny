@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.148.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.149.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,27 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.149.0" id="nemetonshiny-01490-2026-09-25">nemetonshiny 0.149.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01490-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="changed--retour-marculus--fiche-kanban-statut-realise-synthese-lisible-0-149-0">Changed — retour Marculus : fiche Kanban, statut realise, synthese lisible<a class="anchor" aria-label="anchor" href="#changed--retour-marculus--fiche-kanban-statut-realise-synthese-lisible-0-149-0"></a></h4>
+<ul><li>
+<strong>Le martelage fait passer l’action a « Realisee »</strong> dans le Kanban : un contexte revenu avec au moins une tige designee (compte net &gt; 0) change de colonne, meme si le telephone l’a laisse en « Planifiee ». Un contexte sans tige garde le statut du telephone.</li>
+<li>
+<strong>La fiche Kanban montre le martelage</strong> sous le commentaire, par exemple « Martelage du 15/10/2027 · 10 tige(s) designee(s) · dont 1 Biodiversite ». Le compte « Biodiversite » est celui des tiges de qualite <code>Biodiversite</code> (arbres-habitats, a cavites, bois mort sur pied), net des annulations. Il est garde dans l’action (<code>quantite$nb_tiges_biodiversite</code>) et expose par <code>actions_to_dataframe()</code>, comme <code>date_martelage</code>. La ligne n’apparait qu’apres un martelage : un nombre de tiges seul peut venir du plan IA.</li>
+<li>
+<strong>La synthese ne deborde plus de la page</strong> : elle prend la forme de la feuille de martelage, avec une ligne par essence, une colonne par classe et des totaux, au lieu d’une ligne par couple essence x classe (25 lignes pour une eclaircie). Elle defile a l’interieur de la fenetre (<code>modal-dialog-scrollable</code>), et le bouton « Fermer » reste visible. Le bilan de l’import s’affiche dans la fenetre : en toast, il recouvrait « Fermer ».</li>
+</ul><p>Verifie sous Chrome headless sur une copie de « Reconfort », dans une fenetre de 900 px : la fenetre s’arrete a 839 px, aucun toast ne la recouvre, et la fiche importee passe en « Realisee » avec sa ligne de martelage.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--import-marculus--un-fichier-vide-est-dit-vide-0-149-0">Fixed — import Marculus : un fichier vide est dit vide<a class="anchor" aria-label="anchor" href="#fixed--import-marculus--un-fichier-vide-est-dit-vide-0-149-0"></a></h4>
+<p>Deux televersements de CSV, le 2026-09-25, ont affiche « Fichier illisible : ce n’est pas un export Marculus (.marsync ou sauvegarde JSON) ». Les fichiers recus par l’app faisaient <strong>0 octet</strong> : le contenu manquait des l’origine, par exemple a cause d’une copie depuis le telephone interrompue ou d’une synchronisation pas terminee. Le format n’etait donc pas en cause. Le message envoyait pourtant chercher de ce cote, et ne citait meme pas le CSV.</p>
+<ul><li>Un fichier vide recoit maintenant son propre message : « Fichier vide (0 octet), rien a importer : verifiez qu’il a bien ete copie depuis le telephone ».</li>
+<li>Le message « illisible » cite les trois formats acceptes : <code>.marsync</code>, sauvegarde JSON et CSV de contexte au format 2.</li>
+<li>Les messages donnent le <strong>nom d’origine</strong> du fichier, et non le nom temporaire que Shiny lui attribue (<code>0.csv</code>).</li>
+</ul><p>Un test couvre le cas du fichier vide.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.148.3" id="nemetonshiny-01483-2026-09-25">nemetonshiny 0.148.3 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01483-2026-09-25"></a></h2>
 <div class="section level4">
