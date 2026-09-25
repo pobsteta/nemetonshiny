@@ -1,4 +1,4 @@
-# nemetonshiny 0.151.3.9001 (2026-09-25)
+# nemetonshiny 0.151.4 (2026-09-25)
 
 ### Added — Plan d'actions : fiches des UGF selectionnees sous le graphique
 
