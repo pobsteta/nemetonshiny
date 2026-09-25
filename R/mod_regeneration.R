@@ -489,8 +489,9 @@ mod_regeneration_ui <- function(id) {
       # regional " vit dans l'onglet carte " Contexte regional (E-OBS) ".
       shiny::uiOutput(ns("params_recap")),
 
-      shiny::checkboxInput(ns("hydric_only"), i18n$t("regen_run_hydric_only"),
-        value = FALSE),
+      # La case « Bilan hydrique seul (rapide) » est retiree : l'analyse est
+      # toujours complete (bilan hydrique + microclimat). L'option reste dans
+      # le service (`cfg$hydric_only`), pour un appel programmatique.
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
         class = "btn-primary w-100 regen-calc-btn", icon = bsicons::bs_icon("play-fill")),
 
@@ -1064,7 +1065,7 @@ mod_regeneration_server <- function(id, app_state) {
         forest_type = input$forest_type %||% "feuillu",
         lai_max = na_null(regen_params_r()$lai_max),
         species = if (nzchar(input$species %||% "")) input$species else NULL,
-        hydric_only = isTRUE(input$hydric_only)
+        hydric_only = FALSE
       )
 
       # withProgress affiche un overlay immediat (retour visible avant le calcul
@@ -1994,7 +1995,7 @@ mod_regeneration_server <- function(id, app_state) {
             forest_type = input$forest_type %||% "feuillu",
             lai_max = na_null(regen_params_r()$lai_max),
             species = if (nzchar(input$species %||% "")) input$species else NULL,
-            hydric_only = isTRUE(input$hydric_only))
+            hydric_only = FALSE)
           res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
                           error = function(e) NULL)
           if (!is.null(res)) {

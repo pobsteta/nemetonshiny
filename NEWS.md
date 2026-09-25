@@ -1,5 +1,25 @@
 # nemetonshiny 0.151.2.9001 (2026-09-25)
 
+### Changed — Plan d'actions : le graphique du bilan passe sous le tableau
+
+Dans la carte « Tableau des actions », la courbe du bilan cumule et les
+totaux (cout, revenu, bilan, surface) etaient au-dessus du tableau. Ils sont
+maintenant **sous** le tableau, juste apres la pagination. Le corps de la
+carte n'est plus en mode « remplissage » : sinon, le tableau s'etirait sur
+toute la hauteur et renvoyait le graphique tout en bas de la carte. Verifie
+sous Chrome headless (pagination jusqu'a 521 px, totaux a partir de 538 px) ;
+un test verifie l'ordre tableau puis graphique.
+
+### Removed — reGeneration : la case « Bilan hydrique seul (rapide) »
+
+La case disparait de la barre laterale gauche : l'analyse lancee depuis
+l'onglet est toujours complete (bilan hydrique et microclimat), comme elle
+l'etait deja avec la case decochee, le reglage par defaut. L'option reste
+dans le service (`run_regeneration(cfg = list(hydric_only = TRUE))`) pour un
+appel programmatique ; ses tests sont inchanges. La cle i18n
+`regen_run_hydric_only` est supprimee.
+
+
 ### Changed — reGeneration : le tableau des UGF comme celui du Plan d'actions
 
 Dans reGeneration, sous-onglet « Carte + Tableau », le tableau des UGF adopte la

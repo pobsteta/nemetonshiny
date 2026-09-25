@@ -5397,7 +5397,6 @@ TRANSLATIONS <- list(
   regen_buffer = list(fr = "Buffer contexte r\u00e9gional (km)", en = "Regional context buffer (km)"),
   regen_buffer_help = list(fr = "\u00c9largit l'emprise du contexte climatique (rasters E-OBS) autour de la for\u00eat pour situer la maille dans son environnement r\u00e9gional.", en = "Widens the climate context extent (E-OBS rasters) around the forest to place the plot within its regional setting."),
   regen_run = list(fr = "Lancer l'analyse", en = "Run analysis"),
-  regen_run_hydric_only = list(fr = "Bilan hydrique seul (rapide)", en = "Water balance only (fast)"),
   regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
   regen_restore_loading = list(fr = "Chargement des cartes reG\u00e9n\u00e9ration\u2026", en = "Loading reGeneration maps\u2026"),
   regen_context_opacity = list(fr = "Opacit\u00e9 E-OBS", en = "E-OBS opacity"),

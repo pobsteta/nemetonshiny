@@ -66,7 +66,7 @@ test_that("run enriches UGF via the service and exposes the result", {
     {
       session$setInputs(
         map_layer = "indice_priorite_regen",
-        hydric_only = FALSE, forest_type = "feuillu",
+        forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
 
@@ -142,7 +142,7 @@ test_that("changing the target species live-re-prioritises without a full run", 
     {
       session$setInputs(
         map_layer = "indice_priorite_regen",
-        hydric_only = FALSE, forest_type = "feuillu",
+        forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       # Sans résultat, changer l'essence ne déclenche aucune re-priorisation.
       session$setInputs(species = "quercus_robur")
@@ -187,7 +187,7 @@ test_that("a read-only project gates the run action before the service", {
     {
       session$setInputs(
         map_layer = "indice_priorite_regen",
-        hydric_only = FALSE, forest_type = "feuillu",
+        forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
       expect_false(ran$hit)        # service jamais appelé en lecture seule
@@ -504,7 +504,7 @@ test_that("R7 (gel) survives a re-analysis via input$run", {
     args = list(app_state = as),
     {
       session$setInputs(map_layer = "indice_priorite_regen",
-        hydric_only = FALSE, forest_type = "feuillu", year_moyenne = NA,
+        forest_type = "feuillu", year_moyenne = NA,
         year_canicule = NA, lai_max = NA, species = "")
       # Simuler un R7 déjà calculé sur le résultat courant (avant le re-run).
       prior <- units
@@ -741,7 +741,7 @@ test_that("recompute_context purge le cache des 3 vues et re-déclenche le calcu
 .regen_sel_inputs <- function(session) {
   session$setInputs(
     map_layer = "indice_priorite_regen",
-    hydric_only = FALSE, forest_type = "feuillu",
+    forest_type = "feuillu",
     year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
   session$setInputs(run = 1)
 }
@@ -1189,4 +1189,14 @@ test_that("le tableau reGeneration montre l'UGF lisible, dans le meme ordre", {
   expect_equal(out[[1]], c("Forêt A — parcelle 2", "Forêt A — parcelle 1", "ug_9"))
   expect_equal(out[["Indice priorité"]], c(50.12, 49.5, 51))
   expect_true("Couverture (%)" %in% names(out))
+})
+
+test_that("la sidebar reGeneration n'a plus la case « Bilan hydrique seul »", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_regeneration_ui("rg")))
+  expect_false(grepl('id="rg-hydric_only"', h, fixed = TRUE))
+  expect_false(grepl('id="rg-filter_coverage"', h, fixed = TRUE))
+  expect_true(grepl('id="rg-run"', h, fixed = TRUE))
 })

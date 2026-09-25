@@ -413,14 +413,18 @@ mod_action_plan_ui <- function(id) {
               )
             ),
             bslib::card_body(
+              # Pas de remplissage : en mode fillable, le tableau s'etirait
+              # sur toute la hauteur et renvoyait le graphique en bas de carte.
+              fillable = FALSE,
               # Read-only banner (S15) -- reactive on auth changes.
               shiny::uiOutput(ns("readonly_banner")),
-              # Cumulative balance sparkline + totals strip on top
+              DT::dataTableOutput(ns("action_table")),
+              # Graphique du bilan cumule + totaux SOUS le tableau : le tableau
+              # passe en premier, le graphique le resume ensuite.
               htmltools::div(
-                class = "border-bottom mb-2 pb-2",
+                class = "border-top mt-2 pt-2",
                 shiny::uiOutput(ns("balance_summary"))
-              ),
-              DT::dataTableOutput(ns("action_table"))
+              )
             )
           )
         )
