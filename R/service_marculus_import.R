@@ -262,6 +262,7 @@ MARCULUS_QUALITE_FIX <- c(
 .marculus_tiges_union <- function(tiges) {
   tiges <- .marculus_tiges_normaliser(tiges)
   if (nrow(tiges) < 2L) return(tiges)
+  # `order()` est stable : a `modifie` egal, la premiere ligne passee gagne.
   tiges <- tiges[order(-tiges$modifie), , drop = FALSE]
   tiges <- tiges[!duplicated(tiges$uuid), , drop = FALSE]
   tiges[order(tiges$horodatage), , drop = FALSE]
@@ -498,7 +499,11 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
   if (nrow(lu$contextes) == 0L) return(vide)
 
   avant <- marculus_charger_tiges(project_id)
-  tiges <- .marculus_tiges_union(rbind(avant, lu$tiges))
+  # Les tiges TOUT JUSTE lues passent devant : a `modifie` egal (meme tige
+  # reexportee), c'est la version importee qui gagne. Dans l'autre ordre, un
+  # CSV au format 3 reimporte apres un format 2 laissait les tiges... sans
+  # leurs volumes (constate sur « Reconfort », 2026-09-25).
+  tiges <- .marculus_tiges_union(rbind(lu$tiges, avant))
   n_nouvelles <- length(setdiff(tiges$uuid, avant$uuid))
 
   plan <- load_action_plan(project_id)
