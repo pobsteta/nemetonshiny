@@ -432,3 +432,30 @@ test_that("importer un .marsync met le plan et les tiges a jour", {
     }
   )
 })
+
+test_that("la synthese Marculus est une feuille : une ligne par essence", {
+  # Une ligne par couple essence x classe faisait deborder la fenetre
+  # (25 lignes pour une seule eclaircie de « Reconfort »).
+  sub <- data.frame(essence = c("Hêtre", "Hêtre", "Sapin", "Hêtre"),
+                    classe = c(20L, 40L, 20L, 80L), tiges = c(1L, 4L, 2L, 1L))
+  h <- as.character(nemetonshiny:::.marculus_synthese_table(
+    sub, nemetonshiny:::get_i18n("fr")))
+  expect_equal(lengths(regmatches(h, gregexpr("<th scope=\"row\">", h))), 2L)
+  expect_match(h, "table-responsive", fixed = TRUE)
+  # Totaux : 6 pour le hetre, 2 pour le sapin, 8 au total.
+  expect_match(h, ">6</td>", fixed = TRUE)
+  expect_match(h, ">8</td>", fixed = TRUE)
+})
+
+test_that("la fiche Kanban affiche le martelage sous le commentaire", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  row <- list(date_martelage = "2027-10-15", nb_tiges = 42L,
+              nb_tiges_biodiversite = 3L)
+  h <- as.character(nemetonshiny:::.kanban_ligne_martelage(row, i18n))
+  expect_match(h, "Martelage du 15/10/2027", fixed = TRUE)
+  expect_match(h, "42 tige(s) désignée(s)", fixed = TRUE)
+  expect_match(h, "dont 3 Biodiversité", fixed = TRUE)
+  # Rien sans martelage : un nombre de tiges seul peut venir du plan IA.
+  expect_null(nemetonshiny:::.kanban_ligne_martelage(
+    list(date_martelage = NA, nb_tiges = 12L, nb_tiges_biodiversite = NA), i18n))
+})

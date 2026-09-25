@@ -295,6 +295,26 @@ marculus_totaux <- function(tiges) {
   agg[order(agg$contexteId, agg$essence, agg$classe), , drop = FALSE]
 }
 
+#' Net number of "Biodiversite" stems per context
+#'
+#' Stems whose tree quality is `Biodiversite` (`Referentiels.QUALITE_BIODIVERSITE`
+#' in Marculus: habitat trees, cavities, standing dead wood), net of
+#' cancellations carrying the same quality. Accents and case are ignored.
+#'
+#' @param tiges A stems data.frame.
+#' @return A named integer vector (names: context ids), zero entries kept out.
+#' @noRd
+marculus_nb_biodiversite <- function(tiges) {
+  tiges <- .marculus_tiges_normaliser(tiges)
+  q <- tolower(iconv(tiges$qualiteArbre, to = "ASCII//TRANSLIT"))
+  bio <- tiges[!is.na(q) & q == "biodiversite", , drop = FALSE]
+  if (nrow(bio) == 0L) return(stats::setNames(integer(0), character(0)))
+  delta <- ifelse(toupper(bio$action) == "ANNULATION", -1L, 1L) *
+    as.integer(bio$quantite)
+  n <- tapply(delta, bio$contexteId, sum)
+  stats::setNames(as.integer(n), names(n))
+}
+
 #' Apply returned Marculus contexts to an action plan
 #'
 #' For each context whose id is an action of the plan: status, marking date
@@ -317,6 +337,7 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
   horizon <- as.integer(plan$horizon_annees %||% 20L)
   totaux <- marculus_totaux(tiges)
   n_par_ctx <- if (nrow(totaux)) tapply(totaux$tiges, totaux$contexteId, sum) else integer(0)
+  n_biodiv <- marculus_nb_biodiversite(tiges)
 
   maj <- character(); orphelins <- 0L
   for (i in seq_len(nrow(contextes))) {
@@ -327,6 +348,10 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
 
     st <- unname(MARCULUS_STATUTS_RETOUR[toupper(contextes$statut[i] %||% "")])
     if (length(st) == 1L && !is.na(st)) upd$statut <- st
+    # Des tiges designees = le martelage a eu lieu : l'action passe a
+    # « realisee » dans le Kanban, quel que soit le statut laisse sur le
+    # telephone (l'operateur y change rarement la colonne du contexte).
+    if (isTRUE(n_par_ctx[cid] > 0L)) upd$statut <- "realisee"
 
     dm <- contextes$dateMartelage[i]
     if (!is.na(dm)) {
@@ -339,6 +364,8 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
     if (cid %in% names(n_par_ctx)) {
       q <- action$quantite %||% list()
       q$nb_tiges <- as.integer(n_par_ctx[[cid]])
+      q$nb_tiges_biodiversite <- as.integer(n_biodiv[cid] %||% 0L)
+      if (is.na(q$nb_tiges_biodiversite)) q$nb_tiges_biodiversite <- 0L
       upd$quantite <- q
     }
 

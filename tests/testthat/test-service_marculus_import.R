@@ -220,3 +220,36 @@ test_that("un fichier vide est signale comme vide, pas comme illisible", {
   expect_length(lu$illisibles, 0L)
   expect_length(lu$csv_anciens, 0L)
 })
+
+test_that("des tiges martelees font passer l'action a realisee", {
+  # Le telephone laisse souvent le contexte en PLANIFIEE : le martelage fait,
+  # l'action doit quitter la colonne dans le Kanban.
+  lu <- list(contextes = data.frame(id = "a1", nom = "A", statut = "PLANIFIEE",
+                                    dateMartelage = NA, modifie = 1,
+                                    stringsAsFactors = FALSE),
+             tiges = .tiges(c("u1", "u2")))
+  r <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu$contextes,
+                                                lu$tiges, annee_base = 2026L)
+  expect_equal(r$plan$actions[[1]]$statut, "realisee")
+  # Sans aucune tige, le statut du telephone est garde.
+  lu$tiges <- nemetonshiny:::.marculus_tiges_vides()
+  r2 <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu$contextes,
+                                                 lu$tiges, annee_base = 2026L)
+  expect_equal(r2$plan$actions[[1]]$statut, "planifiee")
+})
+
+test_that("les tiges Biodiversite sont comptees, nettes des annulations", {
+  t <- rbind(.tiges(c("u1", "u2", "u3")), .tiges("u4", action = "ANNULATION"))
+  t$qualiteArbre <- c("Biodiversité", "biodiversite", "Sec", "Biodiversité")
+  expect_equal(nemetonshiny:::marculus_nb_biodiversite(t)[["a1"]], 1L)
+  lu <- list(contextes = data.frame(id = "a1", nom = "A", statut = "REALISEE",
+                                    dateMartelage = NA, modifie = 1,
+                                    stringsAsFactors = FALSE), tiges = t)
+  r <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu$contextes,
+                                                lu$tiges, annee_base = 2026L)
+  q <- r$plan$actions[[1]]$quantite
+  expect_equal(q$nb_tiges, 2L)
+  expect_equal(q$nb_tiges_biodiversite, 1L)
+  df <- nemetonshiny:::actions_to_dataframe(r$plan)
+  expect_equal(df$nb_tiges_biodiversite, 1L)
+})

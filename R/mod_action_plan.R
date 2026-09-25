@@ -1416,7 +1416,8 @@ mod_action_plan_server <- function(id, app_state) {
                 style = "white-space: normal; word-break: break-word;",
                 commentaire
               )
-            }
+            },
+            .kanban_ligne_martelage(row, i18n)
           )
         )
       }
@@ -1946,15 +1947,12 @@ mod_action_plan_server <- function(id, app_state) {
       }
       plan_rv(res$plan)
       marculus_tiges_rv(marculus_charger_tiges(project$id))
+      bilan <- sprintf(i18n$t("marculus_import_ok_fmt"), res$n_actions,
+                       res$n_tiges_nouvelles, res$n_tiges)
       if (res$n_actions == 0L && res$n_tiges_nouvelles == 0L &&
           res$n_orphelins > 0L) {
         shiny::showNotification(i18n$t("marculus_import_vide"),
                                 type = "warning", duration = 10)
-      } else {
-        shiny::showNotification(
-          sprintf(i18n$t("marculus_import_ok_fmt"), res$n_actions,
-                  res$n_tiges_nouvelles, res$n_tiges),
-          type = "message", duration = 10)
       }
       if (res$n_orphelins > 0L) {
         shiny::showNotification(
@@ -1967,17 +1965,22 @@ mod_action_plan_server <- function(id, app_state) {
                 paste(nom_origine(res$illisibles), collapse = ", ")),
           type = "warning", duration = 10)
       }
-      .marculus_montrer_synthese(i18n)
+      # Le bilan va DANS la synthese : en toast, il recouvrait le bouton
+      # « Fermer » de la fenetre, en bas a droite. Sans synthese a montrer,
+      # il reste un toast.
+      if (!isTRUE(.marculus_montrer_synthese(i18n, bilan))) {
+        shiny::showNotification(bilan, type = "message", duration = 10)
+      }
     })
 
     # Synthese : tiges par essence et par classe, action par action - la
     # feuille de martelage du telephone, relue dans l'app.
-    .marculus_montrer_synthese <- function(i18n) {
+    .marculus_montrer_synthese <- function(i18n, bilan = NULL) {
       tot <- marculus_totaux(marculus_tiges_rv())
       plan <- plan_rv()
       ids <- vapply(plan$actions %||% list(), function(a) a$id %||% "", "")
       tot <- tot[tot$contexteId %in% ids, , drop = FALSE]
-      if (nrow(tot) == 0L) return()
+      if (nrow(tot) == 0L) return(invisible(FALSE))
       df_act <- actions_df_all()
       blocs <- lapply(unique(tot$contexteId), function(cid) {
         sub <- tot[tot$contexteId == cid, , drop = FALSE]
@@ -1990,21 +1993,18 @@ mod_action_plan_server <- function(id, app_state) {
           htmltools::tags$h6(class = "mt-3", titre, " ",
             htmltools::tags$span(class = "badge bg-secondary",
               sprintf(i18n$t("marculus_synthese_total_fmt"), sum(sub$tiges)))),
-          htmltools::tags$table(
-            class = "table table-sm table-striped mb-1",
-            htmltools::tags$thead(htmltools::tags$tr(
-              htmltools::tags$th(i18n$t("marculus_col_essence")),
-              htmltools::tags$th(i18n$t("marculus_col_classe")),
-              htmltools::tags$th(class = "text-end", i18n$t("marculus_col_tiges")))),
-            htmltools::tags$tbody(lapply(seq_len(nrow(sub)), function(i) {
-              htmltools::tags$tr(htmltools::tags$td(sub$essence[i]),
-                                 htmltools::tags$td(sub$classe[i]),
-                                 htmltools::tags$td(class = "text-end", sub$tiges[i]))
-            }))))
+          .marculus_synthese_table(sub, i18n))
       })
-      shiny::showModal(shiny::modalDialog(
-        title = i18n$t("marculus_synthese_title"), size = "l", easyClose = TRUE,
-        blocs, footer = shiny::modalButton(i18n$t("close"))))
+      # Defilement DANS la fenetre (`modal-dialog-scrollable`) : titre et
+      # « Fermer » restent visibles quel que soit le nombre d'actions.
+      m <- shiny::modalDialog(
+        title = i18n$t("marculus_synthese_title"), size = "xl", easyClose = TRUE,
+        if (!is.null(bilan))
+          htmltools::div(class = "alert alert-success py-2 mb-2", bilan),
+        blocs, footer = shiny::modalButton(i18n$t("close")))
+      shiny::showModal(htmltools::tagQuery(m)$find(".modal-dialog")$
+                         addClass("modal-dialog-scrollable")$allTags())
+      invisible(TRUE)
     }
 
     # Couche des tiges geolocalisees (les annulations, qui ne designent pas
@@ -2950,4 +2950,88 @@ coerce_table_value <- function(field, raw) {
     return(suppressWarnings(as.numeric(raw)))
   }
   as.character(raw)
+}
+
+
+#' Marking summary of one action, as the phone's marking sheet
+#'
+#' One row per species, one column per diameter class, net stem counts in the
+#' cells, a total per species and per class. The first version listed one row
+#' per species x class pair: on "Reconfort" a single thinning ran to 25 rows,
+#' and the dialog overflowed the page.
+#'
+#' @param sub A data.frame `essence, classe, tiges` (one action).
+#' @param i18n An i18n object.
+#' @return A `div` wrapping the table, horizontally scrollable.
+#' @noRd
+.marculus_synthese_table <- function(sub, i18n) {
+  classes <- sort(unique(as.integer(sub$classe)))
+  essences <- unique(sub$essence[order(sub$essence)])
+  cell <- function(e, c) {
+    v <- sub$tiges[sub$essence == e & sub$classe == c]
+    if (length(v)) sum(v) else NA_integer_
+  }
+  num <- function(v, gras = FALSE) {
+    htmltools::tags$td(class = paste("text-end", if (gras) "fw-semibold"),
+                       if (is.na(v)) "" else v)
+  }
+  lignes <- lapply(essences, function(e) {
+    vals <- vapply(classes, function(c) cell(e, c), integer(1))
+    htmltools::tags$tr(htmltools::tags$th(scope = "row", e),
+                       lapply(vals, num),
+                       num(sum(vals, na.rm = TRUE), gras = TRUE))
+  })
+  tot_col <- vapply(classes, function(c) sum(sub$tiges[sub$classe == c]), integer(1))
+  htmltools::div(
+    class = "table-responsive",
+    htmltools::tags$table(
+      class = "table table-sm table-striped table-bordered mb-1",
+      htmltools::tags$thead(htmltools::tags$tr(
+        htmltools::tags$th(i18n$t("marculus_col_essence")),
+        lapply(classes, function(c) htmltools::tags$th(class = "text-end", c)),
+        htmltools::tags$th(class = "text-end", i18n$t("marculus_col_total")))),
+      htmltools::tags$tbody(lignes),
+      htmltools::tags$tfoot(htmltools::tags$tr(
+        htmltools::tags$th(i18n$t("marculus_col_total")),
+        lapply(tot_col, num, gras = TRUE),
+        num(sum(tot_col), gras = TRUE)))))
+}
+
+
+#' Marking line of a Kanban card, under the comment
+#'
+#' Shown once a Marculus return has been imported: marking date, number of
+#' designated stems (net of cancellations) and, among them, the
+#' "Biodiversite" ones. Nothing when the action carries no marking date and
+#' no Biodiversite count - a stem count alone may come from the AI plan, not
+#' from a marking.
+#'
+#' @param row One row of `actions_to_dataframe()`.
+#' @param i18n An i18n object.
+#' @return A `div`, or `NULL`.
+#' @noRd
+.kanban_ligne_martelage <- function(row, i18n) {
+  dm  <- suppressWarnings(as.Date(row$date_martelage %||% NA_character_))
+  bio <- suppressWarnings(as.integer(row$nb_tiges_biodiversite %||% NA_integer_))
+  n   <- suppressWarnings(as.integer(row$nb_tiges %||% NA_integer_))
+  if (length(dm) != 1L) dm <- NA
+  if (is.na(dm) && (length(bio) != 1L || is.na(bio))) return(NULL)
+  morceaux <- character()
+  if (!is.na(dm)) {
+    fmt <- if (identical(i18n$language, "fr")) "%d/%m/%Y" else "%Y-%m-%d"
+    morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_date_fmt"),
+                                    format(dm, fmt)))
+  }
+  if (length(n) == 1L && !is.na(n)) {
+    morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_tiges_fmt"), n))
+    if (length(bio) == 1L && !is.na(bio)) {
+      morceaux <- c(morceaux, sprintf(i18n$t("marculus_fiche_biodiv_fmt"), bio))
+    }
+  }
+  htmltools::div(
+    class = "small mt-1 kanban-card-martelage",
+    style = "white-space: normal;",
+    bsicons::bs_icon("tree", class = "me-1"),
+    paste(morceaux, collapse = " \u00b7 ")
+  )
 }

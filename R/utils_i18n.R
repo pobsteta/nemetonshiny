@@ -624,8 +624,18 @@ TRANSLATIONS <- list(
   marculus_col_essence = list(fr = "Essence", en = "Species"),
   marculus_col_classe = list(fr = "Classe", en = "Class"),
   marculus_col_tiges = list(fr = "Tiges", en = "Stems"),
+  marculus_col_total = list(fr = "Total", en = "Total"),
   marculus_col_hauteur = list(fr = "Hauteur", en = "Height"),
   marculus_col_qualite = list(fr = "Qualit\u00e9", en = "Quality"),
+  marculus_fiche_date_fmt = list(fr = "Martelage du %s", en = "Marked on %s"),
+  marculus_fiche_tiges_fmt = list(
+    fr = "%d tige(s) d\u00e9sign\u00e9e(s)",
+    en = "%d stem(s) designated"
+  ),
+  marculus_fiche_biodiv_fmt = list(
+    fr = "dont %d Biodiversit\u00e9",
+    en = "incl. %d Biodiversity"
+  ),
   marculus_couche_tiges = list(fr = "Tiges martel\u00e9es", en = "Marked stems"),
   marculus_ortho_running_fmt = list(
     fr = "Pr\u00e9paration du fond ortho 20 cm de %d chantier(s)\u2026 Le t\u00e9l\u00e9chargement partira seul \u00e0 la fin.",
