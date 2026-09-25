@@ -356,27 +356,37 @@ mod_action_plan_ui <- function(id) {
           col_widths = c(6, 6),
           fillable = TRUE,
 
+          # Barre laterale DROITE « Couche affichee », comme la carte de
+          # reGeneration : le choix de coloration (annee / type / priorite)
+          # quitte l'en-tete, ou il se serrait contre le titre, pour un panneau
+          # a cote de la carte.
           bslib::card(
             full_screen = TRUE,
-            bslib::card_header(
-              class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-              i18n$t("action_plan_map_title"),
-              shiny::radioButtons(
-                ns("map_color_by"),
-                label = NULL,
-                choices = stats::setNames(
-                  c("annee", "type", "priorite"),
-                  c(i18n$t("action_plan_color_year"),
-                    i18n$t("action_plan_color_type"),
-                    i18n$t("action_plan_color_priority"))
-                ),
-                selected = "annee",
-                inline = TRUE
-              )
-            ),
+            bslib::card_header(i18n$t("action_plan_map_title")),
             bslib::card_body(
               class = "p-0",
-              leaflet::leafletOutput(ns("map"), height = "100%")
+              bslib::layout_sidebar(
+                fillable = TRUE,
+                # Marge reduite : la carte partage deja sa colonne avec le
+                # tableau, chaque pixel de largeur compte.
+                padding = "0.5rem",
+                sidebar = bslib::sidebar(
+                  position = "right", open = "always", width = 150,
+                  htmltools::tags$strong(i18n$t("action_plan_map_layer")),
+                  shiny::radioButtons(
+                    ns("map_color_by"),
+                    label = NULL,
+                    choices = stats::setNames(
+                      c("annee", "type", "priorite"),
+                      c(i18n$t("action_plan_color_year"),
+                        i18n$t("action_plan_color_type"),
+                        i18n$t("action_plan_color_priority"))
+                    ),
+                    selected = "annee"
+                  )
+                ),
+                leaflet::leafletOutput(ns("map"), height = "100%")
+              )
             )
           ),
 
