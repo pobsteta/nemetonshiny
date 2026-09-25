@@ -308,12 +308,16 @@ marculus_context_from_action <- function(action, project, essences = character(0
     date_martelage <- round(as.numeric(as.POSIXct(format(dm), tz = "UTC")) * 1000)
   }
 
+  # Mesure au DIAMETRE, classes 20 a 90 cm par pas de 5 : les valeurs par
+  # defaut d'un contexte cree sur le telephone (`CreationContexteScreen.kt`).
+  # Jusqu'en v0.148.1 l'export partait en circonference 20-200, que
+  # l'operateur devait corriger chantier par chantier.
   ctx <- list(
     id           = action$id %||% paste0("act-", ug),
     nom          = nom,
-    mode         = "CIRCONFERENCE",
+    mode         = "DIAMETRE",
     classeMin    = 20L,
-    classeMax    = 200L,
+    classeMax    = 90L,
     classePas    = 5L,
     essences     = .marculus_encode_essences(essences),
     increment    = 1L,

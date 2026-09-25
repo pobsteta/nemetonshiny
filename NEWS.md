@@ -1,3 +1,14 @@
+# nemetonshiny 0.148.2 (2026-09-25)
+
+### Changed — les contextes Marculus partent au diametre, 20 a 90 cm
+
+L'export creait ses contextes de martelage en **circonference**, avec des
+classes de 20 a 200 cm par pas de 5. Chaque chantier devait donc etre corrige
+sur le telephone. Il reprend desormais les valeurs par defaut d'un contexte
+cree dans Marculus (`CreationContexteScreen.kt`) : **mesure au diametre,
+classes de 20 a 90 cm par pas de 5**. L'operateur peut toujours les modifier
+sur le telephone. Un test fixe ces valeurs.
+
 # nemetonshiny 0.148.1 (2026-09-25)
 
 ### Changed — la feuille de martelage arrive en couleurs, celles de Marculus

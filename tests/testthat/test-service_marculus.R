@@ -965,3 +965,14 @@ test_that("le champ essences porte une couleur par colonne, plus un blanc unifor
   expect_false(identical(champs[[1]][2], champs[[2]][2]))
   expect_false(any(vapply(champs, `[`, "", 2) == "-1"))
 })
+
+test_that("les contextes partent au diametre, classes 20 a 90 par pas de 5", {
+  # Memes valeurs par defaut qu'un contexte cree sur le telephone
+  # (CreationContexteScreen.kt) ; la circonference 20-200 etait a corriger.
+  a <- list(id = "a1", ug_id = "ug_1", type = "eclaircie", annee_cible = 2L,
+            statut = "proposee")
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    a, list(metadata = list(name = "P")))
+  expect_identical(ctx$mode, "DIAMETRE")
+  expect_identical(c(ctx$classeMin, ctx$classeMax, ctx$classePas), c(20L, 90L, 5L))
+})
