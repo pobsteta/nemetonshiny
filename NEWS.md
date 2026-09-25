@@ -1,4 +1,4 @@
-# nemetonshiny 0.146.2.9001 (2026-09-25)
+# nemetonshiny 0.147.0 (2026-09-25)
 
 ### Added — importer le martelage Marculus dans le Plan d'actions
 
