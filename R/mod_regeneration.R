@@ -670,7 +670,7 @@ mod_regeneration_ui <- function(id) {
               bslib::card_header(
                 htmltools::div(
                   class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-                  htmltools::tags$span(i18n$t("regen_table_card_title")),
+                  htmltools::tags$span(i18n$t("regen_table_title")),
                   # La case « Masquer les UG mal couvertes » est retiree : toutes
                   # les UG sont affichees, et la colonne « Couverture (%) » dit
                   # sur quelle part de sa surface chacune a ete modelisee.

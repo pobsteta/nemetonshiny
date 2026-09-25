@@ -5739,6 +5739,7 @@ TRANSLATIONS <- list(
   regen_map_table_view = list(fr = "Carte + Tableau", en = "Map + Table"),
   regen_map_card_title = list(fr = "Carte", en = "Map"),
   regen_table_card_title = list(fr = "UGF", en = "UGF"),
+  regen_table_title = list(fr = "Tableau des actions", en = "Actions table"),
   regen_selected_sheets = list(fr = "Fiches parcelles s\u00e9lectionn\u00e9es", en = "Selected unit sheets"),
   regen_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
   regen_rew_chronicle = list(fr = "Chronique REW (r\u00e9serve en eau)", en = "REW chronicle (water reserve)"),

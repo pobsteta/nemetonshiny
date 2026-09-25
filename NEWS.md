@@ -10,6 +10,13 @@ toute la hauteur et renvoyait le graphique tout en bas de la carte. Verifie
 sous Chrome headless (pagination jusqu'a 521 px, totaux a partir de 538 px) ;
 un test verifie l'ordre tableau puis graphique.
 
+### Changed — reGeneration : le tableau des UGF s'intitule « Tableau des actions »
+
+La carte du tableau de la colonne droite s'intitulait « UGF ». Elle
+s'intitule maintenant « Tableau des actions » (nouvelle cle
+`regen_table_title`). Le panneau vert des exports garde son titre, et les
+fiches parcelles leur titre « UGF … ».
+
 ### Removed — reGeneration : la case « Bilan hydrique seul (rapide) »
 
 La case disparait de la barre laterale gauche : l'analyse lancee depuis

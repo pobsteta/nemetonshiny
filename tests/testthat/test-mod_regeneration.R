@@ -1200,3 +1200,13 @@ test_that("la sidebar reGeneration n'a plus la case « Bilan hydrique seul »", 
   expect_false(grepl('id="rg-filter_coverage"', h, fixed = TRUE))
   expect_true(grepl('id="rg-run"', h, fixed = TRUE))
 })
+
+test_that("le tableau des UGF de reGeneration est titre « Tableau des actions »", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_regeneration_ui("rg")))
+  debut <- regexpr('id="rg-table"', h, fixed = TRUE)
+  avant <- substr(h, max(1, debut - 3000), debut)
+  expect_match(avant, "Tableau des actions", fixed = TRUE)
+})
