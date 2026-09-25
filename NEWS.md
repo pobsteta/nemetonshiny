@@ -1,4 +1,4 @@
-# nemetonshiny 0.151.1.9001 (2026-09-25)
+# nemetonshiny 0.151.2 (2026-09-25)
 
 ### Changed — Plan d'actions : le choix de coloration passe a droite de la carte
 
