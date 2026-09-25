@@ -124,3 +124,86 @@ test_that("l'export reutilise la date revenue du terrain", {
     a, list(metadata = list(name = "P")))
   expect_equal(ctx$dateMartelage, .ms("2027-10-15"))
 })
+
+
+# ---- CSV de contexte, FormatCsv;2 (ExportCsv.kt) --------------------------
+
+.csv_v2 <- function(dir, nom = "ctx.csv", date = "2027-10-15", uuids = c("u1", "u2", "u3")) {
+  f <- file.path(dir, nom)
+  writeLines(c(
+    '"Reconfort - parcelle 1116; obs" - observation',
+    "FormatCsv;2",
+    "ContexteId;a1",
+    "Statut;REALISEE",
+    paste0("DateMartelage;", date),
+    "Modifie;1790000000000",
+    "Mode;CIRCONFERENCE",
+    "Increment;1",
+    "",
+    "TOTAUX",
+    "Essence;Classe;Total",
+    "Chene sessile;40;1",
+    "",
+    "JOURNAL",
+    "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m;Uuid;Parcelle;Modifie",
+    paste0("2027-10-15T08:12:03Z;Chene sessile;40;PLUS;1;27-6AB;B;47.912345;1.905432;PO;RTK fixe;0.02;", uuids[1], ";B 7;1790000000001"),
+    paste0("2027-10-15T08:13:04.250Z;Chene sessile;40;PLUS;1;;;;;PO;;;", uuids[2], ";;1790000000002"),
+    paste0("2027-10-15T08:14:00Z;Chene sessile;40;ANNULATION;1;;;;;PO;;;", uuids[3], ";;1790000000003")
+  ), f, useBytes = TRUE)
+  # Le nom porte un « ; » : `champ()` l'entoure de guillemets, comme le telephone.
+  l <- readLines(f); l[1] <- paste0("Contexte;", l[1]); writeLines(l, f)
+  f
+}
+
+test_that("un CSV FormatCsv;2 se lit comme un .marsync", {
+  d <- withr::local_tempdir()
+  lu <- nemetonshiny:::marculus_lire_exports(.csv_v2(d))
+  expect_equal(lu$contextes$id, "a1")
+  expect_equal(lu$contextes$statut, "REALISEE")
+  expect_equal(lu$contextes$nom, "Reconfort - parcelle 1116; obs - observation")
+  expect_equal(lu$contextes$dateMartelage, .ms("2027-10-15"))
+  expect_equal(nrow(lu$tiges), 3L)
+  expect_equal(lu$tiges$latitude[1], 47.912345)
+  expect_equal(lu$tiges$parcelle[1], "B 7")
+  expect_equal(lu$tiges$horodatage[2], .ms("2027-10-15 08:13:04.25"), tolerance = 1)
+  expect_equal(nemetonshiny:::marculus_totaux(lu$tiges)$tiges, 1L)
+
+  r <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu$contextes,
+                                                lu$tiges, annee_base = 2026L)
+  a <- r$plan$actions[[1]]
+  expect_equal(a$statut, "realisee")
+  expect_equal(a$date_martelage, "2027-10-15")
+  expect_equal(a$quantite$nb_tiges, 1L)
+})
+
+test_that("CSV et .marsync d'un meme contexte ne doublent pas les tiges", {
+  d <- withr::local_tempdir()
+  csv <- .csv_v2(d)
+  ms <- .marsync(d, contextes = data.frame(id = "a1", nom = "A", statut = "REALISEE",
+                                           dateMartelage = NA, modifie = 1),
+                 tiges = .tiges(c("u1", "u2", "u9")))
+  lu <- nemetonshiny:::marculus_lire_exports(c(csv, ms))
+  expect_setequal(lu$tiges$uuid, c("u1", "u2", "u3", "u9"))
+  expect_equal(nrow(lu$contextes), 1L)
+})
+
+test_that("un CSV sans FormatCsv (format 1) est refuse et signale a part", {
+  d <- withr::local_tempdir()
+  f <- file.path(d, "ancien.csv")
+  writeLines(c("Contexte;Vieux", "Mode;CIRCONFERENCE", "Increment;1", "",
+               "TOTAUX", "Essence;Classe;Total", "", "JOURNAL",
+               "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m"), f)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$csv_anciens, "ancien.csv")
+  expect_length(lu$illisibles, 0L)
+  expect_equal(nrow(lu$contextes), 0L)
+})
+
+test_that("une date de martelage vide dans le CSV laisse la date du plan", {
+  d <- withr::local_tempdir()
+  lu <- nemetonshiny:::marculus_lire_exports(.csv_v2(d, date = ""))
+  expect_true(is.na(lu$contextes$dateMartelage))
+  r <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu$contextes,
+                                                lu$tiges, annee_base = 2026L)
+  expect_null(r$plan$actions[[1]]$date_martelage)
+})

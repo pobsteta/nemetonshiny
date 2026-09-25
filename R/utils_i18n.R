@@ -590,8 +590,8 @@ TRANSLATIONS <- list(
     en = "Import Marculus marking"
   ),
   marculus_import_help = list(
-    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, ou sauvegarde compl\u00e8te (JSON). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
-    en = ".marsync files shared from the phone, or a full backup (JSON). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
+    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 (ligne FormatCsv;2). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
+    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 (FormatCsv;2 line). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
   ),
   marculus_import_fichiers = list(fr = "Fichiers Marculus", en = "Marculus files"),
   marculus_import_run = list(fr = "Importer", en = "Import"),
@@ -606,6 +606,10 @@ TRANSLATIONS <- list(
   marculus_import_erreur = list(
     fr = "Fichier illisible : ce n'est pas un export Marculus (.marsync ou sauvegarde JSON).",
     en = "Unreadable file: not a Marculus export (.marsync or JSON backup)."
+  ),
+  marculus_import_csv_ancien = list(
+    fr = "CSV de l'ancien format (sans identifiants), non importable : r\u00e9exportez-le depuis une version de Marculus qui \u00e9crit FormatCsv;2, ou partagez le .marsync :",
+    en = "Old-format CSV (no identifiers), not importable: re-export it from a Marculus version that writes FormatCsv;2, or share the .marsync:"
   ),
   marculus_import_vide = list(
     fr = "Aucun contexte de ce projet dans les fichiers import\u00e9s.",
