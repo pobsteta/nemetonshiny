@@ -1,3 +1,41 @@
+# nemetonshiny 0.147.0 (2026-09-25)
+
+### Added — importer le martelage Marculus dans le Plan d'actions
+
+Un bouton « Importer les donnees Marculus » rejoint la barre laterale droite
+du Plan d'actions, sous « Telecharger vers Marculus ». Il ferme la boucle :
+les chantiers partent vers le telephone, et leur martelage revient dans le
+plan.
+
+- **Fichiers acceptes** : les `.marsync` partages depuis le telephone (un par
+  contexte) et la sauvegarde complete, au meme format JSON. Plusieurs
+  fichiers sont acceptes a la fois. Les tiges sont unies par `uuid`, comme sur
+  le telephone : reimporter un partage ne double rien.
+- **Appariement** : un contexte exporte par Nemeton porte l'`id` de son
+  action. Un contexte cree a la main sur le telephone n'a pas d'action : il
+  est compte et signale, pas applique.
+- **Actions mises a jour, le terrain fait foi** : statut Kanban, date de
+  martelage (`date_martelage`, reutilisee par l'export suivant), annee cible
+  quand elle reste dans l'horizon du plan, et nombre de tiges martelees
+  (`quantite$nb_tiges`). Ce nombre est net des annulations, selon la regle du
+  telephone (PLUS - ANNULATION). Chaque changement passe par l'audit, qui
+  garde l'ancienne valeur. Un reimport identique ne modifie rien.
+- **Carte** : une couche « Tiges martelees » affiche les tiges geolocalisees,
+  avec l'essence, la classe, la hauteur, la qualite et la date au clic. Les
+  annulations, qui retirent un compte sans designer une tige, ne sont pas
+  dessinees. Les tiges sont stockees dans le projet
+  (`data/marculus_tiges.json`).
+- **Synthese** : apres l'import, une modale donne pour chaque action le
+  nombre de tiges par essence et par classe, comme la feuille de martelage du
+  telephone.
+
+Nouveau service `R/service_marculus_import.R`, 19 cles i18n. Tests : 23 pour
+le service (totaux nets, union par `uuid`, terrain qui fait foi, audit,
+reimport neutre, date de l'annee en cours, fichier illisible, date reprise a
+l'export) et 2 pour le module. Mutations detectees. Parcours verifie sous
+Chrome headless sur une copie de « Reconfort » : modale, televersement,
+import, synthese, couche de tiges sur la carte.
+
 # nemetonshiny 0.146.2 (2026-09-24)
 
 ### Fixed — l'ortho ne s'affichait pas dans Marculus
