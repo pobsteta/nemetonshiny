@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 0.150.0 (2026-09-25)
+
+#### Added — les volumes du martelage reviennent de Marculus
+
+Marculus exporte desormais les volumes qu’il calcule sur le telephone
+(commit `8cf54a9`, apres Marculus v0.50.1 ; brief
+`briefs/vers-marculus/2026-09-25-volumes-exportes.md`). Marculus reste
+ainsi la **seule source** des volumes de martelage : Nemeton ne
+recalcule rien, et le chiffre affiche au bureau est celui que
+l’operateur a vu sur le terrain.
+
+- **Lecture** : volumes unitaires par tige (`volumeTigeM3`,
+  `volumeHouppierM3`, `volumeTotalM3`, `surfaceTerriereM2`, `cubage`) et
+  totaux nets par contexte, depuis le `.marsync` et depuis le CSV
+  `FormatCsv;3`. Le format 2, sans volumes, reste accepte : il laisse
+  les volumes de l’action inchanges.
+- **Action** : les totaux du telephone font foi.
+  - `quantite$volume_m3` recoit le bois fort tige et alimente la colonne
+    Volume et le bilan.
+  - `volume_total_m3`, `surface_terriere_m2` et `nb_tiges_non_cubees`
+    s’ajoutent.
+  - La fiche lit une copie separee, `volume_martele_m3`, pour ne jamais
+    presenter une estimation de l’IA comme un volume martele.
+- **Fiche Kanban** : « Martelage du 15/10/2027 · 4 tige(s) designee(s) ·
+  dont 1 Biodiversite · 3,31 m3 bois fort ».
+- **Synthese** : le volume total de l’action en badge, une colonne
+  Volume (m3) par essence avec un total, et un avertissement quand des
+  tiges n’ont pas pu etre cubees (EMERGE sans hauteur saisie).
+- **Carte** : l’infobulle d’une tige donne son volume et la methode de
+  cubage.
+
+Le volume par essence et par classe suit **la regle d’annulation de
+Marculus** (`VolumesMartelage.totaux()`) : une annulation retire la
+**derniere** tige comptee de sa case, avec son volume, et non le volume
+de sa propre saisie. Verifie sous Chrome headless sur une copie de «
+Reconfort » : une annulation sur le hetre 40 retire 0,87 m3, et la
+synthese totalise 3,31 m3, comme le telephone.
+
+Tests : totaux du `.marsync` appliques a l’action, format 2 sans effet
+sur le volume, regle d’annulation (la mutation est detectee), CSV
+`FormatCsv;3`, fiche et synthese avec et sans volume.
+
 ## nemetonshiny 0.149.0 (2026-09-25)
 
 #### Changed — retour Marculus : fiche Kanban, statut realise, synthese lisible

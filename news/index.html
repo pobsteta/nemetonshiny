@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.149.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.150.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,31 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.150.0" id="nemetonshiny-01500-2026-09-25">nemetonshiny 0.150.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01500-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="added--les-volumes-du-martelage-reviennent-de-marculus-0-150-0">Added — les volumes du martelage reviennent de Marculus<a class="anchor" aria-label="anchor" href="#added--les-volumes-du-martelage-reviennent-de-marculus-0-150-0"></a></h4>
+<p>Marculus exporte desormais les volumes qu’il calcule sur le telephone (commit <code>8cf54a9</code>, apres Marculus v0.50.1 ; brief <code>briefs/vers-marculus/2026-09-25-volumes-exportes.md</code>). Marculus reste ainsi la <strong>seule source</strong> des volumes de martelage : Nemeton ne recalcule rien, et le chiffre affiche au bureau est celui que l’operateur a vu sur le terrain.</p>
+<ul><li>
+<strong>Lecture</strong> : volumes unitaires par tige (<code>volumeTigeM3</code>, <code>volumeHouppierM3</code>, <code>volumeTotalM3</code>, <code>surfaceTerriereM2</code>, <code>cubage</code>) et totaux nets par contexte, depuis le <code>.marsync</code> et depuis le CSV <code>FormatCsv;3</code>. Le format 2, sans volumes, reste accepte : il laisse les volumes de l’action inchanges.</li>
+<li>
+<strong>Action</strong> : les totaux du telephone font foi.
+<ul><li>
+<code>quantite$volume_m3</code> recoit le bois fort tige et alimente la colonne Volume et le bilan.</li>
+<li>
+<code>volume_total_m3</code>, <code>surface_terriere_m2</code> et <code>nb_tiges_non_cubees</code> s’ajoutent.</li>
+<li>La fiche lit une copie separee, <code>volume_martele_m3</code>, pour ne jamais presenter une estimation de l’IA comme un volume martele.</li>
+</ul></li>
+<li>
+<strong>Fiche Kanban</strong> : « Martelage du 15/10/2027 · 4 tige(s) designee(s) · dont 1 Biodiversite · 3,31 m3 bois fort ».</li>
+<li>
+<strong>Synthese</strong> : le volume total de l’action en badge, une colonne Volume (m3) par essence avec un total, et un avertissement quand des tiges n’ont pas pu etre cubees (EMERGE sans hauteur saisie).</li>
+<li>
+<strong>Carte</strong> : l’infobulle d’une tige donne son volume et la methode de cubage.</li>
+</ul><p>Le volume par essence et par classe suit <strong>la regle d’annulation de Marculus</strong> (<code>VolumesMartelage.totaux()</code>) : une annulation retire la <strong>derniere</strong> tige comptee de sa case, avec son volume, et non le volume de sa propre saisie. Verifie sous Chrome headless sur une copie de « Reconfort » : une annulation sur le hetre 40 retire 0,87 m3, et la synthese totalise 3,31 m3, comme le telephone.</p>
+<p>Tests : totaux du <code>.marsync</code> appliques a l’action, format 2 sans effet sur le volume, regle d’annulation (la mutation est detectee), CSV <code>FormatCsv;3</code>, fiche et synthese avec et sans volume.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.149.0" id="nemetonshiny-01490-2026-09-25">nemetonshiny 0.149.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01490-2026-09-25"></a></h2>
 <div class="section level4">
