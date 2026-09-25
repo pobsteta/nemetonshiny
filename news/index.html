@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.151.1" id="nemetonshiny-01511-2026-09-25">nemetonshiny 0.151.1 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01511-2026-09-25"></a></h2>
+<div class="section level4">
+<h4 id="fixed--reimporter-un-martelage-apporte-enfin-les-volumes-des-tiges-0-151-1">Fixed — reimporter un martelage apporte enfin les volumes des tiges<a class="anchor" aria-label="anchor" href="#fixed--reimporter-un-martelage-apporte-enfin-les-volumes-des-tiges-0-151-1"></a></h4>
+<p>Sur « Reconfort », les actions avaient bien leur volume total (244,7 m3 et 151,4 m3), mais les 141 tiges stockees n’en portaient aucun. Le tableau et la carte de la fiche restaient donc sans volume. Les tiges avaient d’abord ete importees depuis des CSV au format 2, sans volumes, puis reimportees depuis des CSV au format 3. Les memes tiges revenaient, avec le meme <code>uuid</code> et le meme <code>modifie</code>. A egalite, la fusion gardait la version <strong>deja stockee</strong>, celle sans volume.</p>
+<p>La version tout juste importee gagne desormais a egalite de <code>modifie</code>. Il suffit de <strong>reimporter</strong> les fichiers : les tiges recuperent leurs volumes, leur methode de cubage et leur mode de mesure. Un test couvre ce cas, et la mutation est detectee.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.151.0" id="nemetonshiny-01510-2026-09-25">nemetonshiny 0.151.0 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01510-2026-09-25"></a></h2>
 <div class="section level4">
