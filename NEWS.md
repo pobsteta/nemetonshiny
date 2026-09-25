@@ -1,3 +1,32 @@
+# nemetonshiny 0.148.0 (2026-09-25)
+
+### Added — « Importer de Marculus » accepte les CSV de contexte (FormatCsv;2)
+
+Marculus ecrit desormais, dans son CSV de contexte, les cles qui lui
+manquaient (commit `8848a67`, publie apres Marculus v0.47.0 ; brief
+`briefs/vers-marculus/2026-09-25-csv-importable-nemeton.md`) :
+
+- en-tete : `FormatCsv;2`, `ContexteId`, `Statut`, `DateMartelage`, `Modifie` ;
+- journal : colonnes `Uuid`, `Parcelle` et `Modifie` en fin de ligne.
+
+L'import les lit comme un `.marsync` :
+
+- l'action est retrouvee par `ContexteId` ;
+- les tiges sont unies par `Uuid`, donc un CSV et un `.marsync` du meme
+  contexte ne se doublent pas ;
+- le terrain fait foi pour le statut et la date ;
+- les tiges nouvelles apparaissent sur la carte et dans la synthese.
+
+La modale d'import accepte maintenant `.marsync`, `.json` et `.csv`. Un CSV de
+l'ancien format, sans `FormatCsv`, donc sans identifiants, est refuse. Un
+message dedie invite alors a le reexporter ou a partager le `.marsync`, au lieu
+d'un « fichier illisible ».
+
+Tests (fixtures conformes a `ExportCsv.kt`) : lecture complete, avec un nom a
+`;` echappe, un horodatage avec ou sans fraction de seconde, un point decimal
+et la parcelle ; application a l'action ; union CSV + `.marsync` sans doublon ;
+format 1 signale a part ; date vide sans effet.
+
 # nemetonshiny 0.147.1 (2026-09-25)
 
 ### Changed — bouton « Importer de Marculus »

@@ -1893,7 +1893,7 @@ mod_action_plan_server <- function(id, app_state) {
         title = i18n$t("marculus_import_title"), size = "m", easyClose = TRUE,
         shiny::p(class = "text-muted", i18n$t("marculus_import_help")),
         shiny::fileInput(ns("marculus_fichiers"), i18n$t("marculus_import_fichiers"),
-                         multiple = TRUE, accept = c(".marsync", ".json")),
+                         multiple = TRUE, accept = c(".marsync", ".json", ".csv")),
         footer = htmltools::tagList(
           shiny::modalButton(i18n$t("cancel")),
           shiny::actionButton(ns("marculus_import_run"),
@@ -1918,9 +1918,19 @@ mod_action_plan_server <- function(id, app_state) {
           cli::cli_warn("Import Marculus : {conditionMessage(e)}")
           NULL
         })
+      # Un CSV de l'ancien format n'a ni id de contexte ni uuid de tige : le
+      # dire, avec la marche a suivre, plutot qu'un « fichier illisible ».
+      if (length(res$csv_anciens %||% character())) {
+        shiny::showNotification(
+          paste(i18n$t("marculus_import_csv_ancien"),
+                paste(res$csv_anciens, collapse = ", ")),
+          type = "warning", duration = 15)
+      }
       if (is.null(res) || is.null(res$plan)) {
-        shiny::showNotification(i18n$t("marculus_import_erreur"),
-                                type = "error", duration = 10)
+        if (!length(res$csv_anciens %||% character())) {
+          shiny::showNotification(i18n$t("marculus_import_erreur"),
+                                  type = "error", duration = 10)
+        }
         return()
       }
       plan_rv(res$plan)
