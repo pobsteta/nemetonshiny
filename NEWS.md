@@ -1,4 +1,4 @@
-# nemetonshiny 0.148.1.9001 (2026-09-25)
+# nemetonshiny 0.148.2 (2026-09-25)
 
 ### Changed — les contextes Marculus partent au diametre, 20 a 90 cm
 
