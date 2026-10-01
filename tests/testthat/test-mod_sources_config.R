@@ -195,3 +195,49 @@ test_that("le bloc ONF des parametres est complet et coche par defaut", {
     expect_equal(length(gregexpr("checked", h)[[1]]), 8L)
   })
 })
+
+
+test_that("le bloc Production IFN rend ses controles et enregistre les modes", {
+  skip_if_not_installed("bslib")
+  seen <- NULL
+  testthat::local_mocked_bindings(
+    set_project_production_ifn = function(project_id, p2_source, e1_mode,
+                                          e1_taux_type, e1_taux) {
+      seen <<- list(id = project_id, p2 = p2_source, e1 = e1_mode,
+                    type = e1_taux_type, taux = e1_taux)
+      invisible(TRUE)
+    },
+    load_project = function(project_id) {
+      list(id = project_id, metadata = list(production_ifn = list(
+        p2_source = "ifn_fh", e1_mode = "flux", e1_taux = 0.4)))
+    })
+
+  app_state <- shiny::reactiveValues(
+    language = "fr", project_id = "p1",
+    current_project = list(id = "p1", metadata = list()))
+  i18n <- get_i18n("fr")
+
+  shiny::testServer(nemetonshiny:::mod_sources_config_server,
+                    args = list(app_state = app_state), {
+    session$setInputs(x = 1)
+    h <- paste(as.character(output$production_block), collapse = " ")
+    for (id in c("prod_p2_source", "prod_e1_mode", "prod_e1_taux_type",
+                 "prod_e1_taux", "prod_save")) {
+      expect_true(grepl(id, h, fixed = TRUE), info = id)
+    }
+    # Defaut opt-in : P2 sur le CHM.
+    expect_true(grepl('value="chm" checked', h, fixed = TRUE))
+    expect_true(grepl(htmltools::htmlEscape(i18n$t("prod_ifn_recolte_avert")),
+                      h, fixed = TRUE))
+
+    session$setInputs(prod_p2_source = "ifn_fh", prod_e1_mode = "flux",
+                      prod_e1_taux_type = "fixe", prod_e1_taux = 0.4)
+    session$setInputs(prod_save = 1)
+    expect_equal(seen$id, "p1")
+    expect_equal(seen$p2, "ifn_fh")
+    expect_equal(seen$e1, "flux")
+    expect_equal(seen$taux, 0.4)
+    expect_equal(app_state$current_project$metadata$production_ifn$p2_source,
+                 "ifn_fh")
+  })
+})

@@ -364,6 +364,10 @@ list_available_indicators <- function(metadata = NULL) {
 #' C1 and B2 also accept a `chm` argument but keep a usable legacy
 #' data path (OSO / NDVI), so they are intentionally excluded.
 #'
+#' Two opt-in modes lift the requirement (spec 054, see
+#' `.production_ifn_mode()`): P2 with `source = "ifn_fh"` (production of the
+#' sylvoecoregion) and E1 in flux mode (`production_field = "P2"`).
+#'
 #' @noRd
 CHM_REQUIRED_INDICATORS <- c(
   "indicateur_p1_volume",
@@ -1024,6 +1028,22 @@ start_computation <- function(project_id,
         layers$rasters$lst <- lst_r
         layers$lst_buffer_m <- lst_cfg$buffer_m %||% 500
       }
+    }
+
+    # Production IFN par sylvoecoregion (spec 054, nemeton >= 0.204.0). Modes
+    # OPT-IN : par defaut (P2 = CHM, E1 = stock) rien ne bouge. En mode IFN,
+    # P2 et E1 lisent le code SER de chaque UGF - localise une fois puis cache
+    # (ensure_ugf_ser) - et la production du massif + les ratios de
+    # prelevement de ses SER sont calcules ici, dans le worker (~5 s : pas
+    # dans un observer Shiny), puis persistes pour la vue Production.
+    prod_cfg <- project_production_ifn_params(projet_for_ug$metadata)
+    layers$production_ifn <- prod_cfg
+    if (.production_ifn_mode("indicateur_p2_station", prod_cfg) &&
+        "indicateur_p2_station" %in% effective_indicators) {
+      state$current_task <- "production_ifn"
+      report_progress(state)
+      compute_unit <- ensure_ugf_ser(compute_unit, project_path)
+      build_production_ifn_summary(compute_unit, project_path)
     }
 
     # Spectral diversity (B4 alpha / L3 beta) - biodivMapR, spec 028.
@@ -4141,6 +4161,19 @@ compute_all_indicators <- function(parcels,
     results <- parcels
   }
 
+  # Un P2 / E1 calcule sous un autre mode de production (CHM vs IFN, stock vs
+  # flux, autre taux) ne se reprend pas : il se recalcule (spec 054).
+  prod_cfg <- layers$production_ifn %||% project_production_ifn_params(NULL)
+  if (!is.null(existing_results) && length(computed_indicators) > 0) {
+    stale <- .production_mode_stale(existing_results, computed_indicators,
+                                    prod_cfg)
+    if (length(stale) > 0) {
+      cli::cli_alert_info(
+        "Production mode changed, recomputing: {paste(stale, collapse = ', ')}")
+      computed_indicators <- setdiff(computed_indicators, stale)
+    }
+  }
+
   # Filter out already computed indicators
   indicators_to_compute <- setdiff(indicators, computed_indicators)
   n_indicators <- length(indicators)
@@ -4230,7 +4263,8 @@ compute_all_indicators <- function(parcels,
 
     tryCatch({
       # Compute indicator
-      values <- compute_single_indicator(ind, parcels, layers)
+      values <- compute_single_indicator(
+        ind, .units_for_indicator(ind, parcels, results, prod_cfg), layers)
 
       # La cause d'un NA voyage en attribut depuis compute_single_indicator() :
       # on la materialise en colonne `.<code>_status` AVANT de depouiller les
@@ -4245,6 +4279,10 @@ compute_all_indicators <- function(parcels,
           length(st_vals) == nrow(results)) {
         results[[paste0(".", st_name)]] <- st_vals
       }
+      # Colonnes annexes (P2_rse, P2_provenance, E1_mode... spec 054) : celles
+      # d'un calcul precedent sous un autre mode sont retirees avant d'ecrire
+      # les nouvelles, sinon un P2 repasse en CHM garderait une RSE IFN.
+      results <- .write_production_annex(results, ind, values, prod_cfg)
       status[ind] <- "completed"
       completed <- completed + 1
 
@@ -4264,6 +4302,7 @@ compute_all_indicators <- function(parcels,
 
       # Set NA for failed indicators
       results[[ind]] <<- rep(NA_real_, nrow(results))
+      results <<- .write_production_annex(results, ind, NULL, prod_cfg)
 
       cli::cli_warn("Failed to compute {ind}: {e$message}")
     })
@@ -4460,7 +4499,22 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # and fail with a cryptic "Missing required fields" error. We stop
     # early here with an explicit, translatable message instead - the
     # other indicators of the run are unaffected.
-    if ("chm" %in% func_args) {
+    # Spec 054 : P2 en mode IFN (`source = "ifn_fh"`) et E1 en mode flux
+    # (`production_field = "P2"`) n'ont pas besoin de CHM - ce sont justement
+    # les reponses au cas NDP 0 sans CHM. Le CHM ne leur est donc ni transmis
+    # ni exige. E1 trouve P2 / P2_provenance dans ses `units`
+    # (cf. .units_for_indicator()).
+    ifn_mode <- .production_ifn_mode(indicator, layers$production_ifn)
+    if (ifn_mode && identical(indicator, "indicateur_p2_station")) {
+      args$source <- "ifn_fh"
+      args$ser_field <- "ser"
+    }
+    if (ifn_mode && identical(indicator, "indicateur_e1_bois_energie")) {
+      args$production_field <- "P2"
+      args$taux_mobilisation <- layers$production_ifn$taux_mobilisation
+    }
+
+    if ("chm" %in% func_args && !ifn_mode) {
       chm <- resolve_raster_layer(layers, "chm")
       if (!is.null(chm)) {
         args$chm <- chm
@@ -4551,6 +4605,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
         result, indicator, exclude = names(parcels))
 
       vals <- .capture_status_attr(vals, result)
+      vals <- .capture_annex_attr(vals, result, indicator)
 
       if (identical(indicator, "indicateur_c2_ndvi") &&
           is.null(attr(vals, "nemeton_status_name"))) {

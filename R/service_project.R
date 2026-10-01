@@ -1863,6 +1863,116 @@ set_project_sufosat <- function(project_id, enabled,
 }
 
 
+#' Default IFN production parameters (spec 054)
+#'
+#' @description
+#' The core offers two **opt-in** modes fed by the IFN production by
+#' sylvoecoregion (SER), estimated by Fay-Herriot:
+#'
+#'   * `p2_source = "ifn_fh"` - P2 becomes the volume production of the SER
+#'     (m3/ha/yr) instead of the CHM site index;
+#'   * `e1_mode = "flux"` - E1 follows that production (`production_field =
+#'     "P2"`) instead of 2 % of the standing stock.
+#'
+#' Both default to the historical behaviour (`"chm"` / `"stock"`): nothing moves
+#' until the owner opts in. `e1_taux` has **no default share on purpose** - the
+#' core refuses to invent one -, so the flux mode stores either a share chosen by
+#' the user (`e1_taux_type = "fixe"`) or the IFN observed ratio of the SER
+#' (`"ifn_ser"`). The `0.6` below only seeds the slider; it is never sent to the
+#' core unless the user saves it.
+#'
+#' @noRd
+PRODUCTION_IFN_DEFAULT <- list(
+  p2_source    = "chm",
+  e1_mode      = "stock",
+  e1_taux_type = "fixe",
+  e1_taux      = 0.6
+)
+
+
+#' Read the IFN production parameters of a project
+#'
+#' @description
+#' Single source of truth shared by the settings tab and the compute service.
+#' E1's flux mode reads P2 as a **production** (m3/ha/yr): fed with the CHM site
+#' index (a height in metres) it would compute nonsense. The flux mode is
+#' therefore coerced back to `"stock"` whenever P2 is not in IFN mode.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#'
+#' @return List with `p2_source`, `e1_mode`, `e1_taux_type`, `e1_taux`, plus
+#'   `taux_mobilisation` - the value to hand to the core (`NULL` in stock mode,
+#'   a share or `"ifn_ser"` in flux mode).
+#'
+#' @noRd
+project_production_ifn_params <- function(metadata) {
+  src <- metadata$production_ifn %||% list()
+  d <- PRODUCTION_IFN_DEFAULT
+
+  p2 <- as.character(src$p2_source %||% d$p2_source)[1]
+  if (!p2 %in% c("chm", "ifn_fh")) p2 <- d$p2_source
+
+  e1 <- as.character(src$e1_mode %||% d$e1_mode)[1]
+  if (!e1 %in% c("stock", "flux") || p2 != "ifn_fh") e1 <- "stock"
+
+  type <- as.character(src$e1_taux_type %||% d$e1_taux_type)[1]
+  if (!type %in% c("fixe", "ifn_ser")) type <- d$e1_taux_type
+
+  taux <- suppressWarnings(as.numeric(src$e1_taux %||% d$e1_taux))[1]
+  if (is.na(taux)) taux <- d$e1_taux
+  taux <- min(1, max(0, taux))
+
+  list(
+    p2_source    = p2,
+    e1_mode      = e1,
+    e1_taux_type = type,
+    e1_taux      = taux,
+    taux_mobilisation = if (e1 == "flux") {
+      if (type == "ifn_ser") "ifn_ser" else taux
+    }
+  )
+}
+
+
+#' Persist the IFN production parameters on a project
+#'
+#' @description
+#' Mirrors [set_project_accessibility_params()]. No cache to drop: the compute
+#' service recognises a P2 / E1 computed under another mode and recomputes it
+#' (see `.production_mode_stale()`).
+#'
+#' @param project_id Character.
+#' @param p2_source `"chm"` or `"ifn_fh"`.
+#' @param e1_mode `"stock"` or `"flux"`.
+#' @param e1_taux_type `"fixe"` or `"ifn_ser"`.
+#' @param e1_taux Numeric share in `[0, 1]`, used when `e1_taux_type = "fixe"`.
+#'
+#' @return Invisible `TRUE`.
+#'
+#' @noRd
+set_project_production_ifn <- function(project_id, p2_source = "chm",
+                                       e1_mode = "stock",
+                                       e1_taux_type = "fixe",
+                                       e1_taux = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  cfg <- project_production_ifn_params(list(production_ifn = list(
+    p2_source = p2_source, e1_mode = e1_mode,
+    e1_taux_type = e1_taux_type, e1_taux = e1_taux)))
+  cfg$taux_mobilisation <- NULL
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+
+  update_project_metadata(project_id, list(production_ifn = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Production IFN : P2 = {cfg$p2_source}, E1 = {cfg$e1_mode}")
+  invisible(TRUE)
+}
+
+
 #' Default FAST detection parameters
 #'
 #' @description
