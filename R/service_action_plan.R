@@ -755,9 +755,10 @@ actions_to_dataframe <- function(plan) {
 #'
 #' * `proprietaire` or `editeur` -> full read/write access.
 #' * `lecteur` -> read-only.
-#' * Anonymous (no OAuth configured) and any authenticated user with
-#'   no role at all -> editor by default, so the standalone app
+#' * Anonymous (no OAuth configured) -> editor, so the standalone app
 #'   stays usable without an identity provider.
+#' * An OAuth user without any Nemeton role -> read-only (see
+#'   [auth_has_role()]).
 #'
 #' @param auth_state reactiveValues / list. Object returned by
 #'   `mod_auth_server` (or the slice exposed via `app_state$auth`).
@@ -767,21 +768,7 @@ actions_to_dataframe <- function(plan) {
 #' @return Logical (length 1).
 #' @noRd
 can_edit_action_plan <- function(auth_state) {
-  if (is.null(auth_state)) return(FALSE)
-  # ReactiveValues are not lists; access via [[ rather than $.
-  authenticated <- tryCatch(isTRUE(auth_state[["authenticated"]]),
-                            error = function(e) FALSE)
-  if (!authenticated) return(FALSE)
-
-  roles <- tryCatch(auth_state[["user_roles"]] %||% character(),
-                    error = function(e) character())
-  # Anonymous fallback: if no provider is configured, mod_auth puts
-  # `user_name = "Anonyme"` and an empty `user_roles` -- treat that
-  # as editor so demos / single-user installs keep working.
-  if (length(roles) == 0L) return(TRUE)
-
-  any(c("proprietaire", "editeur", "owner", "editor",
-        "admin", "manager") %in% tolower(roles))
+  auth_has_role(auth_state, AUTH_EDITOR_ROLES)
 }
 
 

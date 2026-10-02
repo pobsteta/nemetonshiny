@@ -269,7 +269,7 @@ test_that("supprimer la selection retire les lignes choisies et sauvegarde", {
   app_state <- shiny::reactiveValues(
     language = "fr", active_main_tab = "action_plan",
     current_project = list(id = "p1", x0 = 5),
-    auth = list(authenticated = TRUE, user_roles = character())
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character())
   )
   shiny::testServer(
     nemetonshiny:::mod_action_plan_server,
@@ -303,7 +303,7 @@ test_that("sans selection ou en lecture seule, rien n'est supprime", {
   app_state <- shiny::reactiveValues(
     language = "fr", active_main_tab = "action_plan",
     current_project = list(id = "p1", x0 = 5),
-    auth = list(authenticated = TRUE, user_roles = character())
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character())
   )
   shiny::testServer(
     nemetonshiny:::mod_action_plan_server,
@@ -413,7 +413,7 @@ test_that("importer un .marsync met le plan et les tiges a jour", {
   app_state <- shiny::reactiveValues(
     language = "fr", active_main_tab = "action_plan",
     current_project = list(id = "p1", x0 = 5),
-    auth = list(authenticated = TRUE, user_roles = character())
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character())
   )
   shiny::testServer(
     nemetonshiny:::mod_action_plan_server,
@@ -567,7 +567,7 @@ test_that("selectionner une UGF affiche sa fiche, le conseil IA s'insere", {
   app_state <- shiny::reactiveValues(
     language = "fr", active_main_tab = "action_plan",
     current_project = list(id = "p1", x0 = 5),
-    auth = list(authenticated = TRUE, user_roles = character())
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character())
   )
   shiny::testServer(
     nemetonshiny:::mod_action_plan_server,

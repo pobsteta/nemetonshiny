@@ -2018,6 +2018,10 @@ TRANSLATIONS <- list(
     fr = "Les indicateurs de ce projet ont \u00e9t\u00e9 calcul\u00e9s avant deux corrections du c\u0153ur : ils sont invalid\u00e9s et doivent \u00eatre recalcul\u00e9s. Risques (d\u00e9sormais : plus le score est haut, moins l'UGF est expos\u00e9e), Paysage, Dynamique temporelle et \u00c9nergie vont changer \u2014 une comparaison avec les scores pr\u00e9c\u00e9dents n'aurait pas de sens.",
     en = "This project's indicators were computed before two core corrections: they are invalidated and must be recomputed. Risks (now: the higher the score, the less exposed the UGF), Landscape, Temporal dynamics and Energy will change \u2014 comparing with the previous scores would be meaningless."
   ),
+  cles_serveur_admin = list(
+    fr = "Seul un administrateur peut modifier les cl\u00e9s d'acc\u00e8s du serveur.",
+    en = "Only an administrator can change the server's access keys."
+  ),
   db_not_configured = list(
     fr = "Base de donn\u00e9es non configur\u00e9e \u2014 stockage local des projets (parquet).",
     en = "Database not configured \u2014 projects stored locally (parquet)."

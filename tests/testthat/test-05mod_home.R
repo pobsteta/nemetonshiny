@@ -968,6 +968,43 @@ test_that("delete_corrupted shows confirmation modal", {
   )
 })
 
+test_that("confirm_delete ne supprime ni un projet sain ni un identifiant inconnu", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("leaflet")
+
+  deleted <- character()
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    list_recent_projects = mock_empty_projects,
+    delete_project = function(project_id) { deleted <<- c(deleted, project_id); TRUE },
+    get_project_path = function(project_id) {
+      if (identical(project_id, "sain")) "/tmp/projets/sain" else NULL
+    },
+    check_project_health = function(project_id, ...) list(valid = TRUE),
+    mod_search_server = mock_search_server,
+    mod_map_server = mock_map_server,
+    mod_project_server = mock_project_server,
+    mod_progress_server = mock_progress_server,
+    {
+      as <- make_app_state()
+      shiny::testServer(
+        nemetonshiny:::mod_home_server,
+        args = list(app_state = as),
+        {
+          for (id in c("sain", "../..")) {
+            session$setInputs(delete_corrupted = id)
+            session$flushReact()
+            session$setInputs(confirm_delete = length(deleted) + 1L + match(id, c("sain", "../..")))
+            session$flushReact()
+          }
+          expect_length(deleted, 0L)
+        }
+      )
+    }
+  )
+})
+
 test_that("confirm_delete deletes project and refreshes list", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -982,6 +1019,10 @@ test_that("confirm_delete deletes project and refreshes list", {
       deleted_id <<- project_id
       TRUE
     },
+    # Le projet existe et est reellement corrompu : seul cas ou le bouton
+    # « supprimer le projet corrompu » agit.
+    get_project_path = function(project_id) "/tmp/projets/bad_proj",
+    check_project_health = function(project_id, ...) list(valid = FALSE),
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,

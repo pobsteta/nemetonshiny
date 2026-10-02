@@ -34,15 +34,7 @@ NULL
 #' @return Logical (length 1).
 #' @noRd
 can_admin_rag <- function(auth_state) {
-  if (is.null(auth_state)) return(FALSE)
-  authenticated <- tryCatch(isTRUE(auth_state[["authenticated"]]),
-                            error = function(e) FALSE)
-  if (!authenticated) return(FALSE)
-  roles <- tryCatch(auth_state[["user_roles"]] %||% character(),
-                    error = function(e) character())
-  # Anonymous fallback: no provider -> no roles -> editor/admin by default.
-  if (length(roles) == 0L) return(TRUE)
-  any(c("proprietaire", "owner", "admin") %in% tolower(roles))
+  auth_has_role(auth_state, AUTH_ADMIN_ROLES)
 }
 
 
@@ -91,10 +83,10 @@ rag_color_actions <- function(df) {
   pal <- c(ingested = "#1B6B1B", planned = "#0d6efd",
            skipped = "#6c757d", error = "#b00020")
   df$action <- vapply(as.character(df$action), function(a) {
-    col <- pal[[a]] %||% "#6c757d"
+    col <- if (!is.na(a) && a %in% names(pal)) pal[[a]] else "#6c757d"
     sprintf(
       '<span class="badge" style="background-color:%s;color:#fff;">%s</span>',
-      col, a
+      col, htmltools::htmlEscape(a)
     )
   }, character(1))
   df
@@ -437,6 +429,12 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
     shiny::observeEvent(input$reset_corpus_confirm, {
       i18n <- lang()
       shiny::removeModal()
+      # Ecrase le manifeste PARTAGE sur disque : reserve a l'administrateur,
+      # comme l'enregistrement, l'import et la suppression.
+      if (!is_admin()) {
+        shiny::showNotification(i18n$t("rag_unauthorized"), type = "error")
+        return()
+      }
       tryCatch({
         nemeton::reset_knowledge_manifest(confirm = TRUE)
         # Reload the editor from the refreshed writable copy.
@@ -664,8 +662,11 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
       i18n <- lang()
       rep <- report()
       shiny::req(rep)
+      # Seule la colonne `action` porte du HTML (badge, deja echappe) ; titres
+      # et messages viennent d'un manifeste importe et restent echappes.
       DT::datatable(
-        rag_color_actions(rep), rownames = FALSE, escape = FALSE,
+        rag_color_actions(rep), rownames = FALSE,
+        escape = setdiff(seq_along(rep), which(names(rep) == "action")),
         colnames = rag_translate_cols(names(rep), i18n),
         options  = list(pageLength = 10, dom = "tp")
       )

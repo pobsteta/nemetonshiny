@@ -625,6 +625,16 @@ mod_home_server <- function(id, app_state) {
       # Get project ID from button attribute
       project_id <- input$delete_corrupted
 
+      # L'identifiant vient du navigateur : ne supprimer que s'il designe un
+      # projet existant ET reellement corrompu - ce bouton ne sert qu'a ca -,
+      # et jamais depuis une session en lecture seule.
+      if (deny_if_readonly(app_state, i18n)) return()
+      if (is.null(get_project_path(project_id)) ||
+          isTRUE(check_project_health(project_id)$valid)) {
+        shiny::removeModal()
+        return()
+      }
+
       if (delete_project(project_id)) {
         shiny::removeModal()
         shiny::showNotification(

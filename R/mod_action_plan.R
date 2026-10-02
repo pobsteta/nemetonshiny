@@ -835,7 +835,7 @@ mod_action_plan_server <- function(id, app_state) {
                                             types = character(), prios = character())
         sprintf(
           "<b>%s</b><br>%d action(s)<br>Annees: %s<br>Types: %s<br>Priorites: %s",
-          display_name, s$n,
+          htmltools::htmlEscape(display_name), s$n,
           if (length(s$annees) == 0L) "-" else paste(s$annees, collapse = ", "),
           if (length(s$types)  == 0L) "-" else paste(s$types,  collapse = ", "),
           if (length(s$prios)  == 0L) "-" else paste(s$prios,  collapse = ", ")
@@ -3265,8 +3265,11 @@ MARCULUS_COULEURS_CATEGORIES <- c(PB = "#0072B2", BM = "#009E73",
       lng = pts$longitude, lat = pts$latitude, radius = 5, weight = 1,
       color = "#ffffff", fillColor = unname(hex_ess[pts$essence]),
       fillOpacity = 0.95, popup = popup) |>
+      # Les essences viennent du fichier Marculus importe ; Leaflet rend les
+      # libelles de legende en HTML.
       leaflet::addLegend("bottomright", colors = unname(hex_ess),
-                         labels = names(hex_ess), opacity = 0.95)
+                         labels = htmltools::htmlEscape(names(hex_ess)),
+                         opacity = 0.95)
   }
   bb <- NULL
   if (inherits(ug, "sf") && nrow(ug)) bb <- as.numeric(sf::st_bbox(ug))

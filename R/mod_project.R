@@ -454,6 +454,11 @@ mod_project_server <- function(id, app_state, selected_parcels,
       update_clicked <- isTRUE(input$update_project > 0)
       shiny::req(create_clicked || update_clicked)
 
+      # Mettre a jour un projet ouvert en lecture seule (verrou d'autrui, role
+      # lecteur) reecrirait ses parcelles et ses metadonnees sous ce verrou.
+      # Creer un projet neuf reste permis.
+      if (!is.null(rv$editing_project_id) && deny_if_readonly(app_state)) return()
+
       # Validate parcels are sf objects
       if (!inherits(parcels, "sf")) {
         cli::cli_alert_danger("Parcels are not sf objects! Class: {paste(class(parcels), collapse=', ')}")

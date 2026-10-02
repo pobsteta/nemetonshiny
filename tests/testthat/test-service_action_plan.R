@@ -305,8 +305,29 @@ test_that("can_edit_action_plan: NULL / unauthenticated => FALSE", {
 
 test_that("can_edit_action_plan: authenticated + no role => editor (anonymous fallback)", {
   expect_true(nemetonshiny:::can_edit_action_plan(
-    list(authenticated = TRUE, user_roles = character(0))
+    list(authenticated = TRUE, anonymous = TRUE, user_roles = character(0))
   ))
+})
+
+test_that("can_edit_action_plan: un utilisateur OAuth sans role Nemeton n'edite pas", {
+  # Le repli « sans role = editeur » ne vaut qu'en mode anonyme : avec un
+  # fournisseur d'identite, la liste vide (cas par defaut de Keycloak) donnait
+  # l'edition et l'administration a tout utilisateur connecte.
+  expect_false(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, anonymous = FALSE, user_roles = character(0))))
+  expect_false(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, user_roles = character(0))))
+  # Les roles techniques de Keycloak ne comptent pas.
+  expect_false(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, anonymous = FALSE,
+         user_roles = c("offline_access", "uma_authorization",
+                        "default-roles-nemeton"))))
+  # `gestionnaire` est le role d'edition du realm livre.
+  expect_true(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, anonymous = FALSE,
+         user_roles = c("default-roles-nemeton", "gestionnaire"))))
+  expect_false(nemetonshiny:::can_admin_app(
+    list(authenticated = TRUE, anonymous = FALSE, user_roles = "gestionnaire")))
 })
 
 test_that("can_edit_action_plan: editor / proprietaire / admin roles allow edit", {

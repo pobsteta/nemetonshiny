@@ -46,3 +46,29 @@ test_that("mod_auth_server returns auth_state in anonymous mode", {
     })
   })
 })
+
+test_that("mod_auth_server echoue ferme quand OAuth est configure mais indisponible", {
+  # Keycloak injoignable, shinyOAuth absent, discovery en erreur : le client
+  # vaut NULL. La session ne doit PAS retomber en mode anonyme editeur.
+  withr::with_envvar(c(NEMETON_OAUTH_PROVIDER = "keycloak",
+                       NEMETON_OAUTH_CLIENT_ID = "nemeton-app"), {
+    local_mocked_bindings(get_oauth_client = function() NULL)
+    suppressWarnings(testServer(mod_auth_server, {
+      expect_false(isTRUE(auth_state$authenticated))
+      expect_false(isTRUE(auth_state$anonymous))
+      expect_false(can_edit_action_plan(auth_state))
+      expect_false(can_admin_app(auth_state))
+    }))
+  })
+})
+
+test_that("le mode anonyme reste editeur et administrateur", {
+  withr::with_envvar(c(NEMETON_OAUTH_PROVIDER = "", NEMETON_OAUTH_CLIENT_ID = "",
+                       NEMETON_AUTH_DEV_ROLES = ""), {
+    testServer(mod_auth_server, {
+      expect_true(auth_state$anonymous)
+      expect_true(can_edit_action_plan(auth_state))
+      expect_true(can_admin_app(auth_state))
+    })
+  })
+})

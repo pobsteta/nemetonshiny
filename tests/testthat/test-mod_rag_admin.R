@@ -13,7 +13,7 @@ test_that("can_admin_rag gates on authentication and roles", {
     list(authenticated = FALSE, user_roles = "admin")))
   # Anonymous (authenticated, no roles) -> editor/admin fallback.
   expect_true(nemetonshiny:::can_admin_rag(
-    list(authenticated = TRUE, user_roles = character(0))))
+    list(authenticated = TRUE, anonymous = TRUE, user_roles = character(0))))
   expect_true(nemetonshiny:::can_admin_rag(
     list(authenticated = TRUE, user_roles = c("admin"))))
   expect_true(nemetonshiny:::can_admin_rag(
@@ -144,7 +144,7 @@ test_that("server exposes manifest, reacts to edits, blocks save on errors", {
 
   mock_app_state <- shiny::reactiveValues(
     language = "fr",
-    auth = list(authenticated = TRUE, user_roles = character(0))  # admin fallback
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character(0))  # admin fallback
   )
 
   shiny::testServer(
@@ -225,7 +225,7 @@ test_that("preview runs a dry-run build and stores the report", {
 
   mock_app_state <- shiny::reactiveValues(
     language = "fr",
-    auth = list(authenticated = TRUE, user_roles = character(0))
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character(0))
   )
 
   shiny::testServer(
@@ -267,7 +267,7 @@ test_that("importing a manifest CSV replaces the editable table", {
 
   mock_app_state <- shiny::reactiveValues(
     language = "fr",
-    auth = list(authenticated = TRUE, user_roles = character(0))
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character(0))
   )
 
   shiny::testServer(
@@ -331,7 +331,7 @@ test_that("reset_corpus confirm resyncs manifest from the package seed", {
 
   mock_app_state <- shiny::reactiveValues(
     language = "fr",
-    auth = list(authenticated = TRUE, user_roles = character(0))
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character(0))
   )
 
   shiny::testServer(
@@ -356,4 +356,13 @@ test_that("reset_corpus confirm resyncs manifest from the package seed", {
       expect_identical(session$returned$manifest()$doc_id, "seed_doc")
     }
   )
+})
+
+
+test_that("le rapport RAG echappe ce qui vient du manifeste", {
+  df <- data.frame(action = c("ingested", "<b>x</b>", NA), title = "t")
+  out <- nemetonshiny:::rag_color_actions(df)
+  expect_match(out$action[1], "background-color:#1B6B1B", fixed = TRUE)
+  expect_no_match(out$action[2], "<b>", fixed = TRUE)
+  expect_match(out$action[2], "&lt;b&gt;", fixed = TRUE)
 })
