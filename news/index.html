@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.151.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.152.0" id="nemetonshiny-01520-2026-10-02">nemetonshiny 0.152.0 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01520-2026-10-02"></a></h2>
+<div class="section level4">
+<h4 id="added--production-ifn-par-sylvoecoregion--p2-e1-flux-et-production-du-massif-spec-0-152-0">Added — Production IFN par sylvoecoregion : P2, E1 flux et production du massif (spec 054)<a class="anchor" aria-label="anchor" href="#added--production-ifn-par-sylvoecoregion--p2-e1-flux-et-production-du-massif-spec-0-152-0"></a></h4>
+<p>Cablage des modes <strong>opt-in</strong> du coeur (<code>nemeton &gt;= 0.205.0</code>, plancher <code>Imports</code> releve). Un nouveau bloc « Production IFN par sylvoecoregion » dans Parametres › Sources &amp; parametres choisit, par projet :</p>
+<ul><li>
+<strong>P2</strong> : indice de station (CHM, defaut inchange) ou <strong>production de la sylvoecoregion</strong> (<code>indicateur_p2_station(source = "ifn_fh")</code>, m3/ha/an, Fay-Herriot) ;</li>
+<li>
+<strong>E1</strong> (seulement avec P2 IFN) : stock (defaut) ou <strong>flux</strong> (<code>production_field = "P2"</code>), avec une part recoltee choisie (curseur 0-1) ou le taux observe par l’IFN dans la SER (<code>"ifn_ser"</code>). Aucune part par defaut n’est envoyee au coeur.</li>
+</ul><p>Au calcul, le code SER de chaque UGF est localise une fois (<code><a href="https://pobsteta.github.io/nemeton/reference/localiser_ser.html" class="external-link">nemeton::localiser_ser()</a></code>) puis mis en cache (<code>data/ugf_ser.rds</code>, cle UGF + empreinte de geometrie ; un echec n’est pas mis en cache). P2 IFN et E1 flux <strong>ne demandent plus de CHM</strong>. Les colonnes annexes du coeur (<code>P2_rse</code>, <code>P2_provenance</code>, <code>P2_nature</code>, <code>E1_mode</code>) sont conservees en colonnes prefixees (<code>.p2_rse</code>, …, <code>.e1_mode</code>, <code>.e1_taux</code>) et E1 recoit P2 et <code>P2_provenance</code> dans ses unites. Un P2/E1 calcule sous un autre mode est recalcule a la reprise.</p>
+<p>Affichage : sous la carte P2, la valeur par SER avec sa RSE, son echelon (SER / GRECO / national) et sa nature (modelisee ou moyenne brute), et la mention que ce n’est <strong>pas</strong> la productivite de la station. E1 en « recolte observee » est libelle « Bois-energie issu de la recolte actuelle de la SER » avec un avertissement : jamais presente comme un potentiel. La famille Production gagne un panneau « Production du massif (IFN) » (<code>ifn_production_domaines()</code> sur l’union des UGF : valeur, RSE, placettes, poids direct, part en bordure, avec reserves sous 0,2 / au-dela de 50 % / sous 3 000 ha) et les ratios prelevement/production de chaque SER (definitions IGN et vidange, RSE, mise en garde sur le biais de +10 %). Calcules dans le worker de calcul (environ 5 s), persistes dans <code>data/production_ifn.rds</code>.</p>
+<p>Hors perimetre : covariables de domaine FORMS-T (<code>nemeton 0.206.0</code>, pas encore publie) et <code>completer_volume_ifn()</code> (l’app ne comble pas P1).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.151.4" id="nemetonshiny-01514-2026-09-25">nemetonshiny 0.151.4 (2026-09-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01514-2026-09-25"></a></h2>
 <div class="section level4">
