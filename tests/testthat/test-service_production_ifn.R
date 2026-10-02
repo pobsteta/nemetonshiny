@@ -132,6 +132,27 @@ test_that("compute_all_indicators : E1 flux avec une part choisie = ressource_fl
   expect_equal(unique(res$.e1_taux), "0.6")
 })
 
+test_that("P2 repasse en mode IFN : le statut CHM perime ne survit pas", {
+  # Sinon `.p2_status = "indice_station_m"` resterait accole a des m3/ha/an et
+  # la normalisation leur appliquerait le plafond de 40 m (nemeton >= 0.207.0).
+  cfg <- nemetonshiny:::project_production_ifn_params(
+    list(production_ifn = list(p2_source = "ifn_fh")))
+  local_mocked_bindings(
+    load_indicators = function(project_id) {
+      data.frame(ug_id = c("ug1", "ug2"), indicateur_p2_station = c(18, 21),
+                 .p2_status = "indice_station_m", check.names = FALSE)
+    },
+    save_indicators_incremental = function(...) invisible(TRUE),
+    .package = "nemetonshiny")
+  res <- suppressWarnings(suppressMessages(nemetonshiny:::compute_all_indicators(
+    parcels = .ifn_units(),
+    layers = list(production_ifn = cfg),
+    indicators = "indicateur_p2_station",
+    project_id = "p")))
+  expect_equal(unique(res$.p2_provenance), "ifn_prod_ser")
+  expect_false(".p2_status" %in% names(res))
+})
+
 test_that(".write_production_annex retire les annexes d'un mode precedent", {
   res <- data.frame(indicateur_p2_station = 1:2, .p2_rse = c(3, 3),
                     .p2_provenance = "ifn_prod_ser", check.names = FALSE)
@@ -352,4 +373,136 @@ test_that("panneau du massif : poids direct faible, bordure, petite surface", {
   expect_no_match(html, esc("prod_massif_petit"), fixed = TRUE)
 
   expect_null(nemetonshiny:::production_ifn_panel(NULL, i18n))
+})
+
+# ---------------------------------------------------------------------------
+# Covariables FORMS-T du massif (prediction hybride, nemeton >= 0.206.0)
+# ---------------------------------------------------------------------------
+
+.ifn_dem <- function() {
+  terra::rast(xmin = 850000, xmax = 853000, ymin = 6679000, ymax = 6681000,
+              resolution = 25, crs = "EPSG:2154", vals = 450)
+}
+
+test_that("FORMS-T : l'annee la plus recente lisible est retenue", {
+  tried <- integer(0)
+  seen <- character(0)
+  local_mocked_bindings(theia_status = function() list(ready = TRUE),
+                        .package = "nemetonshiny")
+  # Pas d'expect_* dans le mock : il est appele sous tryCatch(error =).
+  local_mocked_bindings(
+    load_theia_source = function(source_key, aoi, asset = NULL, datetime = NULL, ...) {
+      seen <<- unique(c(seen, paste(source_key, asset)))
+      yr <- as.integer(substr(datetime, 1, 4))
+      tried <<- c(tried, yr)
+      if (yr > 2024L) stop("No forms-t STAC item intersects the AOI.")
+      .ifn_dem()
+    },
+    .package = "nemeton"
+  )
+  h <- nemetonshiny:::download_forms_t_height(.ifn_units(), years = 2026:2019)
+  expect_equal(h$year, 2024L)
+  expect_s4_class(h$height, "SpatRaster")
+  expect_equal(tried, 2026:2024)
+  expect_equal(seen, "forms_t height")
+})
+
+test_that("FORMS-T : rien sans Theia pret, ni aucune annee lisible", {
+  local_mocked_bindings(theia_status = function() list(ready = FALSE),
+                        .package = "nemetonshiny")
+  expect_null(nemetonshiny:::download_forms_t_height(.ifn_units()))
+
+  local_mocked_bindings(theia_status = function() list(ready = TRUE),
+                        .package = "nemetonshiny")
+  local_mocked_bindings(load_theia_source = function(...) stop("403"),
+                        .package = "nemeton")
+  expect_warning(
+    expect_null(nemetonshiny:::download_forms_t_height(.ifn_units(),
+                                                       years = 2020:2019)),
+    "FORMS-T")
+})
+
+test_that("covariables du massif : seulement avec un MNT, FORMS-T et sans NA", {
+  dom <- sf::st_sf(id = "massif",
+                   geometry = sf::st_union(sf::st_geometry(.ifn_units())))
+  expect_null(nemetonshiny:::.massif_covariables(dom, NULL))
+
+  local_mocked_bindings(
+    download_forms_t_height = function(aoi, ...) list(height = .ifn_dem(), year = 2024L),
+    .package = "nemetonshiny")
+  h_mean <- 18
+  unite <- NULL
+  local_mocked_bindings(
+    ifn_covariables_domaines = function(domaines, hauteur, altitude, id_col,
+                                        unite_hauteur, ...) {
+      unite <<- unite_hauteur
+      data.frame(id = "massif", h_mean = h_mean, h_sd = 6, alt_mean = 450,
+                 alt_sd = 20, part_foret = 0.8)
+    },
+    .package = "nemeton")
+  cov <- nemetonshiny:::.massif_covariables(dom, .ifn_dem())
+  expect_equal(cov$h_mean, 18)
+  expect_equal(attr(cov, "forms_t_year"), 2024L)
+  expect_equal(unite, "cm")
+
+  # Pas de pixel de foret : le coeur annulerait la correction en silence
+  # tout en annoncant une prevision hybride -> on ne passe rien.
+  h_mean <- NA_real_
+  expect_null(nemetonshiny:::.massif_covariables(dom, .ifn_dem()))
+})
+
+test_that("le resume du massif transmet les covariables et garde l'annee FORMS-T", {
+  withr::with_tempdir({
+    local_mocked_bindings(
+      .massif_covariables = function(dom, dem) {
+        structure(data.frame(id = "massif", h_mean = 18, h_sd = 6,
+                             alt_mean = 450, alt_sd = 20),
+                  forms_t_year = 2024L)
+      },
+      .package = "nemetonshiny")
+    got_cov <- NULL
+    local_mocked_bindings(
+      ifn_production_domaines = function(domaines, ..., covariables = NULL) {
+        got_cov <<- covariables
+        data.frame(id = "massif", valeur = 5.4, rse = 6, n_placettes = 40,
+                   poids_direct = 0.3, part_bordure = 0.1, surface_ha = 30000,
+                   predicteur = if (is.null(covariables)) "ser" else "hybride",
+                   hors_calibrage = FALSE, nature = "composite")
+      },
+      ifn_taux_prelevement_production = function(ser, definition = "ign", ...) {
+        data.frame(ser = ser, definition = definition, ratio = 0.9, rse = 11)
+      },
+      .package = "nemeton")
+    s <- nemetonshiny:::build_production_ifn_summary(.ifn_units(), getwd(),
+                                                     dem = .ifn_dem())
+    expect_equal(got_cov$h_mean, 18)
+    expect_equal(s$massif$predicteur, "hybride")
+    expect_equal(nemetonshiny:::read_production_ifn_summary(getwd())$forms_t_year,
+                 2024L)
+  })
+})
+
+test_that("panneau du massif : prevision nommee, hors calibrage, sans placette", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  esc <- function(k) htmltools::htmlEscape(i18n$t(k))
+  s <- list(
+    massif = data.frame(valeur = 5.4, rse = 6, n_placettes = 40,
+                        poids_direct = 0.3, part_bordure = 0.1,
+                        surface_ha = 15000, predicteur = "hybride",
+                        hors_calibrage = TRUE, nature = "composite"),
+    ratios = NULL, forms_t_year = 2024L)
+  html <- as.character(nemetonshiny:::production_ifn_panel(s, i18n))
+  expect_match(html, htmltools::htmlEscape(
+    sprintf(i18n$t("prod_predicteur_hybride"), "2024")), fixed = TRUE)
+  expect_match(html, esc("prod_massif_hors_calibrage"), fixed = TRUE)
+  expect_no_match(html, esc("prod_massif_sans_placette"), fixed = TRUE)
+
+  s$massif$predicteur <- "ser"
+  s$massif$hors_calibrage <- FALSE
+  s$massif$nature <- "prediction"
+  html <- as.character(nemetonshiny:::production_ifn_panel(s, i18n))
+  expect_match(html, esc("prod_predicteur_ser"), fixed = TRUE)
+  expect_no_match(html, "FORMS-T", fixed = TRUE)
+  expect_no_match(html, esc("prod_massif_hors_calibrage"), fixed = TRUE)
+  expect_match(html, esc("prod_massif_sans_placette"), fixed = TRUE)
 })

@@ -202,7 +202,13 @@ production_ifn_banner <- function(data, ind_col, i18n) {
 #'   * `poids_direct` below 0.2 - the value is essentially the SER's;
 #'   * `part_bordure` above one half - the massif is small next to the 700 m
 #'     blurring of the public IFN coordinates;
-#'   * under 3 000 ha the SER value (P2) is preferable.
+#'   * under 3 000 ha the SER value (P2) is preferable;
+#'   * `hors_calibrage` - the area lies outside the range the error of the
+#'     prediction was calibrated on (22 500 to 1 000 000 ha);
+#'   * `nature = "prediction"` - no IFN plot in the massif at all.
+#'
+#' The prediction the plots are shrunk towards is named: the SER's, or the
+#' SER's corrected by the massif's FORMS-T height and altitude (`"hybride"`).
 #'
 #' Followed by the harvest / production ratio of each SER, with its RSE and the
 #' known bias, so that a ratio slightly above 1 is not read as decapitalisation.
@@ -227,11 +233,21 @@ production_ifn_panel <- function(summary, i18n) {
     valeur <- num("valeur"); rse <- num("rse"); poids <- num("poids_direct")
     bordure <- num("part_bordure"); surface <- num("surface_ha")
     n_pl <- num("n_placettes")
+    txt <- function(col) if (col %in% names(m)) as.character(m[[col]]) else NA_character_
+    hybride <- identical(txt("predicteur"), "hybride")
+    predicteur <- if (hybride) {
+      sprintf(i18n$t("prod_predicteur_hybride"),
+              as.character(summary$forms_t_year %||% "?"))
+    } else if (!is.na(txt("predicteur"))) {
+      i18n$t("prod_predicteur_ser")
+    }
 
     alerts <- list(
+      if (identical(txt("nature"), "prediction")) i18n$t("prod_massif_sans_placette"),
       if (!is.na(poids) && poids < 0.2) i18n$t("prod_massif_poids_faible"),
       if (!is.na(bordure) && bordure > 0.5) i18n$t("prod_massif_bordure_elevee"),
-      if (!is.na(surface) && surface < 3000) i18n$t("prod_massif_petit")
+      if (!is.na(surface) && surface < 3000) i18n$t("prod_massif_petit"),
+      if (isTRUE(as.logical(txt("hors_calibrage")))) i18n$t("prod_massif_hors_calibrage")
     )
     alerts <- Filter(Negate(is.null), alerts)
 
@@ -252,7 +268,8 @@ production_ifn_panel <- function(summary, i18n) {
           row(i18n$t("prod_massif_placettes"), .fmt_num(n_pl, i18n, 0)),
           row(i18n$t("prod_massif_poids_direct"), .fmt_num(poids, i18n)),
           row(i18n$t("prod_massif_bordure"),
-              if (is.na(bordure)) "NA" else paste0(.fmt_num(100 * bordure, i18n, 0), " %"))
+              if (is.na(bordure)) "NA" else paste0(.fmt_num(100 * bordure, i18n, 0), " %")),
+          if (!is.null(predicteur)) row(i18n$t("prod_massif_predicteur"), predicteur)
         )
       ),
       lapply(alerts, function(a) htmltools::div(

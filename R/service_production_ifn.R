@@ -279,22 +279,32 @@ ensure_ugf_ser <- function(units, project_path) {
 #' felled trees; `"vidange"`: felled and taken out). About five seconds, hence
 #' its place in the compute worker rather than in an observer.
 #'
+#' With a DEM and FORMS-T height (`nemeton >= 0.206.0`), the massif's own
+#' covariates are passed too: the core then corrects the SER prediction for the
+#' gap between the massif and its SER (`predicteur = "hybride"`, volume
+#' production only). Without them the prediction stays the SER's.
+#'
 #' Best-effort: each part fails on its own into `NULL`.
 #'
 #' @param units sf. Compute units, with a `ser` column (see [ensure_ugf_ser()]).
 #' @param project_path Character. Project directory; the summary is written to
 #'   `data/production_ifn.rds`.
+#' @param dem `SpatRaster` (or path) of the project DEM, or `NULL`.
 #'
 #' @return The summary list (invisibly): `massif` (one-row data.frame or
-#'   `NULL`), `ratios` (data.frame or `NULL`), `computed_at`.
+#'   `NULL`), `ratios` (data.frame or `NULL`), `forms_t_year` (year of the
+#'   FORMS-T height behind the covariates, or `NULL`), `computed_at`.
 #'
 #' @noRd
-build_production_ifn_summary <- function(units, project_path) {
+build_production_ifn_summary <- function(units, project_path, dem = NULL) {
+  forms_t_year <- NULL
   massif <- tryCatch({
     dom <- sf::st_sf(id = "massif",
                      geometry = sf::st_union(sf::st_make_valid(
                        sf::st_geometry(units))))
-    nemeton::ifn_production_domaines(dom, id_col = "id")
+    cov <- .massif_covariables(dom, dem)
+    forms_t_year <- attr(cov, "forms_t_year")
+    nemeton::ifn_production_domaines(dom, id_col = "id", covariables = cov)
   }, error = function(e) {
     cli::cli_warn("Massif IFN production failed: {conditionMessage(e)}")
     NULL
@@ -314,7 +324,11 @@ build_production_ifn_summary <- function(units, project_path) {
     NULL
   })
 
-  out <- list(massif = massif, ratios = ratios, computed_at = Sys.time())
+  hybride <- is.data.frame(massif) &&
+    identical(as.character(massif$predicteur[1]), "hybride")
+  out <- list(massif = massif, ratios = ratios,
+              forms_t_year = if (hybride) forms_t_year,
+              computed_at = Sys.time())
   tryCatch({
     f <- file.path(project_path, "data", "production_ifn.rds")
     dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
@@ -323,6 +337,48 @@ build_production_ifn_summary <- function(units, project_path) {
     cli::cli_warn("Could not save the IFN production summary: {conditionMessage(e)}")
   })
   invisible(out)
+}
+
+
+#' Covariates of the massif for the hybrid IFN prediction
+#'
+#' @description
+#' `nemeton::ifn_covariables_domaines()` on FORMS-T height and the project DEM.
+#' Only FORMS-T is used, whatever CHM the indicators run on: the model was
+#' fitted on it. A covariate left `NA` (no forest pixel, DEM off the massif)
+#' returns `NULL` - the core would otherwise drop the correction silently while
+#' still labelling the prediction hybrid.
+#'
+#' @param dom sf. One-row domain with an `id` column.
+#' @param dem `SpatRaster`, path to one, or `NULL`.
+#'
+#' @return The covariates data.frame with a `forms_t_year` attribute, or `NULL`.
+#'
+#' @noRd
+.massif_covariables <- function(dom, dem) {
+  if (is.character(dem) && length(dem) == 1L && file.exists(dem)) {
+    dem <- tryCatch(terra::rast(dem), error = function(e) NULL)
+  }
+  if (!inherits(dem, "SpatRaster")) return(NULL)
+  h <- tryCatch(download_forms_t_height(dom), error = function(e) {
+    cli::cli_warn("FORMS-T height failed: {conditionMessage(e)}")
+    NULL
+  })
+  if (is.null(h)) return(NULL)
+  cov <- tryCatch(
+    nemeton::ifn_covariables_domaines(dom, h$height, dem, id_col = "id",
+                                      unite_hauteur = "cm"),
+    error = function(e) {
+      cli::cli_warn("Massif covariates failed: {conditionMessage(e)}")
+      NULL
+    })
+  vars <- c("h_mean", "h_sd", "alt_mean", "alt_sd")
+  if (!is.data.frame(cov) || !nrow(cov) || !all(vars %in% names(cov)) ||
+      !all(is.finite(as.matrix(cov[vars])))) {
+    return(NULL)
+  }
+  attr(cov, "forms_t_year") <- h$year
+  cov
 }
 
 

@@ -321,6 +321,49 @@ download_chm_theia <- function(parcels, year = NULL,
 }
 
 
+#' Fetch FORMS-T canopy height for the IFN production model
+#'
+#' The national IFN production model (spec 054, `nemeton >= 0.206.0`) was
+#' fitted on **FORMS-T** height at 10 m - not FORMSpoT, LiDAR or Open-Canopy,
+#' whose height distributions differ. This loads its `height` asset over the
+#' AOI, one STAC item per year: the most recent year available is taken,
+#' walking back from `theia_compute_year()` down to the first year of the
+#' model window.
+#'
+#' The raster is returned as published, in **centimetres**
+#' (`nemeton::ifn_covariables_domaines(unite_hauteur = "cm")`).
+#'
+#' @param aoi sf (any CRS).
+#' @param years Integer vector of years to try, most recent first.
+#'
+#' @return list(height = SpatRaster, year = integer), or `NULL` when Theia is
+#'   not ready or no year could be read.
+#' @noRd
+download_forms_t_height <- function(aoi, years = NULL) {
+  if (!isTRUE(theia_status()$ready)) return(NULL)
+  if (is.null(years)) years <- seq(theia_compute_year(), FORMS_T_FIRST_YEAR)
+  aoi <- .theia_aoi(aoi)
+  for (yr in years) {
+    h <- tryCatch(
+      nemeton::load_theia_source(
+        "forms_t", aoi = aoi, asset = "height", country = "FR",
+        datetime = sprintf("%d-01-01T00:00:00Z/%d-12-31T23:59:59Z", yr, yr)
+      ),
+      error = function(e) NULL
+    )
+    if (inherits(h, "SpatRaster")) {
+      cli::cli_alert_success("FORMS-T height loaded (year {yr}).")
+      return(list(height = h, year = as.integer(yr)))
+    }
+  }
+  cli::cli_warn("FORMS-T height unavailable for years {.val {range(years)}}.")
+  NULL
+}
+
+# First year of the IFN production model window (spec 054 §5.b: 2019-2024).
+FORMS_T_FIRST_YEAR <- 2019L
+
+
 #' Load secondary Theia rasters for non-Production indicators
 #'
 #' Loads FAPAR (C2), snow days (R3) and soil moisture (R3) from their

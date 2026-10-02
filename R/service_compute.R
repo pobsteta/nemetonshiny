@@ -1034,8 +1034,9 @@ start_computation <- function(project_id,
     # OPT-IN : par defaut (P2 = CHM, E1 = stock) rien ne bouge. En mode IFN,
     # P2 et E1 lisent le code SER de chaque UGF - localise une fois puis cache
     # (ensure_ugf_ser) - et la production du massif + les ratios de
-    # prelevement de ses SER sont calcules ici, dans le worker (~5 s : pas
-    # dans un observer Shiny), puis persistes pour la vue Production.
+    # prelevement de ses SER sont calcules ici, dans le worker (~5 s, plus le
+    # chargement FORMS-T : pas dans un observer Shiny), puis persistes pour la
+    # vue Production.
     prod_cfg <- project_production_ifn_params(projet_for_ug$metadata)
     layers$production_ifn <- prod_cfg
     if (.production_ifn_mode("indicateur_p2_station", prod_cfg) &&
@@ -1043,7 +1044,10 @@ start_computation <- function(project_id,
       state$current_task <- "production_ifn"
       report_progress(state)
       compute_unit <- ensure_ugf_ser(compute_unit, project_path)
-      build_production_ifn_summary(compute_unit, project_path)
+      # MNT du projet : covariables du massif pour la prediction hybride
+      # (nemeton >= 0.206.0, hauteur FORMS-T chargee a part).
+      build_production_ifn_summary(compute_unit, project_path,
+                                   dem = layers$rasters$dem)
     }
 
     # Spectral diversity (B4 alpha / L3 beta) - biodivMapR, spec 028.
@@ -4275,6 +4279,12 @@ compute_all_indicators <- function(parcels,
 
       # Add to results (raw values - normalization happens at family aggregation)
       results[[ind]] <- as.numeric(values)
+      # Le statut d'un calcul precedent ne survit pas a celui-ci : un P2 passe
+      # du mode CHM (`p2_status = "indice_station_m"`) au mode IFN, qui n'a
+      # pas de statut, serait sinon normalise avec le plafond en metres
+      # (nemeton >= 0.207.0, ecart n. 17).
+      old_st <- .indicator_status_col(ind)
+      if (!is.null(old_st)) results[[old_st]] <- NULL
       if (!is.null(st_name) && !is.null(st_vals) &&
           length(st_vals) == nrow(results)) {
         results[[paste0(".", st_name)]] <- st_vals
