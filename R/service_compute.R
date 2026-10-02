@@ -1110,7 +1110,8 @@ start_computation <- function(project_id,
     # d'indicateurs qui, lui, a abouti.
     tryCatch(precompute_houppiers(project_id),
              error = function(e) {
-               cli::cli_warn("Houppiers non precalcules : {conditionMessage(e)}")
+               .persist_houppiers_statut(project_id, "echec_segmentation",
+                                         detail = conditionMessage(e))
              })
 
     # Sync to PostGIS database if configured (non-bloquant)

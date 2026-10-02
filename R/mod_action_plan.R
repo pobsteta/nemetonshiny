@@ -2218,10 +2218,11 @@ mod_action_plan_server <- function(id, app_state) {
           if (!file.exists(file)) writeLines("", file)
           return()
         }
-        shiny::showNotification(
-          sprintf(i18n$t("marculus_export_ok_fmt"), res$n_contexts, res$n_gpkg,
-                  res$n_essences %||% 0L),
-          type = "message", duration = 10)
+        # Ce que le lot NE porte PAS (houppiers, desserte) et les dates qui ne
+        # sont qu'une annee cible : dit ici, pas decouvert dans le GeoPackage.
+        notice <- .marculus_export_notice(res, i18n)
+        shiny::showNotification(notice$message, type = notice$type,
+                                duration = if (identical(notice$type, "warning")) 20 else 10)
       }
     )
 

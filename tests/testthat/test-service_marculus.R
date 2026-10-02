@@ -976,3 +976,108 @@ test_that("les contextes partent au diametre, classes 20 a 90 par pas de 5", {
   expect_identical(ctx$mode, "DIAMETRE")
   expect_identical(c(ctx$classeMin, ctx$classeMax, ctx$classePas), c(20L, 90L, 5L))
 })
+
+
+# ---- Houppiers : chaque sortie laisse une trace (brief 2026-08-25 §2) ----
+
+.houppiers_trace <- function(code) {
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        dir.create("p1")
+        jsonlite::write_json(list(name = "P1"), "p1/metadata.json",
+                             auto_unbox = TRUE)
+        n <- suppressWarnings(nemetonshiny:::precompute_houppiers("p1"))
+        list(n = n, trace = jsonlite::read_json("p1/metadata.json")$houppiers)
+      })
+  })
+}
+
+test_that("houppiers : sans CHM, la trace le dit", {
+  testthat::local_mocked_bindings(.project_chm = function(...) NULL)
+  out <- .houppiers_trace()
+  expect_identical(out$n, 0L)
+  expect_equal(out$trace$statut, "sans_chm")
+  expect_equal(out$trace$nombre, 0L)
+})
+
+test_that("houppiers : une segmentation vide n'est pas une erreur", {
+  testthat::local_mocked_bindings(
+    .project_chm = function(...) "chm.tif",
+    .marculus_segment_houppiers = function(...) NULL)
+  expect_equal(.houppiers_trace()$trace$statut, "vide")
+})
+
+test_that("houppiers : une erreur de segmentation est consignee avec son message", {
+  testthat::local_mocked_bindings(
+    .project_chm = function(...) "chm.tif",
+    .marculus_segment_houppiers = function(...) {
+      structure(list(), class = "houppiers_erreur",
+                message = "st_crs(x) == st_crs(y) is not TRUE")
+    })
+  out <- .houppiers_trace()
+  expect_identical(out$n, 0L)
+  expect_equal(out$trace$statut, "echec_segmentation")
+  expect_match(out$trace$detail, "st_crs")
+})
+
+test_that("houppiers : un succes consigne le nombre ecrit", {
+  hp <- sf::st_sf(h_max = c(20, 25), geometry = sf::st_sfc(
+    sf::st_point(c(1.9, 47.9)), sf::st_point(c(1.91, 47.9)), crs = 4326))
+  testthat::local_mocked_bindings(
+    .project_chm = function(...) "chm.tif",
+    .marculus_segment_houppiers = function(...) hp)
+  out <- .houppiers_trace()
+  expect_identical(out$n, 2L)
+  expect_equal(out$trace$statut, "ok")
+  expect_equal(out$trace$nombre, 2L)
+})
+
+test_that("la segmentation distingue l'erreur du resultat vide", {
+  testthat::local_mocked_bindings(
+    segment_houppiers = function(...) stop("lidR a refuse le raster"),
+    .package = "nemeton")
+  out <- suppressWarnings(nemetonshiny:::.marculus_segment_houppiers("chm"))
+  expect_s3_class(out, "houppiers_erreur")
+  expect_match(attr(out, "message"), "lidR")
+})
+
+
+# ---- Message de fin d'export : ce que le lot ne porte pas ---------------
+
+test_that("export : couches manquantes et dates d'annee cible sont annoncees", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  res <- list(n_contexts = 3L, n_gpkg = 3L, n_essences = 12L,
+              has_desserte = FALSE, n_houppiers = 0L,
+              houppiers_statut = "sans_chm", n_date_annee = 2L)
+  n <- nemetonshiny:::.marculus_export_notice(res, i18n)
+  expect_equal(n$type, "warning")
+  expect_match(n$message, sprintf(i18n$t("marculus_export_sans_houppiers"),
+                                  i18n$t("houppier_sans_chm")), fixed = TRUE)
+  expect_match(n$message, i18n$t("marculus_export_sans_desserte"), fixed = TRUE)
+  expect_match(n$message, sprintf(i18n$t("marculus_export_date_annee"), 2L),
+               fixed = TRUE)
+
+  # Projet calcule avant la trace : on dit de relancer le calcul.
+  res$houppiers_statut <- NA_character_
+  expect_match(nemetonshiny:::.marculus_export_notice(res, i18n)$message,
+               i18n$t("houppier_non_calcule"), fixed = TRUE)
+
+  # Lot complet, dates toutes saisies : le message habituel, sans reserve.
+  res <- list(n_contexts = 1L, n_gpkg = 1L, n_essences = 12L,
+              has_desserte = TRUE, n_houppiers = 500L,
+              houppiers_statut = "ok", n_date_annee = 0L)
+  n <- nemetonshiny:::.marculus_export_notice(res, i18n)
+  expect_equal(n$type, "message")
+  expect_equal(n$message, sprintf(i18n$t("marculus_export_ok_fmt"), 1L, 1L, 12L))
+})
+
+test_that("une date revenue du terrain n'est pas comptee comme annee cible", {
+  expect_true(nemetonshiny:::.marculus_date_depuis_annee(
+    list(annee_cible = 2L)))
+  expect_false(nemetonshiny:::.marculus_date_depuis_annee(
+    list(annee_cible = 2L, date_martelage = "2026-11-14")))
+  expect_false(nemetonshiny:::.marculus_date_depuis_annee(
+    list(annee_cible = NA)))
+})

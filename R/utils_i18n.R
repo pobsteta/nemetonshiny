@@ -617,6 +617,50 @@ TRANSLATIONS <- list(
     fr = "%d contexte(s) de martelage, %d GeoPackage(s), feuille pr\u00e9-remplie de %d essences. Ouvrir le .marsync sur le t\u00e9l\u00e9phone, puis rattacher un GeoPackage \u00e0 chaque contexte.",
     en = "%d marking context(s), %d GeoPackage(s), sheet pre-filled with %d species. Open the .marsync on the phone, then attach a GeoPackage to each context."
   ),
+  marculus_export_sans_houppiers = list(
+    fr = "Sans couche houppiers : le t\u00e9l\u00e9phone ne pr\u00e9-remplira pas les hauteurs (%s).",
+    en = "No crown layer: the phone will not pre-fill heights (%s)."
+  ),
+  marculus_export_sans_desserte = list(
+    fr = "Sans couche desserte : lancez l'onglet Desserte pour la produire.",
+    en = "No road layer: run the Roads tab to produce it."
+  ),
+  marculus_export_date_annee = list(
+    fr = "%d contexte(s) non encore martel\u00e9(s) portent le 1er janvier de leur ann\u00e9e cible : c'est une ann\u00e9e de programme, pas une date de chantier, \u00e0 corriger dans Marculus au martelage.",
+    en = "%d context(s) not yet marked carry 1 January of their target year: a programme year, not a site date, to be corrected in Marculus when marking."
+  ),
+  houppier_non_calcule = list(
+    fr = "pas encore calcul\u00e9s : relancez le calcul des indicateurs",
+    en = "not computed yet: rerun the indicator computation"
+  ),
+  houppier_coeur_ancien = list(
+    fr = "version de nemeton sans segmentation des houppiers",
+    en = "nemeton version without crown segmentation"
+  ),
+  houppier_projet_absent = list(
+    fr = "dossier du projet introuvable au calcul",
+    en = "project folder not found at computation time"
+  ),
+  houppier_sans_chm = list(
+    fr = "aucun mod\u00e8le de hauteur exploitable",
+    en = "no usable canopy height model"
+  ),
+  houppier_vide = list(
+    fr = "la segmentation n'a trouv\u00e9 aucun houppier",
+    en = "the segmentation found no crown"
+  ),
+  houppier_chm_suspect = list(
+    fr = "mod\u00e8le de hauteur suspect, sans arbre",
+    en = "suspect canopy height model, no tree"
+  ),
+  houppier_echec_segmentation = list(
+    fr = "la segmentation a \u00e9chou\u00e9 au dernier calcul",
+    en = "the segmentation failed at the last computation"
+  ),
+  houppier_echec_ecriture = list(
+    fr = "le cache n'a pas pu \u00eatre \u00e9crit au dernier calcul",
+    en = "the cache could not be written at the last computation"
+  ),
   action_plan_import_marculus = list(
     fr = "Importer de Marculus",
     en = "Import from Marculus"
