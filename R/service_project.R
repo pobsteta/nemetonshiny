@@ -1117,6 +1117,9 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
     # d'accueil s'en sert pour prevenir, une fois. Non persiste - c'est un
     # fait du chargement courant, pas un etat du projet.
     indicators_invalidated = isTRUE(sens_invalide),
+    # Version de sens d'ou venait le projet : un projet v1 a aussi subi
+    # l'inversion des Risques (v2), que le message doit nommer.
+    indicators_invalidated_from = attr(sens_invalide, "version_vue"),
     metadata = metadata,
     parcels = .perf_time("load_parcels", load_parcels(project_id)),
     commune_geometry = .perf_time("load_commune_geometry", load_commune_geometry(project_id)),

@@ -1711,7 +1711,8 @@ mod_home_server <- function(id, app_state) {
     shiny::observeEvent(app_state$current_project, {
       if (!isTRUE(app_state$current_project$indicators_invalidated)) return()
       shiny::showNotification(
-        get_i18n(app_state$language)$t("indicateurs_invalides"),
+        get_i18n(app_state$language)$t(.indicateurs_invalides_cle(
+          app_state$current_project$indicators_invalidated_from)),
         type = "warning",
         duration = 15
       )

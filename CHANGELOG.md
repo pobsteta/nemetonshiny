@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.152.3] - 2026-10-02
+
+### Fixed
+
+- Bandeau d'invalidation des indicateurs : un projet venu de la version de
+  sens 1 est prevenu que la famille Risques change aussi (inversion v2, spec
+  048), et pas seulement Paysage, Dynamique temporelle et Energie.
+
 ## [0.152.2] - 2026-10-02
 
 ### Fixed
