@@ -1,5 +1,18 @@
 # Changelog
 
+## nemetonshiny 0.152.3 (2026-10-02)
+
+#### Fixed — Bandeau d’invalidation : les Risques cites pour un projet venu de la v1
+
+Depuis la v3 du sens des indicateurs (0.143.25), le bandeau affiche a
+l’ouverture d’un projet invalide ne citait que Paysage, Dynamique
+temporelle et Energie. Un projet calcule avant la v2 subit pourtant
+aussi l’inversion des Risques (R1-R4, spec 048) : son utilisateur n’en
+etait pas prevenu. `ensure_indicator_sense_current()` porte desormais la
+version d’origine (`version_vue`), et un projet venu de la v1 recoit un
+message qui cite les Risques (« plus le score est haut, moins l’UGF est
+exposee »). Un projet venu de la v2 garde le message actuel.
+
 ## nemetonshiny 0.152.2 (2026-10-02)
 
 #### Fixed — Houppiers : un echec n’est plus muet (brief du 2026-08-25, §2)

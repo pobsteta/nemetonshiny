@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.152.3" id="nemetonshiny-01523-2026-10-02">nemetonshiny 0.152.3 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01523-2026-10-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--bandeau-dinvalidation--les-risques-cites-pour-un-projet-venu-de-la-v1-0-152-3">Fixed — Bandeau d’invalidation : les Risques cites pour un projet venu de la v1<a class="anchor" aria-label="anchor" href="#fixed--bandeau-dinvalidation--les-risques-cites-pour-un-projet-venu-de-la-v1-0-152-3"></a></h4>
+<p>Depuis la v3 du sens des indicateurs (0.143.25), le bandeau affiche a l’ouverture d’un projet invalide ne citait que Paysage, Dynamique temporelle et Energie. Un projet calcule avant la v2 subit pourtant aussi l’inversion des Risques (R1-R4, spec 048) : son utilisateur n’en etait pas prevenu. <code>ensure_indicator_sense_current()</code> porte desormais la version d’origine (<code>version_vue</code>), et un projet venu de la v1 recoit un message qui cite les Risques (« plus le score est haut, moins l’UGF est exposee »). Un projet venu de la v2 garde le message actuel.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.152.2" id="nemetonshiny-01522-2026-10-02">nemetonshiny 0.152.2 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01522-2026-10-02"></a></h2>
 <div class="section level4">
