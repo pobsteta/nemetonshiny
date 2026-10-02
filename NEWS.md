@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.1.9001 (2026-10-02)
+# nemetonshiny 0.152.2 (2026-10-02)
 
 ### Fixed — Houppiers : un echec n'est plus muet (brief du 2026-08-25, §2)
 
