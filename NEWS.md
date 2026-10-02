@@ -1,3 +1,44 @@
+# nemetonshiny 0.152.0.9001 (2026-10-02)
+
+### Fixed — P2 en mode CHM ne sature plus a 100/100 (ecart n. 17, `nemeton >= 0.207.0`)
+
+En mode CHM, mode par defaut, P2 est un indice de station H0 **en metres**
+(9 a 37 m), que la normalisation plafonnait a 15, le maximum en m3/ha/an du
+mode historique : la plupart des peuplements sortaient a 100/100.
+`.add_normalized_indicators()` passe desormais la colonne de statut de
+l'indicateur (`.p2_status = "indice_station_m"`, deja transportee) a
+`nemeton::normalize_indicator(statut = )`, qui plafonne alors a 40 m
+(H0 = 18,5 m donne 46/100). Le mode IFN (m3/ha/an) garde le plafond de 15.
+
+Le statut d'un calcul precedent est aussi retire avant d'ecrire le nouveau :
+un P2 repasse du mode CHM au mode IFN, qui n'a pas de statut, aurait sinon
+garde `indice_station_m` et ete normalise avec le plafond en metres.
+
+**Les scores P2 des projets en mode CHM baissent**, et la famille Production
+avec eux : c'est la correction voulue. Un projet calcule avec un coeur
+anterieur a 0.207.0 n'a pas de `.p2_status` : il faut recalculer P2.
+
+### Added — Production du massif : prevision corrigee par FORMS-T (spec 054 lot 5-bis, `nemeton >= 0.206.0`)
+
+Le panneau « Production du massif (IFN) » passe a `ifn_production_domaines()`
+les covariables du massif (`ifn_covariables_domaines()` : hauteur FORMS-T et
+altitude du MNT du projet). Le coeur corrige alors la prevision de la SER de
+l'ecart entre le massif et sa SER (`predicteur = "hybride"`, production en
+volume seulement), avec une erreur reduite de 19 a 35 %.
+
+- La hauteur est **toujours FORMS-T** (Theia, 10 m, en cm), quel que soit le
+  CHM des indicateurs : le modele est cale dessus. L'annee la plus recente
+  lisible est prise (de l'annee precedente jusqu'a 2019).
+- Sans Theia, sans MNT, ou avec une covariable manquante, rien n'est passe et
+  la prevision reste celle de la SER : le coeur annoncerait sinon une prevision
+  hybride sans l'avoir corrigee.
+- Le panneau nomme la prevision (SER, ou SER corrigee par FORMS-T de telle
+  annee) et ajoute deux reserves : surface hors de la plage calibree (22 500 a
+  1 000 000 ha, variance extrapolee) et massif sans placette IFN (valeur
+  predite, `nature = "prediction"`).
+
+Plancher `Imports: nemeton (>= 0.207.0)`.
+
 # nemetonshiny 0.152.0 (2026-10-02)
 
 ### Added — Production IFN par sylvoecoregion : P2, E1 flux et production du massif (spec 054)

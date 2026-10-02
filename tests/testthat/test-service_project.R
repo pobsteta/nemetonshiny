@@ -2111,3 +2111,24 @@ test_that("un indicateur que le coeur ignore ne fait pas echouer l'enregistremen
   expect_equal(out$indicateur_zz9_inconnu, 42)
   expect_false("indicateur_zz9_inconnu_norm" %in% names(out))
 })
+
+test_that("P2 en mode CHM est normalise comme un indice de station en metres", {
+  # Ecart n. 17 (nemeton >= 0.207.0) : 15 est un plafond en m3/ha/an. Un
+  # indice de station H0 = 18,5 m sortait a 100/100 ; avec son statut, il est
+  # plafonne a 40 m.
+  df <- data.frame(ug_id = c("chm", "ifn"),
+                   indicateur_p2_station = c(18.5, 5.37),
+                   .p2_status = c("indice_station_m", NA),
+                   check.names = FALSE)
+  n <- nemetonshiny:::.add_normalized_indicators(df)$indicateur_p2_station_norm
+  expect_equal(n[1], nemeton::normalize_indicator(
+    "indicateur_p2_station", 18.5, statut = "indice_station_m"))
+  expect_lt(n[1], 100)
+  # Sans statut (mode IFN, m3/ha/an) : le plafond historique de 15.
+  expect_equal(n[2], nemeton::normalize_indicator("indicateur_p2_station", 5.37))
+
+  # Un projet calcule avant 0.207.0 n'a pas la colonne : rien ne casse.
+  df$.p2_status <- NULL
+  expect_equal(
+    nemetonshiny:::.add_normalized_indicators(df)$indicateur_p2_station_norm[2], n[2])
+})

@@ -575,6 +575,10 @@ backfill_all_commune_geometries <- function() {
 #' and the family view *prefers* `_norm` when it exists, so the raw value would
 #' then be displayed as if normalised. Better no twin than a false one.
 #'
+#' The indicator's status column (`.<code>_status`), when present, is passed as
+#' `statut`: for P2 it tells a site index in metres from a production in
+#' m3/ha/yr, which do not share a ceiling.
+#'
 #' @param df A data.frame of indicators.
 #' @return The same data.frame with `<indicateur>_norm` columns added.
 #' @noRd
@@ -591,7 +595,13 @@ backfill_all_commune_geometries <- function() {
 
   for (cc in cols) {
     v <- suppressWarnings(as.numeric(df[[cc]]))
-    n <- tryCatch(nemeton::normalize_indicator(cc, v), error = function(e) NULL)
+    # Le statut qualifie parfois l'unite de la valeur : P2 en mode CHM est un
+    # indice de station en metres (`.p2_status = "indice_station_m"`), plafonne
+    # a 40 et non a 15 m3/ha/an (nemeton >= 0.207.0). NULL si absent.
+    st_col <- .indicator_status_col(cc)
+    st <- if (!is.null(st_col)) df[[st_col]]
+    n <- tryCatch(nemeton::normalize_indicator(cc, v, statut = st),
+                  error = function(e) NULL)
     if (is.null(n) || length(n) != nrow(df)) next
     df[[paste0(cc, "_norm")]] <- as.numeric(n)
   }

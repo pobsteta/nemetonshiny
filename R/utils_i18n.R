@@ -2476,6 +2476,26 @@ TRANSLATIONS <- list(
     fr = "Sous quelques milliers d'hectares, préférez la valeur de la sylvoécorégion (P2).",
     en = "Below a few thousand hectares, prefer the sylvoecoregion value (P2)."
   ),
+  prod_massif_predicteur = list(
+    fr = "Pr\u00e9vision de r\u00e9f\u00e9rence",
+    en = "Reference prediction"
+  ),
+  prod_predicteur_ser = list(
+    fr = "Sylvo\u00e9cor\u00e9gion",
+    en = "Sylvoecoregion"
+  ),
+  prod_predicteur_hybride = list(
+    fr = "Sylvo\u00e9cor\u00e9gion corrig\u00e9e par la hauteur FORMS-T %s et l'altitude du massif",
+    en = "Sylvoecoregion corrected by the FORMS-T %s height and the altitude of the massif"
+  ),
+  prod_massif_hors_calibrage = list(
+    fr = "Surface hors de la plage calibr\u00e9e (22 500 \u00e0 1 000 000 ha) : la variance est extrapol\u00e9e, la RSE est indicative.",
+    en = "Area outside the calibrated range (22,500 to 1,000,000 ha): the variance is extrapolated, the RSE is indicative."
+  ),
+  prod_massif_sans_placette = list(
+    fr = "Aucune placette IFN dans le massif : la valeur est une pr\u00e9vision, pas une mesure.",
+    en = "No IFN plot in the massif: the value is a prediction, not a measurement."
+  ),
   prod_ratio_title = list(
     fr = "Ratio prélèvement / production",
     en = "Harvest / production ratio"
