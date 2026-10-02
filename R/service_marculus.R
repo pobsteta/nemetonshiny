@@ -291,7 +291,11 @@ marculus_context_from_action <- function(action, project, essences = character(0
   # L'annee cible devient la date de martelage, faute de mieux : c'est la seule
   # date que porte une action. Un 1er janvier n'est pas une date de chantier -
   # l'operateur la corrigera - mais laisser le champ vide priverait la liste de
-  # son tri, qui est par date de martelage decroissante.
+  # son tri, qui est par date de martelage decroissante. Decision du
+  # 2026-10-02 (option A du brief « date de martelage ») : on garde ce
+  # substitut, et l'export DIT combien de contextes le portent
+  # (`n_date_annee`, message de fin d'export) - c'est une annee de programme,
+  # pas une date saisie.
   #
   # `annee_cible` est un DECALAGE (1..horizon) depuis l'annee en cours, pas une
   # annee civile : le tableau du Plan d'actions affiche `annee + annee_cible`.
@@ -572,7 +576,8 @@ marculus_sync_json <- function(contexts) {
 #' computation that otherwise succeeded.
 #'
 #' @param project_id Character. Project identifier.
-#' @return Invisibly the number of crowns written, `0` when nothing was.
+#' @return Invisibly the number of crowns written, `0` when nothing was. Why
+#'   nothing was is recorded by [.persist_houppiers_statut()].
 #' @noRd
 # Ecrit le verdict « CHM suspect » du cœur dans les metadonnees du projet.
 #
@@ -612,14 +617,22 @@ marculus_sync_json <- function(contexts) {
 
 
 precompute_houppiers <- function(project_id) {
+  # Chaque sortie laisse sa trace dans les metadonnees (`houppiers`) : le
+  # 2026-08-25, un Couchey recalcule n'avait ecrit aucun houppier et rien ne
+  # disait pourquoi - cinq chemins rendaient le meme `0` en silence.
+  fin <- function(statut, n = 0L, detail = NULL) {
+    .persist_houppiers_statut(project_id, statut, n, detail)
+    invisible(as.integer(n))
+  }
   if (!requireNamespace("nemeton", quietly = TRUE) ||
       !exists("segment_houppiers", envir = asNamespace("nemeton"),
               inherits = FALSE)) {
-    return(invisible(0L))
+    return(fin("coeur_ancien"))
   }
   out_path <- .houppiers_cache_path(project_id)
+  if (is.null(out_path)) return(fin("projet_absent"))
   chm <- .project_chm(project_id)
-  if (is.null(out_path) || is.null(chm)) return(invisible(0L))
+  if (is.null(chm)) return(fin("sans_chm"))
 
   projet <- load_project(project_id)
   aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
@@ -631,13 +644,54 @@ precompute_houppiers <- function(project_id) {
   # c'est aussi celui ou l'on sortait le plus tot.
   .persist_chm_verdict(project_id, hp)
 
-  if (is.null(hp) || inherits(hp, "chm_suspect_vide")) return(invisible(0L))
+  if (inherits(hp, "houppiers_erreur")) {
+    return(fin("echec_segmentation", detail = attr(hp, "message")))
+  }
+  if (inherits(hp, "chm_suspect_vide")) return(fin("chm_suspect"))
+  if (is.null(hp)) return(fin("vide"))
 
-  dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
-  if (file.exists(out_path)) unlink(out_path)
-  sf::st_write(hp, out_path, layer = "houppier", quiet = TRUE, driver = "GPKG")
+  ecrit <- tryCatch({
+    dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+    if (file.exists(out_path)) unlink(out_path)
+    sf::st_write(hp, out_path, layer = "houppier", quiet = TRUE,
+                 driver = "GPKG")
+    TRUE
+  }, error = function(e) conditionMessage(e))
+  if (!isTRUE(ecrit)) return(fin("echec_ecriture", detail = ecrit))
+
   cli::cli_alert_success("Houppiers : {nrow(hp)} segment\u00e9s et mis en cache.")
-  invisible(nrow(hp))
+  fin("ok", nrow(hp))
+}
+
+
+#' Record why the crown layer was, or was not, produced
+#'
+#' @description
+#' Writes `metadata$houppiers` = `statut`, `nombre`, `date` and, on failure,
+#' `detail` (the error message). The status is one of `"ok"`, `"coeur_ancien"`,
+#' `"projet_absent"`, `"sans_chm"`, `"vide"`, `"chm_suspect"`,
+#' `"echec_segmentation"`, `"echec_ecriture"`; each calls for a different action,
+#' and the Marculus export names it when it ships a bundle without crowns.
+#' Never fails: a project that cannot be found simply keeps no trace.
+#'
+#' @param project_id Character.
+#' @param statut Character status.
+#' @param n Integer. Crowns written.
+#' @param detail Character or `NULL`.
+#' @return `TRUE` when written, invisibly.
+#' @noRd
+.persist_houppiers_statut <- function(project_id, statut, n = 0L,
+                                      detail = NULL) {
+  trace <- list(statut = statut, nombre = as.integer(n),
+                date = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"))
+  if (!is.null(detail)) trace$detail <- as.character(detail)[1]
+  if (!identical(statut, "ok")) {
+    cli::cli_warn("Houppiers non produits ({statut}){if (!is.null(detail)) paste0(' : ', detail) else ''}.")
+  }
+  invisible(tryCatch({
+    update_project_metadata(project_id, list(houppiers = trace))
+    TRUE
+  }, error = function(e) FALSE))
 }
 
 #' Crown layer of a project, when the core knows how to segment it
@@ -723,7 +777,10 @@ precompute_houppiers <- function(project_id) {
 #'
 #' @param chm A `SpatRaster`.
 #' @param aoi The project outline, or `NULL`.
-#' @return An `sf` of crowns carrying `h_max`, in WGS84, or `NULL`.
+#' @return An `sf` of crowns carrying `h_max`, in WGS84; `NULL` when the
+#'   segmentation is empty; a `houppiers_erreur` object (with a `message`
+#'   attribute) when it throws; a `chm_suspect_vide` one when it is empty on a
+#'   suspect height model.
 #' @noRd
 .marculus_segment_houppiers <- function(chm, aoi = NULL) {
   # Appel BORNE, dans le processus. De v0.144.1 a v0.144.1.9001, l'app
@@ -738,8 +795,12 @@ precompute_houppiers <- function(project_id) {
     nemeton::segment_houppiers(chm, aoi = aoi),
     error = function(e) {
       cli::cli_warn("Segmentation des houppiers : {conditionMessage(e)}")
-      NULL
+      # Une erreur n'est pas un resultat vide : elle ne demande pas la meme
+      # action, et `precompute_houppiers()` la consigne comme telle.
+      structure(list(), class = "houppiers_erreur",
+                message = conditionMessage(e))
     })
+  if (inherits(out, "houppiers_erreur")) return(out)
   # `attr(out, "chm_suspect")` est pose par le cœur (>= 0.191.1) : « ce modele
   # de hauteur est vraisemblablement une prediction ratee qui se fait passer
   # pour une coupe rase ». Le sous-ensemble `out[, "h_max"]` ci-dessous DETRUIT
@@ -1087,7 +1148,9 @@ marculus_eligible_actions <- function(plan) {
 #' @param essences Character vector of species for the marking sheets. `NULL`
 #'   (the default) reads them from the project's group profile.
 #' @return Invisibly a list: `n_contexts`, `n_gpkg`, `n_essences`,
-#'   `has_desserte`.
+#'   `has_desserte`, `n_houppiers`, `houppiers_statut` (from
+#'   `metadata$houppiers`), `n_date_annee` (contexts dated by their target
+#'   year only), `n_ortho`.
 #' @noRd
 marculus_export_bundle <- function(project_id, file, essences = NULL) {
   project <- load_project(project_id)
@@ -1176,5 +1239,64 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
                  n_essences = length(essences),
                  has_desserte = !is.null(desserte),
                  n_houppiers = if (is.null(houppiers)) 0L else nrow(houppiers),
+                 houppiers_statut = project$metadata$houppiers$statut %||%
+                   NA_character_,
+                 n_date_annee = sum(vapply(actions, .marculus_date_depuis_annee,
+                                           logical(1))),
                  n_ortho = sum(!vapply(ortho_par_ug, is.null, logical(1)))))
+}
+
+
+#' Is the exported marking date only the target year's 1 January?
+#'
+#' @description
+#' True when the action carries no date back from the field
+#' (`date_martelage`) but has a target year: its context then leaves with
+#' 1 January of that year, a programme year rather than a site date.
+#'
+#' @param action One action of the plan.
+#' @return Logical scalar.
+#' @noRd
+.marculus_date_depuis_annee <- function(action) {
+  dm <- suppressWarnings(as.Date(action$date_martelage %||% NA_character_))
+  saisie <- length(dm) == 1L && !is.na(dm)
+  !saisie && !is.na(.marculus_annee_civile(action$annee_cible))
+}
+
+
+#' End-of-export message of a Marculus bundle
+#'
+#' @description
+#' The bundle summary, followed by what it does NOT carry and why: no crown
+#' layer (with the reason recorded at computation time, see
+#' [.persist_houppiers_statut()]), no road layer (the Desserte tab never ran),
+#' and how many contexts carry only their target year as marking date. A
+#' missing layer used to leave without a word - it was found by opening the
+#' GeoPackage, not when downloading it.
+#'
+#' @param res List returned by [marculus_export_bundle()].
+#' @param i18n Translator.
+#' @return list(message = character, type = `"message"` or `"warning"`).
+#' @noRd
+.marculus_export_notice <- function(res, i18n) {
+  parts <- sprintf(i18n$t("marculus_export_ok_fmt"), res$n_contexts,
+                   res$n_gpkg, res$n_essences %||% 0L)
+  manque <- FALSE
+  if (identical(as.integer(res$n_houppiers %||% 0L), 0L)) {
+    st <- res$houppiers_statut %||% NA_character_
+    cle <- paste0("houppier_", if (is.na(st) || identical(st, "ok")) "non_calcule" else st)
+    raison <- if (isTRUE(i18n$has(cle))) i18n$t(cle) else st
+    parts <- c(parts, sprintf(i18n$t("marculus_export_sans_houppiers"), raison))
+    manque <- TRUE
+  }
+  if (!isTRUE(res$has_desserte)) {
+    parts <- c(parts, i18n$t("marculus_export_sans_desserte"))
+    manque <- TRUE
+  }
+  n_annee <- as.integer(res$n_date_annee %||% 0L)
+  if (n_annee > 0L) {
+    parts <- c(parts, sprintf(i18n$t("marculus_export_date_annee"), n_annee))
+  }
+  list(message = paste(parts, collapse = " "),
+       type = if (manque) "warning" else "message")
 }

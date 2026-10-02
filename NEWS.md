@@ -1,3 +1,35 @@
+# nemetonshiny 0.152.2 (2026-10-02)
+
+### Fixed — Houppiers : un echec n'est plus muet (brief du 2026-08-25, §2)
+
+Le 2026-08-25, un projet recalcule n'avait ecrit aucun houppier, et rien ne
+disait pourquoi : `precompute_houppiers()` rendait le meme `0` sur cinq
+chemins, une erreur de segmentation finissait en avertissement console, et
+l'export Marculus partait sans la couche, sans un mot. C'est ce silence qui a
+laisse passer la panne « plus aucun houppier depuis fin aout » (v0.144.1).
+
+- **Une trace sur disque** : chaque calcul ecrit `metadata$houppiers`
+  (`statut`, `nombre`, `date`, et `detail` en cas d'erreur). Les statuts
+  distinguent ce qui demande des actions differentes : `ok`, `coeur_ancien`,
+  `projet_absent`, `sans_chm`, `vide`, `chm_suspect`, `echec_segmentation`,
+  `echec_ecriture`.
+- **Une erreur n'est plus un resultat vide** : la segmentation qui leve rend
+  un objet `houppiers_erreur` portant son message.
+- **L'export le dit** : sans houppiers, le message de fin d'export le signale
+  avec la raison consignee au calcul (ou « relancez le calcul » pour un projet
+  calcule avant cette version) ; sans desserte, il renvoie a l'onglet
+  Desserte. Le message passe alors en avertissement.
+
+### Changed — Date de martelage : le 1er janvier est annonce comme une annee cible (brief du 2026-08-24, option A)
+
+Une action pas encore martelee part toujours vers Marculus avec le
+1er janvier de son annee cible, pour garder le tri de la liste sur le
+telephone (decision du 2026-10-02, option A). Le message de fin d'export dit
+desormais combien de contextes le portent : une annee de programme, pas une
+date de chantier, a corriger dans Marculus au martelage (le telephone permet
+deja de la modifier). Une date revenue du terrain (import Marculus) continue de
+primer.
+
 # nemetonshiny 0.152.1 (2026-10-02)
 
 ### Fixed — P2 en mode CHM ne sature plus a 100/100 (ecart n. 17, `nemeton >= 0.207.0`)

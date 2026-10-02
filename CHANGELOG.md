@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.152.2] - 2026-10-02
+
+### Fixed
+
+- Houppiers : chaque calcul consigne `metadata$houppiers` (statut, nombre,
+  date, detail) ; une erreur de segmentation n'est plus confondue avec un
+  resultat vide ; l'export Marculus signale en avertissement une couche
+  houppiers absente (avec la raison) ou une desserte absente.
+
+### Changed
+
+- Export Marculus : le message de fin compte les contextes dates au
+  1er janvier de leur annee cible (annee de programme, a corriger dans
+  Marculus au martelage).
+
 ## [0.152.1] - 2026-10-02
 
 ### Added
