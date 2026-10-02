@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.152.2" id="nemetonshiny-01522-2026-10-02">nemetonshiny 0.152.2 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01522-2026-10-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--houppiers--un-echec-nest-plus-muet-brief-du-0-152-2">Fixed — Houppiers : un echec n’est plus muet (brief du 2026-08-25, §2)<a class="anchor" aria-label="anchor" href="#fixed--houppiers--un-echec-nest-plus-muet-brief-du-0-152-2"></a></h4>
+<p>Le 2026-08-25, un projet recalcule n’avait ecrit aucun houppier, et rien ne disait pourquoi : <code>precompute_houppiers()</code> rendait le meme <code>0</code> sur cinq chemins, une erreur de segmentation finissait en avertissement console, et l’export Marculus partait sans la couche, sans un mot. C’est ce silence qui a laisse passer la panne « plus aucun houppier depuis fin aout » (v0.144.1).</p>
+<ul><li>
+<strong>Une trace sur disque</strong> : chaque calcul ecrit <code>metadata$houppiers</code> (<code>statut</code>, <code>nombre</code>, <code>date</code>, et <code>detail</code> en cas d’erreur). Les statuts distinguent ce qui demande des actions differentes : <code>ok</code>, <code>coeur_ancien</code>, <code>projet_absent</code>, <code>sans_chm</code>, <code>vide</code>, <code>chm_suspect</code>, <code>echec_segmentation</code>, <code>echec_ecriture</code>.</li>
+<li>
+<strong>Une erreur n’est plus un resultat vide</strong> : la segmentation qui leve rend un objet <code>houppiers_erreur</code> portant son message.</li>
+<li>
+<strong>L’export le dit</strong> : sans houppiers, le message de fin d’export le signale avec la raison consignee au calcul (ou « relancez le calcul » pour un projet calcule avant cette version) ; sans desserte, il renvoie a l’onglet Desserte. Le message passe alors en avertissement.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--date-de-martelage--leer-janvier-est-annonce-comme-une-annee-cible-brief-du-option-a-0-152-2">Changed — Date de martelage : le 1er janvier est annonce comme une annee cible (brief du 2026-08-24, option A)<a class="anchor" aria-label="anchor" href="#changed--date-de-martelage--leer-janvier-est-annonce-comme-une-annee-cible-brief-du-option-a-0-152-2"></a></h4>
+<p>Une action pas encore martelee part toujours vers Marculus avec le 1er janvier de son annee cible, pour garder le tri de la liste sur le telephone (decision du 2026-10-02, option A). Le message de fin d’export dit desormais combien de contextes le portent : une annee de programme, pas une date de chantier, a corriger dans Marculus au martelage (le telephone permet deja de la modifier). Une date revenue du terrain (import Marculus) continue de primer.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.152.1" id="nemetonshiny-01521-2026-10-02">nemetonshiny 0.152.1 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01521-2026-10-02"></a></h2>
 <div class="section level4">
