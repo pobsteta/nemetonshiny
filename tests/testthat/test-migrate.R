@@ -33,7 +33,10 @@ test_that("un projet en v2 est invalide, un projet en v3 ne l'est plus", {
       {
         # v2 -> invalidation, et le marqueur passe a 3.
         vus$vue <- 2L
-        expect_true(nemetonshiny:::ensure_indicator_sense_current("p1"))
+        r <- nemetonshiny:::ensure_indicator_sense_current("p1")
+        expect_true(r)
+        # La version d'origine choisit le message (Risques cites ou non).
+        expect_identical(attr(r, "version_vue"), 2L)
         expect_true(isTRUE(vus$invalide))
         expect_identical(vus$ecrit, 3L)
 
@@ -78,4 +81,24 @@ test_that("l'app n'inverse RIEN cote client (piege du brief, §1)", {
               "100\\s*-\\s*[a-zA-Z_.$]*lisiere", "100\\s*-\\s*[a-zA-Z_.$]*t1",
               "100\\s*-\\s*[a-zA-Z_.$]*e1", "100\\s*-\\s*[a-zA-Z_.$]*e2")
   for (m in motifs) expect_false(any(grepl(m, src)), label = m)
+})
+
+
+test_that("un projet venu de la v1 est prevenu que les Risques changent aussi", {
+  # Un projet v1 subit l'inversion des Risques (v2) ET la v3 ; le texte v3
+  # seul ne citait que Paysage, Dynamique temporelle et Energie.
+  expect_equal(nemetonshiny:::.indicateurs_invalides_cle(1L),
+               "indicateurs_invalides_v1")
+  expect_equal(nemetonshiny:::.indicateurs_invalides_cle(2L),
+               "indicateurs_invalides")
+  # Version inconnue : le message complet, qui en dit trop plutot que pas assez.
+  expect_equal(nemetonshiny:::.indicateurs_invalides_cle(NULL),
+               "indicateurs_invalides_v1")
+
+  expect_match(nemetonshiny:::get_i18n("fr")$t("indicateurs_invalides_v1"),
+               "Risques", fixed = TRUE)
+  expect_match(nemetonshiny:::get_i18n("en")$t("indicateurs_invalides_v1"),
+               "Risks", fixed = TRUE)
+  expect_no_match(nemetonshiny:::get_i18n("fr")$t("indicateurs_invalides"),
+                  "Risques", fixed = TRUE)
 })

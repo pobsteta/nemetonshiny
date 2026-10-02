@@ -168,7 +168,10 @@ INDICATOR_SENSE_VERSION <- 3L
 #' @param project_id Character.
 #' @param metadata List. Metadonnees deja chargees, pour eviter une relecture.
 #'
-#' @return Logical. `TRUE` si des indicateurs ont ete invalides.
+#' @return Logical. `TRUE` si des indicateurs ont ete invalides. Porte en
+#'   attribut `version_vue` la version de sens d'ou venait le projet : le
+#'   message a l'utilisateur ne cite pas les memes familles selon qu'il a
+#'   saute une correction (v2 -> v3) ou deux (v1 -> v3, Risques compris).
 #'
 #' @noRd
 ensure_indicator_sense_current <- function(project_id, metadata = NULL) {
@@ -207,5 +210,24 @@ ensure_indicator_sense_current <- function(project_id, metadata = NULL) {
     error = function(e) cli::cli_warn(
       "Marqueur de sens non ecrit : {conditionMessage(e)}"))
 
-  isTRUE(a_invalider)
+  structure(isTRUE(a_invalider), version_vue = vue)
+}
+
+
+#' i18n key of the invalidation notice, by the version a project came from
+#'
+#' @description
+#' A project last computed under sense version 1 went through both changes: the
+#' Risk family inverted (v2) and Landscape, Temporal dynamics and Energy
+#' rescaled (v3). Its notice must name the Risks too - the v3 text alone told
+#' such a user that only three families would move. Unknown version: the full
+#' notice, which overstates rather than hides.
+#'
+#' @param version_vue Integer sense version the project came from, or `NULL`.
+#' @return Character. An i18n key.
+#' @noRd
+.indicateurs_invalides_cle <- function(version_vue) {
+  v <- suppressWarnings(as.integer(version_vue %||% NA_integer_))
+  if (length(v) == 1L && !is.na(v) && v >= 2L) "indicateurs_invalides"
+  else "indicateurs_invalides_v1"
 }
