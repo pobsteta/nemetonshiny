@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.3.9001 (2026-10-02)
+# nemetonshiny 0.152.4 (2026-10-02)
 
 ### Security — Phase 1 de l'audit 1.0 : failles fermees
 
