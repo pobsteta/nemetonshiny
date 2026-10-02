@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.152.4] - 2026-10-02
+
+### Security
+
+- Identifiant de projet valide cote serveur (un seul segment de chemin, sous
+  la racine) avant tout acces disque ; suppression d'un projet corrompu
+  reverifiee et refusee en lecture seule.
+- Authentification qui echoue ferme quand OAuth est configure mais
+  indisponible ; « sans role = editeur » reserve au mode anonyme ; roles
+  techniques Keycloak ignores, `gestionnaire` reconnu.
+- Cles Theia/LLM du serveur et reinitialisation du corpus RAG reservees a
+  l'administrateur.
+- Echappement des libelles d'UGF, du nom de projet et des essences Marculus
+  (XSS stocke) ; echappement LaTeX dans les PDF.
+- Mise a jour de projet refusee en lecture seule ; `.dockerignore` sans
+  secrets ; realm Keycloak de dev avec les roles dans `userinfo`.
+
+### Changed
+
+- Sur un Keycloak existant, publier les roles du realm dans `userinfo` : sans
+  ce mapper, les utilisateurs connectes passent en lecture seule.
+
 ## [0.152.3] - 2026-10-02
 
 ### Fixed

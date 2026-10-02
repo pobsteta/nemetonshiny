@@ -1481,7 +1481,10 @@ load_comments <- function(project_id) {
       metadata <- jsonlite::read_json(metadata_path)
       health <- check_project_health(project_id, metadata = metadata)
       data.frame(
-        id = metadata$id %||% project_id,
+        # Le DOSSIER est l'identifiant : c'est lui que tout acces disque
+        # utilise. Un dossier copie garde le `metadata$id` de l'original, et la
+        # carte chargeait (ou supprimait) l'original.
+        id = project_id,
         name = metadata$name %||% "Untitled",
         description = metadata$description %||% "",
         owner = metadata$owner %||% "",
@@ -2641,18 +2644,48 @@ load_project_metadata <- function(project_id) {
 #'
 #' @noRd
 get_project_path <- function(project_id) {
-  if (is.null(project_id) || nchar(project_id) == 0) {
+  if (!.is_safe_project_id(project_id)) {
     return(NULL)
   }
 
   root <- get_projects_root()
   project_path <- file.path(root, project_id)
 
-  if (dir.exists(project_path)) {
-    return(project_path)
+  if (!dir.exists(project_path)) {
+    return(NULL)
+  }
+  # Le dossier resolu doit rester SOUS la racine : un lien symbolique place
+  # dans la racine ne doit pas faire sortir une suppression recursive.
+  reel <- normalizePath(project_path, winslash = "/", mustWork = FALSE)
+  racine <- normalizePath(root, winslash = "/", mustWork = FALSE)
+  if (!startsWith(reel, paste0(racine, "/"))) {
+    return(NULL)
   }
 
-  NULL
+  project_path
+}
+
+
+#' Is this a valid project identifier?
+#'
+#' @description
+#' A project id names ONE directory under the projects root. It arrives from
+#' the browser (`input$load_project`, `input$delete_corrupted`), so it is
+#' untrusted: an id made of relative path segments would designate a directory
+#' outside the root, which `delete_project()` then removes recursively. Only a
+#' single plain path segment is accepted - no separator, no `.`/`..`, no
+#' control character.
+#'
+#' @param project_id Candidate id.
+#' @return Logical scalar.
+#' @noRd
+.is_safe_project_id <- function(project_id) {
+  is.character(project_id) && length(project_id) == 1L &&
+    !is.na(project_id) && nzchar(project_id) &&
+    nchar(project_id) <= 200L &&
+    !project_id %in% c(".", "..") &&
+    !grepl("[/\\[:cntrl:]]", project_id) &&
+    identical(basename(project_id), project_id)
 }
 
 

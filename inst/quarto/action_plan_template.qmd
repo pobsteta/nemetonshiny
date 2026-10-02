@@ -55,12 +55,33 @@ f_ha <- function(x) {
 }
 
 tr <- function(fr, en) if (identical(lang, "fr")) fr else en
+
+# Defini ici, avant la page de titre qui l'utilise.
+latex_escape <- function(x) {
+  if (is.null(x) || length(x) == 0L || is.na(x)) return("")
+  x <- as.character(x)
+  # L'antislash passe par un jeton : remplace en premier par
+  # `\textbackslash{}`, ses accolades etaient ensuite echappees a leur tour
+  # (`\textbackslash\{\}`, imprime « \{} »).
+  x <- gsub("\\\\", "\001", x)
+  x <- gsub("&",  "\\\\&",  x)
+  x <- gsub("%",  "\\\\%",  x)
+  x <- gsub("\\$", "\\\\$",  x)
+  x <- gsub("#",  "\\\\#",  x)
+  x <- gsub("_",  "\\\\_",  x)
+  x <- gsub("\\{", "\\\\{",  x)
+  x <- gsub("\\}", "\\\\}",  x)
+  x <- gsub("~",  "\\\\textasciitilde{}",  x)
+  x <- gsub("\\^", "\\\\textasciicircum{}", x)
+  x <- gsub("\001", "\\\\textbackslash{}", x, fixed = FALSE)
+  x
+}
 ```
 
 \begin{titlepage}
 \centering
 \vspace*{3cm}
-{\Huge\bfseries `r data$project_name`\par}
+{\Huge\bfseries `r latex_escape(data$project_name)`\par}
 \vspace{1cm}
 {\Large `r tr("Plan d'actions sylvicoles", "Silvicultural action plan")`\par}
 \vspace{2cm}
@@ -119,21 +140,6 @@ statut_color <- function(s) {
   )
 }
 
-latex_escape <- function(x) {
-  if (is.null(x) || length(x) == 0L || is.na(x)) return("")
-  x <- as.character(x)
-  x <- gsub("\\\\", "\\\\textbackslash{}", x)
-  x <- gsub("&",  "\\\\&",  x)
-  x <- gsub("%",  "\\\\%",  x)
-  x <- gsub("\\$", "\\\\$",  x)
-  x <- gsub("#",  "\\\\#",  x)
-  x <- gsub("_",  "\\\\_",  x)
-  x <- gsub("\\{", "\\\\{",  x)
-  x <- gsub("\\}", "\\\\}",  x)
-  x <- gsub("~",  "\\\\textasciitilde{}",  x)
-  x <- gsub("\\^", "\\\\textasciicircum{}", x)
-  x
-}
 
 for (ug in data$ugfs) {
   cat("# ", latex_escape(ug$label), " \\textcolor{gray}{(",

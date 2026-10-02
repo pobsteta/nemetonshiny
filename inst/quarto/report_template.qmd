@@ -113,6 +113,12 @@ sanitize_md <- function(text) {
   if (is.null(text) || nchar(text) == 0) return(text)
   text <- gsub("\n---\n", "\n***\n", text)
   text <- gsub("^---$", "***", text)
+  # Texte saisi ou genere par le LLM : Pandoc laisse passer le LaTeX brut, donc
+  # une commande TeX (inclusion de fichier du serveur...) serait executee au
+  # rendu, et deux `$` basculent en mode math. On echappe l'antislash et le
+  # dollar a la mode Markdown : ils s'impriment tels quels.
+  text <- gsub("\\\\", "\\\\\\\\", text)
+  text <- gsub("\\$", "\\\\$", text)
   text
 }
 ```
@@ -188,11 +194,11 @@ cat("\\newpage\n")
 
 # `r tr("project_info")`
 
-**`r tr("project_name")`:** `r report_data$project_name`
+**`r tr("project_name")`:** `r sanitize_md(report_data$project_name)`
 
-`r if (!is.null(report_data$project_description) && nchar(report_data$project_description) > 0) paste0("**Description:** ", report_data$project_description)`
+`r if (!is.null(report_data$project_description) && nchar(report_data$project_description) > 0) paste0("**Description:** ", sanitize_md(report_data$project_description))`
 
-`r if (!is.null(report_data$project_owner) && nchar(report_data$project_owner) > 0) paste0("**", tr("owner"), ":** ", report_data$project_owner)`
+`r if (!is.null(report_data$project_owner) && nchar(report_data$project_owner) > 0) paste0("**", tr("owner"), ":** ", sanitize_md(report_data$project_owner))`
 
 - **UGF :** `r report_data$n_ugs`
 - **`r tr("parcels")`:** `r report_data$n_parcels`

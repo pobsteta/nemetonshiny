@@ -2132,3 +2132,31 @@ test_that("P2 en mode CHM est normalise comme un indice de station en metres", {
   expect_equal(
     nemetonshiny:::.add_normalized_indicators(df)$indicateur_p2_station_norm[2], n[2])
 })
+
+
+test_that("un identifiant de projet ne designe jamais un dossier hors de la racine", {
+  # L'identifiant arrive du navigateur (chargement, suppression d'un projet
+  # corrompu) ; `delete_project()` supprime recursivement ce qu'il designe.
+  withr::with_tempdir({
+    racine <- file.path(getwd(), "projects")
+    dir.create(file.path(racine, "20260101_120000_abcd"), recursive = TRUE)
+    dir.create(file.path(getwd(), "hors_racine"))
+    local_mocked_bindings(get_projects_root = function() racine)
+
+    expect_equal(nemetonshiny:::get_project_path("20260101_120000_abcd"),
+                 file.path(racine, "20260101_120000_abcd"))
+    for (id in c("..", ".", "../hors_racine", "a/b", "..\\hors_racine", "",
+                 NA_character_)) {
+      expect_null(nemetonshiny:::get_project_path(id))
+    }
+    expect_null(nemetonshiny:::get_project_path(c("a", "b")))
+    expect_null(nemetonshiny:::get_project_path(42))
+    expect_false(suppressWarnings(nemetonshiny:::delete_project("..")))
+    expect_true(dir.exists(file.path(getwd(), "hors_racine")))
+
+    # Un lien symbolique place dans la racine ne fait pas sortir non plus.
+    skip_on_os("windows")
+    file.symlink(file.path(getwd(), "hors_racine"), file.path(racine, "lien"))
+    expect_null(nemetonshiny:::get_project_path("lien"))
+  })
+})

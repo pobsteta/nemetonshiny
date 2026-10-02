@@ -348,8 +348,20 @@ mod_theia_config_server <- function(id, app_state) {
       llm_edit_mode(FALSE)
     }, ignoreInit = TRUE)
 
+    # Les cles Theia / LLM sont celles du SERVEUR : les ecrire ou les effacer
+    # modifie `~/.config` et les variables d'environnement du processus, pour
+    # toutes les sessions. Reserve a un administrateur (mode anonyme compris :
+    # poste mono-utilisateur).
+    .refuser_non_admin <- function() {
+      if (isTRUE(can_admin_app(app_state$auth))) return(FALSE)
+      i18n <- get_i18n(app_state$language %||% "fr")
+      shiny::showNotification(i18n$t("cles_serveur_admin"), type = "error")
+      TRUE
+    }
+
     # ----- Theia observers --------------------------------------------
     shiny::observeEvent(input$save_key, {
+      if (.refuser_non_admin()) return()
       i18n <- get_i18n(app_state$language %||% "fr")
       access <- input$access_key %||% ""
       secret <- input$secret_key %||% ""
@@ -378,6 +390,7 @@ mod_theia_config_server <- function(id, app_state) {
       shiny::showModal(render_modal())
     })
     shiny::observeEvent(input$delete_key, {
+      if (.refuser_non_admin()) return()
       i18n <- get_i18n(app_state$language %||% "fr")
       cleared <- theia_clear_api_key()
       if (isTRUE(cleared)) {
@@ -458,6 +471,7 @@ mod_theia_config_server <- function(id, app_state) {
 
     # ----- LLM observers ----------------------------------------------
     shiny::observeEvent(input$llm_save_key, {
+      if (.refuser_non_admin()) return()
       i18n <- get_i18n(app_state$language %||% "fr")
       provider <- input$llm_provider %||% active_provider()
       key <- input$llm_key %||% ""
@@ -485,6 +499,7 @@ mod_theia_config_server <- function(id, app_state) {
       shiny::showModal(render_modal())
     })
     shiny::observeEvent(input$llm_delete_key, {
+      if (.refuser_non_admin()) return()
       i18n <- get_i18n(app_state$language %||% "fr")
       provider <- input$llm_provider %||% active_provider()
       cleared <- llm_clear_api_key(provider)

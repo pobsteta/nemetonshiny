@@ -135,14 +135,29 @@ mod_auth_server <- function(id) {
       authenticated = FALSE,
       user_name = NULL,
       user_email = NULL,
-      user_roles = character(0)
+      user_roles = character(0),
+      anonymous = FALSE
     )
 
     client <- get_oauth_client()
 
+    # OAuth CONFIGURE mais client indisponible (shinyOAuth absent, Keycloak
+    # injoignable, discovery en erreur) : on echoue FERME. Retomber en mode
+    # anonyme donnait une session editrice sans connexion des que le
+    # fournisseur d'identite tombait.
+    if (is.null(client) && is_oauth_configured()) {
+      cli::cli_warn(c(
+        "OAuth is configured but the client could not be created.",
+        i = "Sessions stay unauthenticated (read-only) until the provider is reachable."))
+      auth_state$authenticated <- FALSE
+      auth_state$anonymous <- FALSE
+      return(auth_state)
+    }
+
     if (is.null(client)) {
       # Mode anonyme : pas de configuration OAuth
       auth_state$authenticated <- TRUE
+      auth_state$anonymous <- TRUE
       auth_state$user_name <- "Anonyme"
       # Dev override: NEMETON_AUTH_DEV_ROLES="lecteur"  -> read-only
       # NEMETON_AUTH_DEV_ROLES="editeur,admin" -> editor.
@@ -169,6 +184,7 @@ mod_auth_server <- function(id) {
       if (isTRUE(auth$authenticated)) {
         userinfo <- tryCatch(auth$token@userinfo, error = function(e) list())
         auth_state$authenticated <- TRUE
+        auth_state$anonymous <- FALSE
         auth_state$user_name <- userinfo$name %||%
                                 userinfo$preferred_username %||%
                                 userinfo$email %||%
@@ -213,3 +229,67 @@ auth_user_badge <- function(auth_state, lang = "fr") {
     name
   )
 }
+
+
+#' Roles that grant rights, from an auth state
+#'
+#' @description
+#' Keycloak adds technical roles to `realm_access.roles` for every user
+#' (`offline_access`, `uma_authorization`, `default-roles-<realm>`). They say
+#' nothing about Nemeton rights and are dropped, so that "no Nemeton role" is
+#' detected as such.
+#'
+#' @param auth_state reactiveValues / list from `mod_auth_server`.
+#' @return Lower-case character vector.
+#' @noRd
+.auth_roles <- function(auth_state) {
+  roles <- tryCatch(auth_state[["user_roles"]] %||% character(),
+                    error = function(e) character())
+  roles <- tolower(as.character(unlist(roles)))
+  roles[!roles %in% c("offline_access", "uma_authorization") &
+          !startsWith(roles, "default-roles-")]
+}
+
+
+#' Does a session hold one of these roles?
+#'
+#' @description
+#' The single permission rule of the app. A session must be authenticated. In
+#' anonymous mode (no OAuth configured: single-user or local install) it holds
+#' every right, as before. Once an identity provider is configured, a user
+#' WITHOUT any Nemeton role gets nothing: an empty role list used to mean
+#' "editor and administrator" for every authenticated user, which was the
+#' default with Keycloak's userinfo.
+#'
+#' @param auth_state reactiveValues / list from `mod_auth_server`, or NULL.
+#' @param roles Character. Roles granting the right.
+#' @return Logical scalar.
+#' @noRd
+auth_has_role <- function(auth_state, roles) {
+  if (is.null(auth_state)) return(FALSE)
+  authenticated <- tryCatch(isTRUE(auth_state[["authenticated"]]),
+                            error = function(e) FALSE)
+  if (!authenticated) return(FALSE)
+  user_roles <- .auth_roles(auth_state)
+  anonymous <- tryCatch(isTRUE(auth_state[["anonymous"]]),
+                        error = function(e) FALSE)
+  if (length(user_roles) == 0L) return(anonymous)
+  any(tolower(roles) %in% user_roles)
+}
+
+# Roles reconnus. `gestionnaire` est le role d'edition du realm Keycloak livre
+# (keycloak/realm-nemeton.json) ; les autres sont les alias historiques.
+AUTH_EDITOR_ROLES <- c("proprietaire", "editeur", "gestionnaire", "owner",
+                       "editor", "admin", "manager")
+AUTH_ADMIN_ROLES <- c("proprietaire", "owner", "admin")
+
+
+#' Can this session administer the server (API keys, RAG corpus)?
+#'
+#' @param auth_state reactiveValues / list from `mod_auth_server`, or NULL.
+#' @return Logical scalar.
+#' @noRd
+can_admin_app <- function(auth_state) {
+  auth_has_role(auth_state, AUTH_ADMIN_ROLES)
+}
+

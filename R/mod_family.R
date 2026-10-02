@@ -364,7 +364,9 @@ mod_family_server <- function(id, family_code, app_state) {
         val <- dropped[[col]]
         sprintf("%s: %s", label, if (is.na(val)) "NA" else round(val, 3))
       }, character(1))
-      popup_html <- paste0("<strong>", ug_label, "</strong><br/>",
+      # Le libelle d'UGF est une saisie de l'utilisateur : echappe.
+      popup_html <- paste0("<strong>", htmltools::htmlEscape(ug_label),
+                           "</strong><br/>",
                            paste(popup_lines, collapse = "<br/>"))
 
       # Zoom all maps and show popup
@@ -911,8 +913,10 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
   } else {
     as.character(seq_len(nrow(sf_wgs84)))
   }
+  # Libelles d'UGF saisis par l'utilisateur : echappes avant le HTML.
   labels <- sprintf("<strong>%s</strong><br/>%s: %s",
-                    ids, title, round(vals, 3)) |>
+                    htmltools::htmlEscape(ids), htmltools::htmlEscape(title),
+                    round(vals, 3)) |>
     lapply(htmltools::HTML)
 
   # Build layerId from the UGF identifier when available (stable

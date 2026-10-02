@@ -1,3 +1,57 @@
+# nemetonshiny 0.152.4 (2026-10-02)
+
+### Security — Phase 1 de l'audit 1.0 : failles fermees
+
+Correctifs issus de la revue complete du depot (page « Audit nemetonshiny 1.0 »).
+
+- **Identifiant de projet valide cote serveur.** `get_project_path()` n'accepte
+  plus qu'un segment de chemin unique (ni separateur, ni `.`/`..`, ni caractere
+  de controle) et verifie que le dossier resolu reste sous la racine des
+  projets, lien symbolique compris. L'identifiant arrive du navigateur et
+  `delete_project()` supprime recursivement ce qu'il designe. La suppression
+  d'un projet corrompu revérifie qu'il l'est, et refuse une session en lecture
+  seule. La liste des projets prend le nom du dossier comme identifiant (un
+  dossier copie gardait l'id de l'original).
+- **L'authentification echoue ferme.** OAuth configure mais client
+  indisponible (Keycloak injoignable, `shinyOAuth` absent) : la session reste
+  non authentifiee, en lecture seule, au lieu de retomber en mode anonyme
+  editeur.
+- **« Sans role = editeur » reserve au mode anonyme.** Avec un fournisseur
+  d'identite, un utilisateur sans role Nemeton n'a plus aucun droit (c'etait
+  le cas par defaut avec Keycloak, qui ne transmet pas les roles dans
+  `userinfo`). Les roles techniques de Keycloak (`offline_access`,
+  `uma_authorization`, `default-roles-*`) sont ignores ; `gestionnaire`, role
+  d'edition du realm livre, est reconnu. Une seule regle :
+  `auth_has_role()` / `can_admin_app()`.
+  **A faire sur un deploiement Keycloak existant** : publier les roles du realm
+  dans `userinfo` (mapper « realm roles », claim `realm_access.roles`, option
+  « Add to userinfo »), comme le fait desormais `keycloak/realm-nemeton.json`.
+  Sans cela, tous les utilisateurs connectes passent en lecture seule.
+- **Cles du serveur reservees a l'administrateur.** Enregistrer ou supprimer
+  une cle Theia ou LLM (fichier dans le `~` du serveur, variables
+  d'environnement de tout le processus) exige le role administrateur ; le mode
+  anonyme (poste mono-utilisateur) le garde.
+- **RAG** : la reinitialisation du corpus exige le role administrateur, comme
+  les autres ecritures ; la table du rapport echappe tout sauf le badge
+  d'action.
+- **XSS stocke** : libelles et groupes d'UGF, nom de projet et essences
+  Marculus sont echappes avant d'entrer dans les infobulles, popups, legendes
+  et modales (editeur d'UGF, vues familles, plan d'actions).
+- **PDF** : le nom de projet est echappe dans la page de titre du plan
+  d'actions (un `_` ou un `&` faisait echouer le rendu) ; dans le rapport, les
+  commentaires et metadonnees neutralisent l'antislash et le dollar, si bien
+  qu'aucune commande TeX ne s'execute plus au rendu. `latex_escape()` imprime
+  enfin un antislash correctement.
+- **Mise a jour d'un projet** refusee a une session en lecture seule.
+- **Docker** : `.dockerignore` exclut `.Renviron*`, `.env*`, `*.apikey` et
+  `keycloak/` du contexte de construction (`COPY . /app`).
+- **Realm Keycloak de developpement** : mapper des roles dans `userinfo`,
+  `sslRequired` passe de `none` a `external`.
+
+**Reste a faire par le proprietaire du depot** : `.Renviron.txt` est suivi par
+git ; verifier qu'il ne contient que des valeurs factices et faire tourner le
+topic ntfy s'il est reel.
+
 # nemetonshiny 0.152.3 (2026-10-02)
 
 ### Fixed — Bandeau d'invalidation : les Risques cites pour un projet venu de la v1

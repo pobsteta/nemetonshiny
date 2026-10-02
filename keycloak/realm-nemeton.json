@@ -4,7 +4,7 @@
   "displayName": "Néméton",
   "displayNameHtml": "<strong>Néméton</strong> — Diagnostic Forestier",
   "loginTheme": "keycloak",
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
@@ -53,6 +53,22 @@
       ],
       "optionalClientScopes": [
         "roles"
+      ],
+      "protocolMappers": [
+        {
+          "name": "realm roles (userinfo)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
       ]
     }
   ],

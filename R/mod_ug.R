@@ -728,16 +728,18 @@ mod_ug_server <- function(id, app_state) {
       atom_labels <- vapply(seq_len(nrow(tenements)), function(i) {
         uid <- tenements$ug_id[i]
         ug_row <- ugs[ugs$ug_id == uid, ]
+        # Libelle et groupe sont des SAISIES (renommage, import) : echappes
+        # avant d'entrer dans l'infobulle HTML.
         ug_label <- if (nrow(ug_row) > 0) ug_row$label[1] else "?"
         groupe_str <- if (nrow(ug_row) > 0 && !is.na(ug_row$groupe[1])) {
-          paste0(" [", ug_row$groupe[1], "]")
+          paste0(" [", htmltools::htmlEscape(ug_row$groupe[1]), "]")
         } else {
           ""
         }
         sprintf(
           "<b>%s</b>%s<br>Tenement: %s<br>Surface: %s m\u00b2",
-          ug_label, groupe_str,
-          tenements$tenement_id[i],
+          htmltools::htmlEscape(ug_label), groupe_str,
+          htmltools::htmlEscape(tenements$tenement_id[i]),
           format(round(tenements$surface_m2[i]), big.mark = " ")
         )
       }, character(1))
@@ -801,13 +803,13 @@ mod_ug_server <- function(id, app_state) {
 
           ug_labels <- vapply(seq_len(nrow(ug_sf)), function(i) {
             groupe_str <- if (!is.na(ug_sf$groupe[i])) {
-              paste0(" [", ug_sf$groupe[i], "]")
+              paste0(" [", htmltools::htmlEscape(ug_sf$groupe[i]), "]")
             } else {
               ""
             }
             sprintf(
               "<b>%s</b>%s<br>%d tenement(s) | %s ha",
-              ug_sf$label[i], groupe_str,
+              htmltools::htmlEscape(ug_sf$label[i]), groupe_str,
               ug_sf$n_tenements[i],
               format(round(ug_sf$surface_m2[i] / 10000, 2), nsmall = 2)
             )
@@ -2460,8 +2462,9 @@ mod_ug_server <- function(id, app_state) {
             bsicons::bs_icon("exclamation-triangle-fill", class = "me-2"),
             htmltools::HTML(sprintf(
               i18n_m$t("csv_import_replace_warn"),
-              shiny::isolate(app_state$current_project$metadata$name) %||%
-                shiny::isolate(app_state$current_project$id)))
+              htmltools::htmlEscape(
+                shiny::isolate(app_state$current_project$metadata$name) %||%
+                  shiny::isolate(app_state$current_project$id))))
           )
         },
         footer = htmltools::tagList(

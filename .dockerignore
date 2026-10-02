@@ -13,3 +13,11 @@ vignettes
 *.Rproj
 .DS_Store
 Thumbs.db
+
+# Secrets et environnement local : jamais dans l'image (COPY . /app).
+.Renviron
+.Renviron.*
+.env
+.env.*
+*.apikey
+keycloak
