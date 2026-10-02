@@ -1,3 +1,44 @@
+# nemetonshiny 0.152.0 (2026-10-02)
+
+### Added — Production IFN par sylvoecoregion : P2, E1 flux et production du massif (spec 054)
+
+Cablage des modes **opt-in** du coeur (`nemeton >= 0.205.0`, plancher
+`Imports` releve). Un nouveau bloc « Production IFN par sylvoecoregion » dans
+Parametres › Sources & parametres choisit, par projet :
+
+- **P2** : indice de station (CHM, defaut inchange) ou **production de la
+  sylvoecoregion** (`indicateur_p2_station(source = "ifn_fh")`, m3/ha/an,
+  Fay-Herriot) ;
+- **E1** (seulement avec P2 IFN) : stock (defaut) ou **flux**
+  (`production_field = "P2"`), avec une part recoltee choisie (curseur 0-1)
+  ou le taux observe par l'IFN dans la SER (`"ifn_ser"`). Aucune part par
+  defaut n'est envoyee au coeur.
+
+Au calcul, le code SER de chaque UGF est localise une fois
+(`nemeton::localiser_ser()`) puis mis en cache (`data/ugf_ser.rds`, cle UGF +
+empreinte de geometrie ; un echec n'est pas mis en cache). P2 IFN et E1 flux
+**ne demandent plus de CHM**. Les colonnes annexes du coeur (`P2_rse`,
+`P2_provenance`, `P2_nature`, `E1_mode`) sont conservees en colonnes
+prefixees (`.p2_rse`, ..., `.e1_mode`, `.e1_taux`) et E1 recoit P2 et
+`P2_provenance` dans ses unites. Un P2/E1 calcule sous un autre mode est
+recalcule a la reprise.
+
+Affichage : sous la carte P2, la valeur par SER avec sa RSE, son echelon
+(SER / GRECO / national) et sa nature (modelisee ou moyenne brute), et la
+mention que ce n'est **pas** la productivite de la station. E1 en
+« recolte observee » est libelle « Bois-energie issu de la recolte actuelle
+de la SER » avec un avertissement : jamais presente comme un potentiel. La
+famille Production gagne un panneau « Production du massif (IFN) »
+(`ifn_production_domaines()` sur l'union des UGF : valeur, RSE, placettes,
+poids direct, part en bordure, avec reserves sous 0,2 / au-dela de 50 % /
+sous 3 000 ha) et les ratios prelevement/production de chaque SER
+(definitions IGN et vidange, RSE, mise en garde sur le biais de +10 %).
+Calcules dans le worker de calcul (environ 5 s), persistes dans
+`data/production_ifn.rds`.
+
+Hors perimetre : covariables de domaine FORMS-T (`nemeton 0.206.0`, pas
+encore publie) et `completer_volume_ifn()` (l'app ne comble pas P1).
+
 # nemetonshiny 0.151.4 (2026-09-25)
 
 ### Added — Plan d'actions : fiches des UGF selectionnees sous le graphique

@@ -23,6 +23,10 @@
 #' sidebars they came from are where one varies a run. Each persists on the
 #' project metadata and each block owns its save button.
 #'
+#' A *Production IFN* block (spec 054) picks the opt-in modes of P2 (production
+#' of the sylvoecoregion instead of the CHM site index) and E1 (flux instead of
+#' stock), persisted by `set_project_production_ifn()`.
+#'
 #' Both sources are **enabled by default** (see `project_sufosat_enabled()` /
 #' `project_lst_enabled()`): a project that never visited this tab still gets
 #' T3 and A5. The Theia fetch stays gated on credentials being configured, and
@@ -152,6 +156,10 @@ mod_sources_config_ui <- function(id) {
     # Meme raison pour la zone tampon de l'Accessibilite : un calibrage
     # d'emprise, regle une fois par massif, pas une source a activer.
     shiny::uiOutput(ns("acc_block")),
+    # Production IFN par sylvoecoregion (spec 054) : choix de mode de P2 / E1,
+    # regle une fois par massif. Ce n'est pas une source a telecharger (les
+    # tables IFN sont embarquees dans le coeur), d'ou un bloc pleine largeur.
+    shiny::uiOutput(ns("production_block")),
     # Idem pour les calibrages de la Desserte (emprise, portee machine, pente
     # constructible, tarification de la pente).
     shiny::uiOutput(ns("desserte_block")),
@@ -567,6 +575,107 @@ mod_sources_config_server <- function(id, app_state) {
         set_project_accessibility_params(pid, buffer_m = input$acc_buffer_m)
         .refresh_project(pid)
         shiny::showNotification(i18n$t("acc_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Production IFN par SER -> P2 / E1 (spec 054)
+    # ========================================
+    #
+    # Deux modes OPT-IN du coeur. P2 « IFN » = production de la sylvoecoregion
+    # (m3/ha/an, Fay-Herriot), pas l'indice de station de l'UGF. E1 « flux » =
+    # la recolte suit P2 ; il n'a de sens qu'avec P2 en mode IFN, d'ou son
+    # affichage conditionnel. La part recoltee n'a PAS de defaut cote coeur :
+    # l'utilisateur la choisit, ou retient le taux observe par l'IFN - et dans
+    # ce dernier cas on le previent que E1 devient la recolte observee de la
+    # SER, plus un potentiel.
+
+    output$production_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh()
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("prod_ifn_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("prod_ifn_hint"))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+
+      pp <- project_production_ifn_params(app_state$current_project$metadata)
+
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = c(4, 4, 4),
+          shiny::radioButtons(
+            ns("prod_p2_source"), i18n$t("prod_ifn_p2_source"),
+            choiceNames = list(i18n$t("prod_ifn_p2_chm"),
+                               i18n$t("p2_ifn_label")),
+            choiceValues = list("chm", "ifn_fh"),
+            selected = pp$p2_source),
+          shiny::conditionalPanel(
+            condition = "input.prod_p2_source == 'ifn_fh'", ns = ns,
+            shiny::radioButtons(
+              ns("prod_e1_mode"), i18n$t("prod_ifn_e1_mode"),
+              choiceNames = list(i18n$t("prod_ifn_e1_stock"),
+                                 i18n$t("prod_ifn_e1_flux")),
+              choiceValues = list("stock", "flux"),
+              selected = pp$e1_mode)),
+          shiny::conditionalPanel(
+            condition = paste("input.prod_p2_source == 'ifn_fh' &&",
+                              "input.prod_e1_mode == 'flux'"),
+            ns = ns,
+            shiny::radioButtons(
+              ns("prod_e1_taux_type"), i18n$t("prod_ifn_taux_type"),
+              choiceNames = list(i18n$t("prod_ifn_taux_fixe"),
+                                 i18n$t("prod_ifn_taux_ifn_ser")),
+              choiceValues = list("fixe", "ifn_ser"),
+              selected = pp$e1_taux_type),
+            shiny::conditionalPanel(
+              condition = "input.prod_e1_taux_type == 'fixe'", ns = ns,
+              shiny::sliderInput(
+                ns("prod_e1_taux"), i18n$t("prod_ifn_taux"),
+                min = 0, max = 1, value = pp$e1_taux, step = 0.05,
+                width = "100%")),
+            shiny::conditionalPanel(
+              condition = "input.prod_e1_taux_type == 'ifn_ser'", ns = ns,
+              htmltools::div(
+                class = "small text-warning",
+                bsicons::bs_icon("exclamation-triangle-fill", class = "me-1"),
+                i18n$t("prod_ifn_recolte_avert"))))
+        ),
+        shiny::actionButton(
+          ns("prod_save"), i18n$t("prod_ifn_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$prod_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_production_ifn(
+          pid,
+          p2_source    = input$prod_p2_source %||% "chm",
+          e1_mode      = input$prod_e1_mode %||% "stock",
+          e1_taux_type = input$prod_e1_taux_type %||% "fixe",
+          e1_taux      = input$prod_e1_taux)
+        .refresh_project(pid)
+        shiny::showNotification(i18n$t("prod_ifn_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

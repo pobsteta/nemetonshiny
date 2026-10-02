@@ -189,7 +189,11 @@ mod_family_server <- function(id, family_code, app_state) {
             leaflet::leafletOutput(ns(map_id), height = "400px")
           ),
           # Sous la carte grise : la raison, quand le coeur l'a nommee.
-          indicator_na_banner(sf_data, ind_cols[i], i18n)
+          indicator_na_banner(sf_data, ind_cols[i], i18n),
+          # P2 / E1 en mode IFN (spec 054) : echelon, RSE, et ce que la valeur
+          # n'est PAS. Lu sur l'sf enrichi, qui porte la valeur brute et les
+          # colonnes annexes que la vue filtree ne garde pas.
+          production_ifn_banner(enriched_sf(), ind_cols[i], i18n)
         )
       })
 
@@ -199,6 +203,23 @@ mod_family_server <- function(id, family_code, app_state) {
       )
     })
 
+    # ================================================================
+    # OUTPUT: Production du massif + ratios de prelevement (famille P,
+    # spec 054 §3 bis). Calcules par le worker de calcul quand P2 est en
+    # mode IFN ; rien a montrer sinon.
+    # ================================================================
+    output$production_ifn_panel <- shiny::renderUI({
+      if (!identical(toupper(family_code), "P")) return(NULL)
+      sf_all <- enriched_sf()
+      if (is.null(sf_all) ||
+          is.null(.production_display_mode(sf_all, "indicateur_p2_station"))) {
+        return(NULL)
+      }
+      production_ifn_panel(
+        read_production_ifn_summary(app_state$current_project$path),
+        get_i18n(app_state$language))
+    })
+
     # Render maps dynamically
     shiny::observe({
       sf_data <- indicators_sf()
@@ -206,12 +227,13 @@ mod_family_server <- function(id, family_code, app_state) {
 
       i18n <- get_i18n(app_state$language)
       ind_cols <- get_indicator_cols(sf_data)
+      full_sf <- enriched_sf()
 
       lapply(seq_along(ind_cols), function(i) {
         map_id <- paste0("map", i)
         output[[map_id]] <- leaflet::renderLeaflet({
           make_indicator_leaflet(sf_data, ind_cols[i],
-                                 clean_indicator_label(ind_cols[i], i18n))
+                                 indicator_display_label(full_sf, ind_cols[i], i18n))
         })
       })
     })
@@ -336,8 +358,9 @@ mod_family_server <- function(id, family_code, app_state) {
       }
       dropped <- sf::st_drop_geometry(selected_wgs84)
 
+      full_sf <- enriched_sf()
       popup_lines <- vapply(ind_cols, function(col) {
-        label <- clean_indicator_label(col, i18n)
+        label <- indicator_display_label(full_sf, col, i18n)
         val <- dropped[[col]]
         sprintf("%s: %s", label, if (is.na(val)) "NA" else round(val, 3))
       }, character(1))
@@ -370,6 +393,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
       ind_cols <- get_indicator_cols(ind_data)
       if (length(ind_cols) == 0) return(NULL)
+      full_sf <- enriched_sf()
 
       # Build stats table for each indicator
       stats_rows <- lapply(ind_cols, function(col) {
@@ -388,7 +412,7 @@ mod_family_server <- function(id, family_code, app_state) {
         sd_val <- if (n > 1) stats::sd(vals_clean) else 0
         cv <- if (avg != 0) abs(sd_val / avg) * 100 else 0
 
-        label <- clean_indicator_label(col, i18n)
+        label <- indicator_display_label(full_sf, col, i18n)
         tooltip_text <- get_indicator_tooltip(col, app_state$language)
         doc_row <- get_indicator_doc(col, app_state$language)
 
@@ -944,6 +968,9 @@ get_indicator_cols <- function(data) {
     "geometry", "geom"
   )
   cols <- setdiff(all_cols, exclude)
+  # Colonnes prefixees d'un point : annexes d'un indicateur (`.a5_status`,
+  # `.p2_rse`, `.e1_mode`...), jamais des indicateurs - meme numeriques.
+  cols <- cols[!startsWith(cols, ".")]
   # Extra safety: keep only numeric columns. Any future metadata
   # that slips through won't poison mean/range/sd downstream.
   is_num <- vapply(cols, function(c) is.numeric(data[[c]]), logical(1))

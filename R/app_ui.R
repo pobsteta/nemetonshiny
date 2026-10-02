@@ -669,6 +669,11 @@ mod_family_ui <- function(id, family_code) {
     # Maps (dynamic: adapts to number of indicators)
     shiny::uiOutput(ns("maps_row")),
 
+    # Production du massif (IFN, spec 054) - famille P seulement
+    if (identical(toupper(family_code), "P")) {
+      shiny::uiOutput(ns("production_ifn_panel"))
+    },
+
     # Data table + Statistics + Comments (3 columns)
     bslib::layout_columns(
       col_widths = c(4, 4, 4),

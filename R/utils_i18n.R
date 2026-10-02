@@ -2362,6 +2362,139 @@ TRANSLATIONS <- list(
     fr = "Accessibilit\u00e9 : zone tampon enregistr\u00e9e",
     en = "Accessibility: buffer saved"
   ),
+  # ---- Production IFN par sylvoecoregion (spec 054) ----
+  prod_ifn_section = list(
+    fr = "Production IFN par sylvoécorégion (P2 / E1)",
+    en = "IFN production by sylvoecoregion (P2 / E1)"
+  ),
+  prod_ifn_hint = list(
+    fr = "Modes optionnels : P2 lit la production biologique mesurée par l'IFN dans la sylvoécorégion (estimation Fay-Herriot, avec son incertitude) au lieu de l'indice de station issu du modèle de hauteur ; E1 peut alors suivre cette production. Aucun modèle de hauteur n'est requis dans ces modes. Relancer le calcul après modification.",
+    en = "Optional modes: P2 reads the biological production measured by the IFN in the sylvoecoregion (Fay-Herriot estimate, with its uncertainty) instead of the site index derived from the canopy height model; E1 can then follow that production. No canopy height model is needed in these modes. Rerun the computation after a change."
+  ),
+  prod_ifn_p2_source = list(fr = "Source de P2", en = "P2 source"),
+  prod_ifn_p2_chm = list(
+    fr = "Indice de station (modèle de hauteur)",
+    en = "Site index (canopy height model)"
+  ),
+  prod_ifn_e1_mode = list(fr = "Mode de E1", en = "E1 mode"),
+  prod_ifn_e1_stock = list(
+    fr = "Stock : 2 % du volume sur pied récolté par an",
+    en = "Stock: 2 % of the standing volume harvested per year"
+  ),
+  prod_ifn_e1_flux = list(
+    fr = "Flux : la récolte suit la production (P2)",
+    en = "Flux: the harvest follows the production (P2)"
+  ),
+  prod_ifn_taux_type = list(
+    fr = "Part de la production récoltée",
+    en = "Share of the production harvested"
+  ),
+  prod_ifn_taux_fixe = list(fr = "Part choisie", en = "Chosen share"),
+  prod_ifn_taux_ifn_ser = list(
+    fr = "Taux observé par l'IFN dans la SER",
+    en = "Rate observed by the IFN in the SER"
+  ),
+  prod_ifn_taux = list(
+    fr = "Part récoltée (0 à 1)",
+    en = "Harvested share (0 to 1)"
+  ),
+  prod_ifn_recolte_avert = list(
+    fr = "Avec P2 en mode IFN, ce choix donne la récolte actuelle observée dans la sylvoécorégion, identique pour toutes les UGF : E1 n'est alors plus un potentiel.",
+    en = "With P2 in IFN mode, this choice yields the current harvest observed in the sylvoecoregion, the same for every UGF: E1 is then no longer a potential."
+  ),
+  prod_ifn_save = list(fr = "Enregistrer les modes", en = "Save modes"),
+  prod_ifn_saved = list(
+    fr = "Modes de production enregistrés : relancez le calcul pour mettre à jour P2 et E1.",
+    en = "Production modes saved: rerun the computation to update P2 and E1."
+  ),
+  task_production_ifn = list(
+    fr = "Production IFN : localisation des sylvoécorégions et production du massif...",
+    en = "IFN production: locating sylvoecoregions and massif production..."
+  ),
+  p2_ifn_label = list(
+    fr = "Production de la sylvoécorégion (IFN)",
+    en = "Production of the sylvoecoregion (IFN)"
+  ),
+  p2_ifn_unit = list(fr = "m³/ha/an", en = "m³/ha/yr"),
+  p2_ifn_rse = list(fr = "RSE", en = "RSE"),
+  p2_ifn_echelon = list(fr = "échelon", en = "level"),
+  p2_echelon_ser = list(fr = "sylvoécorégion", en = "sylvoecoregion"),
+  p2_echelon_greco = list(
+    fr = "grande région écologique (GRECO)",
+    en = "large ecological region (GRECO)"
+  ),
+  p2_echelon_national = list(fr = "national", en = "national"),
+  p2_nature_fay_herriot = list(
+    fr = "valeur modélisée (IFN + télédétection, Fay-Herriot)",
+    en = "modelled value (IFN + remote sensing, Fay-Herriot)"
+  ),
+  p2_nature_direct = list(fr = "moyenne IFN brute", en = "raw IFN mean"),
+  p2_ifn_not_station = list(
+    fr = "Ce n'est pas la productivité de la station de l'UGF : toutes les UGF d'une même sylvoécorégion reçoivent la même valeur.",
+    en = "This is not the site productivity of the UGF: every UGF in the same sylvoecoregion gets the same value."
+  ),
+  e1_flux_label = list(
+    fr = "Bois-énergie de la production récoltée",
+    en = "Fuelwood from the harvested production"
+  ),
+  e1_mode_ressource_flux = list(
+    fr = "E1 en mode flux : la récolte suit la production de la sylvoécorégion (part récoltée : {taux}).",
+    en = "E1 in flux mode: the harvest follows the production of the sylvoecoregion (harvested share: {taux})."
+  ),
+  e1_mode_recolte_observee = list(
+    fr = "Bois-énergie issu de la récolte actuelle de la SER",
+    en = "Fuelwood from the current harvest of the SER"
+  ),
+  e1_recolte_observee_avert = list(
+    fr = "Ce n'est pas un potentiel : production IFN × taux de prélèvement IFN de la sylvoécorégion = récolte observée, identique pour toutes les UGF.",
+    en = "This is not a potential: IFN production × IFN harvest rate of the sylvoecoregion = observed harvest, the same for every UGF."
+  ),
+  prod_massif_title = list(
+    fr = "Production du massif (IFN)",
+    en = "Production of the massif (IFN)"
+  ),
+  prod_massif_valeur = list(fr = "Production", en = "Production"),
+  prod_massif_surface = list(fr = "Surface", en = "Area"),
+  prod_massif_placettes = list(fr = "Placettes IFN", en = "IFN plots"),
+  prod_massif_poids_direct = list(
+    fr = "Poids des placettes du massif",
+    en = "Weight of the massif's plots"
+  ),
+  prod_massif_bordure = list(
+    fr = "Part en bordure (flou IFN de 700 m)",
+    en = "Edge share (700 m IFN blurring)"
+  ),
+  prod_massif_poids_faible = list(
+    fr = "Poids des placettes inférieur à 0,2 : la valeur est essentiellement celle de la sylvoécorégion, pas une mesure propre au massif.",
+    en = "Plot weight below 0.2: the value is essentially the sylvoecoregion's, not a measurement of the massif itself."
+  ),
+  prod_massif_bordure_elevee = list(
+    fr = "Part en bordure élevée : le massif est petit au regard du floutage des coordonnées publiques de l'IFN.",
+    en = "High edge share: the massif is small compared with the blurring of the public IFN coordinates."
+  ),
+  prod_massif_petit = list(
+    fr = "Sous quelques milliers d'hectares, préférez la valeur de la sylvoécorégion (P2).",
+    en = "Below a few thousand hectares, prefer the sylvoecoregion value (P2)."
+  ),
+  prod_ratio_title = list(
+    fr = "Ratio prélèvement / production",
+    en = "Harvest / production ratio"
+  ),
+  prod_ratio_col_ser = list(fr = "SER", en = "SER"),
+  prod_ratio_col_def = list(fr = "Définition", en = "Definition"),
+  prod_ratio_col_ratio = list(fr = "Ratio", en = "Ratio"),
+  prod_ratio_def_ign = list(
+    fr = "IGN (tous les arbres coupés)",
+    en = "IGN (all felled trees)"
+  ),
+  prod_ratio_def_vidange = list(
+    fr = "Vidange (coupés et sortis)",
+    en = "Extraction (felled and taken out)"
+  ),
+  prod_ratio_avert = list(
+    fr = "Biais connu d'environ +10 % (0,68 au niveau national contre 0,61 publié par l'IGN) : un ratio légèrement supérieur à 1 ne prouve pas une décapitalisation.",
+    en = "Known bias of about +10 % (0.68 nationally against 0.61 published by IGN): a ratio slightly above 1 does not prove decapitalisation."
+  ),
   acc_params_where = list(
     fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
     en = "Change it in Settings \u203a Sources & settings."
@@ -6283,6 +6416,11 @@ translate_task_message <- function(task, i18n) {
   # Spectral diversity (B4/L3) - biodivMapR run, spec 028
   if (task == "spectral_diversity") {
     return(i18n$t("task_spectral_diversity"))
+  }
+
+  # Production IFN par SER (spec 054) - localisation SER + production du massif
+  if (task == "production_ifn") {
+    return(i18n$t("task_production_ifn"))
   }
 
   # OSO raster download progress "download_oso_progress:42"
