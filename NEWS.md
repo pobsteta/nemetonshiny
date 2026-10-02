@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.0.9001 (2026-10-02)
+# nemetonshiny 0.152.1 (2026-10-02)
 
 ### Fixed — P2 en mode CHM ne sature plus a 100/100 (ecart n. 17, `nemeton >= 0.207.0`)
 
