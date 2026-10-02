@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.152.0] - 2026-10-02
+
+### Added
+
+- Production IFN par sylvoecoregion (spec 054, `nemeton >= 0.205.0`) : bloc
+  « Production IFN » dans Sources & parametres pour basculer P2 sur la
+  production de la SER (`source = "ifn_fh"`) et E1 en mode flux (part choisie
+  ou taux IFN de la SER) ; localisation SER des UGF en cache ; P2 IFN et E1
+  flux sans CHM ; bandeau RSE / echelon / nature sous P2, avertissement
+  « recolte observee » pour E1 ; panneau « Production du massif (IFN) » avec
+  poids direct, part en bordure et ratios prelevement/production.
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.205.0)`.
+
 ## [0.151.4] - 2026-09-25
 
 ### Added

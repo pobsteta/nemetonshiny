@@ -1,4 +1,4 @@
-# nemetonshiny 0.151.4.9001 (2026-10-02)
+# nemetonshiny 0.152.0 (2026-10-02)
 
 ### Added — Production IFN par sylvoecoregion : P2, E1 flux et production du massif (spec 054)
 
