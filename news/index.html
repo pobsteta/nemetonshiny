@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,34 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.152.4" id="nemetonshiny-01524-2026-10-02">nemetonshiny 0.152.4 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01524-2026-10-02"></a></h2>
+<div class="section level4">
+<h4 id="security--phase-de-laudit--failles-fermees-0-152-4">Security — Phase 1 de l’audit 1.0 : failles fermees<a class="anchor" aria-label="anchor" href="#security--phase-de-laudit--failles-fermees-0-152-4"></a></h4>
+<p>Correctifs issus de la revue complete du depot (page « Audit nemetonshiny 1.0 »).</p>
+<ul><li>
+<strong>Identifiant de projet valide cote serveur.</strong> <code>get_project_path()</code> n’accepte plus qu’un segment de chemin unique (ni separateur, ni <code>.</code>/<code>..</code>, ni caractere de controle) et verifie que le dossier resolu reste sous la racine des projets, lien symbolique compris. L’identifiant arrive du navigateur et <code>delete_project()</code> supprime recursivement ce qu’il designe. La suppression d’un projet corrompu revérifie qu’il l’est, et refuse une session en lecture seule. La liste des projets prend le nom du dossier comme identifiant (un dossier copie gardait l’id de l’original).</li>
+<li>
+<strong>L’authentification echoue ferme.</strong> OAuth configure mais client indisponible (Keycloak injoignable, <code>shinyOAuth</code> absent) : la session reste non authentifiee, en lecture seule, au lieu de retomber en mode anonyme editeur.</li>
+<li>
+<strong>« Sans role = editeur » reserve au mode anonyme.</strong> Avec un fournisseur d’identite, un utilisateur sans role Nemeton n’a plus aucun droit (c’etait le cas par defaut avec Keycloak, qui ne transmet pas les roles dans <code>userinfo</code>). Les roles techniques de Keycloak (<code>offline_access</code>, <code>uma_authorization</code>, <code>default-roles-*</code>) sont ignores ; <code>gestionnaire</code>, role d’edition du realm livre, est reconnu. Une seule regle : <code>auth_has_role()</code> / <code>can_admin_app()</code>. <strong>A faire sur un deploiement Keycloak existant</strong> : publier les roles du realm dans <code>userinfo</code> (mapper « realm roles », claim <code>realm_access.roles</code>, option « Add to userinfo »), comme le fait desormais <code>keycloak/realm-nemeton.json</code>. Sans cela, tous les utilisateurs connectes passent en lecture seule.</li>
+<li>
+<strong>Cles du serveur reservees a l’administrateur.</strong> Enregistrer ou supprimer une cle Theia ou LLM (fichier dans le <code>~</code> du serveur, variables d’environnement de tout le processus) exige le role administrateur ; le mode anonyme (poste mono-utilisateur) le garde.</li>
+<li>
+<strong>RAG</strong> : la reinitialisation du corpus exige le role administrateur, comme les autres ecritures ; la table du rapport echappe tout sauf le badge d’action.</li>
+<li>
+<strong>XSS stocke</strong> : libelles et groupes d’UGF, nom de projet et essences Marculus sont echappes avant d’entrer dans les infobulles, popups, legendes et modales (editeur d’UGF, vues familles, plan d’actions).</li>
+<li>
+<strong>PDF</strong> : le nom de projet est echappe dans la page de titre du plan d’actions (un <code>_</code> ou un <code>&amp;</code> faisait echouer le rendu) ; dans le rapport, les commentaires et metadonnees neutralisent l’antislash et le dollar, si bien qu’aucune commande TeX ne s’execute plus au rendu. <code>latex_escape()</code> imprime enfin un antislash correctement.</li>
+<li>
+<strong>Mise a jour d’un projet</strong> refusee a une session en lecture seule.</li>
+<li>
+<strong>Docker</strong> : <code>.dockerignore</code> exclut <code>.Renviron*</code>, <code>.env*</code>, <code>*.apikey</code> et <code>keycloak/</code> du contexte de construction (<code>COPY . /app</code>).</li>
+<li>
+<strong>Realm Keycloak de developpement</strong> : mapper des roles dans <code>userinfo</code>, <code>sslRequired</code> passe de <code>none</code> a <code>external</code>.</li>
+</ul><p><strong>Reste a faire par le proprietaire du depot</strong> : <code>.Renviron.txt</code> est suivi par git ; verifier qu’il ne contient que des valeurs factices et faire tourner le topic ntfy s’il est reel.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.152.3" id="nemetonshiny-01523-2026-10-02">nemetonshiny 0.152.3 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01523-2026-10-02"></a></h2>
 <div class="section level4">
