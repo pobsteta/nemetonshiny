@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.2.9001 (2026-10-02)
+# nemetonshiny 0.152.3 (2026-10-02)
 
 ### Fixed — Bandeau d'invalidation : les Risques cites pour un projet venu de la v1
 
