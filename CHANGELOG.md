@@ -12,6 +12,27 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.152.1\] - 2026-10-02
+
+### Added
+
+- Production du massif (spec 054 lot 5-bis, `nemeton >= 0.206.0`) :
+  covariables FORMS-T (Theia, 10 m) et MNT du projet passees a
+  `ifn_production_domaines()` pour la prevision hybride ; le panneau
+  nomme la prevision (SER ou SER corrigee par FORMS-T) et signale
+  `hors_calibrage` et le massif sans placette (`nature = "prediction"`).
+
+### Fixed
+
+- P2 en mode CHM ne sature plus a 100/100 (ecart n. 17,
+  `nemeton >= 0.207.0`) : le statut `.p2_status` est passe a
+  `normalize_indicator()` (plafond 40 m) ; le statut d’un calcul
+  precedent est retire a chaque recalcul.
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.207.0)`.
+
 ## \[0.152.0\] - 2026-10-02
 
 ### Added

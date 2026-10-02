@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.152.1" id="nemetonshiny-01521-2026-10-02">nemetonshiny 0.152.1 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01521-2026-10-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--p2-en-mode-chm-ne-sature-plus-a-ecart-n-nemeton--0-152-1">Fixed — P2 en mode CHM ne sature plus a 100/100 (ecart n. 17, <code>nemeton &gt;= 0.207.0</code>)<a class="anchor" aria-label="anchor" href="#fixed--p2-en-mode-chm-ne-sature-plus-a-ecart-n-nemeton--0-152-1"></a></h4>
+<p>En mode CHM, mode par defaut, P2 est un indice de station H0 <strong>en metres</strong> (9 a 37 m), que la normalisation plafonnait a 15, le maximum en m3/ha/an du mode historique : la plupart des peuplements sortaient a 100/100. <code>.add_normalized_indicators()</code> passe desormais la colonne de statut de l’indicateur (<code>.p2_status = "indice_station_m"</code>, deja transportee) a <code>nemeton::normalize_indicator(statut = )</code>, qui plafonne alors a 40 m (H0 = 18,5 m donne 46/100). Le mode IFN (m3/ha/an) garde le plafond de 15.</p>
+<p>Le statut d’un calcul precedent est aussi retire avant d’ecrire le nouveau : un P2 repasse du mode CHM au mode IFN, qui n’a pas de statut, aurait sinon garde <code>indice_station_m</code> et ete normalise avec le plafond en metres.</p>
+<p><strong>Les scores P2 des projets en mode CHM baissent</strong>, et la famille Production avec eux : c’est la correction voulue. Un projet calcule avec un coeur anterieur a 0.207.0 n’a pas de <code>.p2_status</code> : il faut recalculer P2.</p>
+</div>
+<div class="section level4">
+<h4 id="added--production-du-massif--prevision-corrigee-par-forms-t-spec-lot-bis-nemeton--0-152-1">Added — Production du massif : prevision corrigee par FORMS-T (spec 054 lot 5-bis, <code>nemeton &gt;= 0.206.0</code>)<a class="anchor" aria-label="anchor" href="#added--production-du-massif--prevision-corrigee-par-forms-t-spec-lot-bis-nemeton--0-152-1"></a></h4>
+<p>Le panneau « Production du massif (IFN) » passe a <code>ifn_production_domaines()</code> les covariables du massif (<code>ifn_covariables_domaines()</code> : hauteur FORMS-T et altitude du MNT du projet). Le coeur corrige alors la prevision de la SER de l’ecart entre le massif et sa SER (<code>predicteur = "hybride"</code>, production en volume seulement), avec une erreur reduite de 19 a 35 %.</p>
+<ul><li>La hauteur est <strong>toujours FORMS-T</strong> (Theia, 10 m, en cm), quel que soit le CHM des indicateurs : le modele est cale dessus. L’annee la plus recente lisible est prise (de l’annee precedente jusqu’a 2019).</li>
+<li>Sans Theia, sans MNT, ou avec une covariable manquante, rien n’est passe et la prevision reste celle de la SER : le coeur annoncerait sinon une prevision hybride sans l’avoir corrigee.</li>
+<li>Le panneau nomme la prevision (SER, ou SER corrigee par FORMS-T de telle annee) et ajoute deux reserves : surface hors de la plage calibree (22 500 a 1 000 000 ha, variance extrapolee) et massif sans placette IFN (valeur predite, <code>nature = "prediction"</code>).</li>
+</ul><p>Plancher <code>Imports: nemeton (&gt;= 0.207.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.152.0" id="nemetonshiny-01520-2026-10-02">nemetonshiny 0.152.0 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01520-2026-10-02"></a></h2>
 <div class="section level4">
