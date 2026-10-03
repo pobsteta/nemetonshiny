@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.5.9002 (2026-10-03)
+# nemetonshiny 0.153.0 (2026-10-03)
 
 ### Changed — Phase 3 de l'audit 1.0 : contrat public et packaging
 
