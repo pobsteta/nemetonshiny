@@ -20,6 +20,18 @@ test_that("no-DB path: wrappers degrade to an editable, lock-free project", {
   expect_false(lock_release("P1", "a@x.fr"))
   # status: no holder to report.
   expect_null(lock_status("P1"))
+  # Ce que l'observateur d'acquisition recoit : NULL, donc projet editable.
+  # Jusqu'en v0.152.4 il recevait la sentinelle (liste vide, non NULL) et
+  # mettait tout utilisateur connecte en lecture seule.
+  expect_null(lock_acquire_or_null("P1", "a@x.fr"))
+})
+
+test_that("lock_acquire_or_null transmet le resultat du coeur et absorbe les erreurs", {
+  testthat::local_mocked_bindings(
+    lock_acquire = function(...) list(ok = FALSE, holder_id = "b@x.fr"))
+  expect_equal(lock_acquire_or_null("P1", "a@x.fr")$holder_id, "b@x.fr")
+  testthat::local_mocked_bindings(lock_acquire = function(...) stop("base KO"))
+  expect_null(lock_acquire_or_null("P1", "a@x.fr"))
 })
 
 test_that("no-DB path never touches the core lock API", {

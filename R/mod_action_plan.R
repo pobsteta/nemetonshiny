@@ -3161,6 +3161,10 @@ coerce_table_value <- function(field, raw) {
 #' Format a volume in cubic metres for the UI (decimal comma in French)
 #' @noRd
 .format_m3 <- function(v, i18n, unite = TRUE) {
+  # Une tige non cubee (pas de hauteur) n'a pas de volume : `ifelse()` evalue
+  # quand meme cette fonction sur ses NA, et `if (abs(NA) < 10)` faisait tomber
+  # la session a chaque ouverture du projet.
+  if (length(v) != 1L || is.na(v)) return("")
   x <- formatC(v, format = "f", digits = if (abs(v) < 10) 2 else 1,
                big.mark = if (identical(i18n$language, "fr")) "\u202f" else ",",
                decimal.mark = if (identical(i18n$language, "fr")) "," else ".")

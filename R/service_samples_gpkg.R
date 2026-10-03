@@ -103,23 +103,77 @@ persist_validation_plan <- function(plan, project_path,
           # schema drift.
           existing <- .normalize_sf_geometry(existing)
           plan     <- .normalize_sf_geometry(plan)
-          # rbind requires identical attribute columns. Take the
-          # intersection so a real schema change between runs (coeur
-          # adds / renames a column) doesn't crash the persist - the
-          # diverged columns are silently dropped from the older rows.
-          # Geometry is always preserved via the active sf_column.
-          common <- intersect(names(existing), names(plan))
-          existing <- existing[, common, drop = FALSE]
-          plan     <- plan[, common, drop = FALSE]
-          combined <- rbind(existing, plan)
+          # rbind veut les memes colonnes. On prend leur UNION, chaque
+          # colonne manquante d'un cote etant completee par des NA de son
+          # type : l'intersection (jusqu'en v0.152.4) effacait DEFINITIVEMENT
+          # les colonnes propres a un moteur - un plan FAST persiste apres un
+          # plan FORDEAD supprimait `alert_class` et `visit_order` des
+          # placettes FORDEAD deja sur disque.
+          combined <- .rbind_union_sf(existing, plan)
         }
       }
     }
   }
 
-  sf::st_write(combined, gpkg, layer = layer_name, driver = "GPKG",
+  # Ecriture sur une COPIE du fichier (il porte d'autres couches), qui ne
+  # remplace l'original qu'une fois ecrite : un echec en cours de route ne
+  # laisse plus une couche supprimee et rien a la place.
+  tmp <- paste0(gpkg, ".tmp")
+  unlink(tmp)
+  if (file.exists(gpkg)) file.copy(gpkg, tmp, overwrite = TRUE)
+  ok <- FALSE
+  on.exit(if (!ok) unlink(tmp), add = TRUE)
+  sf::st_write(combined, tmp, layer = layer_name, driver = "GPKG",
                append = FALSE, delete_layer = TRUE, quiet = TRUE)
+  .replace_file(tmp, gpkg)
+  ok <- TRUE
   invisible(nrow(combined))
+}
+
+
+#' Row-bind two sf objects on the union of their columns
+#'
+#' @description
+#' A column missing on one side is filled with `NA` of the other side's type
+#' (`x[NA_integer_]` keeps the class, POSIXct included).
+#'
+#' @param a,b `sf` objects with the same active geometry column name.
+#' @return An `sf` with every column of `a` and `b`.
+#' @noRd
+.rbind_union_sf <- function(a, b) {
+  geom_a <- attr(a, "sf_column")
+  cols <- union(names(a), names(b))
+  fill <- function(x, ref) {
+    for (col in setdiff(cols, names(x))) {
+      x[[col]] <- rep(ref[[col]][NA_integer_], nrow(x))
+    }
+    x[, cols, drop = FALSE]
+  }
+  a <- fill(a, b)
+  b <- fill(b, a)
+  out <- rbind(a, b)
+  sf::st_geometry(out) <- geom_a
+  out
+}
+
+
+#' Replace a file by its freshly written temporary copy
+#'
+#' @description
+#' `file.rename()` replaces atomically on POSIX ; on Windows it refuses an
+#' existing target, which is then removed first (a short, unavoidable window).
+#'
+#' @param tmp Path of the written copy.
+#' @param dest Final path.
+#' @return `TRUE`, or an error.
+#' @noRd
+.replace_file <- function(tmp, dest) {
+  if (file.rename(tmp, dest)) return(invisible(TRUE))
+  if (file.exists(dest)) unlink(dest)
+  if (!file.rename(tmp, dest)) {
+    stop(sprintf("Could not replace %s.", dest), call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 

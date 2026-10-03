@@ -80,3 +80,23 @@ deny_if_readonly <- function(app_state, i18n = NULL) {
   shiny::showNotification(i18n$t("lock_readonly_action"), type = "warning", duration = 5)
   TRUE
 }
+
+
+#' Acquire the edit lock, `NULL` meaning "no lock to hold"
+#'
+#' @description
+#' What `app_server` needs: the core result, or `NULL` when there is no
+#' database (or the call failed), in which case the project stays editable
+#' without a lock. Without a database `lock_acquire()` returns the `no_db`
+#' sentinel - an EMPTY LIST, not `NULL` - and testing `is.null()` on it put
+#' every signed-in user of a database-less deployment in read-only mode, as if
+#' someone else held the lock.
+#'
+#' @inheritParams lock_acquire
+#' @return The core result list, or `NULL`.
+#' @noRd
+lock_acquire_or_null <- function(pid, hid, label = NULL) {
+  res <- tryCatch(lock_acquire(pid, hid, label), error = function(e) NULL)
+  if (lock_no_db(res)) NULL else res
+}
+

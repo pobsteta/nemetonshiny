@@ -1,3 +1,31 @@
+# nemetonshiny 0.152.4.9001 (2026-10-03)
+
+### Fixed — Phase 2 de l'audit 1.0, lot A : plus de donnees inventees, plus de plantages francs
+
+- **Plus de NDVI aleatoire.** Quand le WMS IGN echouait, l'app ecrivait dans
+  `cache/layers/ndvi.tif` un raster `runif(0.5, 0.85)`, puis le relisait a
+  chaque calcul comme une mesure (C1, masque du CHM). Desormais la couche est
+  simplement absente (indicateur NA) et rien n'est mis en cache. Un ancien NDVI
+  synthetique deja en cache est reconnu a sa signature (0,001 deg en EPSG:4326,
+  valeurs entre 0,5 et 0,85) et jete au prochain calcul : le projet retente le
+  vrai telechargement.
+- **Plus de valeurs aleatoires pour un indicateur inconnu.** Un indicateur
+  dont la fonction n'existe pas dans le coeur (slug renomme, coeur trop
+  ancien) recevait `runif(0, 100)`, sauvegarde comme une vraie valeur. C'est
+  maintenant une erreur, que la boucle de calcul transforme en NA avec sa cause.
+- **Plan de validation : plus de colonnes perdues.** L'accumulation dans
+  `samples.gpkg` ne gardait que les colonnes communes avec les plans deja
+  enregistres : un plan FAST persiste apres un plan FORDEAD effacait
+  definitivement `alert_class` et `visit_order`. Union des colonnes (NA du bon
+  type pour les manquantes) et ecriture sur une copie qui ne remplace le
+  fichier qu'une fois ecrite.
+- **Plantage de session sur les tiges non cubees.** `.format_m3()` sur un
+  volume NA (tige Marculus sans hauteur) faisait tomber la session a chaque
+  ouverture du projet.
+- **Deploiement sans base de donnees** : un utilisateur connecte n'est plus mis
+  en lecture seule comme si un autre tenait le verrou (`lock_acquire_or_null()`
+  convertit la sentinelle « pas de base »).
+
 # nemetonshiny 0.152.4 (2026-10-02)
 
 ### Security — Phase 1 de l'audit 1.0 : failles fermees

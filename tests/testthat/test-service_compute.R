@@ -1449,7 +1449,7 @@ test_that("get_dem_raster returns NULL when no DEM available", {
 # compute_single_indicator edge cases
 # ==============================================================================
 
-test_that("compute_single_indicator uses placeholder for unknown indicator", {
+test_that("compute_single_indicator refuse un indicateur inconnu du coeur", {
   skip_if_not_installed("sf")
 
   mock_geom <- sf::st_sfc(
@@ -1465,44 +1465,14 @@ test_that("compute_single_indicator uses placeholder for unknown indicator", {
     class = "nemeton_layers"
   )
 
-  # Test with a completely non-existent indicator
-  result <- nemetonshiny:::compute_single_indicator(
-    "nonexistent_indicator_xyz",
-    mock_parcels,
-    mock_layers
-  )
-
-  expect_type(result, "double")
-  expect_length(result, 1)
+  # Plus de valeurs aleatoires : une erreur, que la boucle de calcul
+  # transforme en NA avec sa cause.
+  expect_error(
+    nemetonshiny:::compute_single_indicator(
+      "nonexistent_indicator_xyz", mock_parcels, mock_layers),
+    "unknown to the installed nemeton core")
 })
 
-test_that("compute_single_indicator returns placeholder for non-existent function", {
-  skip_if_not_installed("sf")
-
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE))),
-    sf::st_polygon(list(matrix(c(1,1, 2,1, 2,2, 1,2, 1,1), ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
-  mock_parcels <- sf::st_sf(id = c("p1", "p2"), geometry = mock_geom)
-
-  mock_layers <- structure(
-    list(rasters = list(), vectors = list(), point_clouds = list(),
-         bbox = c(0, 0, 2, 2), crs = sf::st_crs(4326),
-         cache_dir = tempdir(), warnings = list()),
-    class = "nemeton_layers"
-  )
-
-  # Test with a completely non-existent indicator - should fall through to placeholder
-  result <- nemetonshiny:::compute_single_indicator(
-    "placeholder_test_xyz",
-    mock_parcels,
-    mock_layers
-  )
-
-  expect_type(result, "double")
-  expect_length(result, 2)  # One value per parcel
-})
 
 # ==============================================================================
 # normalize_indicator additional tests
@@ -1717,28 +1687,37 @@ test_that("download_vector_source warns for unknown source", {
 })
 
 # ==============================================================================
-# create_synthetic_ndvi tests
+# Ancien NDVI synthetique : detecte et jete du cache
 # ==============================================================================
 
-test_that("create_synthetic_ndvi creates valid raster", {
+test_that("un NDVI synthetique en cache est detecte, un vrai NDVI non", {
   skip_if_not_installed("terra")
+  withr::with_tempdir({
+    # Signature de l'ancien repli : 0,001 deg, EPSG:4326, valeurs 0,5-0,85.
+    faux <- terra::rast(xmin = 2, xmax = 2.02, ymin = 48, ymax = 48.02,
+                        resolution = 0.001, crs = "EPSG:4326")
+    terra::values(faux) <- seq(0.5, 0.85, length.out = terra::ncell(faux))
+    terra::writeRaster(faux, "faux.tif")
+    expect_true(nemetonshiny:::.is_synthetic_ndvi("faux.tif"))
 
-  temp_file <- tempfile(fileext = ".tif")
+    vrai <- terra::rast(xmin = 2, xmax = 2.02, ymin = 48, ymax = 48.02,
+                        resolution = 0.0001, crs = "EPSG:4326")
+    terra::values(vrai) <- seq(-0.2, 0.9, length.out = terra::ncell(vrai))
+    terra::writeRaster(vrai, "vrai.tif")
+    expect_false(nemetonshiny:::.is_synthetic_ndvi("vrai.tif"))
+    expect_false(nemetonshiny:::.is_synthetic_ndvi("absent.tif"))
 
-  result <- nemetonshiny:::create_synthetic_ndvi(
-    bbox = c(2.0, 48.0, 2.01, 48.01),
-    cache_file = temp_file
-  )
-
-  expect_s4_class(result, "SpatRaster")
-  expect_equal(names(result), "ndvi")
-
-  # Check values are in expected range (0.5-0.85)
-  vals <- terra::values(result)
-  expect_true(all(vals >= 0.5 & vals <= 0.85, na.rm = TRUE))
-
-  unlink(temp_file)
+    # Le cache synthetique est jete et le vrai telechargement retente.
+    dir.create("cache")
+    file.copy("faux.tif", file.path("cache", "ndvi.tif"))
+    local_mocked_bindings(download_ign_irc_ndvi = function(bbox, cache_file) NULL)
+    out <- suppressMessages(nemetonshiny:::download_raster_source(
+      "ndvi", list(source = "ign_irc"), c(2, 48, 2.02, 48.02), "cache"))
+    expect_null(out)
+    expect_false(file.exists(file.path("cache", "ndvi.tif")))
+  })
 })
+
 
 # ==============================================================================
 # mosaic_lidar_tiles tests
@@ -2919,74 +2898,10 @@ test_that("extract_tile_names handles copc.laz extension", {
   expect_equal(result, c("lidar_001.copc.laz", "lidar_002.copc.laz"))
 })
 
-# ==============================================================================
-# create_synthetic_ndvi Tests
-# ==============================================================================
 
-test_that("create_synthetic_ndvi creates a raster file", {
-  skip_if_not_installed("terra")
 
-  withr::with_tempdir({
-    bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.01, ymax = 47.01)
-    cache_file <- file.path(getwd(), "test_ndvi.tif")
 
-    result <- nemetonshiny:::create_synthetic_ndvi(bbox, cache_file)
 
-    expect_true(inherits(result, "SpatRaster"))
-    expect_true(file.exists(cache_file))
-    # NDVI values should be in 0.5-0.85 range (synthetic forest values)
-    vals <- terra::values(result)
-    expect_true(min(vals, na.rm = TRUE) >= 0.5)
-    expect_true(max(vals, na.rm = TRUE) <= 0.85)
-  })
-})
-
-test_that("create_synthetic_ndvi raster has ndvi layer name", {
-  skip_if_not_installed("terra")
-
-  withr::with_tempdir({
-    bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.005, ymax = 47.005)
-    cache_file <- file.path(getwd(), "test_ndvi2.tif")
-
-    result <- nemetonshiny:::create_synthetic_ndvi(bbox, cache_file)
-
-    expect_equal(names(result), "ndvi")
-  })
-})
-
-test_that("create_synthetic_ndvi uses EPSG:4326 CRS", {
-  skip_if_not_installed("terra")
-
-  withr::with_tempdir({
-    bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.005, ymax = 47.005)
-    cache_file <- file.path(getwd(), "test_ndvi3.tif")
-
-    result <- nemetonshiny:::create_synthetic_ndvi(bbox, cache_file)
-
-    crs_desc <- terra::crs(result, describe = TRUE)
-    expect_equal(crs_desc$code, "4326")
-  })
-})
-
-test_that("create_synthetic_ndvi overwrites existing cache file", {
-  skip_if_not_installed("terra")
-
-  withr::with_tempdir({
-    bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.005, ymax = 47.005)
-    cache_file <- file.path(getwd(), "test_ndvi_overwrite.tif")
-
-    # Create file first
-    writeLines("dummy", cache_file)
-    expect_true(file.exists(cache_file))
-
-    result <- nemetonshiny:::create_synthetic_ndvi(bbox, cache_file)
-
-    expect_true(inherits(result, "SpatRaster"))
-    # File should now be a valid raster, not the dummy content
-    reloaded <- terra::rast(cache_file)
-    expect_equal(names(reloaded), "ndvi")
-  })
-})
 
 # ==============================================================================
 # get_global_cache_dir Tests
@@ -3148,7 +3063,7 @@ test_that("download_ign_dem calculates image dimensions correctly", {
 # download_ign_irc_ndvi tests (mocked HTTP)
 # ==============================================================================
 
-test_that("download_ign_irc_ndvi falls back to synthetic NDVI on HTTP error", {
+test_that("download_ign_irc_ndvi renvoie NULL sans rien cacher sur erreur reseau", {
   skip_if_not_installed("terra")
   skip_if_not_installed("httr2")
 
@@ -3163,9 +3078,10 @@ test_that("download_ign_irc_ndvi falls back to synthetic NDVI on HTTP error", {
       .package = "httr2",
       {
         result <- suppressWarnings(nemetonshiny:::download_ign_irc_ndvi(bbox, cache_file))
-        # Should fall back to synthetic NDVI
-        expect_true(inherits(result, "SpatRaster"))
-        expect_equal(names(result), "ndvi")
+        # Plus de NDVI synthetique : pas de couche (l'indicateur sera NA), et
+        # surtout rien en cache, sans quoi l'echec serait fige.
+        expect_null(result)
+        expect_false(file.exists(cache_file))
       }
     )
   })
@@ -3187,8 +3103,7 @@ test_that("download_ign_irc_ndvi handles sf bbox input", {
       .package = "httr2",
       {
         result <- suppressWarnings(nemetonshiny:::download_ign_irc_ndvi(bbox, cache_file))
-        # Should fall back to synthetic NDVI
-        expect_true(inherits(result, "SpatRaster"))
+        expect_null(result)
       }
     )
   })
@@ -3238,7 +3153,8 @@ test_that("download_ign_irc_ndvi handles large bbox with dimension limiting", {
       .package = "httr2",
       {
         result <- suppressWarnings(nemetonshiny:::download_ign_irc_ndvi(bbox, cache_file))
-        expect_true(inherits(result, "SpatRaster"))
+        expect_null(result)
+        expect_false(file.exists(cache_file))
       }
     )
   })
@@ -4432,37 +4348,6 @@ test_that("compute_single_indicator dispatches to existing function", {
   expect_true(is.null(result) || is.numeric(result))
 })
 
-test_that("compute_single_indicator handles multi-parcel input", {
-  skip_if_not_installed("sf")
-
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0),
-                               ncol = 2, byrow = TRUE))),
-    sf::st_polygon(list(matrix(c(1, 1, 2, 1, 2, 2, 1, 2, 1, 1),
-                               ncol = 2, byrow = TRUE))),
-    sf::st_polygon(list(matrix(c(2, 2, 3, 2, 3, 3, 2, 3, 2, 2),
-                               ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
-  mock_parcels <- sf::st_sf(id = c("p1", "p2", "p3"), geometry = mock_geom)
-
-  mock_layers <- structure(
-    list(rasters = list(), vectors = list(), point_clouds = list(),
-         bbox = c(0, 0, 3, 3), crs = sf::st_crs(4326),
-         cache_dir = tempdir(), warnings = list()),
-    class = "nemeton_layers"
-  )
-
-  # Placeholder fallback should return one value per parcel
-  result <- nemetonshiny:::compute_single_indicator(
-    "placeholder_test_multi",
-    mock_parcels,
-    mock_layers
-  )
-
-  expect_type(result, "double")
-  expect_length(result, 3)
-})
 
 # ==============================================================================
 # start_computation integration tests (mocked)

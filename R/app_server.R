@@ -408,7 +408,7 @@ app_server <- function(input, output, session) {
       return()
     }
 
-    res <- tryCatch(lock_acquire(pid, email, name), error = function(e) NULL)
+    res <- lock_acquire_or_null(pid, email, name)
     i18n <- get_i18n(shiny::isolate(app_state$language))
     if (isTRUE(res$ok) || is.null(res)) {
       # `is.null(res)` = pas de DB (dev local) -> editable, pas de verrou.

@@ -589,3 +589,16 @@ test_that("selectionner une UGF affiche sa fiche, le conseil IA s'insere", {
     }
   )
 })
+
+
+test_that(".format_m3 ne fait pas tomber la session sur une tige non cubee", {
+  # Une tige sans hauteur n'a pas de volume ; ifelse() evalue quand meme la
+  # mise en forme sur ses NA.
+  i18n <- nemetonshiny:::get_i18n("fr")
+  expect_identical(nemetonshiny:::.format_m3(NA_real_, i18n), "")
+  vols <- c(0.42, NA, 12.5)
+  txt <- ifelse(is.na(vols), "",
+                vapply(vols, function(v) nemetonshiny:::.format_m3(v, i18n), ""))
+  expect_equal(txt[2], "")
+  expect_match(txt[1], "0,42")
+})
