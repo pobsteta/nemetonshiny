@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.152.5" id="nemetonshiny-01525-2026-10-03">nemetonshiny 0.152.5 (2026-10-03)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01525-2026-10-03"></a></h2>
+<div class="section level4">
+<h4 id="fixed--phase-de-laudit-lots-b-a-d--ne-plus-perdre-de-donnees-ni-les-ecrire-dans-le-mauvais-projet-0-152-5">Fixed — Phase 2 de l’audit 1.0, lots B a D : ne plus perdre de donnees, ni les ecrire dans le mauvais projet<a class="anchor" aria-label="anchor" href="#fixed--phase-de-laudit-lots-b-a-d--ne-plus-perdre-de-donnees-ni-les-ecrire-dans-le-mauvais-projet-0-152-5"></a></h4>
+<p><strong>Ecritures atomiques (lot B).</strong> - <code>metadata.json</code>, parcelles (GeoPackage et Parquet), tenements, <code>ugs.json</code>, indicateurs et commentaires s’ecrivent sur une copie renommee ensuite sur la cible (<code>R/utils_io.R</code> : <code>.write_json_atomic()</code>, <code>.st_write_atomic()</code>, <code>.replace_file()</code>). Un worker tue en cours d’ecriture ne laisse plus un JSON tronque (projet « corrompu ») ni un GeoPackage supprime sans remplacant. - <strong>Le decoupage UGF n’est plus ecrase sur une erreur de lecture</strong> : des fichiers UGF illisibles sont mis de cote dans <code>data/ug_sauvegarde_&lt;date&gt;/</code> (trace dans <code>metadata$ug_sauvegarde</code>) avant que la migration ne recree un decoupage par defaut. - <strong>Un plan d’actions illisible est copie</strong> (<code>action_plan.illisible-&lt;date&gt;.json</code>) avant d’etre remplace par un plan vide : la sauvegarde suivante ne detruit plus les actions ni l’audit. - La synchronisation PostGIS d’un projet est <strong>transactionnelle</strong> : un echec ne laisse plus le projet sans parcelles, et deux synchronisations concurrentes ne dupliquent plus les parcelles.</p>
+<p><strong>Resultats asynchrones lies a leur projet (lot C).</strong> - Fin ou annulation d’un calcul : le projet n’est recharge que s’il est toujours celui ouvert (<code>.est_projet_courant()</code>) ; l’affichage ne bascule plus sur l’ancien projet pendant que verrou et sauvegardes suivent le nouveau. - « Tout calculer » porte le projet qui l’a lance : l’etat du run s’ecrit dans ce projet, et le run s’arrete si un autre projet est ouvert entre deux etapes ; une reponse tardive ne rouvre plus un run clos. - reGeneration (gel R7, contexte regional, moteur) : un resultat arrive pendant qu’un autre projet est ouvert n’y est plus injecte. - Desserte (OSM, detection, typage, optimisation), plan d’echantillonnage et ingestion terrain sont remis a zero au changement de projet ; l’ingestion attache le fichier <strong>valide</strong>, pour le projet de la validation, et plus le fichier selectionne depuis. Appel <code>import_qgis_gpkg()</code> au lieu de l’alias deprecie.</p>
+<p><strong>Plan d’actions et UGF (lot D).</strong> - <strong>Le calendrier ne glisse plus au 1er janvier.</strong> Les decalages <code>annee_cible</code> sont ancres sur <code>plan$annee_base</code> (annee de creation ; pour un plan existant, annee de sa premiere relecture, soit ce que l’utilisateur voit aujourd’hui). Une seule conversion, <code>action_plan_annee_civile()</code>, pour la table, le Kanban, le PDF, le GPKG et Marculus. <strong>Le GPKG ne retranche plus un an</strong> : une action « 2028 » a l’ecran sort desormais « 2028 » dans le GPKG terrain. - « Tout calculer » <strong>n’efface plus jamais les actions</strong> : l’option « ecraser » restee cochee dans la modale IA n’est plus relue par la chaine ; l’ecrasement manuel passe par la suppression auditee. - <strong>Editer le decoupage UGF invalide les indicateurs</strong> (creation, fusion, decoupe, deplacement : l’affectation tenement -&gt; UGF change) ; renommer ou changer de groupe ne les touche pas. - <strong>Changer les parcelles d’un projet</strong> met l’ancien decoupage UGF de cote, invalide les indicateurs et le signale a l’utilisateur.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--phase-de-laudit-lot-a--plus-de-donnees-inventees-plus-de-plantages-francs-0-152-5">Fixed — Phase 2 de l’audit 1.0, lot A : plus de donnees inventees, plus de plantages francs<a class="anchor" aria-label="anchor" href="#fixed--phase-de-laudit-lot-a--plus-de-donnees-inventees-plus-de-plantages-francs-0-152-5"></a></h4>
+<ul><li>
+<strong>Plus de NDVI aleatoire.</strong> Quand le WMS IGN echouait, l’app ecrivait dans <code>cache/layers/ndvi.tif</code> un raster <code>runif(0.5, 0.85)</code>, puis le relisait a chaque calcul comme une mesure (C1, masque du CHM). Desormais la couche est simplement absente (indicateur NA) et rien n’est mis en cache. Un ancien NDVI synthetique deja en cache est reconnu a sa signature (0,001 deg en EPSG:4326, valeurs entre 0,5 et 0,85) et jete au prochain calcul : le projet retente le vrai telechargement.</li>
+<li>
+<strong>Plus de valeurs aleatoires pour un indicateur inconnu.</strong> Un indicateur dont la fonction n’existe pas dans le coeur (slug renomme, coeur trop ancien) recevait <code>runif(0, 100)</code>, sauvegarde comme une vraie valeur. C’est maintenant une erreur, que la boucle de calcul transforme en NA avec sa cause.</li>
+<li>
+<strong>Plan de validation : plus de colonnes perdues.</strong> L’accumulation dans <code>samples.gpkg</code> ne gardait que les colonnes communes avec les plans deja enregistres : un plan FAST persiste apres un plan FORDEAD effacait definitivement <code>alert_class</code> et <code>visit_order</code>. Union des colonnes (NA du bon type pour les manquantes) et ecriture sur une copie qui ne remplace le fichier qu’une fois ecrite.</li>
+<li>
+<strong>Plantage de session sur les tiges non cubees.</strong> <code>.format_m3()</code> sur un volume NA (tige Marculus sans hauteur) faisait tomber la session a chaque ouverture du projet.</li>
+<li>
+<strong>Deploiement sans base de donnees</strong> : un utilisateur connecte n’est plus mis en lecture seule comme si un autre tenait le verrou (<code>lock_acquire_or_null()</code> convertit la sentinelle « pas de base »).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.152.4" id="nemetonshiny-01524-2026-10-02">nemetonshiny 0.152.4 (2026-10-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01524-2026-10-02"></a></h2>
 <div class="section level4">
