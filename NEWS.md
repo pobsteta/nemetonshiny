@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.5.9001 (2026-10-03)
+# nemetonshiny 0.152.5.9002 (2026-10-03)
 
 ### Changed — Phase 3 de l'audit 1.0 : contrat public et packaging
 
@@ -7,10 +7,14 @@
   entrait en conflit avec l'option fixe de `shinyApp()`, si bien qu'il etait
   impossible de choisir le port ou l'hote. Le navigateur ne s'ouvre plus qu'en
   session interactive, jamais sur un serveur.
-- **Dockerfile reparable et plus sur** : `remotes` au lieu de `devtools`
-  (absent de l'image : la construction echouait), utilisateur non root,
-  projets dans le volume `/data` a chemin fixe, CMD avec `options` et
-  `project_dir`.
+- **L'image Docker se construit et sert l'application** (verifie : HTTP 200,
+  tous les paquets se chargent). Elle ne se construisait pas : base
+  `rocker/r-ver:4.4.0`, dont le depot CRAN fige a mi-2024 ne contient ni
+  `ellmer` ni `shinyOAuth` (passage en 4.6.1, la version de la CI), `devtools`
+  absent de l'image (remplace par `remotes`), `git` manquant pour les paquets
+  GitHub, `libuv` manquant pour `fs`. L'application tourne sous un
+  utilisateur non root, avec les projets dans le volume `/data` a chemin fixe,
+  et le CMD passe `options` et `project_dir`.
 - **Licence : GPL-3 ou ulterieure**, alignee partout (`DESCRIPTION`
   `GPL (>= 3)`, texte complet dans `LICENSE.md`, README, ADR-006) ;
   `LICENSE-EUPL.md` marque comme historique.

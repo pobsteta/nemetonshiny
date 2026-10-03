@@ -1,4 +1,7 @@
-FROM rocker/r-ver:4.4.0
+# Meme version de R que la CI. rocker fige le depot CRAN a la date de la
+# version : en 4.4.0 (mi-2024), `ellmer` et `shinyOAuth` n'existaient pas encore
+# et la construction echouait.
+FROM rocker/r-ver:4.6.1
 
 LABEL maintainer="Pascal Obstetar <pascal.obstetar@gmail.com>"
 LABEL description="Nemeton - Plateforme d'analyse forestiere systemique"
@@ -20,8 +23,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtiff-dev \
     libjpeg-dev \
     libsqlite3-dev \
+    libuv1-dev \
     pandoc \
     curl \
+    git \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
