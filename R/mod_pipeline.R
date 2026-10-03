@@ -19,8 +19,8 @@ NULL
 #'
 #' @param id Module namespace ID.
 #' @param actions_ui Optional UI rendered INSIDE the collapsible body, above the
-#'   chain button. `mod_home` y place ses actions de projet (« Voir les
-#'   resultats », « Reessayer », « Lancer le calcul ») : elles flottaient
+#'   chain button. `mod_home` y place ses actions de projet (" Voir les
+#'   resultats ", " Reessayer ", " Lancer le calcul ") : elles flottaient
 #'   au-dessus du bloc alors qu'elles relevent de la meme famille de geste.
 #'   Le bloc porte le chrome (entete, repli, chevron), l'appelant garde SON
 #'   namespace - d'ou le passage par argument plutot qu'un `uiOutput` cable ici.
@@ -71,7 +71,7 @@ mod_pipeline_ui <- function(id, actions_ui = NULL) {
           # v0.143.17 - BLANC A BORDURE VERTE, plus vert plein.
           #
           # Depuis que les actions de projet ont rejoint ce bloc, deux boutons
-          # verts s'y touchaient : « Voir les resultats » (`btn-success`) et
+          # verts s'y touchaient : " Voir les resultats " (`btn-success`) et
           # celui-ci (`btn-primary`) - meme vert `#1B6B1B`, les deux classes
           # ayant ete fusionnees. La regle normative dit une seule action
           # principale par vue.

@@ -9,6 +9,7 @@ run_app(
   project_dir = NULL,
   max_parcels = 30L,
   tour = TRUE,
+  options = list(),
   ...
 )
 }
@@ -30,6 +31,11 @@ Disabling only suppresses the AUTO-start: the tour stays available from the
 help menu. Overridable per-session with the \code{NEMETON_TOUR} environment
 variable (\code{0}/\code{false} to disable).}
 
+\item{options}{List of Shiny app options (\code{port}, \code{host},
+\code{launch.browser}...), merged over the defaults: the browser opens
+only in an interactive session. Example:
+\code{run_app(options = list(port = 3838, host = "0.0.0.0"))}.}
+
 \item{...}{Additional arguments passed to \code{\link[shiny]{shinyApp}}.}
 }
 \value{
@@ -41,7 +47,7 @@ analysis. The application allows users to:
 \itemize{
   \item Search and select cadastral parcels on an interactive map
   \item Create projects with metadata
-  \item Calculate all 29 nemeton indicators automatically
+  \item Calculate the nemeton indicators (12 families) automatically
   \item Analyze results by indicator family (12 tabs)
   \item Export PDF reports and GeoPackage data
 }
@@ -82,5 +88,8 @@ if (interactive()) {
 
   # Boot without the guided tour (demo, screencast, automated test)
   run_app(tour = FALSE)
+
+  # Serve on a fixed port, reachable from other machines (server, Docker)
+  run_app(options = list(port = 3838, host = "0.0.0.0"))
 }
 }

@@ -408,7 +408,7 @@ db_save_parcels <- function(con, project_id, parcels) {
 
   # `suppressMessages` : `sf` et `RPostgres` definissent tous deux une methode
   # `dbDataType`, et R signale une fois par session la methode choisie
-  # (« Note : methode avec la signature 'DBIObject#sf' choisie... »). Le
+  # (" Note : methode avec la signature 'DBIObject#sf' choisie... "). Le
   # choix est le bon (celui de sf, qui type la geometrie) ; la note n'est que
   # du bruit en console. `quiet = TRUE` ne la couvre pas : elle vient du
   # dispatch S4, pas de sf.

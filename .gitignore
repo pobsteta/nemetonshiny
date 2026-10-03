@@ -52,3 +52,4 @@ rsconnect/
 # Claude Code local settings + scheduler state
 .claude/
 .nemeton_shot.png
+.s2.out

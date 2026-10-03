@@ -201,10 +201,10 @@ mod_synthesis_server <- function(id, app_state) {
           i18n$t(paste0("status_", meta$status))
         ),
 
-        # Verdict du cœur : ce modele de hauteur ressemble a une prediction
+        # Verdict du coeur : ce modele de hauteur ressemble a une prediction
         # ratee plutot qu'a une coupe rase. Sans ce bandeau, l'app affiche un
         # volume bois nul comme s'il s'agissait d'une mesure - et rien ne
-        # distingue « il n'y a pas d'arbres » de « le modele n'en a pas vu ».
+        # distingue " il n'y a pas d'arbres " de " le modele n'en a pas vu ".
         # Ne se declenche que faute de repli LiDAR : avec du LiDAR,
         # `resolve_project_chm()` a deja ecarte l'ortho plate en amont.
         if (isTRUE(meta$chm_suspect)) {
@@ -636,9 +636,9 @@ mod_synthesis_server <- function(id, app_state) {
     # `updateSelectInput()`, qui ne prendrait effet qu'apres un aller-retour
     # client - donc trop tard pour la generation qu'on declenche dans la
     # foulee. NULL = on garde le selecteur de l'onglet.
-    # `remplir_familles` : la case « toutes les familles » de l'onglet est
+    # `remplir_familles` : la case " toutes les familles " de l'onglet est
     # DECOCHEE par defaut (`<input type="checkbox">` sans `checked`). Le
-    # lancement enchaine annonce pourtant « synthese + 12 familles » : il doit
+    # lancement enchaine annonce pourtant " synthese + 12 familles " : il doit
     # donc l'imposer, sinon l'etape ne fait pas ce que son libelle promet.
     # NULL = on suit la case, comportement inchange pour le bouton.
     .generer_ia_synthese <- function(profil = NULL, remplir_familles = NULL) {
@@ -651,8 +651,8 @@ mod_synthesis_server <- function(id, app_state) {
         msg <- gsub("\\{key_var\\}", key_var, i18n$t("ai_no_api_key"))
         shiny::showNotification(msg, type = "warning", duration = 8)
         # Rendre la RAISON, pas un simple NULL : c'est elle que le rapport du
-        # lancement enchaine affiche. « Le lancement a ete refuse (prerequis
-        # manquant) » ne permet a personne de savoir quoi corriger.
+        # lancement enchaine affiche. " Le lancement a ete refuse (prerequis
+        # manquant) " ne permet a personne de savoir quoi corriger.
         return(msg)
       }
 
@@ -739,15 +739,15 @@ mod_synthesis_server <- function(id, app_state) {
         shiny::showNotification(msg_llm, type = "error", duration = 8)
         # Memorise le message pour le rapport du lancement enchaine : un toast
         # de 8 secondes au milieu d'une chaine de plusieurs heures n'est vu par
-        # personne, et « Erreur IA » sans le detail ne permet pas de corriger.
+        # personne, et " Erreur IA " sans le detail ne permet pas de corriger.
         erreur_llm <<- msg_llm
         NULL
       })
 
       # L'appel LLM a echoue : `tryCatch` a affiche un toast et rendu NULL, mais
       # la fonction continuait jusqu'a `invisible(TRUE)` - le lancement enchaine
-      # rapportait alors « Reussie » pour une perspective qui n'existe pas
-      # (constate sur Couchey : etape « Perspective IA » verte, en 1 seconde,
+      # rapportait alors " Reussie " pour une perspective qui n'existe pas
+      # (constate sur Couchey : etape " Perspective IA " verte, en 1 seconde,
       # pour ce qui demande 13 appels LLM). Un faux positif silencieux est pire
       # qu'un echec : il fait croire que le travail est fait.
       if (is.null(synthesis_response)) {
@@ -925,7 +925,7 @@ mod_synthesis_server <- function(id, app_state) {
 
     shiny::observeEvent(input$ai_generate, .generer_ia_synthese())
 
-    # --- Lancement enchaine : etape « ia_synthese » --------------------
+    # --- Lancement enchaine : etape " ia_synthese " --------------------
     # La generation est SYNCHRONE (13 appels LLM enchaines) : elle rend la
     # main quand tout est ecrit, on repond donc juste apres, sans machinerie
     # de statut. C'est aussi pourquoi les etapes IA sont les dernieres de la
@@ -950,7 +950,7 @@ mod_synthesis_server <- function(id, app_state) {
       # PAS de `<<-` ici : le bloc d'un `tryCatch` s'evalue dans le frame
       # APPELANT, donc `<<-` sauterait par-dessus cet observer pour aller
       # chercher `raison` dans le namespace du paquet. Il restait NULL et le
-      # rapport affichait « prerequis manquant » a la place de la vraie cause -
+      # rapport affichait " prerequis manquant " a la place de la vraie cause -
       # exactement ce qui a masque l'echec Mistral du run du 2026-08-29. On
       # renvoie donc la raison PAR LA VALEUR.
       ok <- tryCatch({

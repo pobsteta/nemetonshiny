@@ -222,7 +222,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
     # dimensions NULLES. Tout ce qui lui arrive pendant ce temps (proxy,
     # polygones, recadrage) s'applique a un conteneur de taille zero, et au
     # retour la carte reste sur une vue fausse - c'est le symptome constate
-    # le 2026-09-18 : revenir de « Carte UGF » a « Carte cadastrale » laissait
+    # le 2026-09-18 : revenir de " Carte UGF " a " Carte cadastrale " laissait
     # la carte decentree du projet.
     #
     # `invalidateSize()` SEUL ne suffit pas : il restaure les dimensions, pas

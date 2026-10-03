@@ -147,7 +147,7 @@ mod_progress_ui <- function(id) {
       style = "display: none;",
       # Repliable, comme tous les autres blocs du sidebar (Projets recents,
       # Recherche, Actions UGF...). Il porte le tableau des indicateurs, donc
-      # c'est le plus haut de la colonne - et c'était le seul qu'on ne pouvait
+      # c'est le plus haut de la colonne - et c'etait le seul qu'on ne pouvait
       # pas replier pour atteindre ce qui se trouve dessous.
       bslib::card(
         id = ns("complete_card"),
@@ -320,7 +320,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
     #
     # Lu depuis le coeur (`indicator_label_by_column()`), pas depuis une table
     # locale. L'ancienne table etait indexee par nom de colonne et suivait donc
-    # le slug : elle annoncait « Paysage - Fragmentation » pendant le calcul de
+    # le slug : elle annoncait " Paysage - Fragmentation " pendant le calcul de
     # la sylvosphere, parce qu'une colonne porte le nom de la fonction qui la
     # remplit et que ce nom est croise pour F et L. Elle etait de surcroit
     # monolingue et ignorait les huit indicateurs ajoutes depuis (W4, A3-A5,

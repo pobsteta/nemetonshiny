@@ -205,7 +205,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
     # ================================================================
     # OUTPUT: Production du massif + ratios de prelevement (famille P,
-    # spec 054 §3 bis). Calcules par le worker de calcul quand P2 est en
+    # spec 054 S3 bis). Calcules par le worker de calcul quand P2 est en
     # mode IFN ; rien a montrer sinon.
     # ================================================================
     output$production_ifn_panel <- shiny::renderUI({
@@ -1000,7 +1000,7 @@ clean_indicator_label <- function(col_name, i18n) {
   # POSITIONNEL, et il etait croise pour F et L - `F1` pointait sur
   # `indicateur_f2_erosion`. Les cles i18n etant ecrites selon la semantique du
   # CODE et non de la colonne, la carte d'erosion sortait libellee
-  # « F1 - Fertilite des sols ». Le coeur a depuis decroise les deux familles
+  # " F1 - Fertilite des sols ". Le coeur a depuis decroise les deux familles
   # (L en v0.176.0, F en v0.182.0), mais l'ordre des sources reste celui-ci :
   # le libelle doit decrire la colonne qu'on affiche, pas le rang qu'elle
   # occupe - sans quoi le prochain renommage coeur rejoue le meme bug.
@@ -1177,7 +1177,7 @@ doc_icon <- function(row, lang, i18n) {
     title = label,
     `aria-label` = label,
     # `size` ici et pas en CSS : `bs_icon()` ecrit height/width en style INLINE,
-    # qui gagne sur la feuille. 0.875em est la taille du « i » voisin (`fa-sm`).
+    # qui gagne sur la feuille. 0.875em est la taille du " i " voisin (`fa-sm`).
     bsicons::bs_icon("journal-text", size = "0.875em")
   )
 }

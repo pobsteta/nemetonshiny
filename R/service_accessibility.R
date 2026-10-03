@@ -919,7 +919,7 @@ export_accessibility_geopackage <- function(result, file) {
 #' Adapter over [foretaccess::profil_travers()]: resolves the project's corrected
 #' road network, LiDAR point cloud and DTM, converts the clicked WGS84 coordinates
 #' to the working CRS, and hands everything to the core. Computes nothing itself
-#' (CLAUDE.md rules 1-2) and draws nothing — the plate lives in
+#' (CLAUDE.md rules 1-2) and draws nothing - the plate lives in
 #' `fct_plot_desserte_profil.R`.
 #'
 #' Runs inside a `future` worker: no Shiny, no global state, no plotting.
@@ -929,7 +929,7 @@ export_accessibility_geopackage <- function(result, file) {
 #' @param crs Working EPSG code. Default 2154.
 #' @param tolerance_m Snapping radius, in metres.
 #' @return The `profil_travers()` list, or a `list(status = "error", reason =)`
-#'   naming the missing ingredient — never a bare `NULL`, so the caller can tell
+#'   naming the missing ingredient - never a bare `NULL`, so the caller can tell
 #'   "no segment there" from "no LiDAR in this project".
 #' @noRd
 acc_profil_travers <- function(project_path, lng, lat, crs = 2154,

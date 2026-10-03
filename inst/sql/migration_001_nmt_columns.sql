@@ -1,3 +1,8 @@
+-- ATTENTION - MIGRATION HISTORIQUE ET DESTRUCTIVE : elle SUPPRIME la table
+-- nemeton.indicators (DROP ... CASCADE). Ne JAMAIS la rejouer sur une base
+-- peuplee : toutes les bases creees depuis schema.sql en sont deja la.
+-- Conservee pour l'historique du schema (voir CONTRAT.md).
+
 -- Migration: renommer les colonnes indicators vers les cles NMT du glossaire BMAD
 -- A executer une seule fois sur la base Clever Cloud
 

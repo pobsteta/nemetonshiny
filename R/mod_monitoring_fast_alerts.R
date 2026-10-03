@@ -511,7 +511,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     computing_rv <- shiny::reactiveVal(FALSE)
     # Signature des entrees du dernier raster calcule avec succes. L'onglet
     # actif fait partie des dependances de l'observer ci-dessous (garde
-    # « pas de calcul hors Suivi ») : sans cette memoire, chaque retour sur
+    # " pas de calcul hors Suivi ") : sans cette memoire, chaque retour sur
     # l'onglet relancait le calcul, la notification et la repeinture de la
     # carte alors que rien n'avait change.
     computed_sig <- NULL

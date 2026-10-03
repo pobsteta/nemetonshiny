@@ -71,8 +71,8 @@ DESS_CLASSE_COLS <- c(route = "#C62828", piste = "#3E2723",
 #' Red for BD TOPO, green for OSM: the point of this layer is to show at a
 #' glance what the correction ADDED. Red is `#FF0000` and not a softer one
 #' because the class legend next to it already carries a red (`route`,
-#' `#C62828`): every usual red sits 7 to 20 Lab units from it — the very
-#' collision fixed in 0.122.6 — while pure red keeps 34.7. Measured, and held by
+#' `#C62828`): every usual red sits 7 to 20 Lab units from it - the very
+#' collision fixed in 0.122.6 - while pure red keeps 34.7. Measured, and held by
 #' `test-acc_palettes.R`, which refuses any cross-legend pair under 20.
 #'
 #' The corrected network KEEPS the whole BD TOPO and adds what OSM carries on
@@ -861,7 +861,7 @@ mod_accessibility_server <- function(id, app_state) {
 
     shiny::observeEvent(input$correct_desserte, .lancer_correction_lidar())
 
-    # --- Lancement enchaine : etape « accessibilite_correction » -------
+    # --- Lancement enchaine : etape " accessibilite_correction " -------
     correction_pipeline_req <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(app_state$pipeline_request, {
@@ -971,7 +971,7 @@ mod_accessibility_server <- function(id, app_state) {
     # coches, buffer, reseau corrige) - c'est tout l'interet de faire lancer
     # le moteur par son proprietaire plutot que par l'orchestrateur.
     # `use_corrected` : le lancement enchaine doit l'imposer. La case de l'onglet
-    # naît d'un `renderUI` conditionne par `corrected_available()`, donc
+    # nait d'un `renderUI` conditionne par `corrected_available()`, donc
     # `input$use_corrected` ne remonte au serveur qu'apres un aller-retour
     # CLIENT - il vaudrait encore NULL juste apres l'etape de correction, et
     # l'analyse ignorerait le reseau qu'on vient de passer deux heures a
@@ -1062,9 +1062,9 @@ mod_accessibility_server <- function(id, app_state) {
     shiny::observeEvent(input$run, .lancer_accessibilite())
 
     # ------------------------------------------------------------------
-    # Lancement enchaine : etape « accessibilite »
+    # Lancement enchaine : etape " accessibilite "
     # ------------------------------------------------------------------
-    # Contrat : toute requete reconnue reçoit une reponse (cf. service_pipeline.R).
+    # Contrat : toute requete reconnue recoit une reponse (cf. service_pipeline.R).
     # Les sorties precoces repondent `skipped` avec leur raison ; la reponse de
     # fin est posee par l'observer de resultat de `acc_task`, plus bas.
     pipeline_req <- shiny::reactiveVal(NULL)
@@ -1839,7 +1839,7 @@ mod_accessibility_server <- function(id, app_state) {
       }
       rv$profil <- res
       shiny::showModal(shiny::modalDialog(
-        # Bouton « plein ecran » ancre en haut a droite : MEME patron que la
+        # Bouton " plein ecran " ancre en haut a droite : MEME patron que la
         # planche pixel du Suivi sanitaire (mod_monitoring_pixel_map) et que la
         # modale des cles API. Un petit JS bascule la classe BS5
         # `.modal-fullscreen` sur la `.modal-dialog` la plus proche - bord a

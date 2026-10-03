@@ -1,4 +1,7 @@
-FROM rocker/r-ver:4.4.0
+# Meme version de R que la CI. rocker fige le depot CRAN a la date de la
+# version : en 4.4.0 (mi-2024), `ellmer` et `shinyOAuth` n'existaient pas encore
+# et la construction echouait.
+FROM rocker/r-ver:4.6.1
 
 LABEL maintainer="Pascal Obstetar <pascal.obstetar@gmail.com>"
 LABEL description="Nemeton - Plateforme d'analyse forestiere systemique"
@@ -20,14 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtiff-dev \
     libjpeg-dev \
     libsqlite3-dev \
+    libuv1-dev \
     pandoc \
     curl \
+    git \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Toolchain Rust (noyau cable de foretaccess via extendr). Requis pour compiler
 # foretaccess depuis les sources (Remotes: pobsteta/foretaccess@*release) a
-# l'etape devtools::install_deps ci-dessous. rustup fournit une version recente
+# l'etape remotes::install_deps ci-dessous. rustup fournit une version recente
 # (celle d'apt est trop ancienne pour extendr). Installe dans /opt/rust, ajoute
 # au PATH pour toutes les etapes suivantes.
 ENV RUSTUP_HOME=/opt/rust \
@@ -58,15 +63,31 @@ RUN install2.r --error --skipinstalled \
     promises \
     future \
     ellmer \
-    shinyOAuth
+    shinyOAuth \
+    remotes \
+    DBI \
+    RPostgres \
+    RSQLite
 
 # Copier le package nemetonshiny
 WORKDIR /app
 COPY . /app
 
-# Installer le package nemetonshiny et ses dependances restantes
-RUN R -e "devtools::install_deps('.', dependencies = TRUE, upgrade = 'never')" \
-    && R -e "devtools::install('.', upgrade = 'never')"
+# Installer le package nemetonshiny et ses dependances restantes.
+# `remotes` (installe ci-dessus) et non `devtools`, absent de l'image : l'etape
+# echouait. `dependencies = NA` = Depends/Imports/LinkingTo.
+RUN R -e "remotes::install_deps('.', dependencies = NA, upgrade = 'never')" \
+    && R CMD INSTALL --no-docs --no-multiarch .
+
+# L'application ne tourne pas en root : utilisateur dedie, projets dans un
+# volume a chemin FIXE (passe a run_app() ci-dessous : sans `rappdirs`, non
+# installe ici, le dossier par defaut serait ~/.nemeton/projects).
+RUN useradd --create-home --uid 1001 nemeton \
+    && mkdir -p /data/projects \
+    && chown -R nemeton:nemeton /data /home/nemeton
+USER nemeton
+WORKDIR /home/nemeton
+VOLUME ["/data"]
 
 EXPOSE 3838
 
@@ -74,4 +95,6 @@ EXPOSE 3838
 ENV NEMETON_LANG=fr
 ENV NEMETON_PAYS=FR
 
-CMD ["R", "-e", "nemetonshiny::run_app(options = list(port = 3838, host = '0.0.0.0', launch.browser = FALSE))"]
+# `options` est un argument de run_app() depuis v0.152.6 (avant, ce CMD
+# echouait : « formal argument matched by multiple actual arguments »).
+CMD ["R", "-e", "nemetonshiny::run_app(tour = FALSE, project_dir = '/data/projects', options = list(port = 3838, host = '0.0.0.0'))"]

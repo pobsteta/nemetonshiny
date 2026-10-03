@@ -8,7 +8,7 @@
 #
 # Le fond est celui de CHAQUE chantier (parcelles de l'UGF + 50 m), pas celui
 # du projet : l'ortho entiere pese des gigaoctets. Il coute environ 40 s et
-# 11 Mo pour 64 ha (mesure sur « Reconfort », parcelle 1116) - trop pour le
+# 11 Mo pour 64 ha (mesure sur " Reconfort ", parcelle 1116) - trop pour le
 # telechargement, qui est synchrone. D'ou la separation :
 #
 #   * la PREPARATION (`marculus_ortho_preparer()`) tourne dans un worker

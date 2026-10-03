@@ -7,15 +7,17 @@
 #' \itemize{
 #'   \item Search and select cadastral parcels on an interactive map
 #'   \item Create projects with metadata
-#'   \item Calculate all 29 nemeton indicators automatically
+#'   \item Calculate the nemeton indicators (12 families) automatically
 #'   \item Analyze results by indicator family (12 tabs)
 #'   \item Export PDF reports and GeoPackage data
 #' }
 #'
 #' @param language Character. Interface language: "fr" (French, default) or "en" (English).
 #'   If NULL, the system language is auto-detected.
-#' @param project_dir Character. Directory for storing projects.
-#'   Default: \code{~/.nemeton/projects}
+#' @param project_dir Character. Directory for storing projects. Default: the
+#'   user data directory (\code{rappdirs::user_data_dir("nemeton")/projects},
+#'   i.e. \code{~/.local/share/nemeton/projects} on Linux), or
+#'   \code{~/.nemeton/projects} when \pkg{rappdirs} is not installed.
 #' @param max_parcels Integer. Maximum number of parcels that can be selected
 #'   simultaneously on the map. Default: \code{30}. Must be a positive integer.
 #' @param tour Logical. Auto-start the guided tour (cicerone) for a visitor who
@@ -25,6 +27,10 @@
 #'   Disabling only suppresses the AUTO-start: the tour stays available from the
 #'   help menu. Overridable per-session with the \code{NEMETON_TOUR} environment
 #'   variable (\code{0}/\code{false} to disable).
+#' @param options List of Shiny app options (\code{port}, \code{host},
+#'   \code{launch.browser}...), merged over the defaults: the browser opens
+#'   only in an interactive session. Example:
+#'   \code{run_app(options = list(port = 3838, host = "0.0.0.0"))}.
 #' @param ... Additional arguments passed to \code{\link[shiny]{shinyApp}}.
 #'
 #' @return A Shiny application object (invisibly).
@@ -65,12 +71,19 @@
 #'
 #'   # Boot without the guided tour (demo, screencast, automated test)
 #'   run_app(tour = FALSE)
+#'
+#'   # Serve on a fixed port, reachable from other machines (server, Docker)
+#'   run_app(options = list(port = 3838, host = "0.0.0.0"))
 #' }
 run_app <- function(language = NULL,
                     project_dir = NULL,
                     max_parcels = 30L,
                     tour = TRUE,
+                    options = list(),
                     ...) {
+  if (!is.list(options)) {
+    cli::cli_abort("{.arg options} must be a list (e.g. {.code list(port = 3838)}).")
+  }
   # Validate max_parcels early (argument check, no side effects)
   if (!is.numeric(max_parcels) || length(max_parcels) != 1 ||
       is.na(max_parcels) || max_parcels < 1 ||
@@ -139,10 +152,16 @@ run_app <- function(language = NULL,
   }
 
   # Launch app
+  # `options` est un argument a part entiere, fusionne avec les valeurs par
+  # defaut : passe dans `...`, il entrait en conflit avec l'`options` fixe ici
+  # (" formal argument matched by multiple actual arguments "), si bien qu'il
+  # etait impossible de choisir le port ou l'hote - Dockerfile compris. Le
+  # navigateur ne s'ouvre que dans une session interactive, jamais sur un
+  # serveur.
   shiny::shinyApp(
     ui = app_ui,
     server = app_server,
-    options = list(launch.browser = TRUE),
+    options = utils::modifyList(list(launch.browser = interactive()), options),
     ...
   )
 }

@@ -592,7 +592,7 @@ export_action_plan_gpkg <- function(plan, ug_sf, file_path,
 
   # `annee_cible` est un decalage (1..horizon) ancre sur `plan$annee_base` :
   # le GPKG donne l'annee CIVILE, calculee comme partout ailleurs (il
-  # retranchait un an, d'ou une action « 2028 » a l'ecran et « 2027 » sur le
+  # retranchait un an, d'ou une action " 2028 " a l'ecran et " 2027 " sur le
   # terrain).
   df$annee_civile <- action_plan_annee_civile(plan, df$annee_cible)
   cols <- names(df)

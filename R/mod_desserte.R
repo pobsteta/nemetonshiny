@@ -139,9 +139,9 @@ DESS_DETECT_COLS <- c(
 
 #' Field label carrying its help text in an "i"
 #'
-#' The Desserte sidebar showed one `text-muted small` paragraph — sometimes a
-#' full `alert` — under nearly every input. Stacked, they pushed the « Lancer le
-#' calcul » button below the fold and turned the panel into a page of prose that
+#' The Desserte sidebar showed one `text-muted small` paragraph - sometimes a
+#' full `alert` - under nearly every input. Stacked, they pushed the " Lancer le
+#' calcul " button below the fold and turned the panel into a page of prose that
 #' is read once and skipped forever after.
 #'
 #' [info_popover_in_label()] and not [info_popover()]: a click inside a `<label>`
@@ -176,7 +176,7 @@ DESS_DETECT_COLS <- c(
 #'
 #' Where the intro of a panel goes. NOT in the panel title: an accordion title
 #' is a collapse toggle, and an "i" placed there folds the panel one is reading.
-#' Verified in Chrome — `stopPropagation()`, `preventDefault()` and a
+#' Verified in Chrome - `stopPropagation()`, `preventDefault()` and a
 #' capture-phase document listener all failed, Bootstrap having registered its
 #' handler first. See the note in `utils_theme.R`.
 #'
@@ -612,7 +612,7 @@ mod_desserte_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run, .lancer_desserte())
 
-    # --- Lancement enchaine : etape « desserte » -----------------------
+    # --- Lancement enchaine : etape " desserte " -----------------------
     pipeline_req <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(app_state$pipeline_request, {
@@ -1044,7 +1044,7 @@ mod_desserte_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_integrite, .lancer_integrite())
 
-    # --- Lancement enchaine : etape « desserte_integrite » -------------
+    # --- Lancement enchaine : etape " desserte_integrite " -------------
     integ_pipeline_req <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(app_state$pipeline_request, {
@@ -1062,7 +1062,7 @@ mod_desserte_server <- function(id, app_state) {
       # rejoue A CHAQUE lancement de la chaine, meme reseau inchange. Le
       # resultat etait pourtant deja sur le disque : il manquait la cle qui
       # dit s'il est encore valable. Ici seulement - le bouton de l'onglet
-      # relance toujours, un geste explicite veut dire « recalcule ».
+      # relance toujours, un geste explicite veut dire " recalcule ".
       cache_dir <- .desserte_cache_dir(app_state$current_project$path)
       if (.integrite_a_jour(cache_dir, file.path(cache_dir, "aoi_input.gpkg"))) {
         pipeline_answer(app_state, req, "skipped",
@@ -1380,7 +1380,7 @@ mod_desserte_server <- function(id, app_state) {
         error = function(e) list(status = "error", reason = "desserte_typage_failed",
                                  detail = conditionMessage(e)))
       rv_typage(res)
-      # « empty » = rien a typer parce que rien a creer : information, pas
+      # " empty " = rien a typer parce que rien a creer : information, pas
       # erreur. Un toast rouge sur le meilleur resultat possible (reseau
       # existant suffisant) envoie chercher une panne qui n'existe pas.
       if (identical(res$status, "empty")) {
@@ -1398,7 +1398,7 @@ mod_desserte_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_typage, .lancer_typage())
 
-    # --- Lancement enchaine : etape « desserte_typage » ----------------
+    # --- Lancement enchaine : etape " desserte_typage " ----------------
     shiny::observeEvent(app_state$pipeline_request, {
       req <- app_state$pipeline_request
       if (!pipeline_targets(req, "desserte_typage")) return()

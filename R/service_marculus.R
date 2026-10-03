@@ -61,7 +61,7 @@ MARCULUS_LAYER_HOUPPIER  <- "houppier"
 #' `OGR_SQLITE_SYNCHRONOUS = OFF` : SQLite ne force plus l'ecriture disque a
 #' chaque transaction. Ces GeoPackages sont TEMPORAIRES - zippes puis effaces
 #' dans la foulee - et la durabilite en cas de coupure n'y sert a rien. Mesure
-#' sur « Reconfort » (20 contextes) : ecritures 31,2 s -> 1,4 s.
+#' sur " Reconfort " (20 contextes) : ecritures 31,2 s -> 1,4 s.
 #'
 #' @noRd
 MARCULUS_GPKG_CONFIG <- c(OGR_SQLITE_SYNCHRONOUS = "OFF")
@@ -206,10 +206,10 @@ MARCULUS_STATUTS <- c(
 #' an ONF crossing. On a phone, a flat list of "Couchey - ug_20260822203555_001
 #' - coupe_rase" cannot be navigated: the marker knows their **forest parcel**,
 #' not the row it occupies in a table. The label is what the crossing already
-#' wrote - "Forêt communale de Couchey — parcelle 1".
+#' wrote - "Foret communale de Couchey - parcelle 1".
 #'
 #' The forest name is dropped when it repeats the project's, which it usually
-#' does: "Couchey - Forêt communale de Couchey — parcelle 1 - coupe_rase" says
+#' does: "Couchey - Foret communale de Couchey - parcelle 1 - coupe_rase" says
 #' Couchey twice for no gain. What is kept is the part that distinguishes one
 #' site from the next.
 #'
@@ -231,7 +231,7 @@ MARCULUS_STATUTS <- c(
   if (length(lab) != 1L || is.na(lab) || !nzchar(trimws(lab))) return(id)
   lab <- trimws(lab)
 
-  # « Foret communale de Couchey - parcelle 1 » -> « parcelle 1 » quand le
+  # " Foret communale de Couchey - parcelle 1 " -> " parcelle 1 " quand le
   # projet s'appelle deja Couchey. Le separateur est le tiret cadratin que pose
   # le croisement ; sans lui, on garde le libelle entier.
   if (!is.null(nom_projet) && nzchar(nom_projet) &&
@@ -279,7 +279,7 @@ marculus_context_from_action <- function(action, project, essences = character(0
   libelle <- if (identical(type, "autre")) (action$type_libre %||% type) else type
 
   # Le nom porte l'UGF ET l'action : sur le telephone, la liste des contextes
-  # est plate, et « Dabo » repete douze fois ne se navigue pas.
+  # est plate, et " Dabo " repete douze fois ne se navigue pas.
   nom <- sprintf("%s - %s - %s", nom_projet, ug, libelle)
   if (!is.null(suffixe) && nzchar(suffixe)) nom <- paste(nom, suffixe)
 
@@ -293,7 +293,7 @@ marculus_context_from_action <- function(action, project, essences = character(0
   # date que porte une action. Un 1er janvier n'est pas une date de chantier -
   # l'operateur la corrigera - mais laisser le champ vide priverait la liste de
   # son tri, qui est par date de martelage decroissante. Decision du
-  # 2026-10-02 (option A du brief « date de martelage ») : on garde ce
+  # 2026-10-02 (option A du brief " date de martelage ") : on garde ce
   # substitut, et l'export DIT combien de contextes le portent
   # (`n_date_annee`, message de fin d'export) - c'est une annee de programme,
   # pas une date saisie.
@@ -581,9 +581,9 @@ marculus_sync_json <- function(contexts) {
 #' @return Invisibly the number of crowns written, `0` when nothing was. Why
 #'   nothing was is recorded by [.persist_houppiers_statut()].
 #' @noRd
-# Ecrit le verdict « CHM suspect » du cœur dans les metadonnees du projet.
+# Ecrit le verdict " CHM suspect " du coeur dans les metadonnees du projet.
 #
-# Le cœur (>= 0.191.1) sait dire qu'un modele de hauteur est vraisemblablement
+# Le coeur (>= 0.191.1) sait dire qu'un modele de hauteur est vraisemblablement
 # une prediction ratee se faisant passer pour une coupe rase. Il le disait dans
 # le vide : rien cote app ne lisait `chm_suspect`.
 #
@@ -710,7 +710,7 @@ precompute_houppiers <- function(project_id) {
 #'
 #' No `run_memory_capped()`: ~670 MB is 4 % of the ceiling. The capped child
 #' costs an AOI to serialise and a progress channel to thread, and the memory
-#' budget does not buy that here - unlike FORDEAD or reGénération.
+#' budget does not buy that here - unlike FORDEAD or reGeneration.
 #'
 #' The export READS this cache, it never segments. A bundle must stay a matter
 #' of seconds; the crowns are produced by [precompute_houppiers()] during the
@@ -791,7 +791,7 @@ precompute_houppiers <- function(project_id) {
   # `raster::raster()` des qu'un plan `future` a 2 workers ou plus etait
   # actif - celui de l'app -, et son CRS PROJ4 ne valait plus EPSG:2154 pour
   # `sf`. `nemeton 0.199.2` passe une copie `stars` a lidR : l'appel borne
-  # marche sous le plan de l'app (79 526 houppiers sur « Reconfort », le cœur
+  # marche sous le plan de l'app (79 526 houppiers sur " Reconfort ", le coeur
   # gardant ENTIERS ceux qui touchent l'emprise, `emprise = "intersecte"`).
   out <- tryCatch(
     nemeton::segment_houppiers(chm, aoi = aoi),
@@ -803,9 +803,9 @@ precompute_houppiers <- function(project_id) {
                 message = conditionMessage(e))
     })
   if (inherits(out, "houppiers_erreur")) return(out)
-  # `attr(out, "chm_suspect")` est pose par le cœur (>= 0.191.1) : « ce modele
+  # `attr(out, "chm_suspect")` est pose par le coeur (>= 0.191.1) : " ce modele
   # de hauteur est vraisemblablement une prediction ratee qui se fait passer
-  # pour une coupe rase ». Le sous-ensemble `out[, "h_max"]` ci-dessous DETRUIT
+  # pour une coupe rase ". Le sous-ensemble `out[, "h_max"]` ci-dessous DETRUIT
   # les attributs, et le verdict se perdait la - alors que c'est justement le
   # cas VIDE qui a le plus besoin de le porter. On le capture avant, on le
   # remet apres.
@@ -843,15 +843,15 @@ precompute_houppiers <- function(project_id) {
 #' not need every one of them. A false negative costs what we already had (no
 #' crowns); a false positive costs the two minutes this check exists to save.
 #'
-#' Depuis v0.143.7 ce predicat est passe au cœur comme argument `validate`
+#' Depuis v0.143.7 ce predicat est passe au coeur comme argument `validate`
 #' de `resolve_project_chm()` (`nemeton` >= 0.193.0). Deux consequences :
 #'
 #' * **Son verdict fait foi.** Le `TRUE` rendu dans le doute ne veut plus dire
-#'   « on laisse le cœur trancher » - le cœur ne tranche plus apres nous, il
+#'   " on laisse le coeur trancher " - le coeur ne tranche plus apres nous, il
 #'   ACCEPTE le candidat. Le choix reste le bon (dans le doute on garde : un
 #'   faux positif coute deux minutes, un faux negatif coute la source), mais
 #'   il n'est plus delegue.
-#' * **Il ne doit jamais lever.** Une erreur ici remonterait au cœur et
+#' * **Il ne doit jamais lever.** Une erreur ici remonterait au coeur et
 #'   arreterait la resolution sur ce candidat au lieu de passer au suivant -
 #'   exactement ce que `validate` sert a eviter. D'ou le `tryCatch` global :
 #'   `spatSample()` peut echouer, mais aussi rendre un data.frame sans colonne,
@@ -895,14 +895,14 @@ precompute_houppiers <- function(project_id) {
 #' les deux ont besoin du meilleur modele de hauteur disponible. D'ou le nom
 #' neutre : ce n'est pas un helper Marculus.
 #'
-#' **Il ne reste ici aucun chemin en dur** (v0.143.7). Le cœur connait
+#' **Il ne reste ici aucun chemin en dur** (v0.143.7). Le coeur connait
 #' `cache/layers/opencanopy/` depuis `nemeton` v0.192.2, et depuis v0.193.0 il
 #' prend le garde de contenu en argument : `validate` recoit le `SpatRaster`
 #' tel qu'il serait rendu - le VRT mosaique pour un repertoire de dalles, une
 #' seule fois par candidat - et un candidat refuse est **saute**, la recherche
 #' continuant a la source suivante.
 #'
-#' Le repli inter-sources y gagne : il balaie les six candidats CHM du cœur
+#' Le repli inter-sources y gagne : il balaie les six candidats CHM du coeur
 #' dans leur ordre (LiDAR HD d'abord, ADR-007) au lieu des trois noms de
 #' fichiers ecrits a la main qu'il sondait - dont un, `chm.tif`, n'existe pas
 #' dans ce repertoire : le temoin s'appelle `chm_1_5m.tif`. La liste etait donc
@@ -1183,7 +1183,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   dir.create(tmp, recursive = TRUE, showWarnings = FALSE)
 
   # Houppiers de chaque chantier, calcules en UNE passe pour tout le lot
-  # (cf. `.marculus_houppiers_par_zone()` : 81 s -> 2,3 s sur « Reconfort »).
+  # (cf. `.marculus_houppiers_par_zone()` : 81 s -> 2,3 s sur " Reconfort ").
   hp_par_action <- .marculus_houppiers_par_zone(
     houppiers,
     lapply(actions, function(a) .marculus_parcelles(project, a$ug_id)))
@@ -1235,7 +1235,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
              file.path(tmp, paste0(project$metadata$name %||% project_id, ".marsync")))
 
   # `-6` (niveau par defaut de zip) et non `-9` : 1,7 s au lieu de 6,5 s sur
-  # « Reconfort », pour une archive plus lourde de 0,7 % seulement.
+  # " Reconfort ", pour une archive plus lourde de 0,7 % seulement.
   utils::zip(zipfile = file, files = list.files(tmp, full.names = TRUE),
              flags = "-j6Xq")
   unlink(tmp, recursive = TRUE)

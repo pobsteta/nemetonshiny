@@ -5,107 +5,86 @@
 [![Version](https://img.shields.io/github/v/release/pobsteta/nemetonshiny?logo=github&label=version&color=blue&sort=semver)](https://github.com/pobsteta/nemetonshiny/releases/latest)
 [![pkgdown](https://github.com/pobsteta/nemetonshiny/actions/workflows/pkgdown.yaml/badge.svg)](https://pobsteta.github.io/nemetonshiny/)
 [![codecov](https://codecov.io/gh/pobsteta/nemetonshiny/graph/badge.svg)](https://codecov.io/gh/pobsteta/nemetonshiny)
-[![License: EUPL v1.2](https://img.shields.io/badge/License-EUPL%20v1.2-blue.svg?logo=opensourceinitiative)](https://opensource.org/licenses/EUPL-1.2)
+[![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 <!-- badges: end -->
 
-Application Shiny/golem pour la plateforme d'analyse systemique forestiere **Nemeton**.
+Application Shiny/golem de la plateforme d'analyse systémique forestière **Nemeton**.
 
-`nemetonshiny` fournit l'interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.19.5).
+`nemetonshiny` fournit l'interface. La logique métier (indicateurs, familles, NDP, FORDEAD, reGénération) est portée par le paquet [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.207.0), la desserte et l'accessibilité par [`foretaccess`](https://github.com/pobsteta/foretaccess) (>= 2.4.0).
 
-## Fonctionnalites
+## Fonctionnalités
 
-- **Carte interactive** -- selection de parcelles cadastrales via Leaflet et l'API cadastre IGN
-- **Gestion de projets** -- creation, sauvegarde et restauration de diagnostics forestiers
-- **31 indicateurs Nemeton** -- calcul automatique sur les parcelles selectionnees
-- **12 familles d'indicateurs** -- visualisation radar, scores et detail par famille
-- **Synthese LLM** -- analyse contextuelle par 13 profils d'experts (ellmer / Mistral)
-- **Export PDF & GeoPackage** -- rapports Quarto et donnees geospatiales
-- **Internationalisation** -- francais et anglais (504 cles de traduction)
-- **Accessibilite** -- conformite WCAG 2.1 AA
+- **Carte interactive** : sélection de parcelles cadastrales (Leaflet, API cadastre IGN)
+- **Projets** : création, sauvegarde et restauration des diagnostics, découpage en unités de gestion (UGF)
+- **Indicateurs Nemeton** en 12 familles : radar, scores et détail par famille
+- **Suivi sanitaire** : surveillance rapide Sentinel-2, diagnostic FORDEAD, RECONFORT
+- **Terrain** : accessibilité, desserte, plans d'échantillonnage QField, aller-retour Marculus
+- **Plan d'actions** et **reGénération** (vulnérabilité climatique par UGF)
+- **Perspectives IA** par profil d'expert (21 profils, `ellmer` : Mistral, Anthropic, OpenAI)
+- **Exports** : rapports PDF (Quarto) et GeoPackage
+- **Français et anglais**
 
-## Prerequis
+## Prérequis
 
-- **R** >= 4.1.0
-- **nemeton** >= 0.19.5 (package core)
-- Librairies systeme : GDAL, GEOS, PROJ, libudunits2
-
-### Dependances R principales
-
-`shiny`, `bslib`, `leaflet`, `sf`, `terra`, `DT`, `promises`, `ellmer`, `httr2`, `yaml`, `jsonlite`.
-
-Voir le fichier [`DESCRIPTION`](DESCRIPTION) pour la liste complete.
+- **R** >= 4.1.0 (la CI teste la dernière version de R sous Ubuntu)
+- Bibliothèques système : GDAL, GEOS, PROJ, udunits2, SQLite, OpenSSL, libcurl, libxml2, fontconfig, harfbuzz, fribidi, freetype, libpng, libtiff, libjpeg
+  (sous Debian/Ubuntu : voir la liste exacte dans [`.github/workflows/r.yml`](.github/workflows/r.yml))
+- **Chaîne Rust** (`rustc`, `cargo`, via [rustup](https://rustup.rs)) : `foretaccess` embarque un noyau compilé en Rust
+- Pour les rapports PDF : [Quarto](https://quarto.org) et une distribution LaTeX (`xelatex`)
 
 ## Installation
 
 ```r
-# Installer le package core nemeton
-remotes::install_github("pobsteta/nemeton")
-
-# Installer nemetonshiny
-remotes::install_github("pobsteta/nemetonshiny")
+install.packages("pak")
+# Deux dépendances du cœur hébergées sur GitHub
+pak::pak(c("github::cran/dissUtils", "jbferet/spinR"))
+# L'application ; les champs Remotes tirent les dernières releases de
+# nemeton et foretaccess (« @*release », pak >= 0.11.1)
+pak::pak("pobsteta/nemetonshiny")
 ```
 
 ## Utilisation
 
-### Lancement direct
-
 ```r
-nemetonshiny::run_app(language = "fr")
+nemetonshiny::run_app()
 ```
 
-Options disponibles :
+| Paramètre     | Rôle                                                                 | Défaut |
+|---------------|----------------------------------------------------------------------|--------|
+| `language`    | Langue de l'interface, `"fr"` ou `"en"`                              | langue du système |
+| `project_dir` | Dossier des projets                                                  | `~/.local/share/nemeton/projects` sous Linux (`~/.nemeton/projects` sans `rappdirs`) |
+| `max_parcels` | Nombre maximal de parcelles sélectionnables                          | `30` |
+| `tour`        | Lancer la visite guidée au premier lancement                         | `TRUE` |
+| `options`     | Options Shiny (`port`, `host`, `launch.browser`...)                   | `list()` ; navigateur ouvert seulement en session interactive |
 
-| Parametre  | Description                   | Defaut |
-|------------|-------------------------------|--------|
-| `language` | Langue (`"fr"` ou `"en"`)     | `"fr"` |
-| `options`  | Options Shiny (port, host...) | `list()`|
+Sur un serveur :
 
-### Lancement avec Docker
+```r
+nemetonshiny::run_app(tour = FALSE, options = list(port = 3838, host = "0.0.0.0"))
+```
+
+La configuration (base PostGIS, authentification OAuth, clés LLM et Theia, notifications) passe par des variables d'environnement, décrites avec le format des projets dans le [contrat public](CONTRAT.md).
+
+### Docker
 
 ```bash
-docker compose up -d
+docker build -t nemetonshiny .
+docker run -p 3838:3838 -v nemeton-projets:/data nemetonshiny
 ```
 
-Le `docker-compose.yml` demarre :
-- **Keycloak** (port 8080) -- authentification OAuth2/OIDC
-- **nemetonshiny** (port 3838) -- application Shiny
+L'image tourne sous un utilisateur non root ; les projets vivent dans le volume `/data`. Le `docker-compose.yml` démarre en plus un Keycloak **de développement** (`start-dev`, comptes et secret de démonstration dans `keycloak/realm-nemeton.json`) : il n'est pas fait pour la production.
 
-Variables d'environnement configurables dans `docker-compose.yml` :
-- `NEMETON_LANG` -- langue (defaut : `fr`)
-- `NEMETON_PAYS` -- pays (defaut : `FR`)
-- `MISTRAL_API_KEY` -- cle API Mistral pour la synthese LLM
-
-## Architecture
-
-Le projet suit l'architecture [golem](https://thinkr-open.github.io/golem/) :
-
-```
-R/
-  app_ui.R / app_server.R   -- UI et serveur principaux
-  mod_*.R                    -- modules Shiny (auth, home, map, project,
-                                family, synthesis, search, progress)
-  service_*.R                -- services (cadastre, communes, compute,
-                                db, export, project)
-  llm_prompts.R              -- gestion des prompts LLM
-  utils_i18n.R               -- internationalisation
-  utils_theme.R              -- theme et styles
-
-inst/
-  experts/                   -- 16 profils d'experts LLM (YAML)
-  quarto/                    -- template de rapport PDF
-  sql/                       -- schema et migrations
-```
-
-## Tests
+## Développement
 
 ```r
-devtools::test()
+pkgload::load_all(); nemetonshiny::run_app()   # lancer depuis les sources
+devtools::test()                                # 117 fichiers de tests
 ```
 
-20 fichiers de tests couvrant l'ensemble des modules et services.
+Les tests de bout en bout (`shinytest2`) demandent Chrome. Les conventions du projet (i18n, modules, services, release) sont dans [`CLAUDE.md`](CLAUDE.md).
 
 ## Licence
 
-[EUPL v1.2](LICENSE-EUPL.md)
+[GPL-3 ou ultérieure](LICENSE.md). nemetonshiny importe le cœur `nemeton`, sous GPL-3 ; il était distribué sous EUPL v1.2 jusqu'au 2026-07-01 (texte conservé dans [LICENSE-EUPL.md](LICENSE-EUPL.md)).
 
 Les donnees sont soumises a des conditions specifiques decrites dans [LICENSE-DATA.md](LICENSE-DATA.md).
