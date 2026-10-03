@@ -1,4 +1,4 @@
-# nemetonshiny 0.152.4.9002 (2026-10-03)
+# nemetonshiny 0.152.5 (2026-10-03)
 
 ### Fixed — Phase 2 de l'audit 1.0, lots B a D : ne plus perdre de donnees, ni les ecrire dans le mauvais projet
 
@@ -49,8 +49,6 @@
   changer de groupe ne les touche pas.
 - **Changer les parcelles d'un projet** met l'ancien decoupage UGF de cote,
   invalide les indicateurs et le signale a l'utilisateur.
-
-# nemetonshiny 0.152.4.9001 (2026-10-03)
 
 ### Fixed — Phase 2 de l'audit 1.0, lot A : plus de donnees inventees, plus de plantages francs
 
