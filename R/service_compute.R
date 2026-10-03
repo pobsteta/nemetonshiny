@@ -2114,7 +2114,7 @@ chm_auto_enabled <- function() {
     )
     return(FALSE)
   }
-  if (!requireNamespace("opencanopy", quietly = TRUE)) {
+  if (!requireNamespace(.OPENCANOPY_PKG, quietly = TRUE)) {
     cli::cli_alert_info(
       "CHM skipped: package {.pkg opencanopy} is not installed."
     )
@@ -2416,6 +2416,8 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
     # `opencanopy` est un moteur FACULTATIF, hors CRAN et non declare dans
     # DESCRIPTION (le declarer imposait son installation en CI) : resolu a
     # l'execution, apres le `requireNamespace()` de l'appelant.
+    # (litteral, pas la constante : ce corps tourne dans un processus enfant
+    # qui ne voit pas l'espace de noms de nemetonshiny)
     pipeline <- getExportedValue("opencanopy", "pipeline_aoi_to_chm")
     pa <- list(aoi_path = aoi_path, output_dir = output_dir)
     if ("progress_callback" %in% names(formals(pipeline))) {
@@ -2450,7 +2452,7 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
   cli::cli_alert_warning(
     "Isolation impossible ({conditionMessage(res)}) ; execution EN PROCESSUS. \\
      Cette session sera liee a l'interpreteur que reticulate choisira.")
-  pipeline <- getExportedValue("opencanopy", "pipeline_aoi_to_chm")
+  pipeline <- getExportedValue(.OPENCANOPY_PKG, "pipeline_aoi_to_chm")
   pipe_args <- list(aoi_path = aoi_path, output_dir = oc_dir)
   if ("progress_callback" %in% names(formals(pipeline))) {
     pipe_args$progress_callback <- progress_callback
@@ -2461,9 +2463,16 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 }
 
 
+# Moteur CHM facultatif, hors CRAN : volontairement NON declare dans
+# DESCRIPTION (le declarer imposait son installation en CI). Son nom passe par
+# cette constante pour que R CMD check ne le prenne pas pour une dependance
+# oubliee ; il n'est appele qu'apres `requireNamespace()`.
+.OPENCANOPY_PKG <- "opencanopy"
+
+
 download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
                                     progress_callback = NULL) {
-  if (!requireNamespace("opencanopy", quietly = TRUE)) {
+  if (!requireNamespace(.OPENCANOPY_PKG, quietly = TRUE)) {
     stop("Package 'opencanopy' is not installed")
   }
   oc_dir <- file.path(cache_dir, "opencanopy")
