@@ -2413,15 +2413,19 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
   # repartent en lignes JSON taguees, que `.chm_forward_line()` rejoue cote
   # parent dans `progress_callback`.
   enfant <- function(aoi_path, output_dir, chm_path) {
+    # `opencanopy` est un moteur FACULTATIF, hors CRAN et non declare dans
+    # DESCRIPTION (le declarer imposait son installation en CI) : resolu a
+    # l'execution, apres le `requireNamespace()` de l'appelant.
+    pipeline <- getExportedValue("opencanopy", "pipeline_aoi_to_chm")
     pa <- list(aoi_path = aoi_path, output_dir = output_dir)
-    if ("progress_callback" %in% names(formals(opencanopy::pipeline_aoi_to_chm))) {
+    if ("progress_callback" %in% names(formals(pipeline))) {
       pa$progress_callback <- function(ev) {
         cat("__CHM_EV__",
             jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null"),
             "\n", sep = "")
       }
     }
-    pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pa)
+    pipe <- do.call(pipeline, pa)
     terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
     invisible(TRUE)
   }
@@ -2446,11 +2450,12 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
   cli::cli_alert_warning(
     "Isolation impossible ({conditionMessage(res)}) ; execution EN PROCESSUS. \\
      Cette session sera liee a l'interpreteur que reticulate choisira.")
+  pipeline <- getExportedValue("opencanopy", "pipeline_aoi_to_chm")
   pipe_args <- list(aoi_path = aoi_path, output_dir = oc_dir)
-  if ("progress_callback" %in% names(formals(opencanopy::pipeline_aoi_to_chm))) {
+  if ("progress_callback" %in% names(formals(pipeline))) {
     pipe_args$progress_callback <- progress_callback
   }
-  pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pipe_args)
+  pipe <- do.call(pipeline, pipe_args)
   terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
   invisible(TRUE)
 }

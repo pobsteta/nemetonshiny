@@ -27,9 +27,11 @@
 - **R CMD check sans WARNING** : plus aucun caractere non ASCII dans `R/`
   (chaines en `\uXXXX`, commentaires translitteres ; table des traductions
   verifiee identique), `future`, `arrow` et `geoarrow` passent en `Imports`
-  (l'asynchrone et l'enregistrement des projets en dependent), `lidR`,
-  `opencanopy` et `methods` declares, fichier `.s2.out` retire. La CI echoue
-  desormais sur un WARNING.
+  (l'asynchrone et l'enregistrement des projets en dependent), `lidR` et
+  `methods` declares, fichier `.s2.out` retire. Le moteur facultatif
+  `opencanopy` (hors CRAN) n'est pas declare : il est resolu a l'execution
+  (`getExportedValue()`), derriere son `requireNamespace()`, pour ne pas
+  imposer son installation. La CI echoue desormais sur un WARNING.
 - `main` est protegee : `version-consistency`, `R-CMD-check` et `tests`
   doivent etre verts avant un merge.
 - `migration_001` signalee comme historique et destructive.

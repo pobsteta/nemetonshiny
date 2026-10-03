@@ -20,7 +20,7 @@ Imports: nemeton (>= 0.207.0), foretaccess (>= 2.4.0), shiny (>= 1.8.0),
 Suggests: shinyOAuth, RPostgres, RSQLite, DBI, uuid,
     testthat (>= 3.0.0), withr,
     golem, cicerone, quarto, rappdirs,
-    happign, lasR, lidR, opencanopy, leaflet.extras, curl, jpeg, maptiles, pkgload,
+    happign, lasR, lidR, leaflet.extras, curl, jpeg, maptiles, pkgload,
     png, viridisLite, reticulate, callr, shinytest2 (>= 0.3.0), webshot2,
     meteoland, ecmwfr
 Remotes: pobsteta/nemeton@*release, pobsteta/foretaccess@*release, r-lidar/lasR
