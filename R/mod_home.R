@@ -1412,8 +1412,15 @@ mod_home_server <- function(id, app_state) {
           # Unblock parcel modification (T089)
           app_state$computation_running <- FALSE
 
-          app_state$current_project <- load_project(project_id)
-          app_state$project_status <- "completed"
+          # Recharger le projet CALCULE seulement s'il est toujours celui
+          # ouvert : l'utilisateur a pu en ouvrir un autre pendant le calcul
+          # (cas prevu), et le reassigner basculait l'affichage sur l'ancien
+          # projet alors que `project_id` - qui guide verrou et sauvegardes -
+          # restait le nouveau.
+          if (.est_projet_courant(app_state, project_id)) {
+            app_state$current_project <- load_project(project_id)
+            app_state$project_status <- "completed"
+          }
           app_state$refresh_projects <- Sys.time()
 
           # `isolate()` OBLIGATOIRE : ce bloc vit dans `poll_fn`, un callback
@@ -1604,7 +1611,9 @@ mod_home_server <- function(id, app_state) {
 
         # Reset project status to draft so "Lancer les calculs" reappears
         update_project_status(project_id, "draft")
-        app_state$current_project <- load_project(project_id)
+        if (.est_projet_courant(app_state, project_id)) {
+          app_state$current_project <- load_project(project_id)
+        }
       }
 
       # Cancel the ExtendedTask process if running
@@ -1863,3 +1872,22 @@ mod_home_server <- function(id, app_state) {
     )
   })
 }
+
+
+#' Is this project still the one open in the session?
+#'
+#' @description
+#' Asynchronous results (a computation, an engine run) come back for the
+#' project that STARTED them. The user may have opened another one meanwhile;
+#' writing the result into `app_state` then shows - and lets the user edit -
+#' the wrong project. Readable outside a reactive context (`later` callbacks).
+#'
+#' @param app_state The shared `reactiveValues`.
+#' @param project_id Id of the project the result belongs to.
+#' @return Logical scalar.
+#' @noRd
+.est_projet_courant <- function(app_state, project_id) {
+  courant <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
+  !is.null(project_id) && identical(as.character(courant), as.character(project_id))
+}
+

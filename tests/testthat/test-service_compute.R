@@ -5086,7 +5086,7 @@ test_that("apply_field_data_if_present calls the nemeton field pipeline when GPK
     file.create(file.path("data", "field_data.gpkg"))
 
     testthat::local_mocked_bindings(
-      import_qfield_gpkg        = function(path) {
+      import_qgis_gpkg          = function(path) {
         list(placettes = sf::st_sf(plot_id = "P01",
                                    geometry = sf::st_sfc(sf::st_point(c(0.5, 0.5)),
                                                          crs = 2154)),
@@ -5113,7 +5113,7 @@ test_that("apply_field_data_if_present falls back to compute_unit on error and w
     file.create(file.path("data", "field_data.gpkg"))
 
     testthat::local_mocked_bindings(
-      import_qfield_gpkg = function(path) stop("corrupted GPKG"),
+      import_qgis_gpkg = function(path) stop("corrupted GPKG"),
       .package = "nemeton"
     )
     expect_warning(

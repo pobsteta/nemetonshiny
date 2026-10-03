@@ -409,12 +409,13 @@ marculus_nb_biodiversite <- function(tiges) {
 #' @param contextes Contexts from [marculus_lire_exports()].
 #' @param tiges All stems of the project (already merged).
 #' @param user Character. Acting user, for the audit.
-#' @param annee_base Integer. Current year (offsets are counted from it).
+#' @param annee_base Integer. Reference year of the plan (offsets are counted
+#'   from it, see [action_plan_annee_base()]).
 #' @return A list: `plan`, `n_actions` (updated), `n_orphelins` (contexts
 #'   with no matching action), `ids` (updated action ids).
 #' @noRd
 marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
-                                      annee_base = as.integer(format(Sys.Date(), "%Y"))) {
+                                      annee_base = action_plan_annee_base(plan)) {
   ids_plan <- vapply(plan$actions %||% list(), function(a) a$id %||% "", "")
   horizon <- as.integer(plan$horizon_annees %||% 20L)
   totaux <- marculus_totaux(tiges)

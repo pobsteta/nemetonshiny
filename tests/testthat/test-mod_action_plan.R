@@ -602,3 +602,43 @@ test_that(".format_m3 ne fait pas tomber la session sur une tige non cubee", {
   expect_equal(txt[2], "")
   expect_match(txt[1], "0,42")
 })
+
+
+test_that("la chaine « Tout calculer » n'efface jamais les actions existantes", {
+  # L'option « ecraser » restait cochee dans la session apres une ouverture
+  # de la modale IA ; la chaine la relisait et supprimait tout le plan.
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  sauve <- NULL
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) .plan_trois_actions(project_id),
+    save_action_plan = function(project_id, plan) { sauve <<- plan; TRUE },
+    load_comments    = function(project_id) list(synthesis = "Peuplement a eclaircir."),
+    get_llm_api_key_var = function(provider) NULL,
+    create_llm_chat  = function(sp) list(chat = function(prompt, echo = FALSE) {
+      '{"actions":[{"ug_id":"ug1","type":"eclaircie","annee_cible":3,"priorite":"haute","statut":"proposee"}]}'
+    })
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5),
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character()),
+    pipeline_request = NULL, pipeline_answer = NULL
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      expect_length(plan_rv()$actions, 3L)
+      session$setInputs(gen_overwrite = TRUE)   # reste coche dans la session
+      app_state$pipeline_request <- list(run_id = "r1", step_id = "ia_plan",
+                                         profil = "generalist", ts = Sys.time())
+      session$flushReact()
+      expect_length(plan_rv()$actions, 4L)
+      expect_length(sauve$actions, 4L)
+    }
+  )
+})

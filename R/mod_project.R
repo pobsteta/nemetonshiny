@@ -537,6 +537,10 @@ mod_project_server <- function(id, app_state, selected_parcels,
             sprintf("%s: %s", i18n$t("project_updated"), project$metadata$name),
             type = "message"
           )
+          if (isTRUE(project$ugf_reinitialisees)) {
+            shiny::showNotification(i18n$t("ugf_reinitialisees"),
+                                    type = "warning", duration = 15)
+          }
         }
       }, error = function(e) {
         cli::cli_alert_danger("Error saving project: {e$message}")

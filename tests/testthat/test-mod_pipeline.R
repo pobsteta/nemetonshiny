@@ -205,3 +205,46 @@ test_that("mod_home place ses actions projet dans le bloc, plus au-dessus", {
   expect_gt(pos_compute, pos_collapse)   # dans le bloc
   expect_lt(pos_compute, pos_chaine)     # avant « Tout calculer »
 })
+
+
+test_that("la chaine s'arrete si un autre projet est ouvert entre deux etapes", {
+  # Le run appartient au projet qui l'a lance : ses etapes suivantes ne
+  # doivent pas partir sur le projet ouvert entre-temps.
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  etapes <- nemetonshiny:::pipeline_all_step_ids()[1:2]
+  app_state <- shiny::reactiveValues(
+    language = "fr", project_id = "p1",
+    current_project = list(id = "p1", path = withr::local_tempdir()),
+    pipeline_request = NULL, pipeline_answer = NULL)
+
+  suppressWarnings(shiny::testServer(
+    nemetonshiny:::mod_pipeline_server,
+    args = list(app_state = app_state),
+    {
+      session$setInputs(scope = etapes, profil = "generalist")
+      session$setInputs(start = 1)
+      expect_identical(rv$state$project_id, "p1")
+      expect_identical(app_state$pipeline_request$step_id, etapes[1])
+      run_id <- rv$state$run_id
+
+      # L'utilisateur ouvre un autre projet pendant la premiere etape.
+      app_state$project_id <- "p2"
+      app_state$current_project <- list(id = "p2", path = withr::local_tempdir())
+      app_state$pipeline_answer <- list(run_id = run_id, step_id = etapes[1],
+                                        status = "ok", message = NULL,
+                                        ts = Sys.time())
+      session$flushReact()
+
+      expect_true(nemetonshiny:::pipeline_is_done(rv$state))
+      expect_null(app_state$pipeline_request)
+      expect_identical(rv$state$results[[etapes[2]]]$status, "cancelled")
+
+      # Une reponse tardive ne rouvre pas le run clos.
+      app_state$pipeline_answer <- list(run_id = run_id, step_id = etapes[2],
+                                        status = "ok", message = NULL,
+                                        ts = Sys.time() + 1)
+      session$flushReact()
+      expect_identical(rv$state$results[[etapes[2]]]$status, "cancelled")
+    }
+  ))
+})

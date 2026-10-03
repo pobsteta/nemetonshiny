@@ -646,10 +646,7 @@ mod_action_plan_server <- function(id, app_state) {
       } else {
         df$ug_label <- NA_character_
       }
-      base_year <- as.integer(format(Sys.Date(), "%Y"))
-      df$annee_realisation <- ifelse(is.na(df$annee_cible),
-                                     NA_integer_,
-                                     base_year + as.integer(df$annee_cible))
+      df$annee_realisation <- action_plan_annee_civile(plan, df$annee_cible)
       df
     })
 
@@ -1001,7 +998,9 @@ mod_action_plan_server <- function(id, app_state) {
       "nb_tiges", "cout_eur", "revenu_eur"
     )
 
-    PLAN_BASE_YEAR <- function() as.integer(format(Sys.Date(), "%Y"))
+    # Annee de reference DU PLAN (ancree a sa creation), pas l'annee courante :
+    # sinon le calendrier glissait d'un an chaque 1er janvier.
+    PLAN_BASE_YEAR <- function() action_plan_annee_base(shiny::isolate(plan_rv()))
 
     output$action_table <- DT::renderDataTable({
       df <- actions_df_all()
@@ -2476,7 +2475,11 @@ mod_action_plan_server <- function(id, app_state) {
     # `scope = "all"` : il n'y a pas de selection d'UGF a ce moment-la, et
     # une chaine « tout calculer » qui ne planifierait qu'une partie des UGF
     # serait un piege silencieux.
-    .generer_plan_actions <- function(scope = NULL) {
+    # `overwrite` est un ARGUMENT : la chaine « Tout calculer » relisait
+    # `input$gen_overwrite`, reste coche d'une ouverture precedente de la
+    # modale, et effacait alors toutes les actions - manuelles et revenues du
+    # terrain comprises.
+    .generer_plan_actions <- function(scope = NULL, overwrite = FALSE) {
       if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
@@ -2561,11 +2564,12 @@ mod_action_plan_server <- function(id, app_state) {
       }
 
       cur_plan <- plan_rv()
-      if (isTRUE(input$gen_overwrite)) {
-        # Drop existing actions for the targeted UGFs.
-        cur_plan$actions <- Filter(
-          function(a) !(a$ug_id %in% target_ugs), cur_plan$actions
-        )
+      if (isTRUE(overwrite)) {
+        # Suppression AUDITEE des actions des UGF ciblees (le `Filter()`
+        # d'avant ne laissait aucune trace dans l'historique).
+        ids <- vapply(Filter(function(a) a$ug_id %in% target_ugs, cur_plan$actions),
+                      function(a) a$id %||% NA_character_, character(1))
+        cur_plan <- delete_actions_from_plan(cur_plan, ids, user = "llm:planificateur")$plan
       }
       new_plan <- tryCatch({
         bulk_upsert_actions(cur_plan, parsed$actions,
@@ -2592,7 +2596,7 @@ mod_action_plan_server <- function(id, app_state) {
 
     shiny::observeEvent(input$gen_run, {
       shiny::removeModal()
-      .generer_plan_actions()
+      .generer_plan_actions(overwrite = isTRUE(input$gen_overwrite))
     })
 
     # --- Lancement enchaine : etape « ia_plan » ------------------------
@@ -2612,7 +2616,8 @@ mod_action_plan_server <- function(id, app_state) {
         return()
       }
       ok <- tryCatch({
-        isTRUE(.generer_plan_actions(scope = "all"))
+        # Jamais d'ecrasement depuis la chaine : elle ajoute ou met a jour.
+        isTRUE(.generer_plan_actions(scope = "all", overwrite = FALSE))
       }, error = function(e) {
         cli::cli_warn("pipeline ia_plan: {conditionMessage(e)}")
         conditionMessage(e)

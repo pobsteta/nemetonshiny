@@ -104,6 +104,7 @@ init_empty_action_plan <- function(project_id, horizon_annees = 20L) {
     version = ACTION_PLAN_SCHEMA_VERSION,
     project_id = project_id,
     horizon_annees = as.integer(horizon_annees),
+    annee_base = .annee_courante(),
     actions = list(),
     audit = list()
   )
@@ -132,11 +133,26 @@ load_action_plan <- function(project_id) {
     }
   )
   if (is.null(plan)) {
+    # Fichier illisible (synchronisation cloud, edition manuelle) : on repart
+    # d'un plan vide, mais APRES en avoir garde une copie. Sans elle, la
+    # prochaine sauvegarde ecrasait definitivement toutes les actions et
+    # l'audit.
+    copie <- file.path(dirname(path), sprintf(
+      "action_plan.illisible-%s.json", format(Sys.time(), "%Y%m%d_%H%M%S")))
+    if (file.copy(path, copie)) {
+      cli::cli_warn(c("Plan d'actions illisible, copie conservee.",
+                      i = "{copie}"))
+    }
     return(init_empty_action_plan(project_id))
   }
   plan$version        <- plan$version        %||% ACTION_PLAN_SCHEMA_VERSION
   plan$project_id     <- plan$project_id     %||% project_id
   plan$horizon_annees <- plan$horizon_annees %||% 20L
+  # Plan anterieur a v0.152.4 : ses decalages etaient comptes depuis l'annee
+  # COURANTE. On l'ancre sur l'annee ou il est relu pour la premiere fois -
+  # c'est exactement ce que l'utilisateur voit aujourd'hui -, et l'ancre est
+  # persistee a la prochaine sauvegarde.
+  plan$annee_base     <- plan$annee_base     %||% .annee_courante()
   plan$actions        <- plan$actions        %||% list()
   plan$audit          <- plan$audit          %||% list()
   plan
@@ -159,7 +175,7 @@ save_action_plan <- function(project_id, plan) {
   ok <- tryCatch({
     jsonlite::write_json(plan, tmp, auto_unbox = TRUE, pretty = TRUE,
                          null = "null", na = "null")
-    file.rename(tmp, path)
+    .replace_file(tmp, path)
   }, error = function(e) {
     cli::cli_warn("Failed to save action plan: {e$message}")
     if (file.exists(tmp)) file.remove(tmp)
@@ -574,15 +590,11 @@ export_action_plan_gpkg <- function(plan, ug_sf, file_path,
     return(FALSE)
   }
 
-  # `annee_cible` is stored as a relative integer (1..HORIZON). The GPKG is
-  # typically opened in QGIS / handed to forest workers who think in civil
-  # years, so we derive `annee_civile = current_year + annee_cible - 1`
-  # right after `annee_cible` (current year at export time, per agreed
-  # convention).
-  ref_year <- as.integer(format(Sys.Date(), "%Y"))
-  df$annee_civile <- ifelse(is.na(df$annee_cible),
-                            NA_integer_,
-                            ref_year + df$annee_cible - 1L)
+  # `annee_cible` est un decalage (1..horizon) ancre sur `plan$annee_base` :
+  # le GPKG donne l'annee CIVILE, calculee comme partout ailleurs (il
+  # retranchait un an, d'ou une action « 2028 » a l'ecran et « 2027 » sur le
+  # terrain).
+  df$annee_civile <- action_plan_annee_civile(plan, df$annee_cible)
   cols <- names(df)
   insert_at <- match("annee_cible", cols)
   cols <- cols[cols != "annee_civile"]
@@ -842,4 +854,51 @@ save_ug_comments <- function(project_id, comments) {
 .texte_conseil_ia <- function(txt) {
   txt <- gsub("(?s)```(json)?\\s*.*?```", "", txt %||% "", perl = TRUE)
   trimws(gsub("\n{3,}", "\n\n", txt))
+}
+
+
+# ===========================================================================
+# Annee civile d'une action
+# ===========================================================================
+
+#' Current calendar year
+#' @noRd
+.annee_courante <- function() as.integer(format(Sys.Date(), "%Y"))
+
+
+#' Reference year of an action plan
+#'
+#' @description
+#' `annee_cible` is an offset (1..horizon). Until v0.152.4 it was counted from
+#' the CURRENT year, recomputed at every display: the whole calendar slid by
+#' one year every 1 January (a thinning planned for 2030 showed 2031 the next
+#' year, in the table, the PDF and the Marculus export). The offset is now
+#' anchored on `plan$annee_base`, set when the plan is created.
+#'
+#' @param plan Action plan list, or NULL.
+#' @return Integer year.
+#' @noRd
+action_plan_annee_base <- function(plan) {
+  b <- suppressWarnings(as.integer(plan$annee_base %||% NA_integer_))
+  if (length(b) != 1L || is.na(b)) .annee_courante() else b
+}
+
+
+#' Calendar year of one or several target offsets
+#'
+#' @description
+#' The single conversion used by the table, the Kanban, the PDF, the GPKG and
+#' the Marculus export (the GPKG used to subtract one year). A value of 1000
+#' or more is already a calendar year and passes through.
+#'
+#' @param plan Action plan list, or NULL.
+#' @param annee_cible Integer vector of offsets.
+#' @return Integer vector, `NA` where the offset is missing.
+#' @noRd
+action_plan_annee_civile <- function(plan, annee_cible) {
+  a <- suppressWarnings(as.integer(annee_cible))
+  if (!length(a)) return(integer(0))
+  base <- action_plan_annee_base(plan)
+  out <- ifelse(is.na(a), NA_integer_, ifelse(a >= 1000L, a, base + a))
+  as.integer(out)
 }

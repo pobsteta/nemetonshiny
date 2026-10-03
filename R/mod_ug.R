@@ -430,6 +430,29 @@ mod_ug_actions_bar <- function(id) {
 #' @noRd
 mod_ug_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
+
+    # Toute edition d'UGF passe par ici. Quand l'affectation tenement -> UGF
+    # change, `save_ug_data()` invalide les indicateurs sur disque ; on vide
+    # aussi ceux EN MEMOIRE, sinon la carte et la reGeneration continuaient
+    # d'afficher l'ancien decoupage et « Lancer les calculs » ne reapparaissait
+    # pas.
+    .sauver_ug <- function(projet) {
+      ok <- save_ug_data(projet$metadata$id, projet)
+      if (isTRUE(attr(ok, "indicateurs_invalides"))) {
+        cur <- shiny::isolate(app_state$current_project)
+        if (!is.null(cur)) {
+          cur$indicators <- NULL
+          cur$indicators_sf <- NULL
+          if (!is.null(cur$metadata)) {
+            cur$metadata$indicators_computed <- FALSE
+            cur$metadata$status <- "draft"
+          }
+          app_state$current_project <- cur
+          app_state$project_status <- "draft"
+        }
+      }
+      ok
+    }
     ns <- session$ns
     lang <- shiny::reactive(app_state$language %||% "fr")
     i18n <- shiny::reactive(get_i18n(lang()))
@@ -1212,7 +1235,7 @@ mod_ug_server <- function(id, app_state) {
         projet <- tenement_split_by_drawn_polygon(projet, geojson)
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
@@ -1252,7 +1275,7 @@ mod_ug_server <- function(id, app_state) {
         projet <- tenement_split_by_drawn_line(projet, geojson)
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
@@ -1393,7 +1416,7 @@ mod_ug_server <- function(id, app_state) {
         projet <- ug_create(projet, sel_ids, label, groupe_val)
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         rv$selected_tenement_ids <- character(0)
@@ -1489,7 +1512,7 @@ mod_ug_server <- function(id, app_state) {
         }
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         clear_tenement_selection()
@@ -1759,7 +1782,7 @@ mod_ug_server <- function(id, app_state) {
         projet <- ug_merge(projet, ug_ids, label)
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         app_state$current_project$tenements <- projet$tenements
@@ -1800,7 +1823,7 @@ mod_ug_server <- function(id, app_state) {
         projet <- ug_split(projet, uid)
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         app_state$current_project$tenements <- projet$tenements
@@ -1866,7 +1889,7 @@ mod_ug_server <- function(id, app_state) {
       projet$ugs$label[projet$ugs$ug_id == uid] <- new_label
 
       if (!is.null(projet$metadata$id)) {
-        save_ug_data(projet$metadata$id, projet)
+        .sauver_ug(projet)
       }
       rv$projet_ug <- projet
       app_state$current_project$ugs <- projet$ugs
@@ -1899,7 +1922,7 @@ mod_ug_server <- function(id, app_state) {
       }
 
       if (!is.null(projet$metadata$id)) {
-        save_ug_data(projet$metadata$id, projet)
+        .sauver_ug(projet)
       }
       rv$projet_ug <- projet
       app_state$current_project$ugs <- projet$ugs
@@ -2080,7 +2103,7 @@ mod_ug_server <- function(id, app_state) {
           projet <- tenement_import_replace(projet, sf_polygones)
 
           if (!is.null(projet$metadata$id)) {
-            save_ug_data(projet$metadata$id, projet)
+            .sauver_ug(projet)
             # The new layout may introduce brand-new ug_ids (either from
             # label_ugf or from the tenement-id regeneration). Any cached
             # indicators.parquet still references the OLD ug_ids, which
@@ -2163,7 +2186,7 @@ mod_ug_server <- function(id, app_state) {
         if (isTRUE(with_parcels) && !is.null(projet$parcels)) {
           save_parcels(projet$metadata$id, projet$parcels)
         }
-        save_ug_data(projet$metadata$id, projet)
+        .sauver_ug(projet)
         # Les ug_id sont neufs : un indicators.parquet cache pointerait sur les
         # ANCIENS, et compute_all_indicators() sauterait tout en croyant avoir
         # deja calcule. Meme raisonnement que l'import de decoupage.
@@ -2709,7 +2732,7 @@ mod_ug_server <- function(id, app_state) {
         projet <- tenement_undo_split(projet, parcelle_id)
 
         if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
+          .sauver_ug(projet)
         }
         rv$projet_ug <- projet
         app_state$current_project$tenements <- projet$tenements

@@ -2498,7 +2498,6 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   }
 
   # Aggregate per UGF ------------------------------------------------------
-  base_year <- as.integer(format(Sys.Date(), "%Y"))
   ug_sf_df <- if (inherits(ug_sf, "sf")) sf::st_drop_geometry(ug_sf) else ug_sf
 
   # Per-UGF static PNG maps with OSM background. Pre-rendered in R so the
@@ -2538,7 +2537,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
         type = a$type %||% "",
         priorite = a$priorite %||% "",
         statut = a$statut %||% "",
-        annee_realisation = base_year + as.integer(a$annee_cible %||% 0L),
+        annee_realisation = action_plan_annee_civile(plan, a$annee_cible %||% NA_integer_),
         objectifs_lies = unlist(a$objectifs_lies %||% character()),
         cout_eur = cout, revenu_eur = revenu, bilan_eur = bilan,
         commentaire = as.character(a$commentaire %||% "")

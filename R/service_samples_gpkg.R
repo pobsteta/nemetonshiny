@@ -156,27 +156,6 @@ persist_validation_plan <- function(plan, project_path,
   out
 }
 
-
-#' Replace a file by its freshly written temporary copy
-#'
-#' @description
-#' `file.rename()` replaces atomically on POSIX ; on Windows it refuses an
-#' existing target, which is then removed first (a short, unavoidable window).
-#'
-#' @param tmp Path of the written copy.
-#' @param dest Final path.
-#' @return `TRUE`, or an error.
-#' @noRd
-.replace_file <- function(tmp, dest) {
-  if (file.rename(tmp, dest)) return(invisible(TRUE))
-  if (file.exists(dest)) unlink(dest)
-  if (!file.rename(tmp, dest)) {
-    stop(sprintf("Could not replace %s.", dest), call. = FALSE)
-  }
-  invisible(TRUE)
-}
-
-
 # Force the active geometry column of `x` to be named "geometry".
 # GPKG round-trips it to "geom" by default, which would otherwise show
 # up as a phantom schema drift between the in-memory plan and a layer

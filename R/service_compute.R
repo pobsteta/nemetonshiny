@@ -676,7 +676,7 @@ build_spectral_diversity <- function(parcels, project_path,
   }
 
   result <- tryCatch({
-    imported <- nemeton::import_qfield_gpkg(field_gpkg)
+    imported <- nemeton::import_qgis_gpkg(field_gpkg)
     if (is.null(imported$placettes) || nrow(imported$placettes) == 0) {
       return(compute_unit)
     }

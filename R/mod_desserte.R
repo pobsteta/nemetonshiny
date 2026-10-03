@@ -1275,6 +1275,19 @@ mod_desserte_server <- function(id, app_state) {
     })
 
     rv_detect <- shiny::reactiveVal(NULL)
+
+    # Les resultats OSM / detection / typage / optimisation sont ceux d'UN
+    # projet : servis en priorite sur le cache (`rv_x() %||% cache`), ils
+    # suivaient l'utilisateur sur le projet suivant - chiffres et GeoPackages
+    # (chemins absolus) du projet A peints sur la carte du projet B. Remis a
+    # zero quand le DOSSIER du projet change, pas a chaque rechargement du meme.
+    dess_projet_vu <- NULL
+    shiny::observeEvent(app_state$current_project, {
+      chemin <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (identical(chemin, dess_projet_vu)) return()
+      dess_projet_vu <<- chemin
+      rv_typage(NULL); rv_optim(NULL); rv_osm(NULL); rv_detect(NULL)
+    }, ignoreNULL = FALSE)
     detect_panel <- .async_panel(
       "run_detect", "detect_notif", "dess_detect_running",
       function(...) utils::getFromNamespace("run_desserte_detection", "nemetonshiny")(...),

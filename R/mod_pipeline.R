@@ -188,7 +188,8 @@ mod_pipeline_server <- function(id, app_state) {
         return()
       }
       shiny::removeModal()
-      .poser_etat(pipeline_new_run(etapes, profil = input$profil))
+      .poser_etat(pipeline_new_run(etapes, profil = input$profil,
+                                    project = app_state$current_project))
       # Retour immediat (regle stricte #9) : bouton grise + toast, le temps de
       # l'operation. Les deux sont pilotes par l'ETAT DU RUN et non par le clic
       # sur "Tout calculer" : ce clic-la n'ouvre que la modale, et l'annuler
@@ -209,7 +210,14 @@ mod_pipeline_server <- function(id, app_state) {
     # aucune trace : le setter rend la persistance non-optionnelle.
     .poser_etat <- function(nouvel_etat) {
       rv$state <- nouvel_etat
-      pipeline_state_save(nouvel_etat, app_state$current_project)
+      # L'etat s'ecrit dans le dossier du projet DU RUN, pas dans celui du
+      # projet ouvert a cet instant.
+      projet <- if (!is.null(nouvel_etat$project_path)) {
+        list(path = nouvel_etat$project_path)
+      } else {
+        app_state$current_project
+      }
+      pipeline_state_save(nouvel_etat, projet)
       invisible(nouvel_etat)
     }
 
@@ -218,6 +226,18 @@ mod_pipeline_server <- function(id, app_state) {
       etat <- rv$state
       cur <- pipeline_current_step(etat)
       if (is.null(cur)) {
+        .cloturer()
+        return(invisible(NULL))
+      }
+      # Projet change entre deux etapes : on arrete le run plutot que de lancer
+      # les etapes suivantes sur le projet ouvert entre-temps.
+      courant <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
+      if (!is.null(etat$project_id) && !identical(as.character(courant),
+                                                  as.character(etat$project_id))) {
+        .poser_etat(pipeline_cancel(etat))
+        app_state$pipeline_request <- NULL
+        shiny::showNotification(i18n_r()$t("pipeline_projet_change"),
+                                type = "warning", duration = 10)
         .cloturer()
         return(invisible(NULL))
       }
@@ -238,6 +258,9 @@ mod_pipeline_server <- function(id, app_state) {
       rep <- app_state$pipeline_answer
       etat <- rv$state
       if (is.null(rep) || is.null(etat)) return()
+      # Run deja clos (arret manuel, projet change) : une reponse tardive du
+      # moteur encore en cours ne doit ni le rouvrir ni le recloturer.
+      if (pipeline_is_done(etat)) return()
       # Une reponse d'un run precedent (moteur qui finit apres une annulation
       # puis un relancement) ferait avancer le run COURANT d'une etape.
       if (!identical(rep$run_id, etat$run_id)) return()

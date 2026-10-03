@@ -290,3 +290,38 @@ test_that("mod_field_ingest_server hv_run warns without a zone (no core call)", 
   )
   expect_false(called$hit)   # le cœur n'est pas appelé sans zone
 })
+
+
+test_that("une validation ne survit ni a un nouveau fichier ni a un changement de projet", {
+  # « Attacher » copiait le fichier SELECTIONNE, pas celui valide, et l'etat
+  # valide pour le projet A restait attachable au projet B.
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+
+  fake_file <- make_fake_gpkg()
+  as <- make_fake_app_state()
+
+  shiny::testServer(
+    nemetonshiny:::mod_field_ingest_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(gpkg = fake_file, region = "BFC", validate = 1)
+      expect_false(is.null(session$returned$import()))
+
+      autre <- fake_file
+      autre$name <- "autre.gpkg"
+      session$setInputs(gpkg = autre)
+      expect_null(session$returned$import())
+      expect_null(session$returned$validation())
+
+      session$setInputs(validate = 2)
+      expect_false(is.null(session$returned$import()))
+      as$current_project <- list(id = "autre-projet",
+                                 indicators_sf = make_units_sf(),
+                                 metadata = list(ndp_level = 0L))
+      session$flushReact()
+      expect_null(session$returned$import())
+    }
+  )
+})
