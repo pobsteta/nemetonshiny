@@ -230,7 +230,7 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #' etait REJOUE EN ENTIER a chaque lancement de la chaine, meme quand le
 #' reseau n'avait pas bouge. Le resultat etait pourtant deja sur le disque
 #' (`integrite.rds`) - mais [.load_cached_integrite()] ne prend AUCUNE cle :
-#' il sait repondre « le fichier existe », pas « il est encore valable ». On
+#' il sait repondre " le fichier existe ", pas " il est encore valable ". On
 #' ne pouvait donc pas s'en servir pour decider de sauter.
 #'
 #' La cle porte sur les deux entrees du calcul : le GeoPackage du reseau et
@@ -260,8 +260,8 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #'
 #' @description
 #' Consulte par la CHAINE seulement. Le bouton de l'onglet, lui, relance
-#' toujours : un geste explicite de l'utilisateur veut dire « recalcule »,
-#' pas « ressers-moi ce que tu as ».
+#' toujours : un geste explicite de l'utilisateur veut dire " recalcule ",
+#' pas " ressers-moi ce que tu as ".
 #'
 #' @param cache_dir Desserte cache directory.
 #' @param aoi_path Parcels GeoPackage.
@@ -1318,7 +1318,7 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
   # possible - le reseau existant dessert deja toutes les parcelles (constate
   # sur Couchey : `lignes` vide, 17 056 troncons existants, 76 UGF desservies
   # sur 76, cout 0). `vectoriser_reseau()` travaille sur `reseau$lignes` et
-  # abandonne alors sur « Le reseau ne contient aucune route a vectoriser », que
+  # abandonne alors sur " Le reseau ne contient aucune route a vectoriser ", que
   # l'onglet affichait en rouge - un bon resultat rapporte comme un echec.
   # On le distingue ici, AVANT l'appel, avec un statut propre.
   if (is.null(reseau$lignes) || nrow(reseau$lignes) == 0L) {

@@ -540,8 +540,8 @@ ug_geometry <- function(projet, ug_id) {
   # S2 est strict sur les sommets auto-tangents que produisent les decoupes
   # et les cascades de make_valid : on retombe sur GEOS planaire quand il
   # proteste. `sf_use_s2()` est un etat GLOBAL de sf et bavarde a chaque
-  # bascule (« Spherical geometry (s2) switched off », puis l'avertissement
-  # « st_union assumes that they are planar ») : ce bruit console n'apprend
+  # bascule (" Spherical geometry (s2) switched off ", puis l'avertissement
+  # " st_union assumes that they are planar ") : ce bruit console n'apprend
   # rien a l'utilisateur - la bascule est deliberee et sans effet sur le
   # resultat - donc on le mufle ici plutot que de le laisser remonter (regle
   # stricte 9 : pas de message() en prod). L'etat est restaure a la sortie.

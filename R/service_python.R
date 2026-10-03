@@ -18,10 +18,10 @@
 #
 #   * opencanopy  exige `RETICULATE_PYTHON` epinglee sur l'env conda
 #     `open_canopy` ;
-#   * FORDEAD     exige qu'elle soit ABSENTE - le cœur le documente
-#     (`nemeton/R/fordead_python.R:336-343`) : une variable definie « ecrase
+#   * FORDEAD     exige qu'elle soit ABSENTE - le coeur le documente
+#     (`nemeton/R/fordead_python.R:336-343`) : une variable definie " ecrase
 #     silencieusement use_python() / use_virtualenv() meme avec
-#     required = TRUE », et le remede imprime a l'utilisateur est de la
+#     required = TRUE ", et le remede imprime a l'utilisateur est de la
 #     retirer puis de redemarrer R ;
 #   * RECONFORT   utilise l'env conda IOTA2/GEODES ;
 #   * rvt-py      n'a pas d'env dedie et prend le Python ambiant.

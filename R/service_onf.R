@@ -190,7 +190,7 @@ onf_load_parcelles <- function(aoi,
 #' With `rattacher_reste = TRUE` the core names an un-numbered parcel by its
 #' bare cadastral reference (`nom_ugf = "212000000A0036"`, `ugf_id = "cad~..."`).
 #' That is the right *identity*; it is not a label a user reads in a table next
-#' to "Forêt communale de Couchey — parcelle 12".
+#' to "Foret communale de Couchey - parcelle 12".
 #'
 #' Dressing it is presentation, so it stays here - and it stays keyed on
 #' `ugf_id`, not on the shape of the name: a forest parcel numbered "12" would
@@ -330,14 +330,14 @@ onf_projet_croise <- function(projet,
 
   # Le label pilote l'affectation UGF de tenement_import_replace(). Le coeur a
   # deja rattache chaque bout a son voisin (rattacher_reste = TRUE) : aucune
-  # ligne ne reste « hors UGF », donc aucun tenement sans UGF (invariant 2).
+  # ligne ne reste " hors UGF ", donc aucun tenement sans UGF (invariant 2).
   # Il ne reste qu'a habiller le nom d'une UGF purement cadastrale.
   ten$label_ugf <- .onf_labels_ugf(ten, i18n)
 
   projet <- tenement_import_replace(projet, ten)
 
   # Surface que le parcellaire ONF ne numerotait pas, et qui vient de rejoindre
-  # les peuplements voisins. Ce n'est PAS « hors foret » - c'est ce que le
+  # les peuplements voisins. Ce n'est PAS " hors foret " - c'est ce que le
   # rattachement a fait, et le dire vaut mieux que de le taire.
   aires <- attr(part_foret, "aires_m2")
   surface_rattachee_ha <- if (length(part_foret) && !is.null(aires)) {
@@ -446,7 +446,7 @@ onf_purger_hors_foret <- function(projet, part_foret, seuil_foret = 0) {
 
   # `<=` et non `<` : sans quoi le seuil 0 - le defaut - ne supprimerait RIEN,
   # pas meme une parcelle sans un metre carre de foret. Au seuil exact la
-  # parcelle part donc, ce qui est le sens qu'on attend de « moins de 10 % ».
+  # parcelle part donc, ce qui est le sens qu'on attend de " moins de 10 % ".
   a_supprimer <- names(part_foret)[!is.na(part_foret) & part_foret <= seuil_foret]
   if (length(a_supprimer) == 0L) return(vide)
 

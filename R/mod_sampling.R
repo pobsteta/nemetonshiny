@@ -227,17 +227,17 @@ mod_sampling_ui <- function(id) {
 # d'agregation valait `round(5 / 0.00025)` = 20003 : le MNT de Couchey
 # (118 x 318 pixels) sortait d'ici en UNE cellule. Tous les candidats
 # tombaient ensuite sur du NA et `create_sampling_plan()` s'arretait sur
-# « Stratification-valid candidate pool (0) is below n_base » - 2108 sur
+# " Stratification-valid candidate pool (0) is below n_base " - 2108 sur
 # 2108 rejetes (constate 2026-08-28).
 #
-# Le cœur a de toute facon besoin d'un raster METRIQUE : il calcule le TPI
+# Le coeur a de toute facon besoin d'un raster METRIQUE : il calcule le TPI
 # avec `terra::focalMat(mnt, d = 100)`, ou 100 s'exprime dans les unites du
 # CRS. On aligne donc le raster sur le CRS de la zone (Lambert-93), qui est
 # metrique par construction, avant tout raisonnement en metres.
 .prep_sampling_raster <- function(r, zone, target_res_m = 5) {
   if (is.null(r)) return(NULL)
   tryCatch({
-    # Le buffer est pris dans le CRS de la ZONE : en degres, « 200 »
+    # Le buffer est pris dans le CRS de la ZONE : en degres, " 200 "
     # signifierait 200 degres. On ne le transforme qu'ensuite, pour
     # decouper dans le CRS natif du raster (moins de pixels a reprojeter).
     z_buf   <- sf::st_buffer(zone, 200)
@@ -245,11 +245,11 @@ mod_sampling_ui <- function(id) {
     r2 <- terra::crop(r, terra::vect(z_trans), snap = "out")
 
     # Aligner sur le CRS metrique de la zone. C'est aussi ce qui garantit
-    # que les buffers de placettes construits par le cœur (en CRS zone)
+    # que les buffers de placettes construits par le coeur (en CRS zone)
     # et le raster parlent le meme repere.
     # Comparaison SEMANTIQUE (`==` sur des objets crs), pas `identical()` :
     # celui-ci compare aussi le champ `$input`, si bien qu'un raster deja en
-    # Lambert-93 mais decrit « RGF93 v1 / Lambert-93 » plutot que « EPSG:2154 »
+    # Lambert-93 mais decrit " RGF93 v1 / Lambert-93 " plutot que " EPSG:2154 "
     # aurait ete reprojete a chaque appel - pour rien, et en resamplant.
     if (!isTRUE(sf::st_crs(r2) == sf::st_crs(zone))) {
       cible <- sf::st_crs(zone)$wkt
@@ -358,12 +358,12 @@ mod_sampling_server <- function(id, app_state) {
     # resolve_project_* are defensive (typed errors on NULL / "" /
     # missing path) - no need for a pre-validation guard here.
     # `.project_chm()` plutot que `nemeton::resolve_project_chm()` seul : il
-    # passe au cœur le garde de CONTENU `.chm_exploitable()` via `validate`
+    # passe au coeur le garde de CONTENU `.chm_exploitable()` via `validate`
     # (nemeton >= 0.193.0). Sans lui le resolveur rend le premier chemin qui
     # matche sans regarder ce qu'il y a dedans : un modele de hauteur plat (le
     # cas "Fordead") le satisfait, et le plan tirerait sans strate de hauteur.
     # Le seuil de 5 m est celui de `segment_houppiers()`, pas une constante du
-    # cœur - c'est pourquoi le predicat vit ici et le balayage la-bas.
+    # coeur - c'est pourquoi le predicat vit ici et le balayage la-bas.
     chm_raster <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) return(NULL)
@@ -841,7 +841,7 @@ mod_sampling_server <- function(id, app_state) {
       # Projet DIFFERENT : on repart de zero. La restauration est additive (un
       # plan tout juste tire ne doit pas disparaitre au rechargement du meme
       # projet), mais elle gardait ainsi les placettes du projet precedent quand
-      # le nouveau n'en a pas - et « Telecharger QField » les exportait sous le
+      # le nouveau n'en a pas - et " Telecharger QField " les exportait sous le
       # nom du nouveau projet.
       if (!identical(restored_for, project$id)) {
         sampling_rv$plots <- NULL

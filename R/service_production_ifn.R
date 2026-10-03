@@ -273,7 +273,7 @@ ensure_ugf_ser <- function(units, project_path) {
 #' Production of the massif and harvest ratios of its SER
 #'
 #' @description
-#' Spec 054 §3 bis. The union of the project's UGF is passed as a single domain
+#' Spec 054 S3 bis. The union of the project's UGF is passed as a single domain
 #' to `nemeton::ifn_production_domaines()`; the ratio harvest / production is
 #' read for every SER the UGF fall in, under both definitions (`"ign"`: all
 #' felled trees; `"vidange"`: felled and taken out). About five seconds, hence

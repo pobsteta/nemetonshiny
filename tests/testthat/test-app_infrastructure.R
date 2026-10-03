@@ -141,3 +141,20 @@ test_that("get_all_indicator_codes returns all indicators", {
   expect_true("B3" %in% codes)
   expect_true("R4" %in% codes)
 })
+
+
+test_that("run_app accepte options = list(port, host) et ne force plus le navigateur", {
+  # `options` passe dans `...` heurtait l'options fixe de shinyApp() : il
+  # etait impossible de choisir le port, y compris depuis le Dockerfile.
+  skip_if_not_installed("future")
+  withr::local_options(nemeton.app_options = NULL)
+  local_mocked_bindings(.ensure_async_plan = function(...) NA_integer_)
+  app <- suppressMessages(nemetonshiny::run_app(
+    tour = FALSE, options = list(port = 3838, host = "0.0.0.0")))
+  expect_s3_class(app, "shiny.appobj")
+  expect_equal(app$options$port, 3838)
+  expect_equal(app$options$host, "0.0.0.0")
+  # Hors session interactive (serveur, CI), pas de navigateur.
+  expect_false(isTRUE(app$options$launch.browser))
+  expect_error(nemetonshiny::run_app(options = "3838"), "must be a list")
+})

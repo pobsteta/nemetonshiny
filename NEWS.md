@@ -1,3 +1,35 @@
+# nemetonshiny 0.152.5.9001 (2026-10-03)
+
+### Changed — Phase 3 de l'audit 1.0 : contrat public et packaging
+
+- **`run_app(options = list(...))` fonctionne.** `options` est un argument a
+  part entiere, fusionne avec les valeurs par defaut ; passe dans `...`, il
+  entrait en conflit avec l'option fixe de `shinyApp()`, si bien qu'il etait
+  impossible de choisir le port ou l'hote. Le navigateur ne s'ouvre plus qu'en
+  session interactive, jamais sur un serveur.
+- **Dockerfile reparable et plus sur** : `remotes` au lieu de `devtools`
+  (absent de l'image : la construction echouait), utilisateur non root,
+  projets dans le volume `/data` a chemin fixe, CMD avec `options` et
+  `project_dir`.
+- **Licence : GPL-3 ou ulterieure**, alignee partout (`DESCRIPTION`
+  `GPL (>= 3)`, texte complet dans `LICENSE.md`, README, ADR-006) ;
+  `LICENSE-EUPL.md` marque comme historique.
+- **`CONTRAT.md`** : le contrat public de la 1.0 (point d'entree, variables
+  d'environnement, format des projets et ses garanties, schema PostGIS,
+  profils d'experts, politique de compatibilite).
+- **README** reecrit : prerequis reels (chaine Rust pour `foretaccess`,
+  dependances GitHub), installation par `pak`, tous les parametres de
+  `run_app()`, image Docker.
+- **R CMD check sans WARNING** : plus aucun caractere non ASCII dans `R/`
+  (chaines en `\uXXXX`, commentaires translitteres ; table des traductions
+  verifiee identique), `future`, `arrow` et `geoarrow` passent en `Imports`
+  (l'asynchrone et l'enregistrement des projets en dependent), `lidR`,
+  `opencanopy` et `methods` declares, fichier `.s2.out` retire. La CI echoue
+  desormais sur un WARNING.
+- `main` est protegee : `version-consistency`, `R-CMD-check` et `tests`
+  doivent etre verts avant un merge.
+- `migration_001` signalee comme historique et destructive.
+
 # nemetonshiny 0.152.5 (2026-10-03)
 
 ### Fixed — Phase 2 de l'audit 1.0, lots B a D : ne plus perdre de donnees, ni les ecrire dans le mauvais projet

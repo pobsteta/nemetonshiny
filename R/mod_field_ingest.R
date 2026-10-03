@@ -186,7 +186,7 @@ mod_field_ingest_server <- function(id, app_state) {
       projet_id  = NULL    # projet pour lequel la validation a eu lieu
     )
 
-    # Une validation vaut pour UN fichier et UN projet. « Attacher » copiait le
+    # Une validation vaut pour UN fichier et UN projet. " Attacher " copiait le
     # fichier actuellement selectionne (pas forcement celui valide) et l'etat
     # survivait au changement de projet : des donnees validees pour A pouvaient
     # etre attachees a B.

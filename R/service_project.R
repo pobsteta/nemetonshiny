@@ -2249,7 +2249,7 @@ set_project_accessibility_params <- function(project_id, buffer_m = NULL) {
 #' @description
 #' Three settings that shape what the ONF crossing keeps, and they are
 #' calibrations rather than gestures: one sets them once per massif, not at
-#' each attempt. Hence their place in *Sources & paramètres* and their
+#' each attempt. Hence their place in *Sources & parametres* and their
 #' persistence per project.
 #'
 #' `seuil_foret` is a **share**, 0 to 1. `0` no longer means "purge nothing":

@@ -48,7 +48,7 @@
 # s'entretient : 122 evenements en 2 s, ~50 par seconde, sans fin. C'est le
 # tremblement signale le 2026-09-19, et il ne touchait QUE cette etape
 # (0 evenement sur toutes les autres ancres, mesure comparative). Ancrer sur
-# la carte « Tableau des actions » (322x641) au lieu de la sidebar qui la
+# la carte " Tableau des actions " (322x641) au lieu de la sidebar qui la
 # contient ramene la mesure a 0.
 #
 # ONGLETS RESTREINTS : l'app renvoie sur l'Accueil toute navigation vers

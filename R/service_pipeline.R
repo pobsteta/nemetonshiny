@@ -57,7 +57,7 @@ PIPELINE_STEPS <- list(
   # Lancer le moteur seul le ferait tourner sur les valeurs par defaut codees en
   # dur (2018 / 2022), sans que rien ne le signale. Le gel R7 vient ensuite : il
   # enrichit le resultat courant, et `.regen_attach_r7()` reporte sa couche sur
-  # le resultat du moteur - c'est justement le cas « analyse relancee apres R7 »
+  # le resultat du moteur - c'est justement le cas " analyse relancee apres R7 "
   # que ce helper couvre.
   list(id = "regen_annees",    module = "regeneration",  label = "pipeline_step_regen_annees"),
   # Precipitations et temperature moyenne E-OBS : deux telechargements CDS
@@ -69,7 +69,7 @@ PIPELINE_STEPS <- list(
   list(id = "regeneration",    module = "regeneration",  label = "pipeline_step_regeneration"),
   # Creation des zones de suivi AVANT les trois moteurs sante : ils exigent
   # tous un `zone_id`, et sans zone enregistree ils se sautent - ce qu'a montre
-  # le premier run reel sur Couchey (« Aucune zone de suivi enregistree »).
+  # le premier run reel sur Couchey (" Aucune zone de suivi enregistree ").
   # `build_project_monitoring_zones()` est en upsert : relancer l'etape recree
   # les zones du projet plutot que d'en accumuler.
   list(id = "sante_zone",      module = "monitoring",    label = "pipeline_step_sante_zone"),
@@ -85,8 +85,8 @@ PIPELINE_STEPS <- list(
 #' `skipped` n'est PAS une erreur : c'est un module qui declare, en toute
 #' connaissance de cause, qu'il n'a pas de quoi tourner (pas de zone monitoring
 #' enregistree, pas de periode Sentinel-2, moteur non installe). Les distinguer
-#' est ce qui rend le rapport final lisible - « 3 sautees faute de
-#' configuration » ne se lit pas comme « 3 en echec ».
+#' est ce qui rend le rapport final lisible - " 3 sautees faute de
+#' configuration " ne se lit pas comme " 3 en echec ".
 #' @noRd
 PIPELINE_STATUSES <- c("pending", "running", "ok", "error", "skipped", "cancelled")
 
@@ -170,7 +170,7 @@ pipeline_record <- function(state, step_id, status = "ok", message = NULL) {
 
   # Les trois rejets ci-dessous etaient MUETS. Or ils sont le mode de
   # defaillance decrit en tete de ce fichier : une reponse qui n'avance pas le
-  # curseur laisse la chaine « en cours » pour toujours, sans rien afficher.
+  # curseur laisse la chaine " en cours " pour toujours, sans rien afficher.
   # Le 2026-09-16, un run d'Aumur est reste bloque sur une etape alors que tout
   # le travail avait abouti - et l'etat vivant en memoire, il n'est rien reste
   # a lire. Ces avertissements sont la trace qui manquait.
@@ -299,10 +299,10 @@ pipeline_tally <- function(state) {
 # Deux champs de `app_state`, et rien d'autre :
 #
 #   app_state$pipeline_request = list(run_id, step_id, profil, ts)
-#       pose par l'orchestrateur : « module proprietaire de `step_id`, lance
-#       ton moteur ».
+#       pose par l'orchestrateur : " module proprietaire de `step_id`, lance
+#       ton moteur ".
 #   app_state$pipeline_answer  = list(run_id, step_id, status, message, ts)
-#       pose par le module : « voila ce que ca a donne ».
+#       pose par le module : " voila ce que ca a donne ".
 #
 # Regle unique et non negociable cote module : TOUT chemin de code qui a
 # reconnu une requete doit finir par une reponse - succes, echec, ou `skipped`.
@@ -363,7 +363,7 @@ pipeline_profil <- function(request) {
 #' @description
 #' `task$result()` RE-LEVE l'erreur du worker : c'est le seul endroit ou son
 #' message existe encore. Sans cette extraction, le rapport du lancement
-#' enchaine n'affichait qu'un « Erreur » nu - et sur des moteurs qui tournent
+#' enchaine n'affichait qu'un " Erreur " nu - et sur des moteurs qui tournent
 #' des heures (13 h 40 pour l'ingest FAST, 4 h 10 pour FORDEAD sur Couchey),
 #' c'est la seule information qui permette de savoir quoi corriger sans tout
 #' relancer.
@@ -375,19 +375,19 @@ pipeline_profil <- function(request) {
 pipeline_task_error <- function(task, defaut = "error") {
   msg <- tryCatch({
     res <- task$result()
-    # Une tache peut « reussir » en rendant une liste d'echec (contrat
+    # Une tache peut " reussir " en rendant une liste d'echec (contrat
     # `list(status = "error", ...)` de plusieurs moteurs de l'app).
     if (is.list(res) && !is.null(res$detail)) as.character(res$detail)[1]
     else if (is.list(res) && !is.null(res$reason)) as.character(res$reason)[1]
     else NULL
   }, error = function(e) {
     m <- conditionMessage(e)
-    # Le message seul ne suffit pas. « objet 'con' introuvable » (run
+    # Le message seul ne suffit pas. " objet 'con' introuvable " (run
     # Couchey du 2026-08-31, deux moteurs Sante) ne dit PAS dans quel
     # appel : il a fallu fouiller les deux paquets sans le trouver.
     # `conditionCall()` le nomme, et il TRAVERSE la frontiere `future`
     # (verifie : un `stop()` dans un worker rend bien son appel).
-    # Sans lui, savoir « ou » coute un run de plusieurs heures de plus.
+    # Sans lui, savoir " ou " coute un run de plusieurs heures de plus.
     cl <- tryCatch(conditionCall(e), error = function(...) NULL)
     if (!is.null(cl)) {
       d <- tryCatch(paste(utils::head(deparse(cl), 2L), collapse = " "),

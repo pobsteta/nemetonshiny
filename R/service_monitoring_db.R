@@ -748,7 +748,7 @@ validity_check_for_zone <- function(con, zone_id, units = NULL,
 #'
 #' @description
 #' Consulte par la CHAINE seulement : le bouton de l'onglet reenregistre
-#' toujours, un geste explicite veut dire « refais-les ».
+#' toujours, un geste explicite veut dire " refais-les ".
 #'
 #' Deux conditions, et les deux comptent. La cle dit que les SOURCES n'ont pas
 #' bouge ; la presence en base dit que les zones existent encore (quelqu'un a
@@ -768,7 +768,7 @@ validity_check_for_zone <- function(con, zone_id, units = NULL,
   # ADOPTION - v0.143.12. Sans cette branche, le PREMIER run suivant la
   # livraison de la cle recreait les zones : le fichier n'existe pas encore
   # (il n'est ecrit qu'APRES un enregistrement), donc la garde repondait
-  # « perimees » sur des zones parfaitement valides. Constate sur Couchey le
+  # " perimees " sur des zones parfaitement valides. Constate sur Couchey le
   # 2026-09-01 - les 106 marqueurs de reprise qu'on venait de consolider a la
   # main sont repartis en orphelins, et le moteur a recommence a zero. Le
   # correctif se sabotait a son premier usage, une fois par projet.

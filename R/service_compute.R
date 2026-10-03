@@ -189,7 +189,7 @@ DATA_SOURCES <- list(
     ),
     # Carroyage INSEE Filosofi 2021, la seule entree de S3. Le coeur ne fabrique
     # plus rien depuis sa v0.187.0 : sans grille, S3 vaut NA - et c'est la
-    # bonne reponse, l'ancien chemin « proxy » rendant surface_du_tampon x 100
+    # bonne reponse, l'ancien chemin " proxy " rendant surface_du_tampon x 100
     # hab/km2, un nombre qui variait plausiblement avec la taille de l'unite et
     # passait donc pour une mesure.
     #
@@ -5029,19 +5029,19 @@ get_computation_progress <- function(project_id) {
 #'
 #' | Core message | What is known | What we say |
 #' |---|---|---|
-#' | `ran out of memory … (ceiling: X)` | `Result=oom-kill`: **certain** | the ceiling was exceeded |
+#' | `ran out of memory ... (ceiling: X)` | `Result=oom-kill`: **certain** | the ceiling was exceeded |
 #' | `was killed (signal N; systemd's verdict unavailable)` | killed, cause unknown | the ceiling is the *usual* cause |
-#' | `failed … (systemd: "signal")` | systemd says **not** memory | passed through untouched |
+#' | `failed ... (systemd: "signal")` | systemd says **not** memory | passed through untouched |
 #' | anything else | an ordinary R error | passed through untouched |
 #'
 #' The middle row is why the prudent wording still exists: with no cgroup and no
 #' `systemctl`, a stopped scope and an outside `kill` look exactly like an OOM
-#' from here. The top row is why it is no longer the *only* wording — re-hedging
+#' from here. The top row is why it is no longer the *only* wording - re-hedging
 #' a verdict systemd actually delivered would throw away a certainty that was
 #' expensive to obtain (`briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md`).
 #'
 #' The exit code itself never reaches the screen: it tells a user nothing. The
-#' **ceiling** does, since raising it is the remedy — so it is extracted from
+#' **ceiling** does, since raising it is the remedy - so it is extracted from
 #' whichever core message carries it and appended.
 #'
 #' @param msg Character. Raw error message from the task.
@@ -5069,7 +5069,7 @@ get_computation_progress <- function(project_id) {
   # 2. Tue, verdict indisponible. Le coeur >= 0.183.1 le dit explicitement ; un
   #    coeur anterieur laissait un `exit -15` nu, qui etait DEJA cela sans le
   #    dire - c'est l'incident du 2026-08-22.
-  # « verdict unavailable » et non « systemd's verdict unavailable » :
+  # " verdict unavailable " et non " systemd's verdict unavailable " :
   # l'apostrophe est justement le caractere que cli peut rendre en U+2019.
   tue <- grepl("verdict unavailable", msg, fixed = TRUE) ||
     (grepl("capped child process", msg, fixed = TRUE) &&
@@ -5077,7 +5077,7 @@ get_computation_progress <- function(project_id) {
   if (tue) return(join(i18n$t("compute_error_killed"), ceiling_note()))
 
   # 3. Tout le reste tel quel - dont `systemd: "signal"`, que le coeur
-  #    accompagne de « This is not the memory ceiling ». Le contredire en
+  #    accompagne de " This is not the memory ceiling ". Le contredire en
   #    invoquant la memoire serait exactement le faux positif qu'il evite.
   htmltools::HTML(sprintf(i18n$t("compute_error_fmt"), htmltools::htmlEscape(msg)))
 }
@@ -5087,7 +5087,7 @@ get_computation_progress <- function(project_id) {
 #'
 #' Two shapes carry it: `(ceiling: 10G)` when the OOM is certain, and
 #' `The memory ceiling (10G) is the usual cause` when it is not. `"none"` is a
-#' real value — it means the run was uncapped, which is worth showing.
+#' real value - it means the run was uncapped, which is worth showing.
 #'
 #' @param msg Character. Raw error message.
 #' @return A length-1 character, or `NULL` when no ceiling is named.
@@ -5112,7 +5112,7 @@ get_computation_progress <- function(project_id) {
 #' Same shape as `.regen_run_engine_capped()`. Falls back to the direct call
 #' when the installed core predates the generalised `run_memory_capped()`
 #' (`package=` / `options=` arguments, nemeton >= 0.158.0), so the app never
-#' breaks on an older core — it merely loses the protection.
+#' breaks on an older core - it merely loses the protection.
 #'
 #' `getOption("nemetonshiny.compute_capped")` forces the fallback, which is what
 #' the tests use and what a developer needs when the installed library lags

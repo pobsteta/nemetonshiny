@@ -215,7 +215,7 @@ get_groupes_codes <- function(profile_key = NULL) {
 #' The species matrix of a Marculus context has to start somewhere, and the
 #' honest options are two: empty, or a plausible list the marker prunes on the
 #' spot. Empty wins on rigour and loses on the ground - a marker facing a beech
-#' stand should not begin by typing "Hêtre".
+#' stand should not begin by typing "Hetre".
 #'
 #' The list hangs off the **group profile** because that is the closest thing
 #' the project carries to a silvicultural context: ONF public forests, CRPF

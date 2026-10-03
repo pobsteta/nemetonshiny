@@ -85,7 +85,7 @@ marculus_lire_exports <- function(chemins) {
   for (p in chemins) {
     # Un fichier vide arrive tel quel (transfert du telephone interrompu,
     # synchronisation cloud pas encore faite) : le dire, plutot que
-    # « illisible », qui fait chercher un probleme de format.
+    # " illisible ", qui fait chercher un probleme de format.
     if (!file.exists(p) || isTRUE(file.size(p) == 0)) {
       vides <- c(vides, basename(p))
       next
@@ -152,8 +152,8 @@ marculus_lire_exports <- function(chemins) {
   length(l1) == 1L && startsWith(sub("^\ufeff", "", l1), "Contexte;")
 }
 
-# Qualite du fix GNSS : le CSV ecrit le LIBELLE (`QualiteFix.libelle`, « RTK
-# fixe »), le `.marsync` le NOM de l'enum (`RTK_FIXE`) - reponse Marculus
+# Qualite du fix GNSS : le CSV ecrit le LIBELLE (`QualiteFix.libelle`, " RTK
+# fixe "), le `.marsync` le NOM de l'enum (`RTK_FIXE`) - reponse Marculus
 # v0.48.0. On ramene tout au nom, pour qu'une meme tige ne revienne pas sous
 # deux formes selon le fichier (`FixGnss.kt`).
 MARCULUS_QUALITE_FIX <- c(
@@ -432,7 +432,7 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
     st <- unname(MARCULUS_STATUTS_RETOUR[toupper(contextes$statut[i] %||% "")])
     if (length(st) == 1L && !is.na(st)) upd$statut <- st
     # Des tiges designees = le martelage a eu lieu : l'action passe a
-    # « realisee » dans le Kanban, quel que soit le statut laisse sur le
+    # " realisee " dans le Kanban, quel que soit le statut laisse sur le
     # telephone (l'operateur y change rarement la colonne du contexte).
     if (isTRUE(n_par_ctx[cid] > 0L)) upd$statut <- "realisee"
 
@@ -503,7 +503,7 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
   # Les tiges TOUT JUSTE lues passent devant : a `modifie` egal (meme tige
   # reexportee), c'est la version importee qui gagne. Dans l'autre ordre, un
   # CSV au format 3 reimporte apres un format 2 laissait les tiges... sans
-  # leurs volumes (constate sur « Reconfort », 2026-09-25).
+  # leurs volumes (constate sur " Reconfort ", 2026-09-25).
   tiges <- .marculus_tiges_union(rbind(lu$tiges, avant))
   n_nouvelles <- length(setdiff(tiges$uuid, avant$uuid))
 

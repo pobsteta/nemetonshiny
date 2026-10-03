@@ -1996,7 +1996,7 @@ TRANSLATIONS <- list(
     fr = "Analyse g\u00e9n\u00e9r\u00e9e avec un mod\u00e8le de repli (%s) : le mod\u00e8le principal est indisponible.",
     en = "Analysis generated with a fallback model (%s): the primary model is unavailable."
   ),
-  # Verdict « CHM suspect » du cœur (>= 0.191.1), enfin consomme par l'app.
+  # Verdict " CHM suspect " du coeur (>= 0.191.1), enfin consomme par l'app.
   chm_suspect_avertissement = list(
     fr = "Mod\u00e8le de hauteur suspect : il ressemble \u00e0 une pr\u00e9diction rat\u00e9e plut\u00f4t qu'\u00e0 une coupe rase. Le volume de bois (P1) est probablement nul \u00e0 tort \u2014 v\u00e9rifiez avant de conclure \u00ab absence d'arbres \u00bb.",
     en = "Suspicious height model: it looks like a failed prediction rather than a clear-cut. Timber volume (P1) is likely zero by mistake \u2014 check before reading it as \u00ab no trees \u00bb."
@@ -2422,90 +2422,90 @@ TRANSLATIONS <- list(
   ),
   # ---- Production IFN par sylvoecoregion (spec 054) ----
   prod_ifn_section = list(
-    fr = "Production IFN par sylvoécorégion (P2 / E1)",
+    fr = "Production IFN par sylvo\u00e9cor\u00e9gion (P2 / E1)",
     en = "IFN production by sylvoecoregion (P2 / E1)"
   ),
   prod_ifn_hint = list(
-    fr = "Modes optionnels : P2 lit la production biologique mesurée par l'IFN dans la sylvoécorégion (estimation Fay-Herriot, avec son incertitude) au lieu de l'indice de station issu du modèle de hauteur ; E1 peut alors suivre cette production. Aucun modèle de hauteur n'est requis dans ces modes. Relancer le calcul après modification.",
+    fr = "Modes optionnels : P2 lit la production biologique mesur\u00e9e par l'IFN dans la sylvo\u00e9cor\u00e9gion (estimation Fay-Herriot, avec son incertitude) au lieu de l'indice de station issu du mod\u00e8le de hauteur ; E1 peut alors suivre cette production. Aucun mod\u00e8le de hauteur n'est requis dans ces modes. Relancer le calcul apr\u00e8s modification.",
     en = "Optional modes: P2 reads the biological production measured by the IFN in the sylvoecoregion (Fay-Herriot estimate, with its uncertainty) instead of the site index derived from the canopy height model; E1 can then follow that production. No canopy height model is needed in these modes. Rerun the computation after a change."
   ),
   prod_ifn_p2_source = list(fr = "Source de P2", en = "P2 source"),
   prod_ifn_p2_chm = list(
-    fr = "Indice de station (modèle de hauteur)",
+    fr = "Indice de station (mod\u00e8le de hauteur)",
     en = "Site index (canopy height model)"
   ),
   prod_ifn_e1_mode = list(fr = "Mode de E1", en = "E1 mode"),
   prod_ifn_e1_stock = list(
-    fr = "Stock : 2 % du volume sur pied récolté par an",
+    fr = "Stock : 2 % du volume sur pied r\u00e9colt\u00e9 par an",
     en = "Stock: 2 % of the standing volume harvested per year"
   ),
   prod_ifn_e1_flux = list(
-    fr = "Flux : la récolte suit la production (P2)",
+    fr = "Flux : la r\u00e9colte suit la production (P2)",
     en = "Flux: the harvest follows the production (P2)"
   ),
   prod_ifn_taux_type = list(
-    fr = "Part de la production récoltée",
+    fr = "Part de la production r\u00e9colt\u00e9e",
     en = "Share of the production harvested"
   ),
   prod_ifn_taux_fixe = list(fr = "Part choisie", en = "Chosen share"),
   prod_ifn_taux_ifn_ser = list(
-    fr = "Taux observé par l'IFN dans la SER",
+    fr = "Taux observ\u00e9 par l'IFN dans la SER",
     en = "Rate observed by the IFN in the SER"
   ),
   prod_ifn_taux = list(
-    fr = "Part récoltée (0 à 1)",
+    fr = "Part r\u00e9colt\u00e9e (0 \u00e0 1)",
     en = "Harvested share (0 to 1)"
   ),
   prod_ifn_recolte_avert = list(
-    fr = "Avec P2 en mode IFN, ce choix donne la récolte actuelle observée dans la sylvoécorégion, identique pour toutes les UGF : E1 n'est alors plus un potentiel.",
+    fr = "Avec P2 en mode IFN, ce choix donne la r\u00e9colte actuelle observ\u00e9e dans la sylvo\u00e9cor\u00e9gion, identique pour toutes les UGF : E1 n'est alors plus un potentiel.",
     en = "With P2 in IFN mode, this choice yields the current harvest observed in the sylvoecoregion, the same for every UGF: E1 is then no longer a potential."
   ),
   prod_ifn_save = list(fr = "Enregistrer les modes", en = "Save modes"),
   prod_ifn_saved = list(
-    fr = "Modes de production enregistrés : relancez le calcul pour mettre à jour P2 et E1.",
+    fr = "Modes de production enregistr\u00e9s : relancez le calcul pour mettre \u00e0 jour P2 et E1.",
     en = "Production modes saved: rerun the computation to update P2 and E1."
   ),
   task_production_ifn = list(
-    fr = "Production IFN : localisation des sylvoécorégions et production du massif...",
+    fr = "Production IFN : localisation des sylvo\u00e9cor\u00e9gions et production du massif...",
     en = "IFN production: locating sylvoecoregions and massif production..."
   ),
   p2_ifn_label = list(
-    fr = "Production de la sylvoécorégion (IFN)",
+    fr = "Production de la sylvo\u00e9cor\u00e9gion (IFN)",
     en = "Production of the sylvoecoregion (IFN)"
   ),
-  p2_ifn_unit = list(fr = "m³/ha/an", en = "m³/ha/yr"),
+  p2_ifn_unit = list(fr = "m\u00b3/ha/an", en = "m\u00b3/ha/yr"),
   p2_ifn_rse = list(fr = "RSE", en = "RSE"),
-  p2_ifn_echelon = list(fr = "échelon", en = "level"),
-  p2_echelon_ser = list(fr = "sylvoécorégion", en = "sylvoecoregion"),
+  p2_ifn_echelon = list(fr = "\u00e9chelon", en = "level"),
+  p2_echelon_ser = list(fr = "sylvo\u00e9cor\u00e9gion", en = "sylvoecoregion"),
   p2_echelon_greco = list(
-    fr = "grande région écologique (GRECO)",
+    fr = "grande r\u00e9gion \u00e9cologique (GRECO)",
     en = "large ecological region (GRECO)"
   ),
   p2_echelon_national = list(fr = "national", en = "national"),
   p2_nature_fay_herriot = list(
-    fr = "valeur modélisée (IFN + télédétection, Fay-Herriot)",
+    fr = "valeur mod\u00e9lis\u00e9e (IFN + t\u00e9l\u00e9d\u00e9tection, Fay-Herriot)",
     en = "modelled value (IFN + remote sensing, Fay-Herriot)"
   ),
   p2_nature_direct = list(fr = "moyenne IFN brute", en = "raw IFN mean"),
   p2_ifn_not_station = list(
-    fr = "Ce n'est pas la productivité de la station de l'UGF : toutes les UGF d'une même sylvoécorégion reçoivent la même valeur.",
+    fr = "Ce n'est pas la productivit\u00e9 de la station de l'UGF : toutes les UGF d'une m\u00eame sylvo\u00e9cor\u00e9gion re\u00e7oivent la m\u00eame valeur.",
     en = "This is not the site productivity of the UGF: every UGF in the same sylvoecoregion gets the same value."
   ),
   e1_flux_label = list(
-    fr = "Bois-énergie de la production récoltée",
+    fr = "Bois-\u00e9nergie de la production r\u00e9colt\u00e9e",
     en = "Fuelwood from the harvested production"
   ),
   e1_mode_ressource_flux = list(
-    fr = "E1 en mode flux : la récolte suit la production de la sylvoécorégion (part récoltée : {taux}).",
+    fr = "E1 en mode flux : la r\u00e9colte suit la production de la sylvo\u00e9cor\u00e9gion (part r\u00e9colt\u00e9e : {taux}).",
     en = "E1 in flux mode: the harvest follows the production of the sylvoecoregion (harvested share: {taux})."
   ),
   e1_mode_recolte_observee = list(
-    fr = "Bois-énergie issu de la récolte actuelle de la SER",
+    fr = "Bois-\u00e9nergie issu de la r\u00e9colte actuelle de la SER",
     en = "Fuelwood from the current harvest of the SER"
   ),
   e1_recolte_observee_avert = list(
-    fr = "Ce n'est pas un potentiel : production IFN × taux de prélèvement IFN de la sylvoécorégion = récolte observée, identique pour toutes les UGF.",
-    en = "This is not a potential: IFN production × IFN harvest rate of the sylvoecoregion = observed harvest, the same for every UGF."
+    fr = "Ce n'est pas un potentiel : production IFN \u00d7 taux de pr\u00e9l\u00e8vement IFN de la sylvo\u00e9cor\u00e9gion = r\u00e9colte observ\u00e9e, identique pour toutes les UGF.",
+    en = "This is not a potential: IFN production \u00d7 IFN harvest rate of the sylvoecoregion = observed harvest, the same for every UGF."
   ),
   prod_massif_title = list(
     fr = "Production du massif (IFN)",
@@ -2523,15 +2523,15 @@ TRANSLATIONS <- list(
     en = "Edge share (700 m IFN blurring)"
   ),
   prod_massif_poids_faible = list(
-    fr = "Poids des placettes inférieur à 0,2 : la valeur est essentiellement celle de la sylvoécorégion, pas une mesure propre au massif.",
+    fr = "Poids des placettes inf\u00e9rieur \u00e0 0,2 : la valeur est essentiellement celle de la sylvo\u00e9cor\u00e9gion, pas une mesure propre au massif.",
     en = "Plot weight below 0.2: the value is essentially the sylvoecoregion's, not a measurement of the massif itself."
   ),
   prod_massif_bordure_elevee = list(
-    fr = "Part en bordure élevée : le massif est petit au regard du floutage des coordonnées publiques de l'IFN.",
+    fr = "Part en bordure \u00e9lev\u00e9e : le massif est petit au regard du floutage des coordonn\u00e9es publiques de l'IFN.",
     en = "High edge share: the massif is small compared with the blurring of the public IFN coordinates."
   ),
   prod_massif_petit = list(
-    fr = "Sous quelques milliers d'hectares, préférez la valeur de la sylvoécorégion (P2).",
+    fr = "Sous quelques milliers d'hectares, pr\u00e9f\u00e9rez la valeur de la sylvo\u00e9cor\u00e9gion (P2).",
     en = "Below a few thousand hectares, prefer the sylvoecoregion value (P2)."
   ),
   prod_massif_predicteur = list(
@@ -2555,22 +2555,22 @@ TRANSLATIONS <- list(
     en = "No IFN plot in the massif: the value is a prediction, not a measurement."
   ),
   prod_ratio_title = list(
-    fr = "Ratio prélèvement / production",
+    fr = "Ratio pr\u00e9l\u00e8vement / production",
     en = "Harvest / production ratio"
   ),
   prod_ratio_col_ser = list(fr = "SER", en = "SER"),
-  prod_ratio_col_def = list(fr = "Définition", en = "Definition"),
+  prod_ratio_col_def = list(fr = "D\u00e9finition", en = "Definition"),
   prod_ratio_col_ratio = list(fr = "Ratio", en = "Ratio"),
   prod_ratio_def_ign = list(
-    fr = "IGN (tous les arbres coupés)",
+    fr = "IGN (tous les arbres coup\u00e9s)",
     en = "IGN (all felled trees)"
   ),
   prod_ratio_def_vidange = list(
-    fr = "Vidange (coupés et sortis)",
+    fr = "Vidange (coup\u00e9s et sortis)",
     en = "Extraction (felled and taken out)"
   ),
   prod_ratio_avert = list(
-    fr = "Biais connu d'environ +10 % (0,68 au niveau national contre 0,61 publié par l'IGN) : un ratio légèrement supérieur à 1 ne prouve pas une décapitalisation.",
+    fr = "Biais connu d'environ +10 % (0,68 au niveau national contre 0,61 publi\u00e9 par l'IGN) : un ratio l\u00e9g\u00e8rement sup\u00e9rieur \u00e0 1 ne prouve pas une d\u00e9capitalisation.",
     en = "Known bias of about +10 % (0.68 nationally against 0.61 published by IGN): a ratio slightly above 1 does not prove decapitalisation."
   ),
   acc_params_where = list(
@@ -3264,7 +3264,7 @@ TRANSLATIONS <- list(
     fr = "%d parcelle(s) foresti\u00e8re(s) d\u00e9tenue(s) en partie seulement.",
     en = "%d forest parcel(s) only partly held."
   ),
-  # Le message ne dit plus « hors foret » - depuis le rattachement, rien ne
+  # Le message ne dit plus " hors foret " - depuis le rattachement, rien ne
   # l'est : il dit ce que le rattachement A FAIT. Taire ce chiffre laisserait
   # croire que le parcellaire couvrait tout.
   onf_croise_rattache_fmt = list(
@@ -5744,7 +5744,7 @@ TRANSLATIONS <- list(
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
   # Distincte de `..._structure` : sans grille, microclimf ne demarre meme pas,
   # et le repli LAI Sentinel-2 - qui ne vit qu'a l'INTERIEUR du bloc grille -
-  # n'est jamais atteint. Afficher « structure de vegetation manquante » dans ce
+  # n'est jamais atteint. Afficher " structure de vegetation manquante " dans ce
   # cas designait la consequence et cachait la cause : c'est le MNT/MNH LiDAR HD
   # qui manque, pas la vegetation.
   regen_phase_skip_reason_lidar = list(
@@ -6184,8 +6184,8 @@ TRANSLATIONS <- list(
     fr = "Sant\u00e9 \u2014 FORDEAD",
     en = "Health \u2014 FORDEAD"
   ),
-  # Arret RECONFORT (c\u0153ur >= 0.196.0). DEUX moments distincts : « arret
-  # demande » au clic - le worker termine son etape en cours - puis « arrete »
+  # Arret RECONFORT (c\u0153ur >= 0.196.0). DEUX moments distincts : " arret
+  # demande " au clic - le worker termine son etape en cours - puis " arrete "
   # a l'arrivee de l'evenement ou du resultat. Les confondre reproduirait en
   # plus discret le bouton menteur que ce correctif supprime.
   monitoring_reconfort_run_cancel_requested = list(

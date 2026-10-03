@@ -19,8 +19,8 @@
 .REGEN_PHASE_SILENCE_S <- 120L
 
 # Lit engine_status.json ; NULL si absent/illisible. Un fichier vieux n'est PLUS
-# jete : il l'etait, et la notif retombait alors sur « Moteur en cours... », un
-# libelle qui ne dit rien de ce qui tourne. Or le cœur n'emet qu'UN evenement
+# jete : il l'etait, et la notif retombait alors sur " Moteur en cours... ", un
+# libelle qui ne dit rien de ce qui tourne. Or le coeur n'emet qu'UN evenement
 # par annee ERA5 (`.rsen_moyenne_categorie()`), et les douze telechargements
 # mensuels qui suivent durent plus d'une heure sans un mot : la phase reelle
 # etait effacee precisement pendant le plus long moment du run, celui ou
@@ -58,7 +58,7 @@
 
 # " base {year} ({i}/{n}) - mois {mois_i}/{mois_n} ", chaque morceau n'apparaissant
 # que si l'evenement l'a fourni. L'annee vient de `regen_expo:era5` ; le mois de
-# `regen_expo:era5_mois`, qu'un cœur assez recent emet pendant les douze
+# `regen_expo:era5_mois`, qu'un coeur assez recent emet pendant les douze
 # telechargements CDS d'une annee - cf. specs/BRIEF-nemeton-era5-progression-
 # mensuelle.md. Sans lui, une annee entiere tient en "(1/1)" pendant plus d'une
 # heure : le compteur est exact et n'apprend rien.
@@ -489,7 +489,7 @@ mod_regeneration_ui <- function(id) {
       # regional " vit dans l'onglet carte " Contexte regional (E-OBS) ".
       shiny::uiOutput(ns("params_recap")),
 
-      # La case « Bilan hydrique seul (rapide) » est retiree : l'analyse est
+      # La case " Bilan hydrique seul (rapide) " est retiree : l'analyse est
       # toujours complete (bilan hydrique + microclimat). L'option reste dans
       # le service (`cfg$hydric_only`), pour un appel programmatique.
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
@@ -671,8 +671,8 @@ mod_regeneration_ui <- function(id) {
                 htmltools::div(
                   class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
                   htmltools::tags$span(i18n$t("regen_table_title")),
-                  # La case « Masquer les UG mal couvertes » est retiree : toutes
-                  # les UG sont affichees, et la colonne « Couverture (%) » dit
+                  # La case " Masquer les UG mal couvertes " est retiree : toutes
+                  # les UG sont affichees, et la colonne " Couverture (%) " dit
                   # sur quelle part de sa surface chacune a ete modelisee.
                   htmltools::div(
                     class = "d-flex align-items-center gap-3",
@@ -997,7 +997,7 @@ mod_regeneration_server <- function(id, app_state) {
 
     shiny::observeEvent(input$auto_years, .lancer_eobs_annees())
 
-    # Requete du lancement enchaine pour l'etape « regen_annees ».
+    # Requete du lancement enchaine pour l'etape " regen_annees ".
     eobs_pipeline_req <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(eobs_task$status(), {
@@ -1665,7 +1665,7 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("context_notif"))
       }
       if (identical(st, "success") && !.est_projet_courant(app_state, rv$context_pid)) {
-        # Raster d'un autre projet : ne pas le marquer « charge » pour celui-ci,
+        # Raster d'un autre projet : ne pas le marquer " charge " pour celui-ci,
         # et relancer le chargement pour le projet ouvert.
         rv$context_loaded_view <- NULL
         rv$context_raster <- NULL
@@ -1770,7 +1770,7 @@ mod_regeneration_server <- function(id, app_state) {
     #      `.regen_attach_r7()`.
     # Lancer (3) seul le ferait tourner sur les annees par defaut (2018/2022)
     # sans que rien ne le signale a l'utilisateur.
-    pipeline_req <- shiny::reactiveVal(NULL)   # etape « regeneration » (moteur)
+    pipeline_req <- shiny::reactiveVal(NULL)   # etape " regeneration " (moteur)
     gel_pipeline_req <- shiny::reactiveVal(NULL)
     annees_pipeline <- shiny::reactiveVal(NULL)  # annees E-OBS du run en cours
     # Annees REELLEMENT utilisees par la derniere etape lancee, et d'ou elles
@@ -1779,13 +1779,13 @@ mod_regeneration_server <- function(id, app_state) {
 
     # Quelles annees l'etape va-t-elle consommer, et sont-elles DETECTEES ?
     #
-    # Quand E-OBS est saute - « Detection E-OBS indisponible, saisir les annees
-    # manuellement », cas du projet Lajoux - `annees_pipeline()` reste NULL et
+    # Quand E-OBS est saute - " Detection E-OBS indisponible, saisir les annees
+    # manuellement ", cas du projet Lajoux - `annees_pipeline()` reste NULL et
     # le `%||%` des lanceurs retombe sur les champs du formulaire, dont les
     # valeurs d'usine sont 2018 et 2022. Le moteur et le gel R7 tournaient donc
     # sur des annees arbitraires, et le rapport les affichait en VERT sans rien
     # dire. C'est le mode de defaillance annonce a la livraison de la chaine
-    # (v0.143.0) pour le cas « E-OBS reussit » ; le cas « E-OBS saute » n'avait
+    # (v0.143.0) pour le cas " E-OBS reussit " ; le cas " E-OBS saute " n'avait
     # rien prevu.
     #
     # On ne bloque pas : quelqu'un a pu saisir ses annees expres. On rend le
@@ -1966,7 +1966,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (!is.null(st)) {
         phase_lbl <- .regen_phase_label(i18n, st)
         # Le silence ne se date que sur une phase NOMMEE : accroche a
-        # « Moteur en cours... », il daterait un libelle qui n'a jamais rien
+        # " Moteur en cours... ", il daterait un libelle qui n'a jamais rien
         # promis, et ne dirait qu'une inquietude de plus.
         if (nzchar(phase_lbl)) lbl <- paste0(phase_lbl, .regen_silence_suffix(i18n, st))
       }
@@ -2811,7 +2811,7 @@ mod_regeneration_server <- function(id, app_state) {
       .regen_ctx_ombro_plot(cs$clim_rr, cs$clim_t, cs$temp_is_tg, i18n)
     })
 
-    # Libelles lisibles des UGF (« Foret domaniale d'Orleans -- parcelle 1111 »),
+    # Libelles lisibles des UGF (" Foret domaniale d'Orleans -- parcelle 1111 "),
     # comme dans le Plan d'actions : `ug_id` est un identifiant interne.
     ug_labels_r <- shiny::reactive({
       project <- app_state$current_project

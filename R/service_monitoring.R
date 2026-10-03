@@ -31,7 +31,7 @@
 # Log de l'enfant plafonne (v0.143.16, coeur >= 0.195.0)
 # ---------------------------------------------------------------------------
 # `nemeton::run_memory_capped()` lancait l'enfant avec `stdout = ""`, c'est-a-dire
-# « heriter du parent ». Le parent est un worker `future` multisession, que
+# " heriter du parent ". Le parent est un worker `future` multisession, que
 # `parallelly` demarre avec `OUT=/dev/null` : la sortie de l'enfant - traceback
 # python d'IOTA2, message d'erreur R - etait donc jetee a la source. Un run de
 # 20 h pouvait echouer sans laisser un mot d'explication (Couchey, 2026-09-03).
@@ -79,7 +79,7 @@
 
 # Appelle `run_memory_capped()` en laissant tomber `log_path` sur un coeur qui
 # ne le connait pas. Sans ce filtre, passer l'argument a un coeur < 0.195.0
-# leverait « unused argument » et casserait un chemin qui marchait.
+# leverait " unused argument " et casserait un chemin qui marchait.
 .run_capped <- function(...) {
   a <- list(...)
   if (!.capped_accepts_log_path()) a$log_path <- NULL
@@ -218,7 +218,7 @@ run_ingestion_async <- function() {
       # handlers `on.exit` s'executent dans l'ORDRE D'ENREGISTREMENT, et
       # la liberation fait `rm(list = ls(envir = env), envir = env)` sur
       # la frame du worker - `con` compris. Enregistree apres elle, cette
-      # ligne levait « objet 'con' introuvable » APRES que le corps ait
+      # ligne levait " objet 'con' introuvable " APRES que le corps ait
       # fait et persiste son travail (run Couchey du 2026-08-31 : les
       # trois moteurs Sante, `ingest_run.json` a `done`, 183 scenes).
       # Deplacer la liberation en fin de corps serait plus lisible mais
@@ -656,7 +656,7 @@ run_fordead_async <- function() {
       # handlers `on.exit` s'executent dans l'ORDRE D'ENREGISTREMENT, et
       # la liberation fait `rm(list = ls(envir = env), envir = env)` sur
       # la frame du worker - `con` compris. Enregistree apres elle, cette
-      # ligne levait « objet 'con' introuvable » APRES que le corps ait
+      # ligne levait " objet 'con' introuvable " APRES que le corps ait
       # fait et persiste son travail (run Couchey du 2026-08-31 : les
       # trois moteurs Sante, `ingest_run.json` a `done`, 183 scenes).
       # Deplacer la liberation en fin de corps serait plus lisible mais
@@ -882,7 +882,7 @@ run_reconfort_async <- function() {
       # handlers `on.exit` s'executent dans l'ORDRE D'ENREGISTREMENT, et
       # la liberation fait `rm(list = ls(envir = env), envir = env)` sur
       # la frame du worker - `con` compris. Enregistree apres elle, cette
-      # ligne levait « objet 'con' introuvable » APRES que le corps ait
+      # ligne levait " objet 'con' introuvable " APRES que le corps ait
       # fait et persiste son travail (run Couchey du 2026-08-31 : les
       # trois moteurs Sante, `ingest_run.json` a `done`, 183 scenes).
       # Deplacer la liberation en fin de corps serait plus lisible mais
@@ -898,7 +898,7 @@ run_reconfort_async <- function() {
       # Priorite au nom de projet (parent, a jour), repli DB - cf. FAST.
       zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
-      # Moitie « push » SEULE. Sous execution plafonnee, l'enfant ecrit
+      # Moitie " push " SEULE. Sous execution plafonnee, l'enfant ecrit
       # lui-meme les fichiers `.json` / `.ndjson` ; lui passer le
       # callback COMPOSITE dupliquerait chaque ligne NDJSON - le piege
       # deja rencontre sur FORDEAD. Contrairement a FORDEAD, ce worker
@@ -932,16 +932,16 @@ run_reconfort_async <- function() {
       #
       # Le 2026-09-01 sur Couchey, `systemd-oomd` a tue le SCOPE ENTIER
       # (9 processus : RStudio, la session R, les workers) pendant
-      # l'item 82/203 de l'ingestion - « memory pressure for
-      # user@1000.service being 56.87% > 50.00% », scope a 14,5 Go.
+      # l'item 82/203 de l'ingestion - " memory pressure for
+      # user@1000.service being 56.87% > 50.00% ", scope a 14,5 Go.
       # Aucun evenement d'erreur : le worker n'a pas leve, il a ete tue.
       #
-      # Le cœur ne plafonnait QUE le sous-processus Python
+      # Le coeur ne plafonnait QUE le sous-processus Python
       # (`.reconfort_run_py()` -> `.reconfort_cap_memory()`), au motif
       # que c'est lui le gourmand. Mais la boucle d'ingestion des 203
       # scenes est du R PUR (`nemeton:::reconfort_ingest.R`, evenements
       # `reconfort:ingest_item`) et n'etait plafonnee par rien : le run
-      # est mort AVANT d'atteindre Python. Le raisonnement du cœur
+      # est mort AVANT d'atteindre Python. Le raisonnement du coeur
       # laissait cette phase a decouvert.
       #
       # Sous cgroup, un depassement tue l'enfant SEUL, avec une erreur
@@ -951,7 +951,7 @@ run_reconfort_async <- function() {
       # lui-meme les fichiers de progression depuis `progress_path`.
       # Log de l'enfant : c'est le chemin qui a manque le 2026-09-03 - IOTA2
       # meurt, son traceback part dans le `/dev/null` du worker, et l'erreur
-      # remontee ne dit que « exit 1 ».
+      # remontee ne dit que " exit 1 ".
       child_log <- .child_log_path(dirname(progress_path %||% "."), "reconfort")
       result <- tryCatch(
         .run_capped(
