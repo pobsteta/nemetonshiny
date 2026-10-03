@@ -114,14 +114,21 @@ pipeline_step_def <- function(step_id) {
 #'   ids are dropped rather than aborting the run: a stale bookmark or an old
 #'   saved scope must not make the button unusable.
 #' @param profil Character. Expert profile applied to every AI generation.
+#' @param project The project the run belongs to (`$id`, `$path`), or NULL.
 #' @return A run state (plain list).
 #' @noRd
-pipeline_new_run <- function(step_ids = pipeline_all_step_ids(), profil = NULL) {
+pipeline_new_run <- function(step_ids = pipeline_all_step_ids(), profil = NULL,
+                             project = NULL) {
   connus <- pipeline_all_step_ids()
   step_ids <- intersect(connus, step_ids)   # intersect() impose l'ordre du registre
   list(
     run_id  = sprintf("run_%s_%s", format(Sys.time(), "%Y%m%d%H%M%S"),
                       paste(sample(letters, 4, replace = TRUE), collapse = "")),
+    # Le run appartient au projet qui l'a lance : ses etapes ne doivent pas
+    # partir sur un autre projet ouvert entre-temps, ni son etat s'ecrire
+    # dans le dossier de cet autre projet.
+    project_id   = project$id %||% NULL,
+    project_path = project$path %||% NULL,
     profil  = profil,
     steps   = step_ids,
     index   = 1L,

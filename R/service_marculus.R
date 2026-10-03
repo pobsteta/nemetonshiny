@@ -271,7 +271,8 @@ MARCULUS_STATUTS <- c(
 #' @return A named list, ready for `jsonlite::toJSON()`.
 #' @noRd
 marculus_context_from_action <- function(action, project, essences = character(0),
-                                         gpkg_nom = NULL, suffixe = NULL) {
+                                         gpkg_nom = NULL, suffixe = NULL,
+                                         annee_base = NULL) {
   nom_projet <- project$metadata$name %||% project$id
   ug <- .marculus_ug_label(project, action$ug_id, nom_projet)
   type <- action$type %||% "autre"
@@ -301,7 +302,8 @@ marculus_context_from_action <- function(action, project, essences = character(0
   # annee civile : le tableau du Plan d'actions affiche `annee + annee_cible`.
   # Jusqu'en v0.145.0 l'export en faisait directement une annee, et Marculus
   # recevait des martelages au 1er janvier de l'an 1, 2, ... 13.
-  annee <- .marculus_annee_civile(action$annee_cible)
+  annee <- .marculus_annee_civile(action$annee_cible,
+                                 base = annee_base %||% .annee_courante())
   date_martelage <- if (!is.na(annee)) {
     round(as.numeric(as.POSIXct(sprintf("%d-01-01", annee), tz = "UTC")) * 1000)
   } else NULL
@@ -1168,6 +1170,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
 
   actions <- marculus_eligible_actions(plan)
   if (length(actions) == 0L) return(invisible(vide))
+  annee_base <- action_plan_annee_base(plan)
 
   # Lues UNE fois : desserte et houppiers sont ceux du PROJET, pas de l'action.
   # Les houppiers sont LUS d'un cache produit au calcul des indicateurs - les
@@ -1198,8 +1201,8 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   # meme fichier : le second GeoPackage ecrasait le premier.
   suffixes <- .marculus_suffixes_doublons(
     vapply(actions, function(a) marculus_context_from_action(
-      a, project, essences = essences)$nom, character(1)),
-    vapply(actions, function(a) .marculus_annee_civile(a$annee_cible),
+      a, project, essences = essences, annee_base = annee_base)$nom, character(1)),
+    vapply(actions, function(a) .marculus_annee_civile(a$annee_cible, base = annee_base),
            integer(1)))
 
   contexts <- list()
@@ -1211,12 +1214,14 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
     # chantier - et sans accent ni espace, pour traverser un ZIP et un systeme
     # de fichiers Android sans surprise.
     provisoire <- marculus_context_from_action(a, project, essences = essences,
-                                               suffixe = suffixes[i])
+                                               suffixe = suffixes[i],
+                                               annee_base = annee_base)
     nom_gpkg <- paste0(gsub("[^A-Za-z0-9_-]+", "_", provisoire$nom), ".gpkg")
 
     ctx <- marculus_context_from_action(a, project, essences = essences,
                                         gpkg_nom = nom_gpkg,
-                                        suffixe = suffixes[i])
+                                        suffixe = suffixes[i],
+                                        annee_base = annee_base)
     contexts[[length(contexts) + 1L]] <- ctx
     ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
                                      desserte = desserte,
@@ -1242,7 +1247,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
                  houppiers_statut = project$metadata$houppiers$statut %||%
                    NA_character_,
                  n_date_annee = sum(vapply(actions, .marculus_date_depuis_annee,
-                                           logical(1))),
+                                           logical(1), base = annee_base)),
                  n_ortho = sum(!vapply(ortho_par_ug, is.null, logical(1)))))
 }
 
@@ -1257,10 +1262,10 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
 #' @param action One action of the plan.
 #' @return Logical scalar.
 #' @noRd
-.marculus_date_depuis_annee <- function(action) {
+.marculus_date_depuis_annee <- function(action, base = .annee_courante()) {
   dm <- suppressWarnings(as.Date(action$date_martelage %||% NA_character_))
   saisie <- length(dm) == 1L && !is.na(dm)
-  !saisie && !is.na(.marculus_annee_civile(action$annee_cible))
+  !saisie && !is.na(.marculus_annee_civile(action$annee_cible, base = base))
 }
 
 

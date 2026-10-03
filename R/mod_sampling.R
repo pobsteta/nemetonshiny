@@ -835,8 +835,20 @@ mod_sampling_server <- function(id, app_state) {
     # actually loaded - never clears, so it can't race with the generate
     # handler in the same flush. ignoreInit avoids re-running at session
     # startup (the inline isolate() block below handles that case).
+    restored_for <- NULL
     .restore_samples <- function(project) {
       if (is.null(project) || is.null(project$id)) return(invisible(NULL))
+      # Projet DIFFERENT : on repart de zero. La restauration est additive (un
+      # plan tout juste tire ne doit pas disparaitre au rechargement du meme
+      # projet), mais elle gardait ainsi les placettes du projet precedent quand
+      # le nouveau n'en a pas - et « Telecharger QField » les exportait sous le
+      # nom du nouveau projet.
+      if (!identical(restored_for, project$id)) {
+        sampling_rv$plots <- NULL
+        sampling_rv$observations <- NULL
+        sampling_rv$zone <- NULL
+        restored_for <<- project$id
+      }
       # Single GPKG open: scan the available layers once and skip
       # `load_samples()` (which would re-open the file via st_layers)
       # for the layer that does not exist. Cheap, but matters when

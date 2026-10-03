@@ -676,7 +676,7 @@ build_spectral_diversity <- function(parcels, project_path,
   }
 
   result <- tryCatch({
-    imported <- nemeton::import_qfield_gpkg(field_gpkg)
+    imported <- nemeton::import_qgis_gpkg(field_gpkg)
     if (is.null(imported$placettes) || nrow(imported$placettes) == 0) {
       return(compute_unit)
     }
@@ -2548,8 +2548,16 @@ download_raster_source <- function(source_name,
 
   cache_file <- file.path(cache_dir, paste0(source_name, ".tif"))
 
-  # Return cached if exists
+  # Un NDVI SYNTHETIQUE (tirage aleatoire, ecrit jusqu'en v0.152.4 quand le
+  # WMS IGN echouait) ne doit pas etre relu comme une mesure : on le jette
+  # pour retenter le vrai telechargement.
+  if (identical(source_name, "ndvi") && file.exists(cache_file) &&
+      .is_synthetic_ndvi(cache_file)) {
+    cli::cli_alert_warning("Cached NDVI is the old synthetic placeholder - discarding it.")
+    unlink(cache_file)
+  }
 
+  # Return cached if exists
   if (file.exists(cache_file)) {
     return(suppressWarnings(terra::rast(cache_file)))
   }
@@ -2573,6 +2581,30 @@ download_raster_source <- function(source_name,
   )
 
   raster_data
+}
+
+
+#' Is a cached NDVI the old synthetic placeholder?
+#'
+#' @description
+#' Until v0.152.4 a failed IGN WMS request wrote a random raster
+#' (`runif(0.5, 0.85)`, 0.001 degree, EPSG:4326) to `cache/layers/ndvi.tif`,
+#' then reused it as a measurement. That signature - exactly 0.001 degree in
+#' geographic coordinates, every value between 0.5 and 0.85 - is never produced
+#' by the IRC orthophoto, sampled far finer.
+#'
+#' @param path Path to the cached raster.
+#' @return Logical scalar. `FALSE` when the file cannot be read.
+#' @noRd
+.is_synthetic_ndvi <- function(path) {
+  tryCatch({
+    r <- terra::rast(path)
+    if (!terra::is.lonlat(r)) return(FALSE)
+    if (!isTRUE(all(abs(terra::res(r) - 0.001) < 1e-9))) return(FALSE)
+    mm <- terra::minmax(r, compute = TRUE)
+    # Ecrit en float32 : 0,85 relu vaut 0,8500000238 - tolerance de 1e-6.
+    isTRUE(mm[1, 1] >= 0.5 - 1e-6 && mm[2, 1] <= 0.85 + 1e-6)
+  }, error = function(e) FALSE)
 }
 
 
@@ -3378,13 +3410,13 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
       if (httr2::resp_status(resp) != 200) {
         cli::cli_warn("IGN WMS returned status {httr2::resp_status(resp)}")
         unlink(temp_file)
-        return(create_synthetic_ndvi(bbox, cache_file))
+        return(NULL)
       }
 
       if (!file.exists(temp_file) || file.size(temp_file) < 1000) {
         cli::cli_warn("Invalid or empty IRC response")
         unlink(temp_file)
-        return(create_synthetic_ndvi(bbox, cache_file))
+        return(NULL)
       }
 
       # Save IRC to project cache
@@ -3402,7 +3434,7 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
     # Check we have at least 3 bands
     if (terra::nlyr(irc) < 3) {
       cli::cli_warn("IRC image has insufficient bands ({terra::nlyr(irc)})")
-      return(create_synthetic_ndvi(bbox, cache_file))
+      return(NULL)
     }
 
     cli::cli_alert_info("  Computing NDVI from IRC bands...")
@@ -3418,7 +3450,7 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
 
   }, error = function(e) {
     cli::cli_warn("Failed to download/compute NDVI from IRC: {e$message}")
-    return(create_synthetic_ndvi(bbox, cache_file))
+    return(NULL)
   })
 }
 
@@ -3561,40 +3593,6 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
   ndvi
 }
 
-
-#' Create synthetic NDVI raster (fallback)
-#'
-#' @description
-#' Creates a synthetic NDVI raster with realistic forest values
-#' when the IRC download fails.
-#'
-#' @param bbox Numeric vector. Bounding box.
-#' @param cache_file Character. Path to save the raster.
-#'
-#' @return SpatRaster with synthetic NDVI values.
-#'
-#' @noRd
-create_synthetic_ndvi <- function(bbox, cache_file) {
-  cli::cli_alert_warning("Using synthetic NDVI values (IRC unavailable)")
-
-  # Create raster with ~100m resolution
-  rast <- terra::rast(
-    xmin = bbox[1], xmax = bbox[3],
-    ymin = bbox[2], ymax = bbox[4],
-    resolution = 0.001,  # ~100m
-    crs = "EPSG:4326"
-  )
-
-  # Fill with realistic forest NDVI values (0.5-0.85)
-  set.seed(42)
-  terra::values(rast) <- runif(terra::ncell(rast), 0.5, 0.85)
-  names(rast) <- "ndvi"
-
-  terra::writeRaster(rast, cache_file, overwrite = TRUE)
-  cli::cli_alert_info("Created synthetic NDVI raster")
-
-  return(rast)
-}
 
 
 # ==============================================================================
@@ -4635,9 +4633,11 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     return(result)
   }
 
-  # Fallback: return random values for demo (to be replaced with actual calculations)
-  cli::cli_alert_info("Using placeholder values for {indicator}")
-  runif(nrow(parcels), 0, 100)
+  # Indicateur inconnu du coeur (slug renomme, coeur trop ancien) : une
+  # ERREUR, que la boucle de calcul transforme en NA avec sa cause. Ce repli
+  # renvoyait `runif(0, 100)`, sauvegarde et affiche comme une valeur reelle.
+  stop(sprintf("Indicator %s is unknown to the installed nemeton core.", indicator),
+       call. = FALSE)
 }
 
 

@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.152.5] - 2026-10-03
+
+### Fixed
+
+- Plus de NDVI aleatoire en cache quand le WMS IGN echoue (un ancien NDVI
+  synthetique est detecte et jete) ; plus de valeurs aleatoires pour un
+  indicateur inconnu du coeur.
+- Plans de validation : union des colonnes dans `samples.gpkg` (plus de
+  colonnes perdues) ; plantage `.format_m3()` sur tige non cubee ; lecture
+  seule a tort sans base de donnees.
+- Ecritures atomiques des fichiers de projet ; UGF illisibles et plan
+  d'actions illisible sauvegardes avant remplacement ; synchronisation
+  PostGIS transactionnelle.
+- Resultats asynchrones (calcul, reGeneration, « Tout calculer », desserte,
+  echantillonnage, ingestion terrain) lies a leur projet.
+- Calendrier du plan d'actions ancre (`plan$annee_base`) ; GPKG sans decalage
+  d'un an ; la chaine n'efface plus les actions ; edition d'UGF et changement
+  de parcelles invalident les indicateurs.
+
 ## [0.152.4] - 2026-10-02
 
 ### Security

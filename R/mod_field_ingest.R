@@ -181,8 +181,29 @@ mod_field_ingest_server <- function(id, app_state) {
       validation = NULL,   # list(ok, errors, warnings)
       field_agg  = NULL,   # sf placettes + field_* columns
       attached   = NULL,   # units sf + field_* columns (in-memory preview)
-      new_ndp    = NULL    # integer, computed post-attach
+      new_ndp    = NULL,   # integer, computed post-attach
+      fichier_valide = NULL,  # copie du GPKG VALIDE - c'est elle qu'on attache
+      projet_id  = NULL    # projet pour lequel la validation a eu lieu
     )
+
+    # Une validation vaut pour UN fichier et UN projet. « Attacher » copiait le
+    # fichier actuellement selectionne (pas forcement celui valide) et l'etat
+    # survivait au changement de projet : des donnees validees pour A pouvaient
+    # etre attachees a B.
+    .reinitialiser <- function() {
+      field_rv$import <- NULL; field_rv$validation <- NULL
+      field_rv$field_agg <- NULL; field_rv$attached <- NULL
+      field_rv$new_ndp <- NULL; field_rv$fichier_valide <- NULL
+      field_rv$projet_id <- NULL
+    }
+    shiny::observeEvent(input$gpkg, .reinitialiser(), ignoreInit = TRUE)
+    projet_vu <- NULL
+    shiny::observeEvent(app_state$current_project, {
+      id <- tryCatch(app_state$current_project$id, error = function(e) NULL)
+      if (identical(id, projet_vu)) return()
+      projet_vu <<- id
+      .reinitialiser()
+    }, ignoreNULL = FALSE)
 
     # --- Helpers ---------------------------------------------------------
     current_units_sf <- shiny::reactive({
@@ -208,18 +229,20 @@ mod_field_ingest_server <- function(id, app_state) {
       }
 
       imported <- tryCatch(
-        nemeton::import_qfield_gpkg(up$datapath),
+        nemeton::import_qgis_gpkg(up$datapath),
         error = function(e) {
-          shiny::showNotification(
-            paste("import_qfield_gpkg():", conditionMessage(e)),
-            type = "error", duration = 8
-          )
+          shiny::showNotification(conditionMessage(e), type = "error", duration = 8)
           NULL
         }
       )
       if (is.null(imported)) return()
 
       field_rv$import <- imported
+      # Copie du fichier valide : Shiny remplace `datapath` au prochain choix.
+      copie <- tempfile(fileext = ".gpkg")
+      field_rv$fichier_valide <- if (file.copy(up$datapath, copie)) copie else NULL
+      field_rv$projet_id <- tryCatch(app_state$current_project$id,
+                                     error = function(e) NULL)
 
       val <- nemeton::validate_field_data(
         placettes = imported$placettes,
@@ -316,7 +339,15 @@ mod_field_ingest_server <- function(id, app_state) {
         data_dir <- file.path(project_path, "data")
         if (!dir.exists(data_dir)) dir.create(data_dir, recursive = TRUE)
         dest <- file.path(data_dir, "field_data.gpkg")
-        file.copy(input$gpkg$datapath, dest, overwrite = TRUE)
+        # Le fichier VALIDE, pour le projet de la validation - jamais le
+        # fichier selectionne depuis sans revalidation.
+        if (is.null(field_rv$fichier_valide) ||
+            !identical(field_rv$projet_id, project$id)) {
+          stop("validated file missing or validated for another project")
+        }
+        if (!file.copy(field_rv$fichier_valide, dest, overwrite = TRUE)) {
+          stop("copy failed")
+        }
 
         update_project_metadata(project$id, list(
           ndp_level = new_ndp,

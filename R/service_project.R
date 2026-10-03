@@ -115,18 +115,13 @@ create_project <- function(name, description = "", owner = "", parcels = NULL,
 
   # Save metadata
   metadata_path <- file.path(project_path, "metadata.json")
-  jsonlite::write_json(
-    metadata,
-    metadata_path,
-    auto_unbox = TRUE,
-    pretty = TRUE
-  )
+  .write_json_atomic(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
 
   # Save parcels if provided
   if (!is.null(parcels) && inherits(parcels, "sf") && nrow(parcels) > 0) {
     save_parcels(project_id, parcels)
     metadata$parcels_count <- nrow(parcels)
-    jsonlite::write_json(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
+    .write_json_atomic(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
   }
 
   # Cache the commune boundary so it restores instantly on load (best-effort)
@@ -204,9 +199,14 @@ update_project <- function(project_id, name, description = "", owner = "",
   }
 
   # Update parcels if provided
+  parcelles_changees <- FALSE
   if (!is.null(parcels) && inherits(parcels, "sf") && nrow(parcels) > 0) {
+    # Ajouter ou retirer une parcelle rend le decoupage UGF et les indicateurs
+    # incoherents (parcelle sans tenement, ou tenement d'une parcelle retiree).
+    avant <- .ids_parcelles(tryCatch(load_parcels(project_id), error = function(e) NULL))
     save_parcels(project_id, parcels)
     metadata$parcels_count <- nrow(parcels)
+    parcelles_changees <- !is.null(avant) && !identical(avant, .ids_parcelles(parcels))
   }
 
   # Refresh the cached commune boundary (best-effort, instant restore on load)
@@ -216,12 +216,16 @@ update_project <- function(project_id, name, description = "", owner = "",
 
   # Save updated metadata
   metadata_path <- file.path(project_path, "metadata.json")
-  jsonlite::write_json(
-    metadata,
-    metadata_path,
-    auto_unbox = TRUE,
-    pretty = TRUE
-  )
+  .write_json_atomic(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
+
+  # APRES l'ecriture des metadonnees, qui sinon effacerait les marqueurs : le
+  # decoupage UGF est mis de cote (recuperable a la main) et les indicateurs
+  # invalides ; le rechargement repart d'un decoupage par defaut coherent avec
+  # les nouvelles parcelles.
+  if (parcelles_changees) {
+    .mettre_de_cote_ug(project_id)
+    metadata <- load_project_metadata(project_id) %||% metadata
+  }
 
   cli::cli_alert_success("Project updated: {.val {name}}")
   .invalidate_recent_projects_cache()
@@ -231,8 +235,22 @@ update_project <- function(project_id, name, description = "", owner = "",
     path = project_path,
     metadata = metadata,
     parcels = if (!is.null(parcels)) parcels else load_parcels(project_id),
-    indicators = load_indicators(project_id)
+    indicators = load_indicators(project_id),
+    ugf_reinitialisees = parcelles_changees
   )
+}
+
+
+#' Identifiers of a parcel set, sorted
+#'
+#' @param parcels sf / data.frame with `id` or `geo_parcelle`, or NULL.
+#' @return Sorted unique character vector, or NULL.
+#' @noRd
+.ids_parcelles <- function(parcels) {
+  if (is.null(parcels) || !nrow(parcels)) return(NULL)
+  col <- intersect(c("id", "geo_parcelle"), names(parcels))[1]
+  if (is.na(col)) return(NULL)
+  sort(unique(as.character(parcels[[col]])))
 }
 
 
@@ -271,19 +289,19 @@ save_parcels <- function(project_id, parcels) {
 
     cli::cli_alert_info("Saving {nrow(parcels)} parcels")
 
-    # 1. Save as GeoPackage (primary format, QGIS-compatible)
-    # Delete existing file first (sf::st_write doesn't overwrite by default)
-    if (file.exists(gpkg_path)) {
-      unlink(gpkg_path)
-    }
-    sf::st_write(parcels, gpkg_path, driver = "GPKG", quiet = TRUE)
+    # 1. Save as GeoPackage (primary format, QGIS-compatible). Ecrit a cote
+    # puis renomme : l'ancien `unlink()` prealable laissait le projet sans
+    # parcelles quand l'ecriture echouait.
+    .st_write_atomic(parcels, gpkg_path)
     cli::cli_alert_success("Saved GeoPackage: {basename(gpkg_path)}")
 
     # 2. Also save as Parquet for fast internal loading
     if (requireNamespace("geoarrow", quietly = TRUE) &&
         requireNamespace("arrow", quietly = TRUE)) {
       # geoarrow enables arrow to handle sf geometry
-      arrow::write_parquet(parcels, parquet_path)
+      tmp_pq <- .tmp_sibling(parquet_path)
+      arrow::write_parquet(parcels, tmp_pq)
+      .replace_file(tmp_pq, parquet_path)
       cli::cli_alert_success("Saved Parquet: {basename(parquet_path)}")
     }
 
@@ -650,10 +668,11 @@ save_indicators <- function(project_id, indicators) {
     }
 
     # Write via temp file to avoid Windows memory-mapped file lock
+    # (renommage atomique ; la cible n'est supprimee avant que si le renommage
+    # echoue, cas Windows)
     tmp_path <- paste0(indicators_path, ".tmp")
     arrow::write_parquet(indicators_df, tmp_path)
-    if (file.exists(indicators_path)) file.remove(indicators_path)
-    file.rename(tmp_path, indicators_path)
+    .replace_file(tmp_path, indicators_path)
 
     # Update metadata (avec NDP detecte)
     # Essayer d'abord via les attributs, puis fallback sur le cache disque.
@@ -1309,7 +1328,7 @@ save_comments <- function(project_id, synthesis = NULL, families = NULL,
   data <- list(synthesis = syn, families = fam, synthesis_sources = src)
 
   tryCatch({
-    jsonlite::write_json(data, comments_path, auto_unbox = TRUE, pretty = TRUE)
+    .write_json_atomic(data, comments_path, auto_unbox = TRUE, pretty = TRUE)
     n_fam <- if (is.list(fam)) length(fam) else 0L
     cli::cli_inform("Comments saved: synthesis={!is.null(syn)}, families={n_fam}")
     TRUE
@@ -1704,7 +1723,7 @@ update_project_metadata <- function(project_id, updates, project_path = NULL) {
     # Always update updated_at
     metadata$updated_at <- Sys.time()
 
-    jsonlite::write_json(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
+    .write_json_atomic(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
     .invalidate_recent_projects_cache()
     TRUE
 
@@ -2835,8 +2854,12 @@ save_ug_data <- function(project_id, projet) {
   tryCatch({
     # Save tenements as GeoPackage
     tenements_path <- file.path(data_dir, "tenements.gpkg")
-    if (file.exists(tenements_path)) unlink(tenements_path)
-    sf::st_write(tenements, tenements_path, driver = "GPKG", quiet = TRUE)
+    # Affectation tenement -> UGF AVANT ecriture : si elle change (creation,
+    # fusion, decoupe, deplacement), les indicateurs calcules portent sur des
+    # `ug_id` qui n'existent plus, et `compute_all_indicators()` les croirait
+    # faits. Un renommage ou un changement de groupe ne la change pas.
+    avant <- .affectation_ug(tenements_path)
+    .st_write_atomic(tenements, tenements_path)
 
     # Save UG definitions as JSON.
     # NB: We use `dataframe = "columns"` (column-oriented object) instead of
@@ -2850,8 +2873,8 @@ save_ug_data <- function(project_id, projet) {
     # Column-oriented output keeps every key present regardless of NA
     # density.
     ugs_path <- file.path(data_dir, "ugs.json")
-    jsonlite::write_json(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE,
-                         dataframe = "columns")
+    .write_json_atomic(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE,
+                       dataframe = "columns")
 
     # Update metadata
     update_project_metadata(project_id, list(
@@ -2861,7 +2884,10 @@ save_ug_data <- function(project_id, projet) {
     ))
 
     cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(tenements)} tenements")
-    TRUE
+    apres <- .affectation_ug_df(tenements)
+    change <- !is.null(avant) && !identical(avant, apres)
+    if (change) invalidate_indicators(project_id)
+    structure(TRUE, indicateurs_invalides = change)
 
   }, error = function(e) {
     cli::cli_abort("Failed to save UG data: {e$message}")
@@ -2974,3 +3000,27 @@ load_ug_data <- function(project_id) {
 # are now computed directly on the UGF geometries in one pass and
 # stored in indicators.parquet - there is no separate UGF-level file
 # to persist or reload.
+
+
+#' Tenement -> UGF assignment, as a canonical sorted vector
+#'
+#' @param x A tenements data.frame / sf (`tenement_id`, `ug_id`), or NULL.
+#' @return Sorted character vector `"<tenement>\t<ug>"`, or NULL.
+#' @noRd
+.affectation_ug_df <- function(x) {
+  if (is.null(x) || !all(c("tenement_id", "ug_id") %in% names(x))) return(NULL)
+  sort(paste(as.character(x$tenement_id), as.character(x$ug_id), sep = "\t"))
+}
+
+#' Tenement -> UGF assignment stored on disk
+#'
+#' @param path Path of `tenements.gpkg`.
+#' @return See [.affectation_ug_df()]; NULL when absent or unreadable.
+#' @noRd
+.affectation_ug <- function(path) {
+  if (!file.exists(path)) return(NULL)
+  x <- tryCatch(sf::st_drop_geometry(sf::st_read(path, quiet = TRUE)),
+                error = function(e) NULL)
+  .affectation_ug_df(x)
+}
+

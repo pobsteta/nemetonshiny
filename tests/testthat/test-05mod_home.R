@@ -1952,3 +1952,13 @@ test_that("un projet charge par un AUTRE module rafraichit les parcelles de Sele
     expect_equal(nrow(parcels()), 2L)
   })
 })
+
+
+test_that(".est_projet_courant ne reconnait que le projet ouvert", {
+  as <- shiny::reactiveValues(project_id = "B", current_project = list(id = "B"))
+  expect_true(nemetonshiny:::.est_projet_courant(as, "B"))
+  expect_false(nemetonshiny:::.est_projet_courant(as, "A"))
+  expect_false(nemetonshiny:::.est_projet_courant(as, NULL))
+  as2 <- shiny::reactiveValues(project_id = NULL, current_project = list(id = "C"))
+  expect_true(nemetonshiny:::.est_projet_courant(as2, "C"))
+})

@@ -2022,6 +2022,10 @@ TRANSLATIONS <- list(
     fr = "Seul un administrateur peut modifier les cl\u00e9s d'acc\u00e8s du serveur.",
     en = "Only an administrator can change the server's access keys."
   ),
+  ugf_reinitialisees = list(
+    fr = "Les parcelles ont chang\u00e9 : le d\u00e9coupage en UGF repart d'une UGF par parcelle et les indicateurs sont \u00e0 recalculer. L'ancien d\u00e9coupage est conserv\u00e9 dans le dossier data/ du projet.",
+    en = "The parcels changed: the management units restart from one unit per parcel and the indicators must be recomputed. The previous layout is kept in the project's data/ folder."
+  ),
   db_not_configured = list(
     fr = "Base de donn\u00e9es non configur\u00e9e \u2014 stockage local des projets (parquet).",
     en = "Database not configured \u2014 projects stored locally (parquet)."
@@ -6089,6 +6093,10 @@ TRANSLATIONS <- list(
   pipeline_no_project = list(
     fr = "Chargez un projet avant de lancer les calculs.",
     en = "Load a project before starting the computations."
+  ),
+  pipeline_projet_change = list(
+    fr = "Lancement encha\u00een\u00e9 arr\u00eat\u00e9 : un autre projet a \u00e9t\u00e9 ouvert. Les \u00e9tapes d\u00e9j\u00e0 faites sont conserv\u00e9es.",
+    en = "Chained run stopped: another project was opened. Steps already done are kept."
   ),
   pipeline_no_step = list(
     fr = "S\u00e9lectionnez au moins une \u00e9tape.",

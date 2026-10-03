@@ -118,8 +118,53 @@ ensure_project_migrated <- function(project_id, projet = NULL) {
     return(projet)
   }
 
-  # No UG data found - run migration
+  # Pas de donnees UGF LISIBLES. Si des fichiers UGF existent quand meme (lecture
+  # en erreur, colonnes manquantes, `ugs.json` absent apres une ecriture
+  # interrompue), la migration v1 -> v2 les ECRASAIT par une UGF par parcelle :
+  # le decoupage de l'utilisateur etait perdu sur une simple erreur de lecture.
+  # On les met d'abord de cote, puis on migre pour que le projet reste ouvrable.
+  .mettre_de_cote_ug(project_id)
   migrate_project_v1_to_v2(project_id, projet)
+}
+
+
+#' Set aside unreadable UGF files before a migration overwrites them
+#'
+#' @description
+#' Moves `tenements.gpkg`, `atomes.gpkg` and `ugs.json` - when any exists - to
+#' `data/ug_sauvegarde_<timestamp>/`, records the folder in
+#' `metadata$ug_sauvegarde` and warns. Nothing is deleted: the user's layout
+#' can be restored by hand.
+#'
+#' @param project_id Character.
+#' @return The backup directory, or `NULL` when there was nothing to set aside.
+#' @noRd
+.mettre_de_cote_ug <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) return(invisible(NULL))
+  data_dir <- file.path(project_path, "data")
+  fichiers <- file.path(data_dir, c("tenements.gpkg", "atomes.gpkg", "ugs.json"))
+  fichiers <- fichiers[file.exists(fichiers)]
+  if (!length(fichiers)) return(invisible(NULL))
+
+  dest <- file.path(data_dir,
+                    paste0("ug_sauvegarde_", format(Sys.time(), "%Y%m%d_%H%M%S")))
+  dir.create(dest, recursive = TRUE, showWarnings = FALSE)
+  ok <- file.rename(fichiers, file.path(dest, basename(fichiers)))
+  if (!all(ok)) {
+    # Repli : copier (le fichier reste en place et sera ecrase, mais la copie
+    # est sauve).
+    file.copy(fichiers[!ok], dest, overwrite = TRUE)
+  }
+  cli::cli_warn(c(
+    "Projet {project_id} : donnees UGF illisibles, mises de cote avant migration.",
+    i = "Sauvegarde : {dest}"))
+  tryCatch(update_project_metadata(project_id, list(ug_sauvegarde = basename(dest))),
+           error = function(e) NULL)
+  # Le decoupage recree par la migration a d'autres `ug_id` : les indicateurs
+  # calcules sur l'ancien ne correspondent plus.
+  tryCatch(invalidate_indicators(project_id), error = function(e) NULL)
+  invisible(dest)
 }
 
 # ==============================================================================

@@ -187,3 +187,33 @@ test_that("db_save_parcels ne laisse pas passer la note S4 de dbDataType", {
   expect_no_message(db_save_parcels(con = NULL, "proj", parcels))
   expect_true(ecrit)
 })
+
+
+test_that("db_save_project annule tout si une etape echoue", {
+  # En autocommit, un echec apres le DELETE laissait le projet sans parcelles.
+  skip_if_not_installed("RSQLite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  DBI::dbExecute(con, "CREATE TABLE parcels (project_id TEXT, id TEXT)")
+  DBI::dbExecute(con, "INSERT INTO parcels VALUES ('p1', 'ancienne')")
+
+  vrai_execute <- DBI::dbExecute
+  local_mocked_bindings(
+    db_save_parcels = function(con, project_id, parcels) {
+      vrai_execute(con, "DELETE FROM parcels WHERE project_id = 'p1'")
+      vrai_execute(con, "INSERT INTO parcels VALUES ('p1', 'nouvelle')")
+      stop("colonne absente")
+    })
+  # L'upsert du projet est du SQL PostgreSQL : simule ici.
+  local_mocked_bindings(dbExecute = function(conn, statement, ...) {
+    if (grepl("nemeton.projects", statement, fixed = TRUE)) 1L
+    else vrai_execute(conn, statement, ...)
+  }, .package = "DBI")
+
+  parcels <- sf::st_sf(id = "x", geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154))
+  ok <- suppressWarnings(nemetonshiny:::db_save_project(
+    con, "p1", list(name = "P1"), parcels = parcels))
+  expect_false(ok)
+  # Retour arriere : l'ancienne parcelle est toujours la, la nouvelle non.
+  expect_equal(DBI::dbGetQuery(con, "SELECT id FROM parcels")$id, "ancienne")
+})

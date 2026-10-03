@@ -1497,6 +1497,7 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::showNotification(
         .running_notif_content(i18n$t("regen_frost_running"), rv$frost_start),
         id = session$ns("frost_notif"), type = "message", duration = NULL)
+      rv$frost_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)  # projet du run (resultat rendu a CE projet)
       frost_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
       invisible(TRUE)
     }
@@ -1519,6 +1520,11 @@ mod_regeneration_server <- function(id, app_state) {
         rv$frost_running <- FALSE
         rv$frost_start <- NULL
         shiny::removeNotification(session$ns("frost_notif"))
+      }
+      if (identical(st, "success") && !.est_projet_courant(app_state, rv$frost_pid)) {
+        # Lance sur un autre projet : le resultat est sur SON disque, il sera
+        # relu a sa reouverture. Ne pas l'injecter dans le projet ouvert.
+        return()
       }
       if (identical(st, "success")) {
         res <- tryCatch(frost_task$result(), error = function(e) NULL)
@@ -1614,6 +1620,7 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::showNotification(
         .running_notif_content(i18n$t("regen_context_computing"), rv$context_start),
         id = session$ns("context_notif"), type = "message", duration = NULL)
+      rv$context_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
       context_task$invoke(units, project_path, view, (input$buffer_km %||% 25) * 1000,
                           .dev_pkg_path, get_app_options())
     }, ignoreNULL = FALSE)
@@ -1656,6 +1663,14 @@ mod_regeneration_server <- function(id, app_state) {
         rv$context_running <- FALSE
         rv$context_start <- NULL
         shiny::removeNotification(session$ns("context_notif"))
+      }
+      if (identical(st, "success") && !.est_projet_courant(app_state, rv$context_pid)) {
+        # Raster d'un autre projet : ne pas le marquer « charge » pour celui-ci,
+        # et relancer le chargement pour le projet ouvert.
+        rv$context_loaded_view <- NULL
+        rv$context_raster <- NULL
+        rv$context_refresh <- (shiny::isolate(rv$context_refresh) %||% 0) + 1
+        return()
       }
       if (identical(st, "success")) {
         res <- tryCatch(context_task$result(), error = function(e) NULL)
@@ -1739,6 +1754,7 @@ mod_regeneration_server <- function(id, app_state) {
       # est ensuite rafraichi phase par phase par l'observe de poll ci-dessous.
       shiny::showNotification(i18n$t("regen_engine_running"), type = "message",
                               duration = NULL, id = session$ns("engine_notif"))
+      rv$engine_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)  # projet du run (resultat rendu a CE projet)
       engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
       invisible(TRUE)
     }
@@ -1972,6 +1988,15 @@ mod_regeneration_server <- function(id, app_state) {
                         if (identical(st, "success")) .message_annees()
                         else pipeline_task_error(engine_task, i18n$t("error")))
         pipeline_req(NULL)
+      }
+      if (identical(st, "success") && !.est_projet_courant(app_state, rv$engine_pid)) {
+        # Moteur lance sur un autre projet : ses fichiers sont ecrits dans le
+        # dossier de CE projet ; n'en afficher ni les statistiques ni le
+        # resultat ici, et ne pas effacer le fichier de statut du projet ouvert.
+        rv$engine_running <- FALSE
+        rv$engine_start <- NULL
+        shiny::removeNotification(session$ns("engine_notif"))
+        return()
       }
       if (identical(st, "success")) {
         rv$engine_running <- FALSE

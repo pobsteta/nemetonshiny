@@ -285,12 +285,11 @@ test_that("export_action_plan_gpkg writes actions + ugf layers", {
   expect_equal(nrow(acts), 2L)
   expect_true(all(c("ug_id", "type", "annee_cible", "annee_civile")
                   %in% names(acts)))
-  # annee_civile must be the civil year derived from current year +
-  # annee_cible - 1. Sort by annee_cible to make the assertion stable.
+  # annee_civile = annee de reference du plan + annee_cible, comme a l'ecran
+  # (le GPKG retranchait un an jusqu'en v0.152.4).
   acts <- acts[order(acts$annee_cible), ]
-  this_year <- as.integer(format(Sys.Date(), "%Y"))
-  expect_equal(acts$annee_civile,
-               c(this_year + 2L, this_year + 3L))
+  base <- nemetonshiny:::action_plan_annee_base(plan)
+  expect_equal(acts$annee_civile, c(base + 3L, base + 4L))
   # The derived column must appear immediately after annee_cible.
   nm <- names(acts)
   expect_equal(match("annee_civile", nm), match("annee_cible", nm) + 1L)
@@ -489,4 +488,37 @@ test_that("le conseil IA insere perd son bloc JSON d'actions", {
   expect_false(grepl("actions", out, fixed = TRUE))
   expect_match(out, "Eclaircir la parcelle 12 en 2028.", fixed = TRUE)
   expect_match(out, "Puis surveiller.", fixed = TRUE)
+})
+
+
+
+test_that("le calendrier du plan ne glisse plus au 1er janvier", {
+  # Une coupe prevue en 2030, saisie en 2026 (decalage 4), s'affichait 2031 en
+  # 2027 : le decalage etait recompte depuis l'annee COURANTE.
+  plan <- local({
+    local_mocked_bindings(.annee_courante = function() 2026L)
+    nemetonshiny:::init_empty_action_plan("p")
+  })
+  expect_identical(plan$annee_base, 2026L)
+  local_mocked_bindings(.annee_courante = function() 2027L)
+  expect_identical(nemetonshiny:::action_plan_annee_civile(plan, 4L), 2030L)
+  expect_identical(nemetonshiny:::action_plan_annee_civile(plan, c(1L, NA, 2031L)),
+                   c(2027L, NA, 2031L))
+})
+
+test_that("un plan existant est ancre sur l'annee de sa premiere relecture", {
+  withr::with_tempdir({
+    racine <- file.path(getwd(), "projects")
+    dir.create(file.path(racine, "p1", "data"), recursive = TRUE)
+    local_mocked_bindings(get_projects_root = function() racine)
+    # Plan d'avant v0.152.4 : pas d'annee_base.
+    jsonlite::write_json(list(version = 1L, project_id = "p1", actions = list()),
+                         nemetonshiny:::get_action_plan_path("p1"), auto_unbox = TRUE)
+    local_mocked_bindings(.annee_courante = function() 2026L)
+    plan <- nemetonshiny:::load_action_plan("p1")
+    expect_identical(as.integer(plan$annee_base), 2026L)
+    nemetonshiny:::save_action_plan("p1", plan)
+    local_mocked_bindings(.annee_courante = function() 2028L)
+    expect_identical(as.integer(nemetonshiny:::load_action_plan("p1")$annee_base), 2026L)
+  })
 })

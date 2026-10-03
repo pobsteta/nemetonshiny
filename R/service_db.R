@@ -312,7 +312,13 @@ db_init_schema <- function(con = NULL) {
 #' @noRd
 db_save_project <- function(con, project_id, metadata, parcels = NULL,
                             indicators = NULL) {
-  tryCatch({
+  # UNE transaction : le projet, ses parcelles et ses indicateurs sont
+  # remplaces ensemble ou pas du tout. En autocommit, un echec d'insertion
+  # apres le `DELETE` laissait le projet sans parcelles ni indicateurs, et deux
+  # synchronisations concurrentes (DELETE, DELETE, INSERT, INSERT) dupliquaient
+  # les parcelles. RPostgres pose un SAVEPOINT pour ses propres ecritures
+  # quand une transaction est deja ouverte.
+  tryCatch(DBI::dbWithTransaction(con, {
     # Upsert project
     DBI::dbExecute(con, "
       INSERT INTO nemeton.projects (project_id, name, description, status, ndp_level,
@@ -349,8 +355,8 @@ db_save_project <- function(con, project_id, metadata, parcels = NULL,
 
     cli::cli_alert_success("Project {.val {project_id}} saved to database")
     TRUE
-  }, error = function(e) {
-    cli::cli_warn("Failed to save project to database: {e$message}")
+  }), error = function(e) {
+    cli::cli_warn("Failed to save project to database (rolled back): {e$message}")
     FALSE
   })
 }
