@@ -3,7 +3,7 @@
 # Un projet est un dossier sur disque, ecrit par la session ET par des workers
 # de calcul qui peuvent etre tues en cours de route (plafond memoire, OOM). Une
 # ecriture en place interrompue laissait un `metadata.json` tronque (projet
-# « corrompu », propose a la suppression) ou un GeoPackage supprime avant
+# " corrompu ", propose a la suppression) ou un GeoPackage supprime avant
 # d'etre reecrit. Regle : on ecrit une copie a cote, puis on la renomme sur la
 # cible - un renommage dans le meme dossier est atomique sous POSIX.
 

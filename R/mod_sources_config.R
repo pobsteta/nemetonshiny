@@ -585,8 +585,8 @@ mod_sources_config_server <- function(id, app_state) {
     # Production IFN par SER -> P2 / E1 (spec 054)
     # ========================================
     #
-    # Deux modes OPT-IN du coeur. P2 « IFN » = production de la sylvoecoregion
-    # (m3/ha/an, Fay-Herriot), pas l'indice de station de l'UGF. E1 « flux » =
+    # Deux modes OPT-IN du coeur. P2 " IFN " = production de la sylvoecoregion
+    # (m3/ha/an, Fay-Herriot), pas l'indice de station de l'UGF. E1 " flux " =
     # la recolte suit P2 ; il n'a de sens qu'avec P2 en mode IFN, d'ou son
     # affichage conditionnel. La part recoltee n'a PAS de defaut cote coeur :
     # l'utilisateur la choisit, ou retient le taux observe par l'IFN - et dans
@@ -864,7 +864,7 @@ mod_sources_config_server <- function(id, app_state) {
       }
       tryCatch({
         # Le seuil se saisit en POUR CENT et se range en part : l'utilisateur
-        # pense « 10 % », le coeur compare des parts.
+        # pense " 10 % ", le coeur compare des parts.
         seuil <- suppressWarnings(as.numeric(input$onf_seuil_cfg))
         if (length(seuil) != 1L || is.na(seuil)) seuil <- 0
         set_project_onf_params(

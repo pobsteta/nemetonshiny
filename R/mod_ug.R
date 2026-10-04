@@ -258,7 +258,7 @@ mod_ug_map_actions_bar <- function(id) {
         i18n$t("onf_grain_parcelle")
       ),
       # Domanialite, purge et seuil ont quitte cette barre pour
-      # « Parametres > Sources & parametres » : ce sont des CALIBRAGES, regles
+      # " Parametres > Sources & parametres " : ce sont des CALIBRAGES, regles
       # une fois par massif, alors que le bouton ci-dessous est un geste qu'on
       # repete. Meme mouvement que les seuils FAST (v0.126.2) et les calibrages
       # de quatre onglets (v0.128.0). Le rappel des valeurs en vigueur reste
@@ -434,7 +434,7 @@ mod_ug_server <- function(id, app_state) {
     # Toute edition d'UGF passe par ici. Quand l'affectation tenement -> UGF
     # change, `save_ug_data()` invalide les indicateurs sur disque ; on vide
     # aussi ceux EN MEMOIRE, sinon la carte et la reGeneration continuaient
-    # d'afficher l'ancien decoupage et « Lancer les calculs » ne reapparaissait
+    # d'afficher l'ancien decoupage et " Lancer les calculs " ne reapparaissait
     # pas.
     .sauver_ug <- function(projet) {
       ok <- save_ug_data(projet$metadata$id, projet)
@@ -1620,20 +1620,20 @@ mod_ug_server <- function(id, app_state) {
     shiny::outputOptions(output, "ug_map_count", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "ug_map_surface", suspendWhenHidden = FALSE)
 
-    # La CARTE aussi - c'etait l'oubli du bloc ci-dessus. « Carte UGF » est un
-    # sous-onglet NON-DEFAUT (le defaut est « Carte cadastrale ») : suspendue,
+    # La CARTE aussi - c'etait l'oubli du bloc ci-dessus. " Carte UGF " est un
+    # sous-onglet NON-DEFAUT (le defaut est " Carte cadastrale ") : suspendue,
     # la carte n'existe pas encore cote client au moment ou l'observer de dessin
     # emet ses `leafletProxy()`, et leaflet jette silencieusement les messages
-    # adresses a une carte absente du DOM (« Couldn't find map with id
-    # ug-ug_map » dans la console du navigateur). Symptome : au PREMIER passage
-    # sur « Carte UGF », ni les tenements ni les UGF n'apparaissent ; il faut
-    # aller sur « Tableau UGF » et revenir - la carte existe alors, et le
+    # adresses a une carte absente du DOM (" Couldn't find map with id
+    # ug-ug_map " dans la console du navigateur). Symptome : au PREMIER passage
+    # sur " Carte UGF ", ni les tenements ni les UGF n'apparaissent ; il faut
+    # aller sur " Tableau UGF " et revenir - la carte existe alors, et le
     # redessin declenche par la navigation s'applique.
     #
     # Les cinq autres cartes leaflet de sous-onglets non-defaut de l'app
     # portent deja cette option pour exactement cette raison (cf. le
-    # commentaire de `mod_monitoring_fordead_map.R` : « peut rester suspendu /
-    # s'initialiser a taille 0 -> clics et leafletProxy inoperants »).
+    # commentaire de `mod_monitoring_fordead_map.R` : " peut rester suspendu /
+    # s'initialiser a taille 0 -> clics et leafletProxy inoperants ").
     # `ug_map` etait la seule exception.
     #
     # Le cout est nul : ce `renderLeaflet` ne produit qu'une carte VIDE (fond
@@ -2371,7 +2371,7 @@ mod_ug_server <- function(id, app_state) {
 
           # Purge optionnelle, APRES le croisement. Elle lit la part forestiere
           # RELEVEE PAR le croisement (`out$part_foret`) et non plus l'UGF
-          # « Hors foret publique » : celle-ci n'existe plus, chaque bout ayant
+          # " Hors foret publique " : celle-ci n'existe plus, chaque bout ayant
           # rejoint son voisin. Ce chemin-ci est le SEUL qui la propose - une
           # selection faite a la main peut deborder, un CSV ne le peut pas.
           projet_final <- out$projet
@@ -2422,7 +2422,7 @@ mod_ug_server <- function(id, app_state) {
               type = "warning", duration = 10, session = session)
           }
           # Ce que le rattachement a deplace. Le message d'avant disait
-          # « X ha hors foret publique » : depuis que plus rien ne l'est, il
+          # " X ha hors foret publique " : depuis que plus rien ne l'est, il
           # decrivait une situation qui n'existe plus.
           sr <- out$surface_rattachee_ha %||% 0
           if (sr > 0.05) {
@@ -2582,8 +2582,8 @@ mod_ug_server <- function(id, app_state) {
                 # bouton ONF, ou la selection est faite a la main sur la carte
                 # et peut deborder.
                 #
-                # Ce qui reglait le probleme d'origine - l'UGF « Hors foret
-                # publique » survivant a l'import - n'est plus la purge mais le
+                # Ce qui reglait le probleme d'origine - l'UGF " Hors foret
+                # publique " survivant a l'import - n'est plus la purge mais le
                 # RATTACHEMENT : chaque bout de parcelle cadastrale sans numero
                 # forestier rejoint la parcelle voisine avec laquelle il partage
                 # la plus longue frontiere. Rien n'est mis de cote, donc rien ne

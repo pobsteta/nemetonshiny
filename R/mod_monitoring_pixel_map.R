@@ -253,7 +253,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     pixel_stack_r <- shiny::reactive(stack_rv())
     # Signature (cache, scenes, indice) du dernier stack construit avec
     # succes. L'onglet actif est une dependance de l'observer ci-dessous :
-    # sans cette memoire, chaque retour sur « Suivi sanitaire » relancait
+    # sans cette memoire, chaque retour sur " Suivi sanitaire " relancait
     # `build_index_stack` - ~9 s bloquantes sur 327 scenes (projet armn,
     # mesure 2026-09-23) - pour reconstruire le meme stack.
     #
@@ -261,7 +261,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # (`cache_result = TRUE`, sous `<project>/cache/layers/index_stack`) :
     # la memoire de signature evite l'appel dans la session, le cache disque
     # evite le recalcul entre sessions et au retour sur un indice deja vu
-    # (relecture ~0,05 s au lieu de ~9 s, mesure cœur sur armn).
+    # (relecture ~0,05 s au lieu de ~9 s, mesure coeur sur armn).
     stack_sig <- NULL
 
     shiny::observe({
@@ -295,7 +295,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         out <- tryCatch(
           # `parallel = FALSE` (defaut) : sans plan multisession permanent,
           # furrr tournerait en sequentiel avec le surcout wrap/unwrap
-          # (reponse cœur 2026-09-23). Le repertoire de cache par defaut
+          # (reponse coeur 2026-09-23). Le repertoire de cache par defaut
           # est `dirname(cd)/index_stack`, soit `cache/layers/index_stack`.
           nemeton::build_index_stack(cd, sdf, index = idx,
                                      cache_result = TRUE),

@@ -72,7 +72,7 @@ mod_home_ui <- function(id) {
       # Search Section (collapsible)
       # `search_card` porte la CARTE ENTIERE (en-tete + corps). C'est l'ancre
       # du tour guide : ancre sur `search_collapse` (le corps seul), le cadre
-      # laissait le titre « Rechercher une commune... » sous le voile sombre.
+      # laissait le titre " Rechercher une commune... " sous le voile sombre.
       htmltools::tags$div(
         id = ns("search_card"),
         class = "card mb-3",
@@ -116,11 +116,11 @@ mod_home_ui <- function(id) {
       # Progress Module (shown during computation)
       mod_progress_ui(ns("progress")),
 
-      # Bloc « Tableau des actions » : il REGROUPE desormais les actions de
-      # projet (« Voir les resultats », « Reessayer », « Lancer le calcul »)
+      # Bloc " Tableau des actions " : il REGROUPE desormais les actions de
+      # projet (" Voir les resultats ", " Reessayer ", " Lancer le calcul ")
       # et le lancement enchaine. Elles flottaient au-dessus du bloc alors
       # qu'elles relevent de la meme famille de geste - un bloc qui s'appelle
-      # « Tableau des actions » et qui n'en contient qu'une seule ne tenait
+      # " Tableau des actions " et qui n'en contient qu'une seule ne tenait
       # pas sa promesse. L'id `compute_section` est conserve tel quel - rien ne
       # le cible aujourd'hui (verifie : aucune occurrence en R ni en JS), mais
       # le changer serait un remaniement gratuit dans un commit qui deplace.
@@ -1215,7 +1215,7 @@ mod_home_server <- function(id, app_state) {
     })
 
     # ------------------------------------------------------------------
-    # Lancement enchaine : etape « indicateurs »
+    # Lancement enchaine : etape " indicateurs "
     # ------------------------------------------------------------------
     # Contrat (cf. service_pipeline.R) : tout chemin qui a reconnu la requete
     # DOIT repondre, sinon la chaine reste bloquee sur cette etape. Les deux
@@ -1303,8 +1303,8 @@ mod_home_server <- function(id, app_state) {
           }
         }, error = function(e) e$message)
 
-        # Le message brut du coeur ne dit rien a l'utilisateur : « failed in its
-        # capped child process (exit -15) » est le visage habituel d'un
+        # Le message brut du coeur ne dit rien a l'utilisateur : " failed in its
+        # capped child process (exit -15) " est le visage habituel d'un
         # depassement de plafond memoire. `.compute_error_message()` le traduit
         # et nomme le remede. i18n, aussi : ce `paste()` francais en dur
         # traversait la regle depuis longtemps.
@@ -1427,9 +1427,9 @@ mod_home_server <- function(id, app_state) {
           # `later::later()` qui s'execute HORS contexte reactif - comme le
           # signalent deja le `shiny::isolate(computing_project_id())` plus haut
           # et le commentaire d'entree de la boucle. Sans lui, la lecture du
-          # reactiveVal leve « Operation not allowed without an active reactive
-          # context », l'erreur remonte, la reponse n'est jamais posee et le
-          # lancement enchaine reste bloque sur « Indicateurs / En cours »
+          # reactiveVal leve " Operation not allowed without an active reactive
+          # context ", l'erreur remonte, la reponse n'est jamais posee et le
+          # lancement enchaine reste bloque sur " Indicateurs / En cours "
           # indefiniment - alors meme que le calcul, lui, s'est bien termine.
           # Constate sur Couchey le 2026-08-29.
           #
@@ -1636,9 +1636,9 @@ mod_home_server <- function(id, app_state) {
 
       # Le toast n'est pose QUE si une chaine tournait vraiment. Depuis le
       # 2026-09-14 ce signal est partage : les boutons d'annulation de
-      # mod_monitoring le posent aussi, pour que « un arret est un arret ».
+      # mod_monitoring le posent aussi, pour que " un arret est un arret ".
       # Sans cette garde, arreter une simple ingestion S2 afficherait
-      # « Calcul annule » alors qu'aucun calcul ne tournait.
+      # " Calcul annule " alors qu'aucun calcul ne tournait.
       if (!is.null(project_id)) {
         shiny::showNotification(
           i18n$t("computation_cancelled") %||% "Calcul annul\u00e9",
@@ -1716,7 +1716,7 @@ mod_home_server <- function(id, app_state) {
 
     # ========================================
     # ================================================================
-    # Indicateurs invalides par une montee de version du cœur
+    # Indicateurs invalides par une montee de version du coeur
     # ================================================================
     # `load_project()` porte `indicators_invalidated = TRUE` sur le SEUL
     # chargement qui vient de jeter le parquet perime (spec 048). Sans ce

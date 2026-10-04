@@ -1,6 +1,7 @@
 YEAR: 2026
 COPYRIGHT HOLDER: Pascal Obstetar
-LICENSE: GPL-3
+LICENSE: GPL (>= 3) - GNU General Public License version 3 or later
+  (full text: LICENSE.md)
 
 Relicensing note (2026-07-01):
   nemetonshiny was previously distributed under EUPL v1.2. Since it now

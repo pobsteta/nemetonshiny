@@ -70,7 +70,7 @@ mod_action_plan_ui <- function(id) {
         # Ambre + trois etoiles : ce bouton produit du contenu GENERE, et
         # l'ambre ne dit pas un niveau d'action - elle dit une PROVENANCE. Il
         # etait reste vert avec une baguette magique, alors que la v0.130.10
-        # annoncait que l'accent couvrait « toute l'app » : la Synthese et la
+        # annoncait que l'accent couvrait " toute l'app " : la Synthese et la
         # Famille avaient un test, le Plan d'actions n'en avait pas.
         htmltools::tags$h6(i18n$t("action_plan_section_ia")),
         shiny::actionButton(
@@ -356,7 +356,7 @@ mod_action_plan_ui <- function(id) {
           col_widths = c(6, 6),
           fillable = TRUE,
 
-          # Barre laterale DROITE « Couche affichee », comme la carte de
+          # Barre laterale DROITE " Couche affichee ", comme la carte de
           # reGeneration : le choix de coloration (annee / type / priorite)
           # quitte l'en-tete, ou il se serrait contre le titre, pour un panneau
           # a cote de la carte.
@@ -373,9 +373,9 @@ mod_action_plan_ui <- function(id) {
                 sidebar = bslib::sidebar(
                   position = "right", open = "always", width = 150,
                   htmltools::tags$strong(i18n$t("action_plan_map_layer")),
-                  # Un « i » par couche : il dit comment la couleur d'une UGF
+                  # Un " i " par couche : il dit comment la couleur d'une UGF
                   # est choisie quand elle porte plusieurs actions.
-                  # `info_popover_in_label()` : un clic sur le « i » ne
+                  # `info_popover_in_label()` : un clic sur le " i " ne
                   # selectionne pas la couche.
                   shiny::radioButtons(
                     ns("map_color_by"),
@@ -491,8 +491,8 @@ mod_action_plan_ui <- function(id) {
   )
 }
 
-# La carte des actions est-elle affichee ? Onglet principal « Plan
-# d'actions » et sous-onglet « Carte + Tableau » (le defaut tant que le
+# La carte des actions est-elle affichee ? Onglet principal " Plan
+# d'actions " et sous-onglet " Carte + Tableau " (le defaut tant que le
 # sous-onglet n'a pas encore ete rapporte par le navigateur).
 # @noRd
 .action_plan_map_visible <- function(main_tab, inner_tab) {
@@ -565,7 +565,7 @@ mod_action_plan_server <- function(id, app_state) {
                                       pending_chat_actions = NULL)
 
     # La carte n'a de dimensions que lorsqu'elle est affichee : onglet
-    # principal « Plan d'actions » ET sous-onglet « Carte + Tableau ».
+    # principal " Plan d'actions " ET sous-onglet " Carte + Tableau ".
     map_visible <- function() {
       .action_plan_map_visible(app_state$active_main_tab, input$inner_nav)
     }
@@ -1603,7 +1603,7 @@ mod_action_plan_server <- function(id, app_state) {
           i18n$t(paste0("action_plan_status_", s)), character(1))
       )
 
-      # Section « Martelage » quand le retour Marculus porte des tiges pour
+      # Section " Martelage " quand le retour Marculus porte des tiges pour
       # cette action : plan de situation, diagramme par classe, tableau.
       designees <- tryCatch(
         marculus_tiges_designees(marculus_tiges_rv(), action_id),
@@ -1968,7 +1968,7 @@ mod_action_plan_server <- function(id, app_state) {
       }
     })
 
-    # Insere la derniere reponse de « Affiner le plan avec l'IA » dans le
+    # Insere la derniere reponse de " Affiner le plan avec l'IA " dans le
     # commentaire de TOUTES les UGF selectionnees (remplace le contenu,
     # modifiable ensuite).
     shiny::observeEvent(input$ug_comment_insert_ai, {
@@ -2016,7 +2016,7 @@ mod_action_plan_server <- function(id, app_state) {
             # Insere un contenu GENERE : accent ambre, comme toute surface IA.
             icon = bsicons::bs_icon("stars"), class = "btn-sm btn-ia")),
         htmltools::div(class = "row",
-          # Une fiche par ligne : la carte « Tableau des actions » partage sa
+          # Une fiche par ligne : la carte " Tableau des actions " partage sa
           # largeur avec la carte ; sur deux colonnes, le tableau des actions
           # (6 colonnes) debordait sur la fiche voisine.
           lapply(sel, function(ug) htmltools::div(class = "col-12",
@@ -2063,7 +2063,7 @@ mod_action_plan_server <- function(id, app_state) {
           NULL
         })
       # Un CSV de l'ancien format n'a ni id de contexte ni uuid de tige : le
-      # dire, avec la marche a suivre, plutot qu'un « fichier illisible ».
+      # dire, avec la marche a suivre, plutot qu'un " fichier illisible ".
       if (length(res$vides %||% character())) {
         shiny::showNotification(
           paste(i18n$t("marculus_import_vide_fichier"),
@@ -2105,7 +2105,7 @@ mod_action_plan_server <- function(id, app_state) {
           type = "warning", duration = 10)
       }
       # Le bilan va DANS la synthese : en toast, il recouvrait le bouton
-      # « Fermer » de la fenetre, en bas a droite. Sans synthese a montrer,
+      # " Fermer " de la fenetre, en bas a droite. Sans synthese a montrer,
       # il reste un toast.
       if (!isTRUE(.marculus_montrer_synthese(i18n, bilan))) {
         shiny::showNotification(bilan, type = "message", duration = 10)
@@ -2143,7 +2143,7 @@ mod_action_plan_server <- function(id, app_state) {
                          sprintf(i18n$t("marculus_non_cubees_fmt"), nc)))
       })
       # Defilement DANS la fenetre (`modal-dialog-scrollable`) : titre et
-      # « Fermer » restent visibles quel que soit le nombre d'actions.
+      # " Fermer " restent visibles quel que soit le nombre d'actions.
       m <- shiny::modalDialog(
         title = i18n$t("marculus_synthese_title"), size = "xl", easyClose = TRUE,
         if (!is.null(bilan))
@@ -2473,9 +2473,9 @@ mod_action_plan_server <- function(id, app_state) {
 
     # ORCHESTRATION - corps extrait. Le lancement enchaine impose
     # `scope = "all"` : il n'y a pas de selection d'UGF a ce moment-la, et
-    # une chaine « tout calculer » qui ne planifierait qu'une partie des UGF
+    # une chaine " tout calculer " qui ne planifierait qu'une partie des UGF
     # serait un piege silencieux.
-    # `overwrite` est un ARGUMENT : la chaine « Tout calculer » relisait
+    # `overwrite` est un ARGUMENT : la chaine " Tout calculer " relisait
     # `input$gen_overwrite`, reste coche d'une ouverture precedente de la
     # modale, et effacait alors toutes les actions - manuelles et revenues du
     # terrain comprises.
@@ -2599,7 +2599,7 @@ mod_action_plan_server <- function(id, app_state) {
       .generer_plan_actions(overwrite = isTRUE(input$gen_overwrite))
     })
 
-    # --- Lancement enchaine : etape « ia_plan » ------------------------
+    # --- Lancement enchaine : etape " ia_plan " ------------------------
     # Vient APRES `ia_synthese` dans le registre : le plan se construit sur
     # les commentaires que la synthese vient d'ecrire (`plan_llm_context()`).
     shiny::observeEvent(app_state$pipeline_request, {

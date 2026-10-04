@@ -519,7 +519,7 @@ mod_monitoring_server <- function(id, app_state) {
         # Un run ANNULE rend une liste `status = "cancelled"` SANS lever (coeur
         # : monitoring.R:489, fordead_pipeline.R:812, reconfort_pipeline.R:862).
         # Pour l'ExtendedTask c'est donc un "success", et la chaine enregistrait
-        # « ok » pour une etape que l'utilisateur venait d'arreter : le rapport
+        # " ok " pour une etape que l'utilisateur venait d'arreter : le rapport
         # final annoncait une reussite la ou rien n'avait ete produit.
         #
         # Defaut PREEXISTANT sur FAST et FORDEAD ; etendu a RECONFORT par le
@@ -528,7 +528,7 @@ mod_monitoring_server <- function(id, app_state) {
         #
         # `result()` n'est lu que sur un "success" (sur "error" il re-leve).
         # Le `shiny.silent.error` doit remonter et non etre avale : c'est lui
-        # qui signale « pas encore pret » a Shiny (meme idiome l. 3745).
+        # qui signale " pas encore pret " a Shiny (meme idiome l. 3745).
         annule <- identical(item$st, "success") && identical(
           tryCatch(item$tk$result()$status,
                    error = function(e) {
@@ -1307,7 +1307,7 @@ mod_monitoring_server <- function(id, app_state) {
     #     Si absent -> message " lancer le calcul du projet d'abord "
     #     (ne PAS appeler la fonction).
     # ORCHESTRATION - corps extrait : le bouton d'enregistrement et l'etape
-    # « sante_zone » du lancement enchaine creent les zones par le meme
+    # " sante_zone " du lancement enchaine creent les zones par le meme
     # chemin.
     .enregistrer_zones_suivi <- function() {
       i18n <- i18n_r()
@@ -1439,7 +1439,7 @@ mod_monitoring_server <- function(id, app_state) {
       shiny::bindEvent(input$register, input$register_inline,
                        ignoreInit = TRUE)
 
-    # --- Lancement enchaine : etape « sante_zone » ---------------------
+    # --- Lancement enchaine : etape " sante_zone " ---------------------
     # Cree les zones de suivi du projet, prealable des trois moteurs sante.
     # L'enregistrement est SYNCHRONE : on repond dans la foulee, en relisant
     # les metadonnees pour savoir si une zone existe desormais - c'est le
@@ -2305,7 +2305,7 @@ mod_monitoring_server <- function(id, app_state) {
     # Signal d'arret partage
     # ------------------------------------------------------------------
     # `app_state$cancel_computation` est LE signal d'arret de l'app. Il est
-    # pose par « Arreter les calculs » (Tableau des actions, via
+    # pose par " Arreter les calculs " (Tableau des actions, via
     # mod_progress) et par les trois boutons d'annulation ci-dessus.
     #
     # Avant le 2026-09-14, mod_home l'observait seul : annuler depuis le
@@ -2486,7 +2486,7 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run, .lancer_fast())
 
-    # --- Lancement enchaine : etape « sante_fast » ---
+    # --- Lancement enchaine : etape " sante_fast " ---
     shiny::observeEvent(app_state$pipeline_request, {
       req <- app_state$pipeline_request
       if (!pipeline_targets(req, "sante_fast")) return()
@@ -2499,7 +2499,7 @@ mod_monitoring_server <- function(id, app_state) {
       # selectInput est alimente par `updateSelectInput()`, qui ne remonte au
       # serveur qu'apres un aller-retour CLIENT. Juste apres l'etape de
       # creation des zones, il est encore vide - les trois moteurs se sautaient
-      # donc sur « Aucune zone de suivi enregistree » alors que les quatre
+      # donc sur " Aucune zone de suivi enregistree " alors que les quatre
       # zones venaient d'etre creees en base (constate sur Couchey, run du
       # 2026-08-29). Troisieme occurrence du meme piege dans cette chaine.
       zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
@@ -3080,7 +3080,7 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_health, .lancer_fordead())
 
-    # --- Lancement enchaine : etape « sante_fordead » ---
+    # --- Lancement enchaine : etape " sante_fordead " ---
     shiny::observeEvent(app_state$pipeline_request, {
       req <- app_state$pipeline_request
       if (!pipeline_targets(req, "sante_fordead")) return()
@@ -3093,7 +3093,7 @@ mod_monitoring_server <- function(id, app_state) {
       # selectInput est alimente par `updateSelectInput()`, qui ne remonte au
       # serveur qu'apres un aller-retour CLIENT. Juste apres l'etape de
       # creation des zones, il est encore vide - les trois moteurs se sautaient
-      # donc sur « Aucune zone de suivi enregistree » alors que les quatre
+      # donc sur " Aucune zone de suivi enregistree " alors que les quatre
       # zones venaient d'etre creees en base (constate sur Couchey, run du
       # 2026-08-29). Troisieme occurrence du meme piege dans cette chaine.
       zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
@@ -3599,9 +3599,9 @@ mod_monitoring_server <- function(id, app_state) {
     # Arret d'un run RECONFORT. Extrait en helper : appele par le bouton
     # de l'onglet ET par le signal d'arret partage (cf. plus bas).
     #
-    # L'asymetrie signalee ici jusqu'au 2026-09-14 - « le coeur ne poll aucun
+    # L'asymetrie signalee ici jusqu'au 2026-09-14 - " le coeur ne poll aucun
     # reconfort_cancel.flag, on libere l'UI sans pouvoir interrompre le
-    # worker » - est levee : `run_reconfort_dieback(cancel_path=)` existe
+    # worker " - est levee : `run_reconfort_dieback(cancel_path=)` existe
     # depuis nemeton 0.196.0. Les trois moteurs Sante s'arretent maintenant
     # pour de vrai.
     .reset_reconfort_run <- function() {
@@ -3629,7 +3629,7 @@ mod_monitoring_server <- function(id, app_state) {
       # Le bouton ne disait RIEN, contrairement a FAST et FORDEAD. Maintenant
       # que le flag part, le silence serait pire qu'avant : l'UI se
       # deverrouille dans l'instant alors que le worker travaille encore une
-      # phase entiere. « Arret demande », donc - pas « arrete ».
+      # phase entiere. " Arret demande ", donc - pas " arrete ".
       shiny::showNotification(
         i18n_r()$t("monitoring_reconfort_run_cancel_requested"),
         id       = session$ns("reconfort_cancelled"),
@@ -3693,7 +3693,7 @@ mod_monitoring_server <- function(id, app_state) {
       out <- if (!is.null(cd)) file.path(cd, paste0("output_zone_", zid)) else NULL
 
       # Purge d'un flag residuel d'un run precedent. SANS CECI, le garde-fou
-      # anti-« phantom cancel » du coeur (.make_cancel_checker) verrait le
+      # anti-" phantom cancel " du coeur (.make_cancel_checker) verrait le
       # flag present a l'entree, DESARMERAIT l'annulation et previendrait par
       # un warning - le run suivant deviendrait ininterruptible. Symetrique a
       # FAST (l. 2390) et FORDEAD (l. 2924). Idempotent : `unlink` sur un
@@ -3725,7 +3725,7 @@ mod_monitoring_server <- function(id, app_state) {
       .invoke_reconfort()
     })
 
-    # --- Lancement enchaine : etape « sante_reconfort » ---
+    # --- Lancement enchaine : etape " sante_reconfort " ---
     shiny::observeEvent(app_state$pipeline_request, {
       req <- app_state$pipeline_request
       if (!pipeline_targets(req, "sante_reconfort")) return()
@@ -3738,7 +3738,7 @@ mod_monitoring_server <- function(id, app_state) {
       # selectInput est alimente par `updateSelectInput()`, qui ne remonte au
       # serveur qu'apres un aller-retour CLIENT. Juste apres l'etape de
       # creation des zones, il est encore vide - les trois moteurs se sautaient
-      # donc sur « Aucune zone de suivi enregistree » alors que les quatre
+      # donc sur " Aucune zone de suivi enregistree " alors que les quatre
       # zones venaient d'etre creees en base (constate sur Couchey, run du
       # 2026-08-29). Troisieme occurrence du meme piege dans cette chaine.
       zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
@@ -3792,7 +3792,7 @@ mod_monitoring_server <- function(id, app_state) {
         # Un run ANNULE entre aussi par ici. Sans cette branche il afficherait
         # le toast de succes, avec `n_alerts = NA` (donc un sprintf sur NA) et
         # un `$rasters` NULL passe au sous-module carte. C'etait sans
-        # consequence tant que le coeur ne rendait que « completed » - un
+        # consequence tant que le coeur ne rendait que " completed " - un
         # echec abortait ; ca cesse de l'etre des que `cancel_path` est
         # branche (nemeton >= 0.196.0).
         if (identical(result$status, "cancelled")) {
@@ -4108,7 +4108,7 @@ mod_monitoring_server <- function(id, app_state) {
 # Couchey le 2026-09-03 : RECONFORT echoue apres 20 h 19 (`exit 1`), et il ne
 # restait ni le NDJSON de 203 items ni le message de l'enfant - la sortie de
 # celui-ci part par ailleurs dans le `/dev/null` du worker `future` (cf. le
-# brief cœur `specs/BRIEF-nemeton-trace-enfant-plafonne.md`). Le diagnostic a
+# brief coeur `specs/BRIEF-nemeton-trace-enfant-plafonne.md`). Le diagnostic a
 # du etre reconstitue depuis les fichiers laisses par IOTA2.
 #
 # Sur SUCCES et sur ANNULATION on efface comme avant : il n'y a rien a

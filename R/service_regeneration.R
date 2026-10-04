@@ -847,10 +847,10 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:era5" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
                            list(year = p$year, i = p$i, n = p$n)),
-      # Un evenement par MOIS telecharge (cœur a venir - cf. specs/BRIEF-nemeton-
+      # Un evenement par MOIS telecharge (coeur a venir - cf. specs/BRIEF-nemeton-
       # era5-progression-mensuelle.md). Le compteur d'ANNEES disparait ici : le
-      # cœur n'en connait pas le rang depuis .rsen_forcage_era5(), et "2022 -
-      # mois 3/12" dit deja tout ce que "(1/1)" pretendait dire. Tant que le cœur
+      # coeur n'en connait pas le rang depuis .rsen_forcage_era5(), et "2022 -
+      # mois 3/12" dit deja tout ce que "(1/1)" pretendait dire. Tant que le coeur
       # n'emet pas cet evenement, cette branche est morte et rien ne change.
       "regen_expo:era5_mois" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
@@ -990,7 +990,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     # Trois causes distinctes, trois messages. Ce bloc est atteint quand la
     # grille LiDAR HD manque, ou la cle CDS, ou les deux - jamais parce que la
     # vegetation manquerait : ce cas-la est traite plus haut, DANS le bloc
-    # grille. Y afficher « structure de vegetation manquante » (ce que faisait
+    # grille. Y afficher " structure de vegetation manquante " (ce que faisait
     # ce code) designait la consequence en cachant la cause, et envoyait
     # chercher un LAI qui, meme present dans le cache, n'aurait servi a rien -
     # le repli satellite ne vit qu'a l'interieur du bloc grille.

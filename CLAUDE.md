@@ -106,7 +106,7 @@ Les ADR vivent dans `platform_nemeton/docs/`. Rappel des décisions structurante
 | 003 | OVHcloud (principal) + Scaleway GPU L4 (ponctuel) |
 | 004 | Mistral API (souveraineté FR), migration self-hosted possible |
 | 005 | OAuth2/OIDC via AgentConnect → Keycloak fédéré pour l'Europe |
-| 006 | EUPL v1.2 (plateforme) + MIT (packages R) + CC-BY 4.0 (données) |
+| 006 | Licences : nemetonshiny en **GPL-3 ou ultérieure** depuis le 2026-07-01 (EUPL v1.2 auparavant, relicence permise par son art. 5, imposée par le cœur GPL-3) + CC-BY 4.0 (données) |
 | 007 | Pipeline NDP : TreeSatAI (NDP 0) → PureForest (NDP 1) → local (NDP 2+) |
 | 008 | OGC, ETRS89/EPSG:3035 paneuropéen, INSPIRE, sources par pays |
 | 009 | 4+ packages (nemeton cœur, nemetonshiny app, opencanopy, tree_sat, maestro) |
@@ -388,7 +388,10 @@ Claude doit :
    dans `PLAN.md` sans qu'une release correspondante ait été poussée.
 
 5. Ouvrir une PR vers `main` et la merger → `release.yml` pose le tag +
-   la release. **Rien d'autre à faire** : le badge version du README est
+   la release. **`main` est protégée depuis le 2026-10-03** : les checks
+   `version-consistency`, `R-CMD-check` et `tests` doivent être verts avant le
+   merge (~35 min de CI) — attendre leur fin (`gh pr checks <n> --watch`) puis
+   `gh pr merge`, sans contourner par `--admin`. **Rien d'autre à faire** : le badge version du README est
    dynamique (`img.shields.io/github/v/release`) et se met à jour seul.
 
 6. **Repasser en cycle dev** : bumper DESCRIPTION en `X.Y.Z.900x`

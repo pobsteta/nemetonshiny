@@ -153,7 +153,7 @@ production_ifn_banner <- function(data, ind_col, i18n) {
       )
       htmltools::div(
         if (!is.na(k$ser)) htmltools::tags$strong(paste0(k$ser, " : ")),
-        paste(parts, collapse = " · ")
+        paste(parts, collapse = " \u00b7 ")
       )
     })
 
@@ -193,7 +193,7 @@ production_ifn_banner <- function(data, ind_col, i18n) {
 }
 
 
-#' Panel "production of the massif" (spec 054 §3 bis)
+#' Panel "production of the massif" (spec 054 S3 bis)
 #'
 #' @description
 #' The production of the union of the project's UGF, with the two figures that

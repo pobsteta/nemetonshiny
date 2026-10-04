@@ -360,7 +360,7 @@ download_forms_t_height <- function(aoi, years = NULL) {
   NULL
 }
 
-# First year of the IFN production model window (spec 054 §5.b: 2019-2024).
+# First year of the IFN production model window (spec 054 S5.b: 2019-2024).
 FORMS_T_FIRST_YEAR <- 2019L
 
 
