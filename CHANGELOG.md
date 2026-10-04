@@ -26,6 +26,7 @@ For a narrative, per-feature description of each release, see
 
 - Scores de famille et score global de la Synthese extraits dans
   `R/service_synthesis.R` (memes chiffres pour l'onglet et l'API).
+- Plancher `Imports: nemeton (>= 0.212.0)` (borne E1/E2 a 2,64).
 
 ### Fixed
 

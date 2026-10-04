@@ -190,14 +190,14 @@ projet_lire <- function(id, langue = "fr") {
   if (isTRUE(etat$migration_necessaire)) {
     raison <- c(
       if (isTRUE(etat$indicateurs_perimes)) sprintf(
-        "indicateurs calculés sous le sens v%d (courant : v%d)",
+        "indicateurs calcul\u00e9s sous le sens v%d (courant : v%d)",
         etat$sens_vu, etat$sens_courant),
-      if (isTRUE(etat$migration_ugf)) "unités de gestion absentes ou illisibles"
+      if (isTRUE(etat$migration_ugf)) "unit\u00e9s de gestion absentes ou illisibles"
     )
     .api_abort(c(
-      "Projet {.val {id}} : une migration serait nécessaire pour le lire.",
+      "Projet {.val {id}} : une migration serait n\u00e9cessaire pour le lire.",
       x = "{raison}",
-      i = "Rien n'a été modifié. {.fn projet_migrer} applique la migration (les indicateurs périmés sont mis de côté, pas supprimés)."
+      i = "Rien n'a \u00e9t\u00e9 modifi\u00e9. {.fn projet_migrer} applique la migration (les indicateurs p\u00e9rim\u00e9s sont mis de c\u00f4t\u00e9, pas supprim\u00e9s)."
     ), "nemetonshiny_projet_perime", etat = etat)
   }
 
@@ -286,7 +286,7 @@ parcelles_commune <- function(insee, ids = NULL) {
 projet_creer <- function(nom, parcelles, description = "", proprietaire = "",
                          profil_groupes = NULL) {
   if (!inherits(parcelles, "sf") || nrow(parcelles) == 0) {
-    cli::cli_abort("{.arg parcelles} doit être un objet sf non vide.")
+    cli::cli_abort("{.arg parcelles} doit \u00eatre un objet sf non vide.")
   }
   pr <- create_project(nom, description = description, owner = proprietaire,
                        parcels = parcelles, groupes_profile = profil_groupes)
@@ -313,12 +313,12 @@ projet_creer <- function(nom, parcelles, description = "", proprietaire = "",
 projet_calculer <- function(id, indicateurs = "all", progression = NULL) {
   etat <- projet_etat(id)
   if (isTRUE(etat$migration_necessaire)) {
-    .api_abort(c("Projet {.val {id}} : migration nécessaire avant le calcul.",
+    .api_abort(c("Projet {.val {id}} : migration n\u00e9cessaire avant le calcul.",
                  i = "Lancer {.fn projet_migrer} d'abord."),
                "nemetonshiny_projet_perime", etat = etat)
   }
   if (!is.null(progression) && !is.function(progression)) {
-    cli::cli_abort("{.arg progression} doit être une fonction ou NULL.")
+    cli::cli_abort("{.arg progression} doit \u00eatre une fonction ou NULL.")
   }
   res <- start_computation(id, indicators = indicateurs,
                            progress_callback = progression,
@@ -326,7 +326,7 @@ projet_calculer <- function(id, indicateurs = "all", progression = NULL) {
   if (!isTRUE(res$success)) {
     err <- res$error %||% res$state$errors %||% "erreur inconnue"
     if (is.list(err)) err <- vapply(err, function(e) paste(unlist(e), collapse = " "), "")
-    .api_abort(c("Calcul du projet {.val {id}} en échec.", x = "{err}"),
+    .api_abort(c("Calcul du projet {.val {id}} en \u00e9chec.", x = "{err}"),
                "nemetonshiny_calcul_echec", resultat = res)
   }
   invisible(res)
@@ -335,7 +335,7 @@ projet_calculer <- function(id, indicateurs = "all", progression = NULL) {
 .api_results <- function(id, call = rlang::caller_env()) {
   lu <- projet_lire(id)
   if (is.null(lu$familles)) {
-    .api_abort(c("Projet {.val {id}} : aucun indicateur calculé.",
+    .api_abort(c("Projet {.val {id}} : aucun indicateur calcul\u00e9.",
                  i = "Lancer {.fn projet_calculer} d'abord."),
                "nemetonshiny_sans_indicateurs", call = call)
   }
@@ -366,13 +366,13 @@ projet_calculer <- function(id, indicateurs = "all", progression = NULL) {
 projet_rapport <- function(id, fichier, langue = "fr", synthese = NULL,
                            familles = NULL, sources = NULL) {
   if (!is.null(synthese) && !(is.character(synthese) && length(synthese) == 1L)) {
-    cli::cli_abort("{.arg synthese} doit être une chaîne de caractères.")
+    cli::cli_abort("{.arg synthese} doit \u00eatre une cha\u00eene de caract\u00e8res.")
   }
   if (!is.null(familles)) {
     codes <- names(INDICATOR_FAMILIES)
     if (!is.list(familles) || is.null(names(familles)) ||
         !all(names(familles) %in% codes)) {
-      cli::cli_abort(c("{.arg familles} doit être une liste nommée par code de famille.",
+      cli::cli_abort(c("{.arg familles} doit \u00eatre une liste nomm\u00e9e par code de famille.",
                        i = "Codes : {.val {codes}}."))
     }
     familles <- Filter(function(x) is.character(x) && length(x) == 1L &&
@@ -395,7 +395,7 @@ projet_rapport <- function(id, fichier, langue = "fr", synthese = NULL,
                              synthesis_comments = synthese,
                              family_comments = familles)
   if (is.null(out) || !file.exists(fichier)) {
-    cli::cli_abort("Génération du PDF en échec : {.path {fichier}}.")
+    cli::cli_abort("G\u00e9n\u00e9ration du PDF en \u00e9chec : {.path {fichier}}.")
   }
   normalizePath(fichier)
 }

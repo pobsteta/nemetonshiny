@@ -16,6 +16,13 @@
   par l'ouverture dans l'application etait vu en sens v1, et ses indicateurs
   tout juste calcules etaient invalides a la premiere ouverture.
 
+### Changed — Plancher coeur
+
+- **`Imports: nemeton (>= 0.212.0)`** (brief coeur 0.212.0, seconde passe sur
+  les calculs) : la borne de normalisation d'E1/E2 double (2,64, densite
+  seche) ; tests alignes. Les projets existants sont a recalculer, beaucoup
+  d'indicateurs changent de valeur (cf. NEWS de `nemeton` 0.212.0).
+
 ### Added — API hors interface (brief aigora-nemeton du 2026-10-04)
 
 - **Neuf fonctions exportees** pour piloter un diagnostic sans l'application
