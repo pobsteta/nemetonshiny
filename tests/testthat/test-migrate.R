@@ -26,7 +26,7 @@ test_that("un projet en v2 est invalide, un projet en v3 ne l'est plus", {
              indicator_sense_version = vus$vue %||% 2L)
       },
       get_project_path = function(id) file.path(getwd(), "p1"),
-      invalidate_indicators = function(id) { vus$invalide <<- TRUE; TRUE },
+      invalidate_indicators = function(id, ...) { vus$invalide <<- TRUE; TRUE },
       update_project_metadata = function(id, updates, ...) {
         vus$ecrit <<- updates$indicator_sense_version; TRUE
       },

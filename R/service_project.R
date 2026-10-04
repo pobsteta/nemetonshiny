@@ -110,7 +110,13 @@ create_project <- function(name, description = "", owner = "", parcels = NULL,
     version = "0.7.0",
     parcels_count = 0L,
     indicators_computed = FALSE,
-    groupes_profile = groupes_profile
+    groupes_profile = groupes_profile,
+    # Un projet neuf n'a aucun indicateur calcule sous un sens anterieur. Sans
+    # ce marqueur, un projet cree puis calcule HORS interface (sans passer par
+    # load_project(), qui pose le marqueur a la premiere ouverture) etait vu
+    # en sens v1 : ses indicateurs tout juste calcules etaient invalides a la
+    # premiere ouverture.
+    indicator_sense_version = INDICATOR_SENSE_VERSION
  )
 
   # Save metadata
@@ -849,23 +855,34 @@ load_samples <- function(project_id, layer = "plots") {
 #' Invalidate cached indicator results
 #'
 #' @description
-#' Removes \code{indicators.parquet} and flips the \code{indicators_computed}
+#' Sets \code{indicators.parquet} aside and flips the \code{indicators_computed}
 #' metadata flag back to \code{FALSE}. Call this whenever the UGF layout
 #' changes in a way that invalidates previously computed indicator values
 #' (e.g. after a decoupage import that renumbers \code{ug_id}s - the
 #' cached values are keyed on ug_id and silently tell
 #' \code{compute_all_indicators()} that "everything is already done",
-#' leaving the new UGFs unpopulated).
+#' leaving the new UGFs unpopulated), or when the core changes the direction
+#' of an indicator (see [ensure_indicator_sense_current()]).
+#'
+#' The file is RENAMED, never deleted: \code{data/indicators.perime-v<sense>-<timestamp>.parquet}.
+#' Only the \code{INDICATORS_STALE_KEEP} most recent generations are kept, and
+#' the kept ones are listed in \code{metadata$indicateurs_perimes} (file,
+#' sense version, reason, date). An accidental load is therefore no longer a
+#' loss, and the user can compare results before / after a sense change.
+#' Only the exact name \code{indicators.parquet} is ever read back, so a
+#' set-aside file cannot be mistaken for current results.
 #'
 #' The parcels cache and the UGF layout files (\code{tenements.gpkg},
 #' \code{ugs.json}) are untouched - only the indicator results.
 #'
 #' @param project_id Character. Project ID.
+#' @param motif Character. Why the indicators are invalidated (\code{"sens"},
+#'   \code{"ugf"}, ...), recorded in the metadata.
 #'
-#' @return Invisible TRUE if the indicators file was present and removed,
+#' @return Invisible TRUE if the indicators file was present and set aside,
 #'   FALSE if there was nothing to invalidate.
 #' @noRd
-invalidate_indicators <- function(project_id) {
+invalidate_indicators <- function(project_id, motif = "invalidation") {
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
     return(invisible(FALSE))
@@ -873,18 +890,22 @@ invalidate_indicators <- function(project_id) {
 
   indicators_path <- file.path(project_path, "data", "indicators.parquet")
   removed <- FALSE
+  archive <- NULL
   if (file.exists(indicators_path)) {
-    removed <- file.remove(indicators_path)
+    archive <- .set_aside_indicators(project_id, project_path, indicators_path, motif)
+    removed <- !is.null(archive)
   }
 
   # Reset the computed flag + status so the UI knows the project is
   # back to a "needs compute" state.
+  updates <- list(
+    indicators_computed = FALSE,
+    status = "draft",
+    updated_at = Sys.time()
+  )
+  if (!is.null(archive)) updates$indicateurs_perimes <- archive
   tryCatch({
-    update_project_metadata(project_id, list(
-      indicators_computed = FALSE,
-      status = "draft",
-      updated_at = Sys.time()
-    ))
+    update_project_metadata(project_id, updates)
   }, error = function(e) {
     cli::cli_warn("Failed to reset indicators flag: {e$message}")
   })
@@ -893,6 +914,59 @@ invalidate_indicators <- function(project_id) {
     cli::cli_alert_info("Invalidated cached indicators for project {project_id}")
   }
   invisible(removed)
+}
+
+#' Number of set-aside indicator generations kept per project
+#' @noRd
+INDICATORS_STALE_KEEP <- 2L
+
+#' Rename indicators.parquet to a dated stale copy and prune old copies
+#'
+#' @param project_id,project_path Project identifier and directory.
+#' @param indicators_path Path of the current `indicators.parquet`.
+#' @param motif Reason recorded with the copy.
+#' @return The list of kept stale copies (newest first) to store in
+#'   `metadata$indicateurs_perimes`, or `NULL` when the rename failed (the
+#'   current file is then left in place: invalidating would otherwise mean
+#'   deleting it).
+#' @noRd
+.set_aside_indicators <- function(project_id, project_path, indicators_path,
+                                  motif = "invalidation") {
+  data_dir <- dirname(indicators_path)
+  meta <- tryCatch(load_project_metadata(project_id), error = function(e) NULL)
+  sens <- suppressWarnings(as.integer(meta$indicator_sense_version %||% 1L))
+  if (length(sens) != 1L || is.na(sens)) sens <- 1L
+
+  now <- Sys.time()
+  base <- sprintf("indicators.perime-v%d-%s", sens, format(now, "%Y%m%d-%H%M%S"))
+  dest <- file.path(data_dir, paste0(base, ".parquet"))
+  i <- 1L
+  while (file.exists(dest)) {
+    i <- i + 1L
+    dest <- file.path(data_dir, sprintf("%s-%d.parquet", base, i))
+  }
+  if (!isTRUE(file.rename(indicators_path, dest))) {
+    cli::cli_warn(c(
+      "Projet {project_id} : indicateurs impossibles a mettre de cote ({.path {indicators_path}}).",
+      i = "Ils sont conserves en place ; le projet reste marque a recalculer."))
+    return(NULL)
+  }
+  cli::cli_alert_info("Indicateurs mis de cote : {.path {basename(dest)}}")
+
+  entree <- list(fichier = basename(dest), sens = sens, motif = motif,
+                 date = format(now, "%Y-%m-%dT%H:%M:%S"))
+  anciennes <- meta$indicateurs_perimes %||% list()
+  anciennes <- Filter(function(e) {
+    is.list(e) && !is.null(e$fichier) &&
+      file.exists(file.path(data_dir, e$fichier))
+  }, anciennes)
+  gardees <- c(list(entree), anciennes)
+  if (length(gardees) > INDICATORS_STALE_KEEP) {
+    trop <- gardees[-seq_len(INDICATORS_STALE_KEEP)]
+    gardees <- gardees[seq_len(INDICATORS_STALE_KEEP)]
+    for (e in trop) unlink(file.path(data_dir, e$fichier))
+  }
+  gardees
 }
 
 
@@ -1100,6 +1174,24 @@ attach_indicators_sf <- function(project) {
   project
 }
 
+#' Read a project's data files, without any migration or write
+#'
+#' Shared by [load_project()] and the read-only [projet_lire()] so both see the
+#' same project: parcels, commune boundary, indicators, comments. Every reader
+#' called here is read-only.
+#'
+#' @param project_id Character.
+#' @return A list with `parcels`, `commune_geometry`, `indicators`, `comments`.
+#' @noRd
+.read_project_files <- function(project_id) {
+  list(
+    parcels = .perf_time("load_parcels", load_parcels(project_id)),
+    commune_geometry = .perf_time("load_commune_geometry", load_commune_geometry(project_id)),
+    indicators = .perf_time("load_indicators", load_indicators(project_id)),
+    comments = .perf_time("load_comments", load_comments(project_id))
+  )
+}
+
 load_project <- function(project_id, build_indicators_sf = TRUE) {
   .t_load0 <- Sys.time()
   project_path <- get_project_path(project_id)
@@ -1139,12 +1231,9 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
     # Version de sens d'ou venait le projet : un projet v1 a aussi subi
     # l'inversion des Risques (v2), que le message doit nommer.
     indicators_invalidated_from = attr(sens_invalide, "version_vue"),
-    metadata = metadata,
-    parcels = .perf_time("load_parcels", load_parcels(project_id)),
-    commune_geometry = .perf_time("load_commune_geometry", load_commune_geometry(project_id)),
-    indicators = .perf_time("load_indicators", load_indicators(project_id)),
-    comments = .perf_time("load_comments", load_comments(project_id))
+    metadata = metadata
   )
+  project <- c(project, .read_project_files(project_id))
 
   # Auto-migrate to v2 (UG support) if needed.
   project <- tryCatch(
@@ -2886,7 +2975,7 @@ save_ug_data <- function(project_id, projet) {
     cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(tenements)} tenements")
     apres <- .affectation_ug_df(tenements)
     change <- !is.null(avant) && !identical(avant, apres)
-    if (change) invalidate_indicators(project_id)
+    if (change) invalidate_indicators(project_id, motif = "ugf")
     structure(TRUE, indicateurs_invalides = change)
 
   }, error = function(e) {

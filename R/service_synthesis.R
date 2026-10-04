@@ -89,17 +89,19 @@ project_global_index <- function(family_means, ndp_level = 0L) {
 #'
 #' @param project A project list, as returned by [load_project()].
 #' @param language `"fr"` or `"en"`, for the family labels.
+#' @param family_sf Optional output of [project_family_scores()] already
+#'   computed for this project (avoids aggregating twice).
 #' @return A list: `project_id`, `name`, `status`, `ndp_level`, `ndp_name`,
 #'   `confidence`, `global_score` (`NA` when not computed), `n_ugf`,
 #'   `n_parcels`, `updated_at`, and `families`, a data.frame with `code`,
 #'   `famille` and `score` (`NA` for a family without score), in the
 #'   canonical family order.
 #' @noRd
-project_synthesis_summary <- function(project, language = "fr") {
+project_synthesis_summary <- function(project, language = "fr", family_sf = NULL) {
   if (is.null(project)) cli::cli_abort("{.arg project} is NULL.")
   language <- if (identical(language, "en")) "en" else "fr"
 
-  family_sf <- project_family_scores(project)
+  family_sf <- family_sf %||% project_family_scores(project)
   means <- project_family_means(family_sf)
   ndp_level <- project_ndp_level(project)
   index <- project_global_index(means, ndp_level)

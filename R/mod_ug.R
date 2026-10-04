@@ -2111,7 +2111,7 @@ mod_ug_server <- function(id, app_state) {
             # ("already computed") and leave the fresh UGFs unpopulated.
             # Drop the cache so the next "Lancer les calculs" starts from
             # scratch on the new layout.
-            invalidate_indicators(projet$metadata$id)
+            invalidate_indicators(projet$metadata$id, motif = "ugf")
           }
 
           # Writes to reactiveValues do not require a reactive context.
@@ -2190,7 +2190,7 @@ mod_ug_server <- function(id, app_state) {
         # Les ug_id sont neufs : un indicators.parquet cache pointerait sur les
         # ANCIENS, et compute_all_indicators() sauterait tout en croyant avoir
         # deja calcule. Meme raisonnement que l'import de decoupage.
-        invalidate_indicators(projet$metadata$id)
+        invalidate_indicators(projet$metadata$id, motif = "ugf")
       }
       rv$projet_ug <- projet
       rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L

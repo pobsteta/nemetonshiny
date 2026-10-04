@@ -17,8 +17,11 @@ run_app(
 \item{language}{Character. Interface language: "fr" (French, default) or "en" (English).
 If NULL, the system language is auto-detected.}
 
-\item{project_dir}{Character. Directory for storing projects.
-Default: \code{~/.nemeton/projects}}
+\item{project_dir}{Character. Directory for storing projects. Default: the
+\code{NEMETON_PROJECT_DIR} environment variable when set, otherwise the
+user data directory (\code{rappdirs::user_data_dir("nemeton")/projects},
+i.e. \code{~/.local/share/nemeton/projects} on Linux), or
+\code{~/.nemeton/projects} when \pkg{rappdirs} is not installed.}
 
 \item{max_parcels}{Integer. Maximum number of parcels that can be selected
 simultaneously on the map. Default: \code{30}. Must be a positive integer.}

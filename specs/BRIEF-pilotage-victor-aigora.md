@@ -1,6 +1,6 @@
 # BRIEF — Piloter nemetonshiny depuis VICTOR (voix) et AIGORA (Claude Code)
 
-> **Statut** : ouvert, 2026-10-04.
+> **Statut** : ouvert, 2026-10-04. A.1 livré (0.153.0.9001) ; API publique sous-jacente livrée (0.153.0.9002).
 > **Dépôts concernés** : `nemetonshiny` (lot A, principal), `aigora` (lot B),
 > `victor` (lot C). **`nemeton` (cœur) : aucun changement de code** (§2).
 > **Émetteur** : session `nemetonshiny`, sur la base de 0.153.0 (main) / cycle 0.153.0.9xxx.
@@ -81,6 +81,15 @@ Le calcul des scores de famille vit aujourd'hui **dans un `reactive()`** de
 
 ### A.2 Outils MCP — `R/service_mcp.R` (interne) + lanceur `inst/mcp/server.R`
 
+> **Mise à jour 2026-10-04** : l'API hors interface exportée
+> (`?api_hors_interface`, 0.153.0.9002, brief aigora-nemeton
+> « api-hors-interface-sans-effet-de-bord ») est livrée. Les outils MCP sont
+> donc de **fines enveloppes de cette API publique** (`projets_lister`,
+> `projet_etat`, `projet_lire()$synthese`, `projet_calculer`, `projet_rapport`,
+> `projet_gpkg`), et non plus des appels aux services internes. La lecture
+> sans effet de bord et les erreurs classées (`nemetonshiny_projet_perime`…)
+> viennent de cette API.
+
 Implémentation des outils en **fonctions R internes et testables** (préfixe
 `mcp_`), déclarées comme `ellmer::tool()` (ellmer est déjà en `Imports`).
 Le lanceur est minimal :
@@ -93,21 +102,15 @@ mcptools::mcp_server(tools = nemetonshiny:::mcp_tools())
 `mcptools` passe en **`Suggests`** (installé localement : 1.0.3). Un
 `requireNamespace("mcptools")` explicite avec message clair si absent.
 
-Choix « script dans `inst/` + fonctions internes » plutôt qu'un export
-`mcp_server()` : **le contrat public de la phase 3 de l'audit 1.0 reste
-inchangé** (`CONTRAT.md`), donc pas de MAJOR/MINOR imposé par l'API. Si on veut
-plus tard en faire une API publique, on exportera, et ce sera un MINOR à
-confirmer.
-
 | Outil | Entrée | Sortie (JSON) | Service sous-jacent |
 |---|---|---|---|
-| `lister_projets` | `limite` (déf. 20) | id, nom, statut, maj, santé | `list_recent_projects()`, `check_project_health()` |
-| `resume_projet` | `projet` (id **ou** nom approché) | `project_synthesis_summary()` | A.1 |
+| `lister_projets` | `limite` (déf. 20) | id, nom, statut, maj, état de sens | `projets_lister()` |
+| `resume_projet` | `projet` (id **ou** nom approché) | `projet_lire()$synthese` ; projet périmé → message clair, rien modifié | API |
 | `lancer_calcul` | `projet` | `job_id`, `pid`, chemin du log | §A.3 |
 | `etat_calcul` | `projet` | statut (`en_cours`/`termine`/`echec`/`annule`), indicateurs faits / total, dernier indicateur, âge de la progression, erreur | `get_computation_progress()`, `read_progress_state()`, `progress_state_age_sec()` |
 | `annuler_calcul` | `projet` | ok | `cancel_computation()` |
-| `generer_rapport` | `projet`, `langue` | chemin du PDF | `generate_report_pdf()` (Quarto si présent, sinon `generate_simple_pdf_report()`) |
-| `exporter_gpkg` | `projet` | chemin du `.gpkg` | `export_geopackage()` |
+| `generer_rapport` | `projet`, `langue`, commentaires | chemin du PDF | `projet_rapport()` |
+| `exporter_gpkg` | `projet` | chemin du `.gpkg` | `projet_gpkg()` |
 | `url_app` | `projet`, `onglet` | URL `http://127.0.0.1:<port>/?project=…&tab=…` | §A.4 |
 
 Règles communes :

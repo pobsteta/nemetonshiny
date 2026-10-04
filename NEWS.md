@@ -1,3 +1,38 @@
+# nemetonshiny 0.153.0.9002 (2026-10-04)
+
+### Fixed — Une lecture ne detruit plus les indicateurs
+
+- **`invalidate_indicators()` renomme au lieu de supprimer.** Un simple
+  chargement d'un projet calcule avant un changement de sens (spec 048)
+  supprimait `data/indicators.parquet` sans retour possible (incident du
+  2026-10-04 sur Couchey, via `load_project()` ->
+  `ensure_indicator_sense_current()`). Le fichier devient
+  `data/indicators.perime-v<sens>-<date>.parquet` ; deux generations sont
+  conservees et listees dans `metadata.json` (`indicateurs_perimes` : fichier,
+  sens, motif, date). Vaut pour toutes les invalidations (sens, decoupage UGF).
+  Si le renommage echoue, les indicateurs restent en place.
+- **Un projet neuf porte le marqueur de sens courant.** `create_project()` ne
+  posait pas `indicator_sense_version` : un projet cree puis calcule sans passer
+  par l'ouverture dans l'application etait vu en sens v1, et ses indicateurs
+  tout juste calcules etaient invalides a la premiere ouverture.
+
+### Added — API hors interface (brief aigora-nemeton du 2026-10-04)
+
+- **Neuf fonctions exportees** pour piloter un diagnostic sans l'application
+  (`?api_hors_interface`) : `projets_lister()`, `projet_etat()`,
+  `projet_lire()`, `projet_migrer()`, `parcelles_commune()`, `projet_creer()`,
+  `projet_calculer()`, `projet_rapport()`, `projet_gpkg()`. Fines enveloppes des
+  services existants.
+- **`projet_lire()` n'ecrit rien** : meme construction que l'onglet Synthese
+  (R5, R6/R7, scores de famille du coeur), sans les migrations d'ouverture.
+  Si une migration serait necessaire, erreur classee
+  `nemetonshiny_projet_perime` ; `projet_migrer()` l'applique explicitement.
+  Test d'empreinte : aucun fichier du projet ne change.
+- **Erreurs classees** (`nemetonshiny_erreur` et sous-classes) et contrat des
+  commentaires du rapport documentes dans `CONTRAT.md` (section 1 bis).
+- **`NEMETON_PROJECT_DIR`** fixe le dossier des projets par defaut hors
+  interface (`run_app(project_dir =)` l'emporte).
+
 # nemetonshiny 0.153.0.9001 (2026-10-04)
 
 ### Changed — Pilotage VICTOR / AIGORA, etape 1 : service de synthese

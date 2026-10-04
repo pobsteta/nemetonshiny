@@ -15,6 +15,7 @@
 #' @param language Character. Interface language: "fr" (French, default) or "en" (English).
 #'   If NULL, the system language is auto-detected.
 #' @param project_dir Character. Directory for storing projects. Default: the
+#'   \code{NEMETON_PROJECT_DIR} environment variable when set, otherwise the
 #'   user data directory (\code{rappdirs::user_data_dir("nemeton")/projects},
 #'   i.e. \code{~/.local/share/nemeton/projects} on Linux), or
 #'   \code{~/.nemeton/projects} when \pkg{rappdirs} is not installed.
@@ -206,6 +207,10 @@ detect_system_language <- function() {
 #' @return Character path to default project directory
 #' @noRd
 get_default_project_dir <- function() {
+  # Hors interface (API, cf. R/api.R) : `run_app(project_dir =)` n'est pas la
+  # pour fixer le dossier, la variable d'environnement le fait.
+  env_dir <- Sys.getenv("NEMETON_PROJECT_DIR", "")
+  if (nzchar(env_dir)) return(path.expand(env_dir))
   # Use rappdirs if available, otherwise fallback to ~/.nemeton
  if (requireNamespace("rappdirs", quietly = TRUE)) {
     base_dir <- rappdirs::user_data_dir("nemeton", "nemeton")
