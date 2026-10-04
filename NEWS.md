@@ -1,4 +1,4 @@
-# nemetonshiny 0.153.0.9002 (2026-10-04)
+# nemetonshiny 0.154.0 (2026-10-04)
 
 ### Fixed — Une lecture ne detruit plus les indicateurs
 
@@ -32,8 +32,6 @@
   commentaires du rapport documentes dans `CONTRAT.md` (section 1 bis).
 - **`NEMETON_PROJECT_DIR`** fixe le dossier des projets par defaut hors
   interface (`run_app(project_dir =)` l'emporte).
-
-# nemetonshiny 0.153.0.9001 (2026-10-04)
 
 ### Changed — Pilotage VICTOR / AIGORA, etape 1 : service de synthese
 
