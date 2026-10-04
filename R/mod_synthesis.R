@@ -134,34 +134,9 @@ mod_synthesis_server <- function(id, app_state) {
     # REACTIVE: Build sf with family scores (one row per UGF)
     # ================================================================
     family_scores <- shiny::reactive({
-      project <- app_state$current_project
-      if (is.null(project)) return(NULL)
-
-      # project$indicators_sf is always built by load_project(): one
-      # row per UGF with geometry + indicator columns + label/groupe.
-      base_sf <- project$indicators_sf
-      if (is.null(base_sf) || !inherits(base_sf, "sf") || nrow(base_sf) == 0) {
-        return(NULL)
-      }
-
-      # R5 deperissement (32e indicateur, conditionnel) : injecte en direct
-      # depuis les alertes de la zone de suivi liee. Best-effort - sans zone
-      # / sans alerte, base_sf est inchange et la famille R reste R1-R4.
-      base_sf <- add_r5_to_indicators(base_sf, project)
-
-      # R6 (sensibilite 0-100) + R7 (gel) issus de reGeneration. Normalises 0-100
-      # par le coeur (>= 0.161.0), ils entrent desormais dans le score de famille R
-      # via create_family_index (la famille R passe de R1-R5 a R1-R7). Best-effort :
-      # sans cache reGeneration, base_sf est inchange.
-      base_sf <- add_regen_r_indicators(base_sf, project)
-
-      tryCatch(
-        create_family_index(base_sf, method = "mean", na.rm = TRUE),
-        error = function(e) {
-          cli::cli_warn("Failed to compute family index: {conditionMessage(e)}")
-          NULL
-        }
-      )
+      # Corps extrait dans `project_family_scores()` (service_synthesis.R) :
+      # le serveur MCP calcule ainsi les memes chiffres que cet onglet.
+      project_family_scores(app_state$current_project)
     })
 
     # ================================================================
@@ -245,13 +220,11 @@ mod_synthesis_server <- function(id, app_state) {
       }
 
       # Compute global score: Fibonacci-weighted via NDP system
-      df <- sf::st_drop_geometry(sf_data)
-      family_means <- vapply(family_cols, function(col) {
-        mean(df[[col]], na.rm = TRUE)
-      }, numeric(1))
       # NDP depuis les metadonnees du projet (les attributs sf sont perdus par merge)
-      ndp_level <- as.integer(app_state$current_project$metadata$ndp_level %||% 0L)
-      ndp_result <- nemeton::compute_general_index(family_means, ndp = ndp_level)
+      ndp_result <- project_global_index(
+        project_family_means(sf_data),
+        project_ndp_level(app_state$current_project)
+      )
       global <- ndp_result$score
 
       # Color based on score

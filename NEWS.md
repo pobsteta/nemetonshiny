@@ -1,3 +1,16 @@
+# nemetonshiny 0.153.0.9001 (2026-10-04)
+
+### Changed — Pilotage VICTOR / AIGORA, etape 1 : service de synthese
+
+- **Scores de famille et score global extraits dans `R/service_synthesis.R`**
+  (`project_family_scores()`, `project_family_means()`,
+  `project_global_index()`, `project_synthesis_summary()`). L'onglet Synthese
+  les consomme ; comportement inchange. Prealable au serveur MCP du brief
+  `specs/BRIEF-pilotage-victor-aigora.md` : un consommateur sans interface
+  obtient exactement les memes chiffres que l'onglet, sans dupliquer le code.
+  `project_synthesis_summary()` renvoie une liste serialisable (score global,
+  12 familles, NDP, confiance, nombre d'UGF et de parcelles).
+
 # nemetonshiny 0.153.0 (2026-10-03)
 
 ### Changed — Phase 3 de l'audit 1.0 : contrat public et packaging
