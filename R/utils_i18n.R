@@ -1115,6 +1115,60 @@ TRANSLATIONS <- list(
   ),
   # Repli quand aucune cause n'est disponible : dire \u00ab indisponible \u00bb reste
   # plus honn\u00eate qu'une carte grise sans l\u00e9gende.
+  # R1 : methode de calcul (`r1_status`, nemeton >= 0.212.0). La methode
+  # nominale (`fire_exp`) n'a pas de cle : on ne commente que les replis.
+  r1_fallback_no_fireexposur = list(
+    fr = paste0(
+      "R1 calcul\u00e9 par la m\u00e9thode de repli (pente, inflammabilit\u00e9 ",
+      "des essences, s\u00e9cheresse climatique) : le paquet fireexposuR ",
+      "n'est pas install\u00e9."
+    ),
+    en = paste0(
+      "R1 computed with the fallback method (slope, species flammability, ",
+      "climatic dryness): the fireexposuR package is not installed."
+    )
+  ),
+  r1_fallback_no_bdforet = list(
+    fr = paste0(
+      "R1 calcul\u00e9 par la m\u00e9thode de repli (pente, inflammabilit\u00e9 ",
+      "des essences, s\u00e9cheresse climatique) : la BD For\u00eat, n\u00e9cessaire ",
+      "\u00e0 l'exposition au feu, est indisponible."
+    ),
+    en = paste0(
+      "R1 computed with the fallback method (slope, species flammability, ",
+      "climatic dryness): BD For\u00eat, needed for fire exposure, is unavailable."
+    )
+  ),
+  r1_fallback_fire_exp_failed = list(
+    fr = paste0(
+      "R1 calcul\u00e9 par la m\u00e9thode de repli (pente, inflammabilit\u00e9 ",
+      "des essences, s\u00e9cheresse climatique) : le calcul d'exposition au ",
+      "feu (fireexposuR) a \u00e9chou\u00e9 pour au moins une unit\u00e9."
+    ),
+    en = paste0(
+      "R1 computed with the fallback method (slope, species flammability, ",
+      "climatic dryness): the fire exposure computation (fireexposuR) failed ",
+      "for at least one unit."
+    )
+  ),
+  r1_skipped_no_dem = list(
+    fr = "R1 non calcul\u00e9 : aucun mod\u00e8le num\u00e9rique de terrain disponible.",
+    en = "R1 not computed: no digital elevation model available."
+  ),
+  r1_skipped_no_component = list(
+    fr = paste0(
+      "R1 non calcul\u00e9 : aucune composante du risque d'incendie ",
+      "(exposition, pente, essence, climat) n'a pu \u00eatre \u00e9valu\u00e9e."
+    ),
+    en = paste0(
+      "R1 not computed: no fire-risk component (exposure, slope, species, ",
+      "climate) could be assessed."
+    )
+  ),
+  lien_profond_invalide = list(
+    fr = "Lien : projet ou onglet inconnu, ignor\u00e9.",
+    en = "Link: unknown project or tab, ignored."
+  ),
   indicator_all_na = list(
     fr = "Indicateur non disponible sur cette emprise.",
     en = "Indicator not available over this area."
@@ -5355,6 +5409,17 @@ TRANSLATIONS <- list(
     fr = "Ing\u00e9rer la validation",
     en = "Ingest validation"
   ),
+  # Motifs du rapport d'import des validations (`details$reason`,
+  # nemeton::ingest_health_validation(), >= 0.209.0 pour `unknown_stade`).
+  hv_motif_ok = list(fr = "Valid\u00e9e", en = "Validated"),
+  hv_motif_missing_stade = list(
+    fr = "Stade non renseign\u00e9", en = "Stage not filled in"),
+  hv_motif_unknown_stade = list(
+    fr = "Stade non reconnu (valeur hors liste)",
+    en = "Unrecognised stage (value not in the list)"),
+  hv_motif_no_alert_within_snap = list(
+    fr = "Aucune alerte \u00e0 proximit\u00e9 (distance d'appariement)",
+    en = "No alert nearby (matching distance)"),
   health_validation_report_title = list(
     fr = "Rapport d'ingestion",
     en = "Ingestion report"

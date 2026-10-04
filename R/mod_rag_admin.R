@@ -544,7 +544,7 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
     hb_file <- tempfile(fileext = ".rds")
 
     task <- shiny::ExtendedTask$new(
-      function(url, df, provider, key, incl, fr, hb) {
+      function(url, df, provider, key, incl, fr, hb, root = "") {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           is_parallel <- any(c("multisession", "multicore", "cluster") %in%
@@ -553,6 +553,10 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
         }
         promises::future_promise({
           if (!nzchar(url)) stop("no_db_url")
+          # Racine du corpus (nemeton >= 0.210.0 refuse un `local_path` hors
+          # de cette racine). L'option R de la session principale n'est PAS
+          # transmise au worker : elle est resolue avant et reposee ici.
+          if (nzchar(root)) options(nemeton.corpus_root = root)
           # OPEN A NEW CONNECTION INSIDE THE WORKER - a DBI connection
           # is not shareable across processes (pieges techniques sect.1).
           con_w <- nemeton::db_connect(url)
@@ -583,7 +587,8 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
       }
       if (file.exists(hb_file)) try(unlink(hb_file), silent = TRUE)
       task$invoke(url, man(), "mistral", key,
-                  isTRUE(input$incl_tbc), isTRUE(input$fresh), hb_file)
+                  isTRUE(input$incl_tbc), isTRUE(input$fresh), hb_file,
+                  .rag_corpus_root())
     }
 
     shiny::observeEvent(input$import, {
@@ -770,4 +775,23 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
       report     = report
     )
   })
+}
+
+
+#' Corpus root to hand to the corpus import worker
+#'
+#' Same precedence as the core (`nemeton >= 0.210.0`): option
+#' `nemeton.corpus_root`, then the `NEMETON_CORPUS_ROOT` environment variable.
+#' Resolved in the main session because a `future` worker does not inherit the
+#' option; an empty string lets the core fall back to the worker's working
+#' directory.
+#'
+#' @return A single character string, possibly empty.
+#' @noRd
+.rag_corpus_root <- function() {
+  root <- getOption("nemeton.corpus_root", "")
+  if (is.null(root) || !length(root) || !nzchar(root[[1]])) {
+    root <- Sys.getenv("NEMETON_CORPUS_ROOT", "")
+  }
+  as.character(root[[1]])
 }

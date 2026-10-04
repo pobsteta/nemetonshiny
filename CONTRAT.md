@@ -57,6 +57,14 @@ Garanties :
   Markdown des définitions de notes (`[^1]: auteur, titre, p. N. <url>`).
   Sans `sources`, les appels de note restent littéraux.
 
+### Liens profonds et serveur MCP
+
+- `?project=<id>&tab=<onglet>` ouvre l'application sur un projet et un onglet
+  (`selection`, `synthesis`, `action_plan`, `terrain`, `monitoring`,
+  `regeneration`, `famille_*`) ; une valeur inconnue est ignorée.
+- `inst/mcp/server.R` expose l'API ci-dessus comme serveur MCP (stdio) ; ses
+  outils et leurs réponses JSON sont décrits dans `inst/mcp/README.md`.
+
 ## 2. Variables d'environnement
 
 Lues au démarrage ou à l'usage. Les secrets ne sont **jamais** écrits dans le
@@ -75,6 +83,7 @@ Résolution, de la plus prioritaire à la moins prioritaire :
 | `NEMETON_DB_CONNECT_TIMEOUT` | délai de connexion, en secondes |
 | `NEMETON_DB_LOCAL` | `1` : ignorer la base distante (poste de développement) |
 | `NEMETON_KNOWLEDGE_DB_URL` | base du corpus documentaire (RAG) |
+| `NEMETON_CORPUS_ROOT` | racine des fichiers locaux du corpus RAG : un `local_path` hors de cette racine est refusé (cœur ≥ 0.210.0) ; l'option `nemeton.corpus_root` l'emporte |
 
 Sans base, l'application fonctionne sur disque seul : pas de verrou d'édition
 multi-utilisateurs, suivi sanitaire en SQLite local.
@@ -122,6 +131,7 @@ développement et aux tests.
 | `NEMETON_TOPO_TARGET_RES` | résolution cible des dérivés topographiques |
 | `NEMETON_TOUR` | `0`/`false` : pas de visite guidée automatique |
 | `NEMETON_PROJECT_DIR` | dossier des projets par défaut (API hors interface ; `run_app(project_dir =)` l'emporte) |
+| `NEMETON_APP_PORT` | port de l'application dans les liens construits par le serveur MCP (`inst/mcp/`, défaut 3838) |
 
 Les autres variables (`NEMETON_PERF_TRACE`, `NEMETON_PIXEL_MAP_DEBUG`,
 `NEMETON_S2_CACHE_DEBUG`, `NEMETON_*_SKIP_GUARD`, `NEMETONSHINY_DISABLE_*`,

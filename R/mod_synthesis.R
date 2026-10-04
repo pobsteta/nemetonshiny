@@ -70,7 +70,7 @@ mod_synthesis_server <- function(id, app_state) {
                     as.integer(ctx$n_sources))
           )
         },
-        shiny::markdown(body_md)
+        markdown_safe(body_md)
       )
     })
 

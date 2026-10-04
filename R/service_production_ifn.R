@@ -136,25 +136,41 @@ PRODUCTION_ANNEX_COLS <- list(
 #' Units handed to an indicator, with what it reads from earlier indicators
 #'
 #' @description
-#' E1 in flux mode reads P2 in **its own** units (`production_field = "P2"`) and
-#' detects the degenerate case through `P2_provenance`. Each indicator is
-#' otherwise handed the original parcels, so both columns are added here from
-#' the results of P2 (computed before E1).
+#' Each indicator is handed the original parcels, plus the columns it reads
+#' from indicators computed before it:
+#'
+#' * E1 in flux mode reads P2 in **its own** units (`production_field = "P2"`)
+#'   and detects the degenerate case through `P2_provenance` (P2 is computed
+#'   before E1).
+#' * T2 reads its stability source from the units: `N2` first, else `T1`.
+#'   Since `nemeton 0.212.0` it returns NA without a source (no more default
+#'   50), and the bare parcels carry neither, so T2 was NA on every project.
+#'   [.order_indicators_for_dependencies()] computes N2 before T2.
 #'
 #' @param indicator Character.
 #' @param parcels sf. Compute units.
 #' @param results sf / data.frame. Results accumulated so far.
 #' @param cfg List from [project_production_ifn_params()].
 #'
-#' @return `parcels`, possibly with `P2` / `P2_provenance`.
+#' @return `parcels`, possibly with `P2` / `P2_provenance`, or `N2` / `T1`.
 #'
 #' @noRd
 .units_for_indicator <- function(indicator, parcels, results, cfg) {
+  n <- nrow(parcels)
+  if (identical(indicator, "indicateur_t2_changement")) {
+    # Une source toute NA n'en est pas une : le coeur prendrait la colonne
+    # N2 meme vide et rendrait NA partout, au lieu de se replier sur T1.
+    utilisable <- function(v) length(v) == n && any(!is.na(v))
+    n2 <- results[["indicateur_n2_continuite"]]
+    t1 <- results[["indicateur_t1_anciennete"]]
+    if (utilisable(n2)) parcels$N2 <- as.numeric(n2)
+    if (utilisable(t1)) parcels$T1 <- as.numeric(t1)
+    return(parcels)
+  }
   if (!identical(indicator, "indicateur_e1_bois_energie") ||
       !.production_ifn_mode(indicator, cfg)) {
     return(parcels)
   }
-  n <- nrow(parcels)
   p2 <- results[["indicateur_p2_station"]]
   parcels$P2 <- if (length(p2) == n) as.numeric(p2) else rep(NA_real_, n)
   prov <- results[[".p2_provenance"]]

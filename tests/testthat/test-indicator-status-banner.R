@@ -237,3 +237,53 @@ test_that("an all-NA indicator without status still gets the generic message", {
 
   expect_true(grepl(i18n$t("indicator_all_na"), as.character(b), fixed = TRUE))
 })
+
+
+# ==============================================================================
+# R1 : methode de calcul (`r1_status`, nemeton >= 0.212.0)
+# ==============================================================================
+
+.mk_r1 <- function(vals, status) {
+  d <- data.frame(x = seq_along(vals), y = seq_along(vals),
+                  indicateur_r1_feu = vals, .r1_status = status)
+  sf::st_as_sf(d, coords = c("x", "y"), crs = 4326)
+}
+
+test_that("every R1 status but the nominal one is translated, FR and EN", {
+  st <- c("fallback_no_fireexposur", "fallback_no_bdforet",
+          "fallback_fire_exp_failed", "skipped_no_dem", "skipped_no_component")
+  for (lang in c("fr", "en")) {
+    i18n <- get_i18n(lang)
+    for (k in paste0("r1_", st)) {
+      expect_true(i18n$has(k), label = paste(lang, k))
+      expect_lte(nchar(k), 30L)
+    }
+    # La methode nominale ne merite pas de bandeau
+    expect_false(i18n$has("r1_fire_exp"))
+  }
+})
+
+test_that("R1 computed by fire_exp everywhere shows no banner", {
+  i18n <- get_i18n("fr")
+  expect_null(nemetonshiny:::indicator_na_banner(
+    .mk_r1(c(40, 60), c("fire_exp", "fire_exp")), "indicateur_r1_feu", i18n))
+})
+
+test_that("a fallback among nominal units is shown, whatever its position", {
+  i18n <- get_i18n("fr")
+  b <- nemetonshiny:::indicator_na_banner(
+    .mk_r1(c(40, 60, 50), c("fire_exp", "fire_exp", "fallback_fire_exp_failed")),
+    "indicateur_r1_feu", i18n)
+  expect_false(is.null(b))
+  expect_true(grepl(i18n$t("r1_fallback_fire_exp_failed"), as.character(b),
+                    fixed = TRUE))
+})
+
+test_that("an R1 skipped for lack of DEM explains itself", {
+  i18n <- get_i18n("en")
+  b <- nemetonshiny:::indicator_na_banner(
+    .mk_r1(c(NA_real_, NA_real_), c("skipped_no_dem", "skipped_no_dem")),
+    "indicateur_r1_feu", i18n)
+  expect_true(grepl(i18n$t("r1_skipped_no_dem"), as.character(b), fixed = TRUE))
+  expect_false(grepl(i18n$t("indicator_all_na"), as.character(b), fixed = TRUE))
+})

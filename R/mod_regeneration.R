@@ -2416,7 +2416,7 @@ mod_regeneration_server <- function(id, app_state) {
           htmltools::tagList(
             if (nzchar(e$q %||% "")) htmltools::tags$p(
               class = "fw-bold mb-1", e$q),
-            shiny::markdown(e$a %||% ""),
+            markdown_safe(e$a %||% ""),
             htmltools::tags$hr(class = "my-2"))
         }))
     })

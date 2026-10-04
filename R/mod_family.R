@@ -703,7 +703,7 @@ mod_family_server <- function(id, family_code, app_state) {
           class = "text-muted small",
           sprintf(i18n$t("rag_sourced_badge"), n)
         ),
-        shiny::markdown(body_md)
+        markdown_safe(body_md)
       )
     })
 
@@ -836,10 +836,17 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
     st <- st[!is.na(st) & nzchar(st)]
     if (length(st) >= 1L) {
       code <- sub("^\\.", "", sub("_status$", "", status_col))
-      candidate <- paste0(code, "_", st[1])
+      # Premier statut TRADUIT, pas premier statut tout court : un melange
+      # " methode nominale (sans cle) + repli " doit montrer le repli (R1 :
+      # `fire_exp` sur la plupart des unites, `fallback_*` sur une autre).
       # Une cause sans traduction retombe sur le message generique : mieux vaut
       # une phrase vague qu'une cle brute affichee a l'utilisateur.
-      if (isTRUE(i18n$has(candidate))) key <- candidate
+      for (candidate in paste0(code, "_", st)) {
+        if (isTRUE(i18n$has(candidate))) {
+          key <- candidate
+          break
+        }
+      }
     }
   }
 

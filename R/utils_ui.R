@@ -72,3 +72,25 @@ action_table_card <- function(collapse_id,
     )
   )
 }
+
+
+#' Render untrusted Markdown to HTML without letting raw HTML through
+#'
+#' `shiny::markdown()` keeps raw HTML: its `tagfilter` extension only disarms a
+#' few tags (`script`, `iframe`, `style`...), so `<img src=x onerror=...>`
+#' passes. The texts rendered here are not trusted - documentary sources from
+#' `nemeton::format_citations(format = "markdown")`, which the core escapes
+#' only in its HTML format (nemeton >= 0.210.0), and LLM answers, which a
+#' poisoned corpus document can steer. Every `<` is therefore escaped, except
+#' the one opening a Markdown autolink (`<https://...>`, `<mailto:...>`) used
+#' by the citations. With no `<` left, no tag can open; `>` (blockquotes) and
+#' the rest of Markdown are untouched.
+#'
+#' @param md Character. Markdown text.
+#' @return HTML, as returned by [shiny::markdown()].
+#' @noRd
+markdown_safe <- function(md) {
+  md <- paste(as.character(md %||% ""), collapse = "\n")
+  md <- gsub("<(?!(?:https?://|mailto:)[^\\s<>]*>)", "&lt;", md, perl = TRUE)
+  shiny::markdown(md)
+}
