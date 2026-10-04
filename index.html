@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.153.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,124 +53,125 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>Application Shiny/golem pour la plateforme d’analyse systemique forestiere <strong>Nemeton</strong>.</p>
-<p><code>nemetonshiny</code> fournit l’interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package <a href="https://github.com/pobsteta/nemeton" class="external-link"><code>nemeton</code></a> (&gt;= 0.19.5).</p>
+<p>Application Shiny/golem de la plateforme d’analyse systémique forestière <strong>Nemeton</strong>.</p>
+<p><code>nemetonshiny</code> fournit l’interface. La logique métier (indicateurs, familles, NDP, FORDEAD, reGénération) est portée par le paquet <a href="https://github.com/pobsteta/nemeton" class="external-link"><code>nemeton</code></a> (&gt;= 0.207.0), la desserte et l’accessibilité par <a href="https://github.com/pobsteta/foretaccess" class="external-link"><code>foretaccess</code></a> (&gt;= 2.4.0).</p>
 <div class="section level2">
-<h2 id="fonctionnalites">Fonctionnalites<a class="anchor" aria-label="anchor" href="#fonctionnalites"></a>
+<h2 id="fonctionnalités">Fonctionnalités<a class="anchor" aria-label="anchor" href="#fonctionnalit%C3%A9s"></a>
 </h2>
 <ul>
 <li>
-<strong>Carte interactive</strong> – selection de parcelles cadastrales via Leaflet et l’API cadastre IGN</li>
+<strong>Carte interactive</strong> : sélection de parcelles cadastrales (Leaflet, API cadastre IGN)</li>
 <li>
-<strong>Gestion de projets</strong> – creation, sauvegarde et restauration de diagnostics forestiers</li>
+<strong>Projets</strong> : création, sauvegarde et restauration des diagnostics, découpage en unités de gestion (UGF)</li>
 <li>
-<strong>31 indicateurs Nemeton</strong> – calcul automatique sur les parcelles selectionnees</li>
+<strong>Indicateurs Nemeton</strong> en 12 familles : radar, scores et détail par famille</li>
 <li>
-<strong>12 familles d’indicateurs</strong> – visualisation radar, scores et detail par famille</li>
+<strong>Suivi sanitaire</strong> : surveillance rapide Sentinel-2, diagnostic FORDEAD, RECONFORT</li>
 <li>
-<strong>Synthese LLM</strong> – analyse contextuelle par 13 profils d’experts (ellmer / Mistral)</li>
+<strong>Terrain</strong> : accessibilité, desserte, plans d’échantillonnage QField, aller-retour Marculus</li>
 <li>
-<strong>Export PDF &amp; GeoPackage</strong> – rapports Quarto et donnees geospatiales</li>
+<strong>Plan d’actions</strong> et <strong>reGénération</strong> (vulnérabilité climatique par UGF)</li>
 <li>
-<strong>Internationalisation</strong> – francais et anglais (504 cles de traduction)</li>
+<strong>Perspectives IA</strong> par profil d’expert (21 profils, <code>ellmer</code> : Mistral, Anthropic, OpenAI)</li>
 <li>
-<strong>Accessibilite</strong> – conformite WCAG 2.1 AA</li>
+<strong>Exports</strong> : rapports PDF (Quarto) et GeoPackage</li>
+<li><strong>Français et anglais</strong></li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="prerequis">Prerequis<a class="anchor" aria-label="anchor" href="#prerequis"></a>
+<h2 id="prérequis">Prérequis<a class="anchor" aria-label="anchor" href="#pr%C3%A9requis"></a>
 </h2>
 <ul>
 <li>
-<strong>R</strong> &gt;= 4.1.0</li>
+<strong>R</strong> &gt;= 4.1.0 (la CI teste la dernière version de R sous Ubuntu)</li>
+<li>Bibliothèques système : GDAL, GEOS, PROJ, udunits2, SQLite, OpenSSL, libcurl, libxml2, fontconfig, harfbuzz, fribidi, freetype, libpng, libtiff, libjpeg (sous Debian/Ubuntu : voir la liste exacte dans <a href=".github/workflows/r.yml"><code>.github/workflows/r.yml</code></a>)</li>
 <li>
-<strong>nemeton</strong> &gt;= 0.19.5 (package core)</li>
-<li>Librairies systeme : GDAL, GEOS, PROJ, libudunits2</li>
+<strong>Chaîne Rust</strong> (<code>rustc</code>, <code>cargo</code>, via <a href="https://rustup.rs" class="external-link">rustup</a>) : <code>foretaccess</code> embarque un noyau compilé en Rust</li>
+<li>Pour les rapports PDF : <a href="https://quarto.org" class="external-link">Quarto</a> et une distribution LaTeX (<code>xelatex</code>)</li>
 </ul>
-<div class="section level3">
-<h3 id="dependances-r-principales">Dependances R principales<a class="anchor" aria-label="anchor" href="#dependances-r-principales"></a>
-</h3>
-<p><code>shiny</code>, <code>bslib</code>, <code>leaflet</code>, <code>sf</code>, <code>terra</code>, <code>DT</code>, <code>promises</code>, <code>ellmer</code>, <code>httr2</code>, <code>yaml</code>, <code>jsonlite</code>.</p>
-<p>Voir le fichier <a href="DESCRIPTION"><code>DESCRIPTION</code></a> pour la liste complete.</p>
-</div>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Installer le package core nemeton</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"pobsteta/nemeton"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Installer nemetonshiny</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"pak"</span><span class="op">)</span></span>
+<span><span class="co"># Deux dépendances du cœur hébergées sur GitHub</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"github::cran/dissUtils"</span>, <span class="st">"jbferet/spinR"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># L'application ; les champs Remotes tirent les dernières releases de</span></span>
+<span><span class="co"># nemeton et foretaccess (« @*release », pak &gt;= 0.11.1)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="utilisation">Utilisation<a class="anchor" aria-label="anchor" href="#utilisation"></a>
 </h2>
-<div class="section level3">
-<h3 id="lancement-direct">Lancement direct<a class="anchor" aria-label="anchor" href="#lancement-direct"></a>
-</h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">nemetonshiny</span><span class="fu">::</span><span class="fu"><a href="reference/run_app.html">run_app</a></span><span class="op">(</span>language <span class="op">=</span> <span class="st">"fr"</span><span class="op">)</span></span></code></pre></div>
-<p>Options disponibles :</p>
+<code class="sourceCode R"><span><span class="fu">nemetonshiny</span><span class="fu">::</span><span class="fu"><a href="reference/run_app.html">run_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
+<colgroup>
+<col width="16%">
+<col width="75%">
+<col width="8%">
+</colgroup>
 <thead><tr>
-<th>Parametre</th>
-<th>Description</th>
-<th>Defaut</th>
+<th>Paramètre</th>
+<th>Rôle</th>
+<th>Défaut</th>
 </tr></thead>
 <tbody>
 <tr>
 <td><code>language</code></td>
-<td>Langue (<code>"fr"</code> ou <code>"en"</code>)</td>
-<td><code>"fr"</code></td>
+<td>Langue de l’interface, <code>"fr"</code> ou <code>"en"</code>
+</td>
+<td>langue du système</td>
+</tr>
+<tr>
+<td><code>project_dir</code></td>
+<td>Dossier des projets</td>
+<td>
+<code>~/.local/share/nemeton/projects</code> sous Linux (<code>~/.nemeton/projects</code> sans <code>rappdirs</code>)</td>
+</tr>
+<tr>
+<td><code>max_parcels</code></td>
+<td>Nombre maximal de parcelles sélectionnables</td>
+<td><code>30</code></td>
+</tr>
+<tr>
+<td><code>tour</code></td>
+<td>Lancer la visite guidée au premier lancement</td>
+<td><code>TRUE</code></td>
 </tr>
 <tr>
 <td><code>options</code></td>
-<td>Options Shiny (port, host…)</td>
-<td><code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code></td>
+<td>Options Shiny (<code>port</code>, <code>host</code>, <code>launch.browser</code>…)</td>
+<td>
+<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> ; navigateur ouvert seulement en session interactive</td>
 </tr>
 </tbody>
 </table>
-</div>
+<p>Sur un serveur :</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">nemetonshiny</span><span class="fu">::</span><span class="fu"><a href="reference/run_app.html">run_app</a></span><span class="op">(</span>tour <span class="op">=</span> <span class="cn">FALSE</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>port <span class="op">=</span> <span class="fl">3838</span>, host <span class="op">=</span> <span class="st">"0.0.0.0"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>La configuration (base PostGIS, authentification OAuth, clés LLM et Theia, notifications) passe par des variables d’environnement, décrites avec le format des projets dans le <a href="CONTRAT.html">contrat public</a>.</p>
 <div class="section level3">
-<h3 id="lancement-avec-docker">Lancement avec Docker<a class="anchor" aria-label="anchor" href="#lancement-avec-docker"></a>
+<h3 id="docker">Docker<a class="anchor" aria-label="anchor" href="#docker"></a>
 </h3>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> compose up <span class="at">-d</span></span></code></pre></div>
-<p>Le <code>docker-compose.yml</code> demarre : - <strong>Keycloak</strong> (port 8080) – authentification OAuth2/OIDC - <strong>nemetonshiny</strong> (port 3838) – application Shiny</p>
-<p>Variables d’environnement configurables dans <code>docker-compose.yml</code> : - <code>NEMETON_LANG</code> – langue (defaut : <code>fr</code>) - <code>NEMETON_PAYS</code> – pays (defaut : <code>FR</code>) - <code>MISTRAL_API_KEY</code> – cle API Mistral pour la synthese LLM</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> nemetonshiny .</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-p</span> 3838:3838 <span class="at">-v</span> nemeton-projets:/data nemetonshiny</span></code></pre></div>
+<p>L’image tourne sous un utilisateur non root ; les projets vivent dans le volume <code>/data</code>. Le <code>docker-compose.yml</code> démarre en plus un Keycloak <strong>de développement</strong> (<code>start-dev</code>, comptes et secret de démonstration dans <code>keycloak/realm-nemeton.json</code>) : il n’est pas fait pour la production.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a>
-</h2>
-<p>Le projet suit l’architecture <a href="https://thinkr-open.github.io/golem/" class="external-link">golem</a> :</p>
-<pre><code>R/
-  app_ui.R / app_server.R   -- UI et serveur principaux
-  mod_*.R                    -- modules Shiny (auth, home, map, project,
-                                family, synthesis, search, progress)
-  service_*.R                -- services (cadastre, communes, compute,
-                                db, export, project)
-  llm_prompts.R              -- gestion des prompts LLM
-  utils_i18n.R               -- internationalisation
-  utils_theme.R              -- theme et styles
-
-inst/
-  experts/                   -- 16 profils d'experts LLM (YAML)
-  quarto/                    -- template de rapport PDF
-  sql/                       -- schema et migrations</code></pre>
-</div>
-<div class="section level2">
-<h2 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a>
+<h2 id="développement">Développement<a class="anchor" aria-label="anchor" href="#d%C3%A9veloppement"></a>
 </h2>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>20 fichiers de tests couvrant l’ensemble des modules et services.</p>
+<code class="sourceCode R"><span><span class="fu">pkgload</span><span class="fu">::</span><span class="fu"><a href="https://pkgload.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span>; <span class="fu">nemetonshiny</span><span class="fu">::</span><span class="fu"><a href="reference/run_app.html">run_app</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># lancer depuis les sources</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>                                <span class="co"># 117 fichiers de tests</span></span></code></pre></div>
+<p>Les tests de bout en bout (<code>shinytest2</code>) demandent Chrome. Les conventions du projet (i18n, modules, services, release) sont dans <a href="CLAUDE.html"><code>CLAUDE.md</code></a>.</p>
 </div>
 <div class="section level2">
 <h2 id="licence">Licence<a class="anchor" aria-label="anchor" href="#licence"></a>
 </h2>
-<p><a href="LICENSE-EUPL.html">EUPL v1.2</a></p>
+<p><a href="LICENSE.html">GPL-3 ou ultérieure</a>. nemetonshiny importe le cœur <code>nemeton</code>, sous GPL-3 ; il était distribué sous EUPL v1.2 jusqu’au 2026-07-01 (texte conservé dans <a href="LICENSE-EUPL.html">LICENSE-EUPL.md</a>).</p>
 <p>Les donnees sont soumises a des conditions specifiques decrites dans <a href="LICENSE-DATA.html">LICENSE-DATA.md</a>.</p>
 </div>
 </div>
@@ -187,7 +188,8 @@ inst/
 <div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
-<li><a href="https://www.r-project.org/Licenses/GPL-3" class="external-link">GPL-3</a></li>
+<li><a href="LICENSE.html">Full license</a></li>
+<li><small>GPL (&gt;= 3)</small></li>
 </ul>
 </div>
 
@@ -213,7 +215,7 @@ inst/
 <li><a href="https://github.com/pobsteta/nemetonshiny/releases/latest" class="external-link"><img src="https://img.shields.io/github/v/release/pobsteta/nemetonshiny?logo=github&amp;label=version&amp;color=blue&amp;sort=semver" alt="Version"></a></li>
 <li><a href="https://pobsteta.github.io/nemetonshiny/"><img src="https://github.com/pobsteta/nemetonshiny/actions/workflows/pkgdown.yaml/badge.svg" alt="pkgdown"></a></li>
 <li><a href="https://codecov.io/gh/pobsteta/nemetonshiny" class="external-link"><img src="https://codecov.io/gh/pobsteta/nemetonshiny/graph/badge.svg" alt="codecov"></a></li>
-<li><a href="https://opensource.org/licenses/EUPL-1.2" class="external-link"><img src="https://img.shields.io/badge/License-EUPL%20v1.2-blue.svg?logo=opensourceinitiative" alt="License: EUPL v1.2"></a></li>
+<li><a href="https://www.gnu.org/licenses/gpl-3.0" class="external-link"><img src="https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg" alt="License: GPL v3+"></a></li>
 </ul>
 </div>
 

@@ -1,5 +1,48 @@
 # Changelog
 
+## nemetonshiny 0.153.0 (2026-10-03)
+
+#### Changed — Phase 3 de l’audit 1.0 : contrat public et packaging
+
+- **`run_app(options = list(...))` fonctionne.** `options` est un
+  argument a part entiere, fusionne avec les valeurs par defaut ; passe
+  dans `...`, il entrait en conflit avec l’option fixe de `shinyApp()`,
+  si bien qu’il etait impossible de choisir le port ou l’hote. Le
+  navigateur ne s’ouvre plus qu’en session interactive, jamais sur un
+  serveur.
+- **L’image Docker se construit et sert l’application** (verifie : HTTP
+  200, tous les paquets se chargent). Elle ne se construisait pas : base
+  `rocker/r-ver:4.4.0`, dont le depot CRAN fige a mi-2024 ne contient ni
+  `ellmer` ni `shinyOAuth` (passage en 4.6.1, la version de la CI),
+  `devtools` absent de l’image (remplace par `remotes`), `git` manquant
+  pour les paquets GitHub, `libuv` manquant pour `fs`. L’application
+  tourne sous un utilisateur non root, avec les projets dans le volume
+  `/data` a chemin fixe, et le CMD passe `options` et `project_dir`.
+- **Licence : GPL-3 ou ulterieure**, alignee partout (`DESCRIPTION`
+  `GPL (>= 3)`, texte complet dans `LICENSE.md`, README, ADR-006) ;
+  `LICENSE-EUPL.md` marque comme historique.
+- **`CONTRAT.md`** : le contrat public de la 1.0 (point d’entree,
+  variables d’environnement, format des projets et ses garanties, schema
+  PostGIS, profils d’experts, politique de compatibilite).
+- **README** reecrit : prerequis reels (chaine Rust pour `foretaccess`,
+  dependances GitHub), installation par `pak`, tous les parametres de
+  [`run_app()`](https://pobsteta.github.io/nemetonshiny/reference/run_app.md),
+  image Docker.
+- **R CMD check sans WARNING** : plus aucun caractere non ASCII dans
+  `R/` (chaines en `\uXXXX`, commentaires translitteres ; table des
+  traductions verifiee identique), `future`, `arrow` et `geoarrow`
+  passent en `Imports` (l’asynchrone et l’enregistrement des projets en
+  dependent), `lidR` et `methods` declares, fichier `.s2.out` retire. Le
+  moteur facultatif `opencanopy` (hors CRAN) n’est pas declare : il est
+  resolu a l’execution
+  ([`getExportedValue()`](https://rdrr.io/r/base/ns-reflect.html)),
+  derriere son
+  [`requireNamespace()`](https://rdrr.io/r/base/ns-load.html), pour ne
+  pas imposer son installation. La CI echoue desormais sur un WARNING.
+- `main` est protegee : `version-consistency`, `R-CMD-check` et `tests`
+  doivent etre verts avant un merge.
+- `migration_001` signalee comme historique et destructive.
+
 ## nemetonshiny 0.152.5 (2026-10-03)
 
 #### Fixed — Phase 2 de l’audit 1.0, lots B a D : ne plus perdre de donnees, ni les ecrire dans le mauvais projet
@@ -6714,9 +6757,11 @@ AOI nettement plus grande que Dabo (3 000 ha).
 
 **Reste à traiter, non couvert ici** : `.acc_estimate_alsroads_memory()`
 et son garde-fou pré-vol estiment encore la mémoire du **chemin
-ALSroads** disparu, via `lidR::readLAScatalog()`. Ils dégradent
-proprement (retour `NULL` sans `lidR`) et ne bloquent rien, mais leur
-calibrage n’a pas été revérifié contre le profil mémoire de dessertR.
+ALSroads** disparu, via
+[`lidR::readLAScatalog()`](https://rdrr.io/pkg/lidR/man/readLAScatalog.html).
+Ils dégradent proprement (retour `NULL` sans `lidR`) et ne bloquent
+rien, mais leur calibrage n’a pas été revérifié contre le profil mémoire
+de dessertR.
 
 ## nemetonshiny 0.121.5 (2026-08-10)
 
@@ -7204,9 +7249,10 @@ sur ForetAccess, avec 0 tronçon à plus de 25 m d’une géométrie BD TOPO
   dérivation fait `readLAS(ctg$filename, filter = "-keep_class 2")` — le
   **vecteur complet des dalles**, donc tout le nuage sol en mémoire d’un
   coup, puis une triangulation de Delaunay par-dessus. Le `LAScatalog`
-  est court-circuité, alors que `lidR::rasterize_terrain()` sait
-  travailler par tuiles hors mémoire. Mesuré sur ForêtAccess : 4 dalles
-  LiDAR HD = **165,5 M de points**.
+  est court-circuité, alors que
+  [`lidR::rasterize_terrain()`](https://rdrr.io/pkg/lidR/man/rasterize.html)
+  sait travailler par tuiles hors mémoire. Mesuré sur ForêtAccess : 4
+  dalles LiDAR HD = **165,5 M de points**.
 - L’app passait un MNT à **5 m** (grille d’accessibilité), déclenchant
   donc la dérivation **systématiquement**. Elle demande maintenant **1
   m** sur ce chemin (`.acquire_mnt_desserte(res_m = 1)`) :

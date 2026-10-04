@@ -7,7 +7,7 @@ indicator analysis. The application allows users to:
 
 - Create projects with metadata
 
-- Calculate all 29 nemeton indicators automatically
+- Calculate the nemeton indicators (12 families) automatically
 
 - Analyze results by indicator family (12 tabs)
 
@@ -21,6 +21,7 @@ run_app(
   project_dir = NULL,
   max_parcels = 30L,
   tour = TRUE,
+  options = list(),
   ...
 )
 ```
@@ -51,6 +52,13 @@ run_app(
   Disabling only suppresses the AUTO-start: the tour stays available
   from the help menu. Overridable per-session with the `NEMETON_TOUR`
   environment variable (`0`/`false` to disable).
+
+- options:
+
+  List of Shiny app options (`port`, `host`, `launch.browser`...),
+  merged over the defaults: the browser opens only in an interactive
+  session. Example:
+  `run_app(options = list(port = 3838, host = "0.0.0.0"))`.
 
 - ...:
 
@@ -101,5 +109,8 @@ if (interactive()) {
 
   # Boot without the guided tour (demo, screencast, automated test)
   run_app(tour = FALSE)
+
+  # Serve on a fixed port, reachable from other machines (server, Docker)
+  run_app(options = list(port = 3838, host = "0.0.0.0"))
 }
 ```

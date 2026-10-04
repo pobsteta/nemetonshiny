@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.153.0\] - 2026-10-03
+
+### Added
+
+- `run_app(options = list(...))` : port, hote et options Shiny ; le
+  navigateur ne s’ouvre qu’en session interactive.
+- `CONTRAT.md` : contrat public de la 1.0 (point d’entree, variables
+  d’environnement, format des projets, schema PostGIS, compatibilite).
+
+### Changed
+
+- Licence : GPL-3 ou ulterieure, alignee dans tous les fichiers.
+- `future`, `arrow` et `geoarrow` en `Imports`.
+- Image Docker : R 4.6.1, utilisateur non root, volume `/data` ;
+  verifiee (construction et service HTTP).
+- README reecrit ; R CMD check sans WARNING ni NOTE ; CI qui echoue sur
+  un WARNING ; branche `main` protegee.
+
+### Removed
+
+- Fichier `.s2.out` commite par erreur.
+
 ## \[0.152.5\] - 2026-10-03
 
 ### Fixed

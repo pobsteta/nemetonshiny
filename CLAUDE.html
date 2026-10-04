@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.152.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.153.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -204,7 +204,7 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 </tr><tr><td>005</td>
 <td>OAuth2/OIDC via AgentConnect → Keycloak fédéré pour l’Europe</td>
 </tr><tr><td>006</td>
-<td>EUPL v1.2 (plateforme) + MIT (packages R) + CC-BY 4.0 (données)</td>
+<td>Licences : nemetonshiny en <strong>GPL-3 ou ultérieure</strong> depuis le 2026-07-01 (EUPL v1.2 auparavant, relicence permise par son art. 5, imposée par le cœur GPL-3) + CC-BY 4.0 (données)</td>
 </tr><tr><td>007</td>
 <td>Pipeline NDP : TreeSatAI (NDP 0) → PureForest (NDP 1) → local (NDP 2+)</td>
 </tr><tr><td>008</td>
@@ -518,7 +518,7 @@ keycloak/                     → Compose dev + realms pour auth locale
 </ul></li>
 <li><p>Si le CHANGELOG.md existe, ajouter la section [X.Y.Z] - YYYY-MM-DD avec les catégories Added / Changed / Fixed / Removed.</p></li>
 <li><p>Mettre à jour le <strong><code>PLAN.md</code> du repo <code>nemeton</code></strong> (source unique de vérité partagée) : cocher la case du sous-chantier livré, ajouter une entrée datée au journal qui indique explicitement le commit <code>nemetonshiny@SHA</code> et le cycle dev. Ne jamais clore un chantier dans <code>PLAN.md</code> sans qu’une release correspondante ait été poussée.</p></li>
-<li><p>Ouvrir une PR vers <code>main</code> et la merger → <code>release.yml</code> pose le tag + la release. <strong>Rien d’autre à faire</strong> : le badge version du README est dynamique (<code>img.shields.io/github/v/release</code>) et se met à jour seul.</p></li>
+<li><p>Ouvrir une PR vers <code>main</code> et la merger → <code>release.yml</code> pose le tag + la release. <strong><code>main</code> est protégée depuis le 2026-10-03</strong> : les checks <code>version-consistency</code>, <code>R-CMD-check</code> et <code>tests</code> doivent être verts avant le merge (~35 min de CI) — attendre leur fin (<code>gh pr checks &lt;n&gt; --watch</code>) puis <code>gh pr merge</code>, sans contourner par <code>--admin</code>. <strong>Rien d’autre à faire</strong> : le badge version du README est dynamique (<code>img.shields.io/github/v/release</code>) et se met à jour seul.</p></li>
 <li><p><strong>Repasser en cycle dev</strong> : bumper DESCRIPTION en <code>X.Y.Z.900x</code> (cf. <em>Cycle dev vs release stable</em> ci-dessous).</p></li>
 </ol><div class="section level2">
 <h2 id="cycle-dev-vs-release-stable">Cycle dev vs release stable<a class="anchor" aria-label="anchor" href="#cycle-dev-vs-release-stable"></a></h2>

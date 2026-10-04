@@ -24,6 +24,10 @@ then left alone, whereas the sidebars they came from are where one
 varies a run. Each persists on the project metadata and each block owns
 its save button.
 
+A \*Production IFN\* block (spec 054) picks the opt-in modes of P2
+(production of the sylvoecoregion instead of the CHM site index) and E1
+(flux instead of stock), persisted by \`set_project_production_ifn()\`.
+
 Both sources are \*\*enabled by default\*\* (see
 \`project_sufosat_enabled()\` / \`project_lst_enabled()\`): a project
 that never visited this tab still gets T3 and A5. The Theia fetch stays

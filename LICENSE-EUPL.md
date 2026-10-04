@@ -1,5 +1,11 @@
 # European Union Public Licence v1.2
 
+> **Historique.** Cette licence ne s’applique plus : depuis le
+> 2026-07-01, nemetonshiny est distribue sous **GPL-3 ou ulterieure**
+> (voir `LICENSE` et `LICENSE.md`), parce qu’il importe le coeur
+> `nemeton`, lui-meme sous GPL-3. L’article 5 de l’EUPL v1.2 autorise
+> cette relicence. Texte conserve pour les versions anterieures.
+
 **Scope:** Shiny application layer — modules, UI, server, services, LLM
 prompts, expert profiles, Quarto templates, i18n.
 
