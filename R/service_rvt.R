@@ -153,18 +153,6 @@
            error = function(e) NULL)
 }
 
-#' Reuse a CVAT already computed next to the DEM (instant, no recompute)
-#'
-#' `vat_combined()` on a full 0.5 m LiDAR mosaic (~4000x4000) is slow (~350 s),
-#' which would freeze the Shiny loop if run synchronously in the comparator. But
-#' the foretaccess / QGIS-RVT pipeline often persists the CVAT next to the DEM
-#' (`<base>_CVAT_8bit[_foretaccess].tif`). When present, adopt it directly -
-#' instant, and the reference rendering. 8-bit `[0, 255]` is rescaled to the
-#' `[0, 1]` the grey renderer expects (a float source is passed through).
-#'
-#' @param mnt_path Path to the source DEM.
-#' @return A `[0, 1]` `SpatRaster`, or `NULL` when no precomputed CVAT exists.
-#' @noRd
 #' Chemin canonique du CVAT d'un MNT, qu'il existe ou non
 #'
 #' Le producteur (`build_cvat_precomputed()`) et les gardes qui interrogent son
@@ -183,6 +171,11 @@
                    "_CVAT_8bit_foretaccess.tif"))
 }
 
+#' Path of a CVAT already computed next to the DEM, if any
+#'
+#' @param mnt_path Path to the source DEM.
+#' @return Path of the first existing candidate, or `NULL`.
+#' @noRd
 .rvt_precomputed_path <- function(mnt_path) {
   if (is.null(mnt_path) || !nzchar(mnt_path)) return(NULL)
   d <- dirname(mnt_path); base <- tools::file_path_sans_ext(basename(mnt_path))
@@ -192,6 +185,18 @@
   if (length(cand) == 0L) NULL else cand[1]
 }
 
+#' Reuse a CVAT already computed next to the DEM (instant, no recompute)
+#'
+#' `vat_combined()` on a full 0.5 m LiDAR mosaic (~4000x4000) is slow (~350 s),
+#' which would freeze the Shiny loop if run synchronously in the comparator. But
+#' the foretaccess / QGIS-RVT pipeline often persists the CVAT next to the DEM
+#' (`<base>_CVAT_8bit[_foretaccess].tif`). When present, adopt it directly -
+#' instant, and the reference rendering. 8-bit `[0, 255]` is rescaled to the
+#' `[0, 1]` the grey renderer expects (a float source is passed through).
+#'
+#' @param mnt_path Path to the source DEM.
+#' @return A `[0, 1]` `SpatRaster`, or `NULL` when no precomputed CVAT exists.
+#' @noRd
 .rvt_precomputed <- function(mnt_path) {
   p <- .rvt_precomputed_path(mnt_path)
   if (is.null(p)) return(NULL)

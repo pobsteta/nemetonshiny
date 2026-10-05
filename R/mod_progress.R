@@ -445,7 +445,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
           textId = ns("task_toast_text"),
           iconId = ns("task_toast_icon"),
           visible = TRUE,
-          text = paste0(prefix, last_err$message),
+          text = paste0(prefix, .message_calcul(last_err, i18n)),
           type = "warning",
           duration = 8000
         ))
@@ -581,7 +581,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
             visible = FALSE
           ))
           error_msg <- if (length(state$errors) > 0) {
-            state$errors[[length(state$errors)]]$message
+            .message_calcul(state$errors[[length(state$errors)]], i18n)
           } else {
             i18n$t("unknown_error")
           }
@@ -638,4 +638,23 @@ mod_progress_server <- function(id, compute_state, app_state) {
       reset_tracking = reset_tracking
     )
   })
+}
+
+
+#' Text of a computation error or warning, in the session language
+#'
+#' Entries carrying an i18n `key` (and `args` for its `%s`) are translated;
+#' the others keep their `message`.
+#' @param err One element of `state$errors`.
+#' @param i18n Translator.
+#' @return Character scalar.
+#' @noRd
+.message_calcul <- function(err, i18n) {
+  key <- err$key
+  if (is.character(key) && length(key) == 1L && !is.null(TRANSLATIONS[[key]])) {
+    txt <- tryCatch(do.call(sprintf, c(list(i18n$t(key)), as.list(err$args))),
+                    error = function(e) NULL)
+    if (!is.null(txt)) return(txt)
+  }
+  err$message %||% ""
 }

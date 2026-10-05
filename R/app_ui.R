@@ -354,13 +354,15 @@ mod_synthesis_ui <- function(id) {
               ns("download_pdf"),
               label = i18n$t("download_pdf"),
               icon = shiny::icon("file-pdf"),
-              class = "btn-success btn-lg"
+              class = "btn-primary btn-lg"
             ),
             shiny::downloadButton(
               ns("download_gpkg"),
               label = i18n$t("download_gpkg"),
               icon = shiny::icon("database"),
-              class = "btn-primary btn-lg"
+              # Une seule action principale par vue : le rapport PDF ;
+              # l'export GeoPackage est secondaire (regle des boutons).
+              class = "btn-outline-primary btn-lg"
             ),
             # Cover image upload for PDF
             #
@@ -394,9 +396,9 @@ mod_synthesis_ui <- function(id) {
                   accept = c("image/png", "image/jpeg", "image/jpg"),
                   buttonLabel = htmltools::tagList(
                     shiny::icon("image"),
-                    if (i18n$language == "fr") " Image de couverture" else " Cover image"
+                    paste0(" ", i18n$t("image_couverture"))
                   ),
-                  placeholder = if (i18n$language == "fr") "Aucune image" else "No image"
+                  placeholder = i18n$t("aucune_image")
                 )
               ),
               htmltools::span(
@@ -414,7 +416,7 @@ mod_synthesis_ui <- function(id) {
                 # juste au niveau du centre des badges, ce que voulait
                 # l'utilisateur.
                 style = "white-space: nowrap; padding-top: 1rem;",
-                if (i18n$language == "fr") "Taille image Max 5 Mo, PNG/JPG" else "Max 5 MB, PNG/JPG"
+                i18n$t("image_couverture_limite")
               )
             )
           ),
@@ -656,7 +658,7 @@ mod_family_ui <- function(id, family_code) {
   family <- get_family_config(family_code)
 
   if (is.null(family)) {
-    return(htmltools::div("Unknown family"))
+    return(htmltools::div(i18n$t("famille_inconnue")))
   }
 
   family_name <- if (opts$language == "fr") family$name_fr else family$name_en

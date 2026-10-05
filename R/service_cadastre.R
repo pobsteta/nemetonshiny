@@ -269,25 +269,6 @@ standardize_parcels <- function(parcels, code_insee) {
 }
 
 
-#' Get parcel by ID
-#'
-#' @description
-#' Retrieve a single parcel by its unique identifier.
-#'
-#' @param parcel_id Character. The parcel ID.
-#' @param parcels sf object. The full set of parcels to search.
-#'
-#' @return sf object with single parcel, or NULL if not found.
-#'
-#' @noRd
-get_parcel_by_id <- function(parcel_id, parcels) {
-  idx <- which(parcels$id == parcel_id)
-  if (length(idx) == 0) {
-    return(NULL)
-  }
-  parcels[idx, ]
-}
-
 
 #' Filter parcels by selection
 #'
@@ -342,65 +323,6 @@ calculate_parcel_stats <- function(parcels) {
 }
 
 
-#' Format parcel for display
-#'
-#' @description
-#' Format parcel information for display in UI.
-#'
-#' @param parcel sf row. Single parcel.
-#' @param language Character. "fr" or "en".
-#'
-#' @return Character string with formatted info.
-#'
-#' @noRd
-format_parcel_info <- function(parcel, language = "fr") {
-  area_ha <- parcel$contenance / 10000
-
-  if (language == "fr") {
-    sprintf(
-      "Parcelle %s\nSection: %s | N\u00b0: %s\nSurface: %.2f ha",
-      parcel$id,
-      parcel$section %||% "?",
-      parcel$numero %||% "?",
-      area_ha
-    )
-  } else {
-    sprintf(
-      "Parcel %s\nSection: %s | No: %s\nArea: %.2f ha",
-      parcel$id,
-      parcel$section %||% "?",
-      parcel$numero %||% "?",
-      area_ha
-    )
-  }
-}
-
-
-#' Create parcel popup content
-#'
-#' @description
-#' Create HTML content for Leaflet popup.
-#'
-#' @param parcel sf row.
-#'
-#' @return Character string with HTML.
-#'
-#' @noRd
-create_parcel_popup <- function(parcel) {
-  area_ha <- round(parcel$contenance / 10000, 3)
-
-  sprintf(
-    "<strong>%s</strong><br/>
-    Section: %s<br/>
-    N&deg;: %s<br/>
-    Surface: %s ha<br/>
-    <em style='color: #666;'>Cliquez pour s&eacute;lectionner</em>",
-    parcel$id,
-    parcel$section %||% "-",
-    parcel$numero %||% "-",
-    area_ha
-  )
-}
 
 
 #' Create hover label for parcel

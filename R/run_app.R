@@ -2,7 +2,6 @@
 #'
 #' @description
 #' Launches the interactive nemetonApp for parcel selection and forest indicator
-
 #' analysis. The application allows users to:
 #' \itemize{
 #'   \item Search and select cadastral parcels on an interactive map

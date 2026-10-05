@@ -147,181 +147,6 @@ get_departments <- function() {
 }
 
 
-#' Search communes by name
-#'
-#' @description
-#' Search for communes by name with autocomplete support.
-#' Uses the geo.api.gouv.fr API.
-#'
-#' @param query Character. Search query (minimum 3 characters).
-#' @param department Character. Optional department code to filter results.
-#' @param limit Integer. Maximum number of results (default: 20).
-#'
-#' @return A data.frame with columns: code_insee, nom, code_postal, departement, label
-#'
-#' @examples
-#' \dontrun{
-#' # Search for communes starting with "Lyon"
-#' search_communes("Lyon")
-#'
-#' # Search within a specific department
-#' search_communes("Saint", department = "73")
-#' }
-#'
-#' @noRd
-search_communes <- function(query, department = NULL, limit = 20L) {
-  if (nchar(query) < 3) {
-    return(data.frame(
-      code_insee = character(0),
-      nom = character(0),
-      code_postal = character(0),
-      departement = character(0),
-      label = character(0)
-    ))
-  }
-
-  # Build API URL (source: inst/datasources/FR.json)
-  communes_cfg <- get_data_source("communes_api", "FR")
-  base_url <- paste0(communes_cfg$url %||% "https://geo.api.gouv.fr", "/communes")
-
-  params <- list(
-    nom = query,
-    fields = "nom,code,codesPostaux,codeDepartement",
-    boost = "population",
-    limit = limit
-  )
-
-  if (!is.null(department) && department != "") {
-    params$codeDepartement <- department
-  }
-
-  # Make request
-  result <- tryCatch({
-    if (!requireNamespace("httr2", quietly = TRUE)) {
-      cli::cli_abort("Package 'httr2' is required for API calls")
-    }
-
-    resp <- httr2::request(base_url) |>
-      httr2::req_url_query(!!!params) |>
-      httr2::req_timeout(10) |>
-      httr2::req_retry(max_tries = 3, backoff = ~ 2) |>
-      httr2::req_perform()
-
-    data <- httr2::resp_body_json(resp)
-
-    if (length(data) == 0) {
-      return(data.frame(
-        code_insee = character(0),
-        nom = character(0),
-        code_postal = character(0),
-        departement = character(0),
-        label = character(0)
-      ))
-    }
-
-    # Parse results
-    do.call(rbind, lapply(data, function(commune) {
-      codes_postaux <- paste(commune$codesPostaux, collapse = ", ")
-      data.frame(
-        code_insee = commune$code,
-        nom = commune$nom,
-        code_postal = codes_postaux,
-        departement = commune$codeDepartement,
-        label = sprintf("%s (%s)", commune$nom, codes_postaux),
-        stringsAsFactors = FALSE
-      )
-    }))
-
-  }, error = function(e) {
-    cli::cli_warn("Error searching communes: {e$message}")
-    data.frame(
-      code_insee = character(0),
-      nom = character(0),
-      code_postal = character(0),
-      departement = character(0),
-      label = character(0)
-    )
-  })
-
-  result
-}
-
-
-#' Search communes by postal code
-#'
-#' @description
-#' Search for communes by postal code.
-#'
-#' @param postal_code Character. 5-digit French postal code.
-#'
-#' @return A data.frame with commune information.
-#'
-#' @noRd
-search_by_postal_code <- function(postal_code) {
-  if (!grepl("^[0-9]{5}$", postal_code)) {
-    return(data.frame(
-      code_insee = character(0),
-      nom = character(0),
-      code_postal = character(0),
-      departement = character(0),
-      label = character(0)
-    ))
-  }
-
-  communes_cfg <- get_data_source("communes_api", "FR")
-  base_url <- paste0(communes_cfg$url %||% "https://geo.api.gouv.fr", "/communes")
-
-  result <- tryCatch({
-    if (!requireNamespace("httr2", quietly = TRUE)) {
-      cli::cli_abort("Package 'httr2' is required for API calls")
-    }
-
-    resp <- httr2::request(base_url) |>
-      httr2::req_url_query(
-        codePostal = postal_code,
-        fields = "nom,code,codesPostaux,codeDepartement"
-      ) |>
-      httr2::req_timeout(10) |>
-      httr2::req_retry(max_tries = 3, backoff = ~ 2) |>
-      httr2::req_perform()
-
-    data <- httr2::resp_body_json(resp)
-
-    if (length(data) == 0) {
-      return(data.frame(
-        code_insee = character(0),
-        nom = character(0),
-        code_postal = character(0),
-        departement = character(0),
-        label = character(0)
-      ))
-    }
-
-    do.call(rbind, lapply(data, function(commune) {
-      codes_postaux <- paste(commune$codesPostaux, collapse = ", ")
-      data.frame(
-        code_insee = commune$code,
-        nom = commune$nom,
-        code_postal = codes_postaux,
-        departement = commune$codeDepartement,
-        label = sprintf("%s (%s)", commune$nom, codes_postaux),
-        stringsAsFactors = FALSE
-      )
-    }))
-
-  }, error = function(e) {
-    cli::cli_warn("Error searching by postal code: {e$message}")
-    data.frame(
-      code_insee = character(0),
-      nom = character(0),
-      code_postal = character(0),
-      departement = character(0),
-      label = character(0)
-    )
-  })
-
-  result
-}
 
 
 #' Get commune geometry
@@ -420,49 +245,6 @@ get_commune_geometry <- function(code_insee) {
   result
 }
 
-
-#' Get commune centroid
-#'
-#' @description
-#' Get the centroid coordinates of a commune.
-#'
-#' @param code_insee Character. The INSEE code of the commune.
-#'
-#' @return A numeric vector c(lng, lat) or NULL if not found.
-#'
-#' @noRd
-get_commune_centroid <- function(code_insee) {
-  result <- tryCatch({
-    if (!requireNamespace("httr2", quietly = TRUE)) {
-      cli::cli_abort("Package 'httr2' is required")
-    }
-
-    communes_cfg <- get_data_source("communes_api", "FR")
-    communes_base <- communes_cfg$url %||% "https://geo.api.gouv.fr"
-    url <- sprintf("%s/communes/%s?fields=centre", communes_base, code_insee)
-
-    resp <- httr2::request(url) |>
-      httr2::req_timeout(10) |>
-      httr2::req_perform()
-
-    data <- httr2::resp_body_json(resp)
-
-    if (!is.null(data$centre) && !is.null(data$centre$coordinates)) {
-      c(
-        lng = data$centre$coordinates[[1]],
-        lat = data$centre$coordinates[[2]]
-      )
-    } else {
-      NULL
-    }
-
-  }, error = function(e) {
-    cli::cli_warn("Error getting commune centroid: {e$message}")
-    NULL
-  })
-
-  result
-}
 
 
 #' Get communes in department
@@ -563,30 +345,13 @@ get_communes_in_department <- function(department_code) {
 
 
 
-#' Validate INSEE code format
-#'
-#' @description
-#' Check if a string is a valid French INSEE commune code.
-#'
-#' @param code Character. The code to validate.
-#'
-#' @return TRUE if valid, FALSE otherwise.
-#'
-#' @noRd
-validate_insee_code <- function(code) {
-  if (is.null(code) || is.na(code) || !is.character(code)) {
-    return(FALSE)
-  }
-  grepl("^[0-9A-B]{5}$", code)
-}
-
 
 #' Format communes for selectize input
 #'
 #' @description
 #' Format communes data for use in a selectize dropdown.
 #'
-#' @param communes_df Data.frame from search_communes or get_communes_in_department.
+#' @param communes_df Data.frame from get_communes_in_department().
 #'
 #' @return Named character vector suitable for selectize choices.
 #'

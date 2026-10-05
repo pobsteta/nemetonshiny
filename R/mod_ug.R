@@ -1434,7 +1434,7 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d tenement(s)", label, length(sel_ids)),
+          sprintf(i18n()$t("ug_creee_fmt"), label, length(sel_ids)),
           type = "message"
         )
       }, error = function(e) {
@@ -1719,12 +1719,12 @@ mod_ug_server <- function(id, app_state) {
               })
             )
           } else {
-            shiny::p(class = "text-muted", "Aucune r\u00e9f\u00e9rence")
+            shiny::p(class = "text-muted", i18n()$t("ug_aucune_reference"))
           }
         )
       } else {
         htmltools::tagList(
-          shiny::p(sprintf("%d UG s\u00e9lectionn\u00e9es", length(sel))),
+          shiny::p(sprintf(i18n()$t("ug_selectionnees_fmt"), length(sel))),
           shiny::p(
             class = "text-muted",
             sprintf(
@@ -1840,7 +1840,7 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("UG dissoci\u00e9e en %d UG", n_tenements),
+          sprintf(i18n()$t("ug_dissociee_fmt"), n_tenements),
           type = "message"
         )
       }, error = function(e) {

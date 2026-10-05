@@ -1188,30 +1188,6 @@ start_computation <- function(project_id,
 }
 
 
-#' Build the foret ancienne (ancient-forest) continuity layer for N2
-#'
-#' @description
-#' Spec 031. Reads the user-provided **historical** source (a classified
-#' raster - Cassini/etat-major scan - or a digitised vector - IGN foret
-#' ancienne), converts it to an sf mask via
-#' \code{nemeton::build_foret_ancienne_mask()} (all business logic stays in the
-#' core), and caches the result under
-#' \code{<project>/cache/layers/foret_ancienne/<key>.gpkg} so the
-#' polygonisation is not repeated on every run. The cache key hashes the source
-#' signature (path/size/mtime) and the parameters.
-#'
-#' @param fa_cfg List from \code{metadata$foret_ancienne}: \code{path} (source
-#'   file, relative to the project dir or absolute), \code{forest_class}
-#'   (integer class value(s) = forest, raster only), \code{threshold} (numeric,
-#'   alternative to forest_class), \code{min_area_m2} (drop specks).
-#' @param project_path Character. Project directory.
-#' @param crs Target CRS (EPSG) for the mask; defaults to Lambert-93 (2154).
-#'
-#' @return An sf with \code{foret_ancienne = TRUE} (possibly 0 rows), or
-#'   \code{NULL} when no source is configured or the build fails - N2 then
-#'   keeps its bdforet-only / default behaviour (no regression).
-#'
-#' @noRd
 #' Auto-fetch the national IGN BD Forets anciennes for an AOI (spec 031)
 #'
 #' @description
@@ -1262,6 +1238,30 @@ start_computation <- function(project_id,
   fa
 }
 
+#' Build the foret ancienne (ancient-forest) continuity layer for N2
+#'
+#' @description
+#' Spec 031. Reads the user-provided **historical** source (a classified
+#' raster - Cassini/etat-major scan - or a digitised vector - IGN foret
+#' ancienne), converts it to an sf mask via
+#' \code{nemeton::build_foret_ancienne_mask()} (all business logic stays in the
+#' core), and caches the result under
+#' \code{<project>/cache/layers/foret_ancienne/<key>.gpkg} so the
+#' polygonisation is not repeated on every run. The cache key hashes the source
+#' signature (path/size/mtime) and the parameters.
+#'
+#' @param fa_cfg List from \code{metadata$foret_ancienne}: \code{path} (source
+#'   file, relative to the project dir or absolute), \code{forest_class}
+#'   (integer class value(s) = forest, raster only), \code{threshold} (numeric,
+#'   alternative to forest_class), \code{min_area_m2} (drop specks).
+#' @param project_path Character. Project directory.
+#' @param crs Target CRS (EPSG) for the mask; defaults to Lambert-93 (2154).
+#'
+#' @return An sf with \code{foret_ancienne = TRUE} (possibly 0 rows), or
+#'   \code{NULL} when no source is configured or the build fails - N2 then
+#'   keeps its bdforet-only / default behaviour (no regression).
+#'
+#' @noRd
 build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = NULL) {
   # No user-provided historical source -> auto-fetch the national IGN
   # " BD Forets anciennes " (Etalab 2.0) for the AOI. All acquisition + the
@@ -1674,6 +1674,7 @@ download_layers_for_parcels <- function(parcels,
         download_warnings <- c(download_warnings, list(list(
           type = "warning",
           source = "OSO",
+          key = "dl_oso_echec_manuel", args = list(global_oso_dir),
           message = paste0(
             "Le t\u00e9l\u00e9chargement OSO a \u00e9chou\u00e9 (fichier de 6 Go). ",
             "T\u00e9l\u00e9chargez manuellement depuis: ",
@@ -1688,6 +1689,7 @@ download_layers_for_parcels <- function(parcels,
         download_warnings <- c(download_warnings, list(list(
           type = "info",
           source = paste0("LiDAR HD ", product_label),
+          key = "dl_lidar_absent_alt", args = list(product_label),
           message = paste0(
             "Aucune dalle LiDAR HD ", product_label,
             " disponible pour cette zone. ",
@@ -1704,6 +1706,7 @@ download_layers_for_parcels <- function(parcels,
         download_warnings <<- c(download_warnings, list(list(
           type = "warning",
           source = "OSO",
+          key = "dl_oso_echec_err", args = list(e$message, global_oso_dir),
           message = paste0(
             "Le t\u00e9l\u00e9chargement OSO a \u00e9chou\u00e9: ", e$message, ". ",
             "T\u00e9l\u00e9chargez manuellement depuis: ",
@@ -1750,6 +1753,7 @@ download_layers_for_parcels <- function(parcels,
         download_warnings <- c(download_warnings, list(list(
           type = "info",
           source = source$name,
+          key = "dl_source_vide", args = list(source$name),
           message = paste0(
             "Aucune donn\u00e9e trouv\u00e9e pour ", source$name,
             " dans cette zone. Les indicateurs concern\u00e9s utiliseront ",
@@ -1799,6 +1803,7 @@ download_layers_for_parcels <- function(parcels,
           download_warnings <- c(download_warnings, list(list(
             type = "info",
             source = paste0("LiDAR HD ", product_label),
+            key = "dl_lidar_absent_nuage", args = list(product_label),
             message = paste0(
               "Aucune dalle LiDAR HD ", product_label,
               " (nuages de points) disponible pour cette zone. ",
@@ -1894,6 +1899,7 @@ download_layers_for_parcels <- function(parcels,
         cli::cli_warn("lasR CHM derivation failed: {e$message}")
         download_warnings <<- c(download_warnings, list(list(
           type = "warning", source = "lasR",
+          key = "dl_lasr_echec", args = list(e$message),
           message = paste0("D\u00e9rivation CHM via lasR \u00e9chou\u00e9e : ", e$message),
           time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )))
@@ -1936,6 +1942,7 @@ download_layers_for_parcels <- function(parcels,
         cli::cli_warn("Theia FORMSpoT CHM fetch failed: {e$message}")
         download_warnings <<- c(download_warnings, list(list(
           type = "warning", source = "Theia FORMSpoT",
+          key = "dl_formspot_echec", args = list(e$message),
           message = paste0("CHM Theia FORMSpoT non disponible: ", e$message),
           time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )))
@@ -2028,6 +2035,7 @@ download_layers_for_parcels <- function(parcels,
         cli::cli_warn("Open-Canopy CHM fetch failed: {e$message}")
         download_warnings <<- c(download_warnings, list(list(
           type = "warning", source = "Open-Canopy",
+          key = "dl_opencanopy_echec", args = list(e$message),
           message = paste0("Open-Canopy CHM non disponible: ", e$message),
           time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )))
@@ -2049,6 +2057,7 @@ download_layers_for_parcels <- function(parcels,
     download_warnings <- c(download_warnings, list(list(
       type = "info",
       source = "Theia FORMSpoT",
+      key = "dl_chm_absent",
       message = paste0(
         "Aucun CHM disponible (LiDAR HD absent, Theia non configur\u00e9). ",
         "Les indicateurs Production (P1/P2/P3) et E1 ne pourront pas \u00eatre ",
@@ -2415,7 +2424,7 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
       if (!is.null(ev)) tryCatch(progress_callback(ev), error = function(e) NULL)
     }
   } else {
-    cat(line, "\n", sep = "")
+    cli::cli_verbatim(line)
   }
   invisible()
 }

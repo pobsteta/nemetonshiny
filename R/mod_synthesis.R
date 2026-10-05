@@ -329,7 +329,7 @@ mod_synthesis_server <- function(id, app_state) {
           htmltools::tags$span(
             class = "text-muted",
             sprintf("/ 100 (%d %s)", length(family_cols),
-                    if (i18n$language == "fr") "familles" else "families")
+                    i18n$t("synthese_familles"))
           )
         ),
         # NDP badge + popover info + barre de confiance
@@ -596,11 +596,11 @@ mod_synthesis_server <- function(id, app_state) {
       )
       # Simpler: just use standard names
       names(result) <- c(
-        if (lang == "fr") "Famille" else "Family",
+        get_i18n(lang)$t("rapport_famille"),
         "Code",
         "Score",
         "NDP",
-        if (lang == "fr") "Nb indicateurs" else "Nb indicators"
+        get_i18n(lang)$t("synthese_nb_indicateurs")
       )
 
       result
@@ -1046,7 +1046,7 @@ mod_synthesis_server <- function(id, app_state) {
         notif_id <- shiny::showNotification(
           htmltools::div(
             shiny::icon("spinner", class = "fa-spin me-2"),
-            if (app_state$language == "fr") "Generation du rapport PDF..." else "Generating PDF report..."
+            get_i18n(app_state$language)$t("synthese_pdf_en_cours")
           ),
           type = "message",
           duration = NULL
@@ -1137,7 +1137,7 @@ mod_synthesis_server <- function(id, app_state) {
 
           shiny::removeNotification(notif_id)
           shiny::showNotification(
-            if (app_state$language == "fr") "Rapport PDF genere avec succes" else "PDF report generated successfully",
+            get_i18n(app_state$language)$t("synthese_pdf_genere"),
             type = "message",
             duration = 3
           )

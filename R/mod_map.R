@@ -512,7 +512,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
         session$sendCustomMessage("announceSelection", list(
           action = "deselected",
           id = parcel_id,
-          count = length(rv$selected_ids)
+          count = length(rv$selected_ids),
+          message = sprintf(i18n$t("annonce_selection_fmt"),
+                            length(rv$selected_ids), MAX_PARCELS)
         ))
 
       } else {
@@ -535,7 +537,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
         session$sendCustomMessage("announceSelection", list(
           action = "selected",
           id = parcel_id,
-          count = length(rv$selected_ids)
+          count = length(rv$selected_ids),
+          message = sprintf(i18n$t("annonce_selection_fmt"),
+                            length(rv$selected_ids), MAX_PARCELS)
         ))
       }
     })

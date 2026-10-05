@@ -548,12 +548,11 @@ mod_sampling_server <- function(id, app_state) {
         sample_vals <- utils::head(unique(as.character(res$unmapped)), 5)
         shiny::showNotification(
           sprintf(
-            paste0("CV non calculable. Colonne utilis\u00e9e : %s. ",
-                   "Codes non mapp\u00e9s (%d uniques) : %s."),
+            i18n$t("sampling_cv_non_calculable"),
             tfv_col,
             length(unique(res$unmapped)),
             if (length(sample_vals)) paste(sample_vals, collapse = ", ")
-            else "(aucune valeur)"
+            else i18n$t("sampling_aucune_valeur")
           ),
           type = "warning", duration = 12
         )
@@ -1133,7 +1132,7 @@ mod_sampling_server <- function(id, app_state) {
           base <- leaflet::addMarkers(
             base, data = start_pt,
             icon = icons$start,
-            label = ~sprintf("D\u00e9part \u2014 %s", plot_id),
+            label = ~sprintf("%s \u2014 %s", i18n$t("sampling_legend_tsp_start"), plot_id),
             group = "Placettes"
           )
           if (nrow(base_plots) >= 2L) {
@@ -1141,7 +1140,7 @@ mod_sampling_server <- function(id, app_state) {
             base <- leaflet::addMarkers(
               base, data = end_pt,
               icon = icons$finish,
-              label = ~sprintf("Arriv\u00e9e \u2014 %s", plot_id),
+              label = ~sprintf("%s \u2014 %s", i18n$t("sampling_legend_tsp_end"), plot_id),
               group = "Placettes"
             )
           }

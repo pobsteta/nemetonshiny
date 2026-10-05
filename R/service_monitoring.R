@@ -1125,19 +1125,6 @@ run_reconfort_async <- function() {
 }
 
 
-#' Build the FORDEAD worker progress callback
-#'
-#' Composes the JSON-file writer (`.build_progress_writer()`, tailed by
-#' the parent's `reactivePoll`) with a worker-side ntfy push fired once
-#' per new FORDEAD phase. The phase name is tracked in a closure
-#' environment so repeated `fordead:phase` ticks within the same phase
-#' do not spam the topic.
-#'
-#' @param progress_path JSON file path (or `NULL`).
-#' @param ntfy `.ntfy_config()` output (or `NULL`).
-#' @param i18n A `get_i18n()` translator.
-#' @return A callback `function(event)`.
-#' @noRd
 #' Composite progress callback for the FAST ingestion worker
 #'
 #' Wraps `.build_progress_writer()` (for the parent's reactivePoll
@@ -1184,6 +1171,19 @@ run_reconfort_async <- function() {
 }
 
 
+#' Build the FORDEAD worker progress callback
+#'
+#' Composes the JSON-file writer (`.build_progress_writer()`, tailed by
+#' the parent's `reactivePoll`) with a worker-side ntfy push fired once
+#' per new FORDEAD phase. The phase name is tracked in a closure
+#' environment so repeated `fordead:phase` ticks within the same phase
+#' do not spam the topic.
+#'
+#' @param progress_path JSON file path (or `NULL`).
+#' @param ntfy `.ntfy_config()` output (or `NULL`).
+#' @param i18n A `get_i18n()` translator.
+#' @return A callback `function(event)`.
+#' @noRd
 .build_fordead_progress_callback <- function(progress_path, ntfy, i18n) {
   file_cb <- .build_progress_writer(progress_path)
   ntfy_cb <- .build_fordead_ntfy_callback(ntfy, i18n)

@@ -13,3 +13,14 @@ test_that("every literal i18n$t() key used in R/ exists in TRANSLATIONS", {
   manquantes <- setdiff(cles, names(TRANSLATIONS))
   expect_identical(manquantes, character(0))
 })
+
+test_that("TRANSLATIONS has no duplicated key (audit 1.0)", {
+  # En R, une liste a cles dupliquees rend la PREMIERE : la seconde definition
+  # est du texte mort qui peut contredire la premiere (c2_wms_irc).
+  expect_identical(names(TRANSLATIONS)[duplicated(names(TRANSLATIONS))], character(0))
+})
+
+test_that("no translation shows raw cli markup (audit 1.0)", {
+  txt <- unlist(TRANSLATIONS)
+  expect_false(any(grepl("\\{\\.(pkg|code|val|file|fn|arg)\\b", txt)))
+})

@@ -497,16 +497,6 @@ close_monitoring_db_connection <- function(con) {
 }
 
 
-#' List the monitoring zones registered in the DB
-#'
-#' Returns a data.frame with columns `id` (integer) and `name`
-#' (character). On any error (DB down, schema not migrated, ...) returns
-#' an empty data.frame with the same columns and emits a warning. The
-#' UI must always have a value to bind to.
-#'
-#' @param con A DBIConnection or NULL.
-#' @return data.frame.
-#' @noRd
 #' Resolve a monitoring zone name from its id (best-effort)
 #'
 #' Used by the FAST / FORDEAD workers to compose ntfy push messages
@@ -539,6 +529,16 @@ close_monitoring_db_connection <- function(con) {
 }
 
 
+#' List the monitoring zones registered in the DB
+#'
+#' Returns a data.frame with columns `id` (integer) and `name`
+#' (character). On any error (DB down, schema not migrated, ...) returns
+#' an empty data.frame with the same columns and emits a warning. The
+#' UI must always have a value to bind to.
+#'
+#' @param con A DBIConnection or NULL.
+#' @return data.frame.
+#' @noRd
 list_monitoring_zones <- function(con, project_uuid = NULL) {
   empty <- data.frame(id = integer(0), name = character(0),
                       stringsAsFactors = FALSE)

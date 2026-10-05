@@ -1826,7 +1826,7 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       chunk <- ingest_log_tick()
       if (is.null(chunk) || !nzchar(chunk)) return()
-      cat(chunk, file = stderr())
+      cli::cli_verbatim(sub("\n$", "", chunk))
     })
 
     # ------------------------------------------------------------------

@@ -71,21 +71,6 @@ migrate_project_v1_to_v2 <- function(project_id, projet = NULL) {
 }
 
 
-#' Check if a project needs migration
-#'
-#' @param project_id Character. Project ID.
-#'
-#' @return Logical. TRUE if migration is needed.
-#' @noRd
-needs_migration <- function(project_id) {
-  metadata <- load_project_metadata(project_id)
-  if (is.null(metadata)) return(FALSE)
-
-  # Projects without schema_version or with version < 2.0 need migration
-  version <- metadata$schema_version
-  is.null(version) || as.numeric(version) < 2.0
-}
-
 
 #' Ensure a project is migrated before use
 #'

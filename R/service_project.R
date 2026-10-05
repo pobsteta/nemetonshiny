@@ -970,48 +970,6 @@ INDICATORS_STALE_KEEP <- 2L
 }
 
 
-#' Load project
-#'
-#' @description
-#' Loads a complete project including metadata, parcels, and indicators.
-#'
-#' @param project_id Character. Project ID.
-#'
-#' @return List with project data, or NULL if not found.
-#'
-#' @noRd
-#' Build and attach `indicators_sf` to a (migrated) project
-#'
-#' @description
-#' Builds `project$indicators_sf` - one row per UGF with dissolved
-#' geometry + indicator columns joined via `ug_id` - and refreshes the
-#' geometry-free `project$indicators` with the FRESH UGF metadata. Used
-#' by family/synthesis/sampling/monitoring so they can map, score and
-#' aggregate at the UGF level without rejoining parcels.
-#'
-#' IMPORTANT: indicators.parquet captures UGF metadata (label, groupe,
-#' surfaces, cadastral_refs) AT COMPUTE TIME. If the user later renames
-#' / re-groups / splits UGFs, ugs.json gets updated but the parquet
-#' still carries stale metadata. We therefore rebuild BOTH
-#' `project$indicators` and `project$indicators_sf` from the fresh
-#' `ug_sf`, keeping only the indicator VALUES from the parquet. This way
-#' every consumer (mod_family table, mod_synthesis, export, ...) sees
-#' the current UGF labels/groupes without having to re-join manually.
-#'
-#' Split out of [load_project()] so the interactive load path can DEFER
-#' it off the critical rendering path (see the `mod_home` load
-#' observer): `ug_build_sf()` does one `sf::st_union()` per UGF and can
-#' cost 0.5-3 s on projects with many UGFs, none of which is needed to
-#' render parcels on the map. The `tenements`/`ugs` data must already be
-#' present (i.e. call [ensure_project_migrated()] first).
-#'
-#' Non-blocking: any failure is warned and the project is returned
-#' unchanged (without `indicators_sf`).
-#'
-#' @param project A migrated project list.
-#' @return The project, possibly with `indicators_sf` attached and
-#'   `indicators` refreshed.
-#' @noRd
 # PERF - chronometre leger, ACTIVE uniquement si NEMETON_PERF_TRACE est
 # vrai ("1"/"true"/"yes"). En prod la variable est absente : aucun cout,
 # aucune sortie console. Sert a repondre " ou ca coince au chargement
@@ -1147,6 +1105,38 @@ warmup_async_workers <- function() {
   invisible(TRUE)
 }
 
+#' Build and attach `indicators_sf` to a (migrated) project
+#'
+#' @description
+#' Builds `project$indicators_sf` - one row per UGF with dissolved
+#' geometry + indicator columns joined via `ug_id` - and refreshes the
+#' geometry-free `project$indicators` with the FRESH UGF metadata. Used
+#' by family/synthesis/sampling/monitoring so they can map, score and
+#' aggregate at the UGF level without rejoining parcels.
+#'
+#' IMPORTANT: indicators.parquet captures UGF metadata (label, groupe,
+#' surfaces, cadastral_refs) AT COMPUTE TIME. If the user later renames
+#' / re-groups / splits UGFs, ugs.json gets updated but the parquet
+#' still carries stale metadata. We therefore rebuild BOTH
+#' `project$indicators` and `project$indicators_sf` from the fresh
+#' `ug_sf`, keeping only the indicator VALUES from the parquet. This way
+#' every consumer (mod_family table, mod_synthesis, export, ...) sees
+#' the current UGF labels/groupes without having to re-join manually.
+#'
+#' Split out of [load_project()] so the interactive load path can DEFER
+#' it off the critical rendering path (see the `mod_home` load
+#' observer): `ug_build_sf()` does one `sf::st_union()` per UGF and can
+#' cost 0.5-3 s on projects with many UGFs, none of which is needed to
+#' render parcels on the map. The `tenements`/`ugs` data must already be
+#' present (i.e. call [ensure_project_migrated()] first).
+#'
+#' Non-blocking: any failure is warned and the project is returned
+#' unchanged (without `indicators_sf`).
+#'
+#' @param project A migrated project list.
+#' @return The project, possibly with `indicators_sf` attached and
+#'   `indicators` refreshed.
+#' @noRd
 attach_indicators_sf <- function(project) {
   tryCatch({
     if (!is.null(project$indicators) && has_ug_data(project) &&
@@ -1192,6 +1182,18 @@ attach_indicators_sf <- function(project) {
   )
 }
 
+#' Load project
+#'
+#' @description
+#' Loads a complete project including metadata, parcels, and indicators.
+#' @param build_indicators_sf Logical. Build `indicators_sf` now (`FALSE`
+#'   lets the interactive path defer it, see [attach_indicators_sf()]).
+#'
+#' @param project_id Character. Project ID.
+#'
+#' @return List with project data, or NULL if not found.
+#'
+#' @noRd
 load_project <- function(project_id, build_indicators_sf = TRUE) {
   .t_load0 <- Sys.time()
   project_path <- get_project_path(project_id)
@@ -1283,6 +1285,32 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
 }
 
 
+#' Does a project already carry a usable `monitoring_zone_id`?
+#'
+#' Single source of truth for the "zone id already known" predicate,
+#' shared by [hydrate_monitoring_zone_id()] (early no-op return) and by
+#' the `mod_home` load observer, which uses it to SKIP opening a
+#' monitoring-DB connection entirely when hydration would be a no-op.
+#'
+#' Opening that connection (a synchronous `nemeton::db_connect()` +
+#' schema-migration SELECT) was paid on EVERY project load - including
+#' the common case where `metadata.json` already carries the id - and
+#' could freeze the UI for seconds on a slow/unreachable Postgres host
+#' (libpq has no `connect_timeout` here). Gating on this predicate
+#' removes the round-trip from the critical load path for any project
+#' saved after spec 011.
+#'
+#' @param project A project list (or NULL).
+#' @return `TRUE` when `metadata$monitoring_zone_id` is a single value
+#'   coercible to a non-NA integer; `FALSE` otherwise.
+#' @noRd
+.has_monitoring_zone_id <- function(project) {
+  if (is.null(project)) return(FALSE)
+  existing <- project$metadata$monitoring_zone_id
+  !is.null(existing) && length(existing) == 1L &&
+    !is.na(suppressWarnings(as.integer(existing)))
+}
+
 #' Hydrate `monitoring_zone_id` from a monitoring-DB lookup
 #'
 #' @description
@@ -1317,32 +1345,6 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
 #' @return The project, possibly with `metadata$monitoring_zone_id`
 #'   populated.
 #' @noRd
-#' Does a project already carry a usable `monitoring_zone_id`?
-#'
-#' Single source of truth for the "zone id already known" predicate,
-#' shared by [hydrate_monitoring_zone_id()] (early no-op return) and by
-#' the `mod_home` load observer, which uses it to SKIP opening a
-#' monitoring-DB connection entirely when hydration would be a no-op.
-#'
-#' Opening that connection (a synchronous `nemeton::db_connect()` +
-#' schema-migration SELECT) was paid on EVERY project load - including
-#' the common case where `metadata.json` already carries the id - and
-#' could freeze the UI for seconds on a slow/unreachable Postgres host
-#' (libpq has no `connect_timeout` here). Gating on this predicate
-#' removes the round-trip from the critical load path for any project
-#' saved after spec 011.
-#'
-#' @param project A project list (or NULL).
-#' @return `TRUE` when `metadata$monitoring_zone_id` is a single value
-#'   coercible to a non-NA integer; `FALSE` otherwise.
-#' @noRd
-.has_monitoring_zone_id <- function(project) {
-  if (is.null(project)) return(FALSE)
-  existing <- project$metadata$monitoring_zone_id
-  !is.null(existing) && length(existing) == 1L &&
-    !is.na(suppressWarnings(as.integer(existing)))
-}
-
 hydrate_monitoring_zone_id <- function(project, con) {
   if (is.null(project) || is.null(project$id)) return(project)
   if (.has_monitoring_zone_id(project)) {

@@ -135,27 +135,6 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
   }, error = function(e) invisible(NULL))
 }
 
-#' Network-integrity summary of the designed road network (spec 025)
-#'
-#' Wraps `foretaccess::verifier_integrite_desserte()` on the network the user
-#' ends up with - **existing union created** - which is the only thing that answers
-#' "does what I just designed hold together?". `raccorde` only says whether the
-#' created roads are attached; it says nothing about the resulting graph.
-#'
-#' Guarded on `dessertR`: the check reaches it through
-#' `.integrite_calculer()` -> `.dsr("dsr_reseau")`, and **`foretaccess` does not
-#' declare that dependency** (absent from its Imports/Suggests/Remotes, resolved
-#' at call time by `getExportedValue()`). Without it the core does not error - it
-#' degrades to `.integrite_vide()`, whose `n_infractions` is `NA`. Returning
-#' `NULL` here instead lets the UI say "unavailable" rather than render an empty
-#' verdict that reads like a clean bill of health.
-#'
-#' Best-effort by design: an integrity failure must never cost the run its
-#' network, which is already written to disk at this point.
-#'
-#' @param desserte Existing road network (`sf`, carries `classe`).
-#' @param lignes Created roads (`sf`) or `NULL` when the engine built none.
-#' @param aoi Parcels served, used to locate edge effects.
 #' Le moteur optionnel `dessertR` est-il disponible ?
 #'
 #' Delegue au predicat du coeur (`foretaccess >= 2.1.0`) plutot que de refaire un
@@ -180,6 +159,27 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
   isTRUE(tryCatch(foretaccess::dessertR_disponible(), error = function(e) FALSE))
 }
 
+#' Network-integrity summary of the designed road network (spec 025)
+#'
+#' Wraps `foretaccess::verifier_integrite_desserte()` on the network the user
+#' ends up with - **existing union created** - which is the only thing that answers
+#' "does what I just designed hold together?". `raccorde` only says whether the
+#' created roads are attached; it says nothing about the resulting graph.
+#'
+#' Guarded on `dessertR`: the check reaches it through
+#' `.integrite_calculer()` -> `.dsr("dsr_reseau")`, and **`foretaccess` does not
+#' declare that dependency** (absent from its Imports/Suggests/Remotes, resolved
+#' at call time by `getExportedValue()`). Without it the core does not error - it
+#' degrades to `.integrite_vide()`, whose `n_infractions` is `NA`. Returning
+#' `NULL` here instead lets the UI say "unavailable" rather than render an empty
+#' verdict that reads like a clean bill of health.
+#'
+#' Best-effort by design: an integrity failure must never cost the run its
+#' network, which is already written to disk at this point.
+#'
+#' @param desserte Existing road network (`sf`, carries `classe`).
+#' @param lignes Created roads (`sf`) or `NULL` when the engine built none.
+#' @param aoi Parcels served, used to locate edge effects.
 #' @return Named list of scalars, or `NULL` when unavailable.
 #' @noRd
 .desserte_integrite <- function(desserte, lignes, aoi) {
@@ -872,18 +872,6 @@ DESSERTE_DETECTION_BYTES_PER_CELL <- 430
   list(ok = isTRUE(ok), cells = cells, bytes = bytes, available = avail)
 }
 
-#' Reconstruct a run result from a project's cached desserte network
-#'
-#' Lets the tab show a **previously computed** network without recomputing (a
-#' run is ~11.5 min): scans `cache/desserte/` for the network raster
-#' (`reseau_<engine>.tif`) and its sidecar metadata (`reseau_<engine>.rds`,
-#' holding the scalars - cost, connectedness, served parcels - that a raster
-#' cannot carry) and rebuilds a minimal `run_desserte()` result marked
-#' `from_cache = TRUE`. Returns `NULL` when the project has no cached network.
-#'
-#' @param project_path Project directory, or `NULL`.
-#' @return A result list compatible with the map/badge UI, or `NULL`.
-#' @noRd
 #' Current values of the inputs that change the traced network
 #'
 #' Single source of truth for "what does the user ask for right now", used both
@@ -986,6 +974,21 @@ DESSERTE_DETECTION_BYTES_PER_CELL <- 430
   file.path(cache_dir, "desserte.gpkg")
 }
 
+#' Reconstruct a run result from a project's cached desserte network
+#'
+#' Lets the tab show a **previously computed** network without recomputing (a
+#' run is ~11.5 min): scans `cache/desserte/` for the network raster
+#' (`reseau_<engine>.tif`) and its sidecar metadata (`reseau_<engine>.rds`,
+#' holding the scalars - cost, connectedness, served parcels - that a raster
+#' cannot carry) and rebuilds a minimal `run_desserte()` result marked
+#' `from_cache = TRUE`. Returns `NULL` when the project has no cached network.
+#'
+#' @param project_path Project directory, or `NULL`.
+#' @param params Current parameters ([.desserte_params_courants()]) the cached
+#'   network must match, or `NULL` to accept any.
+#' @param engine Engine to look for, or `NULL` for the most recent one.
+#' @return A result list compatible with the map/badge UI, or `NULL`.
+#' @noRd
 .load_cached_desserte <- function(project_path, params = NULL, engine = NULL) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   cache_dir <- .desserte_cache_dir(project_path)

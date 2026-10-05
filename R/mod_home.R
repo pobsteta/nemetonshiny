@@ -446,11 +446,7 @@ mod_home_server <- function(id, app_state) {
       # jamais (projet sans parcelles, chemin d'erreur).
       if (is_db_configured() && isTRUE(project$metadata$indicators_computed)) {
         db_target <- db_target_label()
-        db_msg <- if (i18n$language == "fr") {
-          sprintf("Projet synchronis\u00e9 avec la base PostGIS \u2014 %s", db_target)
-        } else {
-          sprintf("Project synced to PostGIS database \u2014 %s", db_target)
-        }
+        db_msg <- sprintf(i18n$t("projet_synchro_postgis_fmt"), db_target)
         shiny::showNotification(
           htmltools::tagList(shiny::icon("database", class = "me-1"), db_msg),
           type = "message", duration = NULL, id = "db_sync_notif",
@@ -1111,7 +1107,7 @@ mod_home_server <- function(id, app_state) {
               project$metadata$name %||% project$id
             ),
             htmltools::tags$li(
-              htmltools::strong("Unit\u00e9s de Gestion Foresti\u00e8res : "),
+              htmltools::strong(i18n$t("unites_gestion_label"), " : "),
               n_ugs
             ),
             htmltools::tags$li(
@@ -1455,11 +1451,7 @@ mod_home_server <- function(id, app_state) {
           # Notification sync PostGIS
           if (is_db_configured()) {
             db_target <- db_target_label()
-            db_msg <- if (i18n$language == "fr") {
-              sprintf("Projet synchronis\u00e9 avec la base PostGIS \u2014 %s", db_target)
-            } else {
-              sprintf("Project synced to PostGIS database \u2014 %s", db_target)
-            }
+            db_msg <- sprintf(i18n$t("projet_synchro_postgis_fmt"), db_target)
             shiny::showNotification(
               htmltools::tagList(shiny::icon("database", class = "me-1"), db_msg),
               type = "message", duration = 5, session = session
@@ -1777,7 +1769,7 @@ mod_home_server <- function(id, app_state) {
           if (is.null(guide)) return(invisible(NULL))
           guide$init(session = session)$start()
         }, error = function(e) {
-          warning("[Tour] Could not start: ", e$message)
+          cli::cli_warn("[Tour] Could not start: {e$message}")
         })
       }
 

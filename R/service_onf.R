@@ -28,28 +28,6 @@
 NULL
 
 
-#' Fetch the ONF forest parcels covering an area
-#'
-#' @description
-#' Thin wrapper over `nemeton::load_onf_parcelles_source()` that turns the
-#' core's two failure modes into one tagged result, so the module can branch on
-#' `status` instead of re-deriving the distinction:
-#'
-#' * `"unavailable"` - the core returned `NULL`: network, service firewall, or
-#'   unknown territory. The cadastral path stays available.
-#' * `"empty"` - an `sf` with 0 row: the area simply holds no public forest.
-#'   That is an answer, not an error.
-#' * `"no_domanialite"` - neither tick-box is set: the question has no object.
-#' * `"ok"` - parcels found.
-#'
-#' @param aoi `sf`/`sfc` with a defined CRS.
-#' @param domanialite `"toutes"` (default), `"domaniale"` or `"autre"`. The
-#'   filter is applied by the core.
-#' @param max_parcelles Integer. Upper bound passed to the core.
-#'
-#' @return List with `status` (chr) and `parcelles` (`sf` or `NULL`).
-#'
-#' @noRd
 #' Turn the ownership tick-boxes into the core's `domanialite` argument
 #'
 #' @description
@@ -80,6 +58,28 @@ NULL
 }
 
 
+#' Fetch the ONF forest parcels covering an area
+#'
+#' @description
+#' Thin wrapper over `nemeton::load_onf_parcelles_source()` that turns the
+#' core's two failure modes into one tagged result, so the module can branch on
+#' `status` instead of re-deriving the distinction:
+#'
+#' * `"unavailable"` - the core returned `NULL`: network, service firewall, or
+#'   unknown territory. The cadastral path stays available.
+#' * `"empty"` - an `sf` with 0 row: the area simply holds no public forest.
+#'   That is an answer, not an error.
+#' * `"no_domanialite"` - neither tick-box is set: the question has no object.
+#' * `"ok"` - parcels found.
+#'
+#' @param aoi `sf`/`sfc` with a defined CRS.
+#' @param domanialite `"toutes"` (default), `"domaniale"` or `"autre"`. The
+#'   filter is applied by the core.
+#' @param max_parcelles Integer. Upper bound passed to the core.
+#'
+#' @return List with `status` (chr) and `parcelles` (`sf` or `NULL`).
+#'
+#' @noRd
 onf_load_parcelles <- function(aoi,
                                domanialite = "toutes",
                                max_parcelles = 5000L,
@@ -252,7 +252,8 @@ onf_load_parcelles <- function(aoi,
 #'   90 % or more is a digitising artefact, not a management decision. The
 #'   parameter stays, so the raw behaviour remains reachable and testable.
 #' @param seuil_calage Numeric. Share above which a parcel is taken whole.
-#' @param label_hors Character. Label for the non-forest remainder.
+#' @param i18n Translator for the non-forest remainder label
+#'   ([.onf_label_hors_ugf()]), or `NULL` for the default language.
 #'
 #' @return List with `status` (`"ok"` or `"no_overlap"`), `projet` and the
 #'   crossing table `tenements` (for the user-facing summary).
