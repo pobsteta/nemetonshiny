@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.155.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.156.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -155,6 +155,7 @@
 <li>OAuth configuré mais indisponible : <strong>lecture seule</strong> ;</li>
 <li>avec OAuth, les droits viennent des rôles du realm publiés dans <code>userinfo</code> (claim <code>realm_access.roles</code>) : <code>gestionnaire</code>, <code>editeur</code>, <code>proprietaire</code>, <code>owner</code>, <code>editor</code>, <code>manager</code> ou <code>admin</code> pour éditer ; <code>admin</code>, <code>proprietaire</code> ou <code>owner</code> pour administrer (clés du serveur, corpus RAG). Sans rôle Nemeton : lecture seule.</li>
 </ul><p><code>NEMETON_AUTH_DEV_ROLES</code> (rôles injectés en mode anonyme) est réservé au développement et aux tests.</p>
+<p><strong>Pas d’isolation entre utilisateurs</strong> (limite assumée de la 1.0) : les rôles disent <em>ce qu’on peut faire</em>, pas <em>sur quels projets</em>. Tous les projets d’une instance vivent dans le même répertoire (<code>NEMETON_PROJECT_DIR</code>) et, s’il est configuré, dans le même schéma PostGIS ; <code>projects.owner_id</code> n’est pas renseigné. Tout utilisateur authentifié voit, ouvre et (avec un rôle d’édition) modifie ou resynchronise tous les projets. Le verrou d’édition empêche deux éditions simultanées, il ne protège pas un projet de ses autres lecteurs. Une instance correspond donc à <strong>un collectif de confiance</strong> (une équipe, un service) ; des collectifs qui ne doivent pas se voir ont chacun leur instance, avec leur répertoire et leur base. Le cloisonnement par propriétaire et par partage est prévu après la 1.0.</p>
 </div>
 <div class="section level3">
 <h3 id="services-externes">Services externes<a class="anchor" aria-label="anchor" href="#services-externes"></a></h3>

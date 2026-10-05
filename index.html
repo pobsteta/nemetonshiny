@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.155.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.156.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,7 +157,7 @@
 </h3>
 <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">docker</span> build <span class="at">-t</span> nemetonshiny .</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-p</span> 3838:3838 <span class="at">-v</span> nemeton-projets:/data nemetonshiny</span></code></pre></div>
-<p>L’image tourne sous un utilisateur non root ; les projets vivent dans le volume <code>/data</code>. Le <code>docker-compose.yml</code> démarre en plus un Keycloak <strong>de développement</strong> (<code>start-dev</code>, comptes et secret de démonstration dans <code>keycloak/realm-nemeton.json</code>) : il n’est pas fait pour la production.</p>
+<p>L’image tourne sous un utilisateur non root ; les projets vivent dans le volume <code>/data</code>. Le <code>docker-compose.yml</code> démarre en plus un Keycloak <strong>de développement</strong> (<code>start-dev</code>, realm <code>keycloak/realm-nemeton-dev.json</code> ; secret client et mots de passe à définir dans un <code>.env</code>, cf. <code>.env.example</code>, sans valeur par défaut) : il n’est pas fait pour la production.</p>
 </div>
 </div>
 <div class="section level2">

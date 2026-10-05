@@ -127,6 +127,19 @@ d’édition multi-utilisateurs, suivi sanitaire en SQLite local.
 `NEMETON_AUTH_DEV_ROLES` (rôles injectés en mode anonyme) est réservé au
 développement et aux tests.
 
+**Pas d’isolation entre utilisateurs** (limite assumée de la 1.0) : les
+rôles disent *ce qu’on peut faire*, pas *sur quels projets*. Tous les
+projets d’une instance vivent dans le même répertoire
+(`NEMETON_PROJECT_DIR`) et, s’il est configuré, dans le même schéma
+PostGIS ; `projects.owner_id` n’est pas renseigné. Tout utilisateur
+authentifié voit, ouvre et (avec un rôle d’édition) modifie ou
+resynchronise tous les projets. Le verrou d’édition empêche deux
+éditions simultanées, il ne protège pas un projet de ses autres
+lecteurs. Une instance correspond donc à **un collectif de confiance**
+(une équipe, un service) ; des collectifs qui ne doivent pas se voir ont
+chacun leur instance, avec leur répertoire et leur base. Le
+cloisonnement par propriétaire et par partage est prévu après la 1.0.
+
 ### Services externes
 
 | Variable | Rôle |
