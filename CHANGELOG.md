@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.156.1] - 2026-10-05
+
+### Added
+
+- Signal " page prete " : `postMessage` a la page qui a ouvert l'app (VICTOR),
+  `ready` apres application du lien profond et repos stable, `invalid` pour un
+  lien refuse ; origine `NEMETON_VICTOR_ORIGIN`.
+
+### Fixed
+
+- Fermer un onglet pendant la restauration d'un projet arretait tout le
+  serveur (shiny 1.14) : rappels `later` via `.later_sur()`.
+- Mode dev `load_all()` : les patches de test (`future_promise` rendant NULL,
+  `testServer`) ne s'appliquent plus que sous testthat.
+
 ## [0.156.0] - 2026-10-05
 
 ### Fixed
