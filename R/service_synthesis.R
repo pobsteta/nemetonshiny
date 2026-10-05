@@ -46,18 +46,27 @@ project_family_scores <- function(project) {
   )
 }
 
-#' Mean score of each family over the project's management units
+#' Score of each family over the project's management units
+#'
+#' Aggregated by the core, **weighted by the UGF area** (`surface_m2`):
+#' a 0.5 ha unit no longer weighs as much as a 50 ha one. Without a usable
+#' area, the core falls back on the simple mean and says so (attribute
+#' `"weighting"`). Used by the Synthesis tab (global score, radar, summary
+#' table), [projet_etat()] and the MCP server, so they all show the same
+#' figures.
 #'
 #' @param family_sf Output of [project_family_scores()].
+#' @param weights `"surface"` (default) or `"none"` (the former simple mean).
 #' @return A named numeric vector (names = `famille_*` columns), empty when
 #'   `family_sf` is `NULL` or carries no family column.
 #' @noRd
-project_family_means <- function(family_sf) {
+project_family_means <- function(family_sf, weights = "surface") {
   if (is.null(family_sf)) return(numeric(0))
   family_cols <- grep("^famille_[a-z]", names(family_sf), value = TRUE)
   if (length(family_cols) == 0) return(numeric(0))
-  df <- sf::st_drop_geometry(family_sf)
-  vapply(family_cols, function(col) mean(df[[col]], na.rm = TRUE), numeric(1))
+  out <- suppressWarnings(nemeton::aggregate_family_scores(family_sf, weights = weights))
+  out[is.nan(out)] <- NA_real_
+  out
 }
 
 #' NDP level recorded in a project's metadata

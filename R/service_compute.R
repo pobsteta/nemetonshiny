@@ -3682,8 +3682,8 @@ ndvi_from_irc <- function(irc) {
 #' A **median composite over the growing season** rather than a single date:
 #' one acquisition can be hazy, partly shadowed or simply unlucky, and the
 #' median of several is robust to that in a way a single scene never is. The
-#' index itself is computed by `nemeton::build_index_stack()` - the app composes
-#' dates, it does not compute vegetation indices (rule 1).
+#' composite (scene choice, median, clamping) is built by
+#' `nemeton::build_ndvi_season_composite()` (rule 1); the app keeps the cache.
 #'
 #' @param cache_dir Character. `<project>/cache/layers`.
 #' @param aoi An sf area of interest, or `NULL`.
@@ -3703,7 +3703,12 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
   scenes <- .scan_s2_cache_scenes(s2_dir)
   if (is.null(scenes) || nrow(scenes) == 0L) return(NULL)
 
-  composite_path <- file.path(cache_dir, "ndvi_s2.tif")
+  # `_v2` : les composites ecrits avant nemeton 0.215.0 portent l'offset
+  # radiometrique Sentinel-2 (NDVI sous-estime d'environ 0,3 en foret) et le
+  # nom n'avait pas de version. On ne les relit pas, on les supprime.
+  composite_path <- file.path(cache_dir, "ndvi_s2_v2.tif")
+  ancien <- file.path(cache_dir, "ndvi_s2.tif")
+  if (file.exists(ancien)) unlink(ancien)
   if (file.exists(composite_path)) {
     out <- tryCatch(terra::rast(composite_path), error = function(e) NULL)
     if (!is.null(out)) {
@@ -3713,52 +3718,28 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
     }
   }
 
-  # Saison de vegetation (DOY 152-273, 1er juin - 30 sept), meme fenetre que
-  # `.pick_summer_s2_scene()`. Hors saison, le NDVI d'un feuillu decrit un
-  # houppier nu : ce n'est pas la meme grandeur.
-  doy <- as.integer(format(scenes$obs_date, "%j"))
-  in_season <- !is.na(doy) & doy >= 152L & doy <= 273L
-  sel <- if (any(in_season)) scenes[in_season, , drop = FALSE] else scenes
-
-  if (nrow(sel) > max_scenes) {
-    sel <- utils::tail(sel[order(sel$obs_date), , drop = FALSE], max_scenes)
-  }
-
-  stack <- tryCatch(
-    nemeton::build_index_stack(s2_dir, sel, index = "NDVI", mask_polygon = aoi),
+  # Choix des scenes (saison DOY 152-273, les plus recentes), mediane et bornage
+  # [0, 1] : definition de la variable de C2, portee par le coeur (n. 64).
+  ndvi <- tryCatch(
+    nemeton::build_ndvi_season_composite(s2_dir, scenes = scenes, mask_polygon = aoi,
+                                         max_scenes = max_scenes),
     error = function(e) {
-      cli::cli_warn("C2 : build_index_stack a \u00e9chou\u00e9 : {conditionMessage(e)}")
+      cli::cli_warn("C2 : composite NDVI Sentinel-2 impossible : {conditionMessage(e)}")
       NULL
     })
-  if (is.null(stack) || terra::nlyr(stack) == 0L) return(NULL)
-
-  ndvi <- if (terra::nlyr(stack) == 1L) {
-    stack[[1]]
-  } else {
-    # Mediane et non moyenne : un voile nuageux residuel est une valeur
-    # aberrante, pas un bruit centre.
-    tryCatch(terra::app(stack, fun = function(x) stats::median(x, na.rm = TRUE)),
-             error = function(e) {
-               cli::cli_warn("C2 : composite m\u00e9dian impossible : {conditionMessage(e)}")
-               NULL
-             })
-  }
   if (is.null(ndvi)) return(NULL)
-
-  # Meme borne basse que le NDVI derive de l'ortho (v0.125.1) : un negatif
-  # designe de l'eau ou du sol nu, et il tirerait la moyenne de l'unite vers le
-  # bas avant d'etre ecrete en aval. Les deux sources restent comparables.
-  ndvi <- terra::clamp(ndvi, lower = 0, upper = 1)
+  sel <- attr(ndvi, "scenes")
   names(ndvi) <- "ndvi"
 
-  tryCatch(terra::writeRaster(ndvi, composite_path, overwrite = TRUE),
+  tryCatch(.write_raster_atomic(ndvi, composite_path),
            error = function(e) cli::cli_warn(
              "C2 : composite NDVI non mis en cache : {conditionMessage(e)}"))
 
-  cli::cli_alert_success(
-    "C2 : NDVI Sentinel-2 L2A ({nrow(sel)} sc\u00e8ne{?s}, \\
-    {format(min(sel$obs_date))} -> {format(max(sel$obs_date))})")
-
+  if (is.data.frame(sel) && nrow(sel) > 0L) {
+    cli::cli_alert_success(
+      "C2 : NDVI Sentinel-2 L2A ({nrow(sel)} sc\u00e8ne{?s}, \\
+      {format(min(sel$obs_date))} -> {format(max(sel$obs_date))})")
+  }
   ndvi
 }
 

@@ -1,3 +1,35 @@
+# nemetonshiny 0.156.1.9001 (cycle de développement)
+
+Briefs du cœur `nemeton` 0.213.0 à 0.216.0. Plancher `Imports: nemeton (>= 0.216.0)`.
+
+### Changed
+
+- **Scores de famille et score global pondérés par la surface des UGF**
+  (n° 66, `nemeton::aggregate_family_scores()`). Une UGF de 0,5 ha ne pèse plus
+  autant qu'une UGF de 50 ha. **Les scores affichés changent** : onglet
+  Synthèse (score global, radar, tableau), rapport PDF, prompt de synthèse IA,
+  `projet_etat()` et serveur MCP, qui donnent maintenant tous les mêmes
+  chiffres. Le prompt IA citait jusque-là une moyenne simple des familles comme
+  « score global », il reprend celui de l'onglet. Les valeurs des indicateurs
+  ne changent pas : `indicator_sense_version` reste le même.
+- **Composite NDVI Sentinel-2 de C2** construit par le cœur (n° 64,
+  `nemeton::build_ndvi_season_composite()`), qui retire l'offset radiométrique
+  des scènes traitées depuis 2022 (0.215.0). L'ancien cache `ndvi_s2.tif`,
+  biaisé (NDVI sous-estimé d'environ 0,3 en forêt), est supprimé ; le nouveau
+  s'appelle `ndvi_s2_v2.tif`.
+- **Indices ombrothermiques** (mois secs de Gaussen, De Martonne) du contexte
+  reGénération calculés par le cœur (n° 65,
+  `nemeton::climate_ombrothermic_indices()`).
+
+### À faire par les utilisateurs
+
+- **Recalculer les projets** : avec le cœur 0.212 à 0.216, R1 (`fire_exp`),
+  R5, S3, les indices de famille et C2 changent.
+- **Relancer FORDEAD** sur les zones suivies, et s'attendre à des alertes FAST
+  très différentes (mode tendance surtout) et à des courbes NDVI post-2022
+  nettement plus hautes : l'offset Sentinel-2 est corrigé. Les cartes FAST en
+  cache sont recalculées seules (leur clé porte la version de radiométrie).
+
 # nemetonshiny 0.156.1 (2026-10-05)
 
 ### Added

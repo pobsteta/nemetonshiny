@@ -24,28 +24,10 @@
     sum(is.finite(suppressWarnings(as.numeric(ser$value)))) >= 2L
 }
 
-# Statistiques ombrothermiques (Gaussen-Bagnouls + De Martonne) a partir des deux
-# climatologies mensuelles (precip mm/mois, temperature degC/mois). PURE viz-support :
-#   - mois secs de Gaussen : P < 2T (precip mensuelle sous deux fois la Tdeg) ;
-#   - indice de De Martonne annuel : sum(P) / (mean(T) + 10).
-# NA-safe : un mois dont P ou T manque n'est pas compte sec ; indices `NA` si la
-# jointure est vide. Renvoie `list(dry_idx, dry_months, demartonne)`.
+# Statistiques ombrothermiques (mois secs de Gaussen P < 2T, indice de De
+# Martonne) : definition portee par le coeur (n. 65) ; l'app ne fait que tracer.
 .regen_ctx_ombro_stats <- function(clim_rr, clim_t) {
-  empty <- list(dry_idx = integer(0), dry_months = NA_integer_, demartonne = NA_real_)
-  if (!is.data.frame(clim_rr) || !is.data.frame(clim_t)) return(empty)
-  m <- merge(
-    data.frame(month = clim_rr$month, P = suppressWarnings(as.numeric(clim_rr$value))),
-    data.frame(month = clim_t$month,  Tm = suppressWarnings(as.numeric(clim_t$value))),
-    by = "month", all = FALSE)
-  if (!nrow(m)) return(empty)
-  m <- m[order(m$month), , drop = FALSE]
-  dry <- is.finite(m$P) & is.finite(m$Tm) & (m$P < 2 * m$Tm)
-  tot_p  <- sum(m$P,  na.rm = TRUE)
-  mean_t <- mean(m$Tm[is.finite(m$Tm)])
-  list(
-    dry_idx    = m$month[dry],
-    dry_months = sum(dry, na.rm = TRUE),
-    demartonne = if (is.finite(mean_t)) tot_p / (mean_t + 10) else NA_real_)
+  nemeton::climate_ombrothermic_indices(clim_rr, clim_t)
 }
 
 # Graphe 1 - serie estivale + droite de tendance. La pente AFFICHEE est
