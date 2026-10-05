@@ -72,7 +72,7 @@ docker build -t nemetonshiny .
 docker run -p 3838:3838 -v nemeton-projets:/data nemetonshiny
 ```
 
-L'image tourne sous un utilisateur non root ; les projets vivent dans le volume `/data`. Le `docker-compose.yml` démarre en plus un Keycloak **de développement** (`start-dev`, comptes et secret de démonstration dans `keycloak/realm-nemeton.json`) : il n'est pas fait pour la production.
+L'image tourne sous un utilisateur non root ; les projets vivent dans le volume `/data`. Le `docker-compose.yml` démarre en plus un Keycloak **de développement** (`start-dev`, realm `keycloak/realm-nemeton-dev.json` ; secret client et mots de passe à définir dans un `.env`, cf. `.env.example`, sans valeur par défaut) : il n'est pas fait pour la production.
 
 ## Développement
 

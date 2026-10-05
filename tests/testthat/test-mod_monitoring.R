@@ -221,14 +221,6 @@ test_that("db_status renders the 'unavailable' card when DB is not configured", 
 # monitoring DB and cannot be unit-tested with mocks. This mirrors the
 # v0.36.5 decision (see the Zone-saine comment block lower in this
 # file) to keep such probe-gated rendering under manual QA.
-test_that("db_status renders the 'no zone' card when DB has zero zones", {
-  skip("probe-gated rendering — needs a reachable DB (multisession worker)")
-})
-
-test_that("db_status renders the 'connected' card with zone count", {
-  skip("probe-gated rendering — needs a reachable DB (multisession worker)")
-})
-
 
 # ---- Server: ingestion click handler (phase 2) ----------------------
 
@@ -1099,14 +1091,6 @@ test_that("register click without a loaded project shows a notification and no-o
       )
     }
   )
-})
-
-test_that("v0.73.0 — register click invokes nemeton::build_project_monitoring_zones (spec 020)", {
-  skip("v0.73.0 — refactored to nemeton::build_project_monitoring_zones (spec 020). Mock obsolete : the observer now requires bdforet.gpkg + ugf_sf, which need a fully-loaded project fixture. Coverage assured by 'register click without a loaded project' (early-exit branches) + integration testing.")
-})
-
-test_that("register click flags 'already registered' when helper returns was_existing=TRUE", {
-  skip("v0.73.0 — register_project_as_zone replaced by nemeton::build_project_monitoring_zones (spec 020). The 'already registered' branch is gone (upsert semantics : replace = TRUE by default).")
 })
 
 # Tests obsolètes maintenus en référence (skipped). Le wrapper

@@ -278,7 +278,7 @@ auth_has_role <- function(auth_state, roles) {
 }
 
 # Roles reconnus. `gestionnaire` est le role d'edition du realm Keycloak livre
-# (keycloak/realm-nemeton.json) ; les autres sont les alias historiques.
+# (keycloak/realm-nemeton-dev.json) ; les autres sont les alias historiques.
 AUTH_EDITOR_ROLES <- c("proprietaire", "editeur", "gestionnaire", "owner",
                        "editor", "admin", "manager")
 AUTH_ADMIN_ROLES <- c("proprietaire", "owner", "admin")

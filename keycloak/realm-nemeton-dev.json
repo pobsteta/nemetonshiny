@@ -9,7 +9,10 @@
   "resetPasswordAllowed": true,
   "rememberMe": true,
   "internationalizationEnabled": true,
-  "supportedLocales": ["fr", "en"],
+  "supportedLocales": [
+    "fr",
+    "en"
+  ],
   "defaultLocale": "fr",
   "roles": {
     "realm": [
@@ -34,7 +37,7 @@
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "nemeton-secret",
+      "secret": "${NEMETON_OAUTH_CLIENT_SECRET}",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
@@ -83,11 +86,13 @@
       "credentials": [
         {
           "type": "password",
-          "value": "demo",
+          "value": "${KC_DEMO_PASSWORD}",
           "temporary": false
         }
       ],
-      "realmRoles": ["gestionnaire"]
+      "realmRoles": [
+        "gestionnaire"
+      ]
     },
     {
       "username": "admin",
@@ -99,11 +104,14 @@
       "credentials": [
         {
           "type": "password",
-          "value": "admin",
+          "value": "${KC_REALM_ADMIN_PASSWORD}",
           "temporary": false
         }
       ],
-      "realmRoles": ["admin", "gestionnaire"]
+      "realmRoles": [
+        "admin",
+        "gestionnaire"
+      ]
     }
   ]
 }
