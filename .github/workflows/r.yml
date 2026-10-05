@@ -235,6 +235,11 @@ jobs:
             install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
           )
           covr::to_cobertura(cov)
+          # Le pourcentage dans le resume du job : visible meme quand Codecov
+          # est indisponible (certificats expires le 2026-10-05).
+          pct <- covr::percent_coverage(cov)
+          cat(sprintf("### Couverture de code : %.1f %%\n", pct),
+              file = Sys.getenv("GITHUB_STEP_SUMMARY"), append = TRUE)
         shell: Rscript {0}
 
       # v7 : la v4 importait la cle de verification depuis
@@ -246,5 +251,8 @@ jobs:
         with:
           files: ./cobertura.xml
           disable_search: true
-          fail_ci_if_error: false
+          # true : un envoi rate rend le job rouge. Avec false, la v7 rendait
+          # un job VERT sans rien avoir envoye (cli.codecov.io injoignable).
+          # `coverage` n'est pas un controle requis : ne bloque aucun merge.
+          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
