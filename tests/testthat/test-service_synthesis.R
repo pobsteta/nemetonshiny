@@ -60,10 +60,24 @@ test_that("project_family_means averages every famille_* column", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)),
                           sf::st_point(c(2, 2)))
   )
-  expect_equal(project_family_means(sf_x),
-               c(famille_carbone = 20, famille_eau = 2))
+  # Points sans surface : le coeur retombe sur la moyenne simple et le dit.
+  m <- project_family_means(sf_x)
+  expect_equal(c(m), c(famille_carbone = 20, famille_eau = 2))
+  expect_identical(attr(m, "weighting"), "none")
   no_fam <- sf::st_sf(autre = 1, geometry = sf::st_sfc(sf::st_point(c(0, 0))))
   expect_identical(project_family_means(no_fam), numeric(0))
+})
+
+test_that("project_family_means weights the families by UGF area (n. 66)", {
+  sq <- function(x, cote) sf::st_polygon(list(rbind(c(x, 0), c(x + cote, 0),
+    c(x + cote, cote), c(x, cote), c(x, 0))))
+  ugf <- sf::st_sf(famille_carbone = c(20, 80), surface_m2 = c(5000, 495000),
+                   geometry = sf::st_sfc(sq(0, 70), sq(1000, 700), crs = 2154))
+  m <- project_family_means(ugf)
+  # 0,5 ha a 20 et 49,5 ha a 80 : la grande UGF pese 99 %
+  expect_equal(unname(m[["famille_carbone"]]), 20 * 0.01 + 80 * 0.99)
+  expect_identical(attr(m, "weighting"), "surface")
+  expect_equal(unname(project_family_means(ugf, weights = "none")[["famille_carbone"]]), 50)
 })
 
 test_that("project_global_index is the core general index, NULL without scores", {

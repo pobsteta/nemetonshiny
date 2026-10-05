@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.157.0] - 2026-10-05
+
+### Changed
+
+- Scores de famille et score global ponderes par la surface des UGF
+  (`nemeton::aggregate_family_scores()`) : Synthese, radar, tableau, rapport
+  PDF, prompt IA, `projet_etat()`, serveur MCP. Les scores affiches changent.
+- Composite NDVI S2 de C2 par `nemeton::build_ndvi_season_composite()`
+  (offset radiometrique retire) ; cache `ndvi_s2_v2.tif`.
+- Indices ombrothermiques par `nemeton::climate_ombrothermic_indices()`.
+- Plancher `Imports: nemeton (>= 0.216.0)`.
+
 ## [0.156.1] - 2026-10-05
 
 ### Added

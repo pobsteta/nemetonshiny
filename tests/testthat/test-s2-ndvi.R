@@ -188,3 +188,28 @@ test_that("the composite is cached and re-read instead of rebuilt", {
                  as.numeric(terra::values(second)), tolerance = 1e-6)
   })
 })
+
+
+test_that("the unversioned pre-0.215 composite is dropped, never re-read", {
+  skip_if_not_installed("terra")
+  testthat::local_mocked_bindings(
+    build_index_stack = function(cache_dir, scenes_df, index, ...) {
+      r <- terra::rast(nrows = 2, ncols = 2, xmin = 0, xmax = 2,
+                       ymin = 0, ymax = 2, crs = "EPSG:2154")
+      terra::values(r) <- 0.8
+      r
+    },
+    .package = "nemeton"
+  )
+  withr::with_tempdir({
+    cd <- .mk_s2_cache("2024-07-10")
+    # Ancien composite biaise par l'offset S2 (NDVI ~0,5 en foret)
+    vieux <- terra::rast(nrows = 2, ncols = 2, xmin = 0, xmax = 2, ymin = 0, ymax = 2,
+                         crs = "EPSG:2154", vals = 0.5)
+    terra::writeRaster(vieux, file.path(cd, "ndvi_s2.tif"))
+    out <- build_s2_ndvi_layer(cd)
+    expect_equal(unique(as.numeric(terra::values(out))), 0.8)
+    expect_false(file.exists(file.path(cd, "ndvi_s2.tif")))
+    expect_true(file.exists(file.path(cd, "ndvi_s2_v2.tif")))
+  })
+})

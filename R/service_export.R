@@ -414,7 +414,9 @@ prepare_report_data <- function(project, family_scores, language,
   # Get family columns
   family_cols <- grep("^famille_[a-z]", names(scores_df), value = TRUE)
 
-  # Calculate family statistics
+  # Calculate family statistics. La moyenne est celle du coeur, ponderee par
+  # la surface des UGF : la meme que l'onglet Synthese.
+  moyennes <- project_family_means(family_scores)
   family_stats <- lapply(family_cols, function(col) {
     code <- get_famille_code(col)
     fam <- INDICATOR_FAMILIES[[code]]
@@ -423,7 +425,8 @@ prepare_report_data <- function(project, family_scores, language,
     list(
       code = code,
       name = if (language == "fr") fam$name_fr else fam$name_en,
-      mean = round(mean(vals, na.rm = TRUE), 1),
+      mean = round(if (col %in% names(moyennes)) unname(moyennes[[col]])
+                   else mean(vals, na.rm = TRUE), 1),
       min = round(min(vals, na.rm = TRUE), 1),
       max = round(max(vals, na.rm = TRUE), 1),
       sd = round(sd(vals, na.rm = TRUE), 1),
@@ -491,12 +494,6 @@ prepare_report_data <- function(project, family_scores, language,
     ind_data
   })
   names(indicator_stats) <- names(INDICATOR_FAMILIES)
-
-  # Global score
-  family_means <- vapply(family_cols, function(col) {
-    mean(scores_df[[col]], na.rm = TRUE)
-  }, numeric(1))
-  global_score <- round(mean(family_means, na.rm = TRUE), 1)
 
   # Metadata
   meta <- project$metadata
@@ -667,8 +664,7 @@ generate_radar_image <- function(family_scores, output_file, language,
     # 1. Aggregate to single row
     df <- if (inherits(family_scores, "sf")) sf::st_drop_geometry(family_scores) else family_scores
     fam_cols <- grep("^famille_[a-z]", names(df), value = TRUE)
-    family_means <- as.data.frame(lapply(df[, fam_cols, drop = FALSE],
-                                         function(x) mean(x, na.rm = TRUE)))
+    family_means <- as.data.frame(as.list(project_family_means(family_scores)))
 
     # 2. Reorder to match nemeton_radar axis order
     radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")

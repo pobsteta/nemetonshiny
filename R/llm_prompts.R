@@ -197,9 +197,13 @@ build_analysis_prompt <- function(family_config, ind_data, language) {
 #'
 #' @param family_scores_df data.frame. Family scores (famille_carbone, famille_biodiversite, ...).
 #' @param language Character. "fran\u00e7ais" or "English".
+#' @param ndp_level Integer NDP level of the project, for the global score.
 #' @return Character string prompt.
 #' @noRd
-build_synthesis_prompt <- function(family_scores_df, language) {
+build_synthesis_prompt <- function(family_scores_df, language, ndp_level = 0L) {
+  # Moyennes et score global identiques a ceux de l'onglet Synthese : scores du
+  # coeur ponderes par la surface des UGF, score global de Fibonacci (NDP).
+  moyennes <- project_family_means(family_scores_df)
   if (inherits(family_scores_df, "sf")) {
     family_scores_df <- sf::st_drop_geometry(family_scores_df)
   }
@@ -220,16 +224,15 @@ build_synthesis_prompt <- function(family_scores_df, language) {
     if (n == 0) return(paste0("- ", fam_name, " (", code, "): no data"))
     mn <- round(min(vals_clean), 1)
     mx <- round(max(vals_clean), 1)
-    avg <- round(mean(vals_clean), 1)
+    avg <- round(if (col %in% names(moyennes) && is.finite(moyennes[[col]]))
+                   moyennes[[col]] else mean(vals_clean), 1)
     paste0("- ", fam_name, " (", code, "): mean=", avg,
            ", min=", mn, ", max=", mx, " (n=", n, ")")
   }, character(1))
 
   # Global score
-  family_means <- vapply(family_cols, function(col) {
-    mean(family_scores_df[[col]], na.rm = TRUE)
-  }, numeric(1))
-  global <- round(mean(family_means, na.rm = TRUE), 1)
+  idx <- tryCatch(project_global_index(moyennes, ndp_level), error = function(e) NULL)
+  global <- if (!is.null(idx) && is.finite(idx$score)) round(idx$score, 1) else NA_real_
 
   paste0(
     if (language == "fran\u00e7ais") {

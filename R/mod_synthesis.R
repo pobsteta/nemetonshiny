@@ -503,9 +503,8 @@ mod_synthesis_server <- function(id, app_state) {
                                i18n$t("ndp_confidence"), confidence_pct)
 
       # 1. Aggregate to single row (mean per family) - 20 parcels = 20 overlapping polygons
-      df <- sf::st_drop_geometry(sf_data)
-      family_means <- as.data.frame(lapply(df[, family_cols, drop = FALSE],
-                                           function(x) mean(x, na.rm = TRUE)))
+      # Meme agregation que le score global (coeur, ponderee par la surface).
+      family_means <- as.data.frame(as.list(project_family_means(sf_data)))
 
       # 2. Reorder columns to match nemeton_radar axis order (F,A,W,B,N,C,E,P,S,R,T,L)
       radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")
@@ -562,18 +561,14 @@ mod_synthesis_server <- function(id, app_state) {
         if (n > 0L) n else length(fam$indicators)   # repli : config si rien detecte
       }
 
-      # Build summary data.frame
+      # Build summary data.frame (scores du coeur, ponderes par la surface)
+      moyennes <- project_family_means(sf_data)
       rows <- lapply(codes, function(code) {
         col_name <- get_famille_col(code)
         fam <- families[[code]]
         fam_name <- if (lang == "fr") fam$name_fr else fam$name_en
 
-        if (col_name %in% names(sf_data)) {
-          vals <- sf::st_drop_geometry(sf_data)[[col_name]]
-          score <- mean(vals, na.rm = TRUE)
-        } else {
-          score <- NA_real_
-        }
+        score <- if (col_name %in% names(moyennes)) unname(moyennes[[col_name]]) else NA_real_
 
         data.frame(
           Family = fam_name,
@@ -655,7 +650,8 @@ mod_synthesis_server <- function(id, app_state) {
 
       language <- if (identical(app_state$language, "fr")) "fran\u00e7ais" else "English"
       rag_lang <- if (identical(app_state$language, "fr")) "fr" else "en"
-      prompt <- build_synthesis_prompt(sf_data, language)
+      prompt <- build_synthesis_prompt(sf_data, language,
+                                       project_ndp_level(app_state$current_project))
       expert <- profil %||% input$expert_profile %||% "generalist"
       system_prompt <- build_system_prompt(language, expert = expert)
 
