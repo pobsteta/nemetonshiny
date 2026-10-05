@@ -1398,16 +1398,7 @@ mod_monitoring_server <- function(id, app_state) {
       # v0.73.0 - Best-effort : purger les caches orphelins
       # `cache/layers/*/zone_<old_id>/` (les zone_id changent a
       # chaque upsert, donc les anciens dossiers trainent sinon).
-      tryCatch(
-        nemeton::prune_orphan_zone_caches(
-          con,
-          cache_root = file.path(project$path, "cache", "layers")
-        ),
-        error = function(e) {
-          cli::cli_alert_warning(
-            "prune_orphan_zone_caches failed: {e$message}")
-        }
-      )
+      .prune_zone_caches(con, project)
 
       # Memoriser la zone `_tot` (la plus inclusive) comme zone
       # par defaut du projet - l'observer du selecteur s'aligne
@@ -4727,4 +4718,30 @@ mod_monitoring_server <- function(id, app_state) {
     df$pct <- ifelse(df$strata == "tot", NA_real_, df$ha / tot_ha * 100)
   }
   df
+}
+
+
+#' Prune orphan zone caches of a project, best-effort
+#'
+#' `project_uuid` (nemeton >= 0.209.0) turns on the per-project guard: nothing
+#' is pruned when the connected database knows no zone of this project - the
+#' case of an app pointed at another database, where every local zone cache
+#' would otherwise look orphan and be deleted.
+#'
+#' @param con Monitoring database connection.
+#' @param project Project list (`id`, `path`).
+#' @return The core result, or `NULL` on error (warned).
+#' @noRd
+.prune_zone_caches <- function(con, project) {
+  tryCatch(
+    nemeton::prune_orphan_zone_caches(
+      con,
+      cache_root = file.path(project$path, "cache", "layers"),
+      project_uuid = project$id
+    ),
+    error = function(e) {
+      cli::cli_alert_warning("prune_orphan_zone_caches failed: {e$message}")
+      NULL
+    }
+  )
 }

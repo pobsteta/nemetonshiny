@@ -1,6 +1,6 @@
 # BRIEF — Piloter nemetonshiny depuis VICTOR (voix) et AIGORA (Claude Code)
 
-> **Statut** : ouvert, 2026-10-04. A.1 livré (0.153.0.9001) ; API publique sous-jacente livrée (0.153.0.9002).
+> **Statut** : lot A **livré** (A.1 en 0.153.0.9001, API publique en 0.153.0.9002, A.2-A.4 en 0.154.0.9001). Restent les lots B (aigora) et C (victor), dans leurs dépôts.
 > **Dépôts concernés** : `nemetonshiny` (lot A, principal), `aigora` (lot B),
 > `victor` (lot C). **`nemeton` (cœur) : aucun changement de code** (§2).
 > **Émetteur** : session `nemetonshiny`, sur la base de 0.153.0 (main) / cycle 0.153.0.9xxx.

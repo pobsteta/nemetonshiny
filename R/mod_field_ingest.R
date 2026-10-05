@@ -617,7 +617,7 @@ mod_field_ingest_server <- function(id, app_state) {
       r <- hv_rv$report
       i18n_local <- get_i18n(app_state$language %||% "fr")
       if (is.null(r)) return(NULL)
-      details <- r$details
+      details <- .hv_translate_reasons(r$details, i18n_local)
       htmltools::tagList(
         htmltools::tags$h5(i18n_local$t("health_validation_report_title")),
         htmltools::tags$p(class = "small text-muted",
@@ -643,4 +643,26 @@ mod_field_ingest_server <- function(id, app_state) {
       health_report = shiny::reactive(hv_rv$report)
     )
   })
+}
+
+
+#' Translate the reason codes of a health-validation report
+#'
+#' `details$reason` carries core codes (`ok`, `missing_stade`,
+#' `unknown_stade`, `no_alert_within_snap`). Each known code is shown through
+#' its `hv_motif_<code>` translation; an unknown one stays as is rather than
+#' being hidden.
+#'
+#' @param details data.frame from `nemeton::ingest_health_validation()`.
+#' @param i18n Translator.
+#' @return `details`, with `reason` translated when present.
+#' @noRd
+.hv_translate_reasons <- function(details, i18n) {
+  if (is.null(details) || !"reason" %in% names(details)) return(details)
+  codes <- as.character(details$reason)
+  details$reason <- vapply(codes, function(code) {
+    key <- paste0("hv_motif_", code)
+    if (!is.na(code) && isTRUE(i18n$has(key))) i18n$t(key) else code
+  }, character(1), USE.NAMES = FALSE)
+  details
 }

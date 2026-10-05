@@ -284,6 +284,10 @@ app_server <- function(input, output, session) {
   # Home module (search, map, project form)
   home_result <- mod_home_server("home", app_state)
 
+  # Liens profonds `?project=<id>&tab=<onglet>` (pilotage par un assistant,
+  # specs/BRIEF-pilotage-victor-aigora.md A.4), cf. service_deep_link.R.
+  .setup_deep_link(session, app_state)
+
   # Update selection state from home module
   shiny::observe({
     selection_state$commune_code <- home_result$selected_commune()

@@ -1,3 +1,59 @@
+# nemetonshiny 0.155.0 (2026-10-05)
+
+### Fixed — Briefs coeur 0.208 a 0.212 (audit 1.0) soldes cote app
+
+- **T2 n'est plus NA sur tous les projets** (brief 0.212.0 §4). Depuis
+  `nemeton 0.212.0`, T2 rend NA sans source ; l'app ne lui passait ni N2 ni T1.
+  N2 est desormais calcule avant T2 et transmis comme source prioritaire, T1 en
+  repli (une source toute NA n'est pas transmise). Un T2 deja enregistre tout
+  NA est recalcule au prochain lancement.
+- **Methode de R1 expliquee** : `r1_status` (repli sans fireexposuR, sans BD
+  Foret, echec de fireexposuR ; R1 non calcule faute de MNT ou de composante)
+  traduit FR/EN dans la fiche de l'indicateur. Le bandeau retient le premier
+  statut traduit : un repli sur une seule unite n'est plus masque par la
+  methode nominale des autres.
+- **Purge des caches de zones** : `prune_orphan_zone_caches(project_uuid =)`
+  (brief 0.209.0) - rien n'est purge si la base connectee ne connait aucune
+  zone du projet (app pointee sur une autre base).
+- **Corpus RAG** : la racine du corpus (`nemeton.corpus_root` /
+  `NEMETON_CORPUS_ROOT`) est resolue dans la session et transmise au worker
+  d'import, qui ne recevait pas l'option (brief 0.210.0).
+- **Sources documentaires et reponses IA rendues sans HTML brut**
+  (`markdown_safe()`) : `shiny::markdown()` laissait passer `<img onerror=...>` ;
+  les citations Markdown du coeur ne sont pas echappees (brief 0.210.0). Les
+  liens `<https://...>` des citations sont conserves.
+- **Motifs du rapport d'import des validations** traduits (`unknown_stade`,
+  `missing_stade`, `no_alert_within_snap`).
+
+### Added — Pilotage par un assistant (brief `specs/BRIEF-pilotage-victor-aigora.md`, lot A)
+
+- **Serveur MCP** (`inst/mcp/server.R`, `mcptools` en `Suggests`) : huit outils
+  pour Claude Code / AIGORA / VICTOR - `lister_projets`, `resume_projet`,
+  `lancer_calcul`, `etat_calcul`, `annuler_calcul`, `generer_rapport`,
+  `exporter_gpkg`, `url_app`. Fines enveloppes de l'API hors interface ; un
+  projet se designe par son id ou son nom (casse et accents ignores ; plusieurs
+  candidats -> liste, jamais de choix silencieux). Reponses JSON
+  `{"ok": ...}`. `session_tools = FALSE` : sans lui, mcptools transferait les
+  appels vers la session RStudio ouverte. Verifie en stdio de bout en bout.
+- **Calcul detache** : `lancer_calcul` demarre un `Rscript` en session propre
+  (`setsid`) qui survit a la tache de l'assistant, par le meme chemin que
+  l'application (plafond memoire, journal). `data/compute_job.json` suit pid,
+  statut et erreur ; un processus disparu sans finir est signale `echec` avec
+  la fin du journal. Refus si un calcul tourne (assistant ou application), si
+  le projet est verrouille en edition, ou si une migration est necessaire.
+- **Liens profonds** `?project=<id>&tab=<onglet>` : le projet s'ouvre par le
+  meme chemin que les cartes " projets recents ", l'onglet est selectionne une
+  fois ce projet charge ; valeur inconnue ignoree avec un avertissement.
+  `NEMETON_APP_PORT` fixe le port des liens construits par `url_app`.
+
+### A savoir
+
+Les releases coeur 0.208 a 0.212 changent beaucoup de valeurs (volumes de
+desserte, indice de regeneration, R3, R4, B1, B3, L1, L2, A1, A2, W1, W2, R1,
+R5, R7, S1, S2, T1, T2, essences resineuses) : **recalculer les projets**.
+Calibrages coeur a valider : borne B1 = 4 statuts, cout B3, reference A2 = 100,
+contrastes OSO de L1, borne E1/E2 = 2,64.
+
 # nemetonshiny 0.154.0 (2026-10-04)
 
 ### Fixed — Une lecture ne detruit plus les indicateurs
