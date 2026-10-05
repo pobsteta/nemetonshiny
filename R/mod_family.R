@@ -497,6 +497,7 @@ mod_family_server <- function(id, family_code, app_state) {
     # AI ANALYSIS: Generate analysis via ellmer/Claude
     # ================================================================
     shiny::observeEvent(input$ai_generate, {
+      if (deny_if_readonly(app_state)) return()
       i18n <- get_i18n(app_state$language)
 
       # Check API key for providers that require one
@@ -630,7 +631,14 @@ mod_family_server <- function(id, family_code, app_state) {
     # ================================================================
     # OBSERVER: Save comments to app_state when changed
     # ================================================================
-    shiny::observeEvent(input$analysis_comments, {
+    # Sauvegarde differee (1 s apres la derniere frappe) : un textarea
+    # declenchait une ecriture de comments.json a CHAQUE caractere.
+    analysis_comments_d <- shiny::debounce(
+      shiny::reactive(input$analysis_comments), 1000)
+    shiny::observeEvent(analysis_comments_d(), {
+      # Lecture seule : ne rien ecrire. Sinon la session ecrasait le
+      # comments.json du detenteur du verrou, a chaque frappe.
+      if (.comments_readonly(app_state, session)) return()
       # Initialize family_comments list if not exists
       if (is.null(app_state$family_comments)) {
         app_state$family_comments <- list()

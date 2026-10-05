@@ -593,8 +593,7 @@ mod_field_ingest_server <- function(id, app_state) {
           gpkg_path       = up$datapath,
           zone_id         = as.integer(input$hv_zone_id),
           snap_distance_m = as.numeric(input$hv_snap %||% 50),
-          validated_by    = app_state$user$email %||%
-                            app_state$user$name  %||% NULL
+          validated_by    = .acting_user(app_state)
         ),
         error = function(e) {
           shiny::showNotification(

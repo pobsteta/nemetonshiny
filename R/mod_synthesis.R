@@ -616,6 +616,7 @@ mod_synthesis_server <- function(id, app_state) {
     # NULL = on suit la case, comportement inchange pour le bouton.
     .generer_ia_synthese <- function(profil = NULL, remplir_familles = NULL) {
       i18n <- get_i18n(app_state$language)
+      if (deny_if_readonly(app_state, i18n)) return(i18n$t("lock_readonly_action"))
 
       # Check API key for providers that require one
       provider <- get_app_config("llm_provider", "anthropic")
@@ -947,7 +948,10 @@ mod_synthesis_server <- function(id, app_state) {
     # ================================================================
     # OBSERVER: Save synthesis comment on manual edit (debounced)
     # ================================================================
-    shiny::observeEvent(input$synthesis_comments, {
+    synthesis_comments_d <- shiny::debounce(
+      shiny::reactive(input$synthesis_comments), 1000)
+    shiny::observeEvent(synthesis_comments_d(), {
+      if (.comments_readonly(app_state, session)) return()
       project_id <- app_state$project_id
       if (!is.null(project_id)) {
         save_comments(project_id,

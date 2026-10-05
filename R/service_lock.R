@@ -100,3 +100,46 @@ lock_acquire_or_null <- function(pid, hid, label = NULL) {
   if (lock_no_db(res)) NULL else res
 }
 
+
+#' Should a comment edit be dropped because the project is read-only?
+#'
+#' Comment text areas save on change. In read-only mode nothing must be
+#' written (the lock holder's `comments.json` would be overwritten); the user
+#' is told once per session instead of at every keystroke.
+#'
+#' @param app_state Shared `reactiveValues`.
+#' @param session Shiny session (for the once-per-session flag).
+#' @return `TRUE` when the edit must not be saved.
+#' @noRd
+.comments_readonly <- function(app_state, session = shiny::getDefaultReactiveDomain()) {
+  if (!project_is_readonly(app_state)) return(FALSE)
+  ud <- if (!is.null(session)) session$userData else NULL
+  if (is.null(ud) || !isTRUE(ud$.comments_readonly_warned)) {
+    if (!is.null(ud)) ud$.comments_readonly_warned <- TRUE
+    lang <- tryCatch(shiny::isolate(app_state$language), error = function(e) "fr") %||% "fr"
+    shiny::showNotification(get_i18n(lang)$t("lock_readonly_action"),
+                            type = "warning", duration = 5)
+  }
+  TRUE
+}
+
+
+#' Who is acting, for audit trails
+#'
+#' The connected user (e-mail, else name) when authentication is on. Only in
+#' anonymous mode (single-user station, no OAuth) does it fall back to the
+#' system account - it used to be the system account always, which made a
+#' multi-user history useless (every entry signed by the server account).
+#'
+#' @param app_state Shared `reactiveValues` (with `$auth` from mod_auth).
+#' @return A single character string.
+#' @noRd
+.acting_user <- function(app_state) {
+  auth <- tryCatch(shiny::isolate(app_state$auth), error = function(e) NULL)
+  get <- function(k) tryCatch(shiny::isolate(auth[[k]]), error = function(e) NULL)
+  if (!is.null(auth) && isTRUE(get("authenticated")) && !isTRUE(get("anonymous"))) {
+    who <- get("user_email") %||% get("user_name")
+    if (!is.null(who) && length(who) && nzchar(who[[1]])) return(as.character(who[[1]]))
+  }
+  Sys.info()[["user"]] %||% "user"
+}

@@ -516,6 +516,20 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     plan_rv <- shiny::reactiveVal(NULL)
+
+    # Ecrit le plan PUIS l'affiche : sans ce test, l'interface montrait le
+    # plan modifie meme quand l'ecriture avait echoue (disque plein,
+    # droits), et la modification etait perdue au rechargement.
+    .sauver_plan <- function(pid, plan) {
+      if (!isTRUE(save_action_plan(pid, plan))) {
+        shiny::showNotification(
+          get_i18n(shiny::isolate(app_state$language) %||% "fr")$t("action_plan_save_failed"),
+          type = "error", duration = 10)
+        return(FALSE)
+      }
+      plan_rv(plan)
+      TRUE
+    }
     # Tiges martelees revenues de Marculus (`data/marculus_tiges.json`).
     marculus_tiges_rv <- shiny::reactiveVal(NULL)
     # Nom de la couche dans le controle Leaflet (libelle affiche).
@@ -1221,10 +1235,9 @@ mod_action_plan_server <- function(id, app_state) {
         new_plan <- update_action_in_plan(
           plan_rv(), action_id, updates,
           ug_ids = ug_ids(),
-          user = Sys.info()[["user"]] %||% "user"
+          user = .acting_user(app_state)
         )
-        save_action_plan(app_state$current_project$id, new_plan)
-        plan_rv(new_plan)
+        if (!.sauver_plan(app_state$current_project$id, new_plan)) return()
       }, error = function(e) {
         shiny::showNotification(conditionMessage(e), type = "error")
       })
@@ -1554,7 +1567,7 @@ mod_action_plan_server <- function(id, app_state) {
       new_plan <- tryCatch(
         update_action_in_plan(cur_plan, action_id, list(statut = target),
                               ug_ids = ug_ids(),
-                              user = Sys.info()[["user"]] %||% "user"),
+                              user = .acting_user(app_state)),
         error = function(e) {
           shiny::showNotification(conditionMessage(e), type = "error")
           NULL
@@ -1564,8 +1577,7 @@ mod_action_plan_server <- function(id, app_state) {
         kanban_render_token(kanban_render_token() + 1L)
         return()
       }
-      save_action_plan(app_state$current_project$id, new_plan)
-      plan_rv(new_plan)
+      if (!.sauver_plan(app_state$current_project$id, new_plan)) return()
       shiny::showNotification(
         sprintf(i18n$t("action_plan_kanban_moved_fmt"),
                 i18n$t(paste0("action_plan_status_", target))),
@@ -1701,15 +1713,14 @@ mod_action_plan_server <- function(id, app_state) {
       new_plan <- tryCatch(
         update_action_in_plan(cur_plan, action_id, updates,
                               ug_ids = ug_ids(),
-                              user = Sys.info()[["user"]] %||% "user"),
+                              user = .acting_user(app_state)),
         error = function(e) {
           shiny::showNotification(conditionMessage(e), type = "error")
           NULL
         }
       )
       if (is.null(new_plan)) return()
-      save_action_plan(app_state$current_project$id, new_plan)
-      plan_rv(new_plan)
+      if (!.sauver_plan(app_state$current_project$id, new_plan)) return()
       kanban_edit_id_rv(NULL)
       shiny::removeModal()
       shiny::showNotification(i18n$t("action_plan_kanban_edit_saved"),
@@ -2057,7 +2068,7 @@ mod_action_plan_server <- function(id, app_state) {
       nom_origine <- function(x) unname(ifelse(x %in% names(noms), noms[x], x))
       res <- tryCatch(
         marculus_importer(project$id, f$datapath,
-                          user = Sys.info()[["user"]] %||% "user"),
+                          user = .acting_user(app_state)),
         error = function(e) {
           cli::cli_warn("Import Marculus : {conditionMessage(e)}")
           NULL
@@ -2205,8 +2216,18 @@ mod_action_plan_server <- function(id, app_state) {
         res <- tryCatch(marculus_export_bundle(pid, file),
                         error = function(e) {
                           cli::cli_warn("Export Marculus : {conditionMessage(e)}")
-                          NULL
+                          structure(list(erreur = conditionMessage(e)),
+                                    class = "marculus_echec")
                         })
+        # Une panne n'est pas un plan vide : message distinct, qui donne la
+        # cause, au lieu de " aucun chantier ".
+        if (inherits(res, "marculus_echec")) {
+          shiny::showNotification(
+            sprintf(i18n$t("marculus_export_echec"), res$erreur),
+            type = "error", duration = 15)
+          if (!file.exists(file)) writeLines("", file)
+          return()
+        }
 
         # Zero contexte n'est pas une panne : c'est un plan sans action de
         # designation de tiges. Le dire, plutot que livrer un ZIP vide dont
@@ -2380,8 +2401,7 @@ mod_action_plan_server <- function(id, app_state) {
         n_ok <- n_ok + 1L
       }
       if (n_ok > 0L) {
-        save_action_plan(project$id, cur_plan)
-        plan_rv(cur_plan)
+        if (!.sauver_plan(project$id, cur_plan)) return()
         i18n <- get_i18n(app_state$language)
         shiny::showNotification(
           sprintf(i18n$t("action_plan_field_realised_fmt"), n_ok),
@@ -2582,8 +2602,7 @@ mod_action_plan_server <- function(id, app_state) {
       })
       if (is.null(new_plan)) return()
 
-      save_action_plan(project$id, new_plan)
-      plan_rv(new_plan)
+      if (!.sauver_plan(project$id, new_plan)) return()
 
       shiny::showNotification(
         sprintf(i18n$t("action_plan_generate_ok_fmt"),
@@ -2865,8 +2884,7 @@ mod_action_plan_server <- function(id, app_state) {
         }
       )
       if (is.null(new_plan)) return()
-      save_action_plan(project$id, new_plan)
-      plan_rv(new_plan)
+      if (!.sauver_plan(project$id, new_plan)) return()
       rv_state$pending_chat_actions <- NULL
       rv_state$pending_chat_target_ugs <- NULL
       shiny::showNotification(
@@ -3004,15 +3022,14 @@ mod_action_plan_server <- function(id, app_state) {
       new_plan <- tryCatch(
         add_action_to_plan(cur_plan, action,
                            ug_ids = ug_ids(),
-                           user = Sys.info()[["user"]] %||% "user"),
+                           user = .acting_user(app_state)),
         error = function(e) {
           shiny::showNotification(conditionMessage(e), type = "error")
           NULL
         }
       )
       if (is.null(new_plan)) return()
-      save_action_plan(app_state$current_project$id, new_plan)
-      plan_rv(new_plan)
+      if (!.sauver_plan(app_state$current_project$id, new_plan)) return()
       shiny::showNotification(i18n$t("action_plan_add_ok"),
                               type = "message", duration = 3)
     })
@@ -3073,10 +3090,9 @@ mod_action_plan_server <- function(id, app_state) {
       if (length(ids) == 0L) return()
       i18n <- get_i18n(app_state$language)
       res <- delete_actions_from_plan(plan_rv(), ids,
-                                      user = Sys.info()[["user"]] %||% "user")
+                                      user = .acting_user(app_state))
       if (res$n_deleted == 0L) return()
-      save_action_plan(app_state$current_project$id, res$plan)
-      plan_rv(res$plan)
+      if (!.sauver_plan(app_state$current_project$id, res$plan)) return()
       # Les lignes supprimees ne doivent pas laisser une selection orpheline
       # (ni sur le tableau, ni en surbrillance sur la carte).
       selected_ug_rv(character())

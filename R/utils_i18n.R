@@ -1165,6 +1165,14 @@ TRANSLATIONS <- list(
       "climate) could be assessed."
     )
   ),
+  marculus_export_echec = list(
+    fr = "\u00c9chec de l'export Marculus : %s",
+    en = "Marculus export failed: %s"
+  ),
+  action_plan_save_failed = list(
+    fr = "Le plan d'actions n'a pas pu \u00eatre enregistr\u00e9 : la modification est annul\u00e9e.",
+    en = "The action plan could not be saved: the change is cancelled."
+  ),
   lien_profond_invalide = list(
     fr = "Lien : projet ou onglet inconnu, ignor\u00e9.",
     en = "Link: unknown project or tab, ignored."

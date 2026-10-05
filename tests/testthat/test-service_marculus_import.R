@@ -382,3 +382,32 @@ test_that("reimporter une tige avec ses volumes les ajoute (meme modifie)", {
   expect_equal(st$volumeTigeM3, 0.87)
   expect_equal(st$cubage, "SCHAEFFER_RAPIDE:8")
 })
+
+test_that("un contexte entierement annule remet nb_tiges a 0 (audit 1.0)", {
+  d <- withr::local_tempdir()
+  ctx <- data.frame(id = "a1", nom = "A", statut = "PROPOSEE",
+                    dateMartelage = NA, modifie = 5)
+  f1 <- .marsync(d, "1.marsync", contextes = ctx, tiges = .tiges(c("u1", "u2")))
+  lu1 <- nemetonshiny:::marculus_lire_exports(f1)
+  r1 <- nemetonshiny:::marculus_appliquer_retour(.plan_a1(), lu1$contextes,
+                                                 lu1$tiges, annee_base = 2026L)
+  expect_equal(r1$plan$actions[[1]]$quantite$nb_tiges, 2L)
+  # Puis les deux tiges sont annulees sur le telephone : net 0
+  f2 <- .marsync(d, "2.marsync", contextes = ctx,
+                 tiges = rbind(.tiges(c("u1", "u2")),
+                               .tiges(c("u3", "u4"), action = "ANNULATION")))
+  lu2 <- nemetonshiny:::marculus_lire_exports(f2)
+  r2 <- nemetonshiny:::marculus_appliquer_retour(r1$plan, lu2$contextes,
+                                                 lu2$tiges, annee_base = 2026L)
+  expect_equal(r2$plan$actions[[1]]$quantite$nb_tiges, 0L)
+})
+
+test_that(".marculus_net_par_contexte garde les contextes a zero", {
+  t <- rbind(.tiges(c("u1", "u2"), ctx = "a"),
+             .tiges(c("u3", "u4"), ctx = "a", action = "ANNULATION"),
+             .tiges("u5", ctx = "b"))
+  n <- nemetonshiny:::.marculus_net_par_contexte(t)
+  expect_identical(n[["a"]], 0L)
+  expect_identical(n[["b"]], 1L)
+  expect_identical(nemetonshiny:::.marculus_net_par_contexte(t[0, ]), integer(0))
+})

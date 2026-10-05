@@ -1181,6 +1181,8 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   tmp <- file.path(tempdir(), paste0("marculus_", project_id))
   unlink(tmp, recursive = TRUE)
   dir.create(tmp, recursive = TRUE, showWarnings = FALSE)
+  # Nettoye quoi qu'il arrive : un echec en cours d'export laissait le dossier.
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
 
   # Houppiers de chaque chantier, calcules en UNE passe pour tout le lot
   # (cf. `.marculus_houppiers_par_zone()` : 81 s -> 2,3 s sur " Reconfort ").
@@ -1232,13 +1234,13 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   }
 
   writeLines(marculus_sync_json(contexts),
-             file.path(tmp, paste0(project$metadata$name %||% project_id, ".marsync")))
+             file.path(tmp, paste0(.marculus_nom_fichier(project$metadata$name,
+                                                         project_id), ".marsync")))
 
   # `-6` (niveau par defaut de zip) et non `-9` : 1,7 s au lieu de 6,5 s sur
   # " Reconfort ", pour une archive plus lourde de 0,7 % seulement.
   utils::zip(zipfile = file, files = list.files(tmp, full.names = TRUE),
              flags = "-j6Xq")
-  unlink(tmp, recursive = TRUE)
 
   invisible(list(n_contexts = length(contexts), n_gpkg = n_gpkg,
                  n_essences = length(essences),
@@ -1249,6 +1251,25 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
                  n_date_annee = sum(vapply(actions, .marculus_date_depuis_annee,
                                            logical(1), base = annee_base)),
                  n_ortho = sum(!vapply(ortho_par_ug, is.null, logical(1)))))
+}
+
+
+#' File-system-safe name for the `.marsync` file
+#'
+#' The project name is free text: a `/` made the export fail (shown as
+#' "no work site"). Transliterated, reduced to `[A-Za-z0-9_-]`, falling back to
+#' the project id when nothing is left.
+#'
+#' @param nom Project name (may be `NULL`).
+#' @param repli Fallback (project id).
+#' @return A single character string.
+#' @noRd
+.marculus_nom_fichier <- function(nom, repli) {
+  x <- if (is.null(nom) || !length(nom)) "" else as.character(nom[[1]])
+  x <- iconv(x, from = "UTF-8", to = "ASCII//TRANSLIT", sub = "")
+  if (is.na(x)) x <- ""
+  x <- gsub("^_+|_+$", "", gsub("[^A-Za-z0-9_-]+", "_", x))
+  if (nzchar(x)) x else as.character(repli)
 }
 
 
