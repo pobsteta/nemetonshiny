@@ -1197,6 +1197,12 @@ TRANSLATIONS <- list(
     fr = "G\u00e9n\u00e9rez d'abord un plan de validation.",
     en = "Generate a validation plan first."
   ),
+  ai_familles_echec = list(fr = "\u00c9chec IA : %s", en = "AI failed: %s"),
+  ai_familles_sans_donnees = list(fr = "Sans donn\u00e9es : %s", en = "No data: %s"),
+  pipeline_step_timeout = list(
+    fr = "Pas de r\u00e9ponse du module apr\u00e8s %s : \u00e9tape abandonn\u00e9e.",
+    en = "No answer from the module after %s: step abandoned."
+  ),
   lien_profond_invalide = list(
     fr = "Lien : projet ou onglet inconnu, ignor\u00e9.",
     en = "Link: unknown project or tab, ignored."

@@ -605,6 +605,7 @@ test_that(".format_m3 ne fait pas tomber la session sur une tige non cubee", {
 
 
 test_that("la chaine « Tout calculer » n'efface jamais les actions existantes", {
+  withr::local_options(nemetonshiny.llm_inline = TRUE)
   # L'option « ecraser » restait cochee dans la session apres une ouverture
   # de la modale IA ; la chaine la relisait et supprimait tout le plan.
   skip_if_not_installed("shiny")
@@ -637,8 +638,12 @@ test_that("la chaine « Tout calculer » n'efface jamais les actions existantes"
       app_state$pipeline_request <- list(run_id = "r1", step_id = "ia_plan",
                                          profil = "generalist", ts = Sys.time())
       session$flushReact()
+      # Generation en ExtendedTask (audit 1.0) : attendre la reponse.
+      for (i in 1:30) { later::run_now(0.05); session$flushReact() }
       expect_length(plan_rv()$actions, 4L)
       expect_length(sauve$actions, 4L)
+      # L'etape de la chaine a repondu a l'arrivee du resultat
+      expect_identical(app_state$pipeline_answer$status, "ok")
     }
   )
 })

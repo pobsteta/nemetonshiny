@@ -5,6 +5,18 @@
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+
+# L'analyse tourne desormais en ExtendedTask (audit 1.0) : en test, execution
+# dans le processus (option) puis attente de la resolution de la promesse.
+.regen_attendre <- function(session, n = 30L) {
+  for (i in seq_len(n)) {
+    later::run_now(0.05)
+    session$flushReact()
+  }
+}
+withr::local_options(nemetonshiny.analyse_inline = TRUE, nemetonshiny.llm_inline = TRUE,
+                     .local_envir = testthat::teardown_env())
+
 test_that(".fmt_elapsed formats the async button chrono", {
   expect_identical(nemetonshiny:::.fmt_elapsed(NULL), "")
   # MM:SS sous une heure ; H:MM:SS au-delà. Bornes de secondes tolérantes
@@ -69,6 +81,7 @@ test_that("run enriches UGF via the service and exposes the result", {
         forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
+      .regen_attendre(session)
 
       expect_false(is.null(rv$result))
       expect_true("indice_priorite_regen" %in% names(rv$result))
@@ -100,6 +113,7 @@ test_that("run without a loaded project is a guarded no-op", {
     args = list(app_state = as),
     {
       session$setInputs(run = 1)
+      .regen_attendre(session)
       expect_false(ran$hit)        # service jamais appelé
       expect_null(rv$result)
     }
@@ -150,6 +164,7 @@ test_that("changing the target species live-re-prioritises without a full run", 
 
       # Un run produit un résultat (indice = 50).
       session$setInputs(run = 1)
+      .regen_attendre(session)
       expect_equal(runs$n, 1L)
       expect_equal(unique(rv$result$indice_priorite_regen), 50)
 
@@ -190,6 +205,7 @@ test_that("a read-only project gates the run action before the service", {
         forest_type = "feuillu",
         year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
       session$setInputs(run = 1)
+      .regen_attendre(session)
       expect_false(ran$hit)        # service jamais appelé en lecture seule
       expect_null(rv$result)
     }
@@ -422,6 +438,7 @@ test_that("every calc-button click bumps click_tick (server re-sync)", {
       session$setInputs(species = "")
       expect_equal(rv$click_tick, 0L)
       session$setInputs(run = 1)
+      .regen_attendre(session)
       expect_equal(rv$click_tick, 1L)          # clic « Lancer l'analyse »
       session$setInputs(auto_years = 1)
       expect_equal(rv$click_tick, 2L)          # clic « Auto (E-OBS) »
@@ -512,6 +529,7 @@ test_that("R7 (gel) survives a re-analysis via input$run", {
       rv$result <- prior
 
       session$setInputs(run = 1)
+      .regen_attendre(session)
 
       # R7 conservé (aligné par ug_id) ET analyse bien rafraîchie.
       expect_true("r7_gel_days" %in% names(rv$result))
@@ -744,6 +762,7 @@ test_that("recompute_context purge le cache des 3 vues et re-déclenche le calcu
     forest_type = "feuillu",
     year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
   session$setInputs(run = 1)
+  .regen_attendre(session)
 }
 
 test_that("un clic carte bascule la sélection (toggle) et pilote les lignes", {
@@ -1002,6 +1021,7 @@ test_that("conseil IA : chemin succès -> bloc {q,a} stocké dans l'historique",
     rv$result <- .regen_mod_units(2)
     session$setInputs(regen_ai_input = "Et sur sol calcaire ?")
     session$setInputs(regen_ai_send = 1)
+    .regen_attendre(session)
     h <- regen_ai_hist()
     expect_length(h, 1L)
     expect_equal(h[[1]]$a, "Conseil de test IA")
@@ -1024,7 +1044,9 @@ test_that("conseil IA : case décochée -> les conseils s'ajoutent ; Effacer vid
     session$setInputs(regen_ai_scope = "all", regen_ai_replace = FALSE)
     rv$result <- .regen_mod_units(2)
     session$setInputs(regen_ai_send = 1)
+    .regen_attendre(session)
     session$setInputs(regen_ai_send = 2)
+    .regen_attendre(session)
     expect_length(regen_ai_hist(), 2L)
     session$setInputs(regen_ai_clear = 1)
     expect_length(regen_ai_hist(), 0L)
@@ -1209,4 +1231,57 @@ test_that("le tableau des UGF de reGeneration est titre « Tableau des actions �
   debut <- regexpr('id="rg-table"', h, fixed = TRUE)
   avant <- substr(h, max(1, debut - 3000), debut)
   expect_match(avant, "Tableau des actions", fixed = TRUE)
+})
+
+test_that("the analysis runs asynchronously: the click returns before the result (audit 1.0)", {
+  skip_if_not_installed("sf")
+  units <- .regen_mod_units(2)
+  as <- shiny::reactiveValues(current_project = list(id = "p1", path = withr::local_tempdir(),
+                                                     indicators_sf = units))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = function(u, cfg = list(), precomputed = NULL, progress = NULL) {
+      u$indice_priorite_regen <- 50
+      list(units = u, years = list(), warnings = character(0))
+    },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(forest_type = "feuillu", year_moyenne = NA, year_canicule = NA,
+                      species = "")
+    session$setInputs(run = 1)
+    # Le clic a rendu la main : calcul en cours, pas encore de resultat
+    expect_true(isTRUE(rv$running))
+    expect_null(rv$result)
+    .regen_attendre(session)
+    expect_false(isTRUE(rv$running))
+    expect_equal(unique(rv$result$indice_priorite_regen), 50)
+  })
+})
+
+test_that("a result arriving after a project switch is not applied to the new one", {
+  skip_if_not_installed("sf")
+  units <- .regen_mod_units(2)
+  as <- shiny::reactiveValues(current_project = list(id = "p1", path = withr::local_tempdir(),
+                                                     indicators_sf = units),
+                              project_id = "p1")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = function(u, cfg = list(), precomputed = NULL, progress = NULL) {
+      u$indice_priorite_regen <- 50
+      list(units = u, years = list(), warnings = character(0))
+    },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(forest_type = "feuillu", year_moyenne = NA, year_canicule = NA,
+                      species = "")
+    session$setInputs(run = 1)
+    as$project_id <- "p2"
+    as$current_project <- list(id = "p2", path = withr::local_tempdir(), indicators_sf = units)
+    .regen_attendre(session)
+    expect_null(rv$result)
+  })
 })

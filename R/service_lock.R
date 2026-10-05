@@ -143,3 +143,47 @@ lock_acquire_or_null <- function(pid, hid, label = NULL) {
   }
   Sys.info()[["user"]] %||% "user"
 }
+
+
+#' One lock heartbeat, then re-acquire if lost (worker-side body)
+#'
+#' @param pid,hid Project id and holder id.
+#' @param label Holder label for a re-acquire.
+#' @return `list(pid, ok, info)`: `ok` is `TRUE` when the lock is (still)
+#'   held after the call.
+#' @noRd
+.lock_heartbeat_run <- function(pid, hid, label = NULL) {
+  ok <- tryCatch(lock_heartbeat(pid, hid), error = function(e) FALSE)
+  if (isTRUE(ok)) return(list(pid = pid, ok = TRUE, info = NULL))
+  res <- tryCatch(lock_acquire(pid, hid, label), error = function(e) list(ok = FALSE))
+  list(pid = pid, ok = isTRUE(res$ok), info = res)
+}
+
+#' Lock heartbeat off the Shiny loop
+#'
+#' @inheritParams .lock_heartbeat_run
+#' @return A promise resolving to the value of [.lock_heartbeat_run()].
+#' @noRd
+.lock_heartbeat_async <- function(pid, hid, label = NULL) {
+  if (isTRUE(getOption("nemetonshiny.lock_inline")) ||
+      !requireNamespace("future", quietly = TRUE)) {
+    return(promises::promise(function(resolve, reject) {
+      later::later(function() resolve(.lock_heartbeat_run(pid, hid, label)))
+    }))
+  }
+  plan_classes <- class(future::plan())
+  if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+    .ensure_async_plan()
+  }
+  dev_path <- .dev_pkg_path_courant()
+  app_opts <- getOption("nemeton.app_options")
+  promises::future_promise({
+    if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+      pkgload::load_all(dev_path, quiet = TRUE)
+    } else {
+      loadNamespace("nemetonshiny")
+    }
+    options(nemeton.app_options = app_opts)
+    utils::getFromNamespace(".lock_heartbeat_run", "nemetonshiny")(pid, hid, label)
+  }, seed = TRUE)
+}

@@ -438,26 +438,33 @@ app_server <- function(input, output, session) {
   }, ignoreNULL = FALSE)
 
   # 2. Heartbeat - tant qu'on tient le verrou, rafraichir toutes les 45 s
-  #    (TTL coeur 120 s -> tolere 2 heartbeats manques).
+  #    (TTL coeur 120 s -> tolere 2 heartbeats manques). ASYNCHRONE : chaque
+  #    battement ouvre une connexion PostGIS ; base injoignable, le delai de
+  #    connexion (jusqu'a 8 s) gelait tour a tour TOUTES les sessions.
+  hb_task <- shiny::ExtendedTask$new(function(pid, hid, label) {
+    .lock_heartbeat_async(pid, hid, label)
+  })
   shiny::observe({
     pid <- app_state$lock_held_pid
     if (is.null(pid)) return()
     shiny::invalidateLater(45000, session)
-    hid <- shiny::isolate(app_state$lock_holder_id)
-    ok <- tryCatch(lock_heartbeat(pid, hid), error = function(e) FALSE)
-    if (!isTRUE(ok)) {
-      # Verrou perdu (vole apres peremption). Tenter de le reprendre, sinon
-      # basculer en lecture seule.
-      res <- tryCatch(lock_acquire(pid, hid, shiny::isolate(app_state$auth$user_name)),
-                      error = function(e) list(ok = FALSE))
-      if (!isTRUE(res$ok)) {
-        app_state$readonly <- TRUE
-        app_state$lock_held_pid <- NULL
-        app_state$lock_info <- res
-        app_state$lock_reason <- "held"
-        i18n <- get_i18n(shiny::isolate(app_state$language))
-        shiny::showNotification(i18n$t("lock_lost_notice"), type = "warning", duration = NULL)
-      }
+    if (identical(shiny::isolate(hb_task$status()), "running")) return()
+    hb_task$invoke(pid, shiny::isolate(app_state$lock_holder_id),
+                   shiny::isolate(app_state$auth$user_name))
+  })
+  shiny::observeEvent(hb_task$status(), {
+    if (!identical(hb_task$status(), "success")) return()
+    res <- tryCatch(hb_task$result(), error = function(e) list(ok = FALSE))
+    # Battement pour un verrou relache entre-temps (projet ferme) : ignorer.
+    if (is.null(app_state$lock_held_pid) || !identical(res$pid, app_state$lock_held_pid)) return()
+    if (!isTRUE(res$ok)) {
+      # Verrou perdu (vole apres peremption) et non repris : lecture seule.
+      app_state$readonly <- TRUE
+      app_state$lock_held_pid <- NULL
+      app_state$lock_info <- res$info
+      app_state$lock_reason <- "held"
+      i18n <- get_i18n(shiny::isolate(app_state$language))
+      shiny::showNotification(i18n$t("lock_lost_notice"), type = "warning", duration = NULL)
     }
   })
 

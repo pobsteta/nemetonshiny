@@ -536,26 +536,38 @@ mod_family_server <- function(id, family_code, app_state) {
       expert <- input$expert_profile %||% "generalist"
       system_prompt <- build_system_prompt(language, expert = expert)
 
-      tryCatch({
-        chat <- create_llm_chat(system_prompt)
-        response <- as.character(chat$chat(prompt, echo = FALSE))
+      # Appel LLM HORS de la boucle Shiny (10 a 60 s) : il gelait toutes les
+      # sessions. La reponse est appliquee par l'observateur de `ai_task`.
+      ai_ctx$notif <- notif_id
+      ai_ctx$pid <- shiny::isolate(app_state$project_id)
+      ai_task$invoke(system_prompt, prompt)
+    })
 
-        shiny::updateTextAreaInput(session, "analysis_comments", value = response)
-        shiny::removeNotification(notif_id)
-      }, error = function(e) {
-        shiny::removeNotification(notif_id)
-        shiny::showNotification(
-          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
-          type = "error",
-          duration = 8
-        )
-      })
-
+    ai_ctx <- new.env(parent = emptyenv())
+    ai_task <- shiny::ExtendedTask$new(function(system_prompt, prompt) {
+      llm_chat_async(system_prompt, prompt)
+    })
+    shiny::observeEvent(ai_task$status(), {
+      st <- ai_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n <- get_i18n(app_state$language)
+      if (!is.null(ai_ctx$notif)) shiny::removeNotification(ai_ctx$notif)
       # Restore button. L'icone doit etre celle de l'accent IA : la restaurer
       # en " robot " reviendrait a defaire l'accent des la premiere generation.
       shiny::updateActionButton(session, "ai_generate",
                                 label = i18n$t("ai_generate"),
                                 icon = bsicons::bs_icon("stars"))
+      # Projet change entre-temps : ne pas ecrire ce commentaire dans l'autre.
+      if (!identical(shiny::isolate(app_state$project_id), ai_ctx$pid)) return()
+      if (identical(st, "success")) {
+        shiny::updateTextAreaInput(session, "analysis_comments",
+                                   value = ai_task$result())
+      } else {
+        err <- tryCatch(ai_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(
+          paste(i18n$t("ai_error"), ":", strip_ansi(as.character(err))),
+          type = "error", duration = 8)
+      }
     })
 
     # ================================================================

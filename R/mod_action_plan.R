@@ -2553,24 +2553,29 @@ mod_action_plan_server <- function(id, app_state) {
       )
       system_prompt <- build_system_prompt(lang_param, expert = "planificateur")
 
-      response <- tryCatch({
-        chat <- create_llm_chat(system_prompt)
-        as.character(chat$chat(prompt, echo = FALSE))
-      }, error = function(e) {
-        shiny::removeNotification(notif)
-        shiny::showNotification(
-          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
-          type = "error", duration = 10
-        )
-        NULL
-      })
-      shiny::removeNotification(notif)
-      if (is.null(response)) return()
+      # Appel LLM en worker (audit 1.0) : la reponse est traitee par
+      # l'observateur de `plan_ia_task` (analyse, insertion, sauvegarde).
+      plan_ia$ctx <- list(notif = notif, pid = shiny::isolate(app_state$project_id),
+                          project_id = project$id, target_ugs = target_ugs,
+                          horizon = ctx$horizon, ug_ids = ctx$ug_ids,
+                          overwrite = overwrite)
+      plan_ia_task$invoke(system_prompt, prompt)
+      "en_cours"
+    }
 
+    plan_ia <- new.env(parent = emptyenv())
+    plan_ia_task <- shiny::ExtendedTask$new(function(system_prompt, prompt) {
+      llm_chat_async(system_prompt, prompt)
+    })
+
+    # Traitement de la reponse du planificateur. Rend TRUE (plan ecrit),
+    # NULL (rien d'exploitable : saut) ou une chaine (erreur).
+    .appliquer_plan_genere <- function(response, ctxp) {
+      i18n <- get_i18n(app_state$language)
       parsed <- parse_action_plan_response(
         response,
-        ug_ids = target_ugs,
-        horizon_annees = ctx$horizon
+        ug_ids = ctxp$target_ugs,
+        horizon_annees = ctxp$horizon
       )
       if (length(parsed$actions) == 0L) {
         shiny::showNotification(
@@ -2584,16 +2589,16 @@ mod_action_plan_server <- function(id, app_state) {
       }
 
       cur_plan <- plan_rv()
-      if (isTRUE(overwrite)) {
+      if (isTRUE(ctxp$overwrite)) {
         # Suppression AUDITEE des actions des UGF ciblees (le `Filter()`
         # d'avant ne laissait aucune trace dans l'historique).
-        ids <- vapply(Filter(function(a) a$ug_id %in% target_ugs, cur_plan$actions),
+        ids <- vapply(Filter(function(a) a$ug_id %in% ctxp$target_ugs, cur_plan$actions),
                       function(a) a$id %||% NA_character_, character(1))
         cur_plan <- delete_actions_from_plan(cur_plan, ids, user = "llm:planificateur")$plan
       }
       new_plan <- tryCatch({
         bulk_upsert_actions(cur_plan, parsed$actions,
-                            ug_ids = ctx$ug_ids,
+                            ug_ids = ctxp$ug_ids,
                             user = "llm:planificateur")
       }, error = function(e) {
         shiny::showNotification(conditionMessage(e), type = "error",
@@ -2602,7 +2607,7 @@ mod_action_plan_server <- function(id, app_state) {
       })
       if (is.null(new_plan)) return()
 
-      if (!.sauver_plan(project$id, new_plan)) return()
+      if (!.sauver_plan(ctxp$project_id, new_plan)) return()
 
       shiny::showNotification(
         sprintf(i18n$t("action_plan_generate_ok_fmt"),
@@ -2612,6 +2617,35 @@ mod_action_plan_server <- function(id, app_state) {
       )
       invisible(TRUE)
     }
+
+    shiny::observeEvent(plan_ia_task$status(), {
+      st <- plan_ia_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n <- get_i18n(app_state$language)
+      ctxp <- plan_ia$ctx
+      if (!is.null(ctxp$notif)) shiny::removeNotification(ctxp$notif)
+      req_pipe <- plan_ia$pipeline_req
+      plan_ia$pipeline_req <- NULL
+      repondre <- function(statut, msg = NULL) {
+        if (!is.null(req_pipe)) pipeline_answer(app_state, req_pipe, statut, msg)
+      }
+      if (!identical(shiny::isolate(app_state$project_id), ctxp$pid)) {
+        repondre("skipped", i18n$t("pipeline_skip_not_started"))
+        return()
+      }
+      if (identical(st, "error")) {
+        err <- tryCatch(plan_ia_task$result(), error = function(e) conditionMessage(e))
+        msg <- paste(i18n$t("ai_error"), ":", strip_ansi(as.character(err)[1]))
+        shiny::showNotification(msg, type = "error", duration = 10)
+        repondre("error", msg)
+        return()
+      }
+      res <- tryCatch(.appliquer_plan_genere(plan_ia_task$result(), ctxp),
+                      error = function(e) conditionMessage(e))
+      repondre(if (isTRUE(res)) "ok" else if (is.character(res)) "error" else "skipped",
+               if (isTRUE(res)) NULL else if (is.character(res)) res
+               else i18n$t("pipeline_skip_not_started"))
+    })
 
     shiny::observeEvent(input$gen_run, {
       shiny::removeModal()
@@ -2636,11 +2670,17 @@ mod_action_plan_server <- function(id, app_state) {
       }
       ok <- tryCatch({
         # Jamais d'ecrasement depuis la chaine : elle ajoute ou met a jour.
-        isTRUE(.generer_plan_actions(scope = "all", overwrite = FALSE))
+        res <- .generer_plan_actions(scope = "all", overwrite = FALSE)
+        if (identical(res, "en_cours")) "en_cours" else isTRUE(res)
       }, error = function(e) {
         cli::cli_warn("pipeline ia_plan: {conditionMessage(e)}")
         conditionMessage(e)
       })
+      # Generation lancee en worker : l'etape repond a son arrivee.
+      if (identical(ok, "en_cours")) {
+        plan_ia$pipeline_req <- req
+        return()
+      }
       # Trois issues distinctes, pas deux : `TRUE` = genere, une chaine =
       # message d'erreur, `FALSE` = la generation a refuse de partir (cle
       # API absente, rien a resumer) - c'est un saut, pas un echec.
@@ -2770,7 +2810,7 @@ mod_action_plan_server <- function(id, app_state) {
         closeButton = FALSE,
         type = "default"
       )
-      on.exit(shiny::removeNotification(thinking_id), add = TRUE)
+      # Retiree a l'arrivee de la reponse (observateur de `chat_ia_task`).
 
       # Send the full action payload (including the `quantite` block:
       # volume, surface, nb_tiges, rdi, cout, revenu) so the LLM can
@@ -2806,17 +2846,29 @@ mod_action_plan_server <- function(id, app_state) {
       )
       system_prompt <- build_system_prompt(lang_param, expert = "planificateur")
 
-      response <- tryCatch({
-        chat <- create_llm_chat(system_prompt)
-        as.character(chat$chat(prompt, echo = FALSE))
-      }, error = function(e) {
-        msg <- paste(i18n$t("ai_error"), ":",
-                     strip_ansi(conditionMessage(e)))
-        shiny::showNotification(msg, type = "error", duration = 8)
-        NULL
-      })
-      if (is.null(response)) return()
+      chat_ia$ctx <- list(notif = thinking_id, pid = shiny::isolate(app_state$project_id),
+                          ug_ids = ctx$ug_ids, horizon = ctx$horizon)
+      chat_ia_task$invoke(system_prompt, prompt)
+    })
 
+    chat_ia <- new.env(parent = emptyenv())
+    chat_ia_task <- shiny::ExtendedTask$new(function(system_prompt, prompt) {
+      llm_chat_async(system_prompt, prompt)
+    })
+    shiny::observeEvent(chat_ia_task$status(), {
+      st <- chat_ia_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n <- get_i18n(app_state$language)
+      ctxp <- chat_ia$ctx
+      if (!is.null(ctxp$notif)) shiny::removeNotification(ctxp$notif)
+      if (!identical(shiny::isolate(app_state$project_id), ctxp$pid)) return()
+      if (identical(st, "error")) {
+        err <- tryCatch(chat_ia_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(paste(i18n$t("ai_error"), ":", strip_ansi(as.character(err)[1])),
+                                type = "error", duration = 8)
+        return()
+      }
+      response <- chat_ia_task$result()
       hist <- chat_history_rv()
       hist <- c(hist, list(list(role = "assistant", text = response)))
       chat_history_rv(hist)
@@ -2825,8 +2877,8 @@ mod_action_plan_server <- function(id, app_state) {
       # try to parse + offer apply.
       parsed <- parse_action_plan_response(
         response,
-        ug_ids = ctx$ug_ids,
-        horizon_annees = ctx$horizon
+        ug_ids = ctxp$ug_ids,
+        horizon_annees = ctxp$horizon
       )
       if (length(parsed$actions) > 0L) {
         # Surface the overwrite intent in the apply modal: when the
@@ -2837,7 +2889,7 @@ mod_action_plan_server <- function(id, app_state) {
         overwrite_hint <- if (isTRUE(input$chat_overwrite)) {
           shiny::p(class = "text-warning small",
                    sprintf(i18n$t("action_plan_chat_apply_overwrite_warn_fmt"),
-                           length(target_ugs)))
+                           length(ctxp$ug_ids)))
         } else NULL
         shiny::showModal(shiny::modalDialog(
           title = i18n$t("action_plan_chat_apply_title"),

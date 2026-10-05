@@ -269,8 +269,33 @@ mod_pipeline_server <- function(id, app_state) {
 
       cli::cli_alert_info(
         "Pipeline {etat$run_id}: {rep$step_id} -> {rep$status}")
-      .poser_etat(pipeline_record(etat, rep$step_id, rep$status, rep$message))
-      .emettre()
+      nouvel <- pipeline_record(etat, rep$step_id, rep$status, rep$message)
+      .poser_etat(nouvel)
+      # Reemettre SEULEMENT si le curseur a avance : une reponse tardive
+      # (etape deja tranchee, ex. par le chien de garde) reposterait sinon la
+      # requete de l'etape courante une seconde fois.
+      if (!identical(nouvel$index, etat$index)) .emettre()
+    })
+
+    # Chien de garde : une etape sans reponse au-dela de son delai est
+    # declaree en erreur et la chaine continue. Un module muet bloquait
+    # sinon le run indefiniment, sans rien afficher.
+    shiny::observe({
+      etat <- rv$state
+      if (is.null(etat) || pipeline_is_done(etat)) return()
+      shiny::invalidateLater(60000, session)
+      req <- shiny::isolate(app_state$pipeline_request)
+      if (is.null(req) || !identical(req$run_id, etat$run_id)) return()
+      if (!identical(req$step_id, pipeline_current_step(etat))) return()
+      ecoule <- as.numeric(difftime(Sys.time(), req$ts, units = "secs"))
+      limite <- pipeline_step_timeout_s(req$step_id)
+      if (is.finite(ecoule) && ecoule > limite) {
+        msg <- sprintf(i18n_r()$t("pipeline_step_timeout"), format_elapsed(limite))
+        cli::cli_warn("Pipeline {etat$run_id}: {req$step_id} sans reponse depuis {round(ecoule)} s.")
+        app_state$pipeline_request <- NULL
+        .poser_etat(pipeline_record(etat, req$step_id, "error", msg))
+        .emettre()
+      }
     })
 
     # ------------------------------------------------------------------

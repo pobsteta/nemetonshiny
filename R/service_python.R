@@ -116,10 +116,19 @@ engine_python <- function(engine) {
 #' @param args List of arguments for `func`.
 #' @param on_line Optional function called with each stdout line.
 #' @param poll_ms Polling interval, milliseconds.
+#' @param timeout_inactivite_s Seconds without any child output after which the
+#'   child is killed (a stuck download used to hold a pool worker forever).
+#'   Option `nemetonshiny.python_timeout_inactivite`, default 30 min.
+#' @param timeout_total_s Overall ceiling, seconds. Option
+#'   `nemetonshiny.python_timeout_total`, default 12 h.
 #' @return The child's return value. A child error is re-raised here.
 #' @noRd
 run_with_python <- function(engine, func, args = list(),
-                            on_line = NULL, poll_ms = 250L) {
+                            on_line = NULL, poll_ms = 250L,
+                            timeout_inactivite_s = getOption(
+                              "nemetonshiny.python_timeout_inactivite", 1800),
+                            timeout_total_s = getOption(
+                              "nemetonshiny.python_timeout_total", 12 * 3600)) {
   py <- engine_python(engine)
   if (is.na(py)) {
     cli::cli_abort(c(
@@ -142,16 +151,45 @@ run_with_python <- function(engine, func, args = list(),
     env  = c(callr::rcmd_safe_env(), RETICULATE_PYTHON = py, R_ENVIRON_USER = ""),
     stdout = "|", stderr = "2>&1", supervise = TRUE
   )
+  debut <- Sys.time()
+  derniere_sortie <- debut
   drain <- function() {
-    for (ln in px$read_output_lines()) {
-      if (is.function(on_line)) on_line(ln) else cat(ln, "\n", sep = "")
+    lignes <- px$read_output_lines()
+    if (length(lignes)) derniere_sortie <<- Sys.time()
+    for (ln in lignes) {
+      if (is.function(on_line)) on_line(ln) else cli::cli_verbatim(ln)
     }
   }
   repeat {
     px$poll_io(poll_ms)
     drain()
     if (!px$is_alive()) break
+    motif <- .python_timeout_motif(debut, derniere_sortie, Sys.time(),
+                                   timeout_inactivite_s, timeout_total_s)
+    if (!is.null(motif)) {
+      tryCatch(px$kill_tree(), error = function(e) px$kill())
+      cli::cli_abort(c("Engine {.val {engine}} stopped: {motif}.",
+                       i = "Timeouts: options {.code nemetonshiny.python_timeout_inactivite} / {.code nemetonshiny.python_timeout_total}."))
+    }
   }
   drain()
   px$get_result()   # re-leve l'erreur de l'enfant, s'il y en a une
+}
+
+#' Which timeout, if any, a Python child has exceeded
+#'
+#' @param debut,derniere_sortie,maintenant POSIXct times.
+#' @param inactivite_s,total_s Limits in seconds (`Inf` or `NA` = none).
+#' @return `NULL`, or a short English reason.
+#' @noRd
+.python_timeout_motif <- function(debut, derniere_sortie, maintenant,
+                                  inactivite_s, total_s) {
+  sec <- function(a, b) as.numeric(difftime(b, a, units = "secs"))
+  if (isTRUE(is.finite(inactivite_s)) && sec(derniere_sortie, maintenant) > inactivite_s) {
+    return(sprintf("no output for %.0f s", sec(derniere_sortie, maintenant)))
+  }
+  if (isTRUE(is.finite(total_s)) && sec(debut, maintenant) > total_s) {
+    return(sprintf("running for %.0f s", sec(debut, maintenant)))
+  }
+  NULL
 }
