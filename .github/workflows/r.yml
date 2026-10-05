@@ -237,9 +237,14 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
+      # v7 : la v4 importait la cle de verification depuis
+      # keybase.io/codecovsecurity, qui renvoie 404 (et une poignee de main TLS
+      # refusee cote Node, « SSL alert number 40 ») - l'envoi echouait a chaque
+      # run. La v7 passe par keybase.io/codecovsecops via curl, avec reprises.
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./cobertura.xml
+          disable_search: true
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
