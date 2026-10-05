@@ -12,6 +12,45 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.154.0\] - 2026-10-04
+
+### Added
+
+- API hors interface exportee
+  ([`?api_hors_interface`](https://pobsteta.github.io/nemetonshiny/reference/api_hors_interface.md))
+  :
+  [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md),
+  [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
+  [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md),
+  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md),
+  [`parcelles_commune()`](https://pobsteta.github.io/nemetonshiny/reference/parcelles_commune.md),
+  [`projet_creer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_creer.md),
+  [`projet_calculer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_calculer.md),
+  [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md),
+  [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md)
+  ; erreurs classees (`nemetonshiny_erreur`) ; `CONTRAT.md` section 1
+  bis.
+- [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
+  sans aucune ecriture : erreur `nemetonshiny_projet_perime` si une
+  migration serait necessaire, appliquee seulement par
+  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md).
+- Variable `NEMETON_PROJECT_DIR` : dossier des projets par defaut.
+
+### Changed
+
+- Scores de famille et score global de la Synthese extraits dans
+  `R/service_synthesis.R` (memes chiffres pour l’onglet et l’API).
+- Plancher `Imports: nemeton (>= 0.212.0)` (borne E1/E2 a 2,64).
+
+### Fixed
+
+- Les indicateurs invalides sont renommes
+  (`indicators.perime-v<n>-<date>.parquet`, deux generations), plus
+  jamais supprimes : un simple chargement d’un projet au sens perime les
+  detruisait.
+- Un projet neuf porte le marqueur de sens courant : cree puis calcule
+  hors interface, il n’est plus invalide a sa premiere ouverture.
+
 ## \[0.153.0\] - 2026-10-03
 
 ### Added

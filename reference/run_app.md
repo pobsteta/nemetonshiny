@@ -35,8 +35,11 @@ run_app(
 
 - project_dir:
 
-  Character. Directory for storing projects. Default:
-  `~/.nemeton/projects`
+  Character. Directory for storing projects. Default: the
+  `NEMETON_PROJECT_DIR` environment variable when set, otherwise the
+  user data directory (`rappdirs::user_data_dir("nemeton")/projects`,
+  i.e. `~/.local/share/nemeton/projects` on Linux), or
+  `~/.nemeton/projects` when rappdirs is not installed.
 
 - max_parcels:
 

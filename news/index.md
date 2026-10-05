@@ -1,5 +1,76 @@
 # Changelog
 
+## nemetonshiny 0.154.0 (2026-10-04)
+
+#### Fixed — Une lecture ne detruit plus les indicateurs
+
+- **`invalidate_indicators()` renomme au lieu de supprimer.** Un simple
+  chargement d’un projet calcule avant un changement de sens (spec 048)
+  supprimait `data/indicators.parquet` sans retour possible (incident du
+  2026-10-04 sur Couchey, via `load_project()` -\>
+  `ensure_indicator_sense_current()`). Le fichier devient
+  `data/indicators.perime-v<sens>-<date>.parquet` ; deux generations
+  sont conservees et listees dans `metadata.json` (`indicateurs_perimes`
+  : fichier, sens, motif, date). Vaut pour toutes les invalidations
+  (sens, decoupage UGF). Si le renommage echoue, les indicateurs restent
+  en place.
+- **Un projet neuf porte le marqueur de sens courant.**
+  `create_project()` ne posait pas `indicator_sense_version` : un projet
+  cree puis calcule sans passer par l’ouverture dans l’application etait
+  vu en sens v1, et ses indicateurs tout juste calcules etaient
+  invalides a la premiere ouverture.
+
+#### Changed — Plancher coeur
+
+- **`Imports: nemeton (>= 0.212.0)`** (brief coeur 0.212.0, seconde
+  passe sur les calculs) : la borne de normalisation d’E1/E2 double
+  (2,64, densite seche) ; tests alignes. Les projets existants sont a
+  recalculer, beaucoup d’indicateurs changent de valeur (cf. NEWS de
+  `nemeton` 0.212.0).
+
+#### Added — API hors interface (brief aigora-nemeton du 2026-10-04)
+
+- **Neuf fonctions exportees** pour piloter un diagnostic sans
+  l’application
+  ([`?api_hors_interface`](https://pobsteta.github.io/nemetonshiny/reference/api_hors_interface.md))
+  :
+  [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md),
+  [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
+  [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md),
+  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md),
+  [`parcelles_commune()`](https://pobsteta.github.io/nemetonshiny/reference/parcelles_commune.md),
+  [`projet_creer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_creer.md),
+  [`projet_calculer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_calculer.md),
+  [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md),
+  [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md).
+  Fines enveloppes des services existants.
+- **[`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
+  n’ecrit rien** : meme construction que l’onglet Synthese (R5, R6/R7,
+  scores de famille du coeur), sans les migrations d’ouverture. Si une
+  migration serait necessaire, erreur classee
+  `nemetonshiny_projet_perime` ;
+  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md)
+  l’applique explicitement. Test d’empreinte : aucun fichier du projet
+  ne change.
+- **Erreurs classees** (`nemetonshiny_erreur` et sous-classes) et
+  contrat des commentaires du rapport documentes dans `CONTRAT.md`
+  (section 1 bis).
+- **`NEMETON_PROJECT_DIR`** fixe le dossier des projets par defaut hors
+  interface (`run_app(project_dir =)` l’emporte).
+
+#### Changed — Pilotage VICTOR / AIGORA, etape 1 : service de synthese
+
+- **Scores de famille et score global extraits dans
+  `R/service_synthesis.R`** (`project_family_scores()`,
+  `project_family_means()`, `project_global_index()`,
+  `project_synthesis_summary()`). L’onglet Synthese les consomme ;
+  comportement inchange. Prealable au serveur MCP du brief
+  `specs/BRIEF-pilotage-victor-aigora.md` : un consommateur sans
+  interface obtient exactement les memes chiffres que l’onglet, sans
+  dupliquer le code. `project_synthesis_summary()` renvoie une liste
+  serialisable (score global, 12 familles, NDP, confiance, nombre d’UGF
+  et de parcelles).
+
 ## nemetonshiny 0.153.0 (2026-10-03)
 
 #### Changed — Phase 3 de l’audit 1.0 : contrat public et packaging

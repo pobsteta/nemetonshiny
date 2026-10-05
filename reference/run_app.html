@@ -23,7 +23,7 @@ Export PDF reports and GeoPackage data
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.153.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.154.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -80,8 +80,11 @@ If NULL, the system language is auto-detected.</p></dd>
 
 
 <dt id="arg-project-dir">project_dir<a class="anchor" aria-label="anchor" href="#arg-project-dir"></a></dt>
-<dd><p>Character. Directory for storing projects.
-Default: <code>~/.nemeton/projects</code></p></dd>
+<dd><p>Character. Directory for storing projects. Default: the
+<code>NEMETON_PROJECT_DIR</code> environment variable when set, otherwise the
+user data directory (<code>rappdirs::user_data_dir("nemeton")/projects</code>,
+i.e. <code>~/.local/share/nemeton/projects</code> on Linux), or
+<code>~/.nemeton/projects</code> when <span class="pkg">rappdirs</span> is not installed.</p></dd>
 
 
 <dt id="arg-max-parcels">max_parcels<a class="anchor" aria-label="anchor" href="#arg-max-parcels"></a></dt>

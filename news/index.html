@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.153.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.154.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,37 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.154.0" id="nemetonshiny-01540-2026-10-04">nemetonshiny 0.154.0 (2026-10-04)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01540-2026-10-04"></a></h2>
+<div class="section level4">
+<h4 id="fixed--une-lecture-ne-detruit-plus-les-indicateurs-0-154-0">Fixed — Une lecture ne detruit plus les indicateurs<a class="anchor" aria-label="anchor" href="#fixed--une-lecture-ne-detruit-plus-les-indicateurs-0-154-0"></a></h4>
+<ul><li>
+<strong><code>invalidate_indicators()</code> renomme au lieu de supprimer.</strong> Un simple chargement d’un projet calcule avant un changement de sens (spec 048) supprimait <code>data/indicators.parquet</code> sans retour possible (incident du 2026-10-04 sur Couchey, via <code>load_project()</code> -&gt; <code>ensure_indicator_sense_current()</code>). Le fichier devient <code>data/indicators.perime-v&lt;sens&gt;-&lt;date&gt;.parquet</code> ; deux generations sont conservees et listees dans <code>metadata.json</code> (<code>indicateurs_perimes</code> : fichier, sens, motif, date). Vaut pour toutes les invalidations (sens, decoupage UGF). Si le renommage echoue, les indicateurs restent en place.</li>
+<li>
+<strong>Un projet neuf porte le marqueur de sens courant.</strong> <code>create_project()</code> ne posait pas <code>indicator_sense_version</code> : un projet cree puis calcule sans passer par l’ouverture dans l’application etait vu en sens v1, et ses indicateurs tout juste calcules etaient invalides a la premiere ouverture.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--plancher-coeur-0-154-0">Changed — Plancher coeur<a class="anchor" aria-label="anchor" href="#changed--plancher-coeur-0-154-0"></a></h4>
+<ul><li>
+<strong><code>Imports: nemeton (&gt;= 0.212.0)</code></strong> (brief coeur 0.212.0, seconde passe sur les calculs) : la borne de normalisation d’E1/E2 double (2,64, densite seche) ; tests alignes. Les projets existants sont a recalculer, beaucoup d’indicateurs changent de valeur (cf. NEWS de <code>nemeton</code> 0.212.0).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--api-hors-interface-brief-aigora-nemeton-du-0-154-0">Added — API hors interface (brief aigora-nemeton du 2026-10-04)<a class="anchor" aria-label="anchor" href="#added--api-hors-interface-brief-aigora-nemeton-du-0-154-0"></a></h4>
+<ul><li>
+<strong>Neuf fonctions exportees</strong> pour piloter un diagnostic sans l’application (<code><a href="../reference/api_hors_interface.html">?api_hors_interface</a></code>) : <code><a href="../reference/projets_lister.html">projets_lister()</a></code>, <code><a href="../reference/projet_etat.html">projet_etat()</a></code>, <code><a href="../reference/projet_lire.html">projet_lire()</a></code>, <code><a href="../reference/projet_migrer.html">projet_migrer()</a></code>, <code><a href="../reference/parcelles_commune.html">parcelles_commune()</a></code>, <code><a href="../reference/projet_creer.html">projet_creer()</a></code>, <code><a href="../reference/projet_calculer.html">projet_calculer()</a></code>, <code><a href="../reference/projet_rapport.html">projet_rapport()</a></code>, <code><a href="../reference/projet_gpkg.html">projet_gpkg()</a></code>. Fines enveloppes des services existants.</li>
+<li>
+<strong><code><a href="../reference/projet_lire.html">projet_lire()</a></code> n’ecrit rien</strong> : meme construction que l’onglet Synthese (R5, R6/R7, scores de famille du coeur), sans les migrations d’ouverture. Si une migration serait necessaire, erreur classee <code>nemetonshiny_projet_perime</code> ; <code><a href="../reference/projet_migrer.html">projet_migrer()</a></code> l’applique explicitement. Test d’empreinte : aucun fichier du projet ne change.</li>
+<li>
+<strong>Erreurs classees</strong> (<code>nemetonshiny_erreur</code> et sous-classes) et contrat des commentaires du rapport documentes dans <code>CONTRAT.md</code> (section 1 bis).</li>
+<li>
+<strong><code>NEMETON_PROJECT_DIR</code></strong> fixe le dossier des projets par defaut hors interface (<code>run_app(project_dir =)</code> l’emporte).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--pilotage-victor--aigora-etape--service-de-synthese-0-154-0">Changed — Pilotage VICTOR / AIGORA, etape 1 : service de synthese<a class="anchor" aria-label="anchor" href="#changed--pilotage-victor--aigora-etape--service-de-synthese-0-154-0"></a></h4>
+<ul><li>
+<strong>Scores de famille et score global extraits dans <code>R/service_synthesis.R</code></strong> (<code>project_family_scores()</code>, <code>project_family_means()</code>, <code>project_global_index()</code>, <code>project_synthesis_summary()</code>). L’onglet Synthese les consomme ; comportement inchange. Prealable au serveur MCP du brief <code>specs/BRIEF-pilotage-victor-aigora.md</code> : un consommateur sans interface obtient exactement les memes chiffres que l’onglet, sans dupliquer le code. <code>project_synthesis_summary()</code> renvoie une liste serialisable (score global, 12 familles, NDP, confiance, nombre d’UGF et de parcelles).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.153.0" id="nemetonshiny-01530-2026-10-03">nemetonshiny 0.153.0 (2026-10-03)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01530-2026-10-03"></a></h2>
 <div class="section level4">

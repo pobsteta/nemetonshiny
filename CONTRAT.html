@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.153.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.154.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,7 +37,7 @@
 <p>Ce document fixe ce que nemetonshiny <strong>s’engage à garder stable</strong> à partir de la version 1.0.0. Toute rupture de ce contrat est une version <strong>majeure</strong> ; tout ajout compatible, une version mineure ou corrective. Ce qui n’y figure pas (fonctions internes, organisation des caches, messages de log) peut changer sans préavis.</p>
 <div class="section level2">
 <h2 id="id_1-point-dentrée">1. Point d’entrée<a class="anchor" aria-label="anchor" href="#id_1-point-dentr%C3%A9e"></a></h2>
-<p>nemetonshiny n’exporte qu’une fonction, <code><a href="reference/run_app.html">run_app()</a></code> :</p>
+<p>L’application se lance par <code><a href="reference/run_app.html">run_app()</a></code> :</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/run_app.html">run_app</a></span><span class="op">(</span>language <span class="op">=</span> <span class="cn">NULL</span>, project_dir <span class="op">=</span> <span class="cn">NULL</span>, max_parcels <span class="op">=</span> <span class="fl">30L</span>,</span>
 <span>        tour <span class="op">=</span> <span class="cn">TRUE</span>, options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
@@ -59,6 +59,44 @@
 <td>transmis à <code><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shiny::shinyApp()</a></code>
 </td>
 </tr></tbody></table></div>
+<div class="section level2">
+<h2 id="id_1-bis-api-hors-interface-depuis-01540">1 bis. API hors interface (depuis 0.154.0)<a class="anchor" aria-label="anchor" href="#id_1-bis-api-hors-interface-depuis-01540"></a></h2>
+<p>Pour piloter un diagnostic sans l’application (scripts, assistants). Chaque fonction a sa page d’aide (<code><a href="reference/api_hors_interface.html">?api_hors_interface</a></code>).</p>
+<table class="table"><colgroup><col width="43%"><col width="26%"><col width="30%"></colgroup><thead><tr><th>Fonction</th>
+<th>Rôle</th>
+<th>Écrit</th>
+</tr></thead><tbody><tr><td><code><a href="reference/projets_lister.html">projets_lister()</a></code></td>
+<td>projets du dossier, avec leur état de sens</td>
+<td>non</td>
+</tr><tr><td><code>projet_etat(id)</code></td>
+<td>métadonnées, sens vu / courant, indicateurs et UGF présents, migration nécessaire</td>
+<td>non</td>
+</tr><tr><td><code>projet_lire(id, langue)</code></td>
+<td>indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l’onglet Synthèse)</td>
+<td><strong>non</strong></td>
+</tr><tr><td><code>projet_migrer(id)</code></td>
+<td>applique les migrations qu’appliquerait l’ouverture dans l’application</td>
+<td>oui</td>
+</tr><tr><td><code>parcelles_commune(insee, ids)</code></td>
+<td>parcelles cadastrales d’une commune</td>
+<td>non</td>
+</tr><tr><td><code>projet_creer(nom, parcelles, ...)</code></td>
+<td>crée et initialise un projet (UGF, sens courant) ; renvoie l’id</td>
+<td>oui</td>
+</tr><tr><td><code>projet_calculer(id, indicateurs, progression)</code></td>
+<td>calcul synchrone des indicateurs</td>
+<td>oui</td>
+</tr><tr><td><code>projet_rapport(id, fichier, langue, synthese, familles, sources)</code></td>
+<td>rapport PDF</td>
+<td>le fichier demandé seulement</td>
+</tr><tr><td><code>projet_gpkg(id, fichier)</code></td>
+<td>GeoPackage des résultats par UGF</td>
+<td>le fichier demandé seulement</td>
+</tr></tbody></table><p>Garanties :</p>
+<ul><li>une fonction marquée « non » n’écrit <strong>rien</strong> dans le projet ; en particulier <code><a href="reference/projet_lire.html">projet_lire()</a></code> n’exécute aucune migration : si l’une serait nécessaire, elle échoue avec une erreur de classe <code>nemetonshiny_projet_perime</code> (champ <code>etat</code> = <code><a href="reference/projet_etat.html">projet_etat()</a></code>), et seule <code><a href="reference/projet_migrer.html">projet_migrer()</a></code> l’applique ;</li>
+<li>les erreurs sont classées et héritent toutes de <code>nemetonshiny_erreur</code> : <code>nemetonshiny_projet_introuvable</code>, <code>nemetonshiny_projet_perime</code>, <code>nemetonshiny_sans_indicateurs</code>, <code>nemetonshiny_calcul_echec</code>, <code>nemetonshiny_parcelles_introuvables</code> ;</li>
+<li>commentaires du rapport : <code>synthese</code> est une chaîne (Markdown, notes <code>[^n]</code> facultatives) ; <code>familles</code> une liste nommée par code de famille (<code>C</code>, <code>B</code>, <code>W</code>, <code>A</code>, <code>F</code>, <code>L</code>, <code>T</code>, <code>R</code>, <code>S</code>, <code>P</code>, <code>E</code>, <code>N</code>) ; <code>sources</code> la liste Markdown des définitions de notes (<code>[^1]: auteur, titre, p. N. &lt;url&gt;</code>). Sans <code>sources</code>, les appels de note restent littéraux.</li>
+</ul></div>
 <div class="section level2">
 <h2 id="id_2-variables-denvironnement">2. Variables d’environnement<a class="anchor" aria-label="anchor" href="#id_2-variables-denvironnement"></a></h2>
 <p>Lues au démarrage ou à l’usage. Les secrets ne sont <strong>jamais</strong> écrits dans le code ni dans les journaux.</p>
@@ -144,6 +182,8 @@
 </tr><tr><td><code>NEMETON_TOUR</code></td>
 <td>
 <code>0</code>/<code>false</code> : pas de visite guidée automatique</td>
+</tr><tr><td><code>NEMETON_PROJECT_DIR</code></td>
+<td>dossier des projets par défaut (API hors interface ; <code>run_app(project_dir =)</code> l’emporte)</td>
 </tr></tbody></table><p>Les autres variables (<code>NEMETON_PERF_TRACE</code>, <code>NEMETON_PIXEL_MAP_DEBUG</code>, <code>NEMETON_S2_CACHE_DEBUG</code>, <code>NEMETON_*_SKIP_GUARD</code>, <code>NEMETONSHINY_DISABLE_*</code>, <code>NEMETON_SCRATCH_DIR</code>) servent au diagnostic et <strong>ne sont pas contractuelles</strong>.</p>
 </div>
 </div>
@@ -162,6 +202,8 @@
 <td>découpage en unités de gestion (UGF)</td>
 </tr><tr><td><code>data/indicators.parquet</code></td>
 <td>indicateurs calculés, par UGF</td>
+</tr><tr><td><code>data/indicators.perime-v&lt;n&gt;-&lt;date&gt;.parquet</code></td>
+<td>indicateurs invalidés, mis de côté (deux générations au plus, listées dans <code>metadata.json</code> → <code>indicateurs_perimes</code>)</td>
 </tr><tr><td><code>data/action_plan.json</code></td>
 <td>plan d’actions (<code>version</code> <strong>1</strong>, <code>annee_base</code>, actions, audit)</td>
 </tr><tr><td>
@@ -175,7 +217,7 @@
 </tr></tbody></table><p>Garanties :</p>
 <ul><li>un projet créé par une version 1.x s’ouvre dans toute version 1.y ultérieure ;</li>
 <li>les migrations de format sont <strong>automatiques</strong> à l’ouverture, ne s’exécutent qu’une fois (marqueurs <code>schema_version</code>, <code>indicator_sense_version</code>, <code>annee_base</code>) et <strong>ne détruisent rien</strong> : des données illisibles sont mises de côté (<code>data/ug_sauvegarde_&lt;date&gt;/</code>, <code>action_plan.illisible-&lt;date&gt;.json</code>) ;</li>
-<li>un changement de sens ou d’échelle d’un indicateur dans le cœur invalide les indicateurs calculés avant (recalcul demandé à l’utilisateur), sans toucher aux autres données ;</li>
+<li>un changement de sens ou d’échelle d’un indicateur dans le cœur invalide les indicateurs calculés avant (recalcul demandé à l’utilisateur), sans toucher aux autres données ; les indicateurs invalidés sont <strong>renommés</strong>, jamais supprimés (<code>indicators.perime-v&lt;n&gt;-&lt;date&gt;.parquet</code>), ce qui permet de comparer avant / après ;</li>
 <li>les écritures sont atomiques : un arrêt brutal ne laisse pas de fichier tronqué.</li>
 </ul></div>
 <div class="section level2">
