@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.156.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.156.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -100,6 +100,8 @@
 <h3 id="liens-profonds-et-serveur-mcp">Liens profonds et serveur MCP<a class="anchor" aria-label="anchor" href="#liens-profonds-et-serveur-mcp"></a></h3>
 <ul><li>
 <code>?project=&lt;id&gt;&amp;tab=&lt;onglet&gt;</code> ouvre l’application sur un projet et un onglet (<code>selection</code>, <code>synthesis</code>, <code>action_plan</code>, <code>terrain</code>, <code>monitoring</code>, <code>regeneration</code>, <code>famille_*</code>) ; une valeur inconnue est ignorée.</li>
+<li>
+<strong>Signal « page prête »</strong> (depuis 0.156.1) : quand l’application a été ouverte par une autre page (<code>window.open</code>, assistant VICTOR), elle lui envoie <strong>une fois</strong> <code>window.opener.postMessage({source: "nemetonshiny", type, project, tab}, &lt;origine&gt;)</code> : <code>type = "ready"</code> une fois le lien appliqué (projet chargé, onglet sélectionné) et Shiny au repos depuis 1 s sans sortie recalculée (plafond 2 min) ; <code>type = "invalid"</code> aussitôt si le lien est refusé. URL nue : <code>ready</code> au premier repos. Aucun envoi sans <code>window.opener</code>. Origine cible : <code>NEMETON_VICTOR_ORIGIN</code> (défaut <code>http://127.0.0.1:8788</code>, vide = aucun envoi, jamais <code>"*"</code>).</li>
 <li>
 <code>inst/mcp/server.R</code> expose l’API ci-dessus comme serveur MCP (stdio) ; ses outils et leurs réponses JSON sont décrits dans <code>inst/mcp/README.md</code>.</li>
 </ul></div>
@@ -194,6 +196,8 @@
 <code>0</code>/<code>false</code> : pas de visite guidée automatique</td>
 </tr><tr><td><code>NEMETON_PROJECT_DIR</code></td>
 <td>dossier des projets par défaut (API hors interface ; <code>run_app(project_dir =)</code> l’emporte)</td>
+</tr><tr><td><code>NEMETON_VICTOR_ORIGIN</code></td>
+<td>origine de la page autorisée à recevoir le signal « page prête » (défaut <code>http://127.0.0.1:8788</code> ; vide = aucun envoi)</td>
 </tr><tr><td><code>NEMETON_APP_PORT</code></td>
 <td>port de l’application dans les liens construits par le serveur MCP (<code>inst/mcp/</code>, défaut 3838)</td>
 </tr></tbody></table><p>Les autres variables (<code>NEMETON_PERF_TRACE</code>, <code>NEMETON_PIXEL_MAP_DEBUG</code>, <code>NEMETON_S2_CACHE_DEBUG</code>, <code>NEMETON_*_SKIP_GUARD</code>, <code>NEMETONSHINY_DISABLE_*</code>, <code>NEMETON_SCRATCH_DIR</code>) servent au diagnostic et <strong>ne sont pas contractuelles</strong>.</p>

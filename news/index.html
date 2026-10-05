@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.156.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.156.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.156.1" id="nemetonshiny-01561-2026-10-05">nemetonshiny 0.156.1 (2026-10-05)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01561-2026-10-05"></a></h2>
+<div class="section level4">
+<h4 id="added-0-156-1">Added<a class="anchor" aria-label="anchor" href="#added-0-156-1"></a></h4>
+<ul><li>
+<strong>Signal « page prête » pour VICTOR</strong> (brief <code>vers-nemetonshiny/2026-10-05-signal-pret-pour-victor.md</code>). Ouverte par une autre page, l’application envoie une fois <code>postMessage({source: "nemetonshiny", type: "ready" | "invalid", project, tab})</code> à cette page. Le signal part quand le lien profond est appliqué et que Shiny est au repos depuis 1 s sans sortie recalculée, ou aussitôt pour un lien refusé. Origine <code>NEMETON_VICTOR_ORIGIN</code> (défaut <code>http://127.0.0.1:8788</code>, jamais <code>"*"</code>) ; rien n’est envoyé sans opener.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed-0-156-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-0-156-1"></a></h4>
+<ul><li>
+<strong>Le serveur entier s’arrêtait</strong> quand un onglet était fermé pendant la restauration d’un projet. Depuis shiny 1.14, lire un réactif d’une session fermée lève une erreur, et dans un rappel <code>later</code> elle remontait jusqu’à <code>runApp()</code>. Les 31 rappels passent par <code>.later_sur()</code>, qui ignore cette erreur et laisse remonter les autres.</li>
+<li>
+<strong>Mode dev (<code>load_all(); run_app()</code>) cassé</strong> : <code><a href="https://pkgload.r-lib.org/reference/load_all.html" class="external-link">pkgload::load_all()</a></code> source <code>tests/testthat/helper-*.R</code>, et un patch de test remplaçait <code><a href="https://rstudio.github.io/promises/reference/future_promise.html" class="external-link">promises::future_promise</a></code> par une fonction rendant <code>NULL</code>. Toute tâche asynchrone rendait donc <code>NULL</code> ; la restauration de projet se relançait en boucle (des milliers de fois par minute). Les patches ne s’appliquent plus que sous testthat (<code>TESTTHAT=true</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.156.0" id="nemetonshiny-01560-2026-10-05">nemetonshiny 0.156.0 (2026-10-05)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01560-2026-10-05"></a></h2>
 <p>Mise en œuvre des constats ouverts de l’audit 1.0, en huit lots.</p>
