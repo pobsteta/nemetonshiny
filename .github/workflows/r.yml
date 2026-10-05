@@ -159,6 +159,13 @@ jobs:
             jbferet/spinR
           needs: check
 
+      # Les smoke E2E (shinytest2) lancent l'app dans un sous-processus qui
+      # recharge l'espace de noms nemetonshiny INSTALLE. Sans cette etape, ils
+      # tournaient contre la version restauree du cache (0.153.0 sur la PR
+      # #218) et echouaient des qu'app_server appelait une fonction nouvelle.
+      - name: Install nemetonshiny from this branch
+        run: R CMD INSTALL --no-docs --no-multiarch .
+
       - name: Run tests
         env:
           # chromote resolves the browser from CHROMOTE_CHROME first; point it
