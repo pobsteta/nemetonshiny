@@ -1,4 +1,4 @@
-# nemetonshiny 0.155.0.9001 (cycle de développement)
+# nemetonshiny 0.156.0 (2026-10-05)
 
 Mise en œuvre des constats ouverts de l'audit 1.0, en huit lots.
 

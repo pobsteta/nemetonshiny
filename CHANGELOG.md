@@ -10,6 +10,36 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.156.0] - 2026-10-05
+
+### Fixed
+
+- Audit 1.0, lots 1 a 8 : fichiers de cles owner-only, TLS impose et
+  identifiants masques pour la base de suivi, messages ntfy assainis.
+- Lecture seule respectee partout (commentaires, desserte, plan d'actions) et
+  recalculee au changement d'authentification ; audit signe par l'utilisateur.
+- Langue par session ; analyse reGeneration, appels LLM et battement du verrou
+  hors de la boucle Shiny ; delais Python et chien de garde de la chaine.
+- Suivi sanitaire : etape zones, G3, annulations, zone RECONFORT `_tot`.
+- Caches cles sur l'emprise (couches, desserte, contexte reGeneration).
+- Ecritures atomiques (OSO, LiDAR) ; calcul sans indicateur = echec.
+- Import de tenements (CRS, elements hors parcelles), contenance NA, score
+  global NA, configuration des sources, carte, cartes de fin de calcul.
+
+### Changed
+
+- Badges NDP lisibles et traduits ; un seul bouton principal en Synthese ;
+  textes restants passes par l'i18n ; JS sans ecouteurs empiles.
+- Keycloak de dev : `keycloak/realm-nemeton-dev.json`, secrets obligatoires
+  via `.env` (`.env.example`).
+- CI : job `R-CMD-check-oldrel` non bloquant.
+- NEWS et CHANGELOG archives avant 0.130.0 ; logo allege.
+
+### Removed
+
+- Code mort : radar/palettes de `utils_theme.R`, `tenement_split_by_line()`,
+  `db_load_parcels()`, `needs_migration()`, sept helpers cadastre/communes.
+
 ## [0.155.0] - 2026-10-05
 
 ### Added
