@@ -915,7 +915,7 @@ mod_action_plan_server <- function(id, app_state) {
       if (!map_visible()) return()
       bbox <- rv_state$pending_fit_bbox
       rv_state$pending_fit_bbox <- NULL
-      later::later(function() {
+      .later_sur(function() {
         session$sendCustomMessage("leafletInvalidateSize",
                                   list(id = ns("map")))
         if (!is.null(bbox)) {

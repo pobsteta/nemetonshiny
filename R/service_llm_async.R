@@ -86,7 +86,7 @@ llm_batch_async <- function(system_prompt, prompts, retries = 1L) {
   if (isTRUE(getOption("nemetonshiny.llm_inline"))) {
     # Tests : dans le processus (doublures visibles), derriere une promesse.
     return(promises::promise(function(resolve, reject) {
-      later::later(function() {
+      .later_sur(function() {
         tryCatch(resolve(.llm_batch_run(system_prompt, prompts, retries)),
                  error = function(e) reject(e))
       })

@@ -47,13 +47,13 @@ app_server <- function(input, output, session) {
   # ~1,6 s de chargement paresseux qui plombait le tout premier clic.
   # Idempotent (ne tourne qu'une fois par process R, cf. warmup_geo_stack).
   if (requireNamespace("later", quietly = TRUE)) {
-    later::later(function() warmup_geo_stack(), delay = 1.5)
+    .later_sur(function() warmup_geo_stack(), delay = 1.5)
     # Pre-chauffe aussi les WORKERS future (chargement du namespace nemetonshiny
     # dans les process worker, ~5-6 s au tout 1er future) : sans ca, ce cout
     # frappe la 1re tache async - souvent le db_sync du 1er projet ouvert, ou le
     # 1er calcul/moteur. Dans des process separes -> aucune competition avec le
     # rendu principal, donc declenche tot (0,3 s) pour etre chaud avant le clic.
-    later::later(function() warmup_async_workers(), delay = 0.3)
+    .later_sur(function() warmup_async_workers(), delay = 0.3)
   }
 
   # ============================================================
@@ -225,7 +225,7 @@ app_server <- function(input, output, session) {
     # Reset localStorage flag so tour can restart
     session$sendCustomMessage("resetTourSeen", list())
     # Delay to let modal close before starting tour
-    later::later(function() {
+    .later_sur(function() {
       app_state$restart_tour <- Sys.time()
     }, delay = 0.5)
   })

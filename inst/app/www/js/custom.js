@@ -249,6 +249,49 @@
   /**
    * Update selection counter display
    */
+  // Signal " page prete " pour la page qui a ouvert l'app (VICTOR,
+  // window.open). Le serveur l'envoie quand le lien profond est applique ; on
+  // attend que Shiny soit au repos de facon STABLE (~1 s, pour absorber les
+  // rendus en cascade) avant de poster. Rien sans opener ; jamais d'origine
+  // "*" (l'origine cible vient du serveur, NEMETON_VICTOR_ORIGIN).
+  // Etat suivi par les EVENEMENTS Shiny (la classe `.shiny-busy` de <html>
+  // est retiree par initBusyVisibility() plus bas). Les cycles busy/idle seuls
+  // ne suffisent pas : les sondages periodiques de l'app (reactivePoll,
+  // invalidateLater) en produisent sans cesse, de quelques ms et sans rien
+  // rendre. " Calme " = Shiny au repos ET aucune sortie recalculee depuis 1 s ;
+  // un calcul long garde busy a vrai et retient donc le signal.
+  var nemetonPretEnvoye = false;
+  var nemetonShinyOccupe = false;
+  var nemetonDerniereActivite = Date.now();
+  $(document).on('shiny:busy', function() { nemetonShinyOccupe = true; });
+  $(document).on('shiny:idle', function() { nemetonShinyOccupe = false; });
+  $(document).on('shiny:recalculating shiny:value shiny:outputinvalidated shiny:error',
+    function() { nemetonDerniereActivite = Date.now(); });
+  Shiny.addCustomMessageHandler('nemeton_pret', function(data) {
+    if (nemetonPretEnvoye || !data || !data.origin) return;
+    var opener = null;
+    try { opener = window.opener; } catch (e) { opener = null; }
+    if (!opener) return;
+    nemetonPretEnvoye = true;
+    var poster = function() {
+      try {
+        opener.postMessage({
+          source: 'nemetonshiny', type: data.type,
+          project: data.project || '', tab: data.tab || ''
+        }, data.origin);
+      } catch (e) { /* opener ferme ou d'une autre origine */ }
+    };
+    if (data.type !== 'ready') { poster(); return; }
+    // Le message arrive pendant le flush du serveur : on part de " occupe ".
+    nemetonDerniereActivite = Date.now();
+    var debut = Date.now();
+    var timer = setInterval(function() {
+      var calme = !nemetonShinyOccupe && Date.now() - nemetonDerniereActivite >= 1000;
+      // Repos et aucune sortie rendue depuis 1 s, ou plafond de 2 min.
+      if (calme || Date.now() - debut >= 120000) { clearInterval(timer); poster(); }
+    }, 250);
+  });
+
   // Le serveur envoie `announceSelection` avec un message deja traduit ; le
   // handler ecoutait `updateSelectionCount`, que personne n'envoyait.
   Shiny.addCustomMessageHandler('announceSelection', function(data) {

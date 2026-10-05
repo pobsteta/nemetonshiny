@@ -806,7 +806,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
 
       # Delay 300 ms so the DOM has time to lay out the (formerly
       # hidden) map container before invalidateSize + fitBounds fire.
-      later::later(function() {
+      .later_sur(function() {
         session$sendCustomMessage("leafletInvalidateSize", list(
           id = session$ns("map")
         ))

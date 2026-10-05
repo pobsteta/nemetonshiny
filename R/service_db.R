@@ -901,7 +901,7 @@ db_sync_project_async <- function(project_id) {
                  "Deferred DB sync failed (non-blocking): {conditionMessage(e)}"))
     }
     if (requireNamespace("later", quietly = TRUE)) {
-      later::later(.deferred, delay = 0.5)
+      .later_sur(.deferred, delay = 0.5)
     } else {
       .deferred()
     }

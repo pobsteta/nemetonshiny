@@ -581,7 +581,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       bb <- .fordead_view_bbox(
         shiny::isolate(.ugf_for_overlay(app_state$current_project)),
         shiny::isolate(mask_r()))
-      later::later(function() {
+      .later_sur(function() {
         session$sendCustomMessage("leafletInvalidateSize",
                                   list(id = session$ns("map")))
         if (!is.null(bb)) {

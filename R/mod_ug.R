@@ -958,7 +958,7 @@ mod_ug_server <- function(id, app_state) {
       rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
 
       # Force leaflet to re-detect its container size (critical for hidden tabs)
-      later::later(function() {
+      .later_sur(function() {
         proxy <- leaflet::leafletProxy(ns("ug_map"), session = session)
         # Trigger invalidateSize via custom message to the map
         session$sendCustomMessage("leafletInvalidateSize", list(
@@ -2089,7 +2089,7 @@ mod_ug_server <- function(id, app_state) {
         msg
       }
 
-      later::later(function() {
+      .later_sur(function() {
         tryCatch({
           # Read the imported file
           sf_polygones <- sf::st_read(datapath, quiet = TRUE)
@@ -2356,7 +2356,7 @@ mod_ug_server <- function(id, app_state) {
       purger    <- isTRUE(cfg$purger)
       .onf_spinner_on(i18n_snap)
 
-      later::later(function() {
+      .later_sur(function() {
         tryCatch({
           # UN SEUL appel WFS, sur l'emprise de toute la selection (le brief
           # interdit explicitement un appel par parcelle).
@@ -2540,7 +2540,7 @@ mod_ug_server <- function(id, app_state) {
         type = "message", duration = NULL, closeButton = FALSE,
         id = notif_id, session = session)
 
-      later::later(function() {
+      .later_sur(function() {
         tryCatch({
           res <- importer_parcelles_csv(chemin)
           shiny::removeNotification(notif_id, session = session)

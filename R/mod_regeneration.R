@@ -924,7 +924,7 @@ mod_regeneration_server <- function(id, app_state) {
       nid <- session$ns("regen_restore_notif")
       shiny::showNotification(i18n$t("regen_restore_loading"), id = nid,
                               duration = NULL, type = "message")
-      later::later(function() {
+      .later_sur(function() {
         res <- tryCatch(restore_regeneration(units, precomputed = pc),
                         error = function(e) NULL)
         if (!is.null(res)) {
@@ -1122,7 +1122,7 @@ mod_regeneration_server <- function(id, app_state) {
         # derriere une promesse - meme sequence d'etats que le worker.
         if (isTRUE(getOption("nemetonshiny.analyse_inline"))) {
           return(promises::promise(function(resolve, reject) {
-            later::later(function() {
+            .later_sur(function() {
               tryCatch(resolve(run_regeneration(
                 units, cfg = cfg,
                 precomputed = load_regeneration_precomputed(project_path))),

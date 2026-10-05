@@ -337,7 +337,7 @@ mod_search_server <- function(id, app_state) {
         # Capture current generation so stale callbacks from a previous
         # restore don't clear is_restoring during a newer restore.
         gen_snapshot <- rv$restore_gen
-        later::later(function() {
+        .later_sur(function() {
           if (shiny::isolate(rv$restore_gen) == gen_snapshot) {
             rv$is_restoring <- FALSE
           }
@@ -479,7 +479,7 @@ mod_search_server <- function(id, app_state) {
           # Schedule a retry after a short delay. The running task should
           # complete soon; when it does, its result handler re-invokes.
           # This is a fallback in case the result handler doesn't fire.
-          later::later(function() {
+          .later_sur(function() {
             if (shiny::isolate(rv$restore_gen) != gen_snapshot) return()
             current <- shiny::isolate(app_state$restore_project)
             if (is.null(current)) return()
@@ -495,7 +495,7 @@ mod_search_server <- function(id, app_state) {
 
       # Safety timeout: if restore_task never completes (worker crash, etc.),
       # clear flags after 30 seconds so the spinner doesn't spin forever.
-      later::later(function() {
+      .later_sur(function() {
         # Only clear if this is still the same restore generation
         if (shiny::isolate(rv$restore_gen) != gen_snapshot) return()
         if (isTRUE(shiny::isolate(rv$is_restoring))) {
@@ -537,7 +537,7 @@ mod_search_server <- function(id, app_state) {
       if (inherits(result, "error")) {
         cli::cli_alert_danger("Error restoring location: {result$message}")
         rv$is_restoring <- FALSE
-        later::later(function() {
+        .later_sur(function() {
           app_state$restore_in_progress <- FALSE
         }, delay = 0)
         return()
@@ -561,7 +561,7 @@ mod_search_server <- function(id, app_state) {
           error = function(e) {
             cli::cli_warn("Re-invoke for current project failed: {e$message}")
             rv$is_restoring <- FALSE
-            later::later(function() {
+            .later_sur(function() {
               app_state$restore_in_progress <- FALSE
             }, delay = 0)
           }
@@ -625,7 +625,7 @@ mod_search_server <- function(id, app_state) {
         # flags so the spinner doesn't spin forever.
         cli::cli_warn("Restore: commune geometry is NULL for {commune_code}")
         rv$is_restoring <- FALSE
-        later::later(function() {
+        .later_sur(function() {
           app_state$restore_in_progress <- FALSE
         }, delay = 0)
         return()
@@ -659,7 +659,7 @@ mod_search_server <- function(id, app_state) {
       # Use generation check so a stale callback from a previous restore
       # doesn't clear flags during a newer restore.
       gen_snapshot <- shiny::isolate(rv$restore_gen)
-      later::later(function() {
+      .later_sur(function() {
         if (shiny::isolate(rv$restore_gen) != gen_snapshot) return()
         app_state$restore_in_progress <- FALSE
       }, delay = 0)

@@ -615,7 +615,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
       # Differe : laisse `raster_r` afficher l'indice selectionne d'abord,
       # puis rechauffe le cache des deux indices hors du cycle de rendu.
-      later::later(function() {
+      .later_sur(function() {
         for (idx in c("NDMI", "NDRE")) {
           con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
           if (is.null(con)) next

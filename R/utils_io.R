@@ -119,3 +119,26 @@
   .replace_file(tmp, path)
   invisible(path)
 }
+
+
+#' Schedule a callback that survives the end of its session
+#'
+#' Drop-in for [later::later()]. Since shiny 1.14, reading a reactive of a
+#' module whose session is closed raises `shiny.destroyed.error`. Inside a
+#' `later` callback, i.e. outside any reactive context, that error escaped to
+#' `runApp()` and **stopped the whole server** - every user's session - when a
+#' tab was closed while a project was still restoring (reproduced
+#' 2026-10-05). The session is gone, so its callback simply has nothing left to
+#' do. Any other error keeps propagating.
+#'
+#' @param func Callback, no argument.
+#' @param delay Seconds, passed to [later::later()].
+#' @param loop Event loop, passed to [later::later()].
+#' @return The cancellation function returned by [later::later()].
+#' @noRd
+.later_sur <- function(func, delay = 0, loop = later::current_loop()) {
+  force(func)
+  later::later(function() {
+    tryCatch(func(), shiny.destroyed.error = function(e) invisible(NULL))
+  }, delay = delay, loop = loop)
+}
