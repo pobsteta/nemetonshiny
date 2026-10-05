@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[0.157.0\] - 2026-10-05
+
+### Changed
+
+- Scores de famille et score global ponderes par la surface des UGF
+  ([`nemeton::aggregate_family_scores()`](https://pobsteta.github.io/nemeton/reference/aggregate_family_scores.html))
+  : Synthese, radar, tableau, rapport PDF, prompt IA,
+  [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
+  serveur MCP. Les scores affiches changent.
+- Composite NDVI S2 de C2 par
+  [`nemeton::build_ndvi_season_composite()`](https://pobsteta.github.io/nemeton/reference/build_ndvi_season_composite.html)
+  (offset radiometrique retire) ; cache `ndvi_s2_v2.tif`.
+- Indices ombrothermiques par
+  [`nemeton::climate_ombrothermic_indices()`](https://pobsteta.github.io/nemeton/reference/climate_ombrothermic_indices.html).
+- Plancher `Imports: nemeton (>= 0.216.0)`.
+
 ## \[0.156.1\] - 2026-10-05
 
 ### Added
