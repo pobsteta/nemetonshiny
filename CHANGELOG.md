@@ -10,6 +10,32 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.154.0] - 2026-10-04
+
+### Added
+
+- API hors interface exportee (`?api_hors_interface`) : `projets_lister()`,
+  `projet_etat()`, `projet_lire()`, `projet_migrer()`, `parcelles_commune()`,
+  `projet_creer()`, `projet_calculer()`, `projet_rapport()`, `projet_gpkg()` ;
+  erreurs classees (`nemetonshiny_erreur`) ; `CONTRAT.md` section 1 bis.
+- `projet_lire()` sans aucune ecriture : erreur `nemetonshiny_projet_perime`
+  si une migration serait necessaire, appliquee seulement par `projet_migrer()`.
+- Variable `NEMETON_PROJECT_DIR` : dossier des projets par defaut.
+
+### Changed
+
+- Scores de famille et score global de la Synthese extraits dans
+  `R/service_synthesis.R` (memes chiffres pour l'onglet et l'API).
+- Plancher `Imports: nemeton (>= 0.212.0)` (borne E1/E2 a 2,64).
+
+### Fixed
+
+- Les indicateurs invalides sont renommes
+  (`indicators.perime-v<n>-<date>.parquet`, deux generations), plus jamais
+  supprimes : un simple chargement d'un projet au sens perime les detruisait.
+- Un projet neuf porte le marqueur de sens courant : cree puis calcule hors
+  interface, il n'est plus invalide a sa premiere ouverture.
+
 ## [0.153.0] - 2026-10-03
 
 ### Added

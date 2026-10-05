@@ -31,16 +31,25 @@ test_that("un projet calcule AVANT l'inversion est invalide, une seule fois", {
         # parquet présent, le drapeau à TRUE.
         ppath <- nemetonshiny:::get_project_path(pid)
         writeLines("x", file.path(ppath, "data", "indicators.parquet"))
+        # `create_project()` pose le marqueur courant depuis 0.153.0.9002 : on
+        # le retire pour simuler un projet anterieur.
         nemetonshiny:::update_project_metadata(
-          pid, list(indicators_computed = TRUE, status = "computed"))
+          pid, list(indicators_computed = TRUE, status = "computed",
+                    indicator_sense_version = NULL))
 
-        invalide <- nemetonshiny:::ensure_indicator_sense_current(pid)
+        expect_warning(
+          invalide <- nemetonshiny:::ensure_indicator_sense_current(pid),
+          "invalid")
         expect_true(invalide)
 
         m <- nemetonshiny:::load_project_metadata(pid)
         # Le parquet est parti et le projet est repassé en brouillon : c'est ce
         # qui rend le bouton de calcul à nouveau visible.
         expect_false(file.exists(file.path(ppath, "data", "indicators.parquet")))
+        # ... mis de cote, pas supprime (brief API hors interface, 2026-10-04)
+        expect_length(list.files(file.path(ppath, "data"),
+                                 "^indicators\\.perime-v1-"), 1L)
+        expect_identical(m$indicateurs_perimes[[1]]$motif, "sens")
         expect_false(isTRUE(m$indicators_computed))
         expect_equal(as.integer(m$indicator_sense_version),
                      nemetonshiny:::INDICATOR_SENSE_VERSION)

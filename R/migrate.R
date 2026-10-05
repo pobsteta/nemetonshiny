@@ -163,7 +163,7 @@ ensure_project_migrated <- function(project_id, projet = NULL) {
            error = function(e) NULL)
   # Le decoupage recree par la migration a d'autres `ug_id` : les indicateurs
   # calcules sur l'ancien ne correspondent plus.
-  tryCatch(invalidate_indicators(project_id), error = function(e) NULL)
+  tryCatch(invalidate_indicators(project_id, motif = "ugf"), error = function(e) NULL)
   invisible(dest)
 }
 
@@ -204,7 +204,7 @@ INDICATOR_SENSE_VERSION <- 3L
 #'
 #' D'ou cette invalidation unique, declenchee a la premiere ouverture du projet
 #' apres la montee de version. Elle passe par `invalidate_indicators()`, le meme
-#' mecanisme que le croisement ONF : le parquet est supprime, le projet repasse
+#' mecanisme que le croisement ONF : le parquet est mis de cote (renomme), le projet repasse
 #' en `draft`, et l'app rend a nouveau visible le bouton de calcul.
 #'
 #' Le marqueur est ecrit MEME quand il n'y a rien a invalider (projet jamais
@@ -243,7 +243,7 @@ ensure_indicator_sense_current <- function(project_id, metadata = NULL) {
       i = "v3 : inversion de L1 (effet de lisi\u00e8re), borne 200 ans sur T1, \\
            E1/E2 align\u00e9s sur P1."
     ))
-    tryCatch(invalidate_indicators(project_id),
+    tryCatch(invalidate_indicators(project_id, motif = "sens"),
              error = function(e) cli::cli_warn(
                "Invalidation impossible : {conditionMessage(e)}"))
   }

@@ -8,7 +8,7 @@ sans préavis.
 
 ## 1. Point d'entrée
 
-nemetonshiny n'exporte qu'une fonction, `run_app()` :
+L'application se lance par `run_app()` :
 
 ```r
 run_app(language = NULL, project_dir = NULL, max_parcels = 30L,
@@ -23,6 +23,39 @@ run_app(language = NULL, project_dir = NULL, max_parcels = 30L,
 | `tour`        | lancement automatique de la visite guidée |
 | `options`     | options Shiny (`port`, `host`, `launch.browser`…) fusionnées sur les défauts ; le navigateur ne s'ouvre qu'en session interactive |
 | `...`         | transmis à `shiny::shinyApp()` |
+
+## 1 bis. API hors interface (depuis 0.154.0)
+
+Pour piloter un diagnostic sans l'application (scripts, assistants). Chaque
+fonction a sa page d'aide (`?api_hors_interface`).
+
+| Fonction | Rôle | Écrit |
+|----------|------|-------|
+| `projets_lister()` | projets du dossier, avec leur état de sens | non |
+| `projet_etat(id)` | métadonnées, sens vu / courant, indicateurs et UGF présents, migration nécessaire | non |
+| `projet_lire(id, langue)` | indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l'onglet Synthèse) | **non** |
+| `projet_migrer(id)` | applique les migrations qu'appliquerait l'ouverture dans l'application | oui |
+| `parcelles_commune(insee, ids)` | parcelles cadastrales d'une commune | non |
+| `projet_creer(nom, parcelles, ...)` | crée et initialise un projet (UGF, sens courant) ; renvoie l'id | oui |
+| `projet_calculer(id, indicateurs, progression)` | calcul synchrone des indicateurs | oui |
+| `projet_rapport(id, fichier, langue, synthese, familles, sources)` | rapport PDF | le fichier demandé seulement |
+| `projet_gpkg(id, fichier)` | GeoPackage des résultats par UGF | le fichier demandé seulement |
+
+Garanties :
+
+- une fonction marquée « non » n'écrit **rien** dans le projet ; en
+  particulier `projet_lire()` n'exécute aucune migration : si l'une serait
+  nécessaire, elle échoue avec une erreur de classe `nemetonshiny_projet_perime`
+  (champ `etat` = `projet_etat()`), et seule `projet_migrer()` l'applique ;
+- les erreurs sont classées et héritent toutes de `nemetonshiny_erreur` :
+  `nemetonshiny_projet_introuvable`, `nemetonshiny_projet_perime`,
+  `nemetonshiny_sans_indicateurs`, `nemetonshiny_calcul_echec`,
+  `nemetonshiny_parcelles_introuvables` ;
+- commentaires du rapport : `synthese` est une chaîne (Markdown, notes `[^n]`
+  facultatives) ; `familles` une liste nommée par code de famille (`C`, `B`,
+  `W`, `A`, `F`, `L`, `T`, `R`, `S`, `P`, `E`, `N`) ; `sources` la liste
+  Markdown des définitions de notes (`[^1]: auteur, titre, p. N. <url>`).
+  Sans `sources`, les appels de note restent littéraux.
 
 ## 2. Variables d'environnement
 
@@ -88,6 +121,7 @@ développement et aux tests.
 | `NEMETON_MEMORY_MAX` | plafond mémoire des calculs (transmis au cœur) |
 | `NEMETON_TOPO_TARGET_RES` | résolution cible des dérivés topographiques |
 | `NEMETON_TOUR` | `0`/`false` : pas de visite guidée automatique |
+| `NEMETON_PROJECT_DIR` | dossier des projets par défaut (API hors interface ; `run_app(project_dir =)` l'emporte) |
 
 Les autres variables (`NEMETON_PERF_TRACE`, `NEMETON_PIXEL_MAP_DEBUG`,
 `NEMETON_S2_CACHE_DEBUG`, `NEMETON_*_SKIP_GUARD`, `NEMETONSHINY_DISABLE_*`,
@@ -104,6 +138,7 @@ dossier (`AAAAMMJJ_HHMMSS_xxxx`).
 | `data/parcels.gpkg` | parcelles cadastrales (référence) ; `parcels.parquet` en copie de lecture rapide |
 | `data/tenements.gpkg`, `data/ugs.json` | découpage en unités de gestion (UGF) |
 | `data/indicators.parquet` | indicateurs calculés, par UGF |
+| `data/indicators.perime-v<n>-<date>.parquet` | indicateurs invalidés, mis de côté (deux générations au plus, listées dans `metadata.json` → `indicateurs_perimes`) |
 | `data/action_plan.json` | plan d'actions (`version` **1**, `annee_base`, actions, audit) |
 | `data/comments.json`, `data/regen_comments.json` | commentaires |
 | `data/samples.gpkg` | plans d'échantillonnage et de validation |
@@ -118,7 +153,9 @@ Garanties :
   de côté (`data/ug_sauvegarde_<date>/`, `action_plan.illisible-<date>.json`) ;
 - un changement de sens ou d'échelle d'un indicateur dans le cœur invalide les
   indicateurs calculés avant (recalcul demandé à l'utilisateur), sans toucher
-  aux autres données ;
+  aux autres données ; les indicateurs invalidés sont **renommés**, jamais
+  supprimés (`indicators.perime-v<n>-<date>.parquet`), ce qui permet de
+  comparer avant / après ;
 - les écritures sont atomiques : un arrêt brutal ne laisse pas de fichier
   tronqué.
 
