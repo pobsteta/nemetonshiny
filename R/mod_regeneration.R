@@ -835,6 +835,7 @@ mod_regeneration_server <- function(id, app_state) {
       context_raster = NULL, context_meta = NULL,
       context_running = FALSE, context_start = NULL,
       context_loaded_view = NULL,   # vue actuellement chargee : tx / rr / bivariate
+      context_loaded_buffer = NULL, # rayon (m) du raster charge
       # Restauration differee a l'entree dans l'onglet reGeneration (et non a
       # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
       # l'observer de restauration ne le consomme (toast + relecture cache) que
@@ -1068,44 +1069,25 @@ mod_regeneration_server <- function(id, app_state) {
         hydric_only = FALSE
       )
 
-      # withProgress affiche un overlay immediat (retour visible avant le calcul
-      # synchrone) et empeche les reclics pendant le run.
-      res <- shiny::withProgress(message = i18n$t("regen_running"), value = 0.2, {
-        precomputed <- load_regeneration_precomputed(project_path)
-        shiny::incProgress(0.3)
-        out <- tryCatch(
-          run_regeneration(units, cfg = cfg, precomputed = precomputed),
-          error = function(e) {
-            shiny::showNotification(
-              sprintf("%s: %s", i18n$t("error"), conditionMessage(e)), type = "error")
-            NULL
-          })
-        shiny::incProgress(0.5)
-        out
-      })
-      rv$running <- FALSE
-      if (!is.null(res)) {
-        # Reporter R7 (gel) du resultat precedent (brief 035 sect.8) : run_regeneration()
-        # ne produit pas r7_gel_days (pas de tmin en entree) et ecrasait sechement
-        # rv$result, vidant la couche gel des qu'on relancait l'analyse apres R7.
-        # `.regen_attach_r7` reattache par ug_id (no-op si aucun R7 anterieur).
-        carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
-        rv$result <- carried
-        rv$years <- res$years
-        rv$warnings <- res$warnings %||% character(0)
-        # Provenance canopee lue sur le resultat (repli satellite / LiDAR HD).
-        rv$canopy_source <- regen_canopy_provenance(res$units)
-        # Publier le resultat pour l'export PDF (section reGeneration de mod_synthesis).
-        app_state$regeneration_result <- carried
-        nw <- length(rv$warnings)
-        if (nw > 0L) {
-          shiny::showNotification(sprintf(i18n$t("regen_run_done_warn"), nw),
-                                  type = "warning", duration = 8)
-        } else {
-          shiny::showNotification(i18n$t("regen_run_done"), type = "message", duration = 5)
-        }
-      }
+      # ASYNCHRONE : run_regeneration() tenait la boucle Shiny plus de 2 min
+      # (R3 sur MNT LiDAR, 132 s mesures) et gelait TOUTES les sessions.
+      .lancer_analyse(units, project_path, cfg, mode = "manuel")
     })
+
+    # Lance l'analyse dans un worker. `mode` : "manuel" (bouton) ou
+    # "post_moteur" (relance rapide apres microclimf, qui cumule les
+    # avertissements du moteur). Le projet lanceur est memorise : un resultat
+    # arrive apres un changement de projet n'est pas applique a l'autre.
+    .lancer_analyse <- function(units, project_path, cfg, mode = "manuel",
+                                eng_warns = character(0)) {
+      rv$running <- TRUE
+      rv$analysis_mode <- mode
+      rv$analysis_eng_warns <- eng_warns
+      rv$analysis_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
+      shiny::showNotification(i18n$t("regen_running"), id = session$ns("analysis_notif"),
+                              type = "message", duration = NULL)
+      analysis_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
+    }
 
     # --- Essence cible : mise a jour LIVE de la choroplethe ----------------
     # L'essence n'alimente que la derniere etape (indice de priorite). Sur un
@@ -1132,6 +1114,83 @@ mod_regeneration_server <- function(id, app_state) {
       if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
         find.package("nemetonshiny") else NULL,
       error = function(e) NULL)
+
+    # Analyse reGeneration (run_regeneration) en worker : cf. .lancer_analyse().
+    analysis_task <- shiny::ExtendedTask$new(
+      function(units, project_path, cfg, dev_path, app_opts) {
+        # Tests : execution dans le processus (doublures visibles), toujours
+        # derriere une promesse - meme sequence d'etats que le worker.
+        if (isTRUE(getOption("nemetonshiny.analyse_inline"))) {
+          return(promises::promise(function(resolve, reject) {
+            later::later(function() {
+              tryCatch(resolve(run_regeneration(
+                units, cfg = cfg,
+                precomputed = load_regeneration_precomputed(project_path))),
+                error = function(e) reject(e))
+            })
+          }))
+        }
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          pre <- utils::getFromNamespace("load_regeneration_precomputed", "nemetonshiny")(project_path)
+          utils::getFromNamespace("run_regeneration", "nemetonshiny")(
+            units, cfg = cfg, precomputed = pre)
+        }, seed = TRUE)
+      })
+
+    shiny::observeEvent(analysis_task$status(), {
+      st <- analysis_task$status()
+      if (!st %in% c("success", "error")) return()
+      rv$running <- FALSE
+      shiny::removeNotification(session$ns("analysis_notif"))
+      mode <- rv$analysis_mode %||% "manuel"
+      eng_warns <- rv$analysis_eng_warns %||% character(0)
+      courant <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
+      if (!identical(courant, rv$analysis_pid)) return()   # autre projet ouvert
+      if (identical(st, "error")) {
+        err <- tryCatch(analysis_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(sprintf("%s: %s", i18n$t("error"), err), type = "error")
+        return()
+      }
+      res <- tryCatch(analysis_task$result(), error = function(e) NULL)
+      if (is.null(res)) return()
+      # Reporter R7 (gel) du resultat precedent (brief 035 sect.8) : run_regeneration()
+      # ne produit pas r7_gel_days (pas de tmin en entree) et ecrasait sechement
+      # rv$result, vidant la couche gel des qu'on relancait l'analyse apres R7.
+      # `.regen_attach_r7` reattache par ug_id (no-op si aucun R7 anterieur).
+      carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
+      rv$result <- carried
+      rv$years <- res$years
+      # Publier le resultat pour l'export PDF (section reGeneration de mod_synthesis).
+      app_state$regeneration_result <- carried
+      if (identical(mode, "post_moteur")) {
+        # B3.b - CUMULER les diagnostics du moteur avec ceux du re-run.
+        rv$warnings <- unique(c(res$warnings %||% character(0), eng_warns))
+        return()
+      }
+      rv$warnings <- res$warnings %||% character(0)
+      # Provenance canopee lue sur le resultat (repli satellite / LiDAR HD).
+      rv$canopy_source <- regen_canopy_provenance(res$units)
+      nw <- length(rv$warnings)
+      if (nw > 0L) {
+        shiny::showNotification(sprintf(i18n$t("regen_run_done_warn"), nw),
+                                type = "warning", duration = 8)
+      } else {
+        shiny::showNotification(i18n$t("regen_run_done"), type = "message", duration = 5)
+      }
+    })
 
     engine_task <- shiny::ExtendedTask$new(
       function(units, project_path, cfg, dev_path, app_opts) {
@@ -1294,7 +1353,7 @@ mod_regeneration_server <- function(id, app_state) {
     # de facon erratique sans que l'utilisateur ait rien lance.
     busy <- shiny::reactive({
       any(vapply(
-        list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task),
+        list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task, analysis_task),
         function(t) identical(t$status(), "running"),
         logical(1)))
     })
@@ -1593,12 +1652,15 @@ mod_regeneration_server <- function(id, app_state) {
     # son propre raster + cache. Cache-first, sinon worker async. Bandeau
     # need_tx / need_rr si une serie requise manque.
     shiny::observeEvent(
-      list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view), {
+      list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view,
+           input$buffer_km), {
       if (!identical(app_state$active_main_tab, "regeneration")) return()
       if (isTRUE(rv$context_running)) return()
       view <- input$context_view %||% "tx"
-      # Deja charge pour CETTE vue -> ne rien refaire.
+      buffer_m <- (input$buffer_km %||% 25) * 1000
+      # Deja charge pour CETTE vue ET ce rayon -> ne rien refaire.
       if (identical(rv$context_loaded_view, view) &&
+          identical(rv$context_loaded_buffer, buffer_m) &&
           (!is.null(rv$context_raster) ||
            (!is.null(rv$context_meta) && !identical(rv$context_meta$status, "ok")))) return()
       units <- units_sf(); if (is.null(units)) return()
@@ -1608,20 +1670,22 @@ mod_regeneration_server <- function(id, app_state) {
       av <- regen_context_availability(project_path)
       set_state <- function(rast, meta) {
         rv$context_raster <- rast; rv$context_meta <- meta; rv$context_loaded_view <- view
+        rv$context_loaded_buffer <- buffer_m
       }
       if (view %in% c("tx", "bivariate") && !isTRUE(av$tx)) return(set_state(NULL, list(status = "need_tx")))
       if (view %in% c("rr", "bivariate") && !isTRUE(av$rr)) return(set_state(NULL, list(status = "need_rr")))
 
-      cached <- regeneration_context_cached(project_path, view)
+      cached <- regeneration_context_cached(project_path, view, buffer_m)
       if (!is.null(cached)) return(set_state(cached$raster, cached$meta))
 
       rv$context_raster <- NULL; rv$context_loaded_view <- view
+      rv$context_loaded_buffer <- buffer_m
       rv$context_running <- TRUE; rv$context_start <- Sys.time()
       shiny::showNotification(
         .running_notif_content(i18n$t("regen_context_computing"), rv$context_start),
         id = session$ns("context_notif"), type = "message", duration = NULL)
       rv$context_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
-      context_task$invoke(units, project_path, view, (input$buffer_km %||% 25) * 1000,
+      context_task$invoke(units, project_path, view, buffer_m,
                           .dev_pkg_path, get_app_options())
     }, ignoreNULL = FALSE)
 
@@ -1638,10 +1702,10 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      for (v in c("tx", "rr", "bivariate")) {
-        p <- .regen_context_raster_paths(project_path, v)
-        unlink(c(p$tif, p$meta))
-      }
+      # Tous les rayons : un fichier par (vue, rayon) depuis l'audit 1.0.
+      d <- dirname(.regen_context_raster_paths(project_path, "tx")$tif)
+      unlink(list.files(d, "^context_(tx|rr|bivariate)(_[0-9.]+km)?\\.(tif|meta\\.json)$",
+                        full.names = TRUE))
       rv$context_raster <- NULL; rv$context_meta <- NULL; rv$context_loaded_view <- NULL
       rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-declenche l'observer lazy
       shiny::showNotification(i18n$t("regen_context_recomputing"), type = "message", duration = 4)
@@ -2010,29 +2074,6 @@ mod_regeneration_server <- function(id, app_state) {
         eng <- tryCatch(engine_task$result(), error = function(e) NULL)
         project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
         units <- units_sf()
-        res <- NULL   # peut rester NULL : le bloc de rechargement est conditionnel
-        if (!is.null(units) && !is.null(project_path)) {
-          precomputed <- load_regeneration_precomputed(project_path)
-          na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
-          cfg <- list(
-            year_moyenne = na_null(input$year_moyenne),
-            year_canicule = na_null(input$year_canicule),
-            forest_type = input$forest_type %||% "feuillu",
-            lai_max = na_null(regen_params_r()$lai_max),
-            species = if (nzchar(input$species %||% "")) input$species else NULL,
-            hydric_only = FALSE)
-          res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
-                          error = function(e) NULL)
-          if (!is.null(res)) {
-            # Reporter R7 (gel) du resultat precedent (brief 035 sect.8) : le re-run
-            # fast-path post-moteur n'a pas de tmin -> sans report, il vidait la
-            # couche gel calculee avant le moteur.
-            carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
-            rv$result <- carried
-            rv$years <- res$years
-            app_state$regeneration_result <- carried
-          }
-        }
         # Provenance rapportee par le moteur (fiable : survit au cache gpkg qui
         # perdrait l'attribut lai_source lu par detect_ndp).
         rv$canopy_source <- eng$canopy %||% NA_character_
@@ -2048,7 +2089,21 @@ mod_regeneration_server <- function(id, app_state) {
         log <- .regen_read_log(project_path)
         rv$engine_log <- log
         .regen_relay_log(log)                            # B3.c - console du process principal
-        rv$warnings <- unique(c(res$warnings %||% character(0), eng_warns))
+        rv$warnings <- eng_warns
+        # Relance rapide (fast-path) de l'analyse pour rafraichir carte/table,
+        # EN WORKER desormais : elle cumulera ses avertissements a ceux-ci.
+        if (!is.null(units) && !is.null(project_path)) {
+          na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+          cfg <- list(
+            year_moyenne = na_null(input$year_moyenne),
+            year_canicule = na_null(input$year_canicule),
+            forest_type = input$forest_type %||% "feuillu",
+            lai_max = na_null(regen_params_r()$lai_max),
+            species = if (nzchar(input$species %||% "")) input$species else NULL,
+            hydric_only = FALSE)
+          .lancer_analyse(units, project_path, cfg, mode = "post_moteur",
+                          eng_warns = eng_warns)
+        }
 
         if (length(eng_warns)) {
           shiny::showNotification(
@@ -2381,28 +2436,43 @@ mod_regeneration_server <- function(id, app_state) {
         htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
                        i18n$t("ai_generating")),
         type = "message", duration = NULL)
-      tryCatch({
-        system_prompt <- build_system_prompt(language, expert = "regeneration")
-        prompt <- build_regen_advice_prompt(ranking, res, language, question = question)
-        chat <- create_llm_chat(system_prompt)
-        resp <- as.character(chat$chat(prompt, echo = FALSE))
-        entry <- list(q = question, a = resp)
-        # Case coch\u00e9e -> remplace l'affichage ; d\u00e9coch\u00e9e -> ajoute en dessous.
-        if (isTRUE(input$regen_ai_replace)) {
-          regen_ai_hist(list(entry))
-        } else {
-          regen_ai_hist(c(regen_ai_hist(), list(entry)))
-        }
-        shiny::updateTextAreaInput(session, "regen_ai_input", value = "")
-        shiny::removeNotification(notif_id)
-      }, error = function(e) {
-        shiny::removeNotification(notif_id)
-        shiny::showNotification(
-          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
-          type = "error", duration = 8)
-      })
+      system_prompt <- build_system_prompt(language, expert = "regeneration")
+      prompt <- build_regen_advice_prompt(ranking, res, language, question = question)
+      # Appel LLM en worker (audit 1.0) : traite par l'observateur de la tache.
+      regen_ai$ctx <- list(notif = notif_id, question = question,
+                           remplacer = isTRUE(input$regen_ai_replace),
+                           pid = shiny::isolate(app_state$project_id %||%
+                                                  app_state$current_project$id))
+      regen_ai_task$invoke(system_prompt, prompt)
+    })
+
+    regen_ai <- new.env(parent = emptyenv())
+    regen_ai_task <- shiny::ExtendedTask$new(function(system_prompt, prompt) {
+      llm_chat_async(system_prompt, prompt)
+    })
+    shiny::observeEvent(regen_ai_task$status(), {
+      st <- regen_ai_task$status()
+      if (!st %in% c("success", "error")) return()
+      ctxa <- regen_ai$ctx
+      if (!is.null(ctxa$notif)) shiny::removeNotification(ctxa$notif)
       shiny::updateActionButton(session, "regen_ai_send",
         label = i18n$t("regen_ai_send"), icon = shiny::icon("paper-plane"))
+      courant <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
+      if (!identical(courant, ctxa$pid)) return()
+      if (identical(st, "error")) {
+        err <- tryCatch(regen_ai_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(paste(i18n$t("ai_error"), ":", strip_ansi(as.character(err)[1])),
+                                type = "error", duration = 8)
+        return()
+      }
+      entry <- list(q = ctxa$question, a = regen_ai_task$result())
+      # Case cochee -> remplace l'affichage ; decochee -> ajoute en dessous.
+      if (isTRUE(ctxa$remplacer)) {
+        regen_ai_hist(list(entry))
+      } else {
+        regen_ai_hist(c(regen_ai_hist(), list(entry)))
+      }
+      shiny::updateTextAreaInput(session, "regen_ai_input", value = "")
     })
 
     output$regen_ai_advice <- shiny::renderUI({
@@ -2667,7 +2737,8 @@ mod_regeneration_server <- function(id, app_state) {
     # (`context_<var>.tif`) + extrait la pente au point clique. Renvoie NULL si le
     # raster de pente n'a pas (encore) ete calcule pour cette variable.
     .ctx_distrib_entry <- function(var, ev, project_path) {
-      cached <- regeneration_context_cached(project_path, var)
+      cached <- regeneration_context_cached(project_path, var,
+                                            (input$buffer_km %||% 25) * 1000)
       rast <- cached$raster
       if (!inherits(rast, "SpatRaster")) return(NULL)
       vals <- tryCatch(as.numeric(terra::values(rast)), error = function(e) NULL)

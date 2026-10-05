@@ -359,48 +359,6 @@ get_column_family_map <- function() {
 }
 
 
-#' Data sources configuration
-#'
-#' @noRd
-DATA_SOURCES <- list(
-  cadastre = list(
-    name = "cadastre",
-    primary = "api_cadastre",
-    fallback = "happign",
-    required = TRUE
-  ),
-  bdforet = list(
-    name = "bdforet",
-    primary = "ign_wfs",
-    fallback = "local_cache",
-    required = TRUE
-  ),
-  protection = list(
-    name = "protection",
-    primary = "inpn_wfs",
-    fallback = "local_cache",
-    required = FALSE
-  ),
-  oso = list(
-    name = "oso",
-    primary = "recherche_data_gouv",
-    fallback = "local_cache",
-    required = FALSE
-  ),
-  hydro = list(
-    name = "hydro",
-    primary = "sandre_wfs",
-    fallback = "local_cache",
-    required = FALSE
-  ),
-  mnt = list(
-    name = "mnt",
-    primary = "ign_wfs",
-    fallback = "local_cache",
-    required = FALSE
-  )
-)
-
 
 #' Get data source configuration
 #'

@@ -552,9 +552,9 @@ mod_accessibility_server <- function(id, app_state) {
       error = function(e) NULL)
 
     # AOI (foret) du projet en EPSG:2154 - repli indicators_sf -> UGF -> parcelles.
-    units_sf <- shiny::reactive({
-      .resolve_project_aoi_2154(app_state$current_project)
-    })
+    # AOI qui ne change qu'avec les parcelles : la carte n'est plus reconstruite
+    # (surcouches perdues) a chaque reassignation du projet.
+    units_sf <- .projet_aoi_stable(app_state)
 
     # --- Worker asynchrone : acquisition desserte + pretraitement + moteurs -----
     acc_task <- shiny::ExtendedTask$new(
@@ -1327,7 +1327,8 @@ mod_accessibility_server <- function(id, app_state) {
       # bas la dessine via leafletProxy (depend du run, pas de la carte de base).
       # Fond relief CVAT (overlay semi-transparent au-dessus d'OSM/Satellite),
       # propose dans le LayersControl quand un CVAT existe deja pour le projet.
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      project_path <- tryCatch(shiny::isolate(app_state$current_project$path),
+                               error = function(e) NULL)
       cvat_bg <- .acc_cvat_overlay_raster(project_path)
       # Le relief est declare SYSTEMATIQUEMENT, meme sans CVAT pret a cet
       # instant : le comparateur de desserte peut en peindre un plus tard (son

@@ -10,12 +10,19 @@ services:
       - start-dev
       - --import-realm
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Keycloak de DEVELOPPEMENT (start-dev, HTTP) : ne pas exposer en
+      # production. Aucun secret par defaut : chaque valeur est OBLIGATOIRE
+      # (`docker compose` s'arrete si elle manque) - voir .env.example.
+      KEYCLOAK_ADMIN: ${KC_BOOTSTRAP_ADMIN:?definir KC_BOOTSTRAP_ADMIN (voir .env.example)}
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?definir KC_BOOTSTRAP_ADMIN_PASSWORD}
+      # Resolues par Keycloak dans le realm importe (placeholders ${...})
+      NEMETON_OAUTH_CLIENT_SECRET: ${NEMETON_OAUTH_CLIENT_SECRET:?definir NEMETON_OAUTH_CLIENT_SECRET}
+      KC_DEMO_PASSWORD: ${KC_DEMO_PASSWORD:?definir KC_DEMO_PASSWORD}
+      KC_REALM_ADMIN_PASSWORD: ${KC_REALM_ADMIN_PASSWORD:?definir KC_REALM_ADMIN_PASSWORD}
       KC_HTTP_PORT: 8080
       KC_HEALTH_ENABLED: "true"
     volumes:
-      - ./keycloak/realm-nemeton.json:/opt/keycloak/data/import/realm-nemeton.json:ro
+      - ./keycloak/realm-nemeton-dev.json:/opt/keycloak/data/import/realm-nemeton-dev.json:ro
     ports:
       - "8080:8080"
     healthcheck:
@@ -36,7 +43,7 @@ services:
       # OAuth / Keycloak
       NEMETON_OAUTH_PROVIDER: keycloak
       NEMETON_OAUTH_CLIENT_ID: nemeton-app
-      NEMETON_OAUTH_CLIENT_SECRET: nemeton-secret
+      NEMETON_OAUTH_CLIENT_SECRET: ${NEMETON_OAUTH_CLIENT_SECRET:?definir NEMETON_OAUTH_CLIENT_SECRET}
       NEMETON_KEYCLOAK_URL: http://keycloak:8080/realms/nemeton
       NEMETON_OAUTH_REDIRECT_URI: http://localhost:3838
       NEMETON_OAUTH_SCOPES: openid,profile,email

@@ -94,3 +94,37 @@ markdown_safe <- function(md) {
   md <- gsub("<(?!(?:https?://|mailto:)[^\\s<>]*>)", "&lt;", md, perl = TRUE)
   shiny::markdown(md)
 }
+
+
+#' Project AOI that only changes when the parcels do
+#'
+#' `app_state$current_project` is reassigned for many reasons that do not
+#' touch the geometry (settings saved, deferred `indicators_sf`, comments):
+#' a map rendered from it was rebuilt each time, and its overlays (raster,
+#' network, depot places) drawn by proxy disappeared. This reactive recomputes
+#' the AOI on every project change but only invalidates its readers when the
+#' AOI itself (geometry and attributes) changed.
+#'
+#' Must be called inside a module server (it registers an observer).
+#'
+#' @param app_state Shared `reactiveValues`.
+#' @return A function returning the AOI (`sf` EPSG:2154) or `NULL`.
+#' @noRd
+.projet_aoi_stable <- function(app_state) {
+  # Valeur initiale calculee tout de suite : la premiere lecture ne doit pas
+  # dependre du passage de l'observateur.
+  aoi_rv <- shiny::reactiveVal(shiny::isolate(
+    tryCatch(.resolve_project_aoi_2154(app_state$current_project),
+             error = function(e) NULL)))
+  signature <- function(a) {
+    if (is.null(a)) return("")
+    tryCatch(rlang::hash(list(sf::st_as_binary(sf::st_geometry(a)),
+                              sf::st_drop_geometry(a))),
+             error = function(e) rlang::hash(a))
+  }
+  shiny::observeEvent(app_state$current_project, {
+    a <- .resolve_project_aoi_2154(app_state$current_project)
+    if (!identical(signature(a), signature(shiny::isolate(aoi_rv())))) aoi_rv(a)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  function() aoi_rv()
+}

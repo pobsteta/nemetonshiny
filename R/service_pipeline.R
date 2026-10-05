@@ -283,6 +283,23 @@ pipeline_report <- function(state) {
   do.call(rbind, lignes)
 }
 
+#' Longest a step may stay silent before the watchdog fails it
+#'
+#' A module that never answers used to block the chain forever. Engines that
+#' legitimately run for hours (indicators, accessibility, road design,
+#' reGeneration, health engines) get 24 h; the short steps 2 h. Option
+#' `nemetonshiny.pipeline_timeout_h` overrides both (hours).
+#'
+#' @param step_id Character.
+#' @return Seconds.
+#' @noRd
+pipeline_step_timeout_s <- function(step_id) {
+  h <- getOption("nemetonshiny.pipeline_timeout_h", NULL)
+  if (is.numeric(h) && length(h) == 1L && is.finite(h) && h > 0) return(h * 3600)
+  courtes <- c("regen_annees", "regen_gel", "sante_zone", "ia_synthese", "ia_plan")
+  if (step_id %in% courtes) 2 * 3600 else 24 * 3600
+}
+
 #' Count of each status in a run
 #' @noRd
 pipeline_tally <- function(state) {

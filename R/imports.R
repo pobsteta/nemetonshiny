@@ -19,9 +19,10 @@
   }
 }
 
-# Family system
-get_famille_col    <- .nemeton_fn("get_famille_col")
-get_famille_code   <- .nemeton_fn("get_famille_code")
+# Family system -- exportes par le coeur : appel `nemeton::` direct (plus de
+# getFromNamespace). Enveloppe gardee pour que les tests puissent les doubler.
+get_famille_col    <- function(...) nemeton::get_famille_col(...)
+get_famille_code   <- function(...) nemeton::get_famille_code(...)
 
 # Data object (not a function) -- resolved eagerly is fine, it is just data.
 FAMILLE_NMT_MAP <- utils::getFromNamespace("FAMILLE_NMT_MAP", "nemeton")
@@ -42,7 +43,7 @@ resolve_raster_layer        <- .nemeton_fn("resolve_raster_layer")
 resolve_vector_layer        <- .nemeton_fn("resolve_vector_layer")
 safe_extract                <- .nemeton_fn("safe_extract")
 as_pure_sf                  <- .nemeton_fn("as_pure_sf")
-enrich_parcels_bdforet      <- .nemeton_fn("enrich_parcels_bdforet")
+enrich_parcels_bdforet      <- function(...) nemeton::enrich_parcels_bdforet(...)
 map_essence_to_species      <- .nemeton_fn("map_essence_to_species")
 get_allometric_coefficients <- .nemeton_fn("get_allometric_coefficients")
 clean_indicator_name        <- .nemeton_fn("clean_indicator_name")

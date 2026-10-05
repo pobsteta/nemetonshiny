@@ -101,11 +101,16 @@ mod_monitoring_reconfort_map_ui <- function(id) {
 #'   `nemeton::run_reconfort_dieback()` of this session (carries `$rasters`),
 #'   or `NULL`. When NULL, the module falls back to the cached run discovered
 #'   on disk. Optional - defaults to a constant `NULL` reactive.
+#' @param run_zone_id_r Reactive returning the zone the RECONFORT run and its
+#'   cache are keyed on (the `_tot` zone, parity FORDEAD). `zone_id_r` (the
+#'   stratum picked in the dropdown) only clips the display. Defaults to
+#'   `zone_id_r` for back-compat.
 #' @return invisible list with a `validity` reactive.
 #' @noRd
 mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
                                                 refresh_r = shiny::reactive(0L),
-                                                result_r = shiny::reactive(NULL)) {
+                                                result_r = shiny::reactive(NULL),
+                                                run_zone_id_r = zone_id_r) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -143,8 +148,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         )
         if (!is.null(m) && nrow(m)) return(m)
       }
-      # Fallback cache (parite FORDEAD).
-      zone <- zone_id_r()
+      # Fallback cache (parite FORDEAD) : le cache est cle sur la zone du RUN
+      # (`_tot`), pas sur la strate affichee - lire la strate ne trouvait rien.
+      zone <- run_zone_id_r()
       proj <- app_state$current_project
       if (is.null(zone) || !isTRUE(nzchar(zone)) ||
           is.null(proj) || is.null(proj$path)) return(NULL)
@@ -573,7 +579,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # carries CRSWIR + CRre observed only (no harmonic prediction / seuil).
     shiny::observeEvent(input$map_click, {
       i18n <- i18n_r()
-      zone <- zone_id_r()
+      zone <- run_zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return()
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return()

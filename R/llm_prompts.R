@@ -56,7 +56,7 @@ load_expert_profiles <- function() {
       prof <- tryCatch(
         yaml::read_yaml(f),
         error = function(e) {
-          warning(sprintf("Skipping invalid expert profile '%s': %s", f, e$message))
+          cli::cli_warn("Skipping invalid expert profile {.file {f}}: {e$message}")
           NULL
         }
       )

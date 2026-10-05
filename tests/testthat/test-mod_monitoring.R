@@ -221,14 +221,6 @@ test_that("db_status renders the 'unavailable' card when DB is not configured", 
 # monitoring DB and cannot be unit-tested with mocks. This mirrors the
 # v0.36.5 decision (see the Zone-saine comment block lower in this
 # file) to keep such probe-gated rendering under manual QA.
-test_that("db_status renders the 'no zone' card when DB has zero zones", {
-  skip("probe-gated rendering — needs a reachable DB (multisession worker)")
-})
-
-test_that("db_status renders the 'connected' card with zone count", {
-  skip("probe-gated rendering — needs a reachable DB (multisession worker)")
-})
-
 
 # ---- Server: ingestion click handler (phase 2) ----------------------
 
@@ -1101,14 +1093,6 @@ test_that("register click without a loaded project shows a notification and no-o
   )
 })
 
-test_that("v0.73.0 — register click invokes nemeton::build_project_monitoring_zones (spec 020)", {
-  skip("v0.73.0 — refactored to nemeton::build_project_monitoring_zones (spec 020). Mock obsolete : the observer now requires bdforet.gpkg + ugf_sf, which need a fully-loaded project fixture. Coverage assured by 'register click without a loaded project' (early-exit branches) + integration testing.")
-})
-
-test_that("register click flags 'already registered' when helper returns was_existing=TRUE", {
-  skip("v0.73.0 — register_project_as_zone replaced by nemeton::build_project_monitoring_zones (spec 020). The 'already registered' branch is gone (upsert semantics : replace = TRUE by default).")
-})
-
 # Tests obsolètes maintenus en référence (skipped). Le wrapper
 # legacy `nemetonshiny:::register_project_as_zone()` reste exporté
 # (testé dans `test-service_monitoring_db.R`) mais n'est plus
@@ -1495,10 +1479,13 @@ test_that("input$run_reconfort invokes the task for a complete Sentinel-2 year",
   testthat::local_mocked_bindings(
     reconfort_year_bounds = function(v_model = "v3", ...)
       list(min = 2016L, max = 2025L, default = 2025L),
+    # Le run cible la zone `_tot` (parite FORDEAD, audit 1.0), pas la strate.
+    find_zones_by_project = function(con, project_uuid)
+      data.frame(id = c(1L, 5L), name = c("p_res", "p_tot")),
     .package = "nemeton"
   )
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function(...) NULL,
+    get_monitoring_db_connection   = function(...) "FAKE_CON",
     close_monitoring_db_connection = function(con) invisible(TRUE),
     list_monitoring_zones          = function(con) fake_zones_df(),
     run_ingestion_async            = function() make_fake_fast_task(),
@@ -1519,6 +1506,8 @@ test_that("input$run_reconfort invokes the task for a complete Sentinel-2 year",
           calls <- fake_reconfort$.calls()
           expect_length(calls, 1L)
           expect_equal(calls[[1]]$s2_year, 2025L)
+          # Strate « 1 » choisie au menu, run sur la zone `_tot` (5)
+          expect_equal(calls[[1]]$zone_id, 5L)
         }
       )
     }

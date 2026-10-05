@@ -413,9 +413,12 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
 
       # 3. Handle project restore (apply saved selection)
       restore <- shiny::isolate(app_state$restore_project)
+      # Lectures ISOLEES : l'observateur ecrit ces deux valeurs plus bas ; les
+      # lire en dependance le faisait se relancer et redessiner les parcelles
+      # une seconde fois.
+      last_ts <- shiny::isolate(rv$last_restore_timestamp)
       if (!is.null(restore) && !is.null(restore$selected_ids) &&
-          (is.null(rv$last_restore_timestamp) ||
-           !identical(rv$last_restore_timestamp, restore$timestamp))) {
+          (is.null(last_ts) || !identical(last_ts, restore$timestamp))) {
 
         matching_ids <- intersect(restore$selected_ids, parcel_data$id)
         if (length(matching_ids) > 0) {
@@ -452,7 +455,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
 
       } else {
         # Normal navigation: zoom to parcels on first load
-        if (!rv$parcels_zoomed) {
+        if (!isTRUE(shiny::isolate(rv$parcels_zoomed))) {
           cli::cli_alert_info("Zooming to all parcels")
           bbox_p <- sf::st_bbox(parcel_data)
           leaflet::leafletProxy(ns("map")) |>
@@ -509,7 +512,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
         session$sendCustomMessage("announceSelection", list(
           action = "deselected",
           id = parcel_id,
-          count = length(rv$selected_ids)
+          count = length(rv$selected_ids),
+          message = sprintf(i18n$t("annonce_selection_fmt"),
+                            length(rv$selected_ids), MAX_PARCELS)
         ))
 
       } else {
@@ -532,7 +537,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
         session$sendCustomMessage("announceSelection", list(
           action = "selected",
           id = parcel_id,
-          count = length(rv$selected_ids)
+          count = length(rv$selected_ids),
+          message = sprintf(i18n$t("annonce_selection_fmt"),
+                            length(rv$selected_ids), MAX_PARCELS)
         ))
       }
     })
@@ -677,7 +684,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
 
       # Build hover labels once over the attribute table (vectorised), before
       # any geometry simplification - labels depend only on attributes.
-      labels <- create_parcel_labels(parcel_data)
+      labels <- create_parcel_labels(
+        parcel_data,
+        hint = get_i18n(shiny::isolate(app_state$language) %||% "fr")$t("click_to_select"))
 
       # Simplify geometry for display only. When the data is projected (metres),
       # simplify with a metre tolerance in the source CRS, then transform to

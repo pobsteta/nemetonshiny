@@ -12,23 +12,6 @@
 NULL
 
 
-#' Split a parcel into tenements using imported polygons
-#'
-#' @description
-#' Intersects the imported polygons with the target parcel geometry to create
-#' sub-tenements. Any area of the parcel not covered by the imported polygons
-#' becomes a "reste" (remainder) tenement, ensuring the tiling invariant holds.
-#'
-#' @param projet List. Project with $parcels, $tenements, $ugs.
-#' @param parcelle_id Character. ID of the parcel to split.
-#' @param sf_polygones sf object. Polygons defining the subdivision.
-#'   Must overlap with the target parcel. CRS will be transformed to match.
-#' @param labels Character vector. Optional labels for each fragment.
-#'   If NULL, auto-generates labels (parcelle_id + letter suffix: a, b, c...).
-#' @param tolerance_m2 Numeric. Area tolerance for tiling check (default 0.01 m2).
-#'
-#' @return Updated projet with new tenements replacing the original parcel tenement.
-#' @noRd
 #' Parcel id reduced to an id-safe slug
 #'
 #' @description
@@ -48,6 +31,23 @@ NULL
 }
 
 
+#' Split a parcel into tenements using imported polygons
+#'
+#' @description
+#' Intersects the imported polygons with the target parcel geometry to create
+#' sub-tenements. Any area of the parcel not covered by the imported polygons
+#' becomes a "reste" (remainder) tenement, ensuring the tiling invariant holds.
+#'
+#' @param projet List. Project with $parcels, $tenements, $ugs.
+#' @param parcelle_id Character. ID of the parcel to split.
+#' @param sf_polygones sf object. Polygons defining the subdivision.
+#'   Must overlap with the target parcel. CRS will be transformed to match.
+#' @param labels Character vector. Optional labels for each fragment.
+#'   If NULL, auto-generates labels (parcelle_id + letter suffix: a, b, c...).
+#' @param tolerance_m2 Numeric. Area tolerance for tiling check (default 0.01 m2).
+#'
+#' @return Updated projet with new tenements replacing the original parcel tenement.
+#' @noRd
 tenement_split_by_import <- function(projet,
                                   parcelle_id,
                                   sf_polygones,
@@ -693,136 +693,6 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
 }
 
 
-#' Split an tenement by drawing a cutting line
-#'
-#' @description
-#' Splits an tenement (or the whole parcel if unsplit) along a drawn polyline.
-#' Uses \code{lwgeom::st_split()} if available, otherwise falls back to
-#' a buffer-based approach.
-#'
-#' Workflow: user selects an tenement on the map, draws a line across it,
-#' the tenement is cut into 2+ sub-tenements along that line.
-#'
-#' @param projet List. Project with $parcels, $tenements, $ugs.
-#' @param tenement_id Character. ID of the tenement to split.
-#' @param line_geojson Character. GeoJSON of the cutting line(s).
-#' @param tolerance_m2 Numeric. Area tolerance (default 0.01 m2).
-#'
-#' @return Updated projet with the tenement replaced by sub-tenements.
-#' @noRd
-tenement_split_by_line <- function(projet,
-                                tenement_id,
-                                line_geojson,
-                                tolerance_m2 = 0.01) {
-  if (!has_ug_data(projet)) {
-    cli::cli_abort("Project must have UG data.")
-  }
-
-  tenements <- projet$tenements
-  ugs <- projet$ugs
-
-  # Find the target tenement
-  tenement_mask <- tenements$tenement_id == tenement_id
-  if (!any(tenement_mask)) {
-    cli::cli_abort("Tenement not found: {tenement_id}")
-  }
-
-  target_tenement <- tenements[tenement_mask, ]
-  parent_id <- target_tenement$parent_parcelle_id
-  original_ug_id <- target_tenement$ug_id
-
-  # Parse the cutting line from GeoJSON
-  line_sf <- tryCatch({
-    sf::st_read(line_geojson, quiet = TRUE)
-  }, error = function(e) {
-    cli::cli_abort("Invalid GeoJSON line: {e$message}")
-  })
-
-  if (nrow(line_sf) == 0) {
-    cli::cli_abort("No features in the cutting line GeoJSON")
-  }
-
-  # Keep only lines
-  geom_types <- sf::st_geometry_type(line_sf)
-  line_mask <- geom_types %in% c("LINESTRING", "MULTILINESTRING")
-  if (!any(line_mask)) {
-    cli::cli_abort("No line features found. Draw a line, not a polygon.")
-  }
-  line_sf <- line_sf[line_mask, ]
-
-  # Transform CRS to match tenements
-  if (!is.na(sf::st_crs(line_sf)) && !is.na(sf::st_crs(tenements))) {
-    if (sf::st_crs(line_sf) != sf::st_crs(tenements)) {
-      line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
-    }
-  } else if (is.na(sf::st_crs(line_sf))) {
-    sf::st_crs(line_sf) <- sf::st_crs(tenements)
-  }
-
-  # Union all lines into one cutting geometry
-  cutting_line <- sf::st_union(sf::st_geometry(line_sf))
-
-  # Split the tenement geometry using the line
-  tenement_geom <- sf::st_geometry(target_tenement)
-
-  # lwgeom::st_split is required for exact (gap-free) splits.
-  if (!requireNamespace("lwgeom", quietly = TRUE)) {
-    cli::cli_abort(c(
-      "Package 'lwgeom' is required to split tenements along a line.",
-      i = "Install it with: install.packages('lwgeom')"
-    ))
-  }
-
-  split_result <- lwgeom::st_split(tenement_geom, cutting_line)
-  fragments <- sf::st_collection_extract(split_result, "POLYGON")
-
-  if (length(fragments) < 2) {
-    cli::cli_abort("The cutting line does not split the tenement into multiple parts. Ensure the line crosses the tenement completely.")
-  }
-
-  # Cast to MULTIPOLYGON for consistency
-  fragments <- sf::st_cast(fragments, "MULTIPOLYGON")
-  n_fragments <- length(fragments)
-
-  # Generate IDs and labels
-  new_ids <- paste0("tnm_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", seq_len(n_fragments))
-  if (n_fragments <= 26) {
-    suffixes <- letters[seq_len(n_fragments)]
-  } else {
-    suffixes <- seq_len(n_fragments)
-  }
-
-  # Remove old tenement
-  tenements <- tenements[!tenement_mask, , drop = FALSE]
-
-  # Detect existing geometry column name (could be "geom" if loaded from GPKG)
-  existing_geom_col <- attr(projet$tenements, "sf_column") %||% "geometry"
-
-  # Create new sub-tenements with the SAME geometry column name as existing
-  new_df <- data.frame(
-    tenement_id = new_ids,
-    parent_parcelle_id = rep(parent_id, n_fragments),
-    ug_id = rep(original_ug_id, n_fragments),
-    surface_m2 = as.numeric(sf::st_area(fragments)),
-    stringsAsFactors = FALSE
-  )
-  new_df[[existing_geom_col]] <- fragments
-  new_tenements <- sf::st_sf(new_df, sf_column_name = existing_geom_col)
-  sf::st_crs(new_tenements) <- sf::st_crs(projet$tenements)
-
-  tenements <- rbind(tenements, new_tenements)
-  projet$tenements <- tenements
-
-  # Validate
-  projet_validate(projet)
-
-  cli::cli_alert_success(
-    "Split tenement {tenement_id} into {n_fragments} sub-tenements using cutting line"
-  )
-
-  projet
-}
-
 
 #' Undo a parcel split (restore single tenement)
 #'
@@ -1008,9 +878,13 @@ tenement_import_replace <- function(projet, imported_sf) {
   sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
-  # Match CRS to the tenements CRS
+  # Match CRS to the tenements CRS. Fichier sans CRS : on DEVINE d'apres les
+  # coordonnees (degres -> WGS84, sinon Lambert-93) et on le dit - le supposer
+  # WGS84 placait un fichier en metres au milieu de l'Atlantique.
   if (is.na(sf::st_crs(imported_sf))) {
-    sf::st_crs(imported_sf) <- 4326
+    crs_devine <- .tenement_guess_crs(imported_sf)
+    cli::cli_warn("Fichier import\u00e9 sans syst\u00e8me de coordonn\u00e9es : EPSG:{crs_devine} suppos\u00e9.")
+    sf::st_crs(imported_sf) <- crs_devine
   }
   if (!is.na(sf::st_crs(tenements)) &&
       sf::st_crs(imported_sf) != sf::st_crs(tenements)) {
@@ -1130,12 +1004,22 @@ tenement_import_replace <- function(projet, imported_sf) {
     as.character(parcels_m[[parcel_id_col]][hit_rows[which.max(areas)]])
   }, character(1))
 
-  if (any(is.na(parent_ids))) {
+  # Elements hors de toute parcelle du projet : REJETES et comptes. Les
+  # rattacher en silence a la premiere parcelle fabriquait un tenement faux.
+  n_rejetes <- sum(is.na(parent_ids))
+  if (n_rejetes > 0L) {
     cli::cli_warn(
-      "{sum(is.na(parent_ids))} feature{?s} sans parcelle cadastrale parent \u2014 mises sur la premi\u00e8re parcelle du projet."
-    )
-    parent_ids[is.na(parent_ids)] <-
-      as.character(parcels_m[[parcel_id_col]][1])
+      "{n_rejetes} \u00e9l\u00e9ment{?s} hors des parcelles du projet, ignor\u00e9{?s}.")
+    garde <- !is.na(parent_ids)
+    if (!any(garde)) {
+      cli::cli_abort("No imported feature lies within the project's parcels.")
+    }
+    imported_sf <- imported_sf[garde, , drop = FALSE]
+    imported_m <- imported_m[garde, , drop = FALSE]
+    imported_nc <- imported_nc[garde]
+    parent_ids <- parent_ids[garde]
+    geom_areas <- geom_areas[garde]
+    n_new <- nrow(imported_m)
   }
 
   # If the imported file carries a label_ugf column, drive the UGF
@@ -1279,5 +1163,20 @@ tenement_import_replace <- function(projet, imported_sf) {
   cli::cli_alert_success(
     "Import appliqu\u00e9 : {n_new} t\u00e8nement{?s} (au lieu de {nrow(tenements)})"
   )
+  attr(projet, "n_rejetes") <- n_rejetes
   projet
+}
+
+
+#' Guess the CRS of an imported layer without one
+#'
+#' Coordinates within +-180 / +-90 are taken as WGS84 degrees, anything else
+#' as Lambert-93 metres (the French cadastre's projection).
+#' @param x `sf` without CRS.
+#' @return An EPSG code.
+#' @noRd
+.tenement_guess_crs <- function(x) {
+  bb <- tryCatch(as.numeric(sf::st_bbox(x)), error = function(e) NULL)
+  if (length(bb) == 4L && all(is.finite(bb)) &&
+      all(abs(bb[c(1, 3)]) <= 180) && all(abs(bb[c(2, 4)]) <= 90)) 4326L else 2154L
 }

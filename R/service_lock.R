@@ -100,3 +100,90 @@ lock_acquire_or_null <- function(pid, hid, label = NULL) {
   if (lock_no_db(res)) NULL else res
 }
 
+
+#' Should a comment edit be dropped because the project is read-only?
+#'
+#' Comment text areas save on change. In read-only mode nothing must be
+#' written (the lock holder's `comments.json` would be overwritten); the user
+#' is told once per session instead of at every keystroke.
+#'
+#' @param app_state Shared `reactiveValues`.
+#' @param session Shiny session (for the once-per-session flag).
+#' @return `TRUE` when the edit must not be saved.
+#' @noRd
+.comments_readonly <- function(app_state, session = shiny::getDefaultReactiveDomain()) {
+  if (!project_is_readonly(app_state)) return(FALSE)
+  ud <- if (!is.null(session)) session$userData else NULL
+  if (is.null(ud) || !isTRUE(ud$.comments_readonly_warned)) {
+    if (!is.null(ud)) ud$.comments_readonly_warned <- TRUE
+    lang <- tryCatch(shiny::isolate(app_state$language), error = function(e) "fr") %||% "fr"
+    shiny::showNotification(get_i18n(lang)$t("lock_readonly_action"),
+                            type = "warning", duration = 5)
+  }
+  TRUE
+}
+
+
+#' Who is acting, for audit trails
+#'
+#' The connected user (e-mail, else name) when authentication is on. Only in
+#' anonymous mode (single-user station, no OAuth) does it fall back to the
+#' system account - it used to be the system account always, which made a
+#' multi-user history useless (every entry signed by the server account).
+#'
+#' @param app_state Shared `reactiveValues` (with `$auth` from mod_auth).
+#' @return A single character string.
+#' @noRd
+.acting_user <- function(app_state) {
+  auth <- tryCatch(shiny::isolate(app_state$auth), error = function(e) NULL)
+  get <- function(k) tryCatch(shiny::isolate(auth[[k]]), error = function(e) NULL)
+  if (!is.null(auth) && isTRUE(get("authenticated")) && !isTRUE(get("anonymous"))) {
+    who <- get("user_email") %||% get("user_name")
+    if (!is.null(who) && length(who) && nzchar(who[[1]])) return(as.character(who[[1]]))
+  }
+  Sys.info()[["user"]] %||% "user"
+}
+
+
+#' One lock heartbeat, then re-acquire if lost (worker-side body)
+#'
+#' @param pid,hid Project id and holder id.
+#' @param label Holder label for a re-acquire.
+#' @return `list(pid, ok, info)`: `ok` is `TRUE` when the lock is (still)
+#'   held after the call.
+#' @noRd
+.lock_heartbeat_run <- function(pid, hid, label = NULL) {
+  ok <- tryCatch(lock_heartbeat(pid, hid), error = function(e) FALSE)
+  if (isTRUE(ok)) return(list(pid = pid, ok = TRUE, info = NULL))
+  res <- tryCatch(lock_acquire(pid, hid, label), error = function(e) list(ok = FALSE))
+  list(pid = pid, ok = isTRUE(res$ok), info = res)
+}
+
+#' Lock heartbeat off the Shiny loop
+#'
+#' @inheritParams .lock_heartbeat_run
+#' @return A promise resolving to the value of [.lock_heartbeat_run()].
+#' @noRd
+.lock_heartbeat_async <- function(pid, hid, label = NULL) {
+  if (isTRUE(getOption("nemetonshiny.lock_inline")) ||
+      !requireNamespace("future", quietly = TRUE)) {
+    return(promises::promise(function(resolve, reject) {
+      later::later(function() resolve(.lock_heartbeat_run(pid, hid, label)))
+    }))
+  }
+  plan_classes <- class(future::plan())
+  if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+    .ensure_async_plan()
+  }
+  dev_path <- .dev_pkg_path_courant()
+  app_opts <- getOption("nemeton.app_options")
+  promises::future_promise({
+    if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+      pkgload::load_all(dev_path, quiet = TRUE)
+    } else {
+      loadNamespace("nemetonshiny")
+    }
+    options(nemeton.app_options = app_opts)
+    utils::getFromNamespace(".lock_heartbeat_run", "nemetonshiny")(pid, hid, label)
+  }, seed = TRUE)
+}

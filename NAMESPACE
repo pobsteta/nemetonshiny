@@ -1,3 +1,4 @@
+S3method(print,nemeton_i18n)
 export(parcelles_commune)
 export(projet_calculer)
 export(projet_creer)

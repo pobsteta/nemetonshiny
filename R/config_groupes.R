@@ -41,7 +41,7 @@ load_groupes_config <- function() {
     tryCatch(
       yaml::read_yaml(pkg_path),
       error = function(e) {
-        warning(sprintf("Failed to load package groupes config: %s", e$message))
+        cli::cli_warn("Failed to load package groupes config: {e$message}")
         NULL
       }
     )
@@ -78,7 +78,7 @@ load_groupes_config <- function() {
     user_cfg <- tryCatch(
       yaml::read_yaml(user_path),
       error = function(e) {
-        warning(sprintf("Failed to load user groupes config: %s", e$message))
+        cli::cli_warn("Failed to load user groupes config: {e$message}")
         NULL
       }
     )
@@ -193,9 +193,9 @@ get_groupes_profile_choices <- function(lang = "fr") {
 #' @noRd
 get_groupes_field_label <- function(profile_key = NULL, lang = "fr") {
   prof <- resolve_groupes_profile(profile_key)
-  if (is.null(prof)) return(if (lang == "fr") "Categorie" else "Category")
+  if (is.null(prof)) return(get_i18n(lang)$t("groupe_categorie"))
   lbl <- prof$field_label[[lang]] %||% prof$field_label[["fr"]] %||%
-    prof$field_label[["en"]] %||% (if (lang == "fr") "Categorie" else "Category")
+    prof$field_label[["en"]] %||% (get_i18n(lang)$t("groupe_categorie"))
   as.character(lbl)
 }
 

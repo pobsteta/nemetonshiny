@@ -336,6 +336,19 @@ marculus_totaux <- function(tiges) {
   agg[order(agg$contexteId, agg$essence, agg$classe), , drop = FALSE]
 }
 
+#' Net stem count of each context, cancellations included
+#'
+#' @param tiges All stems of the project (already merged).
+#' @return A named integer vector (names = context ids), zero kept.
+#' @noRd
+.marculus_net_par_contexte <- function(tiges) {
+  if (is.null(tiges) || !nrow(tiges)) return(integer(0))
+  delta <- ifelse(toupper(tiges$action) == "ANNULATION", -1L, 1L) *
+    as.integer(tiges$quantite)
+  n <- tapply(delta, tiges$contexteId, sum)
+  stats::setNames(as.integer(n), names(n))
+}
+
 #' Net volume of each case (context x species x class), Marculus' rule
 #'
 #' Same algorithm as `VolumesMartelage.totaux()` on the phone: stems are
@@ -418,8 +431,10 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
                                       annee_base = action_plan_annee_base(plan)) {
   ids_plan <- vapply(plan$actions %||% list(), function(a) a$id %||% "", "")
   horizon <- as.integer(plan$horizon_annees %||% 20L)
-  totaux <- marculus_totaux(tiges)
-  n_par_ctx <- if (nrow(totaux)) tapply(totaux$tiges, totaux$contexteId, sum) else integer(0)
+  # Comptes nets par contexte calcules AVANT le filtre des cases nulles de
+  # `marculus_totaux()` : un contexte entierement annule (net 0) disparaissait,
+  # et `nb_tiges` gardait l'ancienne valeur au lieu de passer a 0.
+  n_par_ctx <- .marculus_net_par_contexte(tiges)
   n_biodiv <- marculus_nb_biodiversite(tiges)
 
   maj <- character(); orphelins <- 0L

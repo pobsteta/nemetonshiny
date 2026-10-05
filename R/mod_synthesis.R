@@ -226,6 +226,11 @@ mod_synthesis_server <- function(id, app_state) {
         project_ndp_level(app_state$current_project)
       )
       global <- ndp_result$score
+      # Score indisponible (toutes familles NA) : `if (global >= 60)` sur NA
+      # faisait planter le rendu de l'onglet.
+      if (is.null(global) || length(global) != 1L || !is.finite(global)) {
+        return(htmltools::div(class = "text-muted", i18n$t("no_data")))
+      }
 
       # Color based on score
       score_color <- if (global >= 60) "#228B22" else if (global >= 40) "#FF8C00" else "#DC143C"
@@ -324,7 +329,7 @@ mod_synthesis_server <- function(id, app_state) {
           htmltools::tags$span(
             class = "text-muted",
             sprintf("/ 100 (%d %s)", length(family_cols),
-                    if (i18n$language == "fr") "familles" else "families")
+                    i18n$t("synthese_familles"))
           )
         ),
         # NDP badge + popover info + barre de confiance
@@ -591,11 +596,11 @@ mod_synthesis_server <- function(id, app_state) {
       )
       # Simpler: just use standard names
       names(result) <- c(
-        if (lang == "fr") "Famille" else "Family",
+        get_i18n(lang)$t("rapport_famille"),
         "Code",
         "Score",
         "NDP",
-        if (lang == "fr") "Nb indicateurs" else "Nb indicators"
+        get_i18n(lang)$t("synthese_nb_indicateurs")
       )
 
       result
@@ -616,6 +621,7 @@ mod_synthesis_server <- function(id, app_state) {
     # NULL = on suit la case, comportement inchange pour le bouton.
     .generer_ia_synthese <- function(profil = NULL, remplir_familles = NULL) {
       i18n <- get_i18n(app_state$language)
+      if (deny_if_readonly(app_state, i18n)) return(i18n$t("lock_readonly_action"))
 
       # Check API key for providers that require one
       provider <- get_app_config("llm_provider", "anthropic")
@@ -698,56 +704,17 @@ mod_synthesis_server <- function(id, app_state) {
         collapse = "\n\n"
       )
 
-      erreur_llm <- NULL
-      synthesis_response <- tryCatch({
-        chat <- create_llm_chat(system_prompt)
-        resp <- as.character(chat$chat(user_prompt, echo = FALSE))
-
-        shiny::updateTextAreaInput(session, "synthesis_comments", value = resp)
-        shiny::removeNotification(notif_id)
-        resp
-      }, error = function(e) {
-        shiny::removeNotification(notif_id)
-        msg_llm <- paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e)))
-        shiny::showNotification(msg_llm, type = "error", duration = 8)
-        # Memorise le message pour le rapport du lancement enchaine : un toast
-        # de 8 secondes au milieu d'une chaine de plusieurs heures n'est vu par
-        # personne, et " Erreur IA " sans le detail ne permet pas de corriger.
-        erreur_llm <<- msg_llm
-        NULL
-      })
-
-      # L'appel LLM a echoue : `tryCatch` a affiche un toast et rendu NULL, mais
-      # la fonction continuait jusqu'a `invisible(TRUE)` - le lancement enchaine
-      # rapportait alors " Reussie " pour une perspective qui n'existe pas
-      # (constate sur Couchey : etape " Perspective IA " verte, en 1 seconde,
-      # pour ce qui demande 13 appels LLM). Un faux positif silencieux est pire
-      # qu'un echec : il fait croire que le travail est fait.
-      if (is.null(synthesis_response)) {
-        return(erreur_llm %||% i18n$t("ai_error"))
-      }
-
-      # Fill all family comments if switch is checked
-      family_comments_local <- as.list(shiny::isolate(app_state$family_comments))
-      failed_families <- character(0)
+      # Prompts prepares ICI, appels LLM dans un worker (`ia_task`) : les 1 a
+      # 13 appels enchaines gelaient la boucle Shiny, donc toutes les sessions.
+      prompts <- list(.synthese = user_prompt)
       skipped_families <- character(0)
+      fam_names <- character(0)
       if (remplir_familles %||% isTRUE(input$fill_all_comments)) {
         all_indicators <- ai_family_indicators()
         if (!is.null(all_indicators)) {
-          family_codes <- get_family_codes()
-
-          for (i in seq_along(family_codes)) {
-            fc <- family_codes[i]
+          for (fc in get_family_codes()) {
             fam_config <- get_family_config(fc)
             fam_name <- if (identical(app_state$language, "fr")) fam_config$name_fr else fam_config$name_en
-
-            # Notification with progress
-            shiny::removeNotification(notif_id)
-            notif_id <- shiny::showNotification(
-              htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
-                             sprintf("%s (%d/%d)...", fam_name, i, length(family_codes))),
-              type = "message", duration = NULL)
-
             # Extract family indicator data (same logic as mod_family.R)
             all_cols <- names(all_indicators)
             candidates <- c(fam_config$indicators, fam_config$column_names)
@@ -763,114 +730,108 @@ mod_synthesis_server <- function(id, app_state) {
               skipped_families <- c(skipped_families, fam_name)
               next
             }
-
             meta_cols <- intersect(c("ug_id", "label", "groupe"), all_cols)
             fam_ind_data <- all_indicators[, c(meta_cols, matched), drop = FALSE]
-
-            # Generate LLM comment. Retry once on transient errors
-            # (rate-limit 429 / timeout / empty response) - Mistral's
-            # free tier in particular throttles bursts of consecutive
-            # requests, which is exactly what fill-all does.
             fam_prompt <- build_analysis_prompt(fam_config, fam_ind_data, language)
-            # v0.61.2 - Prefixer le prompt famille par le bloc RAG
-            # deja recupere pour la synthese globale (cf. `ctx` et
-            # `cite_rule` lignes 565-588). On re-utilise le meme
-            # contexte au lieu de relancer un retrieve par famille :
-            #   - 1 seul appel embedding/pgvector (vs 13)
-            #   - coherence des sources entre synthese et familles
-            #   - le `cite_rule` rappelle au LLM de citer avec [^n]
-            # `Filter(nzchar)` neutralise proprement le cas ou le
-            # ctx est vide (corpus muet, opt-out, echec retrieve).
-            fam_user_prompt <- paste(
+            # Meme bloc RAG que la synthese (un seul retrieve, sources coherentes).
+            prompts[[fc]] <- paste(
               Filter(nzchar, c(ctx$prompt_block, cite_rule, fam_prompt)),
-              collapse = "\n\n"
-            )
-            fam_response <- NULL
-            for (attempt in seq_len(2L)) {
-              fam_response <- tryCatch({
-                fam_chat <- create_llm_chat(system_prompt)
-                out <- as.character(fam_chat$chat(fam_user_prompt, echo = FALSE))
-                # Treat empty / whitespace-only responses as a failure
-                # so the retry kicks in - without this, nchar == 0 would
-                # overwrite a previously-good comment with an empty
-                # string and the family tab would simply show nothing.
-                if (length(out) == 0L || !any(nzchar(trimws(out)))) {
-                  stop("Empty response from LLM", call. = FALSE)
-                }
-                paste(out, collapse = "\n")
-              }, error = function(e) {
-                cli::cli_warn(
-                  "AI attempt {attempt}/2 failed for family {fc} ({fam_name}): {conditionMessage(e)}"
-                )
-                NULL
-              })
-              if (!is.null(fam_response)) break
-              if (attempt < 2L) Sys.sleep(1)  # tiny backoff before retry
-            }
-
-            if (!is.null(fam_response)) {
-              family_comments_local[[fc]] <- fam_response
-              cli::cli_alert_success("AI comment generated for family {fc} ({fam_name})")
-            } else {
-              failed_families <- c(failed_families, fam_name)
-            }
+              collapse = "\n\n")
+            fam_names[[fc]] <- fam_name
           }
-          shiny::removeNotification(notif_id)
+        }
+      }
+      if (length(prompts) > 1L) {
+        shiny::removeNotification(notif_id)
+        notif_id <- shiny::showNotification(
+          htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
+                         sprintf("%s (%d)", i18n$t("ai_generating"), length(prompts))),
+          type = "message", duration = NULL)
+      }
+      ia_ctx$notif <- notif_id
+      ia_ctx$pid <- shiny::isolate(app_state$project_id)
+      ia_ctx$familles <- length(prompts) > 1L
+      ia_ctx$skipped <- skipped_families
+      ia_ctx$fam_names <- fam_names
+      ia_ctx$fam_base <- as.list(shiny::isolate(app_state$family_comments))
+      ia_task$invoke(system_prompt, prompts)
+      "en_cours"
+    }
 
-          # Commit all family comments to app_state in a single atomic
-          # write. Per-iteration deep assignments (app_state$family_comments[[fc]] <- ...)
-          # used to invalidate observers bound to app_state$family_comments
-          # mid-loop and occasionally lost the most recent comment. Writing
-          # the full list at the end keeps the reactive graph in a single
-          # consistent state and fires mod_family observers once.
-          app_state$family_comments <- family_comments_local
-          app_state$refresh_family_comments <- Sys.time()
+    ia_ctx <- new.env(parent = emptyenv())
+    ia_task <- shiny::ExtendedTask$new(function(system_prompt, prompts) {
+      llm_batch_async(system_prompt, prompts, retries = 1L)
+    })
 
-          # Surface failures to the user - the old code only logged to the
-          # console, so a failed family (e.g. Mistral 429 rate limit) looked
-          # indistinguishable from a successful blank comment.
-          if (length(failed_families) > 0L || length(skipped_families) > 0L) {
-            msg_parts <- character(0)
-            if (length(failed_families) > 0L) {
-              msg_parts <- c(
-                msg_parts,
-                if (identical(app_state$language, "fr")) {
-                  sprintf("\u00c9chec IA : %s", paste(failed_families, collapse = ", "))
-                } else {
-                  sprintf("AI failed: %s", paste(failed_families, collapse = ", "))
-                }
-              )
-            }
-            if (length(skipped_families) > 0L) {
-              msg_parts <- c(
-                msg_parts,
-                if (identical(app_state$language, "fr")) {
-                  sprintf("Sans donn\u00e9es : %s", paste(skipped_families, collapse = ", "))
-                } else {
-                  sprintf("No data: %s", paste(skipped_families, collapse = ", "))
-                }
-              )
-            }
-            shiny::showNotification(
-              paste(msg_parts, collapse = " \u2014 "),
-              type = "warning", duration = 12
-            )
+    # Application du resultat de la generation IA (synthese + familles).
+    shiny::observeEvent(ia_task$status(), {
+      st <- ia_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n <- get_i18n(app_state$language)
+      if (!is.null(ia_ctx$notif)) shiny::removeNotification(ia_ctx$notif)
+      # Restore button. L'icone doit etre celle de l'accent IA : la restaurer
+      # en " robot " reviendrait a defaire l'accent des la premiere generation.
+      shiny::updateActionButton(session, "ai_generate",
+                                label = i18n$t("ai_generate"),
+                                icon = bsicons::bs_icon("stars"))
+      req_pipe <- ia_ctx$pipeline_req
+      ia_ctx$pipeline_req <- NULL
+      repondre <- function(statut, msg = NULL) {
+        if (!is.null(req_pipe)) pipeline_answer(app_state, req_pipe, statut, msg)
+      }
+      # Projet change pendant la generation : ne rien ecrire dans l'autre.
+      if (!identical(shiny::isolate(app_state$project_id), ia_ctx$pid)) {
+        repondre("skipped", i18n$t("pipeline_skip_not_started"))
+        return()
+      }
+      res <- if (identical(st, "success")) {
+        tryCatch(ia_task$result(), error = function(e) NULL)
+      }
+      synthesis_response <- res$results$.synthese
+      if (is.null(synthesis_response)) {
+        detail <- res$errors[[".synthese"]] %||%
+          tryCatch(ia_task$result(), error = function(e) conditionMessage(e))
+        msg_llm <- paste(i18n$t("ai_error"), ":", strip_ansi(as.character(detail)[1]))
+        shiny::showNotification(msg_llm, type = "error", duration = 8)
+        # L'appel LLM a echoue : la chaine doit le rapporter comme une erreur,
+        # pas " reussie " (cf. Couchey : etape verte pour une perspective
+        # inexistante). Le message porte le detail, utile pour corriger.
+        repondre("error", .strip_ansi(msg_llm))
+        return()
+      }
+      shiny::updateTextAreaInput(session, "synthesis_comments", value = synthesis_response)
+
+      family_comments_local <- ia_ctx$fam_base %||% list()
+      if (isTRUE(ia_ctx$familles)) {
+        codes_ok <- setdiff(names(res$results), ".synthese")
+        for (fc in codes_ok) family_comments_local[[fc]] <- res$results[[fc]]
+        failed_families <- unname(ia_ctx$fam_names[setdiff(names(res$errors), ".synthese")])
+        skipped_families <- ia_ctx$skipped %||% character(0)
+        # Commit all family comments to app_state in a single atomic
+        # write (mod_family observers fire once, nothing lost mid-loop).
+        app_state$family_comments <- family_comments_local
+        app_state$refresh_family_comments <- Sys.time()
+        if (length(failed_families) > 0L || length(skipped_families) > 0L) {
+          msg_parts <- character(0)
+          if (length(failed_families) > 0L) {
+            msg_parts <- c(msg_parts, sprintf(i18n$t("ai_familles_echec"),
+                                              paste(failed_families, collapse = ", ")))
           }
+          if (length(skipped_families) > 0L) {
+            msg_parts <- c(msg_parts, sprintf(i18n$t("ai_familles_sans_donnees"),
+                                              paste(skipped_families, collapse = ", ")))
+          }
+          shiny::showNotification(paste(msg_parts, collapse = " \u2014 "),
+                                  type = "warning", duration = 12)
         }
       }
 
       # Save comments to disk using local variables (not reactive values)
-      # to avoid async issues with Shiny's reactive system
       project_id <- app_state$project_id
-      n_fam <- length(family_comments_local)
-      has_syn <- !is.null(synthesis_response)
-      cli::cli_inform("Saving comments: project_id={project_id}, synthesis={has_syn}, families={n_fam}")
       if (!is.null(project_id)) {
         # v0.85.0 - persister le contexte RAG (sources_md + n_sources) en
         # meme temps que le commentaire, pour le reafficher au reload et
-        # alimenter les notes de bas de page de l'export Quarto. On passe
-        # toujours les sources de CETTE generation (meme vides) pour
-        # rester coherent avec le commentaire produit.
+        # alimenter les notes de bas de page de l'export Quarto.
         ctx_now <- rag_ctx_synthesis()
         save_comments(project_id,
                       synthesis = synthesis_response,
@@ -879,30 +840,20 @@ mod_synthesis_server <- function(id, app_state) {
                         sources_md = ctx_now$sources_md %||% "",
                         n_sources  = as.integer(ctx_now$n_sources %||% 0L)
                       ))
-        # v0.52.9 - signal aux autres modules (mod_action_plan) que le
-        # fichier commentaires a change. Sans ce bump, le contexte IA
-        # du Plan d'actions reste " pas de commentaires " jusqu'au
-        # prochain reload projet.
+        # v0.52.9 - signal aux autres modules (mod_action_plan).
         app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       } else {
         cli::cli_warn("Cannot save comments: project_id is NULL")
       }
-
-      # Restore button. L'icone doit etre celle de l'accent IA : la restaurer
-      # en " robot " reviendrait a defaire l'accent des la premiere generation.
-      shiny::updateActionButton(session, "ai_generate",
-                                label = i18n$t("ai_generate"),
-                                icon = bsicons::bs_icon("stars"))
-      invisible(TRUE)
-    }
+      repondre("ok")
+    })
 
     shiny::observeEvent(input$ai_generate, .generer_ia_synthese())
 
     # --- Lancement enchaine : etape " ia_synthese " --------------------
-    # La generation est SYNCHRONE (13 appels LLM enchaines) : elle rend la
-    # main quand tout est ecrit, on repond donc juste apres, sans machinerie
-    # de statut. C'est aussi pourquoi les etapes IA sont les dernieres de la
-    # chaine : elles gelent la boucle Shiny le temps des appels.
+    # La generation tourne en worker (audit 1.0) : un refus immediat (cle
+    # absente, rien a resumer) repond tout de suite ; sinon l'etape repond a
+    # l'arrivee du resultat.
     shiny::observeEvent(app_state$pipeline_request, {
       req <- app_state$pipeline_request
       if (!pipeline_targets(req, "ia_synthese")) return()
@@ -934,6 +885,12 @@ mod_synthesis_server <- function(id, app_state) {
         cli::cli_warn("pipeline ia_synthese: {conditionMessage(e)}")
         conditionMessage(e)
       })
+      # Generation lancee en worker : l'etape repondra a son arrivee
+      # (observateur de `ia_task`), pas maintenant.
+      if (identical(ok, "en_cours")) {
+        ia_ctx$pipeline_req <- req
+        return()
+      }
       # Trois issues distinctes, pas deux : `TRUE` = genere, une chaine =
       # message d'erreur, `FALSE` = la generation a refuse de partir (cle
       # API absente, rien a resumer) - c'est un saut, pas un echec.
@@ -947,7 +904,10 @@ mod_synthesis_server <- function(id, app_state) {
     # ================================================================
     # OBSERVER: Save synthesis comment on manual edit (debounced)
     # ================================================================
-    shiny::observeEvent(input$synthesis_comments, {
+    synthesis_comments_d <- shiny::debounce(
+      shiny::reactive(input$synthesis_comments), 1000)
+    shiny::observeEvent(synthesis_comments_d(), {
+      if (.comments_readonly(app_state, session)) return()
       project_id <- app_state$project_id
       if (!is.null(project_id)) {
         save_comments(project_id,
@@ -1086,7 +1046,7 @@ mod_synthesis_server <- function(id, app_state) {
         notif_id <- shiny::showNotification(
           htmltools::div(
             shiny::icon("spinner", class = "fa-spin me-2"),
-            if (app_state$language == "fr") "Generation du rapport PDF..." else "Generating PDF report..."
+            get_i18n(app_state$language)$t("synthese_pdf_en_cours")
           ),
           type = "message",
           duration = NULL
@@ -1177,7 +1137,7 @@ mod_synthesis_server <- function(id, app_state) {
 
           shiny::removeNotification(notif_id)
           shiny::showNotification(
-            if (app_state$language == "fr") "Rapport PDF genere avec succes" else "PDF report generated successfully",
+            get_i18n(app_state$language)$t("synthese_pdf_genere"),
             type = "message",
             duration = 3
           )

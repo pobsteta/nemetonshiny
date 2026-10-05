@@ -1051,68 +1051,13 @@ test_that("get_departments returns named vector", {
 # validate_insee_code Tests
 # ==============================================================================
 
-test_that("validate_insee_code accepts valid 5-digit codes", {
-  validate <- nemetonshiny:::validate_insee_code
 
-  expect_true(validate("01001"))
-  expect_true(validate("75056"))
-  expect_true(validate("99999"))
-})
 
-test_that("validate_insee_code accepts Corsica codes", {
-  validate <- nemetonshiny:::validate_insee_code
 
-  expect_true(validate("2A004")) # Corse-du-Sud
 
-  expect_true(validate("2B033")) # Haute-Corse
-})
 
-test_that("validate_insee_code accepts overseas codes", {
-  validate <- nemetonshiny:::validate_insee_code
 
-  expect_true(validate("97105")) # Guadeloupe
-  expect_true(validate("97411")) # La Reunion
-})
 
-test_that("validate_insee_code rejects short codes", {
-  validate <- nemetonshiny:::validate_insee_code
-
-  expect_false(validate("1234"))
-  expect_false(validate("123"))
-  expect_false(validate("1"))
-})
-
-test_that("validate_insee_code rejects long codes", {
-  validate <- nemetonshiny:::validate_insee_code
-
-  expect_false(validate("123456"))
-  expect_false(validate("1234567"))
-})
-
-test_that("validate_insee_code rejects invalid characters", {
-  validate <- nemetonshiny:::validate_insee_code
-
-  expect_false(validate("ABCDE"))
-  expect_false(validate("1234X"))
-  expect_false(validate("12-34"))
-  expect_false(validate("12 34"))
-})
-
-test_that("validate_insee_code rejects empty and NA values", {
-  validate <- nemetonshiny:::validate_insee_code
-
-  expect_false(validate(""))
-  expect_false(validate(NA))
-  expect_false(validate(NULL))
-})
-
-test_that("validate_insee_code rejects non-character input", {
-  validate <- nemetonshiny:::validate_insee_code
-
-  expect_false(validate(12345))
-  expect_false(validate(TRUE))
-  expect_false(validate(list()))
-})
 
 # ==============================================================================
 # Additional: ensure_future_plan helper

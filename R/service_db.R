@@ -749,25 +749,6 @@ db_load_project <- function(con, project_id) {
 }
 
 
-#' Load parcels from database
-#'
-#' @param con DBI connection.
-#' @param project_id Character. Local project ID.
-#'
-#' @return sf object, or NULL.
-#' @noRd
-db_load_parcels <- function(con, project_id) {
-  sf::st_read(con,
-    query = sprintf(
-      "SELECT p.* FROM nemeton.parcels p
-       JOIN nemeton.projects pr ON p.project_id = pr.id
-       WHERE pr.project_id = '%s'",
-      DBI::dbQuoteString(con, project_id)
-    ),
-    quiet = TRUE
-  )
-}
-
 
 #' Load indicators from database
 #'

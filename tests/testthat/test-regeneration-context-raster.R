@@ -134,3 +134,16 @@ test_that("regeneration_context_cached relit .tif + meta.json (fast-path)", {
   # Cache absent -> NULL.
   expect_null(nemetonshiny:::regeneration_context_cached(withr::local_tempdir(), "tx"))
 })
+
+test_that("the context cache is keyed on the radius (audit 1.0)", {
+  pp <- withr::local_tempdir()
+  p25 <- nemetonshiny:::.regen_context_raster_paths(pp, "tx", 25000)
+  p10 <- nemetonshiny:::.regen_context_raster_paths(pp, "tx", 10000)
+  expect_identical(basename(p25$tif), "context_tx.tif")   # nom historique garde
+  expect_identical(basename(p10$tif), "context_tx_10km.tif")
+  dir.create(p25$dir, recursive = TRUE)
+  terra::writeRaster(terra::rast(nrows = 2, ncols = 2, vals = 1), p25$tif)
+  jsonlite::write_json(list(status = "ok"), p25$meta, auto_unbox = TRUE)
+  expect_false(is.null(nemetonshiny:::regeneration_context_cached(pp, "tx", 25000)))
+  expect_null(nemetonshiny:::regeneration_context_cached(pp, "tx", 10000))
+})

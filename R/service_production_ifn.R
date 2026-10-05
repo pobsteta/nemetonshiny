@@ -232,7 +232,7 @@ PRODUCTION_ANNEX_COLS <- list(
 #' Calls `nemeton::localiser_ser()` (WFS INRAE bounded to the extent of the
 #' UGF, about one second) and caches the result in `data/ugf_ser.rds`, keyed on
 #' the UGF id **and** a hash of its geometry: a redrawn UGF is localised again,
-#' an unchanged one never. A failed lookup (all `NA`) is not cached, so the next
+#' an unchanged one never. A lookup with any `NA` is not cached, so the next
 #' run retries rather than freezing the national fallback.
 #'
 #' Never fails: on error the `ser` column is `NA`, which the core turns into the
@@ -258,7 +258,7 @@ ensure_ugf_ser <- function(units, project_path) {
       all(c("ug_id", "geom_hash", "ser") %in% names(cached))) {
     key <- paste(ids, hashes)
     idx <- match(key, paste(cached$ug_id, cached$geom_hash))
-    if (!anyNA(idx)) {
+    if (!anyNA(idx) && !anyNA(cached$ser[idx])) {
       units$ser <- as.character(cached$ser[idx])
       return(units)
     }
@@ -273,7 +273,10 @@ ensure_ugf_ser <- function(units, project_path) {
   if (length(ser) != n) ser <- rep(NA_character_, n)
   units$ser <- ser
 
-  if (any(!is.na(ser))) {
+  # Mise en cache seulement si TOUTES les UGF sont localisees : une
+  # localisation partielle mise en cache figeait les UGF en NA sur le repli
+  # national, sans jamais retenter.
+  if (length(ser) && !anyNA(ser)) {
     tryCatch({
       dir.create(dirname(cache_file), recursive = TRUE, showWarnings = FALSE)
       saveRDS(data.frame(ug_id = ids, geom_hash = hashes, ser = ser,

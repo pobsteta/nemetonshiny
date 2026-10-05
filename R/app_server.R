@@ -62,7 +62,7 @@ app_server <- function(input, output, session) {
 
   # App-wide state
   app_state <- shiny::reactiveValues(
-    language = get_app_options()$language,
+    language = .langue_session_init(session),
     project_dir = get_app_options()$project_dir,
     current_project = NULL,
     project_status = "none",  # none, draft, downloading, computing, completed
@@ -157,12 +157,13 @@ app_server <- function(input, output, session) {
   #      the user does not have to refresh the browser manually.
   shiny::observeEvent(input$app_language, {
     new_lang <- input$app_language
+    if (!.langue_valide(new_lang)) return()
     if (identical(new_lang, shiny::isolate(app_state$language))) return()
     app_state$language <- new_lang
-    app_opts <- get_app_options()
-    app_opts$language <- new_lang
-    options(nemeton.app_options = app_opts)
-    session$reload()
+    session$userData$langue <- new_lang
+    # Rechargement avec `?lang=` dans l'URL : la langue reste celle de CETTE
+    # session (et de ses rechargements), jamais celle du processus partage.
+    session$sendCustomMessage("nemetonSetLang", list(lang = new_lang))
   })
 
 
@@ -369,14 +370,29 @@ app_server <- function(input, output, session) {
   # d'ouverture, mod_home.R:443) et `app_state$auth`.
 
   # 1. Acquisition - un seul point de branchement couvre toutes les ouvertures.
-  shiny::observeEvent(app_state$project_id, {
+  # Declenche aussi par un CHANGEMENT D'AUTHENTIFICATION (connexion,
+  # deconnexion, autre compte) sans rechargement : le statut lecture seule ne
+  # dependait que du projet et restait celui de l'identite precedente.
+  .auth_cle <- shiny::reactive({
+    a <- app_state$auth
+    if (is.null(a)) return(NULL)
+    list(tryCatch(a$authenticated, error = function(e) NULL),
+         tryCatch(a$user_email, error = function(e) NULL),
+         tryCatch(a$user_roles, error = function(e) NULL),
+         tryCatch(a$anonymous, error = function(e) NULL))
+  })
+  shiny::observeEvent(list(app_state$project_id, .auth_cle()), {
     pid <- app_state$project_id
+    auth_now <- shiny::isolate(app_state$auth)
+    email_now <- tryCatch(auth_now[["user_email"]], error = function(e) NULL)
 
-    # Relacher le verrou du projet PRECEDENT (changement / fermeture de projet).
+    # Relacher le verrou du projet PRECEDENT (changement / fermeture de
+    # projet) ou tenu sous une AUTRE identite (deconnexion, changement de
+    # compte sur le meme projet).
     prev <- shiny::isolate(app_state$lock_held_pid)
-    if (!is.null(prev) && !identical(prev, pid)) {
-      hid <- shiny::isolate(app_state$lock_holder_id)
-      if (!is.null(hid)) try(lock_release(prev, hid), silent = TRUE)
+    hid_prev <- shiny::isolate(app_state$lock_holder_id)
+    if (!is.null(prev) && (!identical(prev, pid) || !identical(hid_prev, email_now))) {
+      if (!is.null(hid_prev)) try(lock_release(prev, hid_prev), silent = TRUE)
       app_state$lock_held_pid <- NULL
       app_state$lock_holder_id <- NULL
     }
@@ -438,26 +454,33 @@ app_server <- function(input, output, session) {
   }, ignoreNULL = FALSE)
 
   # 2. Heartbeat - tant qu'on tient le verrou, rafraichir toutes les 45 s
-  #    (TTL coeur 120 s -> tolere 2 heartbeats manques).
+  #    (TTL coeur 120 s -> tolere 2 heartbeats manques). ASYNCHRONE : chaque
+  #    battement ouvre une connexion PostGIS ; base injoignable, le delai de
+  #    connexion (jusqu'a 8 s) gelait tour a tour TOUTES les sessions.
+  hb_task <- shiny::ExtendedTask$new(function(pid, hid, label) {
+    .lock_heartbeat_async(pid, hid, label)
+  })
   shiny::observe({
     pid <- app_state$lock_held_pid
     if (is.null(pid)) return()
     shiny::invalidateLater(45000, session)
-    hid <- shiny::isolate(app_state$lock_holder_id)
-    ok <- tryCatch(lock_heartbeat(pid, hid), error = function(e) FALSE)
-    if (!isTRUE(ok)) {
-      # Verrou perdu (vole apres peremption). Tenter de le reprendre, sinon
-      # basculer en lecture seule.
-      res <- tryCatch(lock_acquire(pid, hid, shiny::isolate(app_state$auth$user_name)),
-                      error = function(e) list(ok = FALSE))
-      if (!isTRUE(res$ok)) {
-        app_state$readonly <- TRUE
-        app_state$lock_held_pid <- NULL
-        app_state$lock_info <- res
-        app_state$lock_reason <- "held"
-        i18n <- get_i18n(shiny::isolate(app_state$language))
-        shiny::showNotification(i18n$t("lock_lost_notice"), type = "warning", duration = NULL)
-      }
+    if (identical(shiny::isolate(hb_task$status()), "running")) return()
+    hb_task$invoke(pid, shiny::isolate(app_state$lock_holder_id),
+                   shiny::isolate(app_state$auth$user_name))
+  })
+  shiny::observeEvent(hb_task$status(), {
+    if (!identical(hb_task$status(), "success")) return()
+    res <- tryCatch(hb_task$result(), error = function(e) list(ok = FALSE))
+    # Battement pour un verrou relache entre-temps (projet ferme) : ignorer.
+    if (is.null(app_state$lock_held_pid) || !identical(res$pid, app_state$lock_held_pid)) return()
+    if (!isTRUE(res$ok)) {
+      # Verrou perdu (vole apres peremption) et non repris : lecture seule.
+      app_state$readonly <- TRUE
+      app_state$lock_held_pid <- NULL
+      app_state$lock_info <- res$info
+      app_state$lock_reason <- "held"
+      i18n <- get_i18n(shiny::isolate(app_state$language))
+      shiny::showNotification(i18n$t("lock_lost_notice"), type = "warning", duration = NULL)
     }
   })
 
@@ -624,3 +647,22 @@ get_tour_preference <- function() {
 
 
 # Tour is now handled in mod_home_server
+
+
+#' Initial language of a session
+#'
+#' `?lang=` in the page URL when present, else the application default.
+#' Recorded in `session$userData$langue`, which [get_app_options()] honours
+#' for every call made inside the session.
+#' @noRd
+.langue_session_init <- function(session) {
+  l <- .langue_requete(tryCatch(shiny::isolate(session$clientData$url_search),
+                                error = function(e) NULL))
+  if (is.null(l)) {
+    base <- tryCatch(get_app_options()$language, error = function(e) NULL)
+    l <- if (.langue_valide(base)) base else NULL
+  }
+  l <- l %||% "fr"
+  session$userData$langue <- l
+  l
+}

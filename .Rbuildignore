@@ -27,3 +27,7 @@
 ^\.s2\.out$
 ^LICENSE\.md$
 ^CONTRAT\.md$
+^\.env$
+^\.env\.example$
+^NEWS-archive\.md$
+^CHANGELOG-archive\.md$

@@ -72,10 +72,11 @@ test_that("mod_synthesis_ui contains download buttons with correct classes", {
       ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
-      # PDF button has success class
-      expect_true(grepl("btn-success", ui_html))
-      # GeoPackage button has primary class
-      expect_true(grepl("btn-primary", ui_html))
+      # Une seule action principale (regle des boutons, audit 1.0) : le PDF
+      # en btn-primary, le GeoPackage en btn-outline-primary.
+      expect_match(ui_html, 'id="synthesis-download_pdf"[^>]*btn-primary|btn-primary[^"]*"[^>]*id="synthesis-download_pdf"')
+      expect_match(ui_html, 'btn-outline-primary[^"]*"[^>]*id="synthesis-download_gpkg"|id="synthesis-download_gpkg"[^>]*btn-outline-primary')
+      expect_false(grepl("btn-success", ui_html))
     }
   )
 })

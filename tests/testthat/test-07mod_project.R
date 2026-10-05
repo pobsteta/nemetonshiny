@@ -809,6 +809,9 @@ test_that("mod_project_server restores form fields when loading project", {
           result <- session$getReturned()
           expect_null(result$project_created())
 
+          # Un observeEvent sur un app_state EXTERNE ne se declenche qu'apres un
+          # premier setInputs() (amorce du flush testServer).
+          session$setInputs(amorce = 1)
           # Now load the project (this triggers the observeEvent)
           mock_app_state$current_project <- project
           session$flushReact()
@@ -820,12 +823,7 @@ test_that("mod_project_server restores form fields when loading project", {
           # In some environments, reactivity may not propagate in testServer
           # So we check if it's either properly set or still NULL (timing issue)
           current_proj <- result$current_project()
-          if (!is.null(current_proj)) {
-            expect_true(!is.null(current_proj))
-          } else {
-            # Timing issue in testServer - skip this assertion
-            skip("Reactivity timing issue in testServer")
-          }
+          expect_false(is.null(current_proj))
         }
       )
     }

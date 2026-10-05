@@ -241,3 +241,37 @@ test_that("le bloc Production IFN rend ses controles et enregistre les modes", {
                  "ifn_fh")
   })
 })
+
+test_that("reloading the same project does not re-render the other blocks (audit 1.0)", {
+  vrai_fast <- nemetonshiny:::project_fast_params
+  vrai_dess <- nemetonshiny:::project_desserte_params
+  n_fast <- 0L; n_dess <- 0L
+  testthat::local_mocked_bindings(
+    project_fast_params = function(...) { n_fast <<- n_fast + 1L; vrai_fast(...) },
+    project_desserte_params = function(...) { n_dess <<- n_dess + 1L; vrai_dess(...) })
+  st <- shiny::reactiveValues(language = "fr", project_id = "p1",
+                              current_project = list(id = "p1", metadata = list()))
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(app_state = st), {
+    session$setInputs(x = 1)
+    .render_html(output$fast_block); .render_html(output$desserte_block)
+    f0 <- n_fast; d0 <- n_dess
+    # Rechargement du MEME projet (apres un enregistrement) : rien a re-rendre
+    st$current_project <- list(id = "p1", metadata = list(maj = 1))
+    session$flushReact()
+    .render_html(output$fast_block); .render_html(output$desserte_block)
+    expect_identical(n_fast, f0)
+    expect_identical(n_dess, d0)
+    # Rafraichir le seul bloc FAST ne touche pas la desserte
+    refresh$fast <- refresh$fast + 1
+    session$flushReact()
+    .render_html(output$fast_block); .render_html(output$desserte_block)
+    expect_gt(n_fast, f0)
+    expect_identical(n_dess, d0)
+    # Autre projet : tout est re-rendu
+    st$project_id <- "p2"
+    st$current_project <- list(id = "p2", metadata = list())
+    session$flushReact()
+    .render_html(output$desserte_block)
+    expect_gt(n_dess, d0)
+  })
+})

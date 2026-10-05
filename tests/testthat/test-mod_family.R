@@ -172,7 +172,7 @@ test_that("mod_family_ui returns valid UI for unknown family", {
 
   ui <- nemetonshiny:::mod_family_ui("family_Z", "Z")
   ui_html <- as.character(ui)
-  expect_true(grepl("Unknown family", ui_html))
+  expect_true(grepl(get_i18n("fr")$t("famille_inconnue"), ui_html, fixed = TRUE))
 })
 
 

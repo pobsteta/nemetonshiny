@@ -24,8 +24,8 @@ NULL
 #' @return An htmltools tag object.
 #' @noRd
 ndp_badge <- function(ndp, lang = "fr") {
-  ndp <- as.integer(ndp)
-  level <- nemeton::get_ndp_level(ndp)
+  ndp <- .ndp_borne(ndp)
+  i18n <- get_i18n(lang)
 
   colors <- c(
     "#6c757d",  # NDP 0 - gray
@@ -34,21 +34,29 @@ ndp_badge <- function(ndp, lang = "fr") {
     "#ffc107",  # NDP 3 - yellow
     "#fd7e14"   # NDP 4 - orange
   )
-  color <- colors[ndp + 1L]
-
-  names_en <- c("Discovery", "Observation", "Exploration", "Diagnostic", "Digital Twin")
-  name <- if (lang == "en") names_en[ndp + 1L] else level$name
+  # Texte sombre sauf sur le gris : en blanc, le jaune (1,6:1), l'orange
+  # (2,9:1), le vert et le cyan (~3:1) passaient sous le seuil AA de 4,5.
+  text_colors <- c("#ffffff", "#212529", "#212529", "#212529", "#212529")
 
   htmltools::tags$span(
     class = "badge",
     style = paste0(
-      "background-color: ", color, "; ",
-      "color: white; ",
+      "background-color: ", colors[ndp + 1L], "; ",
+      "color: ", text_colors[ndp + 1L], "; ",
       "font-size: 0.85rem; ",
       "padding: 4px 10px;"
     ),
-    paste0("NDP ", ndp, " \u2013 ", name)
+    paste0("NDP ", ndp, " \u2013 ", i18n$t(paste0("ndp_niveau_", ndp)))
   )
+}
+
+
+#' Clamp an NDP level to 0..4 (NA or out of range -> 0)
+#' @noRd
+.ndp_borne <- function(ndp) {
+  ndp <- suppressWarnings(as.integer(ndp))[1]
+  if (length(ndp) == 0L || is.na(ndp) || ndp < 0L) return(0L)
+  min(ndp, 4L)
 }
 
 
@@ -70,15 +78,11 @@ ndp_badge <- function(ndp, lang = "fr") {
 #' @noRd
 ndp_progress_bar <- function(ndp, lang = "fr", label_class = "text-muted small",
                              bar_class = "progress") {
-  ndp <- as.integer(ndp)
+  ndp <- .ndp_borne(ndp)
   level <- nemeton::get_ndp_level(ndp)
   pct <- round(level$confidence * 100, 1)
 
-  label <- if (lang == "en") {
-    paste0("Confidence \u03c6: ", pct, "%")
-  } else {
-    paste0("Confiance \u03c6 : ", pct, "%")
-  }
+  label <- sprintf(get_i18n(lang)$t("ndp_confiance_fmt"), pct)
 
   htmltools::div(
     class = "mt-1",

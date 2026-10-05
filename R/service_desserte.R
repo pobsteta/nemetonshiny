@@ -135,27 +135,6 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
   }, error = function(e) invisible(NULL))
 }
 
-#' Network-integrity summary of the designed road network (spec 025)
-#'
-#' Wraps `foretaccess::verifier_integrite_desserte()` on the network the user
-#' ends up with - **existing union created** - which is the only thing that answers
-#' "does what I just designed hold together?". `raccorde` only says whether the
-#' created roads are attached; it says nothing about the resulting graph.
-#'
-#' Guarded on `dessertR`: the check reaches it through
-#' `.integrite_calculer()` -> `.dsr("dsr_reseau")`, and **`foretaccess` does not
-#' declare that dependency** (absent from its Imports/Suggests/Remotes, resolved
-#' at call time by `getExportedValue()`). Without it the core does not error - it
-#' degrades to `.integrite_vide()`, whose `n_infractions` is `NA`. Returning
-#' `NULL` here instead lets the UI say "unavailable" rather than render an empty
-#' verdict that reads like a clean bill of health.
-#'
-#' Best-effort by design: an integrity failure must never cost the run its
-#' network, which is already written to disk at this point.
-#'
-#' @param desserte Existing road network (`sf`, carries `classe`).
-#' @param lignes Created roads (`sf`) or `NULL` when the engine built none.
-#' @param aoi Parcels served, used to locate edge effects.
 #' Le moteur optionnel `dessertR` est-il disponible ?
 #'
 #' Delegue au predicat du coeur (`foretaccess >= 2.1.0`) plutot que de refaire un
@@ -180,6 +159,27 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
   isTRUE(tryCatch(foretaccess::dessertR_disponible(), error = function(e) FALSE))
 }
 
+#' Network-integrity summary of the designed road network (spec 025)
+#'
+#' Wraps `foretaccess::verifier_integrite_desserte()` on the network the user
+#' ends up with - **existing union created** - which is the only thing that answers
+#' "does what I just designed hold together?". `raccorde` only says whether the
+#' created roads are attached; it says nothing about the resulting graph.
+#'
+#' Guarded on `dessertR`: the check reaches it through
+#' `.integrite_calculer()` -> `.dsr("dsr_reseau")`, and **`foretaccess` does not
+#' declare that dependency** (absent from its Imports/Suggests/Remotes, resolved
+#' at call time by `getExportedValue()`). Without it the core does not error - it
+#' degrades to `.integrite_vide()`, whose `n_infractions` is `NA`. Returning
+#' `NULL` here instead lets the UI say "unavailable" rather than render an empty
+#' verdict that reads like a clean bill of health.
+#'
+#' Best-effort by design: an integrity failure must never cost the run its
+#' network, which is already written to disk at this point.
+#'
+#' @param desserte Existing road network (`sf`, carries `classe`).
+#' @param lignes Created roads (`sf`) or `NULL` when the engine built none.
+#' @param aoi Parcels served, used to locate edge effects.
 #' @return Named list of scalars, or `NULL` when unavailable.
 #' @noRd
 .desserte_integrite <- function(desserte, lignes, aoi) {
@@ -247,7 +247,7 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #' @return A character scalar, or `NULL` when an input is missing.
 #' @noRd
 .desserte_integrite_cle <- function(cache_dir, aoi_path) {
-  gpkg <- file.path(cache_dir, "desserte.gpkg")
+  gpkg <- .desserte_gpkg_courant(cache_dir)
   if (!file.exists(gpkg) || is.null(aoi_path) || !file.exists(aoi_path)) {
     return(NULL)
   }
@@ -298,7 +298,7 @@ run_desserte_integrite <- function(cache_dir, aoi_path) {
   if (!.dessertR_dispo()) {
     return(list(status = "error", reason = "desserte_integrite_no_dessertr"))
   }
-  gpkg <- file.path(cache_dir, "desserte.gpkg")
+  gpkg <- .desserte_gpkg_courant(cache_dir)
   if (!file.exists(gpkg) || is.null(aoi_path) || !file.exists(aoi_path)) {
     return(list(status = "error", reason = "desserte_integrite_no_reseau"))
   }
@@ -380,7 +380,7 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
   if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
 
   # Memes entrees que la creation : elles sont deja en cache sous l'emprise.
-  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  acq_dir <- .desserte_acq_dir(cache_dir, buffer_m, parcelles)
   aoi_ext <- if (buffer_m > 0) {
     tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
   } else parcelles
@@ -451,7 +451,7 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   parcelles <- tryCatch(sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154),
                         error = function(e) NULL)
   if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
-  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  acq_dir <- .desserte_acq_dir(cache_dir, buffer_m, parcelles)
   aoi_ext <- if (buffer_m > 0) {
     tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
   } else parcelles
@@ -589,7 +589,15 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   # Garde-fou memoire AVANT toute acquisition : mesure 7,91 Go sur 1 855 ha meme
   # sans nuage. Sans ce refus, un depassement se paie par un OOM qui emporte la
   # session - le mode d'echec que toute cette serie de correctifs elimine.
-  mem <- .desserte_memory_check(aoi_ext, res_m = 5)
+  # Estimateur DEDIE, sur la resolution reelle de la detection (MNT LiDAR 0,5 a
+  # 1 m, sinon 1 m, defaut de `detecter_desserte()`) : l'ancien garde estimait
+  # le glouton a 5 m, 25 a 100 fois moins de cellules que la detection n'en
+  # traite - sur une grande emprise, le systeme tuait la session.
+  lidar_mnt_pre <- if (!is.null(project_path)) {
+    file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
+  }
+  mem <- .desserte_detection_memory_check(
+    aoi_ext, res_m = .desserte_detection_res(lidar_mnt_pre))
   if (!isTRUE(mem$ok)) {
     return(list(status = "error", reason = "desserte_memory_guard",
                 detail = sprintf(
@@ -597,7 +605,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
                   mem$cells / 1e6, mem$bytes / 1024^3, mem$available / 1024^3)))
   }
 
-  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  acq_dir <- .desserte_acq_dir(cache_dir, buffer_m, parcelles)
 
   # MNT : le LiDAR HD du projet EN PRIORITE, et pas le RGE ALTI 5 m des autres
   # etapes. `detecter_desserte()` cherche une signature de MICRO-RELIEF (SLRM,
@@ -828,18 +836,42 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   list(ok = isTRUE(ok), cells = cells, bytes = bytes, available = avail)
 }
 
-#' Reconstruct a run result from a project's cached desserte network
+#' Working resolution of the road detection
 #'
-#' Lets the tab show a **previously computed** network without recomputing (a
-#' run is ~11.5 min): scans `cache/desserte/` for the network raster
-#' (`reseau_<engine>.tif`) and its sidecar metadata (`reseau_<engine>.rds`,
-#' holding the scalars - cost, connectedness, served parcels - that a raster
-#' cannot carry) and rebuilds a minimal `run_desserte()` result marked
-#' `from_cache = TRUE`. Returns `NULL` when the project has no cached network.
-#'
-#' @param project_path Project directory, or `NULL`.
-#' @return A result list compatible with the map/badge UI, or `NULL`.
+#' The project's LiDAR DTM resolution when it exists (capped at 1 m), else 1 m
+#' (`dtm_res` default of `foretaccess::detecter_desserte()`).
+#' @param lidar_mnt Path to the project's LiDAR DTM mosaic, or `NULL`.
+#' @return Numeric resolution in metres.
 #' @noRd
+.desserte_detection_res <- function(lidar_mnt = NULL) {
+  if (is.null(lidar_mnt) || !file.exists(lidar_mnt)) return(1)
+  r <- tryCatch(terra::res(terra::rast(lidar_mnt))[1], error = function(e) NA_real_)
+  if (!is.finite(r) || r <= 0) 1 else min(r, 1)
+}
+
+#' Bytes per cell of the road detection (micro-relief stack)
+#'
+#' Calibrated on the measure recorded in this file: 7.91 GB on 1 855 ha at
+#' 1 m, i.e. about 430 bytes per cell (SLRM, openness, vesselness and their
+#' intermediates held together).
+#' @noRd
+DESSERTE_DETECTION_BYTES_PER_CELL <- 430
+
+#' Memory guard of the road detection
+#' @param aoi `sf` of the (buffered) analysed extent.
+#' @param res_m Working resolution, see [.desserte_detection_res()].
+#' @return `list(ok, cells, bytes, available)`.
+#' @noRd
+.desserte_detection_memory_check <- function(aoi, res_m = 1, frac = 0.8) {
+  cells <- .desserte_grid_cells(aoi, res_m, 0)
+  bytes <- cells * DESSERTE_DETECTION_BYTES_PER_CELL
+  avail <- .available_memory_bytes()
+  skip <- tolower(Sys.getenv("NEMETON_DESSERTE_SKIP_GUARD", "")) %in%
+    c("1", "true", "yes", "oui")
+  ok <- skip || !is.finite(bytes) || !is.finite(avail) || bytes <= avail * frac
+  list(ok = isTRUE(ok), cells = cells, bytes = bytes, available = avail)
+}
+
 #' Current values of the inputs that change the traced network
 #'
 #' Single source of truth for "what does the user ask for right now", used both
@@ -900,11 +932,74 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   TRUE
 }
 
-.load_cached_desserte <- function(project_path, params = NULL) {
+#' Footprint of the parcels a desserte run serves
+#'
+#' Rounded Lambert-93 extent plus the number of parcels: enough to tell a
+#' changed AOI (parcels added or removed) from the same one.
+#' @param parcelles `sf` of the served parcels.
+#' @return A 12-character key, or `NA` when it cannot be computed.
+#' @noRd
+.desserte_empreinte <- function(parcelles) {
+  if (is.null(parcelles) || !inherits(parcelles, "sf") || !nrow(parcelles)) {
+    return(NA_character_)
+  }
+  bb <- tryCatch(round(as.numeric(sf::st_bbox(sf::st_transform(parcelles, 2154)))),
+                 error = function(e) NULL)
+  if (is.null(bb)) return(NA_character_)
+  substr(rlang::hash(list(bb, nrow(parcelles))), 1, 12)
+}
+
+#' Acquisition directory (DEM, roads, forest) shared by the desserte runs
+#'
+#' Keyed on the buffer AND the parcels' footprint: with the same buffer, added
+#' parcels used to be served the previous, truncated DEM and road network.
+#' @noRd
+.desserte_acq_dir <- function(cache_dir, buffer_m, parcelles) {
+  file.path(cache_dir, sprintf("emprise_%gm_%s", buffer_m,
+                               .desserte_empreinte(parcelles)))
+}
+
+#' GeoPackage of one engine's run
+#' @noRd
+.desserte_gpkg_path <- function(cache_dir, engine) {
+  file.path(cache_dir, paste0("desserte_", engine, ".gpkg"))
+}
+
+#' GeoPackage of the most recent run (any engine), legacy shared file last
+#' @noRd
+.desserte_gpkg_courant <- function(cache_dir) {
+  cand <- .desserte_gpkg_path(cache_dir, DESSERTE_ENGINES)
+  cand <- cand[file.exists(cand)]
+  if (length(cand)) return(cand[which.max(file.info(cand)$mtime)])
+  file.path(cache_dir, "desserte.gpkg")
+}
+
+#' Reconstruct a run result from a project's cached desserte network
+#'
+#' Lets the tab show a **previously computed** network without recomputing (a
+#' run is ~11.5 min): scans `cache/desserte/` for the network raster
+#' (`reseau_<engine>.tif`) and its sidecar metadata (`reseau_<engine>.rds`,
+#' holding the scalars - cost, connectedness, served parcels - that a raster
+#' cannot carry) and rebuilds a minimal `run_desserte()` result marked
+#' `from_cache = TRUE`. Returns `NULL` when the project has no cached network.
+#'
+#' @param project_path Project directory, or `NULL`.
+#' @param params Current parameters ([.desserte_params_courants()]) the cached
+#'   network must match, or `NULL` to accept any.
+#' @param engine Engine to look for, or `NULL` for the most recent one.
+#' @return A result list compatible with the map/badge UI, or `NULL`.
+#' @noRd
+.load_cached_desserte <- function(project_path, params = NULL, engine = NULL) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   cache_dir <- .desserte_cache_dir(project_path)
   if (!dir.exists(cache_dir)) return(NULL)
-  for (eng in DESSERTE_ENGINES) {
+  # Moteur demande (celui qu'on vient de lancer), sinon le plus RECENT - et
+  # non le premier de la liste, qui ressortait toujours le glouton.
+  moteurs <- if (!is.null(engine)) intersect(engine, DESSERTE_ENGINES) else {
+    mt <- file.info(file.path(cache_dir, paste0("reseau_", DESSERTE_ENGINES, ".rds")))$mtime
+    DESSERTE_ENGINES[order(mt, decreasing = TRUE, na.last = TRUE)]
+  }
+  for (eng in moteurs) {
     rp <- file.path(cache_dir, paste0("reseau_", eng, ".tif"))
     if (!file.exists(rp)) next
     meta <- tryCatch(readRDS(file.path(cache_dir, paste0("reseau_", eng, ".rds"))),
@@ -919,7 +1014,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     # le reseau precedent, calcule a l'ancienne distance - et le badge affichait
     # l'ancienne valeur, donc rien ne trahissait l'ecart.
     if (!is.null(params) && !.desserte_params_identiques(meta, params)) next
-    gpkg <- file.path(cache_dir, "desserte.gpkg")
+    gpkg <- .desserte_gpkg_path(cache_dir, eng)
     return(list(
       status = "success",
       engine = eng,
@@ -1026,7 +1121,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   if (buffer_m > 0) {
     aoi_ext <- tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
   }
-  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  acq_dir <- .desserte_acq_dir(cache_dir, buffer_m, parcelles)
+  aoi_empreinte <- .desserte_empreinte(parcelles)
   dir.create(acq_dir, recursive = TRUE, showWarnings = FALSE)
 
   # Garde-fou memoire AVANT toute acquisition : le pic du glouton est connu a
@@ -1174,11 +1270,16 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
                n_routes = n_routes, skidding_m = skidding_m,
                methode_pente = methode_pente, largeur_m = largeur_m,
                pente_max_pct = pente_max_pct,
-               pondere_cout = TRUE),
+               pondere_cout = TRUE,
+               # Le reseau depend aussi de l'emprise analysee : sans ces deux
+               # champs, changer le tampon ou les parcelles servait l'ancien.
+               buffer_m = buffer_m, aoi_empreinte = aoi_empreinte),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 
   # 8. GeoPackage exportable : parcelles + desserte existante + reseau cree.
-  gpkg_path <- file.path(cache_dir, "desserte.gpkg")
+  # Un fichier PAR MOTEUR : partage, il contenait le reseau du dernier moteur
+  # lance, que le rechargement attribuait a l'autre (glouton / Steiner melanges).
+  gpkg_path <- .desserte_gpkg_path(cache_dir, engine)
   unlink(gpkg_path)
   tryCatch({
     sf::st_write(sf::st_transform(parcelles, epsg), gpkg_path, layer = "parcelles",

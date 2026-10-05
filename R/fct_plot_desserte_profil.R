@@ -53,7 +53,12 @@ plot_desserte_profil <- function(profil, i18n) {
   if (nrow(haut_pts)) {
     p <- plotly::add_markers(
       p, data = haut_pts, x = ~x_travers, y = ~z,
-      marker = list(size = 3, color = ~z, colorscale = "Viridis",
+      # Couleur = hauteur AU-DESSUS DU SOL (`hauteur_sol`, foretaccess) : avec
+      # `z`, l'altitude, la barre de couleur suivait la pente du terrain, pas
+      # la vegetation. Repli sur `z` pour un profil anterieur sans la colonne.
+      marker = list(size = 3,
+                    color = if ("hauteur_sol" %in% names(haut_pts)) ~hauteur_sol else ~z,
+                    colorscale = "Viridis",
                     showscale = TRUE,
                     colorbar = list(title = i18n$t("profil_legend_hauteur"),
                                     len = 0.4, y = 0.85)),

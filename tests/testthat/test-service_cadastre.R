@@ -106,45 +106,7 @@ test_that("standardize_parcels calculates area if missing", {
   expect_true(result$contenance[1] > 0)
 })
 
-test_that("get_parcel_by_id returns correct parcel", {
-  skip_if_not_installed("sf")
 
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE))),
-    sf::st_polygon(list(matrix(c(2,0, 3,0, 3,1, 2,1, 2,0), ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
-
-  mock_parcels <- sf::st_sf(
-    id = c("parcel_1", "parcel_2"),
-    section = c("A", "B"),
-    geometry = mock_geom
-  )
-
-  result <- nemetonshiny:::get_parcel_by_id("parcel_1", mock_parcels)
-
-  expect_equal(nrow(result), 1)
-  expect_equal(result$id, "parcel_1")
-  expect_equal(result$section, "A")
-})
-
-test_that("get_parcel_by_id returns NULL for non-existent ID", {
-  skip_if_not_installed("sf")
-
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
-
-  mock_parcels <- sf::st_sf(
-    id = "parcel_1",
-    geometry = mock_geom
-  )
-
-  result <- nemetonshiny:::get_parcel_by_id("nonexistent", mock_parcels)
-
-  expect_null(result)
-})
 
 test_that("filter_selected_parcels returns subset", {
   skip_if_not_installed("sf")
@@ -234,75 +196,8 @@ test_that("calculate_parcel_stats handles empty data", {
   expect_equal(stats$total_area_ha, 0)
 })
 
-test_that("format_parcel_info returns French format", {
-  skip_if_not_installed("sf")
 
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
 
-  mock_parcel <- sf::st_sf(
-    id = "01001000A0001",
-    section = "A",
-    numero = "0001",
-    contenance = 15000,
-    geometry = mock_geom
-  )[1, ]
-
-  result <- nemetonshiny:::format_parcel_info(mock_parcel, "fr")
-
-  expect_true(grepl("Parcelle", result))
-  expect_true(grepl("Section", result))
-  expect_true(grepl("Surface", result))
-  expect_true(grepl("1\\.50 ha", result))
-})
-
-test_that("format_parcel_info returns English format", {
-  skip_if_not_installed("sf")
-
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
-
-  mock_parcel <- sf::st_sf(
-    id = "01001000A0001",
-    section = "A",
-    numero = "0001",
-    contenance = 15000,
-    geometry = mock_geom
-  )[1, ]
-
-  result <- nemetonshiny:::format_parcel_info(mock_parcel, "en")
-
-  expect_true(grepl("Parcel", result))
-  expect_true(grepl("Area", result))
-})
-
-test_that("create_parcel_popup returns HTML", {
-  skip_if_not_installed("sf")
-
-  mock_geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE))),
-    crs = 4326
-  )
-
-  mock_parcel <- sf::st_sf(
-    id = "01001000A0001",
-    section = "A",
-    numero = "0001",
-    contenance = 15000,
-    geometry = mock_geom
-  )[1, ]
-
-  result <- nemetonshiny:::create_parcel_popup(mock_parcel)
-
-  expect_type(result, "character")
-  expect_true(grepl("<strong>", result))
-  expect_true(grepl("Section", result))
-  expect_true(grepl("ha", result))
-})
 
 # ==============================================================================
 # Tests for create_parcel_label
@@ -715,4 +610,16 @@ test_that("fetch_api_cadastre requires httr2 package", {
 test_that("fetch_happign_cadastre requires happign package", {
   # Verify function exists
   expect_true(is.function(nemetonshiny:::fetch_happign_cadastre))
+})
+
+test_that("parcel labels escape cadastre attributes and translate the hint", {
+  p <- data.frame(section = "<b>A</b>", numero = "12", contenance = 1e4,
+                  lieu_dit = "<img src=x onerror=alert(1)>", stringsAsFactors = FALSE)
+  l <- nemetonshiny:::create_parcel_labels(p, hint = "Click to select")
+  expect_false(grepl("<img", l, fixed = TRUE))
+  expect_false(grepl("<b>A</b>", l, fixed = TRUE))
+  expect_match(l, "&lt;img", fixed = TRUE)
+  expect_match(l, "Click to select", fixed = TRUE)
+  s <- nemetonshiny:::create_parcel_label(as.list(p), hint = "Click to select")
+  expect_false(grepl("<img", s, fixed = TRUE))
 })

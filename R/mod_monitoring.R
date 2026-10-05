@@ -918,11 +918,21 @@ mod_monitoring_server <- function(id, app_state) {
     # les bascules de mode aller-retour sont gratuites. Recalcul seulement
     # si la zone ou le projet change.
     .validity_cache <- local({ key <- NULL; val <- NULL; environment() })
+    # Validite (G3) d'une zone, INDEPENDANTE du mode : la chaine lance FORDEAD
+    # sans passer par le mode " health ", et le garde-fou etait alors saute.
+    .validity_for <- function(zone) {
+      zone <- as.character(zone %||% "")
+      if (!isTRUE(nzchar(zone))) return(NULL)
+      proj <- shiny::isolate(app_state$current_project)
+      .validity_compute(proj, zone)
+    }
     validity <- shiny::reactive({
       if (!identical(input$mode, "health")) return(NULL)
       zone <- input$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
-      proj <- app_state$current_project
+      .validity_compute(app_state$current_project, zone)
+    })
+    .validity_compute <- function(proj, zone) {
       key  <- paste(proj$id %||% "", zone, sep = "|")
       if (identical(.validity_cache$key, key)) return(.validity_cache$val)
       con <- .perf_time("monitoring: mon_con(validity)", mon_con())
@@ -937,7 +947,7 @@ mod_monitoring_server <- function(id, app_state) {
       .validity_cache$key <- key
       .validity_cache$val <- v
       v
-    })
+    }
 
     output$validity_banners <- shiny::renderUI({
       v <- validity()
@@ -1309,17 +1319,35 @@ mod_monitoring_server <- function(id, app_state) {
     # ORCHESTRATION - corps extrait : le bouton d'enregistrement et l'etape
     # " sante_zone " du lancement enchaine creent les zones par le meme
     # chemin.
+    # Un moteur sante (FAST, FORDEAD, RECONFORT) tourne-t-il ? Les taches sont
+    # definies plus bas dans le module : resolues a l'appel, pas ici.
+    .moteur_sante_en_cours <- function() {
+      en_cours <- function(nom) {
+        t <- get0(nom, envir = environment(.moteur_sante_en_cours), inherits = FALSE)
+        !is.null(t) && identical(tryCatch(shiny::isolate(t$status()),
+                                          error = function(e) NA), "running")
+      }
+      any(vapply(c("fast_task", "fordead_task", "reconfort_task"), en_cours, logical(1)))
+    }
+
     .enregistrer_zones_suivi <- function() {
       i18n <- i18n_r()
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) {
         shiny::showNotification(i18n$t("monitoring_register_no_project"),
                                 type = "warning", duration = 4)
-        return()
+        return(invisible(FALSE))
       }
       # Pre-requis BD Foret : produite au 1er calcul projet via
       # `download_ign_bdforet`. Sans ce GPKG, le croisement avec les
       # strates BD Foret v2 est impossible.
+      # Pas pendant un calcul : recreer les zones change leurs identifiants et
+      # purge les caches de l'ancien - le resultat du run en cours etait perdu.
+      if (.moteur_sante_en_cours()) {
+        shiny::showNotification(i18n$t("zones_bloquees_calcul"),
+                                type = "warning", duration = 6)
+        return(invisible(FALSE))
+      }
       bdforet_gpkg <- file.path(project$path, "cache", "layers",
                                 "bdforet.gpkg")
       if (!file.exists(bdforet_gpkg)) {
@@ -1327,7 +1355,7 @@ mod_monitoring_server <- function(id, app_state) {
           i18n$t("zones_bdforet_missing"),
           type = "warning", duration = 8
         )
-        return()
+        return(invisible(FALSE))
       }
       # Pre-requis UGFs : ug_build_sf renvoie NULL quand le projet
       # n'a pas d'UGF defini (ex. nouveau projet).
@@ -1337,13 +1365,13 @@ mod_monitoring_server <- function(id, app_state) {
           i18n$t("monitoring_register_no_samples"),
           type = "warning", duration = 5
         )
-        return()
+        return(invisible(FALSE))
       }
       con <- get_monitoring_db_connection(project = app_state$current_project)
       if (is.null(con)) {
         shiny::showNotification(i18n$t("monitoring_register_no_db"),
                                 type = "error", duration = 5)
-        return()
+        return(invisible(FALSE))
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
@@ -1364,7 +1392,7 @@ mod_monitoring_server <- function(id, app_state) {
                   "BD For\u00eat GPKG illisible"),
           type = "error", duration = 8
         )
-        return()
+        return(invisible(FALSE))
       }
 
       result <- tryCatch(
@@ -1392,7 +1420,7 @@ mod_monitoring_server <- function(id, app_state) {
                   conditionMessage(result)),
           type = "error", duration = 8
         )
-        return()
+        return(invisible(FALSE))
       }
 
       # v0.73.0 - Best-effort : purger les caches orphelins
@@ -1444,7 +1472,9 @@ mod_monitoring_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
-      if (!is_db_configured()) {
+      # Le suivi tourne aussi en SQLite local (defaut sans PostgreSQL) :
+      # tester le backend reel, pas la seule configuration PostgreSQL.
+      if (identical(monitoring_db_backend(projet), "none")) {
         pipeline_answer(app_state, req, "skipped",
                         i18n$t("monitoring_register_no_db"))
         return()
@@ -1461,13 +1491,16 @@ mod_monitoring_server <- function(id, app_state) {
                         i18n$t("pipeline_skip_zones_a_jour"))
         return()
       }
-      ok <- tryCatch({
-        .enregistrer_zones_suivi()
-        TRUE
-      }, error = function(e) {
-        cli::cli_warn("pipeline sante_zone: {conditionMessage(e)}")
-        conditionMessage(e)
-      })
+      # Le helper rend TRUE ou FALSE : ses echecs (pas de BD Foret, pas d'UGF,
+      # base indisponible...) etaient notifies sans erreur, et la chaine
+      # affichait " zones ok " avant de sauter les trois moteurs.
+      ok <- tryCatch(
+        if (isTRUE(.enregistrer_zones_suivi())) TRUE
+        else i18n$t("monitoring_register_error"),
+        error = function(e) {
+          cli::cli_warn("pipeline sante_zone: {conditionMessage(e)}")
+          conditionMessage(e)
+        })
       pipeline_answer(app_state, req,
                       if (isTRUE(ok)) "ok" else "error",
                       if (isTRUE(ok)) NULL else .strip_ansi(as.character(ok)))
@@ -1793,7 +1826,7 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       chunk <- ingest_log_tick()
       if (is.null(chunk) || !nzchar(chunk)) return()
-      cat(chunk, file = stderr())
+      cli::cli_verbatim(sub("\n$", "", chunk))
     })
 
     # ------------------------------------------------------------------
@@ -1820,6 +1853,10 @@ mod_monitoring_server <- function(id, app_state) {
       else paste0(p, ".ndjson")
     })
     ingest_ndjson_offset <- shiny::reactiveVal(0L)
+    # Nouveau run = nouveau fichier : repartir du debut. Sans cela, au 2e run
+    # FAST, l'offset du 1er run sautait les premieres lignes de progression.
+    shiny::observeEvent(ingest_ndjson_path(), ingest_ndjson_offset(0L),
+                        ignoreNULL = FALSE)
 
     ingest_ndjson_lines <- shiny::reactivePoll(
       intervalMillis = 300L, session,
@@ -1834,6 +1871,8 @@ mod_monitoring_server <- function(id, app_state) {
         sz <- as.numeric(file.info(p)$size)
         if (is.na(sz) || sz <= 0) return(NULL)
         off <- as.numeric(ingest_ndjson_offset())
+        # Fichier recree plus court (meme chemin) : relire depuis le debut.
+        if (sz < off) off <- 0
         if (sz <= off) return(NULL)
         txt <- tryCatch({
           con <- file(p, open = "rb")
@@ -2398,15 +2437,6 @@ mod_monitoring_server <- function(id, app_state) {
       # `fast_task$result()` doit etre traite (toast success /
       # error emis).
       fast_result_consumed(FALSE)
-      # v0.52.0 - Purge un eventuel cancel_path residuel d'un run
-      # precedent (sinon, le worker abandonne des la 1re tuile !).
-      # Idempotent : `unlink` sur fichier absent retourne 0 sans erreur.
-      .fast_cancel_flag <- .resolve_progress_path(
-        app_state$current_project, "fast_cancel.flag")
-      if (!is.null(.fast_cancel_flag) && file.exists(.fast_cancel_flag)) {
-        tryCatch(unlink(.fast_cancel_flag, force = TRUE),
-                 error = function(e) NULL)
-      }
       # Cross-lock: refuse to start FAST while a FORDEAD run is in
       # flight (shared Sentinel-2 cache - cf. the run-button observer).
       # An abandoned FORDEAD run (cancel button -> force-unlock) does
@@ -2421,6 +2451,16 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("monitoring_ingest_starting"),
                                 type = "message", duration = 4)
         return()
+      }
+      # v0.52.0 - Purge un eventuel cancel_path residuel d'un run
+      # precedent (sinon, le worker abandonne des la 1re tuile !).
+      # APRES le controle " en cours " : purger avant revoquait
+      # l'annulation d'un run encore vivant.
+      .fast_cancel_flag <- .resolve_progress_path(
+        app_state$current_project, "fast_cancel.flag")
+      if (!is.null(.fast_cancel_flag) && file.exists(.fast_cancel_flag)) {
+        tryCatch(unlink(.fast_cancel_flag, force = TRUE),
+                 error = function(e) NULL)
       }
       if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
@@ -2663,6 +2703,14 @@ mod_monitoring_server <- function(id, app_state) {
         .cleanup_progress_file(ingest_log_path())
         ingest_log_path(NULL)
         ingest_log_offset(0L)
+        if (identical(result$status, "cancelled") ||
+            identical(result$summary$status, "cancelled")) {
+          # Annule : resultat sans erreur, affiche jusqu'ici comme un succes.
+          shiny::showNotification(i18n$t("monitoring_fast_annule"),
+                                  id = session$ns("ingest_success"),
+                                  type = "warning", duration = 8)
+          return()
+        }
         n_scenes <- as.integer(result$summary$n_scenes %||% 0L)
         # v0.53.1 - `n_obs_inserted` toujours 0 depuis nemeton@v0.58.0
         # (drop obs_pixel insertion). Plus consomme dans le toast.
@@ -2902,6 +2950,13 @@ mod_monitoring_server <- function(id, app_state) {
     # bloque plus.
     .invoke_fordead <- function(zone_id = NULL) {
       i18n <- i18n_r()
+      # Meme garde que RECONFORT : la confirmation G3 appelle cette fonction
+      # directement, sans passer par le controle de `.lancer_fordead()`.
+      if (identical(fordead_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_run_precedent_actif"),
+                                type = "warning", duration = 8)
+        return(invisible(FALSE))
+      }
       if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -3050,8 +3105,11 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
 
-      v <- validity()
+      v <- .validity_for(zone_id %||% input$zone_id)
       if (!is.null(v) && isFALSE(v$overall_valid)) {
+        # Chaine (zone imposee) : pas de modale a valider en l'absence de
+        # l'utilisateur ; l'etape se saute avec son motif (garde-fou G3).
+        if (!is.null(zone_id)) return("hors_domaine")
         shiny::showModal(shiny::modalDialog(
           title = i18n$t("monitoring_confirm_invalid_title"),
           i18n$t("monitoring_confirm_invalid_body"),
@@ -3097,9 +3155,13 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       sante_fordead_pipeline_req(req)
-      if (!isTRUE(.lancer_fordead(zone_id = zid_pipeline))) {
+      res_lancement <- .lancer_fordead(zone_id = zid_pipeline)
+      if (!isTRUE(res_lancement)) {
         sante_fordead_pipeline_req(NULL)
-        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+        pipeline_answer(app_state, req, "skipped",
+                        if (identical(res_lancement, "hors_domaine"))
+                          i18n$t("pipeline_skip_hors_domaine")
+                        else i18n$t("pipeline_skip_not_started"))
       }
     })
 
@@ -3183,7 +3245,13 @@ mod_monitoring_server <- function(id, app_state) {
         # Phase A (D2) - la zone calculee est `_tot`, pas la strate.
         result$zone_id <- suppressWarnings(shiny::isolate(fordead_zone_id()))
         fordead_last_result(result)
-        if (identical(result$status, "error")) {
+        if (identical(result$status, "cancelled")) {
+          # Un run annule rend un resultat SANS erreur : il s'affichait
+          # comme une reussite.
+          shiny::showNotification(i18n$t("monitoring_fordead_annule"),
+                                  id = session$ns("fordead_success"),
+                                  type = "warning", duration = 8)
+        } else if (identical(result$status, "error")) {
           shiny::showNotification(
             .monitoring_run_error_msg(result$message, i18n,
                                       "monitoring_health_error"),
@@ -3410,7 +3478,10 @@ mod_monitoring_server <- function(id, app_state) {
       app_state = app_state,
       zone_id_r = shiny::reactive(input$zone_id),
       refresh_r = shiny::reactive(reconfort_refresh()),
-      result_r  = shiny::reactive(reconfort_result())
+      result_r  = shiny::reactive(reconfort_result()),
+      # Run et cache sur la zone `_tot` (parite FORDEAD) ; la strate du menu
+      # ne sert qu'a decouper l'affichage.
+      run_zone_id_r = shiny::reactive(as.character(fordead_zone_id()))
     )
 
     # Bandeaux RECONFORT rendus au niveau parent (UI :
@@ -3637,6 +3708,15 @@ mod_monitoring_server <- function(id, app_state) {
     # des zones. NULL = on lit le menu, comportement inchange pour le bouton.
     .invoke_reconfort <- function(zone_id = NULL) {
       i18n <- i18n_r()
+      # Le run precedent tourne encore (annule mais pas encore sorti, ou
+      # simplement en cours) : NE PAS purger son drapeau d'annulation ni
+      # mettre un second run en file - l'annulation etait revoquee et le
+      # resultat de l'ancien run affiche comme celui du nouveau.
+      if (identical(reconfort_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_run_precedent_actif"),
+                                type = "warning", duration = 8)
+        return(invisible(FALSE))
+      }
       if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -3680,7 +3760,17 @@ mod_monitoring_server <- function(id, app_state) {
       }
       reconfort_progress_path(ppath)
 
-      zid <- as.integer(zone_id %||% input$zone_id)
+      # Zone `_tot` (union des UGF), comme FORDEAD et comme la chaine : le run
+      # manuel ciblait la strate du menu, la chaine `_tot`, et le cache comme
+      # le clic lisaient la strate - trois zones pour un meme resultat.
+      zid <- as.integer(zone_id %||% fordead_zone_id())
+      if (is.na(zid)) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        reconfort_run_start(NULL); reconfort_run_msg(NULL)
+        shiny::removeNotification(session$ns("reconfort_progress"))
+        return(invisible(FALSE))
+      }
       out <- if (!is.null(cd)) file.path(cd, paste0("output_zone_", zid)) else NULL
 
       # Purge d'un flag residuel d'un run precedent. SANS CECI, le garde-fou

@@ -244,10 +244,16 @@ regen_context_availability <- function(project_path) {
 
 # Chemins du cache du raster de contexte regional (SpatRaster + sidecar meta),
 # par VUE : "tx" (tendance Tdegmax), "rr" (tendance precip), "bivariate" (croisement).
-.regen_context_raster_paths <- function(project_path, view = "tx") {
+# Le RAYON fait partie de la cle (et du nom) : changer le rayon ne changeait pas
+# la carte, servie depuis le cache de l'ancien, alors que les graphes au clic,
+# eux, suivaient le nouveau. 25 km (defaut) garde le nom historique, si bien
+# que les caches existants restent lus.
+.regen_context_raster_paths <- function(project_path, view = "tx", buffer_m = 25000) {
   view <- match.arg(view, c("tx", "rr", "bivariate"))
   dir  <- file.path(project_path, "cache", "regeneration", "eobs")
-  base <- file.path(dir, paste0("context_", view))
+  km   <- suppressWarnings(as.numeric(buffer_m)) / 1000
+  suffixe <- if (!is.finite(km) || isTRUE(all.equal(km, 25))) "" else sprintf("_%gkm", km)
+  base <- file.path(dir, paste0("context_", view, suffixe))
   list(tif = paste0(base, ".tif"), meta = paste0(base, ".meta.json"), dir = dir)
 }
 
@@ -282,7 +288,7 @@ run_regeneration_context_raster <- function(units, project_path,
     stop("run_regeneration_context_raster: `units` must be sf", call. = FALSE)
   }
   view  <- match.arg(view, c("tx", "rr", "bivariate"))
-  paths <- .regen_context_raster_paths(project_path, view)
+  paths <- .regen_context_raster_paths(project_path, view, buffer_m)
   if (!dir.exists(paths$dir)) dir.create(paths$dir, recursive = TRUE)
 
   need <- function(reason) list(cache_path = NA_character_, meta = list(status = reason))
@@ -312,9 +318,9 @@ run_regeneration_context_raster <- function(units, project_path,
 #' Read the cached regional-context raster + meta for a view, without recomputing
 #' @return `list(raster, meta)` or `NULL`.
 #' @noRd
-regeneration_context_cached <- function(project_path, view = "tx") {
+regeneration_context_cached <- function(project_path, view = "tx", buffer_m = 25000) {
   if (is.null(project_path)) return(NULL)
-  paths <- .regen_context_raster_paths(project_path, view)
+  paths <- .regen_context_raster_paths(project_path, view, buffer_m)
   if (!file.exists(paths$tif) || !file.exists(paths$meta)) return(NULL)
   r <- tryCatch(terra::rast(paths$tif), error = function(e) NULL)
   if (is.null(r)) return(NULL)

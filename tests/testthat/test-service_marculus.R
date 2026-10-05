@@ -1081,3 +1081,11 @@ test_that("une date revenue du terrain n'est pas comptee comme annee cible", {
   expect_false(nemetonshiny:::.marculus_date_depuis_annee(
     list(annee_cible = NA)))
 })
+
+test_that(".marculus_nom_fichier rend un nom de fichier sur (audit 1.0)", {
+  f <- nemetonshiny:::.marculus_nom_fichier
+  expect_identical(f("Forêt / Dabo : lot 2", "pid"), "Foret_Dabo_lot_2")
+  expect_identical(f("///", "pid"), "pid")
+  expect_identical(f(NULL, "pid"), "pid")
+  expect_identical(f("../../etc", "pid"), "etc")
+})

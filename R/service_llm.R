@@ -77,8 +77,7 @@ llm_providers <- function() {
   }
   ok <- tryCatch({
     dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-    jsonlite::write_json(keys, path, auto_unbox = TRUE)
-    tryCatch(Sys.chmod(path, mode = "0600"), error = function(e) NULL)
+    .write_json_private(keys, path, auto_unbox = TRUE)
     TRUE
   }, error = function(e) {
     cli::cli_warn("Failed to write LLM keys file: {e$message}")

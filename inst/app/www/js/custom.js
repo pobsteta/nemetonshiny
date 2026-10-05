@@ -42,36 +42,32 @@
    * Trap focus within modals for accessibility
    */
   function initFocusTrap() {
-    document.addEventListener('shown.bs.modal', function(e) {
-      const modal = e.target;
-      const focusableElements = modal.querySelectorAll(
+    var focusables = function(modal) {
+      return modal.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
-
-      if (focusableElements.length === 0) return;
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-
-      // Focus first element
-      firstElement.focus();
-
-      // Trap focus
-      modal.addEventListener('keydown', function(e) {
-        if (e.key !== 'Tab') return;
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      });
+    };
+    document.addEventListener('shown.bs.modal', function(e) {
+      var els = focusables(e.target);
+      if (els.length > 0) els[0].focus();
+    });
+    // UN SEUL ecouteur, delegue : en rattacher un a la modale a chaque
+    // ouverture les empilait (N ouvertures = N traitements par touche).
+    // Les elements focalisables sont relus a chaque frappe (contenu dynamique).
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Tab') return;
+      var modal = document.querySelector('.modal.show');
+      if (!modal) return;
+      var els = focusables(modal);
+      if (els.length === 0) return;
+      var first = els[0], last = els[els.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     });
   }
 
@@ -109,7 +105,10 @@
   function initFormValidation() {
     // Project name validation
     const projectNameInput = document.querySelector('[id$="-project_name"]');
-    if (projectNameInput) {
+    // Rappele a chaque `shiny:value` : sans garde, un ecouteur de plus a
+    // chaque mise a jour d'une sortie.
+    if (projectNameInput && !projectNameInput.dataset.nemetonValidation) {
+      projectNameInput.dataset.nemetonValidation = '1';
       projectNameInput.addEventListener('input', function() {
         const value = this.value.trim();
         const isValid = value.length > 0 && value.length <= 100;
@@ -250,12 +249,10 @@
   /**
    * Update selection counter display
    */
-  Shiny.addCustomMessageHandler('updateSelectionCount', function(data) {
-    const count = data.count;
-    const max = data.max;
-
-    // Announce to screen readers
-    window.announceToScreenReader(count + ' parcelles sélectionnées sur ' + max);
+  // Le serveur envoie `announceSelection` avec un message deja traduit ; le
+  // handler ecoutait `updateSelectionCount`, que personne n'envoyait.
+  Shiny.addCustomMessageHandler('announceSelection', function(data) {
+    if (data && data.message) window.announceToScreenReader(data.message);
   });
 
   /**
@@ -379,12 +376,17 @@
       if (s === 'completed') return '<span class="text-success" style="font-size:1.1rem;">&#10003;</span>';
       return '<span class="text-danger" style="font-size:1.1rem;">&#10007;</span>';
     };
+    var esc = function(x) {
+      return String(x == null ? '' : x).replace(/[&<>"']/g, function(c) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+      });
+    };
     var html = '<table class="table table-sm table-striped mb-0" style="font-size:0.85rem;">';
-    html += '<thead><tr><th>' + (labels.indicator || 'Indicateur') + '</th>';
+    html += '<thead><tr><th>' + esc(labels.indicator || '') + '</th>';
     html += '<th class="text-center" style="width:60px;"></th></tr></thead><tbody>';
     for (var i = 0; i < indicators.length; i++) {
       var ind = indicators[i];
-      html += '<tr><td>' + ind.name + '</td>';
+      html += '<tr><td>' + esc(ind.name) + '</td>';
       html += '<td class="text-center">' + statusCell(ind.status) + '</td></tr>';
     }
     html += '</tbody></table>';
@@ -602,6 +604,35 @@
         clearTimeout(window._nemetonDownloadToastTimer);
         window._nemetonDownloadToastTimer = null;
       }
+    });
+  }
+
+
+  // Enable / disable an element from the server, for real. A downloadButton is
+  // an <a>: Shiny enables it as soon as its handler binds, so a plain
+  // `disabled` attribute set in the UI does not keep it unclickable. The
+  // server sends {id, disabled}; the class `disabled` (pointer-events: none in
+  // Bootstrap) and aria-disabled follow.
+  if (window.Shiny && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler('nemetonSetDisabled', function(data) {
+      var el = document.getElementById(data.id);
+      if (!el) return;
+      var off = !!data.disabled;
+      el.classList.toggle('disabled', off);
+      el.setAttribute('aria-disabled', off ? 'true' : 'false');
+      if (off) { el.setAttribute('disabled', 'disabled'); el.setAttribute('tabindex', '-1'); }
+      else { el.removeAttribute('disabled'); el.removeAttribute('tabindex'); }
+    });
+  }
+
+
+  // Per-session language: reload the page with ?lang= (other parameters kept),
+  // instead of a process-wide option shared by every user.
+  if (window.Shiny && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler('nemetonSetLang', function(data) {
+      var url = new URL(window.location.href);
+      url.searchParams.set('lang', data.lang);
+      window.location.replace(url.toString());
     });
   }
 

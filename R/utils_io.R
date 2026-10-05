@@ -79,3 +79,43 @@
   do.call(sf::st_write, c(list(obj = x, dsn = tmp, driver = "GPKG", quiet = TRUE), args))
   .replace_file(tmp, path)
 }
+
+
+#' Write a secret JSON file, owner-only from its creation
+#'
+#' The file used to be written with the default umask and only then passed to
+#' 0600: during that instant another local account could read the keys. The
+#' umask is tightened to 077 for the write (temporary sibling, then atomic
+#' replace), so the file never exists with wider permissions.
+#'
+#' @param x Object to serialise.
+#' @param path Destination path.
+#' @param ... Passed to [jsonlite::write_json()].
+#' @return Invisible `path`.
+#' @noRd
+.write_json_private <- function(x, path, ...) {
+  old <- Sys.umask("077")
+  on.exit(Sys.umask(old), add = TRUE)
+  .write_json_atomic(x, path, ...)
+  tryCatch(Sys.chmod(path, mode = "0600"), error = function(e) NULL)
+  invisible(path)
+}
+
+
+#' Write a raster atomically
+#'
+#' Temporary sibling then rename: a process killed mid-write leaves no
+#' truncated file that a later run would take for a valid cache.
+#'
+#' @param r `SpatRaster`.
+#' @param path Final path.
+#' @param ... Passed to [terra::writeRaster()].
+#' @return Invisible `path`.
+#' @noRd
+.write_raster_atomic <- function(r, path, ...) {
+  tmp <- .tmp_sibling(path)
+  on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
+  terra::writeRaster(r, tmp, overwrite = TRUE, ...)
+  .replace_file(tmp, path)
+  invisible(path)
+}

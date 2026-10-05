@@ -53,3 +53,4 @@ rsconnect/
 .claude/
 .nemeton_shot.png
 .s2.out
+.env
