@@ -677,7 +677,9 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
 
       # Build hover labels once over the attribute table (vectorised), before
       # any geometry simplification - labels depend only on attributes.
-      labels <- create_parcel_labels(parcel_data)
+      labels <- create_parcel_labels(
+        parcel_data,
+        hint = get_i18n(shiny::isolate(app_state$language) %||% "fr")$t("click_to_select"))
 
       # Simplify geometry for display only. When the data is projected (metres),
       # simplify with a metre tolerance in the source CRS, then transform to

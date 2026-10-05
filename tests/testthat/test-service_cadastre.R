@@ -716,3 +716,15 @@ test_that("fetch_happign_cadastre requires happign package", {
   # Verify function exists
   expect_true(is.function(nemetonshiny:::fetch_happign_cadastre))
 })
+
+test_that("parcel labels escape cadastre attributes and translate the hint", {
+  p <- data.frame(section = "<b>A</b>", numero = "12", contenance = 1e4,
+                  lieu_dit = "<img src=x onerror=alert(1)>", stringsAsFactors = FALSE)
+  l <- nemetonshiny:::create_parcel_labels(p, hint = "Click to select")
+  expect_false(grepl("<img", l, fixed = TRUE))
+  expect_false(grepl("<b>A</b>", l, fixed = TRUE))
+  expect_match(l, "&lt;img", fixed = TRUE)
+  expect_match(l, "Click to select", fixed = TRUE)
+  s <- nemetonshiny:::create_parcel_label(as.list(p), hint = "Click to select")
+  expect_false(grepl("<img", s, fixed = TRUE))
+})

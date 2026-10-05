@@ -112,16 +112,13 @@ theia_save_api_key <- function(access_key, secret_key) {
   ok <- tryCatch({
     apikey_path <- .theia_apikey_path()
     dir.create(dirname(apikey_path), recursive = TRUE, showWarnings = FALSE)
-    jsonlite::write_json(
+    # Owner-only des la creation (umask 077), ecriture atomique : la cle n'est
+    # jamais lisible par un autre compte, meme un instant.
+    .write_json_private(
       list(`access-key` = access_key, `secret-key` = secret_key),
       apikey_path,
       auto_unbox = TRUE
     )
-    # Lock down to owner-only (rw-------). Best-effort : no-op on
-    # Windows (POSIX bits don't map onto Windows ACLs but the file
-    # stays under the user profile so it's not world-readable anyway).
-    tryCatch(Sys.chmod(apikey_path, mode = "0600"),
-             error = function(e) NULL)
     TRUE
   }, error = function(e) {
     cli::cli_warn("Failed to write Theia API key file: {e$message}")

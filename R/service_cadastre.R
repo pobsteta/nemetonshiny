@@ -414,10 +414,11 @@ create_parcel_popup <- function(parcel) {
 #' @return Character string with HTML.
 #'
 #' @noRd
-create_parcel_label <- function(parcel) {
-  # Section and number
-  section <- parcel$section %||% "-"
-  numero <- parcel$numero %||% "-"
+create_parcel_label <- function(parcel, hint = "Cliquez pour s\u00e9lectionner") {
+  esc <- function(x) htmltools::htmlEscape(as.character(x))
+  # Section and number (attributs de l'API cadastre : echappes)
+  section <- esc(parcel$section %||% "-")
+  numero <- esc(parcel$numero %||% "-")
 
   # Area in hectares
   area_text <- ""
@@ -430,15 +431,16 @@ create_parcel_label <- function(parcel) {
   lieu_dit_text <- ""
   lieu_dit <- parcel$nom_com %||% parcel$lieu_dit %||% parcel$lieudit %||% NULL
   if (!is.null(lieu_dit) && nchar(lieu_dit) > 0 && lieu_dit != "NA") {
-    lieu_dit_text <- sprintf("<br/><span style='color:#666;'>%s</span>", lieu_dit)
+    lieu_dit_text <- sprintf("<br/><span style='color:#666;'>%s</span>", esc(lieu_dit))
   }
 
   sprintf(
-    "<b>%s %s</b>%s%s<br/><span style='color:#1B6B1B;font-size:11px;'>Cliquez pour s\u00e9lectionner</span>",
+    "<b>%s %s</b>%s%s<br/><span style='color:#1B6B1B;font-size:11px;'>%s</span>",
     section,
     numero,
     area_text,
-    lieu_dit_text
+    lieu_dit_text,
+    esc(hint)
   )
 }
 
@@ -457,8 +459,8 @@ create_parcel_label <- function(parcel) {
 #' @return Character vector of HTML labels, one per row.
 #'
 #' @noRd
-create_parcel_labels <- function(parcels) {
-  df <- sf::st_drop_geometry(parcels)
+create_parcel_labels <- function(parcels, hint = "Cliquez pour s\u00e9lectionner") {
+  df <- if (inherits(parcels, "sf")) sf::st_drop_geometry(parcels) else parcels
   n <- nrow(df)
   if (n == 0) {
     return(character(0))
@@ -466,8 +468,10 @@ create_parcel_labels <- function(parcels) {
 
   # Match create_parcel_label(): "-" only when the column is absent (NULL);
   # a present-but-NA value renders as "NA" (left as-is here).
-  section <- if (!is.null(df$section)) as.character(df$section) else rep("-", n)
-  numero <- if (!is.null(df$numero)) as.character(df$numero) else rep("-", n)
+  # Attributs venus de l'API cadastre : echappes avant insertion en HTML.
+  esc <- function(x) htmltools::htmlEscape(as.character(x))
+  section <- if (!is.null(df$section)) esc(df$section) else rep("-", n)
+  numero <- if (!is.null(df$numero)) esc(df$numero) else rep("-", n)
 
   area_text <- rep("", n)
   if (!is.null(df$contenance)) {
@@ -482,15 +486,16 @@ create_parcel_labels <- function(parcels) {
     lieu_dit <- as.character(lieu_dit)
     ok <- !is.na(lieu_dit) & nchar(lieu_dit) > 0 & lieu_dit != "NA"
     lieu_dit_text[ok] <- sprintf(
-      "<br/><span style='color:#666;'>%s</span>", lieu_dit[ok]
+      "<br/><span style='color:#666;'>%s</span>", esc(lieu_dit[ok])
     )
   }
 
   sprintf(
-    "<b>%s %s</b>%s%s<br/><span style='color:#1B6B1B;font-size:11px;'>Cliquez pour s\u00e9lectionner</span>",
+    "<b>%s %s</b>%s%s<br/><span style='color:#1B6B1B;font-size:11px;'>%s</span>",
     section,
     numero,
     area_text,
-    lieu_dit_text
+    lieu_dit_text,
+    esc(hint)
   )
 }

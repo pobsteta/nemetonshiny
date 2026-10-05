@@ -96,3 +96,14 @@ test_that("T2 falls back to T1 when N2 is unavailable", {
                indicateur_t1_anciennete = c(150, 30)), list())
   expect_equal(suppressMessages(nemeton::indicateur_t2_changement(u)), c(100, 30))
 })
+
+test_that("T2 falls back to T1 unit by unit when N2 is partly missing (nemeton >= 0.212.1)", {
+  skip_if_not_installed("sf")
+  skip_if(utils::packageVersion("nemeton") < "0.212.1")
+  p <- .t2_parcels()
+  u <- nemetonshiny:::.units_for_indicator(
+    "indicateur_t2_changement", p,
+    data.frame(indicateur_n2_continuite = c(70, NA),
+               indicateur_t1_anciennete = c(150, 30)), list())
+  expect_equal(suppressMessages(nemeton::indicateur_t2_changement(u)), c(70, 30))
+})

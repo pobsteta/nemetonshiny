@@ -552,9 +552,12 @@ mod_field_ingest_server <- function(id, app_state) {
     shiny::observe({
       shiny::req(input$subtab)
       if (!identical(input$subtab, "health")) return()
-      con <- get_monitoring_db_connection(read_only = TRUE)
+      # Le projet est requis : sans lui, le repli SQLite local (le cas par
+      # defaut) n'a pas de fichier et la connexion vaut NULL.
+      projet <- app_state$current_project
+      con <- get_monitoring_db_connection(project = projet, read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      z <- list_monitoring_zones(con)
+      z <- list_monitoring_zones(con, project_uuid = projet$id %||% projet$metadata$id)
       choices <- if (nrow(z))
                    stats::setNames(as.character(z$id), z$name)
                  else character(0)
@@ -577,7 +580,7 @@ mod_field_ingest_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return()
       }
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
         shiny::showNotification(i18n_local$t("monitoring_db_unavailable"),

@@ -1066,6 +1066,8 @@ run_reconfort_async <- function() {
 .ntfy_send <- function(cfg, message, priority = "default",
                        tags = NULL, title = "Nemeton") {
   if (is.null(cfg)) return(invisible(FALSE))
+  .ntfy_warn_public(cfg)
+  message <- .ntfy_safe_message(message)
   tryCatch({
     req <- httr2::request(paste0(cfg$url, "/", cfg$topic))
     req <- httr2::req_body_raw(req, enc2utf8(as.character(message)),
@@ -1083,6 +1085,43 @@ run_reconfort_async <- function() {
     httr2::req_perform(req)
     invisible(TRUE)
   }, error = function(e) invisible(FALSE))
+}
+
+
+#' Strip what a notification must not carry
+#'
+#' Messages often embed a raw error (`conditionMessage(e)`), which can quote
+#' local paths and, for a database error, a connection URL. On the default
+#' public server (`ntfy.sh`) anyone knowing the topic reads them. Absolute
+#' paths are reduced to their file name, credentials are masked and the text
+#' is bounded.
+#'
+#' @param message Character.
+#' @return The cleaned message.
+#' @noRd
+.ntfy_safe_message <- function(message) {
+  m <- paste(as.character(message), collapse = " ")
+  m <- .mask_db_credentials(m)
+  # /home/x/projets/a/b.tif -> b.tif ; C:\Users\x\b.tif -> b.tif
+  m <- gsub("(?:[A-Za-z]:)?(?:[\\\\/][^\\\\/\\s\"'`]+){2,}[\\\\/]([^\\\\/\\s\"'`]+)",
+            "\\1", m, perl = TRUE)
+  m <- gsub("\\s+", " ", m, perl = TRUE)
+  if (nchar(m) > 300L) m <- paste0(substr(m, 1L, 297L), "...")
+  m
+}
+
+#' Warn once that notifications go to a public topic without a token
+#' @noRd
+.ntfy_warn_public <- function(cfg) {
+  public <- grepl("^https?://ntfy\\.sh$", cfg$url %||% "") && !nzchar(cfg$token %||% "")
+  if (public && !isTRUE(.nemeton_env$.ntfy_public_warned)) {
+    .nemeton_env$.ntfy_public_warned <- TRUE
+    cli::cli_warn(c(
+      "Notifications ntfy envoy\u00e9es sur le serveur public ntfy.sh sans jeton.",
+      i = "Quiconque conna\u00eet le topic les lit : choisir un topic impr\u00e9visible, \\
+           ou {.envvar NEMETON_NTFY_URL} / {.envvar NEMETON_NTFY_TOKEN} vers un serveur priv\u00e9."))
+  }
+  invisible(public)
 }
 
 

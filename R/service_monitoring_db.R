@@ -61,11 +61,11 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
   # Reset the package-level error slot on every attempt so a previous
   # transient failure doesn't get re-displayed once the user has fixed
   # the cause.
-  .nemeton_env$.last_monitoring_db_error <- NULL
+  .set_monitoring_db_error(NULL)
 
   if (!requireNamespace("nemeton", quietly = TRUE)) {
-    .nemeton_env$.last_monitoring_db_error <-
-      "Package 'nemeton' not installed."
+    .set_monitoring_db_error(
+      "Package 'nemeton' not installed.")
     return(NULL)
   }
 
@@ -100,8 +100,8 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
   # demarrage. Le cout asymptotique reste celui d'un SELECT par tick.
   if (isTRUE(read_only)) {
     if (.is_file_db_url(url) && !file.exists(.file_db_path_from_url(url))) {
-      .nemeton_env$.last_monitoring_db_error <-
-        "Monitoring DB not initialized yet (no file on disk)."
+      .set_monitoring_db_error(
+        "Monitoring DB not initialized yet (no file on disk).")
       return(NULL)
     }
     con <- tryCatch(
@@ -111,7 +111,7 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
         msg <- conditionMessage(e)
         cli::cli_warn("Failed to open monitoring DB (read-only): {msg}")
         flat <- gsub("\\s+", " ", msg, perl = TRUE)
-        .nemeton_env$.last_monitoring_db_error <- substr(flat, 1L, 240L)
+        .set_monitoring_db_error(substr(flat, 1L, 240L))
         NULL
       }
     )
@@ -125,9 +125,9 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
       }, error = function(e) {
         msg <- conditionMessage(e)
         cli::cli_warn("Monitoring schema migration failed (RO path): {msg}")
-        .nemeton_env$.last_monitoring_db_error <-
+        .set_monitoring_db_error(
           paste0("Migration failed: ",
-                 substr(gsub("\\s+", " ", msg), 1L, 220L))
+                 substr(gsub("\\s+", " ", msg), 1L, 220L)))
         FALSE
       })
       if (!isTRUE(schema_ok)) {
@@ -149,7 +149,7 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
       # nemeton's CRLF-padded multiline cli output to a single line
       # so it fits the status card.
       flat <- gsub("\\s+", " ", msg, perl = TRUE)
-      .nemeton_env$.last_monitoring_db_error <- substr(flat, 1L, 240L)
+      .set_monitoring_db_error(substr(flat, 1L, 240L))
       NULL
     }
   )
@@ -164,8 +164,8 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
   }, error = function(e) {
     msg <- conditionMessage(e)
     cli::cli_warn("Monitoring schema migration failed: {msg}")
-    .nemeton_env$.last_monitoring_db_error <-
-      paste0("Migration failed: ", substr(gsub("\\s+", " ", msg), 1L, 220L))
+    .set_monitoring_db_error(
+      paste0("Migration failed: ", substr(gsub("\\s+", " ", msg), 1L, 220L)))
     FALSE
   })
   if (!isTRUE(schema_ok)) {
@@ -215,12 +215,35 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 #' @return A DBIConnection (or whatever `db_connect()` returns).
 #' @noRd
 .nemeton_db_connect <- function(url, read_only = FALSE, connect_timeout = 2L) {
+  # TLS impose vers un PostgreSQL distant, comme la base principale
+  # (`.resolve_db_config()` : `require` hors localhost). Le coeur ne lit pas
+  # `sslmode` dans l'URL ; libpq lit `PGSSLMODE`. Une valeur deja posee par
+  # l'exploitant est respectee.
+  mode <- .monitoring_sslmode(url)
+  if (!is.null(mode) && !nzchar(Sys.getenv("PGSSLMODE", ""))) {
+    Sys.setenv(PGSSLMODE = mode)
+    on.exit(Sys.unsetenv("PGSSLMODE"), add = TRUE)
+  }
   fn <- get("db_connect", envir = asNamespace("nemeton"))
   args <- list(url, read_only = read_only)
   if ("connect_timeout" %in% names(formals(fn))) {
     args$connect_timeout <- as.integer(connect_timeout)
   }
   do.call(fn, args)
+}
+
+
+#' sslmode to impose on a monitoring PostgreSQL URL
+#'
+#' @param url Connection URL.
+#' @return `"require"` for a remote PostgreSQL host, `"prefer"` for localhost,
+#'   `NULL` for a non-PostgreSQL URL (SQLite).
+#' @noRd
+.monitoring_sslmode <- function(url) {
+  m <- regmatches(url, regexec("^postgres(?:ql)?://(?:[^@]*@)?([^:/?]+)", url,
+                               perl = TRUE))[[1]]
+  if (length(m) < 2L) return(NULL)
+  if (tolower(m[2]) %in% c("localhost", "127.0.0.1", "::1")) "prefer" else "require"
 }
 
 
@@ -233,7 +256,44 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 #'
 #' @noRd
 last_monitoring_db_error <- function() {
+  sess <- shiny::getDefaultReactiveDomain()
+  if (!is.null(sess) && !is.null(sess$userData)) {
+    return(sess$userData$.last_monitoring_db_error)
+  }
   .nemeton_env$.last_monitoring_db_error
+}
+
+#' Record the last monitoring DB error, masked and per session
+#'
+#' The message is shown in the status banner. It used to live in a package
+#' global (shared by every session of the process) and verbatim, so a core
+#' message carrying the connection URL could display a password to another
+#' user. Credentials are masked and, inside a Shiny session, the message is
+#' kept in `session$userData`.
+#'
+#' @param msg Character or `NULL` (reset).
+#' @return Invisible masked message.
+#' @noRd
+.set_monitoring_db_error <- function(msg) {
+  if (!is.null(msg)) msg <- .mask_db_credentials(msg)
+  sess <- shiny::getDefaultReactiveDomain()
+  if (!is.null(sess) && !is.null(sess$userData)) {
+    sess$userData$.last_monitoring_db_error <- msg
+  } else {
+    .nemeton_env$.last_monitoring_db_error <- msg
+  }
+  invisible(msg)
+}
+
+#' Mask credentials in a database message
+#'
+#' `scheme://user:password@host` -> `scheme://user:***@host`, and
+#' `password=...` / `pwd=...` key-value pairs.
+#' @noRd
+.mask_db_credentials <- function(msg) {
+  msg <- gsub("(://[^:/@\\s]+):[^@\\s]+@", "\\1:***@", msg, perl = TRUE)
+  gsub("((?:password|pwd)\\s*=\\s*)('[^']*'|\\S+)", "\\1***", msg,
+       perl = TRUE, ignore.case = TRUE)
 }
 
 
@@ -479,10 +539,20 @@ close_monitoring_db_connection <- function(con) {
 }
 
 
-list_monitoring_zones <- function(con) {
+list_monitoring_zones <- function(con, project_uuid = NULL) {
   empty <- data.frame(id = integer(0), name = character(0),
                       stringsAsFactors = FALSE)
   if (is.null(con)) return(empty)
+  # Avec un projet : ses seules zones. Sans filtre, un editeur du projet A
+  # pouvait lancer la validation sanitaire sur une zone du projet B.
+  if (!is.null(project_uuid) && nzchar(project_uuid)) {
+    return(tryCatch(
+      nemeton::find_zones_by_project(con, project_uuid),
+      error = function(e) {
+        cli::cli_warn("Failed to list monitoring zones: {conditionMessage(e)}")
+        empty
+      }))
+  }
   tryCatch(
     DBI::dbGetQuery(con,
       "SELECT id, name FROM monitoring_zone ORDER BY name"),
