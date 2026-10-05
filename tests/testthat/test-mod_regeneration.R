@@ -661,7 +661,7 @@ test_that("vue bivariée : les 4 graphes sont peuplés, distribution tx ET rr", 
       var <- match.arg(var); paste0("/fake/", var, ".nc")
     },
     # Rasters de pente tx & rr présents en cache -> distribution des DEUX.
-    regeneration_context_cached = function(project_path, view = "tx")
+    regeneration_context_cached = function(project_path, view = "tx", buffer_m = 25000)
       list(raster = slope_rast, meta = list(status = "ok")),
     .package = "nemetonshiny")
 

@@ -835,6 +835,7 @@ mod_regeneration_server <- function(id, app_state) {
       context_raster = NULL, context_meta = NULL,
       context_running = FALSE, context_start = NULL,
       context_loaded_view = NULL,   # vue actuellement chargee : tx / rr / bivariate
+      context_loaded_buffer = NULL, # rayon (m) du raster charge
       # Restauration differee a l'entree dans l'onglet reGeneration (et non a
       # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
       # l'observer de restauration ne le consomme (toast + relecture cache) que
@@ -1593,12 +1594,15 @@ mod_regeneration_server <- function(id, app_state) {
     # son propre raster + cache. Cache-first, sinon worker async. Bandeau
     # need_tx / need_rr si une serie requise manque.
     shiny::observeEvent(
-      list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view), {
+      list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view,
+           input$buffer_km), {
       if (!identical(app_state$active_main_tab, "regeneration")) return()
       if (isTRUE(rv$context_running)) return()
       view <- input$context_view %||% "tx"
-      # Deja charge pour CETTE vue -> ne rien refaire.
+      buffer_m <- (input$buffer_km %||% 25) * 1000
+      # Deja charge pour CETTE vue ET ce rayon -> ne rien refaire.
       if (identical(rv$context_loaded_view, view) &&
+          identical(rv$context_loaded_buffer, buffer_m) &&
           (!is.null(rv$context_raster) ||
            (!is.null(rv$context_meta) && !identical(rv$context_meta$status, "ok")))) return()
       units <- units_sf(); if (is.null(units)) return()
@@ -1608,20 +1612,22 @@ mod_regeneration_server <- function(id, app_state) {
       av <- regen_context_availability(project_path)
       set_state <- function(rast, meta) {
         rv$context_raster <- rast; rv$context_meta <- meta; rv$context_loaded_view <- view
+        rv$context_loaded_buffer <- buffer_m
       }
       if (view %in% c("tx", "bivariate") && !isTRUE(av$tx)) return(set_state(NULL, list(status = "need_tx")))
       if (view %in% c("rr", "bivariate") && !isTRUE(av$rr)) return(set_state(NULL, list(status = "need_rr")))
 
-      cached <- regeneration_context_cached(project_path, view)
+      cached <- regeneration_context_cached(project_path, view, buffer_m)
       if (!is.null(cached)) return(set_state(cached$raster, cached$meta))
 
       rv$context_raster <- NULL; rv$context_loaded_view <- view
+      rv$context_loaded_buffer <- buffer_m
       rv$context_running <- TRUE; rv$context_start <- Sys.time()
       shiny::showNotification(
         .running_notif_content(i18n$t("regen_context_computing"), rv$context_start),
         id = session$ns("context_notif"), type = "message", duration = NULL)
       rv$context_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
-      context_task$invoke(units, project_path, view, (input$buffer_km %||% 25) * 1000,
+      context_task$invoke(units, project_path, view, buffer_m,
                           .dev_pkg_path, get_app_options())
     }, ignoreNULL = FALSE)
 
@@ -1638,10 +1644,10 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      for (v in c("tx", "rr", "bivariate")) {
-        p <- .regen_context_raster_paths(project_path, v)
-        unlink(c(p$tif, p$meta))
-      }
+      # Tous les rayons : un fichier par (vue, rayon) depuis l'audit 1.0.
+      d <- dirname(.regen_context_raster_paths(project_path, "tx")$tif)
+      unlink(list.files(d, "^context_(tx|rr|bivariate)(_[0-9.]+km)?\\.(tif|meta\\.json)$",
+                        full.names = TRUE))
       rv$context_raster <- NULL; rv$context_meta <- NULL; rv$context_loaded_view <- NULL
       rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-declenche l'observer lazy
       shiny::showNotification(i18n$t("regen_context_recomputing"), type = "message", duration = 4)
@@ -2667,7 +2673,8 @@ mod_regeneration_server <- function(id, app_state) {
     # (`context_<var>.tif`) + extrait la pente au point clique. Renvoie NULL si le
     # raster de pente n'a pas (encore) ete calcule pour cette variable.
     .ctx_distrib_entry <- function(var, ev, project_path) {
-      cached <- regeneration_context_cached(project_path, var)
+      cached <- regeneration_context_cached(project_path, var,
+                                            (input$buffer_km %||% 25) * 1000)
       rast <- cached$raster
       if (!inherits(rast, "SpatRaster")) return(NULL)
       vals <- tryCatch(as.numeric(terra::values(rast)), error = function(e) NULL)

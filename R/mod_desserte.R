@@ -482,9 +482,19 @@ mod_desserte_server <- function(id, app_state) {
 
     # Parcelles a desservir = AOI projet (EPSG:2154), repli indicators_sf ->
     # UGF -> parcelles (helper partage avec l'accessibilite).
-    units_sf <- shiny::reactive({
-      .resolve_project_aoi_2154(app_state$current_project)
-    })
+    # AOI qui ne change qu'avec les parcelles : la carte n'est plus reconstruite
+    # (surcouches perdues) a chaque reassignation du projet.
+    units_sf <- .projet_aoi_stable(app_state)
+
+    # Parametres qui decident si un reseau en cache repond encore : calibrages
+    # du projet + tampon + empreinte des parcelles (cf. run_desserte()).
+    .dess_params_cache <- function() {
+      p <- .desserte_params_projet(dess_params_r())
+      p$buffer_m <- suppressWarnings(as.numeric(dess_params_r()$buffer_km)) * 1000
+      emp <- .desserte_empreinte(units_sf())
+      if (!is.na(emp)) p$aoi_empreinte <- emp
+      p
+    }
 
     # Estimation de l'empreinte memoire pour l'emprise courante (parcelles +
     # tampon), recalculee a chaque changement du tampon. Sert d'avertissement
@@ -713,7 +723,8 @@ mod_desserte_server <- function(id, app_state) {
       # Recharger depuis le cache disque (chemins + sidecar de scalaires).
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
-      rv$result <- .load_cached_desserte(project_path, .desserte_params_projet(dess_params_r())) %||% res
+      rv$result <- .load_cached_desserte(project_path, .dess_params_cache(),
+                                         engine = res$engine) %||% res
       # Zero route creee est un SUCCES, pas un resultat vide : a `skidding_m`
       # realiste, une foret bien desservie n'a rien a construire (mesure sur
       # Dabo : 39 routes a 100 m, aucune a 300 m). Sans message dedie,
@@ -751,7 +762,7 @@ mod_desserte_server <- function(id, app_state) {
         }
         dess_loaded_for(key)
         cached <- tryCatch(
-          .load_cached_desserte(project_path, .desserte_params_projet(dess_params_r())),
+          .load_cached_desserte(project_path, .dess_params_cache()),
           error = function(e) NULL)
         rv$result <- cached
         if (!is.null(cached)) {
@@ -839,7 +850,8 @@ mod_desserte_server <- function(id, app_state) {
       }
       # Fond relief CVAT (overlay semi-transparent) quand un CVAT existe deja pour
       # le projet - meme helper que la carte Accessibilite.
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      project_path <- tryCatch(shiny::isolate(app_state$current_project$path),
+                               error = function(e) NULL)
       cvat_bg <- .acc_cvat_overlay_raster(project_path)
       # " Lignes creees " est declare AVEC les autres, systematiquement : un
       # groupe peint mais non declare n'a pas de case pour l'eteindre (cf. le

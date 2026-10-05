@@ -206,13 +206,18 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   # systematique) : s'il est sur disque, on le restaure pour que la couche
   # " Classes de debardage/ACCESSFOR (IGN) " reaffiche le volet sans requete WFS.
   af <- file.path(cache_dir, "accessfor_skidder.tif")
+  meta <- tryCatch(readRDS(file.path(cache_dir, "accessibilite_meta.rds")),
+                   error = function(e) list())
   list(
     status = "success",
     engines = engines,
     recaps = list(),
     raster_paths = raster_paths,
     gpkg_path = if (file.exists(gpkg)) gpkg else NULL,
-    n_desserte = NA_integer_,
+    n_desserte = meta$n_desserte %||% NA_integer_,
+    dfci_source = meta$dfci_source %||% NULL,
+    desserte_source = meta$desserte_source %||% NA_character_,
+    n_departs = meta$n_departs %||% NA_integer_,
     accessfor_raster_path = if (file.exists(af)) af else NULL,
     from_cache = TRUE)
 }
@@ -850,6 +855,15 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
       accessfor <- NULL
     }
   }
+
+  # Scalaires du badge (source de la desserte, departs DFCI) persistes : sans
+  # eux, le rechargement du cache perdait le badge, jamais reaffiche.
+  meta_badge <- list(
+    n_desserte = nrow(desserte), dfci_source = dfci_source,
+    desserte_source = desserte_source,
+    n_departs = if (inherits(departs, "sf")) nrow(departs) else NA_integer_)
+  tryCatch(saveRDS(meta_badge, file.path(dirname(gpkg_path), "accessibilite_meta.rds")),
+           error = function(e) NULL)
 
   list(
     status = "success",

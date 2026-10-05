@@ -491,9 +491,12 @@ marculus_sync_json <- function(contexts) {
   cache <- file.path(path, "cache", "desserte")
   if (!dir.exists(cache)) return(list())
 
+  # Reseau du DERNIER moteur lance (un GeoPackage par moteur depuis l'audit
+  # 1.0 ; l'ancien fichier partage reste lu en repli).
+  reseau <- basename(.desserte_gpkg_courant(cache))
   sources <- list(
-    list(gpkg = "desserte.gpkg",           layer = "desserte_existante", type = "existante"),
-    list(gpkg = "desserte.gpkg",           layer = "reseau_cree",        type = "piste_creee"),
+    list(gpkg = reseau,                    layer = "desserte_existante", type = "existante"),
+    list(gpkg = reseau,                    layer = "reseau_cree",        type = "piste_creee"),
     list(gpkg = "desserte_osm.gpkg",       layer = "osm_track",          type = "osm"),
     list(gpkg = "desserte_detectee.gpkg",  layer = "desserte_detectee",  type = "detectee")
   )

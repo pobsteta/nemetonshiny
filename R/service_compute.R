@@ -2571,10 +2571,17 @@ download_raster_source <- function(source_name,
     unlink(cache_file)
   }
 
-  # Return cached if exists
-  if (file.exists(cache_file)) {
+  # Le LiDAR HD gere lui-meme son cache (tuiles + mosaique, controle
+  # d'emprise) : rien a faire ici.
+  lidar <- identical(source_config$source, "ign_lidar_hd")
+
+  # Cache reutilise SEULEMENT s'il couvre l'emprise demandee : apres un ajout
+  # de parcelles hors de l'ancienne emprise, l'ancien fichier rendait des
+  # indicateurs NA ou faux (audit 1.0).
+  if (!lidar && .layer_cache_reusable(cache_file, bbox, "raster")) {
     return(suppressWarnings(terra::rast(cache_file)))
   }
+  ancien <- if (!lidar) .layer_cache_set_aside(cache_file) else NULL
 
   # Download based on source type
   raster_data <- switch(
@@ -2594,6 +2601,10 @@ download_raster_source <- function(source_name,
     }
   )
 
+  if (!lidar) {
+    raster_data <- .layer_cache_settle(cache_file, ancien, bbox, raster_data,
+                                       read = function(f) suppressWarnings(terra::rast(f)))
+  }
   raster_data
 }
 
@@ -2632,13 +2643,17 @@ download_vector_source <- function(source_name,
 
   cache_file <- file.path(cache_dir, paste0(source_name, ".gpkg"))
 
-  # Return cached if exists
-  if (file.exists(cache_file)) {
-    cached <- sf::st_read(cache_file, quiet = TRUE)
+  lire <- function(f) {
+    cached <- sf::st_read(f, quiet = TRUE)
     # Drop Z/M coordinates (BD TOPO 3D data causes s2 warnings)
-    cached <- sf::st_zm(cached, drop = TRUE, what = "ZM")
-    return(cached)
+    sf::st_zm(cached, drop = TRUE, what = "ZM")
   }
+
+  # Cache reutilise seulement s'il couvre l'emprise demandee (cf. raster).
+  if (.layer_cache_reusable(cache_file, bbox, "vector")) {
+    return(lire(cache_file))
+  }
+  ancien <- .layer_cache_set_aside(cache_file)
 
   # Download based on source type
   vector_data <- switch(
@@ -2653,7 +2668,115 @@ download_vector_source <- function(source_name,
     }
   )
 
-  vector_data
+  .layer_cache_settle(cache_file, ancien, bbox, vector_data, read = lire)
+}
+
+
+#' Layer cache keyed on the requested extent
+#'
+#' Each downloaded layer gets a sidecar `<file>.bbox.json` with the WGS84
+#' extent it was requested for. A cached layer is reused only when that
+#' extent covers the current one. Legacy caches (no sidecar): a raster is
+#' checked against its real extent (and adopted with a sidecar when it
+#' covers), a vector cannot be checked and is downloaded again.
+#'
+#' @param cache_file Layer file.
+#' @param bbox Numeric WGS84 extent `c(xmin, ymin, xmax, ymax)`.
+#' @param kind `"raster"` or `"vector"`.
+#' @return Logical scalar.
+#' @noRd
+.layer_cache_reusable <- function(cache_file, bbox, kind = c("raster", "vector")) {
+  kind <- match.arg(kind)
+  if (!file.exists(cache_file)) return(FALSE)
+  bbox <- as.numeric(bbox)
+  side <- paste0(cache_file, ".bbox.json")
+  if (file.exists(side)) {
+    prev <- tryCatch(as.numeric(unlist(jsonlite::read_json(side)$bbox)),
+                     error = function(e) NULL)
+    if (length(prev) == 4L && all(is.finite(prev))) {
+      return(.bbox_covers(prev, bbox))
+    }
+  }
+  if (identical(kind, "raster") && .raster_covers_bbox(cache_file, bbox)) {
+    .layer_cache_write_bbox(cache_file, bbox)
+    return(TRUE)
+  }
+  FALSE
+}
+
+#' Does extent `a` cover extent `b` (WGS84, tolerance 1e-6 degree)?
+#' @noRd
+.bbox_covers <- function(a, b, tol = 1e-6) {
+  a[1] <= b[1] + tol && a[2] <= b[2] + tol &&
+    a[3] >= b[3] - tol && a[4] >= b[4] - tol
+}
+
+#' Does a raster's extent cover a WGS84 bbox (one-cell tolerance)?
+#' @noRd
+.raster_covers_bbox <- function(path, bbox) {
+  isTRUE(tryCatch({
+    r <- terra::rast(path)
+    req <- sf::st_as_sfc(sf::st_bbox(
+      c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
+      crs = sf::st_crs(4326)))
+    r_crs <- terra::crs(r)
+    if (!is.na(r_crs) && nzchar(r_crs)) req <- sf::st_transform(req, sf::st_crs(r_crs))
+    q <- sf::st_bbox(req)
+    tol <- max(terra::res(r))
+    terra::xmin(r) <= q[["xmin"]] + tol && terra::xmax(r) >= q[["xmax"]] - tol &&
+      terra::ymin(r) <= q[["ymin"]] + tol && terra::ymax(r) >= q[["ymax"]] - tol
+  }, error = function(e) FALSE))
+}
+
+#' @noRd
+.layer_cache_write_bbox <- function(cache_file, bbox) {
+  tryCatch(.write_json_atomic(list(bbox = as.numeric(bbox), crs = 4326L),
+                              paste0(cache_file, ".bbox.json"), auto_unbox = TRUE,
+                              digits = NA),
+           error = function(e) NULL)
+  invisible(cache_file)
+}
+
+#' Move a non-reusable cached layer aside before downloading again
+#'
+#' The downloaders skip work when their target file exists: the stale file is
+#' renamed so they really fetch, and kept so it can be restored if the
+#' download fails.
+#' @return The set-aside path, or `NULL`.
+#' @noRd
+.layer_cache_set_aside <- function(cache_file) {
+  if (!file.exists(cache_file)) return(NULL)
+  dest <- paste0(cache_file, ".perime")
+  unlink(dest)
+  if (isTRUE(file.rename(cache_file, dest))) {
+    cli::cli_alert_info(
+      "Couche {.file {basename(cache_file)}} : l'emprise a chang\u00e9, nouveau t\u00e9l\u00e9chargement.")
+    unlink(paste0(cache_file, ".bbox.json"))
+    return(dest)
+  }
+  NULL
+}
+
+#' Settle a layer after a download attempt
+#'
+#' Success: record the extent and drop the set-aside copy. Failure with a
+#' set-aside copy: restore it (stale extent, warned) rather than lose the
+#' layer.
+#' @noRd
+.layer_cache_settle <- function(cache_file, ancien, bbox, data, read) {
+  if (!is.null(data)) {
+    if (file.exists(cache_file)) .layer_cache_write_bbox(cache_file, bbox)
+    if (!is.null(ancien)) unlink(ancien)
+    return(data)
+  }
+  if (!is.null(ancien) && file.exists(ancien) && !file.exists(cache_file)) {
+    file.rename(ancien, cache_file)
+    cli::cli_warn(c(
+      "Couche {.file {basename(cache_file)}} : nouveau t\u00e9l\u00e9chargement en \u00e9chec.",
+      i = "L'ancienne couche est conserv\u00e9e, mais ne couvre peut-\u00eatre pas toute l'emprise."))
+    return(tryCatch(read(cache_file), error = function(e) NULL))
+  }
+  data
 }
 
 

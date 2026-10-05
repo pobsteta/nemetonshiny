@@ -506,3 +506,28 @@ test_that("panneau du massif : prevision nommee, hors calibrage, sans placette",
   expect_no_match(html, esc("prod_massif_hors_calibrage"), fixed = TRUE)
   expect_match(html, esc("prod_massif_sans_placette"), fixed = TRUE)
 })
+
+test_that("a partly failed SER lookup is not cached (audit 1.0)", {
+  pp <- withr::local_tempdir()
+  sq <- function(x) sf::st_polygon(list(rbind(c(x, 0), c(x + 100, 0), c(x + 100, 100), c(x, 100), c(x, 0))))
+  u <- sf::st_sf(ug_id = c("a", "b"),
+                 geometry = sf::st_sfc(sq(800000), sq(800200), crs = 2154))
+  n <- 0L
+  local_mocked_bindings(localiser_ser = function(units, ...) {
+    n <<- n + 1L
+    data.frame(ser = c("C51", NA))
+  }, .package = "nemeton")
+  nemetonshiny:::ensure_ugf_ser(u, pp)
+  expect_false(file.exists(file.path(pp, "data", "ugf_ser.rds")))
+  nemetonshiny:::ensure_ugf_ser(u, pp)
+  expect_identical(n, 2L)   # retente au lieu de servir le NA
+})
+
+test_that("the profile colours vegetation by height above ground", {
+  pts <- data.frame(x_travers = 1:3, z = c(300, 301, 302),
+                    hauteur_sol = c(5, 12, 20), sol = FALSE)
+  p <- nemetonshiny:::plot_desserte_profil(list(points = pts, sol = NULL, bords = NULL),
+                                           get_i18n("fr"))
+  b <- plotly::plotly_build(p)
+  expect_equal(as.numeric(b$x$data[[1]]$marker$color), c(5, 12, 20))
+})
