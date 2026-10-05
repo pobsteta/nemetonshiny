@@ -1,4 +1,4 @@
-# nemetonshiny 0.156.1.9001 (cycle de développement)
+# nemetonshiny 0.157.0 (2026-10-05)
 
 Briefs du cœur `nemeton` 0.213.0 à 0.216.0. Plancher `Imports: nemeton (>= 0.216.0)`.
 
