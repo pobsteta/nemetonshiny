@@ -1,3 +1,30 @@
+# nemetonshiny 0.156.0.9001 (cycle de développement)
+
+### Added
+
+- **Signal « page prête » pour VICTOR** (brief
+  `vers-nemetonshiny/2026-10-05-signal-pret-pour-victor.md`). Ouverte par une
+  autre page, l'application envoie une fois `postMessage({source:
+  "nemetonshiny", type: "ready" | "invalid", project, tab})` à cette page. Le
+  signal part quand le lien profond est appliqué et que Shiny est au repos
+  depuis 1 s sans sortie recalculée, ou aussitôt pour un lien refusé. Origine
+  `NEMETON_VICTOR_ORIGIN` (défaut `http://127.0.0.1:8788`, jamais `"*"`) ; rien
+  n'est envoyé sans opener.
+
+### Fixed
+
+- **Le serveur entier s'arrêtait** quand un onglet était fermé pendant la
+  restauration d'un projet. Depuis shiny 1.14, lire un réactif d'une session
+  fermée lève une erreur, et dans un rappel `later` elle remontait jusqu'à
+  `runApp()`. Les 31 rappels passent par `.later_sur()`, qui ignore cette erreur
+  et laisse remonter les autres.
+- **Mode dev (`load_all(); run_app()`) cassé** : `pkgload::load_all()` source
+  `tests/testthat/helper-*.R`, et un patch de test remplaçait
+  `promises::future_promise` par une fonction rendant `NULL`. Toute tâche
+  asynchrone rendait donc `NULL` ; la restauration de projet se relançait en
+  boucle (des milliers de fois par minute). Les patches ne s'appliquent plus
+  que sous testthat (`TESTTHAT=true`).
+
 # nemetonshiny 0.156.0 (2026-10-05)
 
 Mise en œuvre des constats ouverts de l'audit 1.0, en huit lots.

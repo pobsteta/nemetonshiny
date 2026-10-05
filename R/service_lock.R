@@ -168,7 +168,7 @@ lock_acquire_or_null <- function(pid, hid, label = NULL) {
   if (isTRUE(getOption("nemetonshiny.lock_inline")) ||
       !requireNamespace("future", quietly = TRUE)) {
     return(promises::promise(function(resolve, reject) {
-      later::later(function() resolve(.lock_heartbeat_run(pid, hid, label)))
+      .later_sur(function() resolve(.lock_heartbeat_run(pid, hid, label)))
     }))
   }
   plan_classes <- class(future::plan())

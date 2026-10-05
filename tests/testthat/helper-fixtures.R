@@ -17,7 +17,16 @@
 #
 # Override `promises::future_promise` with a synchronous resolver so
 # no background workers are ever started during tests.
-suppressWarnings({
+#
+# ONLY under testthat (TESTTHAT=true). `pkgload::load_all()` sources the
+# helper-*.R files too: unguarded, these patches leaked into every dev
+# session launched with `load_all(); run_app()`, where every future_promise
+# then resolved to NULL - the project restore task re-invoked itself in a
+# loop and the server finally died when a session closed (2026-10-05).
+# testthat re-sources the helpers once TESTTHAT is set, so the tests still
+# get the patches.
+.en_test <- identical(Sys.getenv("TESTTHAT"), "true")
+if (.en_test) suppressWarnings({
   unlockBinding("future_promise", asNamespace("promises"))
   assign("future_promise",
          function(expr, ...) promises::promise_resolve(NULL),
@@ -42,7 +51,7 @@ suppressWarnings({
     eval(mc, envir = caller)
   })
 }
-suppressWarnings({
+if (.en_test) suppressWarnings({
   unlockBinding("testServer", asNamespace("shiny"))
   assign("testServer", .patched_testServer, envir = asNamespace("shiny"))
 })

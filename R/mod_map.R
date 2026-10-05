@@ -240,7 +240,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels,
           tryCatch(parcels(), error = function(e) NULL),
           tryCatch(commune_geometry(), error = function(e) NULL))
 
-        later::later(function() {
+        .later_sur(function() {
           session$sendCustomMessage("leafletInvalidateSize",
                                     list(id = session$ns("map")))
           if (!is.null(bbox)) {

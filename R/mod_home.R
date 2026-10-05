@@ -453,7 +453,7 @@ mod_home_server <- function(id, app_state) {
           session = session
         )
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(
+          .later_sur(
             function() shiny::removeNotification("db_sync_notif", session = session),
             delay = 12
           )
@@ -479,7 +479,7 @@ mod_home_server <- function(id, app_state) {
       # (inactive, suspended) reactives pick it up when their tab opens.
       if (requireNamespace("later", quietly = TRUE)) {
         .deferred_ind_id <- project$id
-        later::later(function() {
+        .later_sur(function() {
           # The session may have been destroyed before this deferred
           # callback fires - typically a project load that triggers a
           # restore via `session$reload()`. Reading/writing `app_state`
@@ -1362,7 +1362,7 @@ mod_home_server <- function(id, app_state) {
 
         if (is.null(progress_state)) {
           # No progress file yet - schedule next poll
-          later::later(poll_fn, delay = 2)
+          .later_sur(poll_fn, delay = 2)
           return()
         }
 
@@ -1391,7 +1391,7 @@ mod_home_server <- function(id, app_state) {
           }
 
           # Schedule next poll
-          later::later(poll_fn, delay = 2)
+          .later_sur(poll_fn, delay = 2)
 
         } else if (progress_state$status == "completed") {
           # Terminal: update compute_state for mod_progress completion handler
@@ -1517,7 +1517,7 @@ mod_home_server <- function(id, app_state) {
       }
 
       # Start polling after a short delay
-      later::later(poll_fn, delay = 0.5)
+      .later_sur(poll_fn, delay = 0.5)
     }
 
     # Note: ExtendedTask completion is handled by the polling observer above
@@ -1572,7 +1572,7 @@ mod_home_server <- function(id, app_state) {
       }
 
       if (requireNamespace("later", quietly = TRUE)) {
-        later::later(function() {
+        .later_sur(function() {
           if (isTRUE(tryCatch(session$isClosed(), error = function(e) TRUE))) {
             return()
           }
@@ -1837,7 +1837,7 @@ mod_home_server <- function(id, app_state) {
         if (!isTRUE(input$tour_seen_browser) && !tour_shown_this_session()) {
           tour_shown_this_session(TRUE)
           # Delay to let UI fully render before starting tour
-          later::later(function() {
+          .later_sur(function() {
             start_tour()
           }, delay = 2)
         }

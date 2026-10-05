@@ -62,6 +62,15 @@ Garanties :
 - `?project=<id>&tab=<onglet>` ouvre l'application sur un projet et un onglet
   (`selection`, `synthesis`, `action_plan`, `terrain`, `monitoring`,
   `regeneration`, `famille_*`) ; une valeur inconnue est ignorée.
+- **Signal « page prête »** (depuis 0.156.1) : quand l'application a été ouverte
+  par une autre page (`window.open`, assistant VICTOR), elle lui envoie **une
+  fois** `window.opener.postMessage({source: "nemetonshiny", type, project,
+  tab}, <origine>)` : `type = "ready"` une fois le lien appliqué (projet chargé,
+  onglet sélectionné) et Shiny au repos depuis 1 s sans sortie recalculée
+  (plafond 2 min) ; `type = "invalid"` aussitôt si le lien est refusé. URL nue :
+  `ready` au premier repos. Aucun envoi sans `window.opener`. Origine cible :
+  `NEMETON_VICTOR_ORIGIN` (défaut `http://127.0.0.1:8788`, vide = aucun envoi,
+  jamais `"*"`).
 - `inst/mcp/server.R` expose l'API ci-dessus comme serveur MCP (stdio) ; ses
   outils et leurs réponses JSON sont décrits dans `inst/mcp/README.md`.
 
@@ -143,6 +152,7 @@ partage est prévu après la 1.0.
 | `NEMETON_TOPO_TARGET_RES` | résolution cible des dérivés topographiques |
 | `NEMETON_TOUR` | `0`/`false` : pas de visite guidée automatique |
 | `NEMETON_PROJECT_DIR` | dossier des projets par défaut (API hors interface ; `run_app(project_dir =)` l'emporte) |
+| `NEMETON_VICTOR_ORIGIN` | origine de la page autorisée à recevoir le signal « page prête » (défaut `http://127.0.0.1:8788` ; vide = aucun envoi) |
 | `NEMETON_APP_PORT` | port de l'application dans les liens construits par le serveur MCP (`inst/mcp/`, défaut 3838) |
 
 Les autres variables (`NEMETON_PERF_TRACE`, `NEMETON_PIXEL_MAP_DEBUG`,
