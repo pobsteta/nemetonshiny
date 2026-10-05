@@ -1173,6 +1173,30 @@ TRANSLATIONS <- list(
     fr = "Le plan d'actions n'a pas pu \u00eatre enregistr\u00e9 : la modification est annul\u00e9e.",
     en = "The action plan could not be saved: the change is cancelled."
   ),
+  zones_bloquees_calcul = list(
+    fr = "Un diagnostic sanitaire tourne : les zones ne peuvent pas \u00eatre recr\u00e9\u00e9es avant sa fin.",
+    en = "A health diagnosis is running: zones cannot be recreated until it ends."
+  ),
+  pipeline_skip_hors_domaine = list(
+    fr = "Zone hors du domaine de validit\u00e9 de FORDEAD (garde-fou G3) : lancer depuis l'onglet Suivi pour confirmer.",
+    en = "Zone outside FORDEAD's validity domain (safeguard G3): run it from the Monitoring tab to confirm."
+  ),
+  monitoring_run_precedent_actif = list(
+    fr = "Le run pr\u00e9c\u00e9dent n'est pas encore termin\u00e9 (il finit son \u00e9tape apr\u00e8s une annulation) : relancer une fois qu'il s'est arr\u00eat\u00e9.",
+    en = "The previous run has not finished yet (it completes its step after a cancellation): relaunch once it has stopped."
+  ),
+  monitoring_fast_annule = list(
+    fr = "Ingestion FAST annul\u00e9e : les sc\u00e8nes d\u00e9j\u00e0 ing\u00e9r\u00e9es sont conserv\u00e9es.",
+    en = "FAST ingestion cancelled: scenes already ingested are kept."
+  ),
+  monitoring_fordead_annule = list(
+    fr = "Diagnostic FORDEAD annul\u00e9 : aucun r\u00e9sultat nouveau.",
+    en = "FORDEAD diagnosis cancelled: no new result."
+  ),
+  validation_export_sans_plan = list(
+    fr = "G\u00e9n\u00e9rez d'abord un plan de validation.",
+    en = "Generate a validation plan first."
+  ),
   lien_profond_invalide = list(
     fr = "Lien : projet ou onglet inconnu, ignor\u00e9.",
     en = "Link: unknown project or tab, ignored."

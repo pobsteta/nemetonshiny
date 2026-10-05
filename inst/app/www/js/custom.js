@@ -606,6 +606,24 @@
   }
 
 
+  // Enable / disable an element from the server, for real. A downloadButton is
+  // an <a>: Shiny enables it as soon as its handler binds, so a plain
+  // `disabled` attribute set in the UI does not keep it unclickable. The
+  // server sends {id, disabled}; the class `disabled` (pointer-events: none in
+  // Bootstrap) and aria-disabled follow.
+  if (window.Shiny && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler('nemetonSetDisabled', function(data) {
+      var el = document.getElementById(data.id);
+      if (!el) return;
+      var off = !!data.disabled;
+      el.classList.toggle('disabled', off);
+      el.setAttribute('aria-disabled', off ? 'true' : 'false');
+      if (off) { el.setAttribute('disabled', 'disabled'); el.setAttribute('tabindex', '-1'); }
+      else { el.removeAttribute('disabled'); el.removeAttribute('tabindex'); }
+    });
+  }
+
+
   // ============================================================
   // Tour Persistence (localStorage)
   // ============================================================

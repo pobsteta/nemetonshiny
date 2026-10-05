@@ -1495,10 +1495,13 @@ test_that("input$run_reconfort invokes the task for a complete Sentinel-2 year",
   testthat::local_mocked_bindings(
     reconfort_year_bounds = function(v_model = "v3", ...)
       list(min = 2016L, max = 2025L, default = 2025L),
+    # Le run cible la zone `_tot` (parite FORDEAD, audit 1.0), pas la strate.
+    find_zones_by_project = function(con, project_uuid)
+      data.frame(id = c(1L, 5L), name = c("p_res", "p_tot")),
     .package = "nemeton"
   )
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function(...) NULL,
+    get_monitoring_db_connection   = function(...) "FAKE_CON",
     close_monitoring_db_connection = function(con) invisible(TRUE),
     list_monitoring_zones          = function(con) fake_zones_df(),
     run_ingestion_async            = function() make_fake_fast_task(),
@@ -1519,6 +1522,8 @@ test_that("input$run_reconfort invokes the task for a complete Sentinel-2 year",
           calls <- fake_reconfort$.calls()
           expect_length(calls, 1L)
           expect_equal(calls[[1]]$s2_year, 2025L)
+          # Strate « 1 » choisie au menu, run sur la zone `_tot` (5)
+          expect_equal(calls[[1]]$zone_id, 5L)
         }
       )
     }

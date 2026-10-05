@@ -275,8 +275,9 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!identical(current_source(), "FAST")) return(NULL)
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return(NULL)
-      zone_id <- suppressWarnings(as.integer(
-        proj$metadata$monitoring_zone_id))
+      # Zone CHOISIE dans le menu (`zone_id_r`), comme la generation : la
+      # zone memorisee en metadata donnait un apercu d'une autre zone.
+      zone_id <- suppressWarnings(as.integer(zone_id_r()))
       # v0.48.1 - guard longueur nulle : un projet sans zone
       # enregistree a `monitoring_zone_id == NULL`, donc
       # `as.integer(NULL)` retourne `integer(0)` et `is.na(integer(0))`
@@ -366,7 +367,9 @@ mod_validation_sampling_server <- function(id, app_state,
       shiny::req(identical(app_state$active_main_tab, "monitoring"))
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return(NULL)
-      zid <- suppressWarnings(as.integer(proj$metadata$monitoring_zone_id))
+      # Zone choisie (`zone_id_r`), comme la generation : l'histogramme et
+      # l'auto-relachement des temoins lisaient la zone de la metadata.
+      zid <- suppressWarnings(as.integer(zone_id_r()))
       if (length(zid) != 1L || is.na(zid)) return(NULL)
       src <- current_source()
       cd <- file.path(proj$path, "cache", "layers",
@@ -400,7 +403,10 @@ mod_validation_sampling_server <- function(id, app_state,
       dist <- class_distribution_r()
       if (is.null(dist)) return(NULL)
       body <- paste(sprintf("%s=%d", names(dist), dist), collapse = ", ")
-      note <- if (isTRUE((dist[["0"]] %||% 0L) == 0L)) {
+      # Classe " saine " propre au moteur : 0 pour FAST/FORDEAD, 1 pour
+      # RECONFORT (0 = pas de donnee) - le message s'affichait toujours.
+      saine <- .validation_classe_saine(current_source())
+      note <- if (isTRUE((dist[[saine]] %||% 0L) == 0L)) {
         htmltools::tags$div(
           class = "text-warning small mt-1",
           i18n$t("validation_no_healthy_pixel_hint"))
@@ -426,8 +432,9 @@ mod_validation_sampling_server <- function(id, app_state,
       if (is.null(dist)) return()
       present <- as.integer(names(dist))[dist > 0L]
       if (!length(present)) return()
-      cur <- input$control_classes %||% "0"
-      if (!(0L %in% present) && identical(sort(cur), "0")) {
+      saine <- .validation_classe_saine(current_source())
+      cur <- input$control_classes %||% saine
+      if (!(as.integer(saine) %in% present) && identical(sort(cur), saine)) {
         relaxed <- as.character(min(present))
         shiny::updateCheckboxGroupInput(session, "control_classes",
                                         selected = relaxed)
@@ -865,8 +872,10 @@ mod_validation_sampling_server <- function(id, app_state,
       enabled <- !is.null(plan_rv())
       shiny::updateActionButton(session, "persist",
                                 disabled = !enabled)
+      # Handler JS reel (custom.js) : le message `shiny:disabled` n'avait
+      # aucun ecouteur, et le bouton d'export restait cliquable sans plan.
       session$sendCustomMessage(
-        "shiny:disabled",
+        "nemetonSetDisabled",
         list(id = session$ns("export_qgis"), disabled = !enabled)
       )
     })
@@ -904,6 +913,8 @@ mod_validation_sampling_server <- function(id, app_state,
         plan <- plan_rv()
         proj <- app_state$current_project
         if (is.null(plan) || is.null(proj)) {
+          shiny::showNotification(i18n$t("validation_export_sans_plan"),
+                                  type = "warning", duration = 6)
           file.create(file)
           return(invisible())
         }
@@ -973,4 +984,17 @@ mod_validation_sampling_server <- function(id, app_state,
   if (!length(vals)) return(NULL)
   tab <- table(factor(as.integer(vals), levels = 0:4))
   stats::setNames(as.integer(tab), names(tab))
+}
+
+
+#' Healthy class code of an engine's categorical alert mask
+#'
+#' FAST and FORDEAD use 0 = healthy; RECONFORT uses 1 = healthy (0 / NA =
+#' no data, see `nemeton::read_reconfort_alert_mask()`).
+#'
+#' @param source `"FAST"`, `"FORDEAD"` or `"RECONFORT"`.
+#' @return `"0"` or `"1"`.
+#' @noRd
+.validation_classe_saine <- function(source) {
+  if (identical(source, "RECONFORT")) "1" else "0"
 }

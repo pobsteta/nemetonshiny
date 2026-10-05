@@ -1033,8 +1033,10 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         margin = list(t = 20, b = 40, l = 50, r = 10),
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),
+        # Axe ajuste aux donnees : les NBR post-incendie (< -0,2) sortaient du
+        # cadre fixe [-0,2 ; 1]. Ces bornes restent le plancher d'affichage.
         yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis"),
-                      range = c(-0.2, 1)),
+                      range = .pixel_yrange(sm[c("value", "smoothed")])),
         legend = list(orientation = "h", y = -0.25),
         shapes = if (length(shapes)) shapes else NULL,
         annotations = if (length(annotations)) annotations else NULL
@@ -1096,4 +1098,21 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       loading        = shiny::reactive(isTRUE(loading()))
     ))
   })
+}
+
+
+#' Y range of the pixel time-series plot
+#'
+#' At least `[-0.2, 1]` (the historical frame), widened to the data so values
+#' outside it (post-fire NBR, sensor noise) stay visible.
+#'
+#' @param df Data frame of the plotted series (numeric value columns).
+#' @return Numeric length-2 range.
+#' @noRd
+.pixel_yrange <- function(df) {
+  v <- if (is.data.frame(df)) unlist(df[vapply(df, is.numeric, logical(1))]) else numeric(0)
+  v <- v[is.finite(v) & abs(v) <= 2]   # indices normalises ; ignorer les codes aberrants
+  lo <- min(c(-0.2, v)); hi <- max(c(1, v))
+  pad <- 0.05 * (hi - lo)
+  c(lo - if (lo < -0.2) pad else 0, hi + if (hi > 1) pad else 0)
 }
