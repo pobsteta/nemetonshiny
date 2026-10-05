@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.154.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.155.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,7 +96,14 @@
 <ul><li>une fonction marquée « non » n’écrit <strong>rien</strong> dans le projet ; en particulier <code><a href="reference/projet_lire.html">projet_lire()</a></code> n’exécute aucune migration : si l’une serait nécessaire, elle échoue avec une erreur de classe <code>nemetonshiny_projet_perime</code> (champ <code>etat</code> = <code><a href="reference/projet_etat.html">projet_etat()</a></code>), et seule <code><a href="reference/projet_migrer.html">projet_migrer()</a></code> l’applique ;</li>
 <li>les erreurs sont classées et héritent toutes de <code>nemetonshiny_erreur</code> : <code>nemetonshiny_projet_introuvable</code>, <code>nemetonshiny_projet_perime</code>, <code>nemetonshiny_sans_indicateurs</code>, <code>nemetonshiny_calcul_echec</code>, <code>nemetonshiny_parcelles_introuvables</code> ;</li>
 <li>commentaires du rapport : <code>synthese</code> est une chaîne (Markdown, notes <code>[^n]</code> facultatives) ; <code>familles</code> une liste nommée par code de famille (<code>C</code>, <code>B</code>, <code>W</code>, <code>A</code>, <code>F</code>, <code>L</code>, <code>T</code>, <code>R</code>, <code>S</code>, <code>P</code>, <code>E</code>, <code>N</code>) ; <code>sources</code> la liste Markdown des définitions de notes (<code>[^1]: auteur, titre, p. N. &lt;url&gt;</code>). Sans <code>sources</code>, les appels de note restent littéraux.</li>
+</ul><div class="section level3">
+<h3 id="liens-profonds-et-serveur-mcp">Liens profonds et serveur MCP<a class="anchor" aria-label="anchor" href="#liens-profonds-et-serveur-mcp"></a></h3>
+<ul><li>
+<code>?project=&lt;id&gt;&amp;tab=&lt;onglet&gt;</code> ouvre l’application sur un projet et un onglet (<code>selection</code>, <code>synthesis</code>, <code>action_plan</code>, <code>terrain</code>, <code>monitoring</code>, <code>regeneration</code>, <code>famille_*</code>) ; une valeur inconnue est ignorée.</li>
+<li>
+<code>inst/mcp/server.R</code> expose l’API ci-dessus comme serveur MCP (stdio) ; ses outils et leurs réponses JSON sont décrits dans <code>inst/mcp/README.md</code>.</li>
 </ul></div>
+</div>
 <div class="section level2">
 <h2 id="id_2-variables-denvironnement">2. Variables d’environnement<a class="anchor" aria-label="anchor" href="#id_2-variables-denvironnement"></a></h2>
 <p>Lues au démarrage ou à l’usage. Les secrets ne sont <strong>jamais</strong> écrits dans le code ni dans les journaux.</p>
@@ -119,6 +126,8 @@
 <code>1</code> : ignorer la base distante (poste de développement)</td>
 </tr><tr><td><code>NEMETON_KNOWLEDGE_DB_URL</code></td>
 <td>base du corpus documentaire (RAG)</td>
+</tr><tr><td><code>NEMETON_CORPUS_ROOT</code></td>
+<td>racine des fichiers locaux du corpus RAG : un <code>local_path</code> hors de cette racine est refusé (cœur ≥ 0.210.0) ; l’option <code>nemeton.corpus_root</code> l’emporte</td>
 </tr></tbody></table><p>Sans base, l’application fonctionne sur disque seul : pas de verrou d’édition multi-utilisateurs, suivi sanitaire en SQLite local.</p>
 </div>
 <div class="section level3">
@@ -184,6 +193,8 @@
 <code>0</code>/<code>false</code> : pas de visite guidée automatique</td>
 </tr><tr><td><code>NEMETON_PROJECT_DIR</code></td>
 <td>dossier des projets par défaut (API hors interface ; <code>run_app(project_dir =)</code> l’emporte)</td>
+</tr><tr><td><code>NEMETON_APP_PORT</code></td>
+<td>port de l’application dans les liens construits par le serveur MCP (<code>inst/mcp/</code>, défaut 3838)</td>
 </tr></tbody></table><p>Les autres variables (<code>NEMETON_PERF_TRACE</code>, <code>NEMETON_PIXEL_MAP_DEBUG</code>, <code>NEMETON_S2_CACHE_DEBUG</code>, <code>NEMETON_*_SKIP_GUARD</code>, <code>NEMETONSHINY_DISABLE_*</code>, <code>NEMETON_SCRATCH_DIR</code>) servent au diagnostic et <strong>ne sont pas contractuelles</strong>.</p>
 </div>
 </div>

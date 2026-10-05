@@ -12,6 +12,29 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.155.0\] - 2026-10-05
+
+### Added
+
+- Serveur MCP (`inst/mcp/server.R`, `mcptools` en Suggests) :
+  `lister_projets`, `resume_projet`, `lancer_calcul`, `etat_calcul`,
+  `annuler_calcul`, `generer_rapport`, `exporter_gpkg`, `url_app`.
+- Calcul detache (`setsid`) suivi par `data/compute_job.json`.
+- Liens profonds `?project=<id>&tab=<onglet>` ; variable
+  `NEMETON_APP_PORT`.
+- Libelles FR/EN de `r1_status` et des motifs d’import des validations.
+
+### Fixed
+
+- T2 n’est plus NA : N2 calcule avant T2 et transmis, T1 en repli.
+- Bandeau d’indicateur : premier statut traduit retenu (repli R1
+  visible).
+- `prune_orphan_zone_caches(project_uuid =)` : pas de purge sur une
+  autre base.
+- Racine du corpus RAG transmise au worker d’import.
+- Sources documentaires et reponses IA rendues sans HTML brut
+  (`markdown_safe()`).
+
 ## \[0.154.0\] - 2026-10-04
 
 ### Added

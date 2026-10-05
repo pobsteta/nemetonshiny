@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.154.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.155.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,37 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.155.0" id="nemetonshiny-01550-2026-10-05">nemetonshiny 0.155.0 (2026-10-05)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01550-2026-10-05"></a></h2>
+<div class="section level4">
+<h4 id="fixed--briefs-coeur-a-audit-soldes-cote-app-0-155-0">Fixed — Briefs coeur 0.208 a 0.212 (audit 1.0) soldes cote app<a class="anchor" aria-label="anchor" href="#fixed--briefs-coeur-a-audit-soldes-cote-app-0-155-0"></a></h4>
+<ul><li>
+<strong>T2 n’est plus NA sur tous les projets</strong> (brief 0.212.0 §4). Depuis <code>nemeton 0.212.0</code>, T2 rend NA sans source ; l’app ne lui passait ni N2 ni T1. N2 est desormais calcule avant T2 et transmis comme source prioritaire, T1 en repli (une source toute NA n’est pas transmise). Un T2 deja enregistre tout NA est recalcule au prochain lancement.</li>
+<li>
+<strong>Methode de R1 expliquee</strong> : <code>r1_status</code> (repli sans fireexposuR, sans BD Foret, echec de fireexposuR ; R1 non calcule faute de MNT ou de composante) traduit FR/EN dans la fiche de l’indicateur. Le bandeau retient le premier statut traduit : un repli sur une seule unite n’est plus masque par la methode nominale des autres.</li>
+<li>
+<strong>Purge des caches de zones</strong> : <code>prune_orphan_zone_caches(project_uuid =)</code> (brief 0.209.0) - rien n’est purge si la base connectee ne connait aucune zone du projet (app pointee sur une autre base).</li>
+<li>
+<strong>Corpus RAG</strong> : la racine du corpus (<code>nemeton.corpus_root</code> / <code>NEMETON_CORPUS_ROOT</code>) est resolue dans la session et transmise au worker d’import, qui ne recevait pas l’option (brief 0.210.0).</li>
+<li>
+<strong>Sources documentaires et reponses IA rendues sans HTML brut</strong> (<code>markdown_safe()</code>) : <code><a href="https://rdrr.io/pkg/shiny/man/markdown.html" class="external-link">shiny::markdown()</a></code> laissait passer <code>&lt;img onerror=...&gt;</code> ; les citations Markdown du coeur ne sont pas echappees (brief 0.210.0). Les liens <code>&lt;https://...&gt;</code> des citations sont conserves.</li>
+<li>
+<strong>Motifs du rapport d’import des validations</strong> traduits (<code>unknown_stade</code>, <code>missing_stade</code>, <code>no_alert_within_snap</code>).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--pilotage-par-un-assistant-brief-specsbrief-pilotage-victor-aigoramd-lot-a-0-155-0">Added — Pilotage par un assistant (brief <code>specs/BRIEF-pilotage-victor-aigora.md</code>, lot A)<a class="anchor" aria-label="anchor" href="#added--pilotage-par-un-assistant-brief-specsbrief-pilotage-victor-aigoramd-lot-a-0-155-0"></a></h4>
+<ul><li>
+<strong>Serveur MCP</strong> (<code>inst/mcp/server.R</code>, <code>mcptools</code> en <code>Suggests</code>) : huit outils pour Claude Code / AIGORA / VICTOR - <code>lister_projets</code>, <code>resume_projet</code>, <code>lancer_calcul</code>, <code>etat_calcul</code>, <code>annuler_calcul</code>, <code>generer_rapport</code>, <code>exporter_gpkg</code>, <code>url_app</code>. Fines enveloppes de l’API hors interface ; un projet se designe par son id ou son nom (casse et accents ignores ; plusieurs candidats -&gt; liste, jamais de choix silencieux). Reponses JSON <code>{"ok": ...}</code>. <code>session_tools = FALSE</code> : sans lui, mcptools transferait les appels vers la session RStudio ouverte. Verifie en stdio de bout en bout.</li>
+<li>
+<strong>Calcul detache</strong> : <code>lancer_calcul</code> demarre un <code>Rscript</code> en session propre (<code>setsid</code>) qui survit a la tache de l’assistant, par le meme chemin que l’application (plafond memoire, journal). <code>data/compute_job.json</code> suit pid, statut et erreur ; un processus disparu sans finir est signale <code>echec</code> avec la fin du journal. Refus si un calcul tourne (assistant ou application), si le projet est verrouille en edition, ou si une migration est necessaire.</li>
+<li>
+<strong>Liens profonds</strong> <code>?project=&lt;id&gt;&amp;tab=&lt;onglet&gt;</code> : le projet s’ouvre par le meme chemin que les cartes ” projets recents “, l’onglet est selectionne une fois ce projet charge ; valeur inconnue ignoree avec un avertissement. <code>NEMETON_APP_PORT</code> fixe le port des liens construits par <code>url_app</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="a-savoir-0-155-0">A savoir<a class="anchor" aria-label="anchor" href="#a-savoir-0-155-0"></a></h4>
+<p>Les releases coeur 0.208 a 0.212 changent beaucoup de valeurs (volumes de desserte, indice de regeneration, R3, R4, B1, B3, L1, L2, A1, A2, W1, W2, R1, R5, R7, S1, S2, T1, T2, essences resineuses) : <strong>recalculer les projets</strong>. Calibrages coeur a valider : borne B1 = 4 statuts, cout B3, reference A2 = 100, contrastes OSO de L1, borne E1/E2 = 2,64.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.154.0" id="nemetonshiny-01540-2026-10-04">nemetonshiny 0.154.0 (2026-10-04)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01540-2026-10-04"></a></h2>
 <div class="section level4">
