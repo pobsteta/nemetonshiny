@@ -1,4 +1,4 @@
-# nemetonshiny 0.154.0.9001 (2026-10-04)
+# nemetonshiny 0.155.0 (2026-10-05)
 
 ### Fixed — Briefs coeur 0.208 a 0.212 (audit 1.0) soldes cote app
 
