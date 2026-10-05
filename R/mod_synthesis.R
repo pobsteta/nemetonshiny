@@ -226,6 +226,11 @@ mod_synthesis_server <- function(id, app_state) {
         project_ndp_level(app_state$current_project)
       )
       global <- ndp_result$score
+      # Score indisponible (toutes familles NA) : `if (global >= 60)` sur NA
+      # faisait planter le rendu de l'onglet.
+      if (is.null(global) || length(global) != 1L || !is.finite(global)) {
+        return(htmltools::div(class = "text-muted", i18n$t("no_data")))
+      }
 
       # Color based on score
       score_color <- if (global >= 60) "#228B22" else if (global >= 40) "#FF8C00" else "#DC143C"

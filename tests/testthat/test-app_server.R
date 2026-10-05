@@ -245,12 +245,11 @@ test_that("app_server handles language change", {
         # Language should be updated
         expect_equal(app_state$language, "en")
 
-        # Persisted in `nemeton.app_options` (the option `app_ui`
-        # reads on the next session start) so a page reload picks
-        # up the new language. Note: the observer also calls
-        # `session$reload()`; testServer's stub session no-ops on
-        # reload, which lets us assert the option side-effect here.
-        expect_equal(getOption("nemeton.app_options")$language, "en")
+        # Garde par SESSION (audit 1.0) : l'option du processus, partagee
+        # par toutes les sessions, ne bouge pas ; le rechargement porte
+        # `?lang=en` (message `nemetonSetLang`).
+        expect_equal(session$userData$langue, "en")
+        expect_false(identical(getOption("nemeton.app_options")$language, "en"))
       })
     }
   )

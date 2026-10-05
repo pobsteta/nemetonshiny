@@ -437,7 +437,17 @@ mod_ug_server <- function(id, app_state) {
     # d'afficher l'ancien decoupage et " Lancer les calculs " ne reapparaissait
     # pas.
     .sauver_ug <- function(projet) {
-      ok <- save_ug_data(projet$metadata$id, projet)
+      # Une erreur d'ecriture levait une exception dans l'observateur et
+      # deconnectait la session : on la rattrape, on previent, on rend FALSE
+      # pour que l'appelant n'affiche pas une modification non enregistree.
+      ok <- tryCatch(save_ug_data(projet$metadata$id, projet), error = function(e) {
+        shiny::showNotification(
+          sprintf(get_i18n(shiny::isolate(app_state$language) %||% "fr")$t("ug_sauvegarde_echec"),
+                  conditionMessage(e)),
+          type = "error", duration = 10)
+        FALSE
+      })
+      if (!isTRUE(ok)) return(FALSE)
       if (isTRUE(attr(ok, "indicateurs_invalides"))) {
         cur <- shiny::isolate(app_state$current_project)
         if (!is.null(cur)) {
@@ -1888,14 +1898,12 @@ mod_ug_server <- function(id, app_state) {
       projet <- rv$projet_ug
       projet$ugs$label[projet$ugs$ug_id == uid] <- new_label
 
-      if (!is.null(projet$metadata$id)) {
-        .sauver_ug(projet)
-      }
+      if (!is.null(projet$metadata$id) && !isTRUE(.sauver_ug(projet))) return()
       rv$projet_ug <- projet
       app_state$current_project$ugs <- projet$ugs
 
       shiny::showNotification(
-        sprintf("UG renomm\u00e9e : %s", new_label),
+        sprintf(i18n()$t("ug_renommee_fmt"), new_label),
         type = "message"
       )
     })
@@ -1921,14 +1929,12 @@ mod_ug_server <- function(id, app_state) {
         projet <- ug_set_groupe(projet, uid, groupe_val)
       }
 
-      if (!is.null(projet$metadata$id)) {
-        .sauver_ug(projet)
-      }
+      if (!is.null(projet$metadata$id) && !isTRUE(.sauver_ug(projet))) return()
       rv$projet_ug <- projet
       app_state$current_project$ugs <- projet$ugs
 
       shiny::showNotification(
-        sprintf("Groupe mis \u00e0 jour pour %d UG", length(sel)),
+        sprintf(i18n()$t("ug_groupe_maj_fmt"), length(sel)),
         type = "message"
       )
     })
@@ -2101,6 +2107,11 @@ mod_ug_server <- function(id, app_state) {
           #  - reshape / merge / delete in any GIS tool
           projet <- shiny::isolate(rv$projet_ug)
           projet <- tenement_import_replace(projet, sf_polygones)
+          n_rej <- attr(projet, "n_rejetes") %||% 0L
+          if (n_rej > 0L) {
+            shiny::showNotification(sprintf(i18n()$t("ug_import_rejetes_fmt"), n_rej),
+                                    type = "warning", duration = 10)
+          }
 
           if (!is.null(projet$metadata$id)) {
             .sauver_ug(projet)

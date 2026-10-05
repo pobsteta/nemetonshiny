@@ -190,12 +190,17 @@ ug_init_default <- function(projet) {
 
   # Build tenements sf with BOTH cadastral (contenance) and SIG (st_area)
   # surfaces so they can be compared in the UI.
-  cadastral_surface <- if ("contenance" %in% names(parcels)) {
-    as.numeric(parcels$contenance)
-  } else {
-    as.numeric(sf::st_area(parcels))
-  }
   sig_surface <- as.numeric(sf::st_area(parcels))
+  cadastral_surface <- if ("contenance" %in% names(parcels)) {
+    suppressWarnings(as.numeric(parcels$contenance))
+  } else {
+    sig_surface
+  }
+  # Contenance absente ou nulle (frequent sur le domaine public) : repli sur la
+  # surface geometrique. Sans cela, l'invariant 5 (surface > 0) faisait avorter
+  # la migration UGF du projet entier.
+  manque <- is.na(cadastral_surface) | cadastral_surface <= 0
+  cadastral_surface[manque] <- sig_surface[manque]
 
   tenements <- sf::st_sf(
     tenement_id = tenement_ids,

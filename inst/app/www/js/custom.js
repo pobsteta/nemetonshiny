@@ -624,6 +624,17 @@
   }
 
 
+  // Per-session language: reload the page with ?lang= (other parameters kept),
+  // instead of a process-wide option shared by every user.
+  if (window.Shiny && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler('nemetonSetLang', function(data) {
+      var url = new URL(window.location.href);
+      url.searchParams.set('lang', data.lang);
+      window.location.replace(url.toString());
+    });
+  }
+
+
   // ============================================================
   // Tour Persistence (localStorage)
   // ============================================================

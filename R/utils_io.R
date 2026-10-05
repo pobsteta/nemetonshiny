@@ -100,3 +100,22 @@
   tryCatch(Sys.chmod(path, mode = "0600"), error = function(e) NULL)
   invisible(path)
 }
+
+
+#' Write a raster atomically
+#'
+#' Temporary sibling then rename: a process killed mid-write leaves no
+#' truncated file that a later run would take for a valid cache.
+#'
+#' @param r `SpatRaster`.
+#' @param path Final path.
+#' @param ... Passed to [terra::writeRaster()].
+#' @return Invisible `path`.
+#' @noRd
+.write_raster_atomic <- function(r, path, ...) {
+  tmp <- .tmp_sibling(path)
+  on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
+  terra::writeRaster(r, tmp, overwrite = TRUE, ...)
+  .replace_file(tmp, path)
+  invisible(path)
+}

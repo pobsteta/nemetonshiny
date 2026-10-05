@@ -247,5 +247,34 @@ get_app_options <- function() {
       !nzchar(merged$language)) {
     merged$language <- "fr"
   }
+  # Langue PROPRE A LA SESSION (audit 1.0) : changer de langue ecrivait
+  # l'option globale du processus, et toute nouvelle session d'un autre
+  # utilisateur s'ouvrait dans cette langue. Dans une session Shiny qui a
+  # choisi sa langue (`?lang=`), c'est elle qui fait foi.
+  sess <- tryCatch(shiny::getDefaultReactiveDomain(), error = function(e) NULL)
+  if (!is.null(sess)) {
+    l <- tryCatch(sess$userData$langue, error = function(e) NULL)
+    if (.langue_valide(l)) merged$language <- l
+  }
   merged
+}
+
+
+#' Is this a supported interface language?
+#' @noRd
+.langue_valide <- function(l) {
+  is.character(l) && length(l) == 1L && !is.na(l) && l %in% c("fr", "en")
+}
+
+#' Language requested in a query string (`?lang=fr|en`)
+#'
+#' @param query Character query string (`"?lang=en&project=..."`), or a Rook
+#'   request (its `QUERY_STRING` is read).
+#' @return `"fr"`, `"en"`, or `NULL`.
+#' @noRd
+.langue_requete <- function(query) {
+  if (is.environment(query) || is.list(query)) query <- query$QUERY_STRING %||% ""
+  if (is.null(query) || !nzchar(query)) return(NULL)
+  l <- tryCatch(shiny::parseQueryString(query)$lang, error = function(e) NULL)
+  if (.langue_valide(l)) l else NULL
 }

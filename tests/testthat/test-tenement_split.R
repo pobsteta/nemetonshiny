@@ -346,3 +346,27 @@ test_that(".tenement_id_slug rend un fragment sur d'identifiant", {
   expect_true(nzchar(nemetonshiny:::.tenement_id_slug("///")))
   expect_true(nzchar(nemetonshiny:::.tenement_id_slug("")))
 })
+
+test_that("features outside every parcel are rejected and counted (audit 1.0)", {
+  projet <- create_split_test_projet()
+  halves <- make_two_halves()
+  dehors <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(matrix(
+    c(10,10, 11,10, 11,11, 10,11, 10,10), ncol = 2, byrow = TRUE))), crs = 4326))
+  imported <- rbind(halves, dehors)
+  expect_warning(result <- nemetonshiny:::tenement_import_replace(projet, imported),
+                 "hors des parcelles")
+  expect_equal(nrow(result$tenements), 2)
+  expect_identical(attr(result, "n_rejetes"), 1L)
+  expect_true(nemetonshiny:::projet_validate(result))
+  expect_error(suppressWarnings(nemetonshiny:::tenement_import_replace(projet, dehors)),
+               "No imported feature")
+})
+
+test_that("a file without CRS is not blindly taken as WGS84 (audit 1.0)", {
+  projet <- create_split_test_projet()
+  imported <- make_two_halves()
+  sf::st_crs(imported) <- NA
+  expect_warning(result <- nemetonshiny:::tenement_import_replace(projet, imported),
+                 "EPSG:4326")
+  expect_equal(nrow(result$tenements), 2)
+})

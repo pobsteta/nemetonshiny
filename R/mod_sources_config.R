@@ -193,21 +193,31 @@ mod_sources_config_server <- function(id, app_state) {
     i18n_r <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
 
     # Bumpe apres un enregistrement pour re-rendre les deux blocs.
-    refresh <- shiny::reactiveVal(0)
+    # Un compteur PAR BLOC : enregistrer un bloc ne re-rend que lui. Avec un
+    # compteur unique (et la dependance a l'objet projet, recharge apres
+    # chaque enregistrement), les sept autres blocs etaient re-rendus avec les
+    # valeurs stockees et leurs modifications en cours disparaissaient.
+    refresh <- shiny::reactiveValues(sufosat = 0, lst = 0, fast = 0, acc = 0,
+                                     production = 0, desserte = 0, onf = 0,
+                                     regen = 0)
 
-    # Le projet courant porte son id ; `app_state$project_id` sert de repli.
-    .pid <- function() {
+    # Identifiant du projet, qui ne change qu'avec le projet (pas a chaque
+    # rechargement du meme projet).
+    pid_rv <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(list(app_state$current_project, app_state$project_id), {
       proj <- app_state$current_project
       pid <- proj$id %||% app_state$project_id
-      if (is.null(pid) || !nzchar(as.character(pid))) NULL else as.character(pid)
-    }
+      pid <- if (is.null(pid) || !nzchar(as.character(pid))) NULL else as.character(pid)
+      if (!identical(pid, shiny::isolate(pid_rv()))) pid_rv(pid)
+    }, ignoreNULL = FALSE)
+    .pid <- function() pid_rv()
 
     # Recharge le projet apres ecriture des metadonnees, pour que le reste de
     # l'app (calcul, radar) voie la nouvelle configuration sans rouvrir.
-    .refresh_project <- function(pid) {
+    .refresh_project <- function(pid, bloc) {
       refreshed <- tryCatch(load_project(pid), error = function(e) NULL)
       if (!is.null(refreshed)) app_state$current_project <- refreshed
-      refresh(refresh() + 1)
+      refresh[[bloc]] <- shiny::isolate(refresh[[bloc]]) + 1
     }
 
     output$intro <- shiny::renderUI({
@@ -220,7 +230,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$sufosat_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$sufosat
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("sufosat_section"))
       hint <- htmltools::tags$small(
@@ -246,7 +256,7 @@ mod_sources_config_server <- function(id, app_state) {
             i18n$t("sufosat_need_theia"))))
       }
 
-      proj    <- app_state$current_project
+      proj    <- shiny::isolate(app_state$current_project)
       sc      <- proj$metadata$sufosat
       enabled <- project_sufosat_enabled(proj$metadata)
       status  <- if (enabled) {
@@ -292,7 +302,7 @@ mod_sources_config_server <- function(id, app_state) {
           enabled      = isTRUE(input$sufosat_enabled),
           window_years = input$sufosat_window %||% 5,
           min_proba    = input$sufosat_min_proba %||% 0.9)
-        .refresh_project(pid)
+        .refresh_project(pid, "sufosat")
         shiny::showNotification(i18n$t("sufosat_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -306,7 +316,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$lst_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$lst
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("lst_section"))
       hint <- htmltools::tags$small(
@@ -332,7 +342,7 @@ mod_sources_config_server <- function(id, app_state) {
             i18n$t("lst_need_theia"))))
       }
 
-      proj    <- app_state$current_project
+      proj    <- shiny::isolate(app_state$current_project)
       lc      <- proj$metadata$lst_urbain
       enabled <- project_lst_enabled(proj$metadata)
 
@@ -347,7 +357,7 @@ mod_sources_config_server <- function(id, app_state) {
       # Verdict d'applicabilite A5, complementaire du statut de source : le
       # statut dit si le catalogue repond, le verdict dit si l'indicateur a un
       # sens sur CES unites.
-      a5_msg <- .applicabilite_msg_a5(app_state, i18n)
+      a5_msg <- shiny::isolate(.applicabilite_msg_a5(app_state, i18n))
       msg <- if (enabled) source_status_message(src_status, i18n) else NULL
 
       status <- if (!enabled) {
@@ -408,7 +418,7 @@ mod_sources_config_server <- function(id, app_state) {
           pid,
           enabled  = isTRUE(input$lst_enabled),
           buffer_m = input$lst_buffer %||% 500)
-        .refresh_project(pid)
+        .refresh_project(pid, "lst")
         shiny::showNotification(i18n$t("lst_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -428,7 +438,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$fast_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$fast
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("fast_params_section"))
       hint <- htmltools::tags$small(
@@ -442,13 +452,13 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      fp  <- project_fast_params(app_state$current_project$metadata)
-      fdp <- project_fordead_params(app_state$current_project$metadata)
+      fp  <- project_fast_params(shiny::isolate(app_state$current_project)$metadata)
+      fdp <- project_fordead_params(shiny::isolate(app_state$current_project)$metadata)
 
       # Verdict d'applicabilite de R5, AVANT calcul : c'est ici qu'il sert.
       # Decouvrir apres coup qu'un peuplement n'est pas evaluable, c'est avoir
       # lance FORDEAD pour rien.
-      r5_msg <- .applicabilite_msg_r5(app_state, i18n)
+      r5_msg <- shiny::isolate(.applicabilite_msg_r5(app_state, i18n))
 
       htmltools::div(
         class = "mt-3 p-2 border rounded",
@@ -512,7 +522,7 @@ mod_sources_config_server <- function(id, app_state) {
         # FORDEAD se reglent d'un meme geste.
         set_project_fordead_params(
           pid, threshold_anomaly = input$fordead_threshold_anomaly)
-        .refresh_project(pid)
+        .refresh_project(pid, "fast")
         shiny::showNotification(i18n$t("fast_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -531,7 +541,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$acc_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$acc
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("acc_params_section"))
       hint <- htmltools::tags$small(
@@ -545,7 +555,7 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      ap <- project_accessibility_params(app_state$current_project$metadata)
+      ap <- project_accessibility_params(shiny::isolate(app_state$current_project)$metadata)
 
       htmltools::div(
         class = "mt-3 p-2 border rounded",
@@ -573,7 +583,7 @@ mod_sources_config_server <- function(id, app_state) {
       }
       tryCatch({
         set_project_accessibility_params(pid, buffer_m = input$acc_buffer_m)
-        .refresh_project(pid)
+        .refresh_project(pid, "acc")
         shiny::showNotification(i18n$t("acc_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -595,7 +605,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$production_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$production
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("prod_ifn_section"))
       hint <- htmltools::tags$small(
@@ -609,7 +619,7 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      pp <- project_production_ifn_params(app_state$current_project$metadata)
+      pp <- project_production_ifn_params(shiny::isolate(app_state$current_project)$metadata)
 
       htmltools::div(
         class = "mt-3 p-2 border rounded",
@@ -674,7 +684,7 @@ mod_sources_config_server <- function(id, app_state) {
           e1_mode      = input$prod_e1_mode %||% "stock",
           e1_taux_type = input$prod_e1_taux_type %||% "fixe",
           e1_taux      = input$prod_e1_taux)
-        .refresh_project(pid)
+        .refresh_project(pid, "production")
         shiny::showNotification(i18n$t("prod_ifn_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -704,7 +714,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$desserte_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$desserte
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("dess_params_section"))
       hint <- htmltools::tags$small(
@@ -718,7 +728,7 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      dp <- project_desserte_params(app_state$current_project$metadata)
+      dp <- project_desserte_params(shiny::isolate(app_state$current_project)$metadata)
 
       htmltools::div(
         class = "mt-3 p-2 border rounded",
@@ -791,7 +801,7 @@ mod_sources_config_server <- function(id, app_state) {
           pente_max_pct = input$dess_pente_max_pct,
           methode_pente = input$dess_methode_pente_cfg,
           largeur_m     = input$dess_largeur_m)
-        .refresh_project(pid)
+        .refresh_project(pid, "desserte")
         shiny::showNotification(i18n$t("dess_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -805,7 +815,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$onf_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$onf
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("onf_params_section"))
       hint <- htmltools::tags$small(
@@ -817,7 +827,7 @@ mod_sources_config_server <- function(id, app_state) {
                               htmltools::tags$em(class = "text-muted small",
                                                  i18n$t("sources_need_project"))))
       }
-      cfg <- project_onf_params(app_state$current_project$metadata)
+      cfg <- project_onf_params(shiny::isolate(app_state$current_project)$metadata)
 
       htmltools::div(
         class = "mt-3 p-2 border rounded",
@@ -873,7 +883,7 @@ mod_sources_config_server <- function(id, app_state) {
           purger        = isTRUE(input$onf_purge_cfg),
           seuil_foret   = max(0, min(1, seuil / 100)),
           clip_cadastre = isTRUE(input$onf_clip_cfg))
-        .refresh_project(pid)
+        .refresh_project(pid, "onf")
         shiny::showNotification(i18n$t("onf_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
@@ -895,7 +905,7 @@ mod_sources_config_server <- function(id, app_state) {
 
     output$regen_block <- shiny::renderUI({
       i18n <- i18n_r()
-      refresh()
+      refresh$regen
       header <- htmltools::tags$label(
         class = "form-label fw-semibold", i18n$t("regen_params_section"))
       hint <- htmltools::tagList(
@@ -915,7 +925,7 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      rp <- project_regen_params(app_state$current_project$metadata)
+      rp <- project_regen_params(shiny::isolate(app_state$current_project)$metadata)
 
       htmltools::div(
         class = "mt-3 p-2 border rounded",
@@ -988,7 +998,7 @@ mod_sources_config_server <- function(id, app_state) {
           rooting_depth_cm = input$regen_rooting_depth_cm,
           forcing          = input$regen_forcing,
           resolution       = input$regen_resolution)
-        .refresh_project(pid)
+        .refresh_project(pid, "regen")
         shiny::showNotification(i18n$t("regen_params_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),

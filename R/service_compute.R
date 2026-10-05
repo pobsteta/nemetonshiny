@@ -1123,6 +1123,14 @@ start_computation <- function(project_id,
       })
     }
 
+    # Aucun indicateur calcule (reseau coupe, toutes les sources en echec) :
+    # c'est un ECHEC, pas un projet " termine " aux 31 colonnes vides.
+    if (!.au_moins_un_indicateur(results)) {
+      stop("No indicator could be computed (every source failed - check the network ",
+           "and the data services), the project is not marked as completed.",
+           call. = FALSE)
+    }
+
     # Update final state
     state$status <- COMPUTE_STATUS$COMPLETED
     state$phase <- "complete"
@@ -1163,6 +1171,20 @@ start_computation <- function(project_id,
       error = e$message
     )
   })
+}
+
+
+#' Does a result table carry at least one computed indicator value?
+#' @param results Data frame / sf of computed indicators.
+#' @return Logical scalar.
+#' @noRd
+.au_moins_un_indicateur <- function(results) {
+  if (is.null(results)) return(FALSE)
+  df <- if (inherits(results, "sf")) sf::st_drop_geometry(results) else results
+  cols <- grep("^indicateur_[a-z][0-9]+_", names(df), value = TRUE)
+  cols <- cols[!grepl("_norm$", cols)]
+  any(vapply(cols, function(cl) any(is.finite(suppressWarnings(as.numeric(df[[cl]])))),
+             logical(1)))
 }
 
 
@@ -3197,8 +3219,9 @@ download_oso <- function(bbox, cache_file, progress_callback = NULL) {
     # Reproject to WGS84
     oso_wgs84 <- terra::project(oso_crop, "EPSG:4326", method = "near")
 
-    # Save cropped raster to project cache
-    terra::writeRaster(oso_wgs84, cache_file, overwrite = TRUE)
+    # Save cropped raster to project cache (atomique : pas de fichier tronque
+    # reutilise si le worker est tue pendant l'ecriture)
+    .write_raster_atomic(oso_wgs84, cache_file)
 
     cli::cli_alert_success("Cropped OSO land cover to project area")
     return(terra::rast(cache_file))
@@ -4146,24 +4169,28 @@ download_lidar_tile <- function(url, dest_file) {
 
   for (attempt in seq_len(max_retries)) {
     tryCatch({
+      # Ecrit dans `.part` puis renomme : un worker tue en plein transfert
+      # laissait une tuile tronquee que la boucle (file.exists) reutilisait
+      # ensuite indefiniment.
+      part <- paste0(dest_file, ".part")
       resp <- httr2::request(url) |>
         httr2::req_timeout(300) |>
         httr2::req_error(is_error = function(resp) FALSE) |>
-        httr2::req_perform(path = dest_file)
+        httr2::req_perform(path = part)
 
-      if (httr2::resp_status(resp) == 200 && file.exists(dest_file) &&
-          file.size(dest_file) > 100) {
+      if (httr2::resp_status(resp) == 200 && file.exists(part) &&
+          file.size(part) > 100 && isTRUE(file.rename(part, dest_file))) {
         return(dest_file)
       }
 
       # Clean up failed download
-      if (file.exists(dest_file)) unlink(dest_file)
+      if (file.exists(part)) unlink(part)
 
       if (attempt < max_retries) {
         Sys.sleep(2^attempt)  # Exponential backoff
       }
     }, error = function(e) {
-      if (file.exists(dest_file)) unlink(dest_file)
+      if (file.exists(paste0(dest_file, ".part"))) unlink(paste0(dest_file, ".part"))
       if (attempt < max_retries) {
         Sys.sleep(2^attempt)
       }
@@ -4192,7 +4219,7 @@ mosaic_lidar_tiles <- function(tile_files, output_file) {
     if (length(tile_files) == 1) {
       # Single tile - just copy/load
       rast <- .stamp_2154(terra::rast(tile_files[1]))
-      terra::writeRaster(rast, output_file, overwrite = TRUE)
+      .write_raster_atomic(rast, output_file)
       return(terra::rast(output_file))
     }
 
@@ -4215,14 +4242,15 @@ mosaic_lidar_tiles <- function(tile_files, output_file) {
     }
 
     rast <- .stamp_2154(rast)
-    terra::writeRaster(rast, output_file, overwrite = TRUE)
+    .write_raster_atomic(rast, output_file)
     cli::cli_alert_success("Created LiDAR mosaic ({length(tile_files)} tiles)")
     terra::rast(output_file)
 
   }, error = function(e) {
     cli::cli_warn("Failed to mosaic LiDAR tiles: {e$message}")
-    # Try returning just the first tile
-    tryCatch(terra::rast(tile_files[1]), error = function(e2) NULL)
+    # NULL, et non la premiere tuile seule : une tuile presentee comme la
+    # mosaique donnait des indicateurs NA sur tout le reste de l'emprise.
+    NULL
   })
 }
 

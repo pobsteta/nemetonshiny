@@ -454,11 +454,20 @@ mod_progress_server <- function(id, compute_state, app_state) {
     }
 
     # Reset tracking state for a new computation
-    reset_tracking <- function() {
+    # `cartes = TRUE` (defaut, appels externes : nouveau calcul, retour en
+    # brouillon) efface aussi les cartes de fin. Sans cela, au 2e calcul de
+    # la session, l'accueil reaffichait le resume, la duree et le tableau du
+    # calcul PRECEDENT. Les appels internes, juste apres l'affichage d'une
+    # carte, la gardent (`cartes = FALSE`).
+    reset_tracking <- function(cartes = TRUE) {
       tracking$start_time <- NULL
       tracking$last_task <- ""
       tracking$last_notif_id <- NULL
       tracking$last_error_count <- 0
+      if (isTRUE(cartes)) {
+        rv$show_complete <- FALSE
+        rv$show_error <- FALSE
+      }
     }
 
     # ========================================
@@ -557,8 +566,8 @@ mod_progress_server <- function(id, compute_state, app_state) {
           # project lifecycle) so the same notification does not
           # appear twice with slightly different wording.
 
-          # Reset tracking for next computation
-          reset_tracking()
+          # Reset tracking for next computation (la carte affichee reste)
+          reset_tracking(cartes = FALSE)
           session$sendCustomMessage("stopElapsedTimer", list())
         }
 
@@ -589,7 +598,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
                           htmltools::htmlEscape(error_msg), '</p>', extra)
           ))
 
-          reset_tracking()
+          reset_tracking(cartes = FALSE)
         }
       })
     })

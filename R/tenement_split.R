@@ -1008,9 +1008,13 @@ tenement_import_replace <- function(projet, imported_sf) {
   sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
-  # Match CRS to the tenements CRS
+  # Match CRS to the tenements CRS. Fichier sans CRS : on DEVINE d'apres les
+  # coordonnees (degres -> WGS84, sinon Lambert-93) et on le dit - le supposer
+  # WGS84 placait un fichier en metres au milieu de l'Atlantique.
   if (is.na(sf::st_crs(imported_sf))) {
-    sf::st_crs(imported_sf) <- 4326
+    crs_devine <- .tenement_guess_crs(imported_sf)
+    cli::cli_warn("Fichier import\u00e9 sans syst\u00e8me de coordonn\u00e9es : EPSG:{crs_devine} suppos\u00e9.")
+    sf::st_crs(imported_sf) <- crs_devine
   }
   if (!is.na(sf::st_crs(tenements)) &&
       sf::st_crs(imported_sf) != sf::st_crs(tenements)) {
@@ -1130,12 +1134,22 @@ tenement_import_replace <- function(projet, imported_sf) {
     as.character(parcels_m[[parcel_id_col]][hit_rows[which.max(areas)]])
   }, character(1))
 
-  if (any(is.na(parent_ids))) {
+  # Elements hors de toute parcelle du projet : REJETES et comptes. Les
+  # rattacher en silence a la premiere parcelle fabriquait un tenement faux.
+  n_rejetes <- sum(is.na(parent_ids))
+  if (n_rejetes > 0L) {
     cli::cli_warn(
-      "{sum(is.na(parent_ids))} feature{?s} sans parcelle cadastrale parent \u2014 mises sur la premi\u00e8re parcelle du projet."
-    )
-    parent_ids[is.na(parent_ids)] <-
-      as.character(parcels_m[[parcel_id_col]][1])
+      "{n_rejetes} \u00e9l\u00e9ment{?s} hors des parcelles du projet, ignor\u00e9{?s}.")
+    garde <- !is.na(parent_ids)
+    if (!any(garde)) {
+      cli::cli_abort("No imported feature lies within the project's parcels.")
+    }
+    imported_sf <- imported_sf[garde, , drop = FALSE]
+    imported_m <- imported_m[garde, , drop = FALSE]
+    imported_nc <- imported_nc[garde]
+    parent_ids <- parent_ids[garde]
+    geom_areas <- geom_areas[garde]
+    n_new <- nrow(imported_m)
   }
 
   # If the imported file carries a label_ugf column, drive the UGF
@@ -1279,5 +1293,20 @@ tenement_import_replace <- function(projet, imported_sf) {
   cli::cli_alert_success(
     "Import appliqu\u00e9 : {n_new} t\u00e8nement{?s} (au lieu de {nrow(tenements)})"
   )
+  attr(projet, "n_rejetes") <- n_rejetes
   projet
+}
+
+
+#' Guess the CRS of an imported layer without one
+#'
+#' Coordinates within +-180 / +-90 are taken as WGS84 degrees, anything else
+#' as Lambert-93 metres (the French cadastre's projection).
+#' @param x `sf` without CRS.
+#' @return An EPSG code.
+#' @noRd
+.tenement_guess_crs <- function(x) {
+  bb <- tryCatch(as.numeric(sf::st_bbox(x)), error = function(e) NULL)
+  if (length(bb) == 4L && all(is.finite(bb)) &&
+      all(abs(bb[c(1, 3)]) <= 180) && all(abs(bb[c(2, 4)]) <= 90)) 4326L else 2154L
 }

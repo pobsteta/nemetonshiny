@@ -9,8 +9,18 @@
 #'
 #' @noRd
 app_ui <- function(request) {
+  # Langue de la REQUETE (`?lang=`), appliquee le temps de construire la page :
+  # toutes les fonctions UI lisent `get_app_options()$language`. La
+  # construction est synchrone, la surcharge ne deborde sur aucune session.
+  lang_req <- .langue_requete(request)
+  if (!is.null(lang_req)) {
+    base <- getOption("nemeton.app_options")
+    old_opt <- options(nemeton.app_options = utils::modifyList(
+      if (is.list(base)) base else list(), list(language = lang_req)))
+    on.exit(options(old_opt), add = TRUE)
+  }
   # Get current language
- opts <- get_app_options()
+  opts <- get_app_options()
   lang <- opts$language
 
   # Get translations

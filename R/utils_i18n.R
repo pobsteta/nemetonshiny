@@ -1203,6 +1203,17 @@ TRANSLATIONS <- list(
     fr = "Pas de r\u00e9ponse du module apr\u00e8s %s : \u00e9tape abandonn\u00e9e.",
     en = "No answer from the module after %s: step abandoned."
   ),
+  ug_sauvegarde_echec = list(
+    fr = "Les unit\u00e9s de gestion n'ont pas pu \u00eatre enregistr\u00e9es : %s",
+    en = "The management units could not be saved: %s"
+  ),
+  ug_renommee_fmt = list(fr = "UG renomm\u00e9e : %s", en = "Management unit renamed: %s"),
+  ug_groupe_maj_fmt = list(fr = "Groupe mis \u00e0 jour pour %d UG",
+                           en = "Group updated for %d management units"),
+  ug_import_rejetes_fmt = list(
+    fr = "%d \u00e9l\u00e9ment(s) hors des parcelles du projet ignor\u00e9(s).",
+    en = "%d feature(s) outside the project's parcels ignored."
+  ),
   lien_profond_invalide = list(
     fr = "Lien : projet ou onglet inconnu, ignor\u00e9.",
     en = "Link: unknown project or tab, ignored."
