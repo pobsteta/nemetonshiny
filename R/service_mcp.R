@@ -180,11 +180,7 @@ mcp_lancer_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
     etat <- projet_etat(id)
-    if (isTRUE(etat$migration_necessaire)) {
-      .api_abort(c("Projet {.val {id}} : migration n\u00e9cessaire avant le calcul.",
-                   i = "L'ouvrir une fois dans l'application, ou appeler {.fn projet_migrer}."),
-                 "nemetonshiny_projet_perime")
-    }
+    .api_refuser_ancien(etat)
     path <- etat$chemin
     if (.mcp_job_running(.mcp_job_read(path))) {
       .api_abort("Un calcul est d\u00e9j\u00e0 en cours pour ce projet.",

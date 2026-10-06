@@ -137,27 +137,23 @@ test_that("db_save_action_plan : version 1 sur historique vide", {
 })
 
 # ---------------------------------------------------------------------------
-# Migrations SQL versionnées des tables *_states (parité avec le DDL runtime)
+# schema.sql decrit seul la base de la 1.0.0 (base neuve, migrations integrees)
 # ---------------------------------------------------------------------------
 
-test_that("les migrations SQL déclarent les tables *_states persistées par l'app", {
-  regen <- system.file("sql", "migration_004_regeneration.sql", package = "nemetonshiny")
-  plan  <- system.file("sql", "migration_005_action_plan.sql", package = "nemetonshiny")
-  expect_true(nzchar(regen) && file.exists(regen))
-  expect_true(nzchar(plan) && file.exists(plan))
-
-  regen_sql <- paste(readLines(regen, warn = FALSE), collapse = "\n")
-  plan_sql  <- paste(readLines(plan,  warn = FALSE), collapse = "\n")
-
-  # Tables créées par db_save_regeneration / db_save_action_plan à la volée :
-  # la migration versionnée doit déclarer les mêmes tables + colonne payload JSONB.
-  expect_match(regen_sql, "CREATE TABLE IF NOT EXISTS nemeton.regeneration_states", fixed = TRUE)
-  expect_match(regen_sql, "payload      JSONB", fixed = TRUE)
-  expect_match(plan_sql, "CREATE TABLE IF NOT EXISTS nemeton.action_plan_states", fixed = TRUE)
-  # Colonnes propres au plan d'actions.
-  for (col in c("horizon", "action_id", "payload")) expect_match(plan_sql, col, fixed = TRUE)
-  # Index de requête (project_id, version).
-  expect_match(plan_sql, "idx_action_plan_states_project", fixed = TRUE)
+test_that("schema.sql declares the *_states tables and every _norm column", {
+  f <- system.file("sql", "schema.sql", package = "nemetonshiny")
+  expect_true(nzchar(f) && file.exists(f))
+  sql <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_match(sql, "CREATE TABLE IF NOT EXISTS nemeton.regeneration_states", fixed = TRUE)
+  expect_match(sql, "CREATE TABLE IF NOT EXISTS nemeton.action_plan_states", fixed = TRUE)
+  for (col in c("horizon", "action_id", "idx_action_plan_states_project")) {
+    expect_match(sql, col, fixed = TRUE)
+  }
+  ind <- regmatches(sql, gregexpr("indicateur_[a-z0-9_]+(?= NUMERIC)", sql, perl = TRUE))[[1]]
+  bruts <- setdiff(ind[!grepl("_norm$", ind)], character(0))
+  expect_true(all(paste0(bruts, "_norm") %in% ind))
+  # Plus de migrations historiques : la 1.0.0 repart d'une base neuve
+  expect_length(list.files(dirname(f), "^migration_"), 0L)
 })
 
 

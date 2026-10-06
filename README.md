@@ -10,7 +10,7 @@
 
 Application Shiny/golem de la plateforme d'analyse systémique forestière **Nemeton**.
 
-`nemetonshiny` fournit l'interface. La logique métier (indicateurs, familles, NDP, FORDEAD, reGénération) est portée par le paquet [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.207.0), la desserte et l'accessibilité par [`foretaccess`](https://github.com/pobsteta/foretaccess) (>= 2.4.0).
+`nemetonshiny` fournit l'interface. La logique métier (indicateurs, familles, NDP, FORDEAD, reGénération) est portée par le paquet [`nemeton`](https://github.com/pobsteta/nemeton) (>= 1.0.0), la desserte et l'accessibilité par [`foretaccess`](https://github.com/pobsteta/foretaccess) (>= 2.4.0).
 
 ## Fonctionnalités
 
@@ -31,6 +31,7 @@ Application Shiny/golem de la plateforme d'analyse systémique forestière **Nem
   (sous Debian/Ubuntu : voir la liste exacte dans [`.github/workflows/r.yml`](.github/workflows/r.yml))
 - **Chaîne Rust** (`rustc`, `cargo`, via [rustup](https://rustup.rs)) : `foretaccess` embarque un noyau compilé en Rust
 - Pour les rapports PDF : [Quarto](https://quarto.org) et une distribution LaTeX (`xelatex`)
+- Pour le diagnostic FORDEAD : **Python >= 3.11** (environnement figé par le cœur)
 
 ## Installation
 

@@ -1305,6 +1305,63 @@ TRANSLATIONS <- list(
     en = "CV cannot be computed. Column used: %s. Unmapped codes (%d unique): %s."
   ),
   sampling_aucune_valeur = list(fr = "(aucune valeur)", en = "(no value)"),
+  monitoring_db_legacy_schema = list(
+    fr = "Cette base de suivi a \u00e9t\u00e9 cr\u00e9\u00e9e avant nemeton 1.0.0, qui ne la reprend pas : la recr\u00e9er (nouveau fichier SQLite, ou base PostgreSQL vide).",
+    en = "This monitoring database was created before nemeton 1.0.0, which does not take it over: recreate it (a new SQLite file, or an empty PostgreSQL database)."
+  ),
+  # Statuts des indicateurs (nemeton 1.0.0, spec 056) : cle `<code>_<statut>`.
+  p2_sans_age = list(
+    fr = "P2 non calcul\u00e9 : l'indice de station a besoin de l'\u00e2ge r\u00e9el du peuplement, que la BD For\u00eat ne fournit pas. Saisir ou mesurer l'\u00e2ge (inventaire, terrain), ou passer P2 en mode IFN.",
+    en = "P2 not computed: the site index needs the real stand age, which BD For\u00eat does not provide. Enter or measure the age (inventory, field), or switch P2 to IFN mode."
+  ),
+  p2_hors_courbe = list(
+    fr = "P2 vide sur certaines unit\u00e9s : la hauteur dominante sort des courbes de station \u00e0 l'\u00e2ge observ\u00e9 (plut\u00f4t qu'une classe extr\u00eame invent\u00e9e).",
+    en = "P2 empty on some units: the dominant height falls outside the site-index curves at the observed age (rather than an invented extreme class)."
+  ),
+  c1_ndvi_sans_age = list(
+    fr = "C1 estim\u00e9 \u00e0 partir du NDVI : sans \u00e2ge ni densit\u00e9 r\u00e9els, ni mod\u00e8le de canop\u00e9e LiDAR, le mod\u00e8le allom\u00e9trique ne s'applique pas. Valeur indicative.",
+    en = "C1 estimated from the NDVI: without real age and density, nor a LiDAR canopy model, the allometric model does not apply. Indicative value."
+  ),
+  p3_diametre_seul = list(
+    fr = "P3 sur le seul diam\u00e8tre : forme et d\u00e9fauts n'ont pas \u00e9t\u00e9 relev\u00e9s sur le terrain (ils ne sont plus suppos\u00e9s).",
+    en = "P3 from diameter only: stem form and defects were not recorded in the field (they are no longer assumed)."
+  ),
+  p3_diametre_forme = list(
+    fr = "P3 sur le diam\u00e8tre et la forme : les d\u00e9fauts n'ont pas \u00e9t\u00e9 relev\u00e9s.",
+    en = "P3 from diameter and stem form: defects were not recorded."
+  ),
+  p3_diametre_defauts = list(
+    fr = "P3 sur le diam\u00e8tre et les d\u00e9fauts : la forme n'a pas \u00e9t\u00e9 relev\u00e9e.",
+    en = "P3 from diameter and defects: stem form was not recorded."
+  ),
+  a3_skipped_no_micro = list(fr = "A3 non calcul\u00e9 : le moteur microclimatique n'est pas disponible.",
+                             en = "A3 not computed: the microclimate engine is not available."),
+  a4_skipped_no_micro = list(fr = "A4 non calcul\u00e9 : le moteur microclimatique n'est pas disponible.",
+                             en = "A4 not computed: the microclimate engine is not available."),
+  w4_skipped_no_micro = list(fr = "W4 non calcul\u00e9 : le moteur microclimatique n'est pas disponible.",
+                             en = "W4 not computed: the microclimate engine is not available."),
+  r6_skipped_no_micro = list(fr = "R6 non calcul\u00e9 : le moteur microclimatique n'est pas disponible (reG\u00e9n\u00e9ration).",
+                             en = "R6 not computed: the microclimate engine is not available (reGeneration)."),
+  t3_skipped_no_sufosat = list(fr = "T3 non calcul\u00e9 : la source des coupes rases (SUFOSAT) n'est pas activ\u00e9e pour ce projet.",
+                               en = "T3 not computed: the clear-cut source (SUFOSAT) is not enabled for this project."),
+  b4_skipped_no_spectral = list(fr = "B4 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
+                                en = "B4 not computed: no spectral data for diversity (Sentinel-2)."),
+  l3_skipped_no_spectral = list(fr = "L3 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
+                                en = "L3 not computed: no spectral data for diversity (Sentinel-2)."),
+  a3_skipped_no_coverage = list(fr = "A3 vide : la source ne couvre pas cette zone.", en = "A3 empty: the source does not cover this area."),
+  a4_skipped_no_coverage = list(fr = "A4 vide : la source ne couvre pas cette zone.", en = "A4 empty: the source does not cover this area."),
+  w4_skipped_no_coverage = list(fr = "W4 vide : la source ne couvre pas cette zone.", en = "W4 empty: the source does not cover this area."),
+  r6_skipped_no_coverage = list(fr = "R6 vide : la source ne couvre pas cette zone.", en = "R6 empty: the source does not cover this area."),
+  t3_skipped_no_coverage = list(fr = "T3 vide : la source ne couvre pas cette zone.", en = "T3 empty: the source does not cover this area."),
+  b4_skipped_no_coverage = list(fr = "B4 vide : les donn\u00e9es spectrales ne couvrent pas cette zone.", en = "B4 empty: spectral data do not cover this area."),
+  l3_skipped_no_coverage = list(fr = "L3 vide : les donn\u00e9es spectrales ne couvrent pas cette zone.", en = "L3 empty: spectral data do not cover this area."),
+  projet_ancien_format = list(fr = "Ant\u00e9rieur \u00e0 la 1.0", en = "Pre-1.0 project"),
+  projet_ancien_titre = list(fr = "Projet ant\u00e9rieur \u00e0 la version 1.0",
+                             en = "Project from before version 1.0"),
+  projet_ancien_confirm = list(
+    fr = "Ce projet a \u00e9t\u00e9 cr\u00e9\u00e9 avec une version ant\u00e9rieure \u00e0 la 1.0, qui n'est pas reprise : recr\u00e9ez-le avec les m\u00eames parcelles. Voulez-vous supprimer l'ancien dossier d\u00e9finitivement ?",
+    en = "This project was created with a version older than 1.0, which is not taken over: recreate it with the same parcels. Do you want to delete the old folder permanently?"
+  ),
   lien_profond_invalide = list(
     fr = "Lien : projet ou onglet inconnu, ignor\u00e9.",
     en = "Link: unknown project or tab, ignored."
@@ -2186,16 +2243,8 @@ TRANSLATIONS <- list(
   # Invalidation des indicateurs apres un changement d'echelle ou de sens
   # (spec 048). Dire POURQUOI le projet repasse en brouillon, et que les
   # scores d'avant et d'apres ne sont pas comparables.
-  indicateurs_invalides = list(
-    fr = "Les indicateurs de ce projet ont \u00e9t\u00e9 calcul\u00e9s avant une correction d'\u00e9chelle du c\u0153ur : ils sont invalid\u00e9s et doivent \u00eatre recalcul\u00e9s. Paysage, Dynamique temporelle et \u00c9nergie vont changer \u2014 une comparaison avec les scores pr\u00e9c\u00e9dents n'aurait pas de sens.",
-    en = "This project's indicators were computed before a core rescaling: they are invalidated and must be recomputed. Landscape, Temporal dynamics and Energy will change \u2014 comparing with the previous scores would be meaningless."
-  ),
   # Projet venu de la version de sens 1 : il a subi les DEUX corrections,
   # l'inversion des Risques (v2) comprise.
-  indicateurs_invalides_v1 = list(
-    fr = "Les indicateurs de ce projet ont \u00e9t\u00e9 calcul\u00e9s avant deux corrections du c\u0153ur : ils sont invalid\u00e9s et doivent \u00eatre recalcul\u00e9s. Risques (d\u00e9sormais : plus le score est haut, moins l'UGF est expos\u00e9e), Paysage, Dynamique temporelle et \u00c9nergie vont changer \u2014 une comparaison avec les scores pr\u00e9c\u00e9dents n'aurait pas de sens.",
-    en = "This project's indicators were computed before two core corrections: they are invalidated and must be recomputed. Risks (now: the higher the score, the less exposed the UGF), Landscape, Temporal dynamics and Energy will change \u2014 comparing with the previous scores would be meaningless."
-  ),
   cles_serveur_admin = list(
     fr = "Seul un administrateur peut modifier les cl\u00e9s d'acc\u00e8s du serveur.",
     en = "Only an administrator can change the server's access keys."
@@ -2423,7 +2472,6 @@ TRANSLATIONS <- list(
   source_protected_areas = list(fr = "Aires prot\u00e9g\u00e9es (INPN)", en = "Protected Areas (INPN)"),
   source_water_network = list(fr = "R\u00e9seau hydrographique (IGN)", en = "Water Network (IGN)"),
   source_water_surfaces = list(fr = "Surfaces hydrographiques (IGN)", en = "Water Surfaces (IGN)"),
-  source_wetlands = list(fr = "Zones humides (ZNIEFF)", en = "Wetlands (ZNIEFF)"),
   source_roads = list(fr = "R\u00e9seau routier (IGN)", en = "Road Network (IGN)"),
   source_buildings = list(fr = "B\u00e2timents (BD TOPO)", en = "Buildings (BD TOPO)"),
   source_bdforet = list(fr = "BD For\u00eat V2 - Formations v\u00e9g\u00e9tales (IGN)", en = "BD For\u00eat V2 - Vegetation Formations (IGN)"),

@@ -9,8 +9,8 @@ projets_lister()
 \value{
 A data.frame, one row per project, most recently updated first:
 \code{id}, \code{nom}, \code{statut}, \code{maj}, \code{ndp}, \code{ugf}, \code{indicateurs} (computed
-indicators present on disk), \code{sens_a_jour} (\code{FALSE} when the indicators
-predate the current indicator direction, see \code{\link[=projet_etat]{projet_etat()}}).
+indicators present on disk), \code{format_ok} (\code{FALSE} for a project created
+before version 1.0.0, which is not taken over).
 Read-only.
 }
 \description{
@@ -24,7 +24,6 @@ Other api_hors_interface:
 \code{\link[=projet_etat]{projet_etat()}},
 \code{\link[=projet_gpkg]{projet_gpkg()}},
 \code{\link[=projet_lire]{projet_lire()}},
-\code{\link[=projet_migrer]{projet_migrer()}},
 \code{\link[=projet_rapport]{projet_rapport()}}
 }
 \concept{api_hors_interface}

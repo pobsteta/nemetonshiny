@@ -26,7 +26,6 @@ Other api_hors_interface:
 \code{\link[=projet_creer]{projet_creer()}},
 \code{\link[=projet_etat]{projet_etat()}},
 \code{\link[=projet_lire]{projet_lire()}},
-\code{\link[=projet_migrer]{projet_migrer()}},
 \code{\link[=projet_rapport]{projet_rapport()}},
 \code{\link[=projets_lister]{projets_lister()}}
 }

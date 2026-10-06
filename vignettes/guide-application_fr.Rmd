@@ -57,7 +57,9 @@ L'onglet **Sélection** est le point de départ.
 2. **Cliquez les parcelles** à étudier (30 au plus par défaut, voir
    `max_parcels`).
 3. Donnez un **nom** au projet et créez-le. Les projets sont enregistrés dans le
-   dossier des projets ; les **projets récents** se rouvrent d'un clic.
+   dossier des projets ; les **projets récents** se rouvrent d'un clic. Un
+   projet créé avec une version antérieure à la 1.0 n'est pas repris : il est
+   marqué « Antérieur à la 1.0 » et ne peut qu'être supprimé, puis recréé.
 4. Sous la carte, l'éditeur des **Unités de Gestion Forestières (UGF)** regroupe
    ou découpe les parcelles en unités de gestion : création, fusion, découpage
    au trait ou au polygone, renommage, groupe d'aménagement, import ou export
@@ -127,7 +129,7 @@ Surveillance de la santé de la forêt à partir de Sentinel-2, en trois modes :
 | Mode | Usage |
 |------|-------|
 | **FAST** | chocs récents (coupe, chablis, incendie) : indices NDMI / NDVI / NBR en fenêtre glissante et en tendance |
-| **FORDEAD** | dépérissement progressif des résineux (scolyte, sécheresse) |
+| **FORDEAD** | dépérissement progressif des résineux (scolyte, sécheresse) ; nécessite Python >= 3.11 |
 | **RECONFORT** | dépérissement des feuillus (chêne, châtaignier) ; nécessite un environnement de calcul dédié |
 
 Les zones suivies sont créées à partir des UGF du projet. Chaque mode propose
@@ -171,7 +173,7 @@ correspond donc à un collectif de confiance.
 
 - **API R** : `projets_lister()`, `projet_etat()`, `projet_lire()`,
   `projet_creer()`, `parcelles_commune()`, `projet_calculer()`,
-  `projet_rapport()`, `projet_gpkg()`, `projet_migrer()` (voir
+  `projet_rapport()`, `projet_gpkg()` (voir
   `?api_hors_interface`). Elles donnent les mêmes chiffres que l'onglet
   Synthèse.
 - **Liens profonds** : `http://<hôte>/?project=<id>&tab=<onglet>` ouvre
@@ -195,6 +197,12 @@ correspond donc à un collectif de confiance.
   comptes gratuits.
 - **Le projet s'ouvre en lecture seule** : un autre utilisateur le modifie, ou
   votre compte n'a pas de rôle d'édition.
+- **« Base antérieure à la 1.0.0 »** : la base de suivi sanitaire (ou la base
+  PostGIS) a été créée avant la 1.0.0 ; la recréer (nouveau fichier SQLite, ou
+  base PostgreSQL vide).
+- **P2 vide, C1 « estimé par le NDVI »** : la BD Forêt ne donne pas l'âge des
+  peuplements. Sans âge réel, l'indice de station (P2) ne se calcule pas et la
+  biomasse (C1) retombe sur le NDVI, sauf avec un modèle de canopée LiDAR.
 
 ## Voir aussi
 

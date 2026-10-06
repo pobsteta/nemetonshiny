@@ -1,3 +1,60 @@
+# nemetonshiny 0.157.1.9001 (cycle de développement, vers la 1.0.0)
+
+Adoption du cœur **nemeton 1.0.0** (brief `nemeton/specs/057-contrat-api-1.0/brief-nemetonshiny-1.0.0.md`).
+Plancher `Imports: nemeton (>= 1.0.0)`.
+
+### Rupture : la 1.0.0 repart de zéro
+
+- **Aucune migration des projets 0.x** (décision du 2026-10-06). Chaque projet
+  porte désormais un marqueur `format_projet = 1`. Un projet sans marqueur
+  apparaît « Antérieur à la 1.0 » dans la liste et ne propose que sa
+  suppression ; l'API le refuse avec une erreur de classe
+  `nemetonshiny_projet_ancien`. Il faut le recréer avec les mêmes parcelles.
+- **Bases de données neuves** : le cœur 1.0.0 refuse toute base créée avant lui
+  (erreur `nemeton_legacy_schema`). L'application l'explique maintenant en
+  clair (« base antérieure à la 1.0.0 : la recréer »), pour la base de suivi
+  sanitaire comme pour la base PostGIS. `inst/sql/schema.sql` décrit à lui
+  seul le schéma complet (colonnes `_norm`, archives de reGénération et du plan
+  d'actions) ; les six fichiers `migration_00N_*.sql` sont retirés.
+- Supprimés :
+  - le contrôle de « sens des indicateurs » (`indicator_sense_version`,
+    invalidation et avertissement à l'ouverture) ;
+  - la fonction exportée `projet_migrer()` et l'erreur
+    `nemetonshiny_projet_perime` ;
+  - la lecture des anciens formats de fichiers (`atomes.gpkg`, `atome_id`,
+    métadonnées d'avant 0.16).
+
+  L'initialisation des UGF à la première ouverture est conservée, sous son
+  vrai nom (`ensure_project_ug()`), avec la mise de côté des fichiers UGF
+  illisibles.
+- `projet_etat()` expose `format_projet` et `format_ok` à la place de
+  `sens_vu`, `sens_courant` et `migration_necessaire` ; `projets_lister()`
+  expose `format_ok` à la place de `sens_a_jour`.
+
+### Valeurs du cœur 1.0.0 (spec 056) expliquées dans l'interface
+
+- **P2 sans âge réel** : la BD Forêt ne fournit plus d'âge inventé, si bien
+  que P2 (mode CHM) est vide. La fiche le dit (`p2_sans_age`) et propose le
+  mode IFN. C1, retombé sur le NDVI faute d'âge et de modèle LiDAR, est signalé
+  comme valeur indicative (`c1_ndvi_sans_age`).
+- Nouveaux statuts traduits FR/EN :
+  - P3 calculé sur le seul diamètre (ou diamètre et forme, ou diamètre et
+    défauts) ;
+  - P2 hors des courbes de station ;
+  - indicateurs conditionnels sans leur source : microclimat (A3, A4, W4, R6),
+    coupes rases SUFOSAT (T3), données spectrales (B4, L3), et zone non
+    couverte.
+- Couche INPN « zones humides » retirée : son motif ramenait surtout des
+  ZNIEFF, et le cœur ne la lisait pas.
+- FORDEAD exige **Python ≥ 3.11** (README, guide).
+
+### À faire par les utilisateurs
+
+Recréer les projets, la base de suivi sanitaire (SQLite ou PostgreSQL) et la
+base PostGIS si elle est utilisée. Les valeurs changent nettement : W3 baisse
+de 50 à 70 points sur LiDAR, N1 d'environ 20 points, et P2 reste vide sans âge
+réel.
+
 # nemetonshiny 0.157.1 (2026-10-06)
 
 ### Added

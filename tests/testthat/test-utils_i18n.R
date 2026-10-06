@@ -121,7 +121,7 @@ test_that("TRANSLATIONS contains data source keys", {
   source_keys <- c(
     "source_ndvi", "source_dem", "source_forest_cover",
     "source_protected_areas", "source_water_network",
-    "source_wetlands", "source_roads", "source_buildings",
+    "source_roads", "source_buildings",
     "source_bdforet", "source_lidar_mnh"
   )
 

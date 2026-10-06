@@ -1882,12 +1882,12 @@ test_that("load_project dispatches the PostGIS sync off-thread (async) when DB c
   dispatched <- new.env(); dispatched$called <- FALSE; dispatched$sync_called <- FALSE
   testthat::local_mocked_bindings(
     get_project_path        = function(id) withr::local_tempdir(),
-    load_project_metadata   = function(id) list(name = "x", indicators_computed = TRUE),
+    load_project_metadata   = function(id) list(name = "x", indicators_computed = TRUE, format_projet = 1L),
     load_parcels            = function(id) NULL,
     load_commune_geometry   = function(id) NULL,
     load_indicators         = function(id) NULL,
     load_comments           = function(id) NULL,
-    ensure_project_migrated = function(id, project) project,
+    ensure_project_ug = function(id, project) project,
     is_db_configured        = function() TRUE,
     # The async dispatcher is called instead of the (blocking) synchronous
     # db_sync_project — that's the v0.84.0 fix.
@@ -1904,12 +1904,12 @@ test_that("load_project skips the DB sync when DB is not configured", {
   dispatched <- new.env(); dispatched$called <- FALSE
   testthat::local_mocked_bindings(
     get_project_path        = function(id) withr::local_tempdir(),
-    load_project_metadata   = function(id) list(name = "x", indicators_computed = TRUE),
+    load_project_metadata   = function(id) list(name = "x", indicators_computed = TRUE, format_projet = 1L),
     load_parcels            = function(id) NULL,
     load_commune_geometry   = function(id) NULL,
     load_indicators         = function(id) NULL,
     load_comments           = function(id) NULL,
-    ensure_project_migrated = function(id, project) project,
+    ensure_project_ug = function(id, project) project,
     is_db_configured        = function() FALSE,
     db_sync_project_async   = function(project_id) { dispatched$called <<- TRUE; invisible(NULL) }
   )

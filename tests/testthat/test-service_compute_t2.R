@@ -69,8 +69,10 @@ test_that("compute_all_indicators computes N2 before T2 and T2 is no longer NA",
         indicateur_t1_anciennete = c(150, 30),
         indicateur_n2_continuite = c(80, 45),
         # Le vrai T2 du coeur, sur les unites que l'app lui passe
-        indicateur_t2_changement = suppressMessages(
-          nemeton::indicateur_t2_changement(parcels)),
+        # (la vraie compute_single_indicator() passe le resultat par
+        # extract_indicator_value() : depuis nemeton 1.0.0 c'est un sf)
+        indicateur_t2_changement = extract_indicator_value(suppressMessages(
+          nemeton::indicateur_t2_changement(parcels)), "indicateur_t2_changement"),
         rep(50, nrow(parcels)))
     },
     {
@@ -94,7 +96,7 @@ test_that("T2 falls back to T1 when N2 is unavailable", {
     "indicateur_t2_changement", p,
     data.frame(indicateur_n2_continuite = c(NA, NA),
                indicateur_t1_anciennete = c(150, 30)), list())
-  expect_equal(suppressMessages(nemeton::indicateur_t2_changement(u)), c(100, 30))
+  expect_equal(suppressMessages(nemeton::indicateur_t2_changement(u))$T2, c(100, 30))
 })
 
 test_that("T2 falls back to T1 unit by unit when N2 is partly missing (nemeton >= 0.212.1)", {
@@ -105,5 +107,5 @@ test_that("T2 falls back to T1 unit by unit when N2 is partly missing (nemeton >
     "indicateur_t2_changement", p,
     data.frame(indicateur_n2_continuite = c(70, NA),
                indicateur_t1_anciennete = c(150, 30)), list())
-  expect_equal(suppressMessages(nemeton::indicateur_t2_changement(u)), c(70, 30))
+  expect_equal(suppressMessages(nemeton::indicateur_t2_changement(u))$T2, c(70, 30))
 })

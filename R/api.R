@@ -3,8 +3,8 @@
 # Brief ~/dev/briefs/vers-nemetonshiny/2026-10-04-api-hors-interface-sans-effet-de-bord.md
 # (aigora-nemeton). Fines enveloppes des services existants : l'objectif est un
 # CONTRAT stable (CONTRAT.md, section 1 bis), pas une reecriture. Regle cle :
-# une fonction de LECTURE n'ecrit jamais rien dans le projet ; les migrations
-# ne passent que par `projet_migrer()`, explicite.
+# une fonction de LECTURE n'ecrit jamais rien dans le projet. Depuis la 1.0.0,
+# aucune migration : un projet anterieur est refuse (`nemetonshiny_projet_ancien`).
 
 #' Headless API
 #'
@@ -14,11 +14,10 @@
 #' a report or a GeoPackage.
 #'
 #' Read functions ([projets_lister()], [projet_etat()], [projet_lire()],
-#' [parcelles_commune()]) **never write** into a project. In particular,
-#' [projet_lire()] does not run the format migrations that opening a project in
-#' the application runs: when one would be needed, it fails with an error of
-#' class `nemetonshiny_projet_perime` instead, and [projet_migrer()] applies it
-#' explicitly.
+#' [parcelles_commune()]) **never write** into a project. Version 1.0.0 starts
+#' from scratch: a project created before it is not taken over, and the
+#' functions that read or compute it fail with an error of class
+#' `nemetonshiny_projet_ancien`.
 #'
 #' Projects live in the projects directory: `run_app(project_dir = )` in the
 #' application; outside it, the `NEMETON_PROJECT_DIR` environment variable, or
@@ -27,8 +26,8 @@
 #' @section Errors:
 #' Errors are classed, so callers can react without parsing messages:
 #' * `nemetonshiny_projet_introuvable`: unknown or invalid project id;
-#' * `nemetonshiny_projet_perime`: a migration would be needed to read the
-#'   project (the condition carries the [projet_etat()] result in `$etat`);
+#' * `nemetonshiny_projet_ancien`: project created before version 1.0.0, to be
+#'   recreated (the condition carries the [projet_etat()] result in `$etat`);
 #' * `nemetonshiny_sans_indicateurs`: the operation needs computed indicators;
 #' * `nemetonshiny_calcul_echec`: the computation failed.
 #' All of them also inherit `nemetonshiny_erreur`.
@@ -57,8 +56,8 @@ NULL
 #'
 #' @return A data.frame, one row per project, most recently updated first:
 #'   `id`, `nom`, `statut`, `maj`, `ndp`, `ugf`, `indicateurs` (computed
-#'   indicators present on disk), `sens_a_jour` (`FALSE` when the indicators
-#'   predate the current indicator direction, see [projet_etat()]).
+#'   indicators present on disk), `format_ok` (`FALSE` for a project created
+#'   before version 1.0.0, which is not taken over).
 #'   Read-only.
 #' @family api_hors_interface
 #' @md
@@ -71,7 +70,6 @@ projets_lister <- function() {
     if (!file.exists(f)) return(NULL)
     m <- tryCatch(jsonlite::read_json(f), error = function(e) NULL)
     if (is.null(m)) return(NULL)
-    vu <- .sense_seen(m)
     has_ind <- file.exists(file.path(d, "data", "indicators.parquet"))
     data.frame(
       id = basename(d),
@@ -81,7 +79,7 @@ projets_lister <- function() {
       ndp = suppressWarnings(as.integer(.chr1(m$ndp_level))),
       ugf = suppressWarnings(as.integer(.chr1(m$ug_count))),
       indicateurs = has_ind,
-      sens_a_jour = !has_ind || vu >= INDICATOR_SENSE_VERSION,
+      format_ok = .projet_format_ok(m),
       stringsAsFactors = FALSE
     )
   })
@@ -89,7 +87,7 @@ projets_lister <- function() {
   if (!length(rows)) {
     return(data.frame(id = character(), nom = character(), statut = character(),
                       maj = character(), ndp = integer(), ugf = integer(),
-                      indicateurs = logical(), sens_a_jour = logical(),
+                      indicateurs = logical(), format_ok = logical(),
                       stringsAsFactors = FALSE))
   }
   out <- do.call(rbind, rows)
@@ -102,28 +100,19 @@ projets_lister <- function() {
   if (is.null(x) || !length(x) || is.list(x)) NA_character_ else as.character(x[[1]])
 }
 
-.sense_seen <- function(metadata) {
-  vu <- suppressWarnings(as.integer(metadata$indicator_sense_version %||% 1L))
-  if (length(vu) != 1L || is.na(vu)) 1L else vu
-}
-
 #' State of a project
 #'
 #' Everything needed to decide what to do with a project, without loading it.
 #'
 #' @param id Project id (the name of its directory).
 #' @return A list:
-#'   * `id`, `nom`, `statut`, `chemin`, `ndp`, `schema_version`;
-#'   * `sens_vu`, `sens_courant`: indicator direction version the indicators
-#'     were computed under / expected by this version of the application;
+#'   * `id`, `nom`, `statut`, `chemin`, `ndp`;
+#'   * `format_projet`, `format_ok`: project format, and whether this version
+#'     of the application reads it (`FALSE` for a project created before
+#'     1.0.0: it is not taken over and must be recreated);
 #'   * `indicateurs`: computed indicators present on disk;
-#'   * `ugf`: readable management units (UGF) present;
-#'   * `indicateurs_perimes`: indicators computed under an older direction
-#'     (they would be set aside by a migration);
-#'   * `migration_ugf`: management units missing or unreadable (a migration
-#'     would create one unit per parcel);
-#'   * `migration_necessaire`: `TRUE` when [projet_lire()] would refuse the
-#'     project and [projet_migrer()] would change it;
+#'   * `ugf`: readable management units (UGF) present (otherwise the default
+#'     layout, one unit per parcel, is created at the first opening);
 #'   * `archives`: set-aside indicator files (`metadata$indicateurs_perimes`).
 #'
 #'   Read-only.
@@ -137,37 +126,36 @@ projet_etat <- function(id) {
     .api_abort("Projet {.val {id}} : {.file metadata.json} absent ou illisible.",
                "nemetonshiny_projet_introuvable", projet = id)
   }
-  vu <- .sense_seen(meta)
-  has_ind <- file.exists(file.path(path, "data", "indicators.parquet"))
-  ug_ok <- !is.null(suppressWarnings(load_ug_data(id)))
-  has_parcels <- file.exists(file.path(path, "data", "parcels.gpkg")) ||
-    file.exists(file.path(path, "data", "parcels.parquet"))
-  perimes <- has_ind && vu < INDICATOR_SENSE_VERSION
-  mig_ugf <- !ug_ok && has_parcels
   list(
     id = id,
     nom = .chr1(meta$name),
     statut = .chr1(meta$status),
     chemin = path,
     ndp = suppressWarnings(as.integer(.chr1(meta$ndp_level))),
-    schema_version = .chr1(meta$schema_version),
-    sens_vu = vu,
-    sens_courant = INDICATOR_SENSE_VERSION,
-    indicateurs = has_ind,
-    ugf = ug_ok,
-    indicateurs_perimes = perimes,
-    migration_ugf = mig_ugf,
-    migration_necessaire = perimes || mig_ugf,
+    format_projet = suppressWarnings(as.integer(.chr1(meta$format_projet))),
+    format_ok = .projet_format_ok(meta),
+    indicateurs = file.exists(file.path(path, "data", "indicators.parquet")),
+    ugf = !is.null(suppressWarnings(load_ug_data(id))),
     archives = meta$indicateurs_perimes %||% list()
   )
+}
+
+#' Refuse a project created before version 1.0.0
+#' @noRd
+.api_refuser_ancien <- function(etat, call = rlang::caller_env()) {
+  if (isTRUE(etat$format_ok)) return(invisible(TRUE))
+  .api_abort(c(
+    "Projet {.val {etat$id}} : cr\u00e9\u00e9 avant la version 1.0.0, il n'est pas repris.",
+    i = "Le recr\u00e9er avec {.fn projet_creer} (m\u00eames parcelles) ; rien n'a \u00e9t\u00e9 modifi\u00e9."
+  ), "nemetonshiny_projet_ancien", etat = etat, call = call)
 }
 
 #' Read a project's results, without side effect
 #'
 #' Builds the project exactly as the Synthesis tab sees it (indicators per
 #' management unit, R5 from the linked monitoring zone, R6/R7 from
-#' reGeneration, family scores through the core), **without** the migrations
-#' that opening the project in the application runs. Nothing is written.
+#' reGeneration, family scores through the core). Nothing is written (a
+#' project without management units is read with none).
 #'
 #' @param id Project id.
 #' @param langue `"fr"` or `"en"`, for the family labels of `synthese`.
@@ -179,27 +167,15 @@ projet_etat <- function(id) {
 #'   * `synthese`: global score, NDP and the 12 family scores, as plain values
 #'     (same figures as the Synthesis tab).
 #' @section Errors:
-#' Class `nemetonshiny_projet_perime` when a migration would be needed (see
-#' [projet_etat()] and [projet_migrer()]); class
-#' `nemetonshiny_projet_introuvable` for an unknown id.
+#' Class `nemetonshiny_projet_ancien` for a project created before version
+#' 1.0.0 (not taken over); class `nemetonshiny_projet_introuvable` for an
+#' unknown id.
 #' @family api_hors_interface
 #' @md
 #' @export
 projet_lire <- function(id, langue = "fr") {
   etat <- projet_etat(id)
-  if (isTRUE(etat$migration_necessaire)) {
-    raison <- c(
-      if (isTRUE(etat$indicateurs_perimes)) sprintf(
-        "indicateurs calcul\u00e9s sous le sens v%d (courant : v%d)",
-        etat$sens_vu, etat$sens_courant),
-      if (isTRUE(etat$migration_ugf)) "unit\u00e9s de gestion absentes ou illisibles"
-    )
-    .api_abort(c(
-      "Projet {.val {id}} : une migration serait n\u00e9cessaire pour le lire.",
-      x = "{raison}",
-      i = "Rien n'a \u00e9t\u00e9 modifi\u00e9. {.fn projet_migrer} applique la migration (les indicateurs p\u00e9rim\u00e9s sont mis de c\u00f4t\u00e9, pas supprim\u00e9s)."
-    ), "nemetonshiny_projet_perime", etat = etat)
-  }
+  .api_refuser_ancien(etat)
 
   meta <- load_project_metadata(id)
   project <- c(list(id = id, path = etat$chemin, metadata = meta),
@@ -219,27 +195,6 @@ projet_lire <- function(id, langue = "fr") {
     familles = familles,
     synthese = project_synthesis_summary(project, langue, family_sf = familles)
   )
-}
-
-#' Apply a project's pending migrations
-#'
-#' What opening the project in the application does: set aside indicators
-#' computed under an older indicator direction (renamed
-#' `data/indicators.perime-v<n>-<date>.parquet`, never deleted; the project
-#' goes back to draft and must be recomputed) and create the management units
-#' when they are missing (one unit per parcel; unreadable unit files are moved
-#' to `data/ug_sauvegarde_<date>/` first).
-#'
-#' @param id Project id.
-#' @return The new [projet_etat()], invisibly.
-#' @family api_hors_interface
-#' @md
-#' @export
-projet_migrer <- function(id) {
-  .api_project_path(id)
-  ensure_indicator_sense_current(id)
-  ensure_project_migrated(id)
-  invisible(projet_etat(id))
 }
 
 #' Cadastral parcels of a commune
@@ -270,8 +225,8 @@ parcelles_commune <- function(insee, ids = NULL) {
 #' Create a project
 #'
 #' Creates the project and initialises it as the application does when it
-#' opens a new project (management units: one per parcel; current indicator
-#' direction), so it can be computed right away with [projet_calculer()].
+#' opens a new project (management units: one per parcel), so it can be
+#' computed right away with [projet_calculer()].
 #'
 #' @param nom Project name (100 characters max).
 #' @param parcelles sf object of cadastral parcels, as returned by
@@ -290,7 +245,7 @@ projet_creer <- function(nom, parcelles, description = "", proprietaire = "",
   }
   pr <- create_project(nom, description = description, owner = proprietaire,
                        parcels = parcelles, groupes_profile = profil_groupes)
-  projet_migrer(pr$id)
+  ensure_project_ug(pr$id)
   pr$id
 }
 
@@ -305,18 +260,14 @@ projet_creer <- function(nom, parcelles, description = "", proprietaire = "",
 #'   list with `status`, `progress`, `progress_max`, `current_task`, ...).
 #' @return The computation result (list with `success`), invisibly.
 #' @section Errors:
-#' Class `nemetonshiny_projet_perime` when the project must be migrated first,
-#' `nemetonshiny_calcul_echec` when the computation fails.
+#' Class `nemetonshiny_projet_ancien` for a project created before version
+#' 1.0.0, `nemetonshiny_calcul_echec` when the computation fails.
 #' @family api_hors_interface
 #' @md
 #' @export
 projet_calculer <- function(id, indicateurs = "all", progression = NULL) {
   etat <- projet_etat(id)
-  if (isTRUE(etat$migration_necessaire)) {
-    .api_abort(c("Projet {.val {id}} : migration n\u00e9cessaire avant le calcul.",
-                 i = "Lancer {.fn projet_migrer} d'abord."),
-               "nemetonshiny_projet_perime", etat = etat)
-  }
+  .api_refuser_ancien(etat)
   if (!is.null(progression) && !is.function(progression)) {
     cli::cli_abort("{.arg progression} doit \u00eatre une fonction ou NULL.")
   }

@@ -28,8 +28,8 @@ The project id.
 }
 \description{
 Creates the project and initialises it as the application does when it
-opens a new project (management units: one per parcel; current indicator
-direction), so it can be computed right away with \code{\link[=projet_calculer]{projet_calculer()}}.
+opens a new project (management units: one per parcel), so it can be
+computed right away with \code{\link[=projet_calculer]{projet_calculer()}}.
 }
 \seealso{
 Other api_hors_interface:
@@ -38,7 +38,6 @@ Other api_hors_interface:
 \code{\link[=projet_etat]{projet_etat()}},
 \code{\link[=projet_gpkg]{projet_gpkg()}},
 \code{\link[=projet_lire]{projet_lire()}},
-\code{\link[=projet_migrer]{projet_migrer()}},
 \code{\link[=projet_rapport]{projet_rapport()}},
 \code{\link[=projets_lister]{projets_lister()}}
 }
