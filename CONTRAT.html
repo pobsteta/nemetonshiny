@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,22 +67,19 @@
 <th>Rôle</th>
 <th>Écrit</th>
 </tr></thead><tbody><tr><td><code><a href="reference/projets_lister.html">projets_lister()</a></code></td>
-<td>projets du dossier, avec leur état de sens</td>
+<td>projets du dossier, avec leur format (<code>format_ok</code>)</td>
 <td>non</td>
 </tr><tr><td><code>projet_etat(id)</code></td>
-<td>métadonnées, sens vu / courant, indicateurs et UGF présents, migration nécessaire</td>
+<td>métadonnées, format du projet, indicateurs et UGF présents</td>
 <td>non</td>
 </tr><tr><td><code>projet_lire(id, langue)</code></td>
 <td>indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l’onglet Synthèse)</td>
 <td><strong>non</strong></td>
-</tr><tr><td><code>projet_migrer(id)</code></td>
-<td>applique les migrations qu’appliquerait l’ouverture dans l’application</td>
-<td>oui</td>
 </tr><tr><td><code>parcelles_commune(insee, ids)</code></td>
 <td>parcelles cadastrales d’une commune</td>
 <td>non</td>
 </tr><tr><td><code>projet_creer(nom, parcelles, ...)</code></td>
-<td>crée et initialise un projet (UGF, sens courant) ; renvoie l’id</td>
+<td>crée et initialise un projet (UGF par défaut) ; renvoie l’id</td>
 <td>oui</td>
 </tr><tr><td><code>projet_calculer(id, indicateurs, progression)</code></td>
 <td>calcul synchrone des indicateurs</td>
@@ -94,8 +91,9 @@
 <td>GeoPackage des résultats par UGF</td>
 <td>le fichier demandé seulement</td>
 </tr></tbody></table><p>Garanties :</p>
-<ul><li>une fonction marquée « non » n’écrit <strong>rien</strong> dans le projet ; en particulier <code><a href="reference/projet_lire.html">projet_lire()</a></code> n’exécute aucune migration : si l’une serait nécessaire, elle échoue avec une erreur de classe <code>nemetonshiny_projet_perime</code> (champ <code>etat</code> = <code><a href="reference/projet_etat.html">projet_etat()</a></code>), et seule <code><a href="reference/projet_migrer.html">projet_migrer()</a></code> l’applique ;</li>
-<li>les erreurs sont classées et héritent toutes de <code>nemetonshiny_erreur</code> : <code>nemetonshiny_projet_introuvable</code>, <code>nemetonshiny_projet_perime</code>, <code>nemetonshiny_sans_indicateurs</code>, <code>nemetonshiny_calcul_echec</code>, <code>nemetonshiny_parcelles_introuvables</code> ;</li>
+<ul><li>une fonction marquée « non » n’écrit <strong>rien</strong> dans le projet ;</li>
+<li>un projet créé avant la 1.0.0 n’est pas repris : lire, calculer ou exporter échoue avec une erreur de classe <code>nemetonshiny_projet_ancien</code> (champ <code>etat</code> = <code><a href="reference/projet_etat.html">projet_etat()</a></code>) ; il faut le recréer ;</li>
+<li>les erreurs sont classées et héritent toutes de <code>nemetonshiny_erreur</code> : <code>nemetonshiny_projet_introuvable</code>, <code>nemetonshiny_projet_ancien</code>, <code>nemetonshiny_sans_indicateurs</code>, <code>nemetonshiny_calcul_echec</code>, <code>nemetonshiny_parcelles_introuvables</code> ;</li>
 <li>commentaires du rapport : <code>synthese</code> est une chaîne (Markdown, notes <code>[^n]</code> facultatives) ; <code>familles</code> une liste nommée par code de famille (<code>C</code>, <code>B</code>, <code>W</code>, <code>A</code>, <code>F</code>, <code>L</code>, <code>T</code>, <code>R</code>, <code>S</code>, <code>P</code>, <code>E</code>, <code>N</code>) ; <code>sources</code> la liste Markdown des définitions de notes (<code>[^1]: auteur, titre, p. N. &lt;url&gt;</code>). Sans <code>sources</code>, les appels de note restent littéraux.</li>
 </ul><div class="section level3">
 <h3 id="liens-profonds-et-serveur-mcp">Liens profonds et serveur MCP<a class="anchor" aria-label="anchor" href="#liens-profonds-et-serveur-mcp"></a></h3>
@@ -210,7 +208,7 @@
 <table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Fichier</th>
 <th>Contenu</th>
 </tr></thead><tbody><tr><td><code>metadata.json</code></td>
-<td>métadonnées : <code>id</code>, <code>name</code>, <code>description</code>, <code>owner</code>, <code>status</code>, <code>schema_version</code> (<strong>2.1</strong>), <code>indicator_sense_version</code> (<strong>3</strong>), paramètres du projet</td>
+<td>métadonnées : <code>id</code>, <code>name</code>, <code>description</code>, <code>owner</code>, <code>status</code>, <code>format_projet</code> (<strong>1</strong>), paramètres du projet</td>
 </tr><tr><td><code>data/parcels.gpkg</code></td>
 <td>parcelles cadastrales (référence) ; <code>parcels.parquet</code> en copie de lecture rapide</td>
 </tr><tr><td>
@@ -219,7 +217,7 @@
 <td>découpage en unités de gestion (UGF)</td>
 </tr><tr><td><code>data/indicators.parquet</code></td>
 <td>indicateurs calculés, par UGF</td>
-</tr><tr><td><code>data/indicators.perime-v&lt;n&gt;-&lt;date&gt;.parquet</code></td>
+</tr><tr><td><code>data/indicators.perime-&lt;date&gt;.parquet</code></td>
 <td>indicateurs invalidés, mis de côté (deux générations au plus, listées dans <code>metadata.json</code> → <code>indicateurs_perimes</code>)</td>
 </tr><tr><td><code>data/action_plan.json</code></td>
 <td>plan d’actions (<code>version</code> <strong>1</strong>, <code>annee_base</code>, actions, audit)</td>
@@ -232,17 +230,19 @@
 </tr><tr><td><code>cache/</code></td>
 <td>couches téléchargées et résultats intermédiaires : <strong>non contractuel</strong>, supprimable</td>
 </tr></tbody></table><p>Garanties :</p>
-<ul><li>un projet créé par une version 1.x s’ouvre dans toute version 1.y ultérieure ;</li>
-<li>les migrations de format sont <strong>automatiques</strong> à l’ouverture, ne s’exécutent qu’une fois (marqueurs <code>schema_version</code>, <code>indicator_sense_version</code>, <code>annee_base</code>) et <strong>ne détruisent rien</strong> : des données illisibles sont mises de côté (<code>data/ug_sauvegarde_&lt;date&gt;/</code>, <code>action_plan.illisible-&lt;date&gt;.json</code>) ;</li>
-<li>un changement de sens ou d’échelle d’un indicateur dans le cœur invalide les indicateurs calculés avant (recalcul demandé à l’utilisateur), sans toucher aux autres données ; les indicateurs invalidés sont <strong>renommés</strong>, jamais supprimés (<code>indicators.perime-v&lt;n&gt;-&lt;date&gt;.parquet</code>), ce qui permet de comparer avant / après ;</li>
+<ul><li>
+<strong>la 1.0.0 repart de zéro</strong> : un projet créé par une version 0.x (sans <code>format_projet</code>) n’est pas repris. L’application le signale « antérieur à la 1.0 » et ne propose que sa suppression ; l’API le refuse (<code>nemetonshiny_projet_ancien</code>). Il faut le recréer ;</li>
+<li>un projet créé par une version 1.x s’ouvre dans toute version 1.y ultérieure : un changement de format après la 1.0.0 s’accompagne d’une migration automatique (marqueur <code>format_projet</code>) ;</li>
+<li>rien n’est détruit en silence : des données illisibles sont mises de côté (<code>data/ug_sauvegarde_&lt;date&gt;/</code>, <code>action_plan.illisible-&lt;date&gt;.json</code>) et des indicateurs invalidés sont <strong>renommés</strong>, jamais supprimés (<code>indicators.perime-&lt;date&gt;.parquet</code>) ;</li>
 <li>les écritures sont atomiques : un arrêt brutal ne laisse pas de fichier tronqué.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="id_4-schéma-postgis">4. Schéma PostGIS<a class="anchor" aria-label="anchor" href="#id_4-sch%C3%A9ma-postgis"></a></h2>
 <ul><li>
-<code>inst/sql/schema.sql</code> est appliqué par l’application (idempotent).</li>
-<li>Les fichiers <code>inst/sql/migration_00N_*.sql</code> s’appliquent <strong>à la main</strong>, dans l’ordre, une seule fois. Ils sont idempotents, sauf <code>migration_001</code>, historique et <strong>destructive</strong>, à ne jamais rejouer.</li>
-<li>Une nouvelle migration est toujours un nouveau fichier, jamais la modification d’un fichier publié.</li>
+<code>inst/sql/schema.sql</code> est appliqué par l’application (idempotent) et décrit à lui seul le schéma complet de la 1.0.0.</li>
+<li>
+<strong>La 1.0.0 repart d’une base neuve</strong> : les anciennes migrations ont été intégrées à <code>schema.sql</code> et retirées. Une base créée avant la 1.0.0 est à recréer, comme les tables du cœur (<code><a href="https://pobsteta.github.io/nemeton/reference/db_migrate.html" class="external-link">nemeton::db_migrate()</a></code> refuse une base antérieure à <code>nemeton</code> 1.0.0, erreur <code>nemeton_legacy_schema</code>) ; la base de suivi sanitaire aussi.</li>
+<li>Après la 1.0.0, un changement de schéma est toujours un nouveau fichier <code>inst/sql/migration_00N_*.sql</code>, idempotent, jamais la modification d’un fichier publié.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="id_5-profils-dexperts">5. Profils d’experts<a class="anchor" aria-label="anchor" href="#id_5-profils-dexperts"></a></h2>

@@ -3,22 +3,20 @@
 inspect projects, read their results, create and compute a project, export
 a report or a GeoPackage.
 Read functions (projets_lister(), projet_etat(), projet_lire(),
-parcelles_commune()) never write into a project. In particular,
-projet_lire() does not run the format migrations that opening a project in
-the application runs: when one would be needed, it fails with an error of
-class nemetonshiny_projet_perime instead, and projet_migrer() applies it
-explicitly.
+parcelles_commune()) never write into a project. Version 1.0.0 starts
+from scratch: a project created before it is not taken over, and the
+functions that read or compute it fail with an error of class
+nemetonshiny_projet_ancien.
 Projects live in the projects directory: run_app(project_dir = ) in the
 application; outside it, the NEMETON_PROJECT_DIR environment variable, or
 the default directory."><meta property="og:description" content="Functions to run a Nemeton diagnostic without the Shiny interface: list and
 inspect projects, read their results, create and compute a project, export
 a report or a GeoPackage.
 Read functions (projets_lister(), projet_etat(), projet_lire(),
-parcelles_commune()) never write into a project. In particular,
-projet_lire() does not run the format migrations that opening a project in
-the application runs: when one would be needed, it fails with an error of
-class nemetonshiny_projet_perime instead, and projet_migrer() applies it
-explicitly.
+parcelles_commune()) never write into a project. Version 1.0.0 starts
+from scratch: a project created before it is not taken over, and the
+functions that read or compute it fail with an error of class
+nemetonshiny_projet_ancien.
 Projects live in the projects directory: run_app(project_dir = ) in the
 application; outside it, the NEMETON_PROJECT_DIR environment variable, or
 the default directory."></head><body>
@@ -29,7 +27,7 @@ the default directory."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,11 +59,10 @@ the default directory."></head><body>
 inspect projects, read their results, create and compute a project, export
 a report or a GeoPackage.</p>
 <p>Read functions (<code><a href="projets_lister.html">projets_lister()</a></code>, <code><a href="projet_etat.html">projet_etat()</a></code>, <code><a href="projet_lire.html">projet_lire()</a></code>,
-<code><a href="parcelles_commune.html">parcelles_commune()</a></code>) <strong>never write</strong> into a project. In particular,
-<code><a href="projet_lire.html">projet_lire()</a></code> does not run the format migrations that opening a project in
-the application runs: when one would be needed, it fails with an error of
-class <code>nemetonshiny_projet_perime</code> instead, and <code><a href="projet_migrer.html">projet_migrer()</a></code> applies it
-explicitly.</p>
+<code><a href="parcelles_commune.html">parcelles_commune()</a></code>) <strong>never write</strong> into a project. Version 1.0.0 starts
+from scratch: a project created before it is not taken over, and the
+functions that read or compute it fail with an error of class
+<code>nemetonshiny_projet_ancien</code>.</p>
 <p>Projects live in the projects directory: <code>run_app(project_dir = )</code> in the
 application; outside it, the <code>NEMETON_PROJECT_DIR</code> environment variable, or
 the default directory.</p>
@@ -77,8 +74,8 @@ the default directory.</p>
 
 
 <p>Errors are classed, so callers can react without parsing messages:</p><ul><li><p><code>nemetonshiny_projet_introuvable</code>: unknown or invalid project id;</p></li>
-<li><p><code>nemetonshiny_projet_perime</code>: a migration would be needed to read the
-project (the condition carries the <code><a href="projet_etat.html">projet_etat()</a></code> result in <code>$etat</code>);</p></li>
+<li><p><code>nemetonshiny_projet_ancien</code>: project created before version 1.0.0, to be
+recreated (the condition carries the <code><a href="projet_etat.html">projet_etat()</a></code> result in <code>$etat</code>);</p></li>
 <li><p><code>nemetonshiny_sans_indicateurs</code>: the operation needs computed indicators;</p></li>
 <li><p><code>nemetonshiny_calcul_echec</code>: the computation failed.
 All of them also inherit <code>nemetonshiny_erreur</code>.</p></li>

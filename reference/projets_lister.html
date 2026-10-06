@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,8 +47,8 @@
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A data.frame, one row per project, most recently updated first:
 <code>id</code>, <code>nom</code>, <code>statut</code>, <code>maj</code>, <code>ndp</code>, <code>ugf</code>, <code>indicateurs</code> (computed
-indicators present on disk), <code>sens_a_jour</code> (<code>FALSE</code> when the indicators
-predate the current indicator direction, see <code><a href="projet_etat.html">projet_etat()</a></code>).
+indicators present on disk), <code>format_ok</code> (<code>FALSE</code> for a project created
+before version 1.0.0, which is not taken over).
 Read-only.</p>
     </div>
     <div class="section level2">
@@ -60,7 +60,6 @@ Read-only.</p>
 <code><a href="projet_etat.html">projet_etat()</a></code>,
 <code><a href="projet_gpkg.html">projet_gpkg()</a></code>,
 <code><a href="projet_lire.html">projet_lire()</a></code>,
-<code><a href="projet_migrer.html">projet_migrer()</a></code>,
 <code><a href="projet_rapport.html">projet_rapport()</a></code></p></div>
     </div>
 

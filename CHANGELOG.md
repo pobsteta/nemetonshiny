@@ -12,6 +12,34 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[1.0.0\] - 2026-10-06
+
+First stable release. **Breaking**: projects and databases created with
+0.x versions are not taken over (no migration); recreate them.
+
+### Changed
+
+- Requires `nemeton (>= 1.0.0)`.
+- Projects carry `format_projet = 1`; older projects are flagged
+  “pre-1.0” (delete only) and refused by the API
+  (`nemetonshiny_projet_ancien`).
+- [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md)
+  exposes `format_projet` / `format_ok`;
+  [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md)
+  exposes `format_ok`.
+- `inst/sql/schema.sql` holds the full 1.0 schema (`_norm` columns,
+  `*_states` archives).
+- Core 1.0.0 statuses translated (P2 without real age, C1 from NDVI, P3
+  components, P2 outside site curves, conditional indicators).
+
+### Removed
+
+- `projet_migrer()` and the `nemetonshiny_projet_perime` error class.
+- Indicator-sense check (`indicator_sense_version`) and legacy project
+  file formats (`atomes.gpkg`, `atome_id`).
+- `inst/sql/migration_00N_*.sql` (folded into `schema.sql`).
+- INPN “wetlands” layer (mostly ZNIEFF, unused by the core).
+
 ## \[0.157.1\] - 2026-10-06
 
 ### Added
@@ -118,7 +146,7 @@ the concise, categorised trail.
   [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md),
   [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
   [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md),
-  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md),
+  `projet_migrer()`,
   [`parcelles_commune()`](https://pobsteta.github.io/nemetonshiny/reference/parcelles_commune.md),
   [`projet_creer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_creer.md),
   [`projet_calculer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_calculer.md),
@@ -129,7 +157,7 @@ the concise, categorised trail.
 - [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
   sans aucune ecriture : erreur `nemetonshiny_projet_perime` si une
   migration serait necessaire, appliquee seulement par
-  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md).
+  `projet_migrer()`.
 - Variable `NEMETON_PROJECT_DIR` : dossier des projets par defaut.
 
 ### Changed

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,29 @@
 <h2 id="unreleased">[Unreleased]<a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
 </div>
 <div class="section level2">
+<h2 id="id_100---2026-10-06">[1.0.0] - 2026-10-06<a class="anchor" aria-label="anchor" href="#id_100---2026-10-06"></a></h2>
+<p>First stable release. <strong>Breaking</strong>: projects and databases created with 0.x versions are not taken over (no migration); recreate them.</p>
+<div class="section level3">
+<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<ul><li>Requires <code>nemeton (&gt;= 1.0.0)</code>.</li>
+<li>Projects carry <code>format_projet = 1</code>; older projects are flagged “pre-1.0” (delete only) and refused by the API (<code>nemetonshiny_projet_ancien</code>).</li>
+<li>
+<code><a href="reference/projet_etat.html">projet_etat()</a></code> exposes <code>format_projet</code> / <code>format_ok</code>; <code><a href="reference/projets_lister.html">projets_lister()</a></code> exposes <code>format_ok</code>.</li>
+<li>
+<code>inst/sql/schema.sql</code> holds the full 1.0 schema (<code>_norm</code> columns, <code>*_states</code> archives).</li>
+<li>Core 1.0.0 statuses translated (P2 without real age, C1 from NDVI, P3 components, P2 outside site curves, conditional indicators).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="removed">Removed<a class="anchor" aria-label="anchor" href="#removed"></a></h3>
+<ul><li>
+<code>projet_migrer()</code> and the <code>nemetonshiny_projet_perime</code> error class.</li>
+<li>Indicator-sense check (<code>indicator_sense_version</code>) and legacy project file formats (<code>atomes.gpkg</code>, <code>atome_id</code>).</li>
+<li>
+<code>inst/sql/migration_00N_*.sql</code> (folded into <code>schema.sql</code>).</li>
+<li>INPN “wetlands” layer (mostly ZNIEFF, unused by the core).</li>
+</ul></div>
+</div>
+<div class="section level2">
 <h2 id="id_01571---2026-10-06">[0.157.1] - 2026-10-06<a class="anchor" aria-label="anchor" href="#id_01571---2026-10-06"></a></h2>
 <div class="section level3">
 <h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
@@ -51,7 +74,7 @@
 <div class="section level2">
 <h2 id="id_01570---2026-10-05">[0.157.0] - 2026-10-05<a class="anchor" aria-label="anchor" href="#id_01570---2026-10-05"></a></h2>
 <div class="section level3">
-<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
 <ul><li>Scores de famille et score global ponderes par la surface des UGF (<code><a href="https://pobsteta.github.io/nemeton/reference/aggregate_family_scores.html" class="external-link">nemeton::aggregate_family_scores()</a></code>) : Synthese, radar, tableau, rapport PDF, prompt IA, <code><a href="reference/projet_etat.html">projet_etat()</a></code>, serveur MCP. Les scores affiches changent.</li>
 <li>Composite NDVI S2 de C2 par <code><a href="https://pobsteta.github.io/nemeton/reference/build_ndvi_season_composite.html" class="external-link">nemeton::build_ndvi_season_composite()</a></code> (offset radiometrique retire) ; cache <code>ndvi_s2_v2.tif</code>.</li>
 <li>Indices ombrothermiques par <code><a href="https://pobsteta.github.io/nemeton/reference/climate_ombrothermic_indices.html" class="external-link">nemeton::climate_ombrothermic_indices()</a></code>.</li>
@@ -83,14 +106,14 @@
 <li>Import de tenements (CRS, elements hors parcelles), contenance NA, score global NA, configuration des sources, carte, cartes de fin de calcul.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
+<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
 <ul><li>Badges NDP lisibles et traduits ; un seul bouton principal en Synthese ; textes restants passes par l’i18n ; JS sans ecouteurs empiles.</li>
 <li>Keycloak de dev : <code>keycloak/realm-nemeton-dev.json</code>, secrets obligatoires via <code>.env</code> (<code>.env.example</code>).</li>
 <li>CI : job <code>R-CMD-check-oldrel</code> non bloquant.</li>
 <li>NEWS et CHANGELOG archives avant 0.130.0 ; logo allege.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed">Removed<a class="anchor" aria-label="anchor" href="#removed"></a></h3>
+<h3 id="removed-1">Removed<a class="anchor" aria-label="anchor" href="#removed-1"></a></h3>
 <ul><li>Code mort : radar/palettes de <code>utils_theme.R</code>, <code>tenement_split_by_line()</code>, <code>db_load_parcels()</code>, <code>needs_migration()</code>, sept helpers cadastre/communes.</li>
 </ul></div>
 </div>
@@ -117,13 +140,13 @@
 <h2 id="id_01540---2026-10-04">[0.154.0] - 2026-10-04<a class="anchor" aria-label="anchor" href="#id_01540---2026-10-04"></a></h2>
 <div class="section level3">
 <h3 id="added-3">Added<a class="anchor" aria-label="anchor" href="#added-3"></a></h3>
-<ul><li>API hors interface exportee (<code><a href="reference/api_hors_interface.html">?api_hors_interface</a></code>) : <code><a href="reference/projets_lister.html">projets_lister()</a></code>, <code><a href="reference/projet_etat.html">projet_etat()</a></code>, <code><a href="reference/projet_lire.html">projet_lire()</a></code>, <code><a href="reference/projet_migrer.html">projet_migrer()</a></code>, <code><a href="reference/parcelles_commune.html">parcelles_commune()</a></code>, <code><a href="reference/projet_creer.html">projet_creer()</a></code>, <code><a href="reference/projet_calculer.html">projet_calculer()</a></code>, <code><a href="reference/projet_rapport.html">projet_rapport()</a></code>, <code><a href="reference/projet_gpkg.html">projet_gpkg()</a></code> ; erreurs classees (<code>nemetonshiny_erreur</code>) ; <code>CONTRAT.md</code> section 1 bis.</li>
+<ul><li>API hors interface exportee (<code><a href="reference/api_hors_interface.html">?api_hors_interface</a></code>) : <code><a href="reference/projets_lister.html">projets_lister()</a></code>, <code><a href="reference/projet_etat.html">projet_etat()</a></code>, <code><a href="reference/projet_lire.html">projet_lire()</a></code>, <code>projet_migrer()</code>, <code><a href="reference/parcelles_commune.html">parcelles_commune()</a></code>, <code><a href="reference/projet_creer.html">projet_creer()</a></code>, <code><a href="reference/projet_calculer.html">projet_calculer()</a></code>, <code><a href="reference/projet_rapport.html">projet_rapport()</a></code>, <code><a href="reference/projet_gpkg.html">projet_gpkg()</a></code> ; erreurs classees (<code>nemetonshiny_erreur</code>) ; <code>CONTRAT.md</code> section 1 bis.</li>
 <li>
-<code><a href="reference/projet_lire.html">projet_lire()</a></code> sans aucune ecriture : erreur <code>nemetonshiny_projet_perime</code> si une migration serait necessaire, appliquee seulement par <code><a href="reference/projet_migrer.html">projet_migrer()</a></code>.</li>
+<code><a href="reference/projet_lire.html">projet_lire()</a></code> sans aucune ecriture : erreur <code>nemetonshiny_projet_perime</code> si une migration serait necessaire, appliquee seulement par <code>projet_migrer()</code>.</li>
 <li>Variable <code>NEMETON_PROJECT_DIR</code> : dossier des projets par defaut.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
+<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
 <ul><li>Scores de famille et score global de la Synthese extraits dans <code>R/service_synthesis.R</code> (memes chiffres pour l’onglet et l’API).</li>
 <li>Plancher <code>Imports: nemeton (&gt;= 0.212.0)</code> (borne E1/E2 a 2,64).</li>
 </ul></div>
@@ -143,7 +166,7 @@
 <code>CONTRAT.md</code> : contrat public de la 1.0 (point d’entree, variables d’environnement, format des projets, schema PostGIS, compatibilite).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
+<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
 <ul><li>Licence : GPL-3 ou ulterieure, alignee dans tous les fichiers.</li>
 <li>
 <code>future</code>, <code>arrow</code> et <code>geoarrow</code> en <code>Imports</code>.</li>
@@ -151,7 +174,7 @@
 <li>README reecrit ; R CMD check sans WARNING ni NOTE ; CI qui echoue sur un WARNING ; branche <code>main</code> protegee.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-1">Removed<a class="anchor" aria-label="anchor" href="#removed-1"></a></h3>
+<h3 id="removed-2">Removed<a class="anchor" aria-label="anchor" href="#removed-2"></a></h3>
 <ul><li>Fichier <code>.s2.out</code> commite par erreur.</li>
 </ul></div>
 </div>
@@ -177,7 +200,7 @@
 <li>Mise a jour de projet refusee en lecture seule ; <code>.dockerignore</code> sans secrets ; realm Keycloak de dev avec les roles dans <code>userinfo</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
+<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
 <ul><li>Sur un Keycloak existant, publier les roles du realm dans <code>userinfo</code> : sans ce mapper, les utilisateurs connectes passent en lecture seule.</li>
 </ul></div>
 </div>
@@ -195,7 +218,7 @@
 <ul><li>Houppiers : chaque calcul consigne <code>metadata$houppiers</code> (statut, nombre, date, detail) ; une erreur de segmentation n’est plus confondue avec un resultat vide ; l’export Marculus signale en avertissement une couche houppiers absente (avec la raison) ou une desserte absente.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
+<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
 <ul><li>Export Marculus : le message de fin compte les contextes dates au 1er janvier de leur annee cible (annee de programme, a corriger dans Marculus au martelage).</li>
 </ul></div>
 </div>
@@ -210,7 +233,7 @@
 <ul><li>P2 en mode CHM ne sature plus a 100/100 (ecart n. 17, <code>nemeton &gt;= 0.207.0</code>) : le statut <code>.p2_status</code> est passe a <code>normalize_indicator()</code> (plafond 40 m) ; le statut d’un calcul precedent est retire a chaque recalcul.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
+<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
 <ul><li>Plancher <code>Imports: nemeton (&gt;= 0.207.0)</code>.</li>
 </ul></div>
 </div>
@@ -221,7 +244,7 @@
 <ul><li>Production IFN par sylvoecoregion (spec 054, <code>nemeton &gt;= 0.205.0</code>) : bloc « Production IFN » dans Sources &amp; parametres pour basculer P2 sur la production de la SER (<code>source = "ifn_fh"</code>) et E1 en mode flux (part choisie ou taux IFN de la SER) ; localisation SER des UGF en cache ; P2 IFN et E1 flux sans CHM ; bandeau RSE / echelon / nature sous P2, avertissement « recolte observee » pour E1 ; panneau « Production du massif (IFN) » avec poids direct, part en bordure et ratios prelevement/production.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
+<h3 id="changed-8">Changed<a class="anchor" aria-label="anchor" href="#changed-8"></a></h3>
 <ul><li>Plancher <code>Imports: nemeton (&gt;= 0.205.0)</code>.</li>
 </ul></div>
 </div>
@@ -239,19 +262,19 @@
 <ul><li>Plan d’actions : un « i » explicatif sur Annee, Type et Priorite (« Couche affichee »), qui dit comment la couleur d’une UGF a plusieurs actions est choisie.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-8">Changed<a class="anchor" aria-label="anchor" href="#changed-8"></a></h3>
+<h3 id="changed-9">Changed<a class="anchor" aria-label="anchor" href="#changed-9"></a></h3>
 <ul><li>Plan d’actions : la courbe du bilan cumule et les totaux passent sous le tableau des actions.</li>
 <li>reGeneration : le tableau des UGF adopte la presentation de celui du Plan d’actions (libelle UGF en premiere colonne, recherche en regex, nombre de lignes et pagination sous le tableau, 60 % de la hauteur), et s’intitule « Tableau des actions ».</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-2">Removed<a class="anchor" aria-label="anchor" href="#removed-2"></a></h3>
+<h3 id="removed-3">Removed<a class="anchor" aria-label="anchor" href="#removed-3"></a></h3>
 <ul><li>reGeneration : la case « Masquer les UG mal couvertes » (toutes les UG sont affichees, la colonne Couverture reste) et la case « Bilan hydrique seul (rapide) » (l’analyse est toujours complete).</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_01512---2026-09-25">[0.151.2] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01512---2026-09-25"></a></h2>
 <div class="section level3">
-<h3 id="changed-9">Changed<a class="anchor" aria-label="anchor" href="#changed-9"></a></h3>
+<h3 id="changed-10">Changed<a class="anchor" aria-label="anchor" href="#changed-10"></a></h3>
 <ul><li>Plan d’actions, « Carte + Tableau » : le choix de coloration (Annee, Type, Priorite) quitte l’en-tete de la carte pour une barre laterale droite « Couche affichee », toujours ouverte, comme la carte de reGeneration.</li>
 </ul></div>
 </div>
@@ -289,7 +312,7 @@
 <h2 id="id_01490---2026-09-25">[0.149.0] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01490---2026-09-25"></a></h2>
 <p>Jalon mineur : le retour Marculus est lisible dans le Plan d’actions.</p>
 <div class="section level3">
-<h3 id="changed-10">Changed<a class="anchor" aria-label="anchor" href="#changed-10"></a></h3>
+<h3 id="changed-11">Changed<a class="anchor" aria-label="anchor" href="#changed-11"></a></h3>
 <ul><li>Un contexte revenu avec des tiges designees fait passer son action a « Realisee » dans le Kanban.</li>
 <li>La fiche Kanban affiche, sous le commentaire, la date du martelage, le nombre de tiges designees et, parmi elles, les tiges « Biodiversite » (<code>quantite$nb_tiges_biodiversite</code>, net des annulations).</li>
 <li>La synthese d’import prend la forme d’une feuille (une ligne par essence, une colonne par classe, des totaux) dans une fenetre defilante. Le bilan de l’import s’y affiche, au lieu d’un toast qui masquait « Fermer ».</li>
@@ -309,14 +332,14 @@
 <div class="section level2">
 <h2 id="id_01482---2026-09-25">[0.148.2] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01482---2026-09-25"></a></h2>
 <div class="section level3">
-<h3 id="changed-11">Changed<a class="anchor" aria-label="anchor" href="#changed-11"></a></h3>
+<h3 id="changed-12">Changed<a class="anchor" aria-label="anchor" href="#changed-12"></a></h3>
 <ul><li>Export Marculus : les contextes partent au diametre, avec des classes de 20 a 90 cm par pas de 5, les valeurs par defaut d’un contexte cree dans Marculus. Jusqu’ici, ils partaient en circonference, de 20 a 200 cm.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_01481---2026-09-25">[0.148.1] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01481---2026-09-25"></a></h2>
 <div class="section level3">
-<h3 id="changed-12">Changed<a class="anchor" aria-label="anchor" href="#changed-12"></a></h3>
+<h3 id="changed-13">Changed<a class="anchor" aria-label="anchor" href="#changed-13"></a></h3>
 <ul><li>Export Marculus : chaque essence de la feuille de martelage porte sa couleur BD Foret V2, comme dans Marculus (<code>Referentiels.kt</code>). Les essences d’une meme famille recoivent des nuances de la couleur de famille, et le texte est blanc ou noir selon le meilleur contraste WCAG (au moins 4,5:1). Jusqu’ici, toutes les colonnes arrivaient en blanc sur noir.</li>
 </ul></div>
 </div>
@@ -330,7 +353,7 @@
 <div class="section level2">
 <h2 id="id_01471---2026-09-25">[0.147.1] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01471---2026-09-25"></a></h2>
 <div class="section level3">
-<h3 id="changed-13">Changed<a class="anchor" aria-label="anchor" href="#changed-13"></a></h3>
+<h3 id="changed-14">Changed<a class="anchor" aria-label="anchor" href="#changed-14"></a></h3>
 <ul><li>Plan d’actions : le bouton d’import s’appelle « Importer de Marculus » (en : « Import from Marculus »), pendant de « Telecharger vers Marculus ».</li>
 </ul></div>
 </div>
@@ -379,7 +402,7 @@
 <div class="section level2">
 <h2 id="id_01442---2026-09-23">[0.144.2] - 2026-09-23<a class="anchor" aria-label="anchor" href="#id_01442---2026-09-23"></a></h2>
 <div class="section level3">
-<h3 id="changed-14">Changed<a class="anchor" aria-label="anchor" href="#changed-14"></a></h3>
+<h3 id="changed-15">Changed<a class="anchor" aria-label="anchor" href="#changed-15"></a></h3>
 <ul><li>Plancher <code>Imports: nemeton (&gt;= 0.199.2)</code>.</li>
 <li>Houppiers : l’app appelle de nouveau <code>segment_houppiers(chm, aoi = emprise)</code> dans le processus, puisque le cœur 0.199.2 passe une copie <code>stars</code> a lidR. Le contournement de la 0.144.1 est retire (processus <code>callr</code> neuf et filtrage d’emprise cote app). « Reconfort » : 80 982 houppiers en 54 s (185 s avant).</li>
 <li>RECONFORT : la couche de probabilite devient « Probabilite d’atteinte » (P(deperissant) + P(tres deperissant), 0-1000), avec son infobulle. Les avis <code>[minmax]</code> disparaissent (cœur 0.199.0).</li>
@@ -407,7 +430,7 @@
 <div class="section level2">
 <h2 id="id_014331---2026-09-23">[0.143.31] - 2026-09-23<a class="anchor" aria-label="anchor" href="#id_014331---2026-09-23"></a></h2>
 <div class="section level3">
-<h3 id="changed-15">Changed<a class="anchor" aria-label="anchor" href="#changed-15"></a></h3>
+<h3 id="changed-16">Changed<a class="anchor" aria-label="anchor" href="#changed-16"></a></h3>
 <ul><li>Carte FAST : <code>build_index_stack(..., cache_result = TRUE)</code> (cœur 0.198.0), cache sous <code>&lt;projet&gt;/cache/layers/index_stack</code>. Mesure <code>armn</code> (327 scenes) : 39,5 s au premier appel, 0,22 s ensuite, resultat identique. <code>parallel</code> reste a <code>FALSE</code>.</li>
 <li>Commentaire de <code>.compute_fast_mask()</code> aligne sur les masques FAST nommes par contenu (cœur 0.198.0).</li>
 <li>Plancher <code>Imports: nemeton (&gt;= 0.198.0)</code>.</li>
@@ -425,7 +448,7 @@
 <li>NEWS 0.143.29 : le rouge CI datait du 14 septembre, pas du plancher cœur 0.197.0.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-16">Changed<a class="anchor" aria-label="anchor" href="#changed-16"></a></h3>
+<h3 id="changed-17">Changed<a class="anchor" aria-label="anchor" href="#changed-17"></a></h3>
 <ul><li>Deux caracteres non-ASCII hors commentaire (<code>R/mod_home.R</code>, <code>R/mod_pipeline.R</code>) passent en <code>\uXXXX</code>.</li>
 </ul></div>
 </div>
@@ -438,7 +461,7 @@
 <li>CI <code>R-CMD-check</code> : sept tests de <code>normalize_indicator</code> verifiaient encore les anciennes bornes E1/E2, alignees sur 1,32 par le cœur v0.197.0.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-17">Changed<a class="anchor" aria-label="anchor" href="#changed-17"></a></h3>
+<h3 id="changed-18">Changed<a class="anchor" aria-label="anchor" href="#changed-18"></a></h3>
 <ul><li>Commentaire de <code>.compute_fast_mask()</code> corrige : le masque 0-4 est reclasse et reecrit par le cœur a chaque appel, seul le raster continu est en cache.</li>
 </ul></div>
 </div>
@@ -449,7 +472,7 @@
 <ul><li>Tour guide : l’etape « Plan d’action » tremblait sans fin. La sidebar ancree fait 793 px de haut dans une fenetre de 900 : driver.js, faute de place, poussait son popover hors de l’ecran, la page oscillait entre avec et sans barre de defilement, et chaque bascule reveillait le <code>ResizeObserver</code> de bslib qui redispatchait un <code>resize</code> que driver.js ecoutait pour se recadrer (326 evenements en 6,4 s). L’etape est desormais ancree sur la carte « Tableau des actions » avec <code>position = "left"</code> : 0 evenement, geometrie stable, popover entierement visible.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-18">Changed<a class="anchor" aria-label="anchor" href="#changed-18"></a></h3>
+<h3 id="changed-19">Changed<a class="anchor" aria-label="anchor" href="#changed-19"></a></h3>
 <ul><li>
 <code>action_table_card()</code> accepte un <code>card_id</code> optionnel, pour ancrer la carte entiere (en-tete compris) plutot que son seul corps repliable.</li>
 </ul></div>
@@ -473,7 +496,7 @@
 <div class="section level2">
 <h2 id="id_014325---2026-09-18">[0.143.25] - 2026-09-18<a class="anchor" aria-label="anchor" href="#id_014325---2026-09-18"></a></h2>
 <div class="section level3">
-<h3 id="changed-19">Changed<a class="anchor" aria-label="anchor" href="#changed-19"></a></h3>
+<h3 id="changed-20">Changed<a class="anchor" aria-label="anchor" href="#changed-20"></a></h3>
 <ul><li>Plancher <code>Imports: nemeton (&gt;= 0.197.0)</code>. <code>INDICATOR_SENSE_VERSION</code> passe a 3 : L1 s’inverse, T1 recoit une borne de 200 ans, E1/E2 s’alignent sur P1 (spec 048 §9-§11). Les indicateurs calcules avant sont invalides a la premiere ouverture — un parquet perime reste LISIBLE, donc <code>compute_all_indicators()</code> le relirait et sauterait le recalcul.</li>
 <li>
 <code>load_project()</code> porte <code>indicators_invalidated</code> et un bandeau nomme les trois familles qui changent : l’utilisateur voyait son projet repasser en brouillon sans explication.</li>
@@ -498,7 +521,7 @@
 <div class="section level2">
 <h2 id="id_014323---2026-09-17">[0.143.23] - 2026-09-17<a class="anchor" aria-label="anchor" href="#id_014323---2026-09-17"></a></h2>
 <div class="section level3">
-<h3 id="changed-20">Changed<a class="anchor" aria-label="anchor" href="#changed-20"></a></h3>
+<h3 id="changed-21">Changed<a class="anchor" aria-label="anchor" href="#changed-21"></a></h3>
 <ul><li>Plancher <code>Imports: nemeton (&gt;= 0.196.0)</code>. La garde <code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code> posee en 0.143.21 — qui n’envoyait <code>cancel_path</code> que si le coeur installe l’acceptait, la v0.196.0 n’etant alors pas releasee — est retiree avec son commentaire. L’argument est passe directement, comme pour FAST et FORDEAD.</li>
 <li>L’arret cooperatif RECONFORT devient <strong>effectif</strong> : jusqu’ici l’argument etait omis en silence sur un poste en 0.195.0, donc le bouton « Arreter » ecrivait son flag sans que personne ne le lise.</li>
 </ul></div>
@@ -536,7 +559,7 @@
 <div class="section level2">
 <h2 id="id_014320---2026-09-14">[0.143.20] - 2026-09-14<a class="anchor" aria-label="anchor" href="#id_014320---2026-09-14"></a></h2>
 <div class="section level3">
-<h3 id="removed-3">Removed<a class="anchor" aria-label="anchor" href="#removed-3"></a></h3>
+<h3 id="removed-4">Removed<a class="anchor" aria-label="anchor" href="#removed-4"></a></h3>
 <ul><li>
 <code>app_ui.R</code> portait une copie « Placeholder » de <code>mod_home_ui</code>, masquee par celle de <code>mod_home.R</code> (collation alphabetique : le dernier charge gagne). Elle n’atteignait jamais l’ecran tout en restant lisible comme la vraie — avec ses propres boutons « OSM » / « Satellite », qui avaient survecu au passage au LayersControl de la 0.143.19 faute d’etre visibles. 114 lignes.</li>
 </ul></div>
@@ -552,14 +575,14 @@
 <ul><li>Le bandeau « Tuile Sentinel-2 (n/N) » de <code>mod_monitoring</code> survivait a « Arreter les calculs » et restait inclosable (<code>duration = NULL</code> + <code>closeButton = FALSE</code>). Il n’etait pas oublie mais RECREE chaque seconde par l’observer du chrono : seul <code>fast_run_start(NULL)</code> en coupe la source.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-21">Changed<a class="anchor" aria-label="anchor" href="#changed-21"></a></h3>
+<h3 id="changed-22">Changed<a class="anchor" aria-label="anchor" href="#changed-22"></a></h3>
 <ul><li>
 <code>app_state$cancel_computation</code> devient LE signal d’arret de l’app. Les trois handlers d’annulation de <code>mod_monitoring</code> (FAST, FORDEAD, RECONFORT) sont extraits en helpers, appeles par leur bouton ET par ce signal ; les trois boutons le posent desormais, donc arreter l’ingestion arrete aussi la chaine.</li>
 <li>Carte cadastrale (<code>mod_map</code>) et Carte UGF (<code>mod_ug</code>) : le choix du fond passe des deux boutons d’entete au <code>LayersControl</code> natif de Leaflet, comme dans toutes les autres cartes de l’app.</li>
 <li>Etapes Sante de la chaine « Tout calculer » : « Sante — surveillance rapide » -&gt; « Sante — FAST », « Sante — diagnostic FORDEAD » -&gt; « Sante — FORDEAD ».</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-4">Removed<a class="anchor" aria-label="anchor" href="#removed-4"></a></h3>
+<h3 id="removed-5">Removed<a class="anchor" aria-label="anchor" href="#removed-5"></a></h3>
 <ul><li>
 <code>initBasemapToggle()</code> et le handler <code>toggleBasemapButtons</code> (<code>custom.js</code>), les regles <code>.basemap-btn</code> / <code>.basemap-btn-active</code> (<code>custom.css</code>), et <code>rv$basemap</code> dans les deux modules carte : orphelins apres le passage au LayersControl. <code>rv$basemap</code> n’etait de toute facon jamais lu, seulement ecrit.</li>
 </ul></div>
@@ -579,7 +602,7 @@
 <div class="section level2">
 <h2 id="id_014317---2026-09-04">[0.143.17] - 2026-09-04<a class="anchor" aria-label="anchor" href="#id_014317---2026-09-04"></a></h2>
 <div class="section level3">
-<h3 id="changed-22">Changed<a class="anchor" aria-label="anchor" href="#changed-22"></a></h3>
+<h3 id="changed-23">Changed<a class="anchor" aria-label="anchor" href="#changed-23"></a></h3>
 <ul><li>
 <strong>Les actions de projet passent dans le bloc « Tableau des actions »</strong> (onglet Selection) : « Voir les resultats », « Reessayer » et « Lancer le calcul » flottaient au-dessus du bloc, elles sont maintenant dedans, au-dessus de « Tout calculer », et suivent son repli. <code>mod_pipeline_ui()</code> gagne un argument <code>actions_ui = NULL</code> retro-compatible.</li>
 <li>
@@ -599,7 +622,7 @@
 <strong>Log de l’enfant plafonne sur les quatre chemins concernes</strong> (FORDEAD, RECONFORT, calcul des indicateurs, moteur de reGeneration) : <code>log_path</code> passe a <code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code> (cœur &gt;= 0.195.0), fichier <code>data/&lt;pipeline&gt;_child.log</code> a nom stable, rotation au demarrage (<code>.prev-&lt;horodatage&gt;</code>, cinq conservees). Sans lui, la sortie de l’enfant partait dans le <code>/dev/null</code> du worker <code>future</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-23">Changed<a class="anchor" aria-label="anchor" href="#changed-23"></a></h3>
+<h3 id="changed-24">Changed<a class="anchor" aria-label="anchor" href="#changed-24"></a></h3>
 <ul><li><p>Plancher <code>Imports: nemeton (&gt;= 0.193.0)</code> -&gt; <code>(&gt;= 0.195.0)</code>, apres publication de la release cœur <code>v0.195.0</code> et verification par <code><a href="https://pak.r-lib.org/reference/pkg_deps.html" class="external-link">pak::pkg_deps()</a></code>. Un premier bump anticipe, alors que <code>0.195.0</code> n’existait que sur <code>main</code>, avait rendu l’app non-installable (<code>@*release</code> ne resout que les tags).</p></li>
 <li><p><code>.prune_failed_traces()</code> -&gt; <code>.prune_run_traces()</code>, avec un argument <code>motif</code> pour borner les deux familles de traces (<code>.failed-*</code> et <code>.prev-*</code>).</p></li>
 <li><p><code>specs/REPONSE-nemeton-053-trace-enfant-plafonnee.md</code> : retour au cœur sur sa réponse au brief (deux corrections factuelles, la métrique du pic, et la fragilité <code>tiles_envelopes</code> vue des deux côtés).</p></li>
@@ -621,7 +644,7 @@
 <div class="section level2">
 <h2 id="id_014314---2026-09-02">[0.143.14] - 2026-09-02<a class="anchor" aria-label="anchor" href="#id_014314---2026-09-02"></a></h2>
 <div class="section level3">
-<h3 id="changed-24">Changed<a class="anchor" aria-label="anchor" href="#changed-24"></a></h3>
+<h3 id="changed-25">Changed<a class="anchor" aria-label="anchor" href="#changed-25"></a></h3>
 <ul><li>
 <strong>Section « Tout calculer » (sidebar Sélection)</strong> : l’entête du bloc s’appelle désormais <strong>« Tableau des actions »</strong> et ne répète plus le libellé du bouton qu’il contient (nouvelle clé i18n <code>pipeline_section_title</code>, FR/EN).</li>
 <li>
@@ -669,7 +692,7 @@
 <strong>RECONFORT emportait la session entière.</strong> <code>systemd-oomd</code> a tué le scope RStudio (9 processus) pendant l’item 82/203 de l’ingestion — pression à 56,87 % sur <code>user@1000.service</code>, scope à 14,5 Go, aucun événement d’erreur. Le cœur ne plafonnait que le sous-processus Python ; la boucle d’ingestion des 203 scènes est du R pur et le run mourait avant d’atteindre Python. RECONFORT passe en enfant plafonné (<code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code>), comme FORDEAD.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-25">Changed<a class="anchor" aria-label="anchor" href="#changed-25"></a></h3>
+<h3 id="changed-26">Changed<a class="anchor" aria-label="anchor" href="#changed-26"></a></h3>
 <ul><li>
 <code>.build_reconfort_ntfy_callback()</code> isole la moitié « push » du callback composite : sous isolation, l’enfant écrit déjà les fichiers de progression, et rejouer le composite dupliquerait chaque ligne NDJSON.</li>
 </ul></div>
@@ -694,7 +717,7 @@
 <div class="section level2">
 <h2 id="id_01437---2026-08-31">[0.143.7] - 2026-08-31<a class="anchor" aria-label="anchor" href="#id_01437---2026-08-31"></a></h2>
 <div class="section level3">
-<h3 id="changed-26">Changed<a class="anchor" aria-label="anchor" href="#changed-26"></a></h3>
+<h3 id="changed-27">Changed<a class="anchor" aria-label="anchor" href="#changed-27"></a></h3>
 <ul><li>
 <strong>Le repli CHM en dur rendu au cœur.</strong> <code>.project_chm()</code> ne sonde plus <code>cache/layers/opencanopy/</code> : il passe <code>.chm_exploitable()</code> à <code>nemeton::resolve_project_chm(validate =)</code> (cœur &gt;= 0.193.0), qui saute un candidat refusé et continue à la source suivante. Le repli inter-sources balaie désormais les six candidats du cœur au lieu de trois noms écrits à la main, dont un inexistant.</li>
 <li>Plancher <code>Imports: nemeton (&gt;= 0.192.0)</code> -&gt; <code>(&gt;= 0.193.0)</code>.</li>
@@ -727,7 +750,7 @@
 <div class="section level2">
 <h2 id="id_01434---2026-08-30">[0.143.4] - 2026-08-30<a class="anchor" aria-label="anchor" href="#id_01434---2026-08-30"></a></h2>
 <div class="section level3">
-<h3 id="changed-27">Changed<a class="anchor" aria-label="anchor" href="#changed-27"></a></h3>
+<h3 id="changed-28">Changed<a class="anchor" aria-label="anchor" href="#changed-28"></a></h3>
 <ul><li>La section « Tout calculer » de la sidebar <em>Sélection</em> est repliable, avec le même mécanisme Bootstrap que les blocs voisins (en-tête cliquable, chevron, <code>data-bs-toggle="collapse"</code>), dépliée par défaut. Le panneau de progression listant dix-sept étapes repoussait sinon le reste de la sidebar hors écran.</li>
 </ul></div>
 </div>
@@ -776,7 +799,7 @@
 <li>~50 clés i18n FR/EN.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-28">Changed<a class="anchor" aria-label="anchor" href="#changed-28"></a></h3>
+<h3 id="changed-29">Changed<a class="anchor" aria-label="anchor" href="#changed-29"></a></h3>
 <ul><li>Le corps de chaque observer de bouton de lancement est extrait en fonction locale, appelée par le bouton <strong>et</strong> par la chaîne : aucun bloc dupliqué entre les deux chemins.</li>
 <li>
 <code>.lancer_moteur_regen()</code>, <code>.lancer_gel()</code> acceptent des années explicites ; <code>.lancer_accessibilite()</code> un <code>use_corrected_force</code> ; <code>.generer_ia_synthese()</code> un profil. Ces valeurs transitent d’ordinaire par <code>updateNumericInput()</code> / <code>renderUI()</code>, qui ne remontent au serveur qu’après un aller-retour client : l’étape suivante de la chaîne y lirait la valeur précédente. <code>NULL</code> conserve le comportement des boutons manuels.</li>
@@ -794,7 +817,7 @@
 <strong>La carte UGF restait vide au premier passage sur son sous-onglet</strong> : passer de « Carte cadastrale » à « Carte UGF » n’affichait ni tènements ni UGF, il fallait aller sur « Tableau UGF » et revenir. <code>output$ug_map</code> était la seule des six cartes leaflet de l’app à rester suspendue quand son onglet est caché ; « Carte UGF » étant un sous-onglet non-défaut, la carte n’existait pas encore côté client quand l’observer de dessin émettait ses <code>leafletProxy()</code>, et leaflet jette silencieusement les messages adressés à une carte absente du DOM. <code>mod_ug</code> posait déjà l’option sur son tableau et ses compteurs, mais avait oublié sa carte.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-29">Changed<a class="anchor" aria-label="anchor" href="#changed-29"></a></h3>
+<h3 id="changed-30">Changed<a class="anchor" aria-label="anchor" href="#changed-30"></a></h3>
 <ul><li>Brief cœur <code>specs/BRIEF-nemeton-resolve-chm-opencanopy.md</code> : <code>resolve_project_chm()</code> sonde <code>cache/layers/chm/</code> alors que <code>download_chm_opencanopy()</code> écrit dans <code>cache/layers/opencanopy/</code>. Le brief signale deux pièges (un candidat sans <code>file</code> mosaïquerait orthophotos et indices spectraux en VRT ; les entrées doivent venir après <code>"LiDAR HD MNH"</code>) et porte l’entrée <code>PLAN.md</code> de la v0.142.2, que la session app ne peut pas écrire côté cœur (règle 12).</li>
 </ul></div>
 </div>
@@ -817,14 +840,14 @@
 </li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-30">Changed<a class="anchor" aria-label="anchor" href="#changed-30"></a></h3>
+<h3 id="changed-31">Changed<a class="anchor" aria-label="anchor" href="#changed-31"></a></h3>
 <ul><li>
 <code>prep_sampling_raster()</code> sort de <code>mod_sampling_server()</code> en <code>.prep_sampling_raster()</code> : aucun état Shiny, et son contrat d’unités est précisément ce qui devait être testé.</li>
 <li>
 <code>.marculus_chm()</code> / <code>.marculus_chm_exploitable()</code> deviennent <code>.project_chm()</code> / <code>.chm_exploitable()</code> : ces helpers servent désormais la segmentation des houppiers <strong>et</strong> le plan d’échantillonnage, ce ne sont plus des helpers Marculus. ## [0.142.1] - 2026-08-27</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-31">Changed<a class="anchor" aria-label="anchor" href="#changed-31"></a></h3>
+<h3 id="changed-32">Changed<a class="anchor" aria-label="anchor" href="#changed-32"></a></h3>
 <ul><li>
 <code>Imports: nemeton (&gt;= 0.189.0)</code> → <code>(&gt;= 0.192.0)</code> : <code>doc_url</code> / <code>doc_lang</code> sont désormais dans une release stable du cœur, ce qui rend l’icône « fiche » de la v0.142.0 réellement atteignable au lieu de silencieusement absente.</li>
 <li>
@@ -853,7 +876,7 @@
 <code>test-indicator-families-defork.R</code> lisait <code>../../R/app_config.R</code> en direct. <code>R/</code> ne survit pas à l’installation : sous <code>R CMD check</code>, <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code> échoue sur « cannot open the connection ». Le passage en <code>helper-sources.R</code> (v0.140.1.9001) avait traité onze fichiers et manqué celui-là, qui suffisait à faire échouer <code>R-CMD-check</code> sur <code>main</code>. Remède identique : <code>chemin_source()</code> + <code>skip_sans_sources()</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-32">Changed<a class="anchor" aria-label="anchor" href="#changed-32"></a></h3>
+<h3 id="changed-33">Changed<a class="anchor" aria-label="anchor" href="#changed-33"></a></h3>
 <ul><li>Le brief ERA5 est déposé dans <code>briefs/vers-nemeton/</code> ; les deux copies pointent sur la release v0.141.0 plutôt que sur le cycle dev.</li>
 </ul></div>
 </div>
@@ -868,7 +891,7 @@
 <li>Mapping de <code>regen_expo:era5_mois</code> + clé <code>regen_phase_micro_mois</code> : compteur de mois ERA5 dans la notification du moteur reGénération. Branche morte tant que le cœur n’émet pas l’événement — cf. <code>specs/BRIEF-nemeton-era5-progression-mensuelle.md</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-33">Changed<a class="anchor" aria-label="anchor" href="#changed-33"></a></h3>
+<h3 id="changed-34">Changed<a class="anchor" aria-label="anchor" href="#changed-34"></a></h3>
 <ul><li>
 <code>Imports: nemeton (&gt;= 0.189.0)</code>.</li>
 <li>Le rattachement du reliquat passe par <code>croiser_parcelles_onf(rattacher_reste = TRUE)</code> au lieu d’une implémentation locale.</li>
@@ -889,7 +912,7 @@
 <li>L’export Marculus partait sans table <code>desserte</code> quand le réseau venait de l’onglet Accessibilité : <code>.marculus_desserte()</code> ne lisait que <code>cache/desserte/</code>. L’Accessibilité sert désormais de repli (et non d’union : les deux caches redisent la même BD TOPO).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-5">Removed<a class="anchor" aria-label="anchor" href="#removed-5"></a></h3>
+<h3 id="removed-6">Removed<a class="anchor" aria-label="anchor" href="#removed-6"></a></h3>
 <ul><li>
 <code>.onf_rattacher_reste()</code>, <code>.onf_singleparts()</code>, <code>MARCULUS_HOUPPIER_MAX_CELLS</code> : le cœur fait le travail.</li>
 </ul></div>
@@ -917,7 +940,7 @@
 <li>Repli accordéon sur le bloc « Calculs terminés » du sidebar de Sélection.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-34">Changed<a class="anchor" aria-label="anchor" href="#changed-34"></a></h3>
+<h3 id="changed-35">Changed<a class="anchor" aria-label="anchor" href="#changed-35"></a></h3>
 <ul><li>L’UGF « Hors forêt publique » n’est plus produite : rien d’une parcelle cadastrale n’est écarté.</li>
 <li>Une parcelle qu’aucune parcelle forestière ne touche garde sa propre UGF, nommée par sa référence cadastrale.</li>
 <li>L’import CSV ne purge plus aucune parcelle ; le réglage reste au bouton ONF.</li>
@@ -933,7 +956,7 @@
 <li>Les messages de purge annonçaient « sous 10 % » en dur alors que le seuil est paramétrable et vaut 0 par défaut.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-6">Removed<a class="anchor" aria-label="anchor" href="#removed-6"></a></h3>
+<h3 id="removed-7">Removed<a class="anchor" aria-label="anchor" href="#removed-7"></a></h3>
 <ul><li>
 <code>.onf_label_hors_ugf()</code> et <code>.marculus_aoi()</code> : sans appelant.</li>
 <li>
@@ -950,7 +973,7 @@
 <code>inst/sql/migration_006_indicateurs_norm.sql</code> : 31 colonnes <code>_norm</code>, idempotent. <strong>À appliquer à la main</strong> (l’app ne joue que <code>schema.sql</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-35">Changed<a class="anchor" aria-label="anchor" href="#changed-35"></a></h3>
+<h3 id="changed-36">Changed<a class="anchor" aria-label="anchor" href="#changed-36"></a></h3>
 <ul><li>L’écriture en base ignore les colonnes absentes de la table plutôt que d’échouer, pour ne pas perdre les valeurs brutes avec les normalisées.</li>
 <li>Un indicateur entièrement vide ne prend plus de colonne dans les familles ; son statut est conservé pour que la raison reste dite.</li>
 <li>L’onglet Familles d’indicateurs affiche désormais les valeurs normalisées (conséquence de la persistance des <code>_norm</code>, que <code>create_family_index()</code> préfère).</li>
@@ -965,7 +988,7 @@
 <div class="section level2">
 <h2 id="id_01381---2026-08-23">[0.138.1] - 2026-08-23<a class="anchor" aria-label="anchor" href="#id_01381---2026-08-23"></a></h2>
 <div class="section level3">
-<h3 id="changed-36">Changed<a class="anchor" aria-label="anchor" href="#changed-36"></a></h3>
+<h3 id="changed-37">Changed<a class="anchor" aria-label="anchor" href="#changed-37"></a></h3>
 <ul><li>Les houppiers sont segmentés à la <strong>fin du calcul des indicateurs</strong> (<code>precompute_houppiers()</code>) et mis en cache dans <code>cache/layers/houppiers/houppiers.gpkg</code> ; l’export Marculus lit ce cache au lieu de segmenter. 173 s dans un <code>downloadHandler</code> gelaient la session.</li>
 <li>Best-effort : un échec de segmentation ne fait pas échouer un calcul d’indicateurs abouti ; un projet sans cache produit un GeoPackage valide, sans la couche.</li>
 <li>Repli sur la dalle entière quand l’appel avec emprise échoue (chaque contexte étant de toute façon découpé sur ses parcelles).</li>
@@ -984,7 +1007,7 @@
 <code>project_onf_params()</code> / <code>set_project_onf_params()</code> : domanialité, purge, seuil et découpe cadastre persistés par projet.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-37">Changed<a class="anchor" aria-label="anchor" href="#changed-37"></a></h3>
+<h3 id="changed-38">Changed<a class="anchor" aria-label="anchor" href="#changed-38"></a></h3>
 <ul><li>Les trois calibrages du croisement ONF passent de la barre de Carte UGF à <strong>Paramètres › Sources &amp; paramètres</strong> ; la sidebar garde un rappel.</li>
 <li>Seuil de purge paramétrable, <strong>0 % par défaut</strong>, purge et découpe cochées. La comparaison passe de <code>&lt;</code> à <code>&lt;=</code>, sans quoi 0 % ne supprimerait rien.</li>
 <li>Les débordements du parcellaire ONF hors cadastre sont écartés par une vraie intersection (une parcelle à cheval est coupée, pas rejetée).</li>
@@ -1001,7 +1024,7 @@
 <div class="section level2">
 <h2 id="id_01370---2026-08-23">[0.137.0] - 2026-08-23<a class="anchor" aria-label="anchor" href="#id_01370---2026-08-23"></a></h2>
 <div class="section level3">
-<h3 id="changed-38">Changed<a class="anchor" aria-label="anchor" href="#changed-38"></a></h3>
+<h3 id="changed-39">Changed<a class="anchor" aria-label="anchor" href="#changed-39"></a></h3>
 <ul><li>Le bouton devient <strong>« Télécharger pour Marculus »</strong> : il produit un ZIP remis au navigateur, il n’envoie rien. Aucun canal de push n’existe des deux côtés.</li>
 </ul></div>
 <div class="section level3">
@@ -1042,7 +1065,7 @@
 <div class="section level2">
 <h2 id="id_01340---2026-08-23">[0.134.0] - 2026-08-23<a class="anchor" aria-label="anchor" href="#id_01340---2026-08-23"></a></h2>
 <div class="section level3">
-<h3 id="removed-7">Removed<a class="anchor" aria-label="anchor" href="#removed-7"></a></h3>
+<h3 id="removed-8">Removed<a class="anchor" aria-label="anchor" href="#removed-8"></a></h3>
 <ul><li>
 <code>.compute_memory_max()</code> et <code>.total_memory_bytes()</code> (<code>service_compute.R</code>), <code>.capped_memory_max()</code> (<code>service_monitoring.R</code>) : le plafond mémoire est une politique du cœur depuis <code>nemeton 0.183.0</code> (50 % de <code>MemTotal</code>, plancher 4 Go). Aucun site d’appel ne passe plus <code>memory_max</code>. L’app en portait une copie, d’où <strong>trois plafonds</strong> dans la même session (indicateurs 50 %, FORDEAD et reGénération 70 %). Implémente <code>briefs/vers-nemetonshiny/2026-08-22-plafond-memoire.md</code>.</li>
 <li>Un test interdit toute fraction de RAM (<code>MemTotal</code>, <code>/proc/meminfo</code>) dans <code>service_compute.R</code>, <code>service_monitoring.R</code> et <code>mod_regeneration.R</code>.</li>
@@ -1053,7 +1076,7 @@
 <li>Le message d’erreur de calcul était un <code>paste("Erreur de calcul:", …)</code> en dur en français (règle i18n) et recrachait le message brut du moteur sans échappement. Nouvelles clés <code>compute_error_fmt</code> et <code>compute_error_oom</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-39">Changed<a class="anchor" aria-label="anchor" href="#changed-39"></a></h3>
+<h3 id="changed-40">Changed<a class="anchor" aria-label="anchor" href="#changed-40"></a></h3>
 <ul><li>Plancher relevé à <code>nemeton (&gt;= 0.183.0)</code>.</li>
 </ul></div>
 </div>
@@ -1064,7 +1087,7 @@
 <ul><li>L’import CSV ne posait pas <code>app_state$project_id</code> : les commentaires du nouveau projet s’écrivaient dans le répertoire du précédent (<code>save_comments()</code> le lit dans <code>mod_synthesis</code> et <code>mod_family</code>), le verrou restait sur l’ancien projet (cycle de vie branché sur <code>project_id</code> dans <code>app_server.R</code>), et les gardes qui comparent <code>project_id</code> raisonnaient sur le projet précédent. Les deux valeurs bougent désormais ensemble.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-40">Changed<a class="anchor" aria-label="anchor" href="#changed-40"></a></h3>
+<h3 id="changed-41">Changed<a class="anchor" aria-label="anchor" href="#changed-41"></a></h3>
 <ul><li>
 <strong>Un import CSV remplace le projet courant</strong> : l’ancien est supprimé avec toutes ses composantes (parcelles, UGF, indicateurs, commentaires, exports). La destruction n’intervient qu’une fois le nouveau projet créé, chargé et croisé ; tous les chemins d’échec repartent avant, projet intact. Garde <code>.remplacer_projet_courant()</code> : rien n’est détruit sans remplaçant valide.</li>
 <li>La modale d’import nomme le projet qui va disparaître et passe son bouton de confirmation en <code>btn-danger</code>. Sans projet ouvert : ni bandeau ni rouge.</li>
@@ -1080,7 +1103,7 @@
 <div class="section level2">
 <h2 id="id_01321---2026-08-22">[0.132.1] - 2026-08-22<a class="anchor" aria-label="anchor" href="#id_01321---2026-08-22"></a></h2>
 <div class="section level3">
-<h3 id="changed-41">Changed<a class="anchor" aria-label="anchor" href="#changed-41"></a></h3>
+<h3 id="changed-42">Changed<a class="anchor" aria-label="anchor" href="#changed-42"></a></h3>
 <ul><li>Suivi de <code>nemeton 0.182.0</code> (spec 049) : la famille F est décroisée côté cœur (<code>F1</code> = fertilité, <code>F2</code> = érosion). <strong>Aucun changement de code applicatif requis</strong> — l’app lit l’appariement code ↔︎ colonne ↔︎ libellé depuis <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> / <code>indicator_labels()</code> depuis le dé-fork, et n’écrit aucune lettre d’axe en dur. Les quatre contrôles du brief sont vérifiés (libellés F1/F2, infobulle F2 topographique, <code>famille_fertilite</code> inchangée).</li>
 <li>Commentaires remis d’aplomb dans <code>R/app_config.R</code> (×2), <code>R/mod_family.R</code>, <code>R/utils_i18n.R</code>, <code>tests/testthat/test-indicator-families-defork.R</code> et <code>tests/testthat/test-libelles-famille-L.R</code> : ils présentaient le croisement de F comme un fait présent. Plus aucune famille n’est croisée (L en v0.176.0, F en v0.182.0), ce qui change ce que ces tests gardent — la concordance, non plus la distinction colonne/slug.</li>
 <li>Plancher relevé à <code>nemeton (&gt;= 0.182.0)</code>.</li>
@@ -1121,14 +1144,14 @@
 <code>famille_risque</code> sort de la palette YlOrRd : orienté « haut = bon », il aurait coloré en rouge les UGF les moins à risque.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-42">Changed<a class="anchor" aria-label="anchor" href="#changed-42"></a></h3>
+<h3 id="changed-43">Changed<a class="anchor" aria-label="anchor" href="#changed-43"></a></h3>
 <ul><li>Plancher relevé à <code>nemeton (&gt;= 0.181.0)</code>.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_013010---2026-08-20">[0.130.10] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_013010---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="changed-43">Changed<a class="anchor" aria-label="anchor" href="#changed-43"></a></h3>
+<h3 id="changed-44">Changed<a class="anchor" aria-label="anchor" href="#changed-44"></a></h3>
 <ul><li>Le bouton IA des vues Famille rejoint l’accent ambre : les quatre surfaces de génération partagent désormais la même signalétique.</li>
 <li>Une ligne « Ambre » entre dans le tableau des couleurs de bouton du <code>CLAUDE.md</code>, avec la raison pour laquelle elle échappe à la hiérarchie sémantique (elle encode une provenance, pas un niveau d’action) et l’interdiction de l’employer pour une action de l’utilisateur.</li>
 </ul></div>
@@ -1142,7 +1165,7 @@
 <div class="section level2">
 <h2 id="id_01309---2026-08-20">[0.130.9] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_01309---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="changed-44">Changed<a class="anchor" aria-label="anchor" href="#changed-44"></a></h3>
+<h3 id="changed-45">Changed<a class="anchor" aria-label="anchor" href="#changed-45"></a></h3>
 <ul><li>Le bouton « Générer par IA » de la Synthèse prend l’accent ambre <code>#E8A33D</code> et l’icône trois étoiles. Nouveaux jetons <code>--nemeton-ia</code> / <code>--nemeton-ia-dark</code> et classe <code>.btn-ia</code>. Cette couleur sort de la palette sémantique des boutons à dessein : elle marque une provenance (contenu généré), pas un niveau d’action. Texte sombre conservé — 5,09:1 de contraste, contre 2,16:1 en blanc.</li>
 <li>Les panneaux IA du Plan d’actions et de reGénération prennent le même accent (classe <code>.bg-ia</code>), à la place du bleu « information » et du vert « succès ». Le vert du bloc « Tableau des actions » n’est pas touché.</li>
 </ul></div>
@@ -1188,7 +1211,7 @@
 <div class="section level2">
 <h2 id="id_01304---2026-08-20">[0.130.4] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_01304---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="removed-8">Removed<a class="anchor" aria-label="anchor" href="#removed-8"></a></h3>
+<h3 id="removed-9">Removed<a class="anchor" aria-label="anchor" href="#removed-9"></a></h3>
 <ul><li>
 <code>.onf_parcelles_concernees()</code> et la réinjection des parcelles écartées : <code>nemeton 0.180.0</code> fait ce tri lui-même et expose le compteur via l’attribut <code>parcelles_concernees</code>. <code>onf_projet_croise()</code> redevient un appel direct. Plancher relevé à <code>nemeton (&gt;= 0.180.0)</code>. Résultat identique.</li>
 </ul></div>
@@ -1200,7 +1223,7 @@
 <div class="section level2">
 <h2 id="id_01303---2026-08-20">[0.130.3] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_01303---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="changed-45">Changed<a class="anchor" aria-label="anchor" href="#changed-45"></a></h3>
+<h3 id="changed-46">Changed<a class="anchor" aria-label="anchor" href="#changed-46"></a></h3>
 <ul><li>Le bouton « Créer les UGF avec le parcellaire ONF » ne demande plus de sélection préalable : il retient lui-même les parcelles cadastrales qui rencontrent le parcellaire forestier, et l’annonce. Mesuré sur La-Vieille-Loye : 181 parcelles sur 1 271, calcul de 31,5 s à 11,1 s, résultat identique au croisement complet (le pavage passe toutefois de 0,000000 % à 0,001231 % d’écart, 40× sous la tolérance).</li>
 <li>La domanialité passe de trois choix exclusifs à deux cases cochables ensemble ; « Toutes » n’était que leur conjonction. Le filtre agit en amont du croisement, donc sur l’auto-sélection. Ne rien cocher rend un message dédié sans lancer de requête.</li>
 <li>La note de calage passe du paragraphe permanent à un « i » à côté du bouton.</li>
@@ -1209,7 +1232,7 @@
 <div class="section level2">
 <h2 id="id_01302---2026-08-19">[0.130.2] - 2026-08-19<a class="anchor" aria-label="anchor" href="#id_01302---2026-08-19"></a></h2>
 <div class="section level3">
-<h3 id="changed-46">Changed<a class="anchor" aria-label="anchor" href="#changed-46"></a></h3>
+<h3 id="changed-47">Changed<a class="anchor" aria-label="anchor" href="#changed-47"></a></h3>
 <ul><li>Le calage des UGF sur les limites cadastrales devient <strong>systématique</strong> ; la coche correspondante est retirée. Les limites forestières ONF sont approximatives au bord : une UGF dont le tracé ne suit pas la parcelle qu’elle recouvre à 90 % ou plus est un artefact de numérisation. Mesuré sur La-Vieille-Loye : 170 → 124 tènements, 13 → 41 bords exactement cadastraux. Une note permanente l’annonce ; les garde-fous du cœur restent entiers ; <code>caler_sur_cadastre</code> passe à <code>TRUE</code> par défaut mais subsiste comme paramètre.</li>
 <li>Le bouton « Croiser avec le parcellaire ONF » devient « Créer les UGF avec le parcellaire ONF » : le croisement est le moyen, créer les UGF est le but.</li>
 </ul></div>
@@ -1217,7 +1240,7 @@
 <div class="section level2">
 <h2 id="id_01301---2026-08-19">[0.130.1] - 2026-08-19<a class="anchor" aria-label="anchor" href="#id_01301---2026-08-19"></a></h2>
 <div class="section level3">
-<h3 id="removed-9">Removed<a class="anchor" aria-label="anchor" href="#removed-9"></a></h3>
+<h3 id="removed-10">Removed<a class="anchor" aria-label="anchor" href="#removed-10"></a></h3>
 <ul><li>Le bouton « Importer le parcellaire ONF », qui remplaçait les parcelles du projet par les parcelles forestières. Il partait de la même emprise et produisait les mêmes UGF que « Croiser », en jetant la composition cadastrale (donc <code>part_ugf</code>) — un cas dégradé du croisement, destructif de surcroît. Retirés avec lui : <code>onf_projet_from_parcelles()</code>, ses tests, et six clés i18n orphelines.</li>
 </ul></div>
 </div>
@@ -1229,7 +1252,7 @@
 <code>onf_projet_from_parcelles()</code> échouait dès que le parcellaire forestier n’avait pas le même nombre de lignes que les parcelles du projet (« replacement has 427 rows, data has 1 »). L’idiome <code>utils::modifyList(projet, list(parcels = ...))</code>, repris de l’esquisse du brief, récurse dans les listes — et un <code>data.frame</code> en est une : il fusionnait les colonnes au lieu de remplacer l’objet. Remplacé par une affectation directe, avec un test de régression à tailles différentes.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-47">Changed<a class="anchor" aria-label="anchor" href="#changed-47"></a></h3>
+<h3 id="changed-48">Changed<a class="anchor" aria-label="anchor" href="#changed-48"></a></h3>
 <ul><li>Recette §6 de la spec 046 exécutée contre le <strong>vrai</strong> WFS ONF (forêt domaniale de Chaux) : les quatre cas passent. 213 parcelles / 2 114 ha en 1,1 s ; filtre de domanialité exact ; « aucune forêt publique » et « service indisponible » distingués. Bout-en-bout : 586 tènements / 423 UGF, identifiants uniques, invariants verts, pavage cadastral exact à 0,000000 %.</li>
 <li>Calage cadastral <strong>validé</strong> sur le vrai cadastre de La-Vieille-Loye : 170 → 124 tènements et 13 → 41 bords cadastraux, reproduisant exactement les mesures du cœur. Il n’était pas vérifiable sur cadastre synthétique, une grille régulière étant par construction désalignée du parcellaire forestier.</li>
 <li>

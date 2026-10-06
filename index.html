@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,7 +55,7 @@
 <!-- badges: start -->
 
 <p>Application Shiny/golem de la plateforme d’analyse systémique forestière <strong>Nemeton</strong>.</p>
-<p><code>nemetonshiny</code> fournit l’interface. La logique métier (indicateurs, familles, NDP, FORDEAD, reGénération) est portée par le paquet <a href="https://github.com/pobsteta/nemeton" class="external-link"><code>nemeton</code></a> (&gt;= 0.207.0), la desserte et l’accessibilité par <a href="https://github.com/pobsteta/foretaccess" class="external-link"><code>foretaccess</code></a> (&gt;= 2.4.0).</p>
+<p><code>nemetonshiny</code> fournit l’interface. La logique métier (indicateurs, familles, NDP, FORDEAD, reGénération) est portée par le paquet <a href="https://github.com/pobsteta/nemeton" class="external-link"><code>nemeton</code></a> (&gt;= 1.0.0), la desserte et l’accessibilité par <a href="https://github.com/pobsteta/foretaccess" class="external-link"><code>foretaccess</code></a> (&gt;= 2.4.0).</p>
 <div class="section level2">
 <h2 id="fonctionnalités">Fonctionnalités<a class="anchor" aria-label="anchor" href="#fonctionnalit%C3%A9s"></a>
 </h2>
@@ -89,6 +89,7 @@
 <li>
 <strong>Chaîne Rust</strong> (<code>rustc</code>, <code>cargo</code>, via <a href="https://rustup.rs" class="external-link">rustup</a>) : <code>foretaccess</code> embarque un noyau compilé en Rust</li>
 <li>Pour les rapports PDF : <a href="https://quarto.org" class="external-link">Quarto</a> et une distribution LaTeX (<code>xelatex</code>)</li>
+<li>Pour le diagnostic FORDEAD : <strong>Python &gt;= 3.11</strong> (environnement figé par le cœur)</li>
 </ul>
 </div>
 <div class="section level2">

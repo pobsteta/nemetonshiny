@@ -31,8 +31,8 @@ The computation result (list with `success`), invisibly.
 
 ## Errors
 
-Class `nemetonshiny_projet_perime` when the project must be migrated
-first, `nemetonshiny_calcul_echec` when the computation fails.
+Class `nemetonshiny_projet_ancien` for a project created before version
+1.0.0, `nemetonshiny_calcul_echec` when the computation fails.
 
 ## See also
 
@@ -42,6 +42,5 @@ Other api_hors_interface:
 [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
 [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md),
 [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md),
-[`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md),
 [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md),
 [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md)

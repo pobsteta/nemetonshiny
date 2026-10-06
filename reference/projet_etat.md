@@ -19,26 +19,16 @@ projet_etat(id)
 
 A list:
 
-- `id`, `nom`, `statut`, `chemin`, `ndp`, `schema_version`;
+- `id`, `nom`, `statut`, `chemin`, `ndp`;
 
-- `sens_vu`, `sens_courant`: indicator direction version the indicators
-  were computed under / expected by this version of the application;
+- `format_projet`, `format_ok`: project format, and whether this version
+  of the application reads it (`FALSE` for a project created before
+  1.0.0: it is not taken over and must be recreated);
 
 - `indicateurs`: computed indicators present on disk;
 
-- `ugf`: readable management units (UGF) present;
-
-- `indicateurs_perimes`: indicators computed under an older direction
-  (they would be set aside by a migration);
-
-- `migration_ugf`: management units missing or unreadable (a migration
-  would create one unit per parcel);
-
-- `migration_necessaire`: `TRUE` when
-  [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
-  would refuse the project and
-  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md)
-  would change it;
+- `ugf`: readable management units (UGF) present (otherwise the default
+  layout, one unit per parcel, is created at the first opening);
 
 - `archives`: set-aside indicator files
   (`metadata$indicateurs_perimes`).
@@ -53,6 +43,5 @@ Other api_hors_interface:
 [`projet_creer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_creer.md),
 [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md),
 [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md),
-[`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md),
 [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md),
 [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md)

@@ -22,8 +22,6 @@
   : GeoPackage of a project's results
 - [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
   : Read a project's results, without side effect
-- [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md)
-  : Apply a project's pending migrations
 - [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md)
   : PDF report of a project
 - [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md)

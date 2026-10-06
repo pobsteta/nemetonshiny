@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,42 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.0.0" id="nemetonshiny-100-2026-10-06">nemetonshiny 1.0.0 (2026-10-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-100-2026-10-06"></a></h2>
+<p>Première version stable. Elle repart de zéro : les projets et les bases créés avec une version 0.x ne sont pas repris.</p>
+<p>Adoption du cœur <strong>nemeton 1.0.0</strong> (brief <code>nemeton/specs/057-contrat-api-1.0/brief-nemetonshiny-1.0.0.md</code>). Plancher <code>Imports: nemeton (&gt;= 1.0.0)</code>.</p>
+<div class="section level4">
+<h4 id="rupture--la-repart-de-zéro-1-0-0">Rupture : la 1.0.0 repart de zéro<a class="anchor" aria-label="anchor" href="#rupture--la-repart-de-z%C3%A9ro-1-0-0"></a></h4>
+<ul><li>
+<strong>Aucune migration des projets 0.x</strong> (décision du 2026-10-06). Chaque projet porte désormais un marqueur <code>format_projet = 1</code>. Un projet sans marqueur apparaît « Antérieur à la 1.0 » dans la liste et ne propose que sa suppression ; l’API le refuse avec une erreur de classe <code>nemetonshiny_projet_ancien</code>. Il faut le recréer avec les mêmes parcelles.</li>
+<li>
+<strong>Bases de données neuves</strong> : le cœur 1.0.0 refuse toute base créée avant lui (erreur <code>nemeton_legacy_schema</code>). L’application l’explique maintenant en clair (« base antérieure à la 1.0.0 : la recréer »), pour la base de suivi sanitaire comme pour la base PostGIS. <code>inst/sql/schema.sql</code> décrit à lui seul le schéma complet (colonnes <code>_norm</code>, archives de reGénération et du plan d’actions) ; les six fichiers <code>migration_00N_*.sql</code> sont retirés.</li>
+<li>Supprimés :
+<ul><li>le contrôle de « sens des indicateurs » (<code>indicator_sense_version</code>, invalidation et avertissement à l’ouverture) ;</li>
+<li>la fonction exportée <code>projet_migrer()</code> et l’erreur <code>nemetonshiny_projet_perime</code> ;</li>
+<li>la lecture des anciens formats de fichiers (<code>atomes.gpkg</code>, <code>atome_id</code>, métadonnées d’avant 0.16).</li>
+</ul>
+L’initialisation des UGF à la première ouverture est conservée, sous son vrai nom (<code>ensure_project_ug()</code>), avec la mise de côté des fichiers UGF illisibles.</li>
+<li>
+<code><a href="../reference/projet_etat.html">projet_etat()</a></code> expose <code>format_projet</code> et <code>format_ok</code> à la place de <code>sens_vu</code>, <code>sens_courant</code> et <code>migration_necessaire</code> ; <code><a href="../reference/projets_lister.html">projets_lister()</a></code> expose <code>format_ok</code> à la place de <code>sens_a_jour</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="valeurs-du-cœur-spec-expliquées-dans-linterface-1-0-0">Valeurs du cœur 1.0.0 (spec 056) expliquées dans l’interface<a class="anchor" aria-label="anchor" href="#valeurs-du-c%C5%93ur-spec-expliqu%C3%A9es-dans-linterface-1-0-0"></a></h4>
+<ul><li>
+<strong>P2 sans âge réel</strong> : la BD Forêt ne fournit plus d’âge inventé, si bien que P2 (mode CHM) est vide. La fiche le dit (<code>p2_sans_age</code>) et propose le mode IFN. C1, retombé sur le NDVI faute d’âge et de modèle LiDAR, est signalé comme valeur indicative (<code>c1_ndvi_sans_age</code>).</li>
+<li>Nouveaux statuts traduits FR/EN :
+<ul><li>P3 calculé sur le seul diamètre (ou diamètre et forme, ou diamètre et défauts) ;</li>
+<li>P2 hors des courbes de station ;</li>
+<li>indicateurs conditionnels sans leur source : microclimat (A3, A4, W4, R6), coupes rases SUFOSAT (T3), données spectrales (B4, L3), et zone non couverte.</li>
+</ul></li>
+<li>Couche INPN « zones humides » retirée : son motif ramenait surtout des ZNIEFF, et le cœur ne la lisait pas.</li>
+<li>FORDEAD exige <strong>Python ≥ 3.11</strong> (README, guide).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="à-faire-par-les-utilisateurs-1-0-0">À faire par les utilisateurs<a class="anchor" aria-label="anchor" href="#%C3%A0-faire-par-les-utilisateurs-1-0-0"></a></h4>
+<p>Recréer les projets, la base de suivi sanitaire (SQLite ou PostgreSQL) et la base PostGIS si elle est utilisée. Les valeurs changent nettement : W3 baisse de 50 à 70 points sur LiDAR, N1 d’environ 20 points, et P2 reste vide sans âge réel.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.157.1" id="nemetonshiny-01571-2026-10-06">nemetonshiny 0.157.1 (2026-10-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01571-2026-10-06"></a></h2>
 <div class="section level4">
@@ -170,9 +206,9 @@
 <div class="section level4">
 <h4 id="added--api-hors-interface-brief-aigora-nemeton-du-0-154-0">Added — API hors interface (brief aigora-nemeton du 2026-10-04)<a class="anchor" aria-label="anchor" href="#added--api-hors-interface-brief-aigora-nemeton-du-0-154-0"></a></h4>
 <ul><li>
-<strong>Neuf fonctions exportees</strong> pour piloter un diagnostic sans l’application (<code><a href="../reference/api_hors_interface.html">?api_hors_interface</a></code>) : <code><a href="../reference/projets_lister.html">projets_lister()</a></code>, <code><a href="../reference/projet_etat.html">projet_etat()</a></code>, <code><a href="../reference/projet_lire.html">projet_lire()</a></code>, <code><a href="../reference/projet_migrer.html">projet_migrer()</a></code>, <code><a href="../reference/parcelles_commune.html">parcelles_commune()</a></code>, <code><a href="../reference/projet_creer.html">projet_creer()</a></code>, <code><a href="../reference/projet_calculer.html">projet_calculer()</a></code>, <code><a href="../reference/projet_rapport.html">projet_rapport()</a></code>, <code><a href="../reference/projet_gpkg.html">projet_gpkg()</a></code>. Fines enveloppes des services existants.</li>
+<strong>Neuf fonctions exportees</strong> pour piloter un diagnostic sans l’application (<code><a href="../reference/api_hors_interface.html">?api_hors_interface</a></code>) : <code><a href="../reference/projets_lister.html">projets_lister()</a></code>, <code><a href="../reference/projet_etat.html">projet_etat()</a></code>, <code><a href="../reference/projet_lire.html">projet_lire()</a></code>, <code>projet_migrer()</code>, <code><a href="../reference/parcelles_commune.html">parcelles_commune()</a></code>, <code><a href="../reference/projet_creer.html">projet_creer()</a></code>, <code><a href="../reference/projet_calculer.html">projet_calculer()</a></code>, <code><a href="../reference/projet_rapport.html">projet_rapport()</a></code>, <code><a href="../reference/projet_gpkg.html">projet_gpkg()</a></code>. Fines enveloppes des services existants.</li>
 <li>
-<strong><code><a href="../reference/projet_lire.html">projet_lire()</a></code> n’ecrit rien</strong> : meme construction que l’onglet Synthese (R5, R6/R7, scores de famille du coeur), sans les migrations d’ouverture. Si une migration serait necessaire, erreur classee <code>nemetonshiny_projet_perime</code> ; <code><a href="../reference/projet_migrer.html">projet_migrer()</a></code> l’applique explicitement. Test d’empreinte : aucun fichier du projet ne change.</li>
+<strong><code><a href="../reference/projet_lire.html">projet_lire()</a></code> n’ecrit rien</strong> : meme construction que l’onglet Synthese (R5, R6/R7, scores de famille du coeur), sans les migrations d’ouverture. Si une migration serait necessaire, erreur classee <code>nemetonshiny_projet_perime</code> ; <code>projet_migrer()</code> l’applique explicitement. Test d’empreinte : aucun fichier du projet ne change.</li>
 <li>
 <strong>Erreurs classees</strong> (<code>nemetonshiny_erreur</code> et sous-classes) et contrat des commentaires du rapport documentes dans <code>CONTRAT.md</code> (section 1 bis).</li>
 <li>

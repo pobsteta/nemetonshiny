@@ -50,7 +50,9 @@ L’onglet **Sélection** est le point de départ.
     `max_parcels`).
 3.  Donnez un **nom** au projet et créez-le. Les projets sont
     enregistrés dans le dossier des projets ; les **projets récents** se
-    rouvrent d’un clic.
+    rouvrent d’un clic. Un projet créé avec une version antérieure à la
+    1.0 n’est pas repris : il est marqué « Antérieur à la 1.0 » et ne
+    peut qu’être supprimé, puis recréé.
 4.  Sous la carte, l’éditeur des **Unités de Gestion Forestières (UGF)**
     regroupe ou découpe les parcelles en unités de gestion : création,
     fusion, découpage au trait ou au polygone, renommage, groupe
@@ -121,7 +123,7 @@ modes :
 | Mode | Usage |
 |----|----|
 | **FAST** | chocs récents (coupe, chablis, incendie) : indices NDMI / NDVI / NBR en fenêtre glissante et en tendance |
-| **FORDEAD** | dépérissement progressif des résineux (scolyte, sécheresse) |
+| **FORDEAD** | dépérissement progressif des résineux (scolyte, sécheresse) ; nécessite Python \>= 3.11 |
 | **RECONFORT** | dépérissement des feuillus (chêne, châtaignier) ; nécessite un environnement de calcul dédié |
 
 Les zones suivies sont créées à partir des UGF du projet. Chaque mode
@@ -175,8 +177,7 @@ confiance.
   [`parcelles_commune()`](https://pobsteta.github.io/nemetonshiny/reference/parcelles_commune.md),
   [`projet_calculer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_calculer.md),
   [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md),
-  [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md),
-  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md)
+  [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md)
   (voir
   [`?api_hors_interface`](https://pobsteta.github.io/nemetonshiny/reference/api_hors_interface.md)).
   Elles donnent les mêmes chiffres que l’onglet Synthèse.
@@ -203,6 +204,13 @@ confiance.
   aux comptes gratuits.
 - **Le projet s’ouvre en lecture seule** : un autre utilisateur le
   modifie, ou votre compte n’a pas de rôle d’édition.
+- **« Base antérieure à la 1.0.0 »** : la base de suivi sanitaire (ou la
+  base PostGIS) a été créée avant la 1.0.0 ; la recréer (nouveau fichier
+  SQLite, ou base PostgreSQL vide).
+- **P2 vide, C1 « estimé par le NDVI »** : la BD Forêt ne donne pas
+  l’âge des peuplements. Sans âge réel, l’indice de station (P2) ne se
+  calcule pas et la biomasse (C1) retombe sur le NDVI, sauf avec un
+  modèle de canopée LiDAR.
 
 ## Voir aussi
 

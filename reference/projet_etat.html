@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,17 +53,13 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list:</p><ul><li><p><code>id</code>, <code>nom</code>, <code>statut</code>, <code>chemin</code>, <code>ndp</code>, <code>schema_version</code>;</p></li>
-<li><p><code>sens_vu</code>, <code>sens_courant</code>: indicator direction version the indicators
-were computed under / expected by this version of the application;</p></li>
+    <p>A list:</p><ul><li><p><code>id</code>, <code>nom</code>, <code>statut</code>, <code>chemin</code>, <code>ndp</code>;</p></li>
+<li><p><code>format_projet</code>, <code>format_ok</code>: project format, and whether this version
+of the application reads it (<code>FALSE</code> for a project created before
+1.0.0: it is not taken over and must be recreated);</p></li>
 <li><p><code>indicateurs</code>: computed indicators present on disk;</p></li>
-<li><p><code>ugf</code>: readable management units (UGF) present;</p></li>
-<li><p><code>indicateurs_perimes</code>: indicators computed under an older direction
-(they would be set aside by a migration);</p></li>
-<li><p><code>migration_ugf</code>: management units missing or unreadable (a migration
-would create one unit per parcel);</p></li>
-<li><p><code>migration_necessaire</code>: <code>TRUE</code> when <code><a href="projet_lire.html">projet_lire()</a></code> would refuse the
-project and <code><a href="projet_migrer.html">projet_migrer()</a></code> would change it;</p></li>
+<li><p><code>ugf</code>: readable management units (UGF) present (otherwise the default
+layout, one unit per parcel, is created at the first opening);</p></li>
 <li><p><code>archives</code>: set-aside indicator files (<code>metadata$indicateurs_perimes</code>).</p></li>
 </ul><p>Read-only.</p>
     </div>
@@ -75,7 +71,6 @@ project and <code><a href="projet_migrer.html">projet_migrer()</a></code> would 
 <code><a href="projet_creer.html">projet_creer()</a></code>,
 <code><a href="projet_gpkg.html">projet_gpkg()</a></code>,
 <code><a href="projet_lire.html">projet_lire()</a></code>,
-<code><a href="projet_migrer.html">projet_migrer()</a></code>,
 <code><a href="projet_rapport.html">projet_rapport()</a></code>,
 <code><a href="projets_lister.html">projets_lister()</a></code></p></div>
     </div>

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -142,7 +142,9 @@ carte.</li>
 défaut, voir <code>max_parcels</code>).</li>
 <li>Donnez un <strong>nom</strong> au projet et créez-le. Les projets
 sont enregistrés dans le dossier des projets ; les <strong>projets
-récents</strong> se rouvrent d’un clic.</li>
+récents</strong> se rouvrent d’un clic. Un projet créé avec une version
+antérieure à la 1.0 n’est pas repris : il est marqué « Antérieur à la
+1.0 » et ne peut qu’être supprimé, puis recréé.</li>
 <li>Sous la carte, l’éditeur des <strong>Unités de Gestion Forestières
 (UGF)</strong> regroupe ou découpe les parcelles en unités de gestion :
 création, fusion, découpage au trait ou au polygone, renommage, groupe
@@ -252,7 +254,8 @@ en fenêtre glissante et en tendance</td>
 </tr>
 <tr class="even">
 <td><strong>FORDEAD</strong></td>
-<td>dépérissement progressif des résineux (scolyte, sécheresse)</td>
+<td>dépérissement progressif des résineux (scolyte, sécheresse) ;
+nécessite Python &gt;= 3.11</td>
 </tr>
 <tr class="odd">
 <td><strong>RECONFORT</strong></td>
@@ -327,9 +330,8 @@ donc à un collectif de confiance.</p>
 <code><a href="../reference/projet_etat.html">projet_etat()</a></code>, <code><a href="../reference/projet_lire.html">projet_lire()</a></code>,
 <code><a href="../reference/projet_creer.html">projet_creer()</a></code>, <code><a href="../reference/parcelles_commune.html">parcelles_commune()</a></code>,
 <code><a href="../reference/projet_calculer.html">projet_calculer()</a></code>, <code><a href="../reference/projet_rapport.html">projet_rapport()</a></code>,
-<code><a href="../reference/projet_gpkg.html">projet_gpkg()</a></code>, <code><a href="../reference/projet_migrer.html">projet_migrer()</a></code> (voir
-<code><a href="../reference/api_hors_interface.html">?api_hors_interface</a></code>). Elles donnent les mêmes chiffres que
-l’onglet Synthèse.</li>
+<code><a href="../reference/projet_gpkg.html">projet_gpkg()</a></code> (voir <code><a href="../reference/api_hors_interface.html">?api_hors_interface</a></code>).
+Elles donnent les mêmes chiffres que l’onglet Synthèse.</li>
 <li>
 <strong>Liens profonds</strong> :
 <code>http://&lt;hôte&gt;/?project=&lt;id&gt;&amp;tab=&lt;onglet&gt;</code>
@@ -364,6 +366,15 @@ sont ouverts aux comptes gratuits.</li>
 <li>
 <strong>Le projet s’ouvre en lecture seule</strong> : un autre
 utilisateur le modifie, ou votre compte n’a pas de rôle d’édition.</li>
+<li>
+<strong>« Base antérieure à la 1.0.0 »</strong> : la base de suivi
+sanitaire (ou la base PostGIS) a été créée avant la 1.0.0 ; la recréer
+(nouveau fichier SQLite, ou base PostgreSQL vide).</li>
+<li>
+<strong>P2 vide, C1 « estimé par le NDVI »</strong> : la BD Forêt ne
+donne pas l’âge des peuplements. Sans âge réel, l’indice de station (P2)
+ne se calcule pas et la biomasse (C1) retombe sur le NDVI, sauf avec un
+modèle de canopée LiDAR.</li>
 </ul>
 </div>
 <div class="section level2">

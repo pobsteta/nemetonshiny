@@ -2,9 +2,8 @@
 
 Builds the project exactly as the Synthesis tab sees it (indicators per
 management unit, R5 from the linked monitoring zone, R6/R7 from
-reGeneration, family scores through the core), **without** the
-migrations that opening the project in the application runs. Nothing is
-written.
+reGeneration, family scores through the core). Nothing is written (a
+project without management units is read with none).
 
 ## Usage
 
@@ -38,11 +37,9 @@ A list:
 
 ## Errors
 
-Class `nemetonshiny_projet_perime` when a migration would be needed (see
-[`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md)
-and
-[`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md));
-class `nemetonshiny_projet_introuvable` for an unknown id.
+Class `nemetonshiny_projet_ancien` for a project created before version
+1.0.0 (not taken over); class `nemetonshiny_projet_introuvable` for an
+unknown id.
 
 ## See also
 
@@ -52,6 +49,5 @@ Other api_hors_interface:
 [`projet_creer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_creer.md),
 [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
 [`projet_gpkg()`](https://pobsteta.github.io/nemetonshiny/reference/projet_gpkg.md),
-[`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md),
 [`projet_rapport()`](https://pobsteta.github.io/nemetonshiny/reference/projet_rapport.md),
 [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md)

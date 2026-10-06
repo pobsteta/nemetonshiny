@@ -35,29 +35,25 @@ Chaque fonction a sa page d’aide
 
 | Fonction | Rôle | Écrit |
 |----|----|----|
-| [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md) | projets du dossier, avec leur état de sens | non |
-| `projet_etat(id)` | métadonnées, sens vu / courant, indicateurs et UGF présents, migration nécessaire | non |
+| [`projets_lister()`](https://pobsteta.github.io/nemetonshiny/reference/projets_lister.md) | projets du dossier, avec leur format (`format_ok`) | non |
+| `projet_etat(id)` | métadonnées, format du projet, indicateurs et UGF présents | non |
 | `projet_lire(id, langue)` | indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l’onglet Synthèse) | **non** |
-| `projet_migrer(id)` | applique les migrations qu’appliquerait l’ouverture dans l’application | oui |
 | `parcelles_commune(insee, ids)` | parcelles cadastrales d’une commune | non |
-| `projet_creer(nom, parcelles, ...)` | crée et initialise un projet (UGF, sens courant) ; renvoie l’id | oui |
+| `projet_creer(nom, parcelles, ...)` | crée et initialise un projet (UGF par défaut) ; renvoie l’id | oui |
 | `projet_calculer(id, indicateurs, progression)` | calcul synchrone des indicateurs | oui |
 | `projet_rapport(id, fichier, langue, synthese, familles, sources)` | rapport PDF | le fichier demandé seulement |
 | `projet_gpkg(id, fichier)` | GeoPackage des résultats par UGF | le fichier demandé seulement |
 
 Garanties :
 
-- une fonction marquée « non » n’écrit **rien** dans le projet ; en
-  particulier
-  [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
-  n’exécute aucune migration : si l’une serait nécessaire, elle échoue
-  avec une erreur de classe `nemetonshiny_projet_perime` (champ `etat` =
-  [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md)),
-  et seule
-  [`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md)
-  l’applique ;
+- une fonction marquée « non » n’écrit **rien** dans le projet ;
+- un projet créé avant la 1.0.0 n’est pas repris : lire, calculer ou
+  exporter échoue avec une erreur de classe `nemetonshiny_projet_ancien`
+  (champ `etat` =
+  [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md))
+  ; il faut le recréer ;
 - les erreurs sont classées et héritent toutes de `nemetonshiny_erreur`
-  : `nemetonshiny_projet_introuvable`, `nemetonshiny_projet_perime`,
+  : `nemetonshiny_projet_introuvable`, `nemetonshiny_projet_ancien`,
   `nemetonshiny_sans_indicateurs`, `nemetonshiny_calcul_echec`,
   `nemetonshiny_parcelles_introuvables` ;
 - commentaires du rapport : `synthese` est une chaîne (Markdown, notes
@@ -183,11 +179,11 @@ nom du dossier (`AAAAMMJJ_HHMMSS_xxxx`).
 
 | Fichier | Contenu |
 |----|----|
-| `metadata.json` | métadonnées : `id`, `name`, `description`, `owner`, `status`, `schema_version` (**2.1**), `indicator_sense_version` (**3**), paramètres du projet |
+| `metadata.json` | métadonnées : `id`, `name`, `description`, `owner`, `status`, `format_projet` (**1**), paramètres du projet |
 | `data/parcels.gpkg` | parcelles cadastrales (référence) ; `parcels.parquet` en copie de lecture rapide |
 | `data/tenements.gpkg`, `data/ugs.json` | découpage en unités de gestion (UGF) |
 | `data/indicators.parquet` | indicateurs calculés, par UGF |
-| `data/indicators.perime-v<n>-<date>.parquet` | indicateurs invalidés, mis de côté (deux générations au plus, listées dans `metadata.json` → `indicateurs_perimes`) |
+| `data/indicators.perime-<date>.parquet` | indicateurs invalidés, mis de côté (deux générations au plus, listées dans `metadata.json` → `indicateurs_perimes`) |
 | `data/action_plan.json` | plan d’actions (`version` **1**, `annee_base`, actions, audit) |
 | `data/comments.json`, `data/regen_comments.json` | commentaires |
 | `data/samples.gpkg` | plans d’échantillonnage et de validation |
@@ -195,29 +191,32 @@ nom du dossier (`AAAAMMJJ_HHMMSS_xxxx`).
 
 Garanties :
 
+- **la 1.0.0 repart de zéro** : un projet créé par une version 0.x (sans
+  `format_projet`) n’est pas repris. L’application le signale «
+  antérieur à la 1.0 » et ne propose que sa suppression ; l’API le
+  refuse (`nemetonshiny_projet_ancien`). Il faut le recréer ;
 - un projet créé par une version 1.x s’ouvre dans toute version 1.y
-  ultérieure ;
-- les migrations de format sont **automatiques** à l’ouverture, ne
-  s’exécutent qu’une fois (marqueurs `schema_version`,
-  `indicator_sense_version`, `annee_base`) et **ne détruisent rien** :
-  des données illisibles sont mises de côté
-  (`data/ug_sauvegarde_<date>/`, `action_plan.illisible-<date>.json`) ;
-- un changement de sens ou d’échelle d’un indicateur dans le cœur
-  invalide les indicateurs calculés avant (recalcul demandé à
-  l’utilisateur), sans toucher aux autres données ; les indicateurs
-  invalidés sont **renommés**, jamais supprimés
-  (`indicators.perime-v<n>-<date>.parquet`), ce qui permet de comparer
-  avant / après ;
+  ultérieure : un changement de format après la 1.0.0 s’accompagne d’une
+  migration automatique (marqueur `format_projet`) ;
+- rien n’est détruit en silence : des données illisibles sont mises de
+  côté (`data/ug_sauvegarde_<date>/`,
+  `action_plan.illisible-<date>.json`) et des indicateurs invalidés sont
+  **renommés**, jamais supprimés (`indicators.perime-<date>.parquet`) ;
 - les écritures sont atomiques : un arrêt brutal ne laisse pas de
   fichier tronqué.
 
 ## 4. Schéma PostGIS
 
-- `inst/sql/schema.sql` est appliqué par l’application (idempotent).
-- Les fichiers `inst/sql/migration_00N_*.sql` s’appliquent **à la
-  main**, dans l’ordre, une seule fois. Ils sont idempotents, sauf
-  `migration_001`, historique et **destructive**, à ne jamais rejouer.
-- Une nouvelle migration est toujours un nouveau fichier, jamais la
+- `inst/sql/schema.sql` est appliqué par l’application (idempotent) et
+  décrit à lui seul le schéma complet de la 1.0.0.
+- **La 1.0.0 repart d’une base neuve** : les anciennes migrations ont
+  été intégrées à `schema.sql` et retirées. Une base créée avant la
+  1.0.0 est à recréer, comme les tables du cœur
+  ([`nemeton::db_migrate()`](https://pobsteta.github.io/nemeton/reference/db_migrate.html)
+  refuse une base antérieure à `nemeton` 1.0.0, erreur
+  `nemeton_legacy_schema`) ; la base de suivi sanitaire aussi.
+- Après la 1.0.0, un changement de schéma est toujours un nouveau
+  fichier `inst/sql/migration_00N_*.sql`, idempotent, jamais la
   modification d’un fichier publié.
 
 ## 5. Profils d’experts

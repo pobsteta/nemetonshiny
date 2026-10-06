@@ -9,13 +9,9 @@ Read functions
 [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md),
 [`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md),
 [`parcelles_commune()`](https://pobsteta.github.io/nemetonshiny/reference/parcelles_commune.md))
-**never write** into a project. In particular,
-[`projet_lire()`](https://pobsteta.github.io/nemetonshiny/reference/projet_lire.md)
-does not run the format migrations that opening a project in the
-application runs: when one would be needed, it fails with an error of
-class `nemetonshiny_projet_perime` instead, and
-[`projet_migrer()`](https://pobsteta.github.io/nemetonshiny/reference/projet_migrer.md)
-applies it explicitly.
+**never write** into a project. Version 1.0.0 starts from scratch: a
+project created before it is not taken over, and the functions that read
+or compute it fail with an error of class `nemetonshiny_projet_ancien`.
 
 Projects live in the projects directory: `run_app(project_dir = )` in
 the application; outside it, the `NEMETON_PROJECT_DIR` environment
@@ -27,8 +23,8 @@ Errors are classed, so callers can react without parsing messages:
 
 - `nemetonshiny_projet_introuvable`: unknown or invalid project id;
 
-- `nemetonshiny_projet_perime`: a migration would be needed to read the
-  project (the condition carries the
+- `nemetonshiny_projet_ancien`: project created before version 1.0.0, to
+  be recreated (the condition carries the
   [`projet_etat()`](https://pobsteta.github.io/nemetonshiny/reference/projet_etat.md)
   result in `$etat`);
 
