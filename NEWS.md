@@ -1,4 +1,4 @@
-# nemetonshiny 0.157.0.9001 (cycle de développement)
+# nemetonshiny 0.157.1 (2026-10-06)
 
 ### Added
 
