@@ -23,3 +23,8 @@ navbar:
   structure:
     left:  [intro, reference, articles, news]
     right: [search, github]
+
+articles:
+- title: Utiliser l'application
+  contents:
+  - guide-application_fr
