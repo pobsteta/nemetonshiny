@@ -10,6 +10,13 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.157.1] - 2026-10-06
+
+### Added
+
+- Guide de l'application (`vignette("guide-application_fr")`, article pkgdown),
+  repris du coeur et reecrit pour l'app actuelle.
+
 ## [0.157.0] - 2026-10-05
 
 ### Changed
