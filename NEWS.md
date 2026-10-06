@@ -1,4 +1,6 @@
-# nemetonshiny 0.157.1.9001 (cycle de développement, vers la 1.0.0)
+# nemetonshiny 1.0.0 (2026-10-06)
+
+Première version stable. Elle repart de zéro : les projets et les bases créés avec une version 0.x ne sont pas repris.
 
 Adoption du cœur **nemeton 1.0.0** (brief `nemeton/specs/057-contrat-api-1.0/brief-nemetonshiny-1.0.0.md`).
 Plancher `Imports: nemeton (>= 1.0.0)`.

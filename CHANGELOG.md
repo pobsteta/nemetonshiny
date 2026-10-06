@@ -10,6 +10,31 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-06
+
+First stable release. **Breaking**: projects and databases created with 0.x
+versions are not taken over (no migration); recreate them.
+
+### Changed
+
+- Requires `nemeton (>= 1.0.0)`.
+- Projects carry `format_projet = 1`; older projects are flagged "pre-1.0"
+  (delete only) and refused by the API (`nemetonshiny_projet_ancien`).
+- `projet_etat()` exposes `format_projet` / `format_ok`; `projets_lister()`
+  exposes `format_ok`.
+- `inst/sql/schema.sql` holds the full 1.0 schema (`_norm` columns,
+  `*_states` archives).
+- Core 1.0.0 statuses translated (P2 without real age, C1 from NDVI, P3
+  components, P2 outside site curves, conditional indicators).
+
+### Removed
+
+- `projet_migrer()` and the `nemetonshiny_projet_perime` error class.
+- Indicator-sense check (`indicator_sense_version`) and legacy project file
+  formats (`atomes.gpkg`, `atome_id`).
+- `inst/sql/migration_00N_*.sql` (folded into `schema.sql`).
+- INPN "wetlands" layer (mostly ZNIEFF, unused by the core).
+
 ## [0.157.1] - 2026-10-06
 
 ### Added
