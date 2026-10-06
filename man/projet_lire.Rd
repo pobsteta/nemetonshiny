@@ -25,14 +25,14 @@ computed);
 \description{
 Builds the project exactly as the Synthesis tab sees it (indicators per
 management unit, R5 from the linked monitoring zone, R6/R7 from
-reGeneration, family scores through the core), \strong{without} the migrations
-that opening the project in the application runs. Nothing is written.
+reGeneration, family scores through the core). Nothing is written (a
+project without management units is read with none).
 }
 \section{Errors}{
 
-Class \code{nemetonshiny_projet_perime} when a migration would be needed (see
-\code{\link[=projet_etat]{projet_etat()}} and \code{\link[=projet_migrer]{projet_migrer()}}); class
-\code{nemetonshiny_projet_introuvable} for an unknown id.
+Class \code{nemetonshiny_projet_ancien} for a project created before version
+1.0.0 (not taken over); class \code{nemetonshiny_projet_introuvable} for an
+unknown id.
 }
 
 \seealso{
@@ -42,7 +42,6 @@ Other api_hors_interface:
 \code{\link[=projet_creer]{projet_creer()}},
 \code{\link[=projet_etat]{projet_etat()}},
 \code{\link[=projet_gpkg]{projet_gpkg()}},
-\code{\link[=projet_migrer]{projet_migrer()}},
 \code{\link[=projet_rapport]{projet_rapport()}},
 \code{\link[=projets_lister]{projets_lister()}}
 }

@@ -491,7 +491,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
 
           # Update app state - reload through load_project() so the UGF
           # tab receives a fully-populated object (parcels + tenements +
-          # ugs auto-generated via ensure_project_migrated). Without
+          # ugs auto-generated via ensure_project_ug). Without
           # this, create_project() only returns list(id, path, metadata)
           # and the mod_ug observer short-circuits on is.null(parcels),
           # leaving the UGF map empty.

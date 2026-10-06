@@ -58,7 +58,8 @@ test_that("DATA_SOURCES contains required vector sources", {
   # carries required_for = "indicateur_w1_reseau" internally.
   expect_true("water_network" %in% names(vectors))
   expect_true("water_surfaces" %in% names(vectors))
-  expect_true("wetlands" %in% names(vectors))
+  # Retiree en 1.0.0 (ZNIEFF et non zones humides ; non lue par le coeur)
+  expect_false("wetlands" %in% names(vectors))
   expect_true("roads" %in% names(vectors))
   expect_true("buildings" %in% names(vectors))
   expect_true("bdforet" %in% names(vectors))
@@ -338,8 +339,8 @@ test_that("normalize_indicator handles NDVI special case", {
 })
 
 test_that("normalize_indicator handles TWI special case", {
-  # indicateur_w3_humidite: [2.5, 4.5] -> [0, 100]
-  values <- c(2.5, 3.5, 4.5, 5.5)
+  # nemeton >= 1.0.0 (spec 056) : TWI ramene a 2 m, fenetre fixe [2,5 ; 9]
+  values <- c(2.5, 5.75, 9, 12)
   normalized <- nemetonshiny:::normalize_indicator("indicateur_w3_humidite", values)
 
   expect_equal(normalized[1], 0)
@@ -2356,8 +2357,8 @@ test_that("normalize_indicator scales indicateur_c2_ndvi 0-1 to 0-100", {
 })
 
 test_that("normalize_indicator scales indicateur_w3_humidite with offset", {
-  # TWI: (values - 2.5) / 2 * 100
-  result <- nemetonshiny:::normalize_indicator("indicateur_w3_humidite", c(2.5, 3.5, 4.5))
+  # TWI (nemeton >= 1.0.0) : (values - 2.5) / 6.5 * 100
+  result <- nemetonshiny:::normalize_indicator("indicateur_w3_humidite", c(2.5, 5.75, 9))
   expect_equal(result, c(0, 50, 100))
 })
 
@@ -3328,7 +3329,7 @@ test_that("download_inpn_wfs handles sf bbox input", {
   skip_if_not_installed("happign")
 
   withr::with_tempdir({
-    cache_file <- file.path(getwd(), "wetlands.gpkg")
+    cache_file <- file.path(getwd(), "protected.gpkg")
     bbox <- sf::st_bbox(c(xmin = 2.0, ymin = 48.0, xmax = 2.01, ymax = 48.01),
                         crs = sf::st_crs(4326))
 
@@ -3340,7 +3341,7 @@ test_that("download_inpn_wfs handles sf bbox input", {
       get_wfs = function(...) NULL,
       .package = "happign",
       {
-        result <- nemetonshiny:::download_inpn_wfs("wetlands", bbox, cache_file)
+        result <- nemetonshiny:::download_inpn_wfs("protected_areas", bbox, cache_file)
         expect_null(result)
       }
     )
@@ -4427,7 +4428,7 @@ test_that("start_computation uses provided project_path", {
 
   with_mocked_bindings(
     # start_computation honours the passed project_path, but
-    # load_project()/ensure_project_migrated() still resolve the
+    # load_project()/ensure_project_ug() still resolve the
     # project directory via get_project_path(); mock it so the
     # migration writes/reads land in the provided project_dir.
     get_project_path = function(id) project_dir,

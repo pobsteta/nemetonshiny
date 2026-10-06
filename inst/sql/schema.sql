@@ -75,7 +75,7 @@ CREATE INDEX IF NOT EXISTS idx_parcels_project ON nemeton.parcels(project_id);
 CREATE INDEX IF NOT EXISTS idx_parcels_geometry ON nemeton.parcels USING GIST(geometry);
 
 -- ============================================================
--- Indicators (31 indicateurs par parcelle)
+-- Indicators (31 indicateurs par parcelle, valeurs brutes et normalisees)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS nemeton.indicators (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -125,6 +125,38 @@ CREATE TABLE IF NOT EXISTS nemeton.indicators (
   indicateur_n1_distance NUMERIC,
   indicateur_n2_continuite NUMERIC,
   indicateur_n3_naturalite NUMERIC,
+  -- Valeurs normalisees 0-100 (une par indicateur)
+  indicateur_b1_protection_norm NUMERIC,
+  indicateur_b2_structure_norm NUMERIC,
+  indicateur_b3_connectivite_norm NUMERIC,
+  indicateur_c1_biomasse_norm NUMERIC,
+  indicateur_c2_ndvi_norm NUMERIC,
+  indicateur_w1_reseau_norm NUMERIC,
+  indicateur_w2_zones_humides_norm NUMERIC,
+  indicateur_w3_humidite_norm NUMERIC,
+  indicateur_a1_couverture_norm NUMERIC,
+  indicateur_a2_qualite_air_norm NUMERIC,
+  indicateur_f1_fertilite_norm NUMERIC,
+  indicateur_f2_erosion_norm NUMERIC,
+  indicateur_l1_sylvosphere_norm NUMERIC,
+  indicateur_l2_fragmentation_norm NUMERIC,
+  indicateur_t1_anciennete_norm NUMERIC,
+  indicateur_t2_changement_norm NUMERIC,
+  indicateur_r1_feu_norm NUMERIC,
+  indicateur_r2_tempete_norm NUMERIC,
+  indicateur_r3_secheresse_norm NUMERIC,
+  indicateur_r4_abroutissement_norm NUMERIC,
+  indicateur_s1_routes_norm NUMERIC,
+  indicateur_s2_bati_norm NUMERIC,
+  indicateur_s3_population_norm NUMERIC,
+  indicateur_p1_volume_norm NUMERIC,
+  indicateur_p2_station_norm NUMERIC,
+  indicateur_p3_qualite_bois_norm NUMERIC,
+  indicateur_e1_bois_energie_norm NUMERIC,
+  indicateur_e2_evitement_norm NUMERIC,
+  indicateur_n1_distance_norm NUMERIC,
+  indicateur_n2_continuite_norm NUMERIC,
+  indicateur_n3_naturalite_norm NUMERIC,
   -- 12 familles (scores normalises 0-100)
   famille_biodiversite NUMERIC,
   famille_carbone NUMERIC,
@@ -159,3 +191,33 @@ CREATE TABLE IF NOT EXISTS nemeton.comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_comments_project ON nemeton.comments(project_id);
+
+-- ============================================================
+-- Archives des etats de reGeneration et du plan d'actions
+-- (une ligne par version ; creees aussi a la volee par l'application)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS nemeton.regeneration_states (
+  id           BIGSERIAL PRIMARY KEY,
+  project_id   TEXT        NOT NULL,
+  version      INTEGER     NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ug_id        TEXT,
+  payload      JSONB       NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_regeneration_states_project
+  ON nemeton.regeneration_states (project_id, version);
+
+CREATE TABLE IF NOT EXISTS nemeton.action_plan_states (
+  id           BIGSERIAL   PRIMARY KEY,
+  project_id   TEXT        NOT NULL,
+  version      INTEGER     NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  horizon      INTEGER,
+  ug_id        TEXT,
+  action_id    TEXT,
+  payload      JSONB       NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_action_plan_states_project
+  ON nemeton.action_plan_states (project_id, version);

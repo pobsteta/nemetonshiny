@@ -37,6 +37,15 @@
 
 # ---------------------------------------------------------------- resolution
 
+
+# Projet 0.x : metadata.json sans marqueur `format_projet`.
+.mcp_ancien <- function(id) {
+  f <- file.path(get_project_path(id), "metadata.json")
+  m <- jsonlite::read_json(f); m$format_projet <- NULL
+  jsonlite::write_json(m, f, auto_unbox = TRUE, pretty = TRUE)
+  invisible(id)
+}
+
 test_that(".mcp_resolve_project matches id, name without accents, partial name", {
   .mcp_env()
   a <- .mcp_projet("Forêt de Dabo", calcule = FALSE)
@@ -82,14 +91,14 @@ test_that("lister_projets and resume_projet return JSON without writing", {
   expect_identical(apres, avant)
 })
 
-test_that("resume_projet on a stale project explains and changes nothing", {
+test_that("resume_projet on a pre-1.0 project explains and changes nothing", {
   skip_if_not_installed("arrow")
   .mcp_env()
   id <- .mcp_projet()
-  suppressMessages(update_project_metadata(id, list(indicator_sense_version = 2L)))
+  .mcp_ancien(id)
   r <- .lit(mcp_resume_projet(id))
   expect_false(r$ok)
-  expect_identical(r$classe, "nemetonshiny_projet_perime")
+  expect_identical(r$classe, "nemetonshiny_projet_ancien")
   expect_true(file.exists(file.path(get_project_path(id), "data", "indicators.parquet")))
 })
 
@@ -139,8 +148,8 @@ test_that("lancer_calcul refuses a running job, an app computation, a lock, a st
   local_mocked_bindings(lock_status = function(pid) list(holder_label = "x", stale = TRUE))
 
   id2 <- .mcp_projet("Vieux")
-  suppressMessages(update_project_metadata(id2, list(indicator_sense_version = 2L)))
-  expect_identical(.lit(mcp_lancer_calcul(id2))$classe, "nemetonshiny_projet_perime")
+  .mcp_ancien(id2)
+  expect_identical(.lit(mcp_lancer_calcul(id2))$classe, "nemetonshiny_projet_ancien")
 })
 
 test_that(".mcp_child_compute records pid and outcome", {

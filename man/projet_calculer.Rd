@@ -23,8 +23,8 @@ than an hour). Progress is also written to \code{data/compute_progress.json}.
 }
 \section{Errors}{
 
-Class \code{nemetonshiny_projet_perime} when the project must be migrated first,
-\code{nemetonshiny_calcul_echec} when the computation fails.
+Class \code{nemetonshiny_projet_ancien} for a project created before version
+1.0.0, \code{nemetonshiny_calcul_echec} when the computation fails.
 }
 
 \seealso{
@@ -34,7 +34,6 @@ Other api_hors_interface:
 \code{\link[=projet_etat]{projet_etat()}},
 \code{\link[=projet_gpkg]{projet_gpkg()}},
 \code{\link[=projet_lire]{projet_lire()}},
-\code{\link[=projet_migrer]{projet_migrer()}},
 \code{\link[=projet_rapport]{projet_rapport()}},
 \code{\link[=projets_lister]{projets_lister()}}
 }

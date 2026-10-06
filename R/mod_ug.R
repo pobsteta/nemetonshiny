@@ -570,7 +570,7 @@ mod_ug_server <- function(id, app_state) {
       if (has_ug_data(project)) {
         rv$projet_ug <- project
       } else if (!is.null(project$metadata$id)) {
-        projet <- ensure_project_migrated(project$metadata$id, project)
+        projet <- ensure_project_ug(project$metadata$id, project)
         rv$projet_ug <- projet
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs

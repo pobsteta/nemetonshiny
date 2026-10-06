@@ -353,7 +353,9 @@ mod_home_server <- function(id, app_state) {
               } else {
                 htmltools::span(
                   class = paste("badge", status_class, "smaller"),
-                  if (proj$is_corrupted) i18n$t("corrupted") else i18n$t(paste0("status_", proj$status))
+                  if (isTRUE(proj$is_ancien)) i18n$t("projet_ancien_format")
+                  else if (proj$is_corrupted) i18n$t("corrupted")
+                  else i18n$t(paste0("status_", proj$status))
                 )
               }
             )
@@ -597,14 +599,19 @@ mod_home_server <- function(id, app_state) {
       project_id <- input$delete_corrupted
       shiny::req(project_id)
 
+      # Projet anterieur a la 1.0.0 (pas repris) ou vraiment corrompu : meme
+      # geste, la suppression, mais pas le meme message.
+      ancien <- isTRUE(tryCatch(check_project_health(project_id)$ancien,
+                                error = function(e) FALSE))
+
       # Show confirmation modal
       shiny::showModal(shiny::modalDialog(
         title = htmltools::div(
           class = "text-danger",
           bsicons::bs_icon("exclamation-triangle", class = "me-2"),
-          i18n$t("delete_corrupted_project")
+          i18n$t(if (ancien) "projet_ancien_titre" else "delete_corrupted_project")
         ),
-        htmltools::p(i18n$t("delete_corrupted_confirm")),
+        htmltools::p(i18n$t(if (ancien) "projet_ancien_confirm" else "delete_corrupted_confirm")),
         footer = htmltools::tagList(
           shiny::modalButton(i18n$t("cancel")),
           shiny::actionButton(
@@ -1707,28 +1714,6 @@ mod_home_server <- function(id, app_state) {
     }, ignoreInit = TRUE)
 
     # ========================================
-    # ================================================================
-    # Indicateurs invalides par une montee de version du coeur
-    # ================================================================
-    # `load_project()` porte `indicators_invalidated = TRUE` sur le SEUL
-    # chargement qui vient de jeter le parquet perime (spec 048). Sans ce
-    # message, l'utilisateur voit son projet repasser en brouillon sans
-    # raison : le seul signal etait un `cli` dans la console, que personne ne
-    # lit depuis l'interface.
-    #
-    # Un observateur unique plutot qu'un message a chacun des quatre points
-    # de chargement : le drapeau n'est vrai que sur ce chargement-la, donc il
-    # ne se repete pas de lui-meme.
-    shiny::observeEvent(app_state$current_project, {
-      if (!isTRUE(app_state$current_project$indicators_invalidated)) return()
-      shiny::showNotification(
-        get_i18n(app_state$language)$t(.indicateurs_invalides_cle(
-          app_state$current_project$indicators_invalidated_from)),
-        type = "warning",
-        duration = 15
-      )
-    }, ignoreInit = TRUE, ignoreNULL = TRUE)
-
     # Guided Tour (cicerone)
     # ========================================
 

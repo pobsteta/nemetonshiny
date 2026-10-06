@@ -360,7 +360,12 @@ monitoring_db_backend <- function(project = NULL) {
       }
     ),
     error = function(e) {
-      cli::cli_warn("Monitoring schema migration failed: {conditionMessage(e)}")
+      if (.base_anterieure_v1(e)) {
+        .set_monitoring_db_error("legacy_schema")
+        cli::cli_warn("La base de suivi sanitaire est ant\u00e9rieure \u00e0 nemeton 1.0.0 : la recr\u00e9er (fichier SQLite neuf ou base PostgreSQL vide).")
+      } else {
+        cli::cli_warn("Monitoring schema migration failed: {conditionMessage(e)}")
+      }
       FALSE
     }
   )

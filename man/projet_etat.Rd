@@ -12,17 +12,13 @@ projet_etat(id)
 \value{
 A list:
 \itemize{
-\item \code{id}, \code{nom}, \code{statut}, \code{chemin}, \code{ndp}, \code{schema_version};
-\item \code{sens_vu}, \code{sens_courant}: indicator direction version the indicators
-were computed under / expected by this version of the application;
+\item \code{id}, \code{nom}, \code{statut}, \code{chemin}, \code{ndp};
+\item \code{format_projet}, \code{format_ok}: project format, and whether this version
+of the application reads it (\code{FALSE} for a project created before
+1.0.0: it is not taken over and must be recreated);
 \item \code{indicateurs}: computed indicators present on disk;
-\item \code{ugf}: readable management units (UGF) present;
-\item \code{indicateurs_perimes}: indicators computed under an older direction
-(they would be set aside by a migration);
-\item \code{migration_ugf}: management units missing or unreadable (a migration
-would create one unit per parcel);
-\item \code{migration_necessaire}: \code{TRUE} when \code{\link[=projet_lire]{projet_lire()}} would refuse the
-project and \code{\link[=projet_migrer]{projet_migrer()}} would change it;
+\item \code{ugf}: readable management units (UGF) present (otherwise the default
+layout, one unit per parcel, is created at the first opening);
 \item \code{archives}: set-aside indicator files (\code{metadata$indicateurs_perimes}).
 }
 
@@ -38,7 +34,6 @@ Other api_hors_interface:
 \code{\link[=projet_creer]{projet_creer()}},
 \code{\link[=projet_gpkg]{projet_gpkg()}},
 \code{\link[=projet_lire]{projet_lire()}},
-\code{\link[=projet_migrer]{projet_migrer()}},
 \code{\link[=projet_rapport]{projet_rapport()}},
 \code{\link[=projets_lister]{projets_lister()}}
 }

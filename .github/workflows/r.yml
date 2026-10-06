@@ -173,7 +173,9 @@ jobs:
   # ============================================================
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 60 et non 30 : apres un changement de DESCRIPTION, le cache des
+    # dependances est invalide et leur reinstallation seule depasse 30 min.
+    timeout-minutes: 60
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}

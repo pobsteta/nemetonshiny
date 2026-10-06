@@ -169,12 +169,6 @@ DATA_SOURCES <- list(
       source = "ign_bd_topo",
       required_for = c("indicateur_w2_zones_humides")
     ),
-    wetlands = list(
-      name = "Wetlands",
-      type = "vector",
-      source = "inpn_wfs",
-      required_for = c("indicateur_w2_zones_humides")
-    ),
     roads = list(
       name = "Roads",
       type = "vector",
@@ -804,7 +798,7 @@ start_computation <- function(project_id,
     if (is.null(projet_for_ug) || !has_ug_data(projet_for_ug)) {
       # First-time compute on a freshly loaded v1 project: make sure
       # UGF data exists (1 UGF = 1 parcel by default).
-      projet_for_ug <- ensure_project_migrated(project_id, projet_for_ug)
+      projet_for_ug <- ensure_project_ug(project_id, projet_for_ug)
     }
     compute_unit <- ug_build_sf(projet_for_ug)
     if (is.null(compute_unit) || nrow(compute_unit) == 0) {
@@ -1615,7 +1609,6 @@ download_layers_for_parcels <- function(parcels,
     protected_areas = "source_protected_areas",
     water_network = "source_water_network",
     water_surfaces = "source_water_surfaces",
-    wetlands = "source_wetlands",
     roads = "source_roads",
     buildings = "source_buildings",
     bdforet = "source_bdforet",
@@ -2822,14 +2815,14 @@ download_vector_source <- function(source_name,
 NULL
 
 
-#' Download INPN WFS data (protected areas, wetlands)
+#' Download INPN WFS data (protected areas)
 #'
 #' @description
-#' Downloads vector data from INPN WFS service for protected areas
-#' and wetlands in metropolitan France.
+#' Downloads vector data from INPN WFS service for protected areas in
+#' metropolitan France.
 #'
 #' @param layer_name Character. Name of the layer to download.
-#'   Supported: "protected_areas", "wetlands"
+#'   Supported: "protected_areas"
 #' @param bbox Numeric vector or sf bbox. Bounding box (xmin, ymin, xmax, ymax) in WGS84.
 #' @param cache_file Character. Path to save the downloaded data.
 #'
@@ -2873,12 +2866,10 @@ download_inpn_wfs <- function(layer_name, bbox, cache_file) {
   if (layer_name == "protected_areas") {
     target_layers <- wfs_layers$Name[grepl("patrinat", wfs_layers$Name,
                                            ignore.case = TRUE)]
-  } else if (layer_name == "wetlands") {
-    target_layers <- wfs_layers$Name[grepl(
-      "patrinat.*(ramsar|znieff|zone_humide)",
-      wfs_layers$Name, ignore.case = TRUE
-    )]
   } else {
+    # (La couche " wetlands " est retiree en 1.0.0 : son motif ramenait surtout
+    # des ZNIEFF, pas des zones humides, et le coeur ne la lisait pas. W2 vient
+    # des surfaces en eau BD TOPO, du TWI et de l'occupation du sol.)
     cli::cli_warn("Unknown INPN layer: {layer_name}")
     return(NULL)
   }
@@ -4797,6 +4788,8 @@ compute_single_indicator <- function(indicator, parcels, layers) {
           is.null(attr(vals, "nemeton_status_name"))) {
         vals <- .c2_apply_provenance(vals, layers$ndvi_provenance)
       }
+      vals <- .cause_sans_age(vals, indicator, parcels, layers,
+                              ifn_mode = isTRUE(ifn_mode))
 
       return(vals)
     }
@@ -4815,6 +4808,46 @@ compute_single_indicator <- function(indicator, parcels, layers) {
   # renvoyait `runif(0, 100)`, sauvegarde et affiche comme une valeur reelle.
   stop(sprintf("Indicator %s is unknown to the installed nemeton core.", indicator),
        call. = FALSE)
+}
+
+
+#' Name the cause of a P2 / C1 computed without a real stand age
+#'
+#' @description
+#' Since nemeton 1.0.0 (spec 056), `enrich_parcels_bdforet()` no longer
+#' invents an age (60 years) nor a density: BD Foret does not carry them. In
+#' CHM mode P2 (site index from height and age) is then NA everywhere, and C1
+#' falls back on the NDVI proxy unless a LiDAR canopy model is available. The
+#' core ships no status for those two cases; the app knows both conditions and
+#' names them, so the family view explains the value instead of showing a bare
+#' gap or an unqualified figure.
+#'
+#' @param vals Indicator values (may carry `nemeton_status` attributes).
+#' @param indicator Indicator name.
+#' @param parcels Units passed to the core.
+#' @param layers `nemeton_layers`.
+#' @param ifn_mode Logical. P2 computed in IFN mode (no age involved).
+#' @return `vals`, possibly with a `p2_status = "sans_age"` or
+#'   `c1_status = "ndvi_sans_age"` attribute.
+#' @noRd
+.cause_sans_age <- function(vals, indicator, parcels, layers, ifn_mode = FALSE) {
+  n <- length(vals)
+  sans_age <- !"age" %in% names(parcels) || all(is.na(parcels$age))
+  if (!sans_age || n == 0L) return(vals)
+  statut_vide <- is.null(attr(vals, "nemeton_status")) ||
+    all(is.na(attr(vals, "nemeton_status")))
+  if (identical(indicator, "indicateur_p2_station") && !isTRUE(ifn_mode) &&
+      all(is.na(vals)) && statut_vide) {
+    attr(vals, "nemeton_status") <- rep("sans_age", n)
+    attr(vals, "nemeton_status_name") <- "p2_status"
+  } else if (identical(indicator, "indicateur_c1_biomasse") && statut_vide &&
+             any(!is.na(vals)) &&
+             is.null(tryCatch(resolve_raster_layer(layers, "lidar_mnh"),
+                              error = function(e) NULL))) {
+    attr(vals, "nemeton_status") <- rep("ndvi_sans_age", n)
+    attr(vals, "nemeton_status_name") <- "c1_status"
+  }
+  vals
 }
 
 

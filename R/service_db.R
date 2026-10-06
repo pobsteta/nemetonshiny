@@ -219,8 +219,16 @@ get_db_connection <- function(check_postgis = TRUE) {
   # Idempotent : un simple SELECT sur `schema_migration` apres la 1re application.
   # Jamais fatal - l'app doit demarrer meme si la migration echoue (verrou alors
   # indisponible -> tout passe en editable cote connexion nulle / lecture seule).
-  tryCatch(nemeton::db_migrate(con), error = function(e)
-    cli::cli_warn("Core schema migration failed: {conditionMessage(e)}"))
+  tryCatch(nemeton::db_migrate(con), error = function(e) {
+    if (.base_anterieure_v1(e)) {
+      # nemeton >= 1.0.0 refuse une base creee avant lui (pas de migration).
+      cli::cli_warn(c(
+        "La base plateforme est ant\u00e9rieure \u00e0 nemeton 1.0.0 : la recr\u00e9er.",
+        i = "Supprimer ses tables du c\u0153ur ({.code project_lock}, {.code schema_migration}...) ou repartir d'une base vide ; d'ici l\u00e0, le verrou de projet est indisponible."))
+    } else {
+      cli::cli_warn("Core schema migration failed: {conditionMessage(e)}")
+    }
+  })
   if (isTRUE(ok)) .nemeton_env$.app_schema_initialized <- TRUE
   invisible(ok)
 }
@@ -586,8 +594,8 @@ db_save_indicators <- function(con, project_id, indicators) {
     "famille_social", "famille_production", "famille_energie", "famille_naturalite"
   )
 
-  # Chaque indicateur voyage avec son jumeau normalise 0-100
-  # (`migration_006_indicateurs_norm.sql`). Les familles n'en ont pas : elles
+  # Chaque indicateur voyage avec son jumeau normalise 0-100 (colonnes `_norm`
+  # de `schema.sql`). Les familles n'en ont pas : elles
   # SONT deja des scores 0-100.
   db_cols <- c(db_cols, paste0(grep("^indicateur_", db_cols, value = TRUE), "_norm"))
 
@@ -597,11 +605,10 @@ db_save_indicators <- function(con, project_id, indicators) {
   # Ne garder que les colonnes presentes dans les donnees ET dans le schema...
   available_cols <- intersect(names(ind_df), db_cols)
 
-  # ... ET REELLEMENT PRESENTES DANS LA TABLE. Les fichiers
-  # `inst/sql/migration_00N.sql` ne sont pas joues par l'app - seul `schema.sql`
-  # l'est - donc une base peut tres bien ne pas porter les colonnes `_norm`.
-  # Sans ce filtre, `dbWriteTable(append = TRUE)` echouerait et l'on perdrait
-  # AUSSI les valeurs brutes, pour une colonne d'appoint manquante.
+  # ... ET REELLEMENT PRESENTES DANS LA TABLE (base creee par une version
+  # anterieure, sans les colonnes `_norm`). Sans ce filtre,
+  # `dbWriteTable(append = TRUE)` echouerait et l'on perdrait AUSSI les valeurs
+  # brutes, pour une colonne d'appoint manquante.
   colonnes_table <- tryCatch(
     DBI::dbListFields(con, DBI::Id(schema = "nemeton", table = "indicators")),
     error = function(e) NULL)
@@ -610,7 +617,7 @@ db_save_indicators <- function(con, project_id, indicators) {
     if (length(absentes)) {
       cli::cli_warn(c(
         "{length(absentes)} colonne{?s} absente{?s} de {.field nemeton.indicators}, ignor\u00e9e{?s} \u00e0 l'\u00e9criture.",
-        i = "Appliquer {.file inst/sql/migration_006_indicateurs_norm.sql} pour enregistrer les valeurs normalis\u00e9es."))
+        i = "Base ant\u00e9rieure \u00e0 la 1.0.0 : la recr\u00e9er depuis {.file inst/sql/schema.sql}."))
       available_cols <- intersect(available_cols, colonnes_table)
     }
   }
@@ -934,4 +941,17 @@ db_sync_project_async <- function(project_id) {
     cli::cli_warn("Background DB sync failed (non-blocking): {conditionMessage(e)}")
   })
   invisible(p)
+}
+
+
+#' Did the core refuse a database created before nemeton 1.0.0?
+#'
+#' nemeton 1.0.0 starts from a fresh schema and refuses older databases with
+#' an error of class `nemeton_legacy_schema` (no migration path).
+#' @param e A condition.
+#' @return Logical scalar.
+#' @noRd
+.base_anterieure_v1 <- function(e) {
+  inherits(e, "nemeton_legacy_schema") ||
+    grepl("predates nemeton 1.0.0", conditionMessage(e), fixed = TRUE)
 }

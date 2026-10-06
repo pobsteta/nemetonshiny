@@ -40,6 +40,25 @@ if (!dir.exists(root)) {
 }
 
 
+#' Project format of version 1.0.0
+#'
+#' Written in `metadata$format_projet` by [create_project()]. Version 1.0.0
+#' starts from scratch: a project without this marker predates it and is not
+#' taken over (no migration, decision of 2026-10-06). Bump it, with a
+#' migration, only for a format change AFTER 1.0.0.
+#' @noRd
+PROJET_FORMAT <- 1L
+
+#' Is a project in the current format?
+#' @param metadata Parsed `metadata.json`.
+#' @return Logical scalar.
+#' @noRd
+.projet_format_ok <- function(metadata) {
+  f <- suppressWarnings(as.integer(metadata$format_projet %||% NA_integer_))
+  length(f) == 1L && !is.na(f) && f == PROJET_FORMAT
+}
+
+
 #' Create a new project
 #'
 #' @description
@@ -111,12 +130,9 @@ create_project <- function(name, description = "", owner = "", parcels = NULL,
     parcels_count = 0L,
     indicators_computed = FALSE,
     groupes_profile = groupes_profile,
-    # Un projet neuf n'a aucun indicateur calcule sous un sens anterieur. Sans
-    # ce marqueur, un projet cree puis calcule HORS interface (sans passer par
-    # load_project(), qui pose le marqueur a la premiere ouverture) etait vu
-    # en sens v1 : ses indicateurs tout juste calcules etaient invalides a la
-    # premiere ouverture.
-    indicator_sense_version = INDICATOR_SENSE_VERSION
+    # Format des projets de la 1.0.0. Un projet sans ce marqueur est anterieur
+    # et n'est pas repris (pas de migration, decision du 2026-10-06).
+    format_projet = PROJET_FORMAT
  )
 
   # Save metadata
@@ -861,14 +877,12 @@ load_samples <- function(project_id, layer = "plots") {
 #' (e.g. after a decoupage import that renumbers \code{ug_id}s - the
 #' cached values are keyed on ug_id and silently tell
 #' \code{compute_all_indicators()} that "everything is already done",
-#' leaving the new UGFs unpopulated), or when the core changes the direction
-#' of an indicator (see [ensure_indicator_sense_current()]).
+#' leaving the new UGFs unpopulated).
 #'
-#' The file is RENAMED, never deleted: \code{data/indicators.perime-v<sense>-<timestamp>.parquet}.
+#' The file is RENAMED, never deleted: \code{data/indicators.perime-<timestamp>.parquet}.
 #' Only the \code{INDICATORS_STALE_KEEP} most recent generations are kept, and
 #' the kept ones are listed in \code{metadata$indicateurs_perimes} (file,
-#' sense version, reason, date). An accidental load is therefore no longer a
-#' loss, and the user can compare results before / after a sense change.
+#' reason, date). An accidental invalidation is therefore no longer a loss.
 #' Only the exact name \code{indicators.parquet} is ever read back, so a
 #' set-aside file cannot be mistaken for current results.
 #'
@@ -876,8 +890,8 @@ load_samples <- function(project_id, layer = "plots") {
 #' \code{ugs.json}) are untouched - only the indicator results.
 #'
 #' @param project_id Character. Project ID.
-#' @param motif Character. Why the indicators are invalidated (\code{"sens"},
-#'   \code{"ugf"}, ...), recorded in the metadata.
+#' @param motif Character. Why the indicators are invalidated (\code{"ugf"},
+#'   \code{"parcelles"}, ...), recorded in the metadata.
 #'
 #' @return Invisible TRUE if the indicators file was present and set aside,
 #'   FALSE if there was nothing to invalidate.
@@ -934,11 +948,9 @@ INDICATORS_STALE_KEEP <- 2L
                                   motif = "invalidation") {
   data_dir <- dirname(indicators_path)
   meta <- tryCatch(load_project_metadata(project_id), error = function(e) NULL)
-  sens <- suppressWarnings(as.integer(meta$indicator_sense_version %||% 1L))
-  if (length(sens) != 1L || is.na(sens)) sens <- 1L
 
   now <- Sys.time()
-  base <- sprintf("indicators.perime-v%d-%s", sens, format(now, "%Y%m%d-%H%M%S"))
+  base <- sprintf("indicators.perime-%s", format(now, "%Y%m%d-%H%M%S"))
   dest <- file.path(data_dir, paste0(base, ".parquet"))
   i <- 1L
   while (file.exists(dest)) {
@@ -953,7 +965,7 @@ INDICATORS_STALE_KEEP <- 2L
   }
   cli::cli_alert_info("Indicateurs mis de cote : {.path {basename(dest)}}")
 
-  entree <- list(fichier = basename(dest), sens = sens, motif = motif,
+  entree <- list(fichier = basename(dest), motif = motif,
                  date = format(now, "%Y-%m-%dT%H:%M:%S"))
   anciennes <- meta$indicateurs_perimes %||% list()
   anciennes <- Filter(function(e) {
@@ -1128,7 +1140,7 @@ warmup_async_workers <- function() {
 #' observer): `ug_build_sf()` does one `sf::st_union()` per UGF and can
 #' cost 0.5-3 s on projects with many UGFs, none of which is needed to
 #' render parcels on the map. The `tenements`/`ugs` data must already be
-#' present (i.e. call [ensure_project_migrated()] first).
+#' present (i.e. call [ensure_project_ug()] first).
 #'
 #' Non-blocking: any failure is warned and the project is returned
 #' unchanged (without `indicators_sf`).
@@ -1207,41 +1219,27 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
     return(NULL)
   }
 
-  # Sens des indicateurs (spec 048) : un parquet calcule avant une inversion
-  # reste lisible, donc `compute_all_indicators()` le relirait et sauterait le
-  # recalcul en propageant des `famille_risque` faux. L'invalidation a lieu ICI,
-  # avant `load_indicators()` ci-dessous - sinon on chargerait les valeurs
-  # perimees qu'on vient de supprimer du disque.
-  # Le verdict est CONSERVE : sans lui, l'utilisateur voit son projet repasser
-  # en brouillon sans explication - le seul signal etait un `cli` dans la
-  # console, que personne ne lit depuis l'interface.
-  sens_invalide <- .perf_time("indicator_sense", tryCatch(
-    ensure_indicator_sense_current(project_id, metadata),
-    error = function(e) {
-      cli::cli_warn("Verification du sens des indicateurs impossible : {conditionMessage(e)}")
-      FALSE
-    }))
-  metadata <- load_project_metadata(project_id) %||% metadata
+  # Projet anterieur a la 1.0.0 : pas repris (pas de migration). La liste des
+  # projets le signale et ne propose que sa suppression.
+  if (!.projet_format_ok(metadata)) {
+    cli::cli_warn(c(
+      "Projet {project_id} : cr\u00e9\u00e9 avant la version 1.0.0, il n'est pas repris.",
+      i = "Le recr\u00e9er (m\u00eames parcelles) ; l'ancien dossier peut \u00eatre supprim\u00e9."))
+    return(NULL)
+  }
 
   project <- list(
     id = project_id,
     path = project_path,
-    # TRUE quand CE chargement vient d'invalider les indicateurs : le module
-    # d'accueil s'en sert pour prevenir, une fois. Non persiste - c'est un
-    # fait du chargement courant, pas un etat du projet.
-    indicators_invalidated = isTRUE(sens_invalide),
-    # Version de sens d'ou venait le projet : un projet v1 a aussi subi
-    # l'inversion des Risques (v2), que le message doit nommer.
-    indicators_invalidated_from = attr(sens_invalide, "version_vue"),
     metadata = metadata
   )
   project <- c(project, .read_project_files(project_id))
 
-  # Auto-migrate to v2 (UG support) if needed.
+  # UGF : chargees, ou decoupage par defaut a la premiere ouverture.
   project <- tryCatch(
-    .perf_time("ensure_project_migrated", ensure_project_migrated(project_id, project)),
+    .perf_time("ensure_project_ug", ensure_project_ug(project_id, project)),
     error = function(e) {
-      cli::cli_warn("UG migration failed (non-blocking): {e$message}")
+      cli::cli_warn("UGF initialisation failed (non-blocking): {e$message}")
       project
     }
   )
@@ -1486,7 +1484,8 @@ load_comments <- function(project_id) {
     parcels_count = integer(0),
     created_at = as.POSIXct(character(0)),
     updated_at = as.POSIXct(character(0)),
-    is_corrupted = logical(0)
+    is_corrupted = logical(0),
+    is_ancien = logical(0)
   )
 }
 
@@ -1603,6 +1602,8 @@ load_comments <- function(project_id) {
         created_at = as.POSIXct(metadata$created_at %||% NA),
         updated_at = as.POSIXct(metadata$updated_at %||% NA),
         is_corrupted = !health$valid,
+        # Anterieur a la 1.0.0 : non repris, seule la suppression est proposee.
+        is_ancien = isTRUE(health$ancien),
         stringsAsFactors = FALSE
       )
     }, error = function(e) {
@@ -1617,6 +1618,7 @@ load_comments <- function(project_id) {
         created_at = as.POSIXct(NA),
         updated_at = as.POSIXct(NA),
         is_corrupted = TRUE,
+        is_ancien = FALSE,
         stringsAsFactors = FALSE
       )
     })
@@ -1701,6 +1703,8 @@ check_project_health <- function(project_id, metadata = NULL) {
   } else if (!is.null(metadata) && is.null(metadata$name)) {
     issues <- c(issues, "Metadata missing 'name' field")
   }
+  ancien <- !is.null(metadata) && !.projet_format_ok(metadata)
+  if (ancien) issues <- c(issues, "Project predates version 1.0.0")
 
   # Check data directory
   data_path <- file.path(project_path, "data")
@@ -1718,7 +1722,8 @@ check_project_health <- function(project_id, metadata = NULL) {
 
   list(
     valid = length(issues) == 0,
-    issues = issues
+    issues = issues,
+    ancien = ancien
   )
 }
 
@@ -2717,24 +2722,6 @@ load_project_metadata <- function(project_id) {
   tryCatch({
     meta <- jsonlite::read_json(metadata_path)
 
-    # Heal metadata files written by a pre-v0.16.0 nemetonshiny where
-    # the ndp_level field was accidentally persisted as the full
-    # ndp_result object returned by nemeton::detect_ndp() (a nested
-    # JSON object with $level, $confidence, $augmented, $sources)
-    # instead of a plain integer. Downstream code (DB persistence,
-    # metadata updates) calls as.integer(meta$ndp_level), which
-    # errors out on a list: "l'objet 'list' ne peut etre converti
-    # automatiquement en un type 'integer'".
-    if (!is.null(meta$ndp_level) && is.list(meta$ndp_level)) {
-      level <- tryCatch(
-        as.integer(meta$ndp_level$level %||% meta$ndp_level[[1]]),
-        error = function(e) 0L,
-        warning = function(w) 0L
-      )
-      if (is.na(level)) level <- 0L
-      meta$ndp_level <- level
-    }
-
     meta
   }, error = function(e) {
     cli::cli_warn("Failed to load metadata: {e$message}")
@@ -2959,7 +2946,7 @@ save_ug_data <- function(project_id, projet) {
     # `"groupe": null` on every row, which `read_json(simplifyVector = TRUE)`
     # elides when reconstructing the data.frame - dropping the column
     # entirely. `load_ug_data()` would then see "UGs file missing required
-    # columns" and `ensure_project_migrated()` would silently wipe the
+    # columns" and `ensure_project_ug()` would silently wipe the
     # imported UGF layout with the default 1-UGF-per-parcel migration.
     # Column-oriented output keeps every key present regardless of NA
     # density.
@@ -2969,7 +2956,6 @@ save_ug_data <- function(project_id, projet) {
 
     # Update metadata
     update_project_metadata(project_id, list(
-      schema_version = "2.1",
       ug_count = nrow(ugs),
       updated_at = Sys.time()
     ))
@@ -3002,16 +2988,9 @@ load_ug_data <- function(project_id) {
   }
 
   data_dir <- file.path(project_path, "data")
-  tenements_path <- file.path(data_dir, "tenements.gpkg")
-  legacy_atomes_path <- file.path(data_dir, "atomes.gpkg")  # pre-v2.1 name
+  gpkg_path <- file.path(data_dir, "tenements.gpkg")
   ugs_path <- file.path(data_dir, "ugs.json")
-
-  # Prefer new filename, fall back to legacy "atomes.gpkg" (schema v2.0 projects)
-  gpkg_path <- if (file.exists(tenements_path)) {
-    tenements_path
-  } else if (file.exists(legacy_atomes_path)) {
-    legacy_atomes_path
-  } else {
+  if (!file.exists(gpkg_path)) {
     return(NULL)
   }
 
@@ -3022,11 +3001,6 @@ load_ug_data <- function(project_id) {
   tryCatch({
     tenements <- sf::st_read(gpkg_path, quiet = TRUE)
     ugs <- jsonlite::read_json(ugs_path, simplifyVector = TRUE)
-
-    # Backward compat: legacy schema used atome_id, rename to tenement_id
-    if ("atome_id" %in% names(tenements) && !"tenement_id" %in% names(tenements)) {
-      names(tenements)[names(tenements) == "atome_id"] <- "tenement_id"
-    }
 
     # Ensure ugs is a proper data.frame
     if (!is.data.frame(ugs)) {
@@ -3042,8 +3016,8 @@ load_ug_data <- function(project_id) {
       return(NULL)
     }
 
-    # Backward compat: pre-v2.2 projects may lack surface_sig_m2 ->
-    # compute it on-the-fly from the geometry so downstream code works.
+    # Surface SIG absente (decoupage importe d'un SIG tiers) : recalculee
+    # depuis la geometrie.
     if (!"surface_sig_m2" %in% names(tenements)) {
       tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
     }

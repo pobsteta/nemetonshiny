@@ -52,8 +52,13 @@
              stringsAsFactors = FALSE)
 }
 
-.api_vieillir <- function(id, sens = 2L) {
-  suppressMessages(update_project_metadata(id, list(indicator_sense_version = sens)))
+# Projet 0.x : metadata.json sans marqueur `format_projet`.
+.api_ancien <- function(id) {
+  f <- file.path(get_project_path(id), "metadata.json")
+  m <- jsonlite::read_json(f)
+  m$format_projet <- NULL
+  jsonlite::write_json(m, f, auto_unbox = TRUE, pretty = TRUE)
+  invisible(id)
 }
 
 # ==============================================================================
@@ -65,15 +70,14 @@ test_that("invalidate_indicators sets the file aside instead of deleting it", {
   .api_env()
   id <- .api_projet_calcule()
   path <- get_project_path(id)
-  .api_vieillir(id, 2L)
   original <- unname(tools::md5sum(file.path(path, "data", "indicators.parquet")))
 
-  expect_true(suppressMessages(invalidate_indicators(id, motif = "sens")))
+  expect_true(suppressMessages(invalidate_indicators(id, motif = "ugf")))
 
   expect_false(file.exists(file.path(path, "data", "indicators.parquet")))
   arch <- list.files(file.path(path, "data"), "^indicators\\.perime-")
   expect_length(arch, 1L)
-  expect_match(arch, "^indicators\\.perime-v2-\\d{8}-\\d{6}\\.parquet$")
+  expect_match(arch, "^indicators\\.perime-\\d{8}-\\d{6}\\.parquet$")
   # Le contenu est intact : c'est un renommage
   expect_identical(unname(tools::md5sum(file.path(path, "data", arch))), original)
 
@@ -82,8 +86,7 @@ test_that("invalidate_indicators sets the file aside instead of deleting it", {
   expect_identical(meta$status, "draft")
   expect_length(meta$indicateurs_perimes, 1L)
   expect_identical(meta$indicateurs_perimes[[1]]$fichier, arch)
-  expect_identical(meta$indicateurs_perimes[[1]]$sens, 2L)
-  expect_identical(meta$indicateurs_perimes[[1]]$motif, "sens")
+  expect_identical(meta$indicateurs_perimes[[1]]$motif, "ugf")
 })
 
 test_that("only the most recent stale generations are kept", {
@@ -118,15 +121,28 @@ test_that("a failed rename keeps the indicators in place", {
   expect_true(file.exists(file.path(path, "data", "indicators.parquet")))
 })
 
-test_that("a project created then computed headless is not invalidated at load", {
+test_that("a new project carries the 1.0 format marker and loads", {
   skip_if_not_installed("arrow")
   .api_env()
   id <- .api_projet_calcule()
-  expect_identical(load_project_metadata(id)$indicator_sense_version,
-                   INDICATOR_SENSE_VERSION)
-  p <- suppressMessages(load_project(id))
-  expect_false(isTRUE(p$indicators_invalidated))
-  expect_true(file.exists(file.path(get_project_path(id), "data", "indicators.parquet")))
+  expect_identical(as.integer(load_project_metadata(id)$format_projet), PROJET_FORMAT)
+  expect_false(is.null(suppressMessages(load_project(id))))
+})
+
+test_that("a pre-1.0 project is not loaded, and is flagged in the project list", {
+  skip_if_not_installed("arrow")
+  .api_env()
+  id <- .api_ancien(.api_projet_calcule())
+  avant <- .api_empreinte(id)
+  expect_warning(p <- load_project(id), "1.0.0")
+  expect_null(p)
+  expect_identical(.api_empreinte(id), avant)
+  h <- check_project_health(id)
+  expect_true(h$ancien)
+  expect_false(h$valid)
+  rec <- suppressMessages(list_recent_projects())
+  expect_true(rec$is_ancien[rec$id == id])
+  expect_true(rec$is_corrupted[rec$id == id])
 })
 
 # ==============================================================================
@@ -140,33 +156,22 @@ test_that("projet_etat describes a computed, current project", {
   e <- projet_etat(id)
   expect_identical(e$id, id)
   expect_identical(e$nom, "Foret API")
-  expect_identical(e$sens_vu, INDICATOR_SENSE_VERSION)
+  expect_identical(e$format_projet, PROJET_FORMAT)
+  expect_true(e$format_ok)
   expect_true(e$indicateurs)
   expect_true(e$ugf)
-  expect_false(e$migration_necessaire)
 })
 
-test_that("projet_etat flags stale indicators and missing UGF, without writing", {
+test_that("projet_etat flags a pre-1.0 project and missing UGF, without writing", {
   skip_if_not_installed("arrow")
   .api_env()
-  id <- .api_projet_calcule()
-  .api_vieillir(id, 2L)
+  id <- .api_ancien(.api_projet_calcule())
   file.remove(file.path(get_project_path(id), "data", "ugs.json"))
   avant <- .api_empreinte(id)
   e <- projet_etat(id)
-  expect_true(e$indicateurs_perimes)
-  expect_true(e$migration_ugf)
-  expect_true(e$migration_necessaire)
+  expect_false(e$format_ok)
+  expect_false(e$ugf)
   expect_identical(.api_empreinte(id), avant)
-})
-
-test_that("stale sense without indicators does not require a migration", {
-  .api_env()
-  id <- suppressMessages(projet_creer("Sans calcul", .api_parcelles()))
-  .api_vieillir(id, 1L)
-  e <- projet_etat(id)
-  expect_false(e$indicateurs_perimes)
-  expect_false(e$migration_necessaire)
 })
 
 test_that("unknown or unsafe ids raise a classed error", {
@@ -176,17 +181,17 @@ test_that("unknown or unsafe ids raise a classed error", {
   expect_error(projet_lire(NA_character_), class = "nemetonshiny_erreur")
 })
 
-test_that("projets_lister lists projects with their sense status", {
+test_that("projets_lister lists projects with their format status", {
   skip_if_not_installed("arrow")
   .api_env()
   expect_identical(nrow(projets_lister()), 0L)
   a <- .api_projet_calcule()
   b <- suppressMessages(projet_creer("Autre", .api_parcelles()))
-  .api_vieillir(a, 2L)
+  .api_ancien(a)
   l <- projets_lister()
   expect_setequal(l$id, c(a, b))
-  expect_false(l$sens_a_jour[l$id == a])
-  expect_true(l$sens_a_jour[l$id == b])
+  expect_false(l$format_ok[l$id == a])
+  expect_true(l$format_ok[l$id == b])
   expect_true(l$indicateurs[l$id == a])
   expect_false(l$indicateurs[l$id == b])
 })
@@ -195,28 +200,23 @@ test_that("projets_lister lists projects with their sense status", {
 # projet_lire : aucun effet de bord
 # ==============================================================================
 
-test_that("projet_lire on a stale project changes nothing and raises the classed error", {
+test_that("projet_lire on a pre-1.0 project changes nothing and raises the classed error", {
   skip_if_not_installed("arrow")
   .api_env()
-  id <- .api_projet_calcule()
-  .api_vieillir(id, 2L)
+  id <- .api_ancien(.api_projet_calcule())
   avant <- .api_empreinte(id)
-
-  err <- expect_error(projet_lire(id), class = "nemetonshiny_projet_perime")
-  expect_true(err$etat$indicateurs_perimes)
-  expect_identical(err$etat$sens_vu, 2L)
-
+  err <- expect_error(projet_lire(id), class = "nemetonshiny_projet_ancien")
+  expect_false(err$etat$format_ok)
   expect_identical(.api_empreinte(id), avant)
 })
 
-test_that("projet_lire on a project without UGF changes nothing", {
+test_that("projet_lire on a project without UGF reads it without writing", {
   skip_if_not_installed("arrow")
   .api_env()
   id <- .api_projet_calcule()
   file.remove(file.path(get_project_path(id), "data", "ugs.json"))
   avant <- .api_empreinte(id)
-  err <- expect_error(projet_lire(id), class = "nemetonshiny_projet_perime")
-  expect_true(err$etat$migration_ugf)
+  expect_no_error(suppressMessages(suppressWarnings(projet_lire(id))))
   expect_identical(.api_empreinte(id), avant)
 })
 
@@ -250,31 +250,16 @@ test_that("projet_lire on a project never computed returns empty results", {
 })
 
 # ==============================================================================
-# projet_migrer / projet_creer
+# projet_creer
 # ==============================================================================
 
-test_that("projet_migrer sets stale indicators aside and makes the project readable", {
-  skip_if_not_installed("arrow")
-  .api_env()
-  id <- .api_projet_calcule()
-  .api_vieillir(id, 2L)
-  e <- suppressWarnings(suppressMessages(projet_migrer(id)))
-  expect_false(e$migration_necessaire)
-  expect_false(e$indicateurs)
-  expect_identical(e$sens_vu, INDICATOR_SENSE_VERSION)
-  expect_length(e$archives, 1L)
-  expect_true(file.exists(file.path(e$chemin, "data", e$archives[[1]]$fichier)))
-  expect_no_error(projet_lire(id))
-})
-
-test_that("projet_creer initialises UGF and the current sense", {
+test_that("projet_creer initialises UGF and the 1.0 format", {
   .api_env()
   id <- suppressMessages(projet_creer("Neuf", .api_parcelles(),
                                       description = "d", proprietaire = "o"))
   e <- projet_etat(id)
   expect_true(e$ugf)
-  expect_identical(e$sens_vu, INDICATOR_SENSE_VERSION)
-  expect_false(e$migration_necessaire)
+  expect_true(e$format_ok)
   meta <- load_project_metadata(id)
   expect_identical(meta$owner, "o")
   expect_error(projet_creer("x", data.frame()), "sf")
@@ -297,14 +282,13 @@ test_that("parcelles_commune filters and reports missing ids", {
 # projet_calculer
 # ==============================================================================
 
-test_that("projet_calculer refuses a project to migrate", {
+test_that("projet_calculer refuses a pre-1.0 project", {
   skip_if_not_installed("arrow")
   .api_env()
-  id <- .api_projet_calcule()
-  .api_vieillir(id, 2L)
+  id <- .api_ancien(.api_projet_calcule())
   appele <- FALSE
   local_mocked_bindings(start_computation = function(...) { appele <<- TRUE; list(success = TRUE) })
-  expect_error(projet_calculer(id), class = "nemetonshiny_projet_perime")
+  expect_error(projet_calculer(id), class = "nemetonshiny_projet_ancien")
   expect_false(appele)
 })
 

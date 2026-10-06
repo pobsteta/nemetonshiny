@@ -42,7 +42,7 @@ que l'application. Il écrit `data/compute_job.json` (statut, pid, erreur) et
 
 - un calcul tourne déjà (lancé par l'assistant ou par l'application) ;
 - le projet est en cours d'édition dans l'application (verrou) ;
-- une migration est nécessaire (indicateurs calculés sous un ancien sens).
+- le projet a été créé avant la version 1.0.0 (il n'est pas repris : le recréer).
 
 `etat_calcul` signale `echec` quand le processus a disparu sans terminer.
 

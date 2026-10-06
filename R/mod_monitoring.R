@@ -800,7 +800,9 @@ mod_monitoring_server <- function(id, app_state) {
           nemeton::db_migrate(con)
           TRUE
         }, error = function(e) {
-          probe_err <<- paste0("Migration failed: ", conditionMessage(e))
+          probe_err <<- if (inherits(e, "nemeton_legacy_schema") ||
+                            grepl("predates nemeton 1.0.0", conditionMessage(e), fixed = TRUE))
+            "legacy_schema" else paste0("Migration failed: ", conditionMessage(e))
           FALSE
         })
         # Always close, even on migration failure.
@@ -1564,7 +1566,9 @@ mod_monitoring_server <- function(id, app_state) {
       # (db_connect or migration error) so the user can act.
       if (identical(st$state, "error")) {
         err <- st$error
-        body <- if (!is.null(err) && nzchar(err) && !identical(err, "no_url")) {
+        body <- if (identical(err, "legacy_schema")) {
+          i18n$t("monitoring_db_legacy_schema")
+        } else if (!is.null(err) && nzchar(err) && !identical(err, "no_url")) {
           paste0(i18n$t("monitoring_db_check_env"), " \u2014 ", err)
         } else {
           i18n$t("monitoring_db_check_env")
@@ -1587,7 +1591,9 @@ mod_monitoring_server <- function(id, app_state) {
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
         err <- last_monitoring_db_error()
-        body <- if (!is.null(err) && nzchar(err)) {
+        body <- if (identical(err, "legacy_schema")) {
+          i18n$t("monitoring_db_legacy_schema")
+        } else if (!is.null(err) && nzchar(err)) {
           paste0(i18n$t("monitoring_db_check_env"), " \u2014 ", err)
         } else {
           i18n$t("monitoring_db_check_env")
