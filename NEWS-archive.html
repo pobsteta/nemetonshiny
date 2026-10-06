@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.157.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -16,6 +16,7 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="articles/index.html">Articles</a></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -1938,7 +1939,7 @@ Current Memory Usage: 17.1G</code></pre>
 <h1 id="nemetonshiny-01065">nemetonshiny 0.106.5<a class="anchor" aria-label="anchor" href="#nemetonshiny-01065"></a></h1>
 <div class="section level3">
 <h3 id="fixed--nemeton_scratch_dir-natteignait-pas-le-worker-cœur--01560">Fixed — <code>NEMETON_SCRATCH_DIR</code> n’atteignait pas le worker (cœur &gt;= 0.156.0)<a class="anchor" aria-label="anchor" href="#fixed--nemeton_scratch_dir-natteignait-pas-le-worker-c%C5%93ur--01560"></a></h3>
-<p><code><a href="https://pobsteta.github.io/nemeton/reference/scratch_dir.html" class="external-link">nemeton::scratch_dir()</a></code> (0.156.0) décide où atterrissent les intermédiaires volumineux des pipelines longs — de ~800 Mo à la dizaine de Go. Mais le run s’exécute <strong>dans le worker</strong>, et les workers sont <strong>pré-chauffés au démarrage de la session</strong> : ils figent alors leur environnement. <code>NEMETON_SCRATCH_DIR</code> n’étant pas dans la liste des variables transmises, un réglage posé ensuite n’aurait jamais atteint le process qui calcule, et le cœur serait retombé sur <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> <strong>en silence</strong> — parfois un tmpfs, c’est-à-dire de la RAM, ce qui annulerait tout le bénéfice du streaming sur disque. La variable est désormais capturée et rejouée côté worker (test de non-régression).</p>
+<p><code>nemeton::scratch_dir()</code> (0.156.0) décide où atterrissent les intermédiaires volumineux des pipelines longs — de ~800 Mo à la dizaine de Go. Mais le run s’exécute <strong>dans le worker</strong>, et les workers sont <strong>pré-chauffés au démarrage de la session</strong> : ils figent alors leur environnement. <code>NEMETON_SCRATCH_DIR</code> n’étant pas dans la liste des variables transmises, un réglage posé ensuite n’aurait jamais atteint le process qui calcule, et le cœur serait retombé sur <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> <strong>en silence</strong> — parfois un tmpfs, c’est-à-dire de la RAM, ce qui annulerait tout le bénéfice du streaming sur disque. La variable est désormais capturée et rejouée côté worker (test de non-régression).</p>
 <p>Plancher relevé : <code>Imports: nemeton (&gt;= 0.156.0)</code>.</p>
 </div>
 <div class="section level3">

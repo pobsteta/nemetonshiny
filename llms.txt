@@ -149,3 +149,9 @@ Les donnees sont soumises a des conditions specifiques decrites dans
 - [`run_app()`](https://pobsteta.github.io/nemetonshiny/reference/run_app.md)
   : Launch the nemetonApp Shiny Application
 
+# Articles
+
+### Utiliser l’application
+
+- [Guide de
+  l'application](https://pobsteta.github.io/nemetonshiny/articles/guide-application_fr.md):

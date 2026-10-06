@@ -12,6 +12,14 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[0.157.1\] - 2026-10-06
+
+### Added
+
+- Guide de l’application
+  ([`vignette("guide-application_fr")`](https://pobsteta.github.io/nemetonshiny/articles/guide-application_fr.md),
+  article pkgdown), repris du coeur et reecrit pour l’app actuelle.
+
 ## \[0.157.0\] - 2026-10-05
 
 ### Changed

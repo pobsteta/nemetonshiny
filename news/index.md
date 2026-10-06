@@ -1,5 +1,19 @@
 # Changelog
 
+## nemetonshiny 0.157.1 (2026-10-06)
+
+#### Added
+
+- **Guide de l’application**
+  ([`vignette("guide-application_fr")`](https://pobsteta.github.io/nemetonshiny/articles/guide-application_fr.md),
+  article du site pkgdown), repris du cœur, qui le retire dans sa 1.0.0.
+  Il est réécrit pour l’application actuelle : onglets et parcours
+  (Sélection et UGF, Synthèse, Familles, Plan d’actions, Terrain, Suivi
+  sanitaire FAST / FORDEAD / RECONFORT, reGénération), réglages, usage à
+  plusieurs (rôles, verrou, pas d’isolation), API hors interface, liens
+  profonds et serveur MCP. Brief
+  `vers-nemetonshiny/2026-10-06-nemeton-guide-app-a-reprendre.md`.
+
 ## nemetonshiny 0.157.0 (2026-10-05)
 
 Briefs du cœur `nemeton` 0.213.0 à 0.216.0. Plancher
