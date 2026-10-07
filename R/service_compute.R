@@ -3792,13 +3792,17 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
 #' i.e. Canopy Height Model) from the IGN Geoplateforme.
 #'
 #' The workflow:
-#' 1. Query the WFS `IGNF_MNH-LIDAR-HD:dalle` to find tiles covering the bbox
-#' 2. Download each tile (1km x 1km GeoTIFF at 1m resolution)
+#' 1. Query the WFS `IGNF_LIDAR-HD_METADONNEE:metadata` to find tiles
+#'    covering the bbox. Each feature carries one download URL per
+#'    product (`url_mnh`, `url_mnt`, `url_mns`, `url_npl`). The former
+#'    per-product layers (`IGNF_MNH-LIDAR-HD:dalle`, ...) were withdrawn
+#'    from the Geoplateforme in 2026 (404) and are only tried as a
+#'    fallback.
+#' 2. Download each tile (1km x 1km GeoTIFF at 0.5m resolution)
 #' 3. Mosaic tiles into a single raster
 #' 4. Cache the result for future use
 #'
-#' Also supports downloading raw COPC point cloud tiles via
-#' `IGNF_NUAGES-DE-POINTS-LIDAR-HD:dalle`.
+#' Also supports downloading raw COPC point cloud tiles (`url_npl`).
 #'
 #' @param bbox Numeric vector or sf bbox. Bounding box in WGS84.
 #' @param cache_dir Character. Directory to cache downloaded tiles.
@@ -3882,7 +3886,17 @@ download_ign_lidar_hd <- function(bbox,
   cli::cli_alert_info("Querying IGN WFS for LiDAR HD {toupper(product)} tiles...")
 
   # ---- Step 1: Query WFS to find tiles covering bbox ----
-  tiles_sf <- query_lidar_wfs(wfs_layer, bbox)
+  # The metadata layer lists every tile once, with one URL column per
+  # product; the per-product layer is the fallback.
+  tiles_sf <- query_lidar_wfs(.LIDAR_METADATA_LAYER, bbox)
+  url_col <- .lidar_metadata_url_column(tiles_sf, product)
+  if (is.null(url_col)) {
+    tiles_sf <- query_lidar_wfs(wfs_layer, bbox)
+    url_col <- if (!is.null(tiles_sf) && nrow(tiles_sf) > 0) find_url_column(tiles_sf)
+  } else {
+    # A tile can be listed with no product yet (production in progress).
+    tiles_sf <- tiles_sf[!is.na(tiles_sf[[url_col]]) & nzchar(tiles_sf[[url_col]]), ]
+  }
 
   if (is.null(tiles_sf) || nrow(tiles_sf) == 0) {
     cli::cli_alert_warning(
@@ -3895,7 +3909,6 @@ download_ign_lidar_hd <- function(bbox,
 
   # ---- Step 2: Extract download URLs and download tiles ----
   # The WFS response should contain a download URL attribute
-  url_col <- find_url_column(tiles_sf)
   if (is.null(url_col)) {
     cli::cli_alert_warning("LiDAR WFS response has no download URL column")
     return(NULL)
@@ -3979,6 +3992,28 @@ download_ign_lidar_hd <- function(bbox,
 
   # For COPC, return file paths
   downloaded_files
+}
+
+
+# Geoplateforme WFS layer listing LiDAR HD tiles, with one download URL
+# column per product (replaces the per-product `...:dalle` layers).
+.LIDAR_METADATA_LAYER <- "IGNF_LIDAR-HD_METADONNEE:metadata"
+
+#' Download URL column of the LiDAR HD metadata layer for a product
+#'
+#' @param tiles_sf sf returned by [query_lidar_wfs()] for
+#'   `.LIDAR_METADATA_LAYER`, or NULL.
+#' @param product One of "mnh", "mnt", "mns", "nuage".
+#' @return The column name (`url_mnh`, `url_mnt`, `url_mns`, `url_npl`)
+#'   when present with at least one URL, else NULL.
+#' @noRd
+.lidar_metadata_url_column <- function(tiles_sf, product) {
+  if (is.null(tiles_sf) || !nrow(tiles_sf)) return(NULL)
+  col <- paste0("url_", if (identical(product, "nuage")) "npl" else product)
+  if (!col %in% names(tiles_sf)) return(NULL)
+  urls <- as.character(tiles_sf[[col]])
+  if (!any(!is.na(urls) & nzchar(urls))) return(NULL)
+  col
 }
 
 

@@ -5571,3 +5571,51 @@ test_that("la cause d'un C2 vide est traduite, pas affichee en cle brute", {
     expect_true(grepl("Sentinel-2", txt, fixed = TRUE), info = lang)
   }
 })
+
+test_that("download_ign_lidar_hd lit les URL de la couche de metadonnees LiDAR HD", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    couches <- character(0)
+    url_mnh <- paste0("https://data.geopf.fr/wms-r?SERVICE=WMS&REQUEST=GetMap",
+                      "&LAYERS=IGNF_LIDAR-HD_MNH_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93",
+                      "&FILENAME=LHD_FXX_0737_6386_MNH_O_0M50_LAMB93_IGN69.tif")
+    with_mocked_bindings(
+      query_lidar_wfs = function(wfs_layer, bbox) {
+        couches <<- c(couches, wfs_layer)
+        sf::st_sf(
+          url_mnh = c(url_mnh, NA),
+          url_npl = c("https://data.geopf.fr/telechargement/download/x/LHD_FXX_0737_6386_PTS_LAMB93_IGN69.copc.laz",
+                      "https://data.geopf.fr/telechargement/download/x/LHD_FXX_0737_6385_PTS_LAMB93_IGN69.copc.laz"),
+          geometry = sf::st_sfc(sf::st_point(c(3.5, 44.5)), sf::st_point(c(3.51, 44.5)), crs = 4326))
+      },
+      download_lidar_tile = function(url, dest_file) {
+        writeLines(paste(rep("x", 200), collapse = ""), dest_file)
+        dest_file
+      },
+      mosaic_lidar_tiles = function(files, mosaic_cache) basename(files),
+      {
+        # MNH : une seule dalle a une URL ; nom canonique tire de FILENAME=.
+        expect_equal(nemetonshiny:::download_ign_lidar_hd(c(3.5, 44.5, 3.52, 44.51), cache_dir, product = "mnh"),
+                     "LHD_FXX_0737_6386_MNH_O_0M50_LAMB93_IGN69.tif")
+        # Nuage : colonne url_npl.
+        expect_setequal(basename(nemetonshiny:::download_ign_lidar_hd(c(3.5, 44.5, 3.52, 44.51), cache_dir, product = "nuage")),
+                        c("LHD_FXX_0737_6386_PTS_LAMB93_IGN69.copc.laz", "LHD_FXX_0737_6385_PTS_LAMB93_IGN69.copc.laz"))
+      }
+    )
+    # La couche par produit (retiree en 2026) n'est pas interrogee quand la
+    # couche de metadonnees repond.
+    expect_equal(unique(couches), "IGNF_LIDAR-HD_METADONNEE:metadata")
+  })
+})
+
+test_that(".lidar_metadata_url_column choisit la colonne du produit, ou rien", {
+  skip_if_not_installed("sf")
+  pts <- sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
+  x <- sf::st_sf(url_mnh = "u", url_mnt = NA_character_, url_npl = "v", geometry = pts)
+  expect_equal(nemetonshiny:::.lidar_metadata_url_column(x, "mnh"), "url_mnh")
+  expect_equal(nemetonshiny:::.lidar_metadata_url_column(x, "nuage"), "url_npl")
+  expect_null(nemetonshiny:::.lidar_metadata_url_column(x, "mnt"))
+  expect_null(nemetonshiny:::.lidar_metadata_url_column(x, "mns"))
+  expect_null(nemetonshiny:::.lidar_metadata_url_column(NULL, "mnh"))
+})
