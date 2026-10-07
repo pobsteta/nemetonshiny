@@ -1,3 +1,16 @@
+# nemetonshiny (développement)
+
+- **LiDAR HD** : les dalles sont désormais listées par la couche WFS
+  `IGNF_LIDAR-HD_METADONNEE:metadata` de la Géoplateforme (colonnes
+  `url_mnh`, `url_mnt`, `url_mns`, `url_npl`). Les couches par produit
+  (`IGNF_MNH-LIDAR-HD:dalle`, `IGNF_MNT-LIDAR-HD:dalle`,
+  `IGNF_NUAGES-DE-POINTS-LIDAR-HD:dalle`) ont été retirées par l'IGN et
+  répondent 404 : aucun projet ne trouvait plus de dalle, et le calcul
+  basculait sur la reconstruction lasR depuis les nuages de points, qui
+  dépasse le plafond mémoire de 12 Go. Les couches par produit restent
+  essayées en repli. Les noms de fichiers sont inchangés : les dalles déjà
+  en cache sont réutilisées.
+
 # nemetonshiny 1.0.1 (2026-10-07)
 
 - L'onglet « Sélection » s'appelle désormais **« Atlas »** (FR et EN). Les
