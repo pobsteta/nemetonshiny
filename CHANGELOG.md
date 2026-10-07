@@ -10,6 +10,13 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-07
+
+### Changed
+
+- The « Sélection » tab is renamed **« Atlas »** (FR and EN), along with the
+  messages pointing to it. The `tab_selection` i18n key is unchanged.
+
 ## [1.0.0] - 2026-10-06
 
 First stable release. **Breaking**: projects and databases created with 0.x

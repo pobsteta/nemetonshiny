@@ -1,4 +1,4 @@
-# nemetonshiny 1.0.0.9001 (2026-10-07)
+# nemetonshiny 1.0.1 (2026-10-07)
 
 - L'onglet « Sélection » s'appelle désormais **« Atlas »** (FR et EN). Les
   messages qui y renvoient (retrait des parcelles hors forêt ONF, plan
