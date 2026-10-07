@@ -1,4 +1,4 @@
-# nemetonshiny (développement)
+# nemetonshiny 1.1.0 (2026-10-07)
 
 - **Onglet Atlas à sous-onglets** : « Sélection » et « Synthèse » deviennent
   deux sous-onglets de l'onglet principal « Atlas », comme les quatre

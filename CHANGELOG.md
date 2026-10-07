@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-07
+
+### Changed
+
+- « Sélection » and « Synthèse » are now sub-tabs of the main « Atlas » tab
+  (new `R/service_navigation.R` maps logical tabs to their parent tab).
+- « Suivi sanitaire »: the « Mode de suivi » radio is replaced by three
+  sub-tabs, FAST, FORDEAD and RECONFORT (same `mode` input and values).
+
+### Fixed
+
+- LiDAR HD tiles are listed through the IGN `IGNF_LIDAR-HD_METADONNEE:metadata`
+  WFS layer; the per-product layers now answer 404.
+
 ## [1.0.1] - 2026-10-07
 
 ### Changed
