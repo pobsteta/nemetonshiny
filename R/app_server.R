@@ -241,8 +241,11 @@ app_server <- function(input, output, session) {
   # S2, plusieurs secondes a froid) tant que l'utilisateur n'est pas sur
   # l'onglet Suivi - sinon ce calcul bloque chaque chargement de projet
   # depuis l'Accueil.
-  shiny::observeEvent(input$main_nav, {
-    app_state$active_main_tab <- input$main_nav
+  #
+  # Onglet LOGIQUE : sur " Atlas ", c'est le sous-onglet actif ("selection" ou
+  # "synthesis") qui est expose, comme avant le regroupement (service_navigation.R).
+  shiny::observeEvent(list(input$main_nav, input$atlas_nav), {
+    app_state$active_main_tab <- .onglet_effectif(input$main_nav, input$atlas_nav)
   }, ignoreNULL = FALSE)
 
   # Sous-onglet actif du navset " Terrain " (Prelevement / Import / Accessibilite /
@@ -261,12 +264,12 @@ app_server <- function(input, output, session) {
   # l'utilisateur sur un onglet d'ou l'app le renvoie aussitot (l'onglet
   # s'affiche puis saute - c'est ce qui donnait l'impression d'un tour qui
   # tremble, puis d'une etape muette, driver.js ne pouvant plus cadrer).
-  shiny::observeEvent(input$main_nav, {
-    tab <- input$main_nav
+  shiny::observeEvent(list(input$main_nav, input$atlas_nav), {
+    tab <- .onglet_effectif(input$main_nav, input$atlas_nav)
     status <- app_state$project_status
 
     if (.tab_requires_completed_project(tab) && !identical(status, "completed")) {
-      shiny::updateNavbarPage(session, "main_nav", selected = "selection")
+      .aller_onglet(session, "selection")
     }
   })
 

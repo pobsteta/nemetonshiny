@@ -1892,3 +1892,22 @@ test_that(".sante_pipeline_statut distingue annulation et succes", {
     expect_true(f(st[1], as.logical(st[2])) %in% nemetonshiny:::PIPELINE_STATUSES)
   }
 })
+
+test_that("les modes de suivi sont des sous-onglets, plus un radio", {
+  skip_if_not_installed("bslib")
+  testthat::with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    {
+      html <- as.character(nemetonshiny:::mod_monitoring_ui("monitoring"))
+      # Navset `monitoring-mode` : memes valeurs que l'ancien radio, pour que
+      # `input$mode` et les conditionalPanel restent valides.
+      expect_true(grepl('id="monitoring-mode"', html, fixed = TRUE))
+      expect_match(html, 'class="nav nav-underline[^"]*shiny-tab-input"')
+      for (v in c("quick", "health", "reconfort")) {
+        expect_true(grepl(sprintf('data-value="%s"', v), html, fixed = TRUE),
+                    info = v)
+      }
+      expect_false(grepl('type="radio" name="monitoring-mode"', html, fixed = TRUE))
+    }
+  )
+})

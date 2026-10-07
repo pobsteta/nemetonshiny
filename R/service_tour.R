@@ -186,10 +186,24 @@ build_tour_steps <- function(i18n, max_parcels = 30L, project_status = NULL) {
   # Le repli a 250 ms n'est pas de la ceinture-bretelles : si l'onglet vise
   # est DEJA actif, le clic ne declenche aucun `shown.bs.tab` et l'attente
   # ne se resoudrait jamais.
+  #
+  # Un sous-onglet de l'Atlas ("selection", "synthesis") se montre en deux
+  # clics : l'onglet principal " Atlas ", puis le sous-onglet - c'est sur ce
+  # dernier qu'on attend `shown.bs.tab` (cf. service_navigation.R).
+  parent <- .onglet_parent(tab)
+  if (identical(parent, tab)) {
+    selecteur <- sprintf("#main_nav a[data-value=\"%s\"]", tab)
+    pre_clic <- ""
+  } else {
+    selecteur <- sprintf("#%s_nav a[data-value=\"%s\"]", parent, tab)
+    pre_clic <- sprintf(
+      "var __p=document.querySelector('#main_nav a[data-value=\"%s\"]');if(__p){__p.click();}",
+      parent)
+  }
   sprintf(
     paste0(
       "function(){",
-      "var __l=document.querySelector('#main_nav a[data-value=\"%s\"]');",
+      "var __l=document.querySelector('%s');",
       "if(!__l){return;}",
       "var __r=function(){try{window.dispatchEvent(new Event('resize'));}catch(e){}};",
       "var __done=false;",
@@ -204,11 +218,11 @@ build_tour_steps <- function(i18n, max_parcels = 30L, project_status = NULL) {
       # bascule normalement, mais l'evenement n'atteint jamais driver.js.
       "var __s=function(ev){ev.stopPropagation();};",
       "document.addEventListener('click',__s,false);",
-      "try{__l.click();}finally{document.removeEventListener('click',__s,false);}",
+      "try{%s__l.click();}finally{document.removeEventListener('click',__s,false);}",
       "setTimeout(__h,250);",
       "}"
     ),
-    tab
+    selecteur, pre_clic
   )
 }
 

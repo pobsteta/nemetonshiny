@@ -1593,11 +1593,7 @@ mod_home_server <- function(id, app_state) {
     # View results handler
     shiny::observeEvent(input$view_results, {
       # Navigate to synthesis tab
-      shiny::updateNavbarPage(
-        session = session$userData$root_session %||% session,
-        inputId = "main_nav",
-        selected = "synthesis"
-      )
+      .aller_onglet(session$userData$root_session %||% session, "synthesis")
     })
 
     # Handle cancel from progress module
@@ -1706,11 +1702,7 @@ mod_home_server <- function(id, app_state) {
 
     # Handle view_results from progress module
     shiny::observeEvent(app_state$view_results, {
-      shiny::updateNavbarPage(
-        session = session$userData$root_session %||% session,
-        inputId = "main_nav",
-        selected = "synthesis"
-      )
+      .aller_onglet(session$userData$root_session %||% session, "synthesis")
     }, ignoreInit = TRUE)
 
     # ========================================

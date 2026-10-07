@@ -27,7 +27,8 @@ TRANSLATIONS <- list(
   # ============================================================
   # Navigation
   # ============================================================
-  tab_selection = list(fr = "Atlas", en = "Atlas"),
+  tab_atlas = list(fr = "Atlas", en = "Atlas"),
+  tab_selection = list(fr = "S\u00e9lection", en = "Selection"),
   tab_synthesis = list(fr = "Synth\u00e8se", en = "Synthesis"),
   tab_families = list(fr = "Familles d'indicateurs", en = "Indicator Families"),
   tab_carte_cadastrale = list(fr = "Carte cadastrale", en = "Cadastral map"),
@@ -2390,8 +2391,8 @@ TRANSLATIONS <- list(
   ),
   tour_monitoring_title = list(fr = "Suivi sanitaire", en = "Health monitoring"),
   tour_monitoring_desc = list(
-    fr = "Trois modes de d\u00e9tection du d\u00e9p\u00e9rissement : FAST (chocs r\u00e9cents), FORDEAD (r\u00e9sineux / scolyte) et RECONFORT (feuillus). Choisissez le mode ici.",
-    en = "Three dieback-detection modes: FAST (recent shocks), FORDEAD (conifers / bark beetle) and RECONFORT (broadleaves). Pick the mode here."
+    fr = "Trois modes de d\u00e9tection du d\u00e9p\u00e9rissement : FAST (chocs r\u00e9cents), FORDEAD (r\u00e9sineux / scolyte) et RECONFORT (feuillus). Chaque mode a son sous-onglet.",
+    en = "Three dieback-detection modes: FAST (recent shocks), FORDEAD (conifers / bark beetle) and RECONFORT (broadleaves). Each mode has its own sub-tab."
   ),
   tour_families_title = list(fr = "Familles d'indicateurs", en = "Indicator families"),
   tour_families_desc = list(
@@ -3370,14 +3371,14 @@ TRANSLATIONS <- list(
       "conserv\u00e9e ENTI\u00c8RE, avec sa part hors for\u00eat : la ",
       "supprimer seule trouerait une parcelle que vous poss\u00e9dez. Pour ",
       "r\u00e9cup\u00e9rer les parcelles retir\u00e9es, il faut repasser par ",
-      "l'onglet Atlas."
+      "l'onglet Atlas \u203a S\u00e9lection."
     ),
     en = paste0(
       "Removes from the project the cadastral parcels the public forest does ",
       "not cover, or covers by less than 10 % - parcels AND tenements. A ",
       "parcel forested at 10 % or more is kept WHOLE, non-forest share ",
       "included: dropping that share alone would punch a hole in a parcel you ",
-      "own. Recovering removed parcels means going back to the Atlas tab."
+      "own. Recovering removed parcels means going back to Atlas \u203a Selection."
     )
   ),
   # Une parcelle cadastrale que le parcellaire ONF ne numerote pas garde son
@@ -3548,8 +3549,8 @@ TRANSLATIONS <- list(
     en = "Generate sampling plots within the current area, then download the QField project for field capture."
   ),
   sampling_no_project = list(
-    fr = "S\u00e9lectionnez d'abord un projet (onglet Atlas).",
-    en = "Select a project first (Atlas tab)."
+    fr = "S\u00e9lectionnez d'abord un projet (Atlas \u203a S\u00e9lection).",
+    en = "Select a project first (Atlas \u203a Selection)."
   ),
   sampling_dem_resolved_fmt = list(
     fr = "MNT : %s",
@@ -3907,8 +3908,8 @@ TRANSLATIONS <- list(
     en = "%d monitoring zone(s) generated: %s."
   ),
   zones_bdforet_missing = list(
-    fr = "BD For\u00eat manquante (`cache/layers/bdforet.gpkg`). Lancez d'abord le calcul du projet (onglet Synth\u00e8se) pour la t\u00e9l\u00e9charger.",
-    en = "BD For\u00eat missing (`cache/layers/bdforet.gpkg`). Run the project computation first (Synthesis tab) to download it."
+    fr = "BD For\u00eat manquante (`cache/layers/bdforet.gpkg`). Lancez d'abord le calcul du projet (Atlas \u203a Synth\u00e8se) pour la t\u00e9l\u00e9charger.",
+    en = "BD For\u00eat missing (`cache/layers/bdforet.gpkg`). Run the project computation first (Atlas \u203a Synthesis) to download it."
   ),
   zone_tot = list(
     fr = "Toutes essences",
@@ -4095,8 +4096,8 @@ TRANSLATIONS <- list(
     en = "The R package RSQLite is not installed; local mode is unavailable. Run install.packages(\"RSQLite\") or configure Postgres."
   ),
   monitoring_db_no_project = list(
-    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans l'onglet Atlas pour activer le mode local (SQLite).",
-    en = "No project loaded. Pick or create a project in the Atlas tab to enable local mode (SQLite)."
+    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans Atlas \u203a S\u00e9lection pour activer le mode local (SQLite).",
+    en = "No project loaded. Pick or create a project in Atlas \u203a Selection to enable local mode (SQLite)."
   ),
   monitoring_db_connecting = list(
     fr = "Tentative de connexion \u00e0 la base de suivi\u2026",
@@ -4740,19 +4741,11 @@ TRANSLATIONS <- list(
     en = "No pixel exceeds the dieback anomaly threshold over the period. The FORDEAD diagnosis completed without detecting any affected area."
   ),
 
-  # ----- Mode toggle (rapide / sanitaire) -----
-  monitoring_mode_label = list(
-    fr = "Mode de suivi",
-    en = "Monitoring mode"
-  ),
-  monitoring_mode_quick = list(
-    fr = "Diagnostic FAST (spot/trend)",
-    en = "FAST diagnosis (spot/trend)"
-  ),
-  monitoring_mode_health = list(
-    fr = "Diagnostic FORDEAD (r\u00e9sineux)",
-    en = "FORDEAD diagnosis (conifers)"
-  ),
+  # ----- Sous-onglets de mode (FAST / FORDEAD / RECONFORT) -----
+  # Acronymes de methode, identiques en FR et EN.
+  monitoring_onglet_fast = list(fr = "FAST", en = "FAST"),
+  monitoring_onglet_fordead = list(fr = "FORDEAD", en = "FORDEAD"),
+  monitoring_onglet_reconfort = list(fr = "RECONFORT", en = "RECONFORT"),
   monitoring_mode_quick_help = list(
     fr = "D\u00e9tection de chocs r\u00e9cents (coupe, chablis, incendie) via NDMI/NDVI/NBR rolling-window + trend.",
     en = "Detect recent shocks (cut, windthrow, fire) using NDMI/NDVI/NBR rolling-window + trend."
@@ -4860,10 +4853,6 @@ TRANSLATIONS <- list(
   # ----- RECONFORT (L6, spec 021) ---------------------------------------
   # 3e mode de Suivi sanitaire : deperissement des feuillus via RECONFORT
   # (CRSWIR + CRre, pas de modele harmonique). Accents en \uXXXX (rule 4).
-  monitoring_mode_reconfort = list(
-    fr = "Diagnostic RECONFORT (feuillus)",
-    en = "RECONFORT diagnosis (broadleaves)"
-  ),
   # v0.106.6 - " Quelques minutes " retire : c'etait FAUX. Un run RECONFORT peut
   # durer des heures, voire des jours (l'emprise et le nombre de dates S2
   # gouvernent tout). Ne plus annoncer AUCUNE duree : le chrono sous le bouton

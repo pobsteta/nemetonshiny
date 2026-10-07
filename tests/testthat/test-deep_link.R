@@ -50,9 +50,10 @@ test_that(".setup_deep_link opens the project, then the tab once it is loaded", 
   onglets <- character(0)
   local_mocked_bindings(
     insertUI = function(selector, where, ui, ...) inseres[[length(inseres) + 1L]] <<- ui,
-    updateNavbarPage = function(session, inputId, selected = NULL) onglets <<- c(onglets, selected),
     .package = "shiny"
   )
+  # Onglet LOGIQUE demande (l'Atlas et ses sous-onglets : service_navigation.R).
+  local_mocked_bindings(.aller_onglet = function(session, tab) onglets <<- c(onglets, tab))
   serveur <- function(input, output, session) {
     app_state <- shiny::reactiveValues(current_project = NULL, language = "fr")
     .setup_deep_link(session, app_state,
@@ -80,10 +81,8 @@ test_that(".setup_deep_link opens the project, then the tab once it is loaded", 
 
 test_that(".setup_deep_link with a tab only selects it directly", {
   onglets <- character(0)
-  local_mocked_bindings(
-    updateNavbarPage = function(session, inputId, selected = NULL) onglets <<- c(onglets, selected),
-    .package = "shiny"
-  )
+  # Onglet LOGIQUE demande (l'Atlas et ses sous-onglets : service_navigation.R).
+  local_mocked_bindings(.aller_onglet = function(session, tab) onglets <<- c(onglets, tab))
   serveur <- function(input, output, session) {
     .setup_deep_link(session, shiny::reactiveValues(current_project = NULL),
                      url_search = function() "?tab=monitoring")

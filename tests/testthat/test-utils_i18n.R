@@ -47,7 +47,7 @@ test_that("All translations have both fr and en versions", {
 test_that("TRANSLATIONS contains navigation keys", {
   translations <- nemetonshiny:::TRANSLATIONS
 
-  nav_keys <- c("tab_selection", "tab_synthesis", "tab_families")
+  nav_keys <- c("tab_atlas", "tab_selection", "tab_synthesis", "tab_families")
 
   for (key in nav_keys) {
     expect_true(key %in% names(translations))
@@ -180,11 +180,13 @@ test_that("Translator t() function returns correct translations", {
 
   # French
 
-  expect_equal(i18n_fr$t("tab_selection"), "Atlas")
+  expect_equal(i18n_fr$t("tab_atlas"), "Atlas")
+  expect_equal(i18n_fr$t("tab_selection"), "Sélection")
   expect_equal(i18n_fr$t("help"), "Aide")
 
   # English
-  expect_equal(i18n_en$t("tab_selection"), "Atlas")
+  expect_equal(i18n_en$t("tab_atlas"), "Atlas")
+  expect_equal(i18n_en$t("tab_selection"), "Selection")
   expect_equal(i18n_en$t("help"), "Help")
 })
 

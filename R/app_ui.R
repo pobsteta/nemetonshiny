@@ -77,20 +77,28 @@ app_ui <- function(request) {
       # onglets, visible partout tant qu'un projet est ouvert en lecture seule.
       header = shiny::uiOutput("lock_banner"),
 
-      # === Tab 1: Selection (includes cadastral map, tenement map, UG table) ===
+      # === Tab 1: Atlas (sub-tabs: Selection / Synthesis) ===
+      # Les valeurs des sous-onglets restent "selection" et "synthesis" : le
+      # reste de l'app raisonne en onglets logiques (cf. service_navigation.R).
       bslib::nav_panel(
-        title = i18n$t("tab_selection"),
-        value = "selection",
+        title = i18n$t("tab_atlas"),
+        value = "atlas",
         icon = bsicons::bs_icon("map"),
-        mod_home_ui("home")
-      ),
-
-      # === Tab 2: Synthesis ===
-      bslib::nav_panel(
-        title = i18n$t("tab_synthesis"),
-        value = "synthesis",
-        icon = bsicons::bs_icon("pie-chart"),
-        mod_synthesis_ui("synthesis")
+        bslib::navset_card_underline(
+          id = "atlas_nav",
+          bslib::nav_panel(
+            title = i18n$t("tab_selection"),
+            value = "selection",
+            icon = bsicons::bs_icon("cursor"),
+            mod_home_ui("home")
+          ),
+          bslib::nav_panel(
+            title = i18n$t("tab_synthesis"),
+            value = "synthesis",
+            icon = bsicons::bs_icon("pie-chart"),
+            mod_synthesis_ui("synthesis")
+          )
+        )
       ),
 
       # === Tab 2bis: Action Plan ===
