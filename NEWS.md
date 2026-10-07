@@ -16,6 +16,13 @@ Restes des briefs cœur → app (audit du 2026-10-07).
 - **Licence E-OBS** (brief 027 brancheA §5) : attribution ECA&D / Copernicus
   et licence non commerciale sous la carte de contexte.
 - **A5** (brief 032 a5-diagnostic) : cause nommée `skipped_no_reference`.
+- **Typage de desserte, voie IFN** (brief 040) : choix « taux saisi /
+  référentiel IFN (par essence) ». L'essence vient de la BD Forêt du projet,
+  la SER de `ensure_ugf_ser()` ; en NDP 0, P1 vide est comblé par
+  `nemeton::completer_volume_ifn()`. Le résultat affiche l'échelon du taux
+  (SER, GRECO ou national), la part du volume issue de la référence IFN et le
+  nombre d'essences non reconnues. Mesuré sur Couchey : 13 parcelles sur 23
+  comblées, taux régional SER C20, moins d'une seconde.
 - **Familles d'indicateurs** (brief indicator-families, points 2, 3 et 5) :
   le menu des 12 familles est construit par boucle sur
   `nemeton::indicator_families()` ; `FAMILLE_NMT_MAP` (tiré par
