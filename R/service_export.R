@@ -1788,7 +1788,7 @@ generate_simple_pdf_report <- function(project,
                                      synthesis_comments, family_comments)
 
   # Family order
-  family_order <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
+  family_order <- nemeton::indicator_families()$code
 
   # Open PDF device
   grDevices::pdf(output_file, width = 8.27, height = 11.69, paper = "a4")

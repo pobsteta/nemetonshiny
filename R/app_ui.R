@@ -38,6 +38,7 @@ app_ui <- function(request) {
   # d'indicateurs B1/C2/...), et le menu etait le seul endroit qui ne le donnait
   # pas. Le composer ici, a partir du code deja passe au module, evite de
   # l'ecrire deux fois par famille.
+  familles <- nemeton::indicator_families()
   family_tab <- function(key, code) {
     bslib::nav_panel(
       title = sprintf("%s (%s)", i18n$t(key), code),
@@ -159,23 +160,14 @@ app_ui <- function(request) {
       ),
 
       # === Tabs 5-16: Indicator Families ===
-      bslib::nav_menu(
-        title = i18n$t("tab_families"),
-        icon = bsicons::bs_icon("layers"),
-
-        family_tab("famille_carbone",      "C"),
-        family_tab("famille_biodiversite", "B"),
-        family_tab("famille_eau",          "W"),
-        family_tab("famille_air",          "A"),
-        family_tab("famille_sol",          "F"),
-        family_tab("famille_paysage",      "L"),
-        family_tab("famille_temporel",     "T"),
-        family_tab("famille_risque",       "R"),
-        family_tab("famille_social",       "S"),
-        family_tab("famille_production",   "P"),
-        family_tab("famille_energie",      "E"),
-        family_tab("famille_naturalite",   "N")
-      ),
+      # Les 12 familles dans l'ordre canonique du coeur. `family_column`
+      # (famille_carbone...) est a la fois la valeur de navigation, le
+      # namespace du module et la colonne de score : un contrat public du
+      # coeur, plus un litteral a recopier ici.
+      do.call(bslib::nav_menu, c(
+        list(title = i18n$t("tab_families"), icon = bsicons::bs_icon("layers")),
+        unname(Map(family_tab, familles$family_column, familles$code))
+      )),
 
       # === Navbar items (right side) ===
       bslib::nav_spacer(),

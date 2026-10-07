@@ -16,6 +16,13 @@ Restes des briefs cœur → app (audit du 2026-10-07).
 - **Licence E-OBS** (brief 027 brancheA §5) : attribution ECA&D / Copernicus
   et licence non commerciale sous la carte de contexte.
 - **A5** (brief 032 a5-diagnostic) : cause nommée `skipped_no_reference`.
+- **Familles d'indicateurs** (brief indicator-families, points 2, 3 et 5) :
+  le menu des 12 familles est construit par boucle sur
+  `nemeton::indicator_families()` ; `FAMILLE_NMT_MAP` (tiré par
+  `getFromNamespace`) disparaît au profit de `get_famille_code()` ; l'ordre des
+  familles de l'export PDF et des objectifs du plan d'actions vient du cœur ;
+  code mort retiré dans `mod_synthesis.R`. Les clés i18n `famille_*` restent un
+  repli, écrasé à l'exécution par le cœur et vérifié par un test.
 
 # nemetonshiny 1.1.0 (2026-10-07)
 

@@ -62,9 +62,10 @@ ACTION_PLAN_PRIORITES <- c("haute", "moyenne", "basse")
 
 #' Family codes valid in `objectifs_lies`
 #' @noRd
-ACTION_PLAN_FAMILY_CODES <- c(
-  "C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N"
-)
+# Lu dans le coeur au premier usage (`delayedAssign`, comme
+# `INDICATOR_FAMILIES`) : une affectation directe serait evaluee a
+# l'installation et figerait une copie de la liste.
+delayedAssign("ACTION_PLAN_FAMILY_CODES", nemeton::indicator_families()$code)
 
 #' On-disk schema version
 #' @noRd
