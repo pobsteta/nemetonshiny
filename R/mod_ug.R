@@ -718,7 +718,8 @@ mod_ug_server <- function(id, app_state) {
       root_session <- session$userData$root_session
       if (!is.null(root_session)) {
         visible <- shiny::isolate({
-          top_nav <- root_session$input$main_nav
+          top_nav <- .onglet_effectif(root_session$input$main_nav,
+                                      root_session$input$atlas_nav)
           sub_nav <- root_session$input[["home-main_tabs"]]
           !is.null(top_nav) && identical(top_nav, "selection") &&
             !is.null(sub_nav) && identical(sub_nav, "tenements")
@@ -936,7 +937,8 @@ mod_ug_server <- function(id, app_state) {
       root_session <- session$userData$root_session
       if (is.null(root_session)) return()
 
-      top_nav <- root_session$input$main_nav
+      top_nav <- .onglet_effectif(root_session$input$main_nav,
+                                  root_session$input$atlas_nav)
       sub_nav <- root_session$input[["home-main_tabs"]]
 
       if (is.null(top_nav) || top_nav != "selection") return()
@@ -981,7 +983,8 @@ mod_ug_server <- function(id, app_state) {
       root_session <- session$userData$root_session
       if (is.null(root_session)) return()
 
-      top_nav <- root_session$input$main_nav
+      top_nav <- .onglet_effectif(root_session$input$main_nav,
+                                  root_session$input$atlas_nav)
       sub_nav <- root_session$input[["home-main_tabs"]]
 
       if (is.null(top_nav) || top_nav != "selection") return()

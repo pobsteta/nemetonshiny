@@ -35,6 +35,41 @@ mod_monitoring_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
+  # Les trois modes de suivi sont des SOUS-ONGLETS (parite " Terrain
+  # accessible "), qui remplacent le radio " Mode de suivi ". Le navset garde
+  # l'id `mode` et ses valeurs (quick / health / reconfort) : `input$mode`, les
+  # conditionalPanel de la sidebar et l'observer de visibilite des sous-onglets
+  # internes (`subtab`) restent inchanges. Les panneaux sont vides : le contenu,
+  # commun aux trois modes et filtre par `input$mode`, est passe en `header`.
+  bslib::navset_card_underline(
+    id = ns("mode"),
+    selected = "quick",
+    bslib::nav_panel(
+      title = i18n$t("monitoring_onglet_fast"),
+      value = "quick",
+      icon  = bsicons::bs_icon("lightning")
+    ),
+    bslib::nav_panel(
+      title = i18n$t("monitoring_onglet_fordead"),
+      value = "health",
+      icon  = bsicons::bs_icon("tree")
+    ),
+    bslib::nav_panel(
+      title = i18n$t("monitoring_onglet_reconfort"),
+      value = "reconfort",
+      icon  = bsicons::bs_icon("tree-fill")
+    ),
+    header = .monitoring_contenu_ui(ns, i18n, lang)
+  )
+}
+
+#' Shared body of the monitoring tab (sidebar + inner sub-tabs)
+#'
+#' Common to the three mode sub-tabs; mode-specific parts are filtered by
+#' `input$mode` (conditionalPanel in the sidebar, nav_show/nav_hide on
+#' `subtab`).
+#' @noRd
+.monitoring_contenu_ui <- function(ns, i18n, lang) {
   bslib::layout_sidebar(
     fillable = TRUE,
 
@@ -72,18 +107,8 @@ mod_monitoring_ui <- function(id) {
             htmltools::tags$p(class = "text-muted small",
                               i18n$t("monitoring_subtitle")),
 
-            # --- Mode toggle (E6.c.5 - T6app.1) ---------------------
-            shiny::radioButtons(
-              ns("mode"), i18n$t("monitoring_mode_label"),
-              choices = stats::setNames(
-                c("quick", "health", "reconfort"),
-                c(i18n$t("monitoring_mode_quick"),
-                  i18n$t("monitoring_mode_health"),
-                  i18n$t("monitoring_mode_reconfort"))
-              ),
-              selected = "quick",
-              inline   = FALSE
-            ),
+            # Le mode (FAST / FORDEAD / RECONFORT) se choisit par les
+            # sous-onglets en tete de l'onglet (`ns("mode")`, ci-dessous).
             shiny::uiOutput(ns("mode_help")),
 
             # --- Common: zone + date range --------------------------

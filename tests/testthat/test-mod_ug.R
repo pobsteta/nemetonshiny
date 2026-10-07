@@ -265,10 +265,14 @@ test_that("la previsualisation ONF est effacee apres le croisement", {
 # l'ouverture de l'onglet via `rv$redraw_counter` : ces tests verrouillent les
 # deux moities de la garde - muet quand cache, dessine quand visible.
 
-# Session racine simulee : `mod_ug` lit `input$main_nav` et
-# `input[["home-main_tabs"]]` sur `session$userData$root_session`.
-.fausse_session_racine <- function(main_nav, sous_onglet) {
-  list(input = list(main_nav = main_nav, `home-main_tabs` = sous_onglet))
+# Session racine simulee : `mod_ug` lit `input$main_nav`, `input$atlas_nav` et
+# `input[["home-main_tabs"]]` sur `session$userData$root_session`. `onglet` est
+# l'onglet LOGIQUE ("selection", "synthesis" : sous-onglets de l'Atlas).
+.fausse_session_racine <- function(onglet, sous_onglet) {
+  parent <- nemetonshiny:::.onglet_parent(onglet)
+  list(input = list(main_nav = parent,
+                    atlas_nav = if (identical(parent, "atlas")) onglet,
+                    `home-main_tabs` = sous_onglet))
 }
 
 # Projet minimal PORTANT DEJA ses UGF : `has_ug_data()` doit etre vrai, sinon

@@ -4,11 +4,12 @@
 
 #' Main-navigation tabs a deep link may select
 #'
-#' Values of the `main_nav` panels and of the family tabs (`app_ui.R`). A value
-#' outside this list is ignored.
+#' Logical tabs (`service_navigation.R`): the `main_nav` panels, the Atlas
+#' sub-tabs and the family tabs (`app_ui.R`). A value outside this list is
+#' ignored.
 #' @noRd
 DEEP_LINK_TABS <- c(
-  "selection", "synthesis", "action_plan", "terrain", "monitoring",
+  "atlas", "selection", "synthesis", "action_plan", "terrain", "monitoring",
   "regeneration",
   "famille_carbone", "famille_biodiversite", "famille_eau", "famille_air",
   "famille_sol", "famille_paysage", "famille_temporel", "famille_risque",
@@ -136,7 +137,7 @@ DEEP_LINK_TABS <- c(
       shiny::insertUI("head", "beforeEnd", .deep_link_load_script(lien$project),
                       immediate = TRUE, session = session)
     } else if (!is.null(lien$tab)) {
-      shiny::updateNavbarPage(session, "main_nav", selected = lien$tab)
+      .aller_onglet(session, lien$tab)
       if (!length(lien$invalid)) .signal_pret(session, "ready", NULL, lien$tab)
     } else if (!length(lien$invalid)) {
       # `/` nu : pret au premier repos de la session.
@@ -154,7 +155,7 @@ DEEP_LINK_TABS <- c(
     pending$project <- NULL
     pending$tab <- NULL
     pending$signal <- NULL
-    if (!is.null(tab)) shiny::updateNavbarPage(session, "main_nav", selected = tab)
+    if (!is.null(tab)) .aller_onglet(session, tab)
     if (signal) .signal_pret(session, "ready", pid, tab)
   })
   invisible(NULL)
