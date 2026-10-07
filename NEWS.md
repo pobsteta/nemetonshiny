@@ -1,3 +1,10 @@
+# nemetonshiny 1.0.1 (2026-10-07)
+
+- L'onglet « Sélection » s'appelle désormais **« Atlas »** (FR et EN). Les
+  messages qui y renvoient (retrait des parcelles hors forêt ONF, plan
+  d'échantillonnage, mode local SQLite) suivent. La clé technique
+  `tab_selection` est inchangée.
+
 # nemetonshiny 1.0.0 (2026-10-06)
 
 Première version stable. Elle repart de zéro : les projets et les bases créés avec une version 0.x ne sont pas repris.
