@@ -16,6 +16,10 @@ Restes des briefs cœur → app (audit du 2026-10-07).
 - **Licence E-OBS** (brief 027 brancheA §5) : attribution ECA&D / Copernicus
   et licence non commerciale sous la carte de contexte.
 - **A5** (brief 032 a5-diagnostic) : cause nommée `skipped_no_reference`.
+- **Carte reGénération, deux couches** : « ΔT°max × ΔVPD » (brief 027 onglet
+  §4.3), carte bivariée 3 × 3 en terciles des UGF du projet, et « Meilleure
+  essence » (spec 039 §7), l'essence classée première par
+  `nemeton::regen_rank_species()`.
 - **Typage de desserte, voie IFN** (brief 040) : choix « taux saisi /
   référentiel IFN (par essence) ». L'essence vient de la BD Forêt du projet,
   la SER de `ensure_ugf_ser()` ; en NDP 0, P1 vide est comblé par

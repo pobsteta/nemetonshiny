@@ -1127,9 +1127,9 @@ TRANSLATIONS <- list(
   # d'anneau de reference autour) : `a5_status = "skipped_no_reference"`.
   a5_skipped_no_reference = list(
     fr = paste0(
-      "Température de surface disponible, mais aucune unité n'a pu être ",
-      "comparée à son voisinage (hors emprise de la scène, ou pas ",
-      "d'anneau de référence exploitable)."
+      "Temp\u00e9rature de surface disponible, mais aucune unit\u00e9 n'a pu \u00eatre ",
+      "compar\u00e9e \u00e0 son voisinage (hors emprise de la sc\u00e8ne, ou pas ",
+      "d'anneau de r\u00e9f\u00e9rence exploitable)."
     ),
     en = paste0(
       "Land-surface temperature is available, but no unit could be compared ",
@@ -6072,6 +6072,12 @@ TRANSLATIONS <- list(
   regen_map_priorite = list(fr = "Indice de priorit\u00e9", en = "Priority index"),
   regen_map_sensibilite = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
   regen_map_njstress = list(fr = "Jours de stress hydrique", en = "Water-stress days"),
+  regen_map_bivariee = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD", en = "\u0394T\u00b0max \u00d7 \u0394VPD"),
+  regen_map_bivariee_sub = list(fr = "(terciles des UGF du projet)", en = "(terciles of the project's units)"),
+  regen_map_bivariee_info = list(fr = "Croise l'\u00e9cart de temp\u00e9rature maximale et l'\u00e9cart de d\u00e9ficit de pression de vapeur sous couvert. Chaque axe est d\u00e9coup\u00e9 en terciles des UGF du projet : le coin brun fonc\u00e9 (haut-droite) r\u00e9unit les UGF les plus chaudes ET les plus s\u00e8ches, \u00e0 l'inverse du gris clair. Lecture relative, propre au projet.", en = "Crosses the sub-canopy maximum-temperature and vapour-pressure-deficit gaps. Each axis is split into terciles of the project's units: the dark brown corner (top right) gathers the hottest AND driest units, the light grey the opposite. Relative reading, specific to the project."),
+  regen_map_essence = list(fr = "Meilleure essence", en = "Best species"),
+  regen_map_essence_info = list(fr = "Essence class\u00e9e premi\u00e8re pour chaque UGF par le classement d\u00e9terministe du c\u0153ur (tol\u00e9rances \u00e9cologiques face \u00e0 la chaleur, la s\u00e9cheresse et au gel de la station). Le d\u00e9tail du top 3 est dans la fiche parcelle.", en = "Species ranked first for each unit by the core's deterministic ranking (ecological tolerances against the site's heat, drought and frost). The top-3 detail is in the unit sheet."),
+  regen_map_essence_aucune = list(fr = "Pas de recommandation (donn\u00e9es de station manquantes)", en = "No recommendation (missing site data)"),
   regen_map_dtmax = list(fr = "\u0394T\u00b0max sous couvert", en = "Sub-canopy \u0394T\u00b0max"),
   regen_map_bivariate = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD (parcellaire)", en = "\u0394T\u00b0max \u00d7 \u0394VPD (per unit)"),
   regen_map_context = list(fr = "Contexte r\u00e9gional (E-OBS)", en = "Regional context (E-OBS)"),

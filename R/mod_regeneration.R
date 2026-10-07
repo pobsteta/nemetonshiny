@@ -266,6 +266,80 @@
     "")
 }
 
+# --- Couches composites de la carte reGeneration ----------------------------
+
+# Palette bivariee 3x3 (schema de J. Stevens) : DeltaVPD croit vers la DROITE
+# (rose), DeltaTmax vers le HAUT (bleu) ; les deux forts = brun fonce, l'angle le
+# plus expose. Indexee comme `classe_bivariee` du coeur :
+# classe = (rang_y - 1) * 3 + rang_x.
+.REGEN_BIV_PALETTE <- c(
+  "1" = "#e8e8e8", "2" = "#e4acac", "3" = "#c85a5a",
+  "4" = "#b0d5df", "5" = "#ad9ea5", "6" = "#985356",
+  "7" = "#64acbe", "8" = "#627f8c", "9" = "#574249")
+
+# Terciles d'affichage (1/2/3) d'une colonne du resultat, NA conserve. C'est un
+# decoupage de LEGENDE, comme le `colorNumeric()` des autres couches - pas un
+# classement metier : les valeurs viennent du coeur, intactes.
+.regen_tercile <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  n <- sum(!is.na(x))
+  if (n == 0L) return(rep(NA_integer_, length(x)))
+  as.integer(pmax(1, pmin(3, ceiling(3 * rank(x, na.last = "keep") / n))))
+}
+
+# Classe bivariee 1..9 (DeltaTmax en ligne, DeltaVPD en colonne), NA si l'un manque.
+.regen_bivariate_class <- function(d_tmax, d_vpd) {
+  (.regen_tercile(d_tmax) - 1L) * 3L + .regen_tercile(d_vpd)
+}
+
+.regen_map_bivariee <- function(proxy, res, i18n) {
+  cls <- .regen_bivariate_class(res$d_tmax, res$d_vpd)
+  geo <- tryCatch(sf::st_transform(res, 4326), error = function(e) res)
+  fill <- unname(.REGEN_BIV_PALETTE[as.character(cls)])
+  fill[is.na(fill)] <- "#cccccc"
+  lbl <- sprintf("\u0394T\u00b0max %s \u00b7 \u0394VPD %s",
+                 format(signif(suppressWarnings(as.numeric(res$d_tmax)), 3)),
+                 format(signif(suppressWarnings(as.numeric(res$d_vpd)), 3)))
+  proxy |>
+    leaflet::addPolygons(data = geo, group = "UGF", weight = 1, color = "#333",
+      layerId = if ("ug_id" %in% names(geo)) geo$ug_id else NULL,
+      fillColor = fill, fillOpacity = 0.8, label = lbl) |>
+    leaflet::addControl(
+      html = as.character(bivariate_legend_html(
+        palette = .REGEN_BIV_PALETTE, ncol = 3L,
+        axis_x = "\u0394VPD", axis_y = "\u0394T\u00b0max",
+        title = i18n$t("regen_map_bivariee"),
+        subtitle = i18n$t("regen_map_bivariee_sub"),
+        x_range = res$d_vpd, y_range = res$d_tmax)),
+      position = "bottomright", layerId = "regen_legend",
+      className = "info legend nmt-bivariate-control")
+  invisible(TRUE)
+}
+
+# Essence de rang 1 par UGF (classement deterministe du coeur). FALSE quand il
+# n'y a pas de classement exploitable : l'appelant retombe sur le contour.
+.regen_map_meilleure_essence <- function(proxy, res, ranking, i18n) {
+  if (!is.data.frame(ranking) || !all(c("ug_id", "rank", "label") %in% names(ranking)) ||
+      !"ug_id" %in% names(res)) return(FALSE)
+  top <- ranking[!is.na(ranking$rank) & ranking$rank == 1L, , drop = FALSE]
+  if (nrow(top) == 0L) return(FALSE)
+  idx <- match(as.character(res$ug_id), as.character(top$ug_id))
+  essence <- as.character(top$label)[idx]
+  score <- suppressWarnings(as.numeric(top$suitability))[idx]
+  geo <- tryCatch(sf::st_transform(res, 4326), error = function(e) res)
+  niveaux <- sort(unique(stats::na.omit(essence)))
+  pal <- leaflet::colorFactor("Set2", domain = niveaux, na.color = "#cccccc")
+  lbl <- ifelse(is.na(essence), i18n$t("regen_map_essence_aucune"),
+                sprintf("%s (%s/100)", essence, format(round(score))))
+  proxy |>
+    leaflet::addPolygons(data = geo, group = "UGF", weight = 1, color = "#333",
+      layerId = geo$ug_id, fillColor = pal(essence), fillOpacity = 0.75,
+      label = lbl) |>
+    leaflet::addLegend(pal = pal, values = niveaux, position = "bottomright",
+      layerId = "regen_legend", title = i18n$t("regen_map_essence"))
+  TRUE
+}
+
 #' Selectize render bolding species present on the AOI (BDforet v2)
 #'
 #' Returns the JS `render` object (as a string, wrap in `I()`) for the target
@@ -654,13 +728,15 @@ mod_regeneration_ui <- function(id) {
                   # cartographiee et comment lire sa legende.
                   shiny::radioButtons(ns("map_layer"), NULL,
                     choiceValues = c("indice_priorite_regen", "sensibilite", "njstress",
-                                     "d_tmax", "r7_gel_days"),
+                                     "d_tmax", "r7_gel_days", "bivariee", "meilleure_essence"),
                     choiceNames = list(
                       layer_tt(i18n$t("regen_map_priorite"), i18n$t("regen_map_priorite_info")),
                       layer_tt(i18n$t("regen_map_sensibilite"), i18n$t("regen_map_sensibilite_info")),
                       layer_tt(i18n$t("regen_map_njstress"), i18n$t("regen_map_njstress_info")),
                       layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info")),
-                      layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info"))),
+                      layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info")),
+                      layer_tt(i18n$t("regen_map_bivariee"), i18n$t("regen_map_bivariee_info")),
+                      layer_tt(i18n$t("regen_map_essence"), i18n$t("regen_map_essence_info"))),
                     selected = "indice_priorite_regen"),
                   # Essence cible : re-priorise la choroplethe en direct (sans
                   # relancer l'analyse). N'affecte QUE la couche " Indice de
@@ -2376,6 +2452,16 @@ mod_regeneration_server <- function(id, app_state) {
       proxy <- leaflet::leafletProxy("map")
       leaflet::clearGroup(proxy, "UGF")
       leaflet::removeControl(proxy, "regen_legend")
+      # Couches composites : la bivariee croise deux colonnes du resultat, la
+      # meilleure essence lit le classement du coeur (spec 039).
+      if (!is.null(res) && identical(col, "bivariee") &&
+          all(c("d_tmax", "d_vpd") %in% names(res))) {
+        .regen_map_bivariee(proxy, res, i18n)
+        return()
+      }
+      if (!is.null(res) && identical(col, "meilleure_essence")) {
+        if (.regen_map_meilleure_essence(proxy, res, species_ranking(), i18n)) return()
+      }
       # Pas (encore) de resultat exploitable -> garder le contour UGF de base
       # visible plutot qu'une carte vide.
       if (is.null(res) || !col %in% names(res)) {
