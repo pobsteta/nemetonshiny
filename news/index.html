@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,12 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.1.0" id="nemetonshiny-110-2026-10-07">nemetonshiny 1.1.0 (2026-10-07)<a class="anchor" aria-label="anchor" href="#nemetonshiny-110-2026-10-07"></a></h2>
+<ul><li><p><strong>Onglet Atlas à sous-onglets</strong> : « Sélection » et « Synthèse » deviennent deux sous-onglets de l’onglet principal « Atlas », comme les quatre sous-onglets de « Terrain accessible ». La barre de navigation perd un onglet. Le bouton « Voir les résultats », les liens profonds (<code>?tab=synthesis</code>, et maintenant <code>?tab=atlas</code>), le tour guidé et la carte UGF suivent ; les messages qui renvoient à ces écrans disent « Atlas › Sélection » / « Atlas › Synthèse ». Nouveau <code>R/service_navigation.R</code> (onglet logique ↔︎ onglet parent).</p></li>
+<li><p><strong>Suivi sanitaire à sous-onglets</strong> : les trois modes FAST, FORDEAD et RECONFORT deviennent des sous-onglets de « Suivi sanitaire » ; le bouton radio « Mode de suivi » de la barre latérale est retiré. Le navset reprend l’identifiant <code>mode</code> et ses valeurs (<code>quick</code> / <code>health</code> / <code>reconfort</code>) : paramètres de la barre latérale et sous-onglets internes (alertes, carte, plan de validation) suivent le mode exactement comme avant. Clés i18n <code>monitoring_onglet_*</code> ajoutées, <code>monitoring_mode_label</code> / <code>monitoring_mode_{quick,health,reconfort}</code> retirées.</p></li>
+<li><p><strong>LiDAR HD</strong> : les dalles sont désormais listées par la couche WFS <code>IGNF_LIDAR-HD_METADONNEE:metadata</code> de la Géoplateforme (colonnes <code>url_mnh</code>, <code>url_mnt</code>, <code>url_mns</code>, <code>url_npl</code>). Les couches par produit (<code>IGNF_MNH-LIDAR-HD:dalle</code>, <code>IGNF_MNT-LIDAR-HD:dalle</code>, <code>IGNF_NUAGES-DE-POINTS-LIDAR-HD:dalle</code>) ont été retirées par l’IGN et répondent 404 : aucun projet ne trouvait plus de dalle, et le calcul basculait sur la reconstruction lasR depuis les nuages de points, qui dépasse le plafond mémoire de 12 Go. Les couches par produit restent essayées en repli. Les noms de fichiers sont inchangés : les dalles déjà en cache sont réutilisées.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.0.1" id="nemetonshiny-101-2026-10-07">nemetonshiny 1.0.1 (2026-10-07)<a class="anchor" aria-label="anchor" href="#nemetonshiny-101-2026-10-07"></a></h2>
 <ul><li>L’onglet « Sélection » s’appelle désormais <strong>« Atlas »</strong> (FR et EN). Les messages qui y renvoient (retrait des parcelles hors forêt ONF, plan d’échantillonnage, mode local SQLite) suivent. La clé technique <code>tab_selection</code> est inchangée.</li>

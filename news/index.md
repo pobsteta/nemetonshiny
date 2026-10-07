@@ -1,5 +1,37 @@
 # Changelog
 
+## nemetonshiny 1.1.0 (2026-10-07)
+
+- **Onglet Atlas à sous-onglets** : « Sélection » et « Synthèse »
+  deviennent deux sous-onglets de l’onglet principal « Atlas », comme
+  les quatre sous-onglets de « Terrain accessible ». La barre de
+  navigation perd un onglet. Le bouton « Voir les résultats », les liens
+  profonds (`?tab=synthesis`, et maintenant `?tab=atlas`), le tour guidé
+  et la carte UGF suivent ; les messages qui renvoient à ces écrans
+  disent « Atlas › Sélection » / « Atlas › Synthèse ». Nouveau
+  `R/service_navigation.R` (onglet logique ↔︎ onglet parent).
+
+- **Suivi sanitaire à sous-onglets** : les trois modes FAST, FORDEAD et
+  RECONFORT deviennent des sous-onglets de « Suivi sanitaire » ; le
+  bouton radio « Mode de suivi » de la barre latérale est retiré. Le
+  navset reprend l’identifiant `mode` et ses valeurs (`quick` / `health`
+  / `reconfort`) : paramètres de la barre latérale et sous-onglets
+  internes (alertes, carte, plan de validation) suivent le mode
+  exactement comme avant. Clés i18n `monitoring_onglet_*` ajoutées,
+  `monitoring_mode_label` / `monitoring_mode_{quick,health,reconfort}`
+  retirées.
+
+- **LiDAR HD** : les dalles sont désormais listées par la couche WFS
+  `IGNF_LIDAR-HD_METADONNEE:metadata` de la Géoplateforme (colonnes
+  `url_mnh`, `url_mnt`, `url_mns`, `url_npl`). Les couches par produit
+  (`IGNF_MNH-LIDAR-HD:dalle`, `IGNF_MNT-LIDAR-HD:dalle`,
+  `IGNF_NUAGES-DE-POINTS-LIDAR-HD:dalle`) ont été retirées par l’IGN et
+  répondent 404 : aucun projet ne trouvait plus de dalle, et le calcul
+  basculait sur la reconstruction lasR depuis les nuages de points, qui
+  dépasse le plafond mémoire de 12 Go. Les couches par produit restent
+  essayées en repli. Les noms de fichiers sont inchangés : les dalles
+  déjà en cache sont réutilisées.
+
 ## nemetonshiny 1.0.1 (2026-10-07)
 
 - L’onglet « Sélection » s’appelle désormais **« Atlas »** (FR et EN).
