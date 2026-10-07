@@ -27,7 +27,7 @@ TRANSLATIONS <- list(
   # ============================================================
   # Navigation
   # ============================================================
-  tab_selection = list(fr = "S\u00e9lection", en = "Selection"),
+  tab_selection = list(fr = "Atlas", en = "Atlas"),
   tab_synthesis = list(fr = "Synth\u00e8se", en = "Synthesis"),
   tab_families = list(fr = "Familles d'indicateurs", en = "Indicator Families"),
   tab_carte_cadastrale = list(fr = "Carte cadastrale", en = "Cadastral map"),
@@ -3370,14 +3370,14 @@ TRANSLATIONS <- list(
       "conserv\u00e9e ENTI\u00c8RE, avec sa part hors for\u00eat : la ",
       "supprimer seule trouerait une parcelle que vous poss\u00e9dez. Pour ",
       "r\u00e9cup\u00e9rer les parcelles retir\u00e9es, il faut repasser par ",
-      "l'onglet S\u00e9lection."
+      "l'onglet Atlas."
     ),
     en = paste0(
       "Removes from the project the cadastral parcels the public forest does ",
       "not cover, or covers by less than 10 % - parcels AND tenements. A ",
       "parcel forested at 10 % or more is kept WHOLE, non-forest share ",
       "included: dropping that share alone would punch a hole in a parcel you ",
-      "own. Recovering removed parcels means going back to the Selection tab."
+      "own. Recovering removed parcels means going back to the Atlas tab."
     )
   ),
   # Une parcelle cadastrale que le parcellaire ONF ne numerote pas garde son
@@ -3548,8 +3548,8 @@ TRANSLATIONS <- list(
     en = "Generate sampling plots within the current area, then download the QField project for field capture."
   ),
   sampling_no_project = list(
-    fr = "S\u00e9lectionnez d'abord un projet (onglet S\u00e9lection).",
-    en = "Select a project first (Selection tab)."
+    fr = "S\u00e9lectionnez d'abord un projet (onglet Atlas).",
+    en = "Select a project first (Atlas tab)."
   ),
   sampling_dem_resolved_fmt = list(
     fr = "MNT : %s",
@@ -4095,8 +4095,8 @@ TRANSLATIONS <- list(
     en = "The R package RSQLite is not installed; local mode is unavailable. Run install.packages(\"RSQLite\") or configure Postgres."
   ),
   monitoring_db_no_project = list(
-    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans l'onglet S\u00e9lection pour activer le mode local (SQLite).",
-    en = "No project loaded. Pick or create a project in the Selection tab to enable local mode (SQLite)."
+    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans l'onglet Atlas pour activer le mode local (SQLite).",
+    en = "No project loaded. Pick or create a project in the Atlas tab to enable local mode (SQLite)."
   ),
   monitoring_db_connecting = list(
     fr = "Tentative de connexion \u00e0 la base de suivi\u2026",
