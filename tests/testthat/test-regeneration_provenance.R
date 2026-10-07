@@ -21,7 +21,7 @@
     dd <- file.path(base, d); dir.create(dd, recursive = TRUE, showWarnings = FALSE)
     file.create(file.path(dd, "t.tif"))
   }
-  # Nuage LiDAR HD : structure de végétation → canopy = "lidar" (spec 033).
+  # Nuage LiDAR HD : structure de végétation → canopy = "lidar_hd" (spec 033).
   nd <- file.path(base, "lidar_nuage")
   dir.create(nd, recursive = TRUE, showWarnings = FALSE)
   file.create(file.path(nd, "t.copc.laz"))
@@ -33,11 +33,15 @@ test_that("regen_canopy_provenance reads detect_ndp augmentation flags", {
 
   testthat::local_mocked_bindings(
     detect_ndp = function(data) list(augmented = c("height_lidar")), .package = "nemeton")
-  expect_equal(nemetonshiny:::regen_canopy_provenance(u), "lidar")
+  expect_equal(nemetonshiny:::regen_canopy_provenance(u), "lidar_hd")
 
   testthat::local_mocked_bindings(
     detect_ndp = function(data) list(augmented = c("lai_ml", "foo")), .package = "nemeton")
-  expect_equal(nemetonshiny:::regen_canopy_provenance(u), "satellite")
+  expect_equal(nemetonshiny:::regen_canopy_provenance(u), "prosail_s2")
+
+  testthat::local_mocked_bindings(
+    detect_ndp = function(data) list(augmented = c("height_ml", "species_ml")), .package = "nemeton")
+  expect_equal(nemetonshiny:::regen_canopy_provenance(u), "opencanopy")
 
   testthat::local_mocked_bindings(
     detect_ndp = function(data) list(augmented = character(0)), .package = "nemeton")
@@ -62,7 +66,7 @@ test_that("run_regeneration_engine reports canopy = lidar when the grid is prese
       .package = "nemeton")
     out <- nemetonshiny:::run_regeneration_engine(.prov_units(2), p,
       cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
-    expect_equal(out$canopy, "lidar")
+    expect_equal(out$canopy, "lidar_hd")
   })
 })
 
@@ -88,7 +92,7 @@ test_that("run_regeneration_engine falls back to satellite LAI without a grid", 
       cfg = list(year_moyenne = 2018, forcing = "safran"))  # lai_max UI absent
 
     expect_true(seen$lai)                                  # LAI S2 appelé
-    expect_equal(out$canopy, "satellite")
+    expect_equal(out$canopy, "prosail_s2")
     expect_false(is.null(seen$lai_max))                    # lai_max injecté (agrégé)
     expect_equal(length(seen$lai_max), 2L)                 # un par UGF
     expect_true(file.exists(file.path(p, "cache", "regeneration", "lai_prosail.tif")))

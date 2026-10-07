@@ -603,28 +603,32 @@ regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC") {
 #'
 #' @description
 #' Reads (never recomputes - rule #1) the canopy structure source from the core
-#' \code{nemeton::detect_ndp()} augmentation flags:
-#' \itemize{
-#'   \item \code{"satellite"} when the ML LAI fallback is active - the
-#'     augmentation set contains \code{"lai_ml"} (Sentinel-2 / PROSAIL, NDP 0).
-#'   \item \code{"lidar"} when a LiDAR-HD canopy / microclimate flag is present
-#'     (\code{"height_lidar"} / \code{"microclimate_model"}).
-#'   \item \code{NA} when no canopy was used (no badge shown).
-#' }
-#' The core owns the source decision and sets the flags; the app only displays.
+#' \code{nemeton::detect_ndp()} augmentation flags, mapped to a canonical key by
+#' \code{nemeton::canopy_provenance()}: \code{"lidar_hd"}, \code{"prosail_s2"}
+#' (Sentinel-2 fallback) or \code{"opencanopy"} (ML CHM).
+#'
+#' \code{canopy_provenance()} always answers (default \code{"lidar_hd"}) : the
+#' badge must only show once a canopy analysis has actually run, hence the
+#' \code{NA} when no canopy flag is present.
 #'
 #' @param units A reGeneration result \code{sf} (carries the NDP flags/attrs).
-#' @return \code{"lidar"}, \code{"satellite"}, or \code{NA_character_}.
+#' @return \code{"lidar_hd"}, \code{"prosail_s2"}, \code{"opencanopy"}, or
+#'   \code{NA_character_}.
 #' @noRd
 regen_canopy_provenance <- function(units) {
   if (!inherits(units, "sf") || nrow(units) == 0L) return(NA_character_)
   aug <- tryCatch(nemeton::detect_ndp(units)$augmented, error = function(e) NULL)
-  if (is.null(aug)) return(NA_character_)
   aug <- as.character(aug)
-  if (any(grepl("lai_ml", aug, fixed = TRUE))) return("satellite")
-  if (any(grepl("height_lidar|microclimate_model", aug))) return("lidar")
-  NA_character_
+  if (!any(aug %in% REGEN_CANOPY_FLAGS)) return(NA_character_)
+  nemeton::canopy_provenance(aug)
 }
+
+#' Augmentation flags that mean a canopy analysis ran
+#'
+#' Gate only (whether to show the badge) : the flag -> provenance mapping is
+#' the core's, \code{nemeton::canopy_provenance()}.
+#' @noRd
+REGEN_CANOPY_FLAGS <- c("lai_ml", "height_ml", "height_lidar", "microclimate_model")
 
 #' Locate the project's LiDAR-HD DTM/CHM tile grid (spec 027 L1)
 #'
@@ -807,7 +811,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   .regen_write_phase(out_dir, "grille")
   warnings <- character(0)
   cached   <- character(0)
-  canopy   <- NA_character_       # provenance canopee effective (spec 033 D5)
+  canopy   <- NA_character_       # provenance canopee effective (spec 033 D5), cles de nemeton::canopy_provenance()
   lai_source <- NA_character_     # provenance du lai_max de BILJOU (spec 035 B1)
   ewm_values <- NULL              # reserve utile effective, par UGF (spec 035 B4)
   ewm_source <- NA_character_     # "soilgrids" | "soilgrids_fallback" | "uniform"
@@ -853,17 +857,23 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:era5" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
                            list(year = p$year, i = p$i, n = p$n)),
-      # Un evenement par MOIS telecharge (coeur a venir - cf. specs/BRIEF-nemeton-
+      # Un evenement par MOIS telecharge (cf. specs/BRIEF-nemeton-
       # era5-progression-mensuelle.md). Le compteur d'ANNEES disparait ici : le
       # coeur n'en connait pas le rang depuis .rsen_forcage_era5(), et "2022 -
-      # mois 3/12" dit deja tout ce que "(1/1)" pretendait dire. Tant que le coeur
-      # n'emet pas cet evenement, cette branche est morte et rien ne change.
+      # mois 3/12" dit deja tout ce que "(1/1)" pretendait dire.
       "regen_expo:era5_mois" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
                            list(year = p$year, mois_i = p$mois_i, mois_n = p$mois_n)),
       "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
       "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
       "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),
+      # Forcage meteo BILJOU (brief 027 biljou) : un evenement par unite SAFRAN,
+      # ou par unite x annee ERA5 - le telechargement ERA5 dure des minutes.
+      "biljou:safran_unit" =
+        .regen_write_phase(out_dir, "biljou_safran", list(i = p$i, n = p$n)),
+      "biljou:era5_download" =
+        .regen_write_phase(out_dir, "biljou_era5", list(i = p$i, n = p$n, year = p$year)),
+      "biljou:complete" = .regen_write_phase(out_dir, "biljou"),
       # Reserve utile SoilGrids (spec 035 B1.e) : un evenement par horizon de
       # profondeur, puis complete/unavailable. `unavailable` n'est pas une erreur
       # (le coeur retombe sur un sol uniforme) -> on n'affiche pas de phase dediee.
@@ -914,10 +924,10 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     veg_args <- list()
     if (!is.null(grid$las_dir)) {
       veg_args$las <- grid$las_dir            # PAI derive du nuage (spec 033, LiDAR HD)
-      canopy <- "lidar"
+      canopy <- "lidar_hd"
     } else {
       lai_r <- .regen_lai_fallback(res, out_dir, cfg)   # SpatRaster LAI S2/PROSAIL, cache
-      if (!is.null(lai_r)) { veg_args$pai <- lai_r; canopy <- "satellite" }
+      if (!is.null(lai_r)) { veg_args$pai <- lai_r; canopy <- "prosail_s2" }
     }
 
     if (length(veg_args)) {
@@ -1036,7 +1046,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
         lai_max <- tryCatch(nemeton::lai_max_depuis_pai(res, pai_tif),
                             error = function(e) NULL)
         if (!is.null(lai_max)) {
-          canopy <- "lidar"
+          canopy <- "lidar_hd"
           lai_source <- "pai_lidar"
         }
       }
@@ -1045,7 +1055,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
         if (!is.null(lai_r)) {
           lai_max <- tryCatch(.regen_lai_per_unit(res, lai_r), error = function(e) NULL)
           if (!is.null(lai_max)) {
-            canopy <- "satellite"
+            canopy <- "prosail_s2"
             lai_source <- "prosail_s2"
           }
         }
@@ -1057,7 +1067,8 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                tags = tags0[["default"]])
     bil <- tryCatch({
       meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
-                                            cache_dir = biljou_cache)
+                                            cache_dir = biljou_cache,
+                                            progress_callback = on_prog)
       # Sol : SoilGrids 250 m par defaut (reserve utile derivee par UGF via la
       # fonction de pedotransfert Saxton & Rawls, spec 035 D3) -> liste nommee par
       # id d'UGF, consommee telle quelle par le coeur. Degrade proprement en sol
@@ -1360,7 +1371,8 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
   years      <- seq.int(start_year, end_year)
   eobs <- tryCatch(
     nemeton::load_eobs_source(aoi = units, var = "tx", years = years,
-                              cache_dir = cache_dir),
+                              cache_dir = cache_dir,
+                              progress_callback = .regen_eobs_progress_cb(cache_dir)),
     error = function(e) {
       cli::cli_warn("regen detect_years: load_eobs_source failed: {conditionMessage(e)}")
       NULL
@@ -1375,6 +1387,31 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
     })
   if (is.null(yrs) || is.null(yrs$year_moyenne)) return(NULL)
   list(year_moyenne = yrs$year_moyenne, year_canicule = yrs$year_canicule)
+}
+
+#' Progress callback of the E-OBS acquisition (brief 034 sect.2.1)
+#'
+#' `load_eobs_source()` reports each step (`eobs:cds_request`, `eobs:unzip`,
+#' ...). It runs in a `future` worker, so the step crosses the process boundary
+#' through `eobs_status.json` in the E-OBS cache, polled by the module - same
+#' channel as the engine's `engine_status.json`. Never fatal.
+#'
+#' @param cache_dir E-OBS cache directory, or `NULL` (no callback).
+#' @return A function of the core payload, or `NULL`.
+#' @noRd
+.regen_eobs_progress_cb <- function(cache_dir) {
+  if (is.null(cache_dir)) return(NULL)
+  function(p) {
+    tryCatch({
+      payload <- list(phase = as.character(p$current %||% ""),
+                      n_years = p$n_years %||% NULL,
+                      ts = as.integer(Sys.time()))
+      tmp <- file.path(cache_dir, ".eobs_status.json.tmp")
+      writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), tmp)
+      file.rename(tmp, file.path(cache_dir, "eobs_status.json"))
+    }, error = function(e) invisible(NULL))
+    invisible(NULL)
+  }
 }
 
 #' Satellite LAI fallback (Sentinel-2 / PROSAIL) for reGeneration (spec 033 D5)

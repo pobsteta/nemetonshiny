@@ -41,6 +41,29 @@
   st
 }
 
+# Etape en cours de l'acquisition E-OBS (brief 034 sect.2.1), ecrite par le
+# worker dans cache/regeneration/eobs/eobs_status.json. NULL si absente ou
+# inconnue : l'appelant garde alors son libelle generique.
+.regen_read_eobs_step <- function(project_path) {
+  if (is.null(project_path)) return(NULL)
+  f <- file.path(project_path, "cache", "regeneration", "eobs", "eobs_status.json")
+  if (!file.exists(f)) return(NULL)
+  tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
+}
+
+.regen_eobs_step_label <- function(i18n, st) {
+  if (is.null(st) || is.null(st$phase)) return(NULL)
+  switch(st$phase,
+    "eobs:cds_request"       = i18n$t("regen_eobs_dl_request"),
+    "eobs:cds_download_done" = i18n$t("regen_eobs_dl_done"),
+    "eobs:unzip"             = i18n$t("regen_eobs_unzip"),
+    "eobs:read"              = i18n$t("regen_eobs_read"),
+    "eobs:reduce"            = i18n$t("regen_eobs_reduce"),
+    "eobs:complete"          = sprintf(i18n$t("regen_eobs_complete"),
+                                       format(st$n_years %||% "?")),
+    NULL)
+}
+
 # " - dernier signe de vie il y a N min ", ou "" tant que le worker parle.
 .regen_silence_suffix <- function(i18n, st) {
   s <- st$stale_s
@@ -233,6 +256,10 @@
     # Reserve utile SoilGrids : " (i/n) " compte les horizons de profondeur.
     "ewm"        = .regen_step_lbl(i18n, "regen_phase_ewm", st),
     "biljou"     = i18n$t("regen_phase_biljou"),
+    # Forcage BILJOU : " (i/n) " compte les unites ; ERA5 dit aussi l'annee.
+    "biljou_safran" = .regen_step_lbl(i18n, "regen_biljou_safran", st),
+    "biljou_era5"   = trimws(paste(.regen_step_lbl(i18n, "regen_biljou_era5", st),
+                            if (is.null(st$year)) "" else as.character(st$year))),
     "microclimf_skipped" = sprintf(i18n$t("regen_phase_micro_skip"),
                                    st$reason %||% ""),
     "done"       = "",
@@ -742,7 +769,12 @@ mod_regeneration_ui <- function(id) {
               class = "btn-outline-warning btn-sm w-100")
           ),
           shiny::uiOutput(ns("context_status")),
-          leaflet::leafletOutput(ns("context_map"), height = "70vh")
+          leaflet::leafletOutput(ns("context_map"), height = "70vh"),
+          # Attribution et licence E-OBS (brief 027 brancheA sect.5) : donnees
+          # ECA&D sous licence recherche / enseignement non commerciale.
+          htmltools::tags$p(class = "text-muted small mt-1 mb-0",
+            bsicons::bs_icon("c-circle", class = "me-1"),
+            i18n$t("regen_eobs_attribution"))
         ))
     )
   )
@@ -986,6 +1018,10 @@ mod_regeneration_server <- function(id, app_state) {
         return()
       }
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      # Etape d'un run precedent : sans ce menage, elle s'afficherait au depart.
+      if (!is.null(project_path)) {
+        unlink(file.path(project_path, "cache", "regeneration", "eobs", "eobs_status.json"))
+      }
       rv$eobs_running <- TRUE
       rv$eobs_start <- Sys.time()
       # Notif persistante en bas a droite (retiree en fin de tache) - le run
@@ -1032,9 +1068,13 @@ mod_regeneration_server <- function(id, app_state) {
     output$eobs_status <- shiny::renderUI({
       if (isTRUE(rv$eobs_running)) {
         shiny::invalidateLater(1000)
+        # Etape rapportee par le worker (telechargement CDS, decompression,
+        # lecture, reduction...) ; libelle generique tant qu'il n'a rien ecrit.
+        etape <- .regen_eobs_step_label(i18n, .regen_read_eobs_step(
+          tryCatch(app_state$current_project$path, error = function(e) NULL)))
         return(htmltools::div(class = "small text-info mt-1",
           bsicons::bs_icon("gear-fill", class = "me-1"),
-          i18n$t("regen_auto_running_short"),
+          etape %||% i18n$t("regen_auto_running_short"),
           htmltools::tags$span(class = "ms-1 font-monospace",
                                .fmt_elapsed(rv$eobs_start))))
       }
@@ -2175,11 +2215,18 @@ mod_regeneration_server <- function(id, app_state) {
         src <- if (!is.null(rv$result)) regen_canopy_provenance(rv$result) else NA_character_
       }
       if (is.na(src)) return(NULL)
-      if (identical(src, "satellite")) {
+      # Cles de nemeton::canopy_provenance() : "prosail_s2" | "opencanopy" |
+      # "lidar_hd".
+      if (identical(src, "prosail_s2")) {
         bslib::tooltip(
           htmltools::tags$span(class = "badge text-bg-warning mt-2 d-inline-block",
             bsicons::bs_icon("badge-sd", class = "me-1"), i18n$t("regen_canopee_satellite")),
           i18n$t("regen_canopee_satellite_info"), placement = "right")
+      } else if (identical(src, "opencanopy")) {
+        bslib::tooltip(
+          htmltools::tags$span(class = "badge text-bg-info mt-2 d-inline-block",
+            bsicons::bs_icon("badge-sd", class = "me-1"), i18n$t("regen_canopee_chm")),
+          i18n$t("regen_canopee_chm_info"), placement = "right")
       } else {
         # Canopee LiDAR HD : le PAI structural a ete derive du nuage et mis en
         # cache (cache/regeneration/pai.tif). On expose ici l'invalidation manuelle

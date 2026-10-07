@@ -323,8 +323,8 @@ TRANSLATIONS <- list(
   dess_detect_sans_lidar = list(fr = "D\u00e9tection men\u00e9e sans canal de surface : le c\u0153ur la signale comme nettement moins s\u00fbre. Une absence de d\u00e9tection ne vaut pas constat d'absence de route.", en = "Detection run without the surface channel: the core flags it as markedly less reliable. No detection does not mean no road."),
   dess_detect_conf_fmt = list(fr = "Confiance moyenne du classement : %.0f %% des crit\u00e8res renseign\u00e9s. Les crit\u00e8res foss\u00e9s et NDVI ne sont pas encore fournis par l'application.", en = "Mean classification confidence: %.0f%% of criteria filled. The ditch and NDVI criteria are not yet supplied by the application."),
   dess_detect_osm_fmt = list(fr = "%d tron\u00e7on(s) portent une proposition de balisage OpenStreetMap, export\u00e9e dans le GeoPackage. C'est une PROPOSITION \u00e0 valider : rien n'est t\u00e9l\u00e9vers\u00e9 vers OpenStreetMap.", en = "%d segment(s) carry an OpenStreetMap tagging proposal, exported to the GeoPackage. It is a PROPOSAL to review: nothing is uploaded to OpenStreetMap."),
-  dess_osm_layer = list(fr = "Pistes OpenStreetMap", en = "OpenStreetMap tracks"),
-  dess_osm_layer_note = list(fr = "Acquisition OpenStreetMap compl\u00e8te, doublons de la BD TOPO compris : ce calque n'est pas la liste des pistes manquantes.", en = "Full OpenStreetMap acquisition, BD TOPO duplicates included: this layer is not the list of missing tracks."),
+  dess_osm_layer = list(fr = "Piste OpenStreetMap absente de la BD TOPO", en = "OpenStreetMap track missing from BD TOPO"),
+  dess_osm_layer_note = list(fr = "Partie du tron\u00e7on OSM situ\u00e9e \u00e0 plus de %s m de la BD TOPO : desserte potentiellement manquante, \u00e0 v\u00e9rifier sur le terrain.", en = "Part of the OSM segment more than %s m away from BD TOPO: potentially missing access, to be checked on the ground."),
   dess_detect_popup_conf = list(fr = "Confiance du classement :", en = "Classification confidence:"),
   dess_detect_popup_motif = list(fr = "Crit\u00e8res :", en = "Criteria:"),
   dess_detect_popup_osm = list(fr = "Balisage OpenStreetMap propos\u00e9 :", en = "Proposed OpenStreetMap tagging:"),
@@ -1112,6 +1112,19 @@ TRANSLATIONS <- list(
     en = paste0(
       "No land-surface-temperature data over this area: Thermocity only ",
       "covers a few metropolitan areas."
+    )
+  ),
+  # Raster LST fourni, mais aucune unite notable (hors emprise, ou pas
+  # d'anneau de reference autour) : `a5_status = "skipped_no_reference"`.
+  a5_skipped_no_reference = list(
+    fr = paste0(
+      "Température de surface disponible, mais aucune unité n'a pu être ",
+      "comparée à son voisinage (hors emprise de la scène, ou pas ",
+      "d'anneau de référence exploitable)."
+    ),
+    en = paste0(
+      "Land-surface temperature is available, but no unit could be compared ",
+      "with its surroundings (outside the scene, or no usable reference ring)."
     )
   ),
   # Repli quand aucune cause n'est disponible : dire \u00ab indisponible \u00bb reste
@@ -5987,8 +6000,26 @@ TRANSLATIONS <- list(
   regen_engine_status_biljou_era5 = list(fr = "BILJOU (ERA5) : identifiants CDS requis.", en = "BILJOU (ERA5): CDS credentials required."),
   regen_engine_ready_micro = list(fr = "microclimf pr\u00eat (LiDAR HD + CDS).", en = "microclimf ready (LiDAR HD + CDS)."),
   regen_engine_ready_biljou = list(fr = "BILJOU pr\u00eat (for\u00e7age m\u00e9t\u00e9o).", en = "BILJOU ready (weather forcing)."),
+  # Etapes de l'acquisition E-OBS (brief 034 sect.2.1), sous le bouton Auto.
+  regen_eobs_dl_request = list(fr = "Requ\u00eate E-OBS au CDS\u2026", en = "Requesting E-OBS from the CDS\u2026"),
+  regen_eobs_dl_done = list(fr = "T\u00e9l\u00e9chargement E-OBS termin\u00e9", en = "E-OBS download complete"),
+  regen_eobs_unzip = list(fr = "D\u00e9compression de l'archive E-OBS\u2026", en = "Unpacking the E-OBS archive\u2026"),
+  regen_eobs_read = list(fr = "Lecture du netCDF E-OBS\u2026", en = "Reading the E-OBS netCDF\u2026"),
+  regen_eobs_reduce = list(fr = "R\u00e9duction estivale par ann\u00e9e\u2026", en = "Summer reduction per year\u2026"),
+  regen_eobs_complete = list(fr = "E-OBS pr\u00eat (%s ann\u00e9es), d\u00e9tection des ann\u00e9es de r\u00e9f\u00e9rence\u2026", en = "E-OBS ready (%s years), detecting the reference years\u2026"),
+  regen_biljou_safran = list(fr = "Bilan hydrique : for\u00e7age SAFRAN par unit\u00e9", en = "Water balance: SAFRAN forcing per unit"),
+  regen_biljou_era5 = list(fr = "Bilan hydrique : t\u00e9l\u00e9chargement ERA5 par unit\u00e9", en = "Water balance: ERA5 download per unit"),
+  regen_eobs_attribution = list(
+    fr = paste0("Donn\u00e9es E-OBS : ECA&D (European Climate Assessment & Dataset), ",
+                "diffus\u00e9es par le Copernicus Climate Change Service. Licence ",
+                "r\u00e9serv\u00e9e \u00e0 la recherche et \u00e0 l'enseignement, usage commercial exclu."),
+    en = paste0("E-OBS data: ECA&D (European Climate Assessment & Dataset), ",
+                "distributed by the Copernicus Climate Change Service. Licensed for ",
+                "research and education only, no commercial use.")),
   regen_canopee_lidar = list(fr = "Canop\u00e9e : LiDAR HD", en = "Canopy: LiDAR HD"),
   regen_canopee_satellite = list(fr = "Canop\u00e9e : satellite (repli)", en = "Canopy: satellite (fallback)"),
+  regen_canopee_chm = list(fr = "Canop\u00e9e : CHM ML (Open-Canopy)", en = "Canopy: ML CHM (Open-Canopy)"),
+  regen_canopee_chm_info = list(fr = "Hauteur de canop\u00e9e pr\u00e9dite par le mod\u00e8le Open-Canopy sur l'ortho IGN, en l'absence de LiDAR HD. Proxy de la structure ; pr\u00e9cision moindre que le LiDAR.", en = "Canopy height predicted by the Open-Canopy model from the IGN orthophoto, without LiDAR HD. Structure proxy; less accurate than LiDAR."),
   regen_canopee_satellite_info = list(fr = "Repli NDP 0 : LAI Sentinel-2 (inversion PROSAIL) en l'absence de LiDAR HD. Proxy d\u00e9grad\u00e9 de la structure de canop\u00e9e (LAI \u2260 PAI) ; pr\u00e9cision moindre.", en = "NDP-0 fallback: Sentinel-2 LAI (PROSAIL inversion) without LiDAR HD. Degraded proxy of canopy structure (LAI \u2260 PAI); lower accuracy."),
   regen_year_auto_tip = list(fr = "D\u00e9tecte l'ann\u00e9e moyenne et l'ann\u00e9e caniculaire repr\u00e9sentatives \u00e0 partir des donn\u00e9es climatiques E-OBS sur la zone du projet, et pr\u00e9-remplit les deux champs.", en = "Detects the representative average and heatwave years from E-OBS climate data over the project area, and fills both fields."),
   regen_auto_done = list(fr = "Ann\u00e9es E-OBS d\u00e9tect\u00e9es : moyenne %s / caniculaire %s.", en = "E-OBS years detected: average %s / heatwave %s."),

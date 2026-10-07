@@ -477,17 +477,19 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   if (inherits(cmp, "acc_err")) {
     return(list(status = "error", reason = "desserte_osm_failed", detail = cmp$msg))
   }
-  # Le GeoPackage porte la couche OSM pour la carte et pour l'inspection SIG.
-  # ATTENTION AU LIBELLE : c'est la couche OSM BRUTE telle qu'acquise, PAS le
-  # resultat de la comparaison. `comparer_desserte_osm()` calcule bien un
-  # " hors corridor " par troncon mais ne renvoie que des kilometres agreges ;
-  # la geometrie du gisement est jetee cote coeur (brief sect.4, option (b)
-  # deposee la-bas). Nommer ce calque " pistes absentes de la BD TOPO " serait
-  # donc faux : il contient aussi tout ce qui doublonne la BD TOPO.
+  # Le GeoPackage porte deux couches : l'acquisition OSM BRUTE (`osm_track`,
+  # pour l'inspection SIG) et le GISEMENT (`osm_hors_corridor`) - les troncons
+  # OSM amputes de leur part dans le corridor de la BD TOPO, tels que les rend
+  # `comparer_desserte_osm()` (foretaccess >= 2.4.0). C'est ce second calque que
+  # montre la carte : les pistes OSM absentes de la BD TOPO.
+  hc <- tryCatch(cmp$osm_hors_corridor, error = function(e) NULL)
   gp <- file.path(cache_dir, "desserte_osm.gpkg")
   tryCatch({
     unlink(gp)
     sf::st_write(osm, gp, layer = "osm_track", quiet = TRUE, delete_dsn = TRUE)
+    if (inherits(hc, "sf") && nrow(hc) > 0L) {
+      sf::st_write(hc, gp, layer = "osm_hors_corridor", quiet = TRUE, append = FALSE)
+    }
   }, error = function(e) invisible(NULL))
 
   # PROVENANCE DU TRANSPORT (brief unification OSM, sect.4.2 et sect.5.3). Deux

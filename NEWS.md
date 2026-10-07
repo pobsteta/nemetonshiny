@@ -1,3 +1,22 @@
+# nemetonshiny 1.1.0.9001 (développement)
+
+Restes des briefs cœur → app (audit du 2026-10-07).
+
+- **Badge canopée** (brief 033) : la provenance passe par
+  `nemeton::canopy_provenance()` ; troisième état « CHM ML (Open-Canopy) ».
+  Les clés internes deviennent celles du cœur (`lidar_hd`, `prosail_s2`,
+  `opencanopy`).
+- **Desserte, pistes OSM hors BD TOPO** (brief desserte-visualisation) : le
+  calque montre enfin le gisement, `osm_hors_corridor` rendu par
+  `foretaccess::comparer_desserte_osm()`, et non plus l'acquisition brute.
+- **Étapes E-OBS** (brief 034 §2.1) : requête CDS, décompression, lecture,
+  réduction s'affichent sous le bouton « Auto (E-OBS) ».
+- **Forçage BILJOU** (brief 027 biljou) : la notification du moteur nomme
+  l'unité SAFRAN ou l'unité × année ERA5 en cours.
+- **Licence E-OBS** (brief 027 brancheA §5) : attribution ECA&D / Copernicus
+  et licence non commerciale sous la carte de contexte.
+- **A5** (brief 032 a5-diagnostic) : cause nommée `skipped_no_reference`.
+
 # nemetonshiny 1.1.0 (2026-10-07)
 
 - **Onglet Atlas à sous-onglets** : « Sélection » et « Synthèse » deviennent

@@ -46,11 +46,11 @@ DESS_GROUPE_RESEAU <- "R\u00e9seau cr\u00e9\u00e9"
 DESS_GROUPE_LIGNES <- "Lignes cr\u00e9\u00e9es"
 #' @noRd
 DESS_GROUPE_TYPE <- "R\u00e9seau typ\u00e9"
-# " Pistes OSM " et non " pistes absentes de la BD TOPO " : le GeoPackage porte
-# l'acquisition OSM BRUTE, doublons compris. Le " hors corridor " existe cote
-# coeur mais n'en sort qu'en kilometres agreges (cf. `run_desserte_osm()`).
+# Le calque montre le GISEMENT : les troncons OSM hors du corridor de la BD
+# TOPO (couche `osm_hors_corridor`, cf. `run_desserte_osm()`), pas
+# l'acquisition brute.
 #' @noRd
-DESS_GROUPE_OSM <- "Pistes OSM"
+DESS_GROUPE_OSM <- "Pistes OSM hors BD TOPO"
 #' @noRd
 DESS_GROUPE_DETECTEE <- "Routes d\u00e9tect\u00e9es"
 
@@ -1513,34 +1513,35 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
-    # Overlay " Pistes OSM " : l'acquisition Overpass telle quelle.
-    #
-    # Le libelle dit " pistes OSM " et non " pistes absentes de la BD TOPO ",
-    # parce que c'est ce que contient le fichier. `comparer_desserte_osm()`
-    # calcule bien un lineaire HORS CORRIDOR par troncon, mais ne renvoie que
-    # des kilometres par type : la geometrie du gisement est jetee cote coeur.
-    # La reconstruire ici (corridor + `st_difference`) dupliquerait la logique
-    # du coeur avec un `corridor_m` qui pourrait diverger, pour 104 s de calcul
-    # deja fait ailleurs - d'ou le calque honnete en attendant que
-    # `foretaccess` renvoie `osm_hors_corridor`.
+    # Overlay " Pistes OSM hors BD TOPO " : la part des troncons OSM qui sort
+    # du corridor de la BD TOPO, calculee par `comparer_desserte_osm()`
+    # (foretaccess) et persistee telle quelle - rien n'est recalcule ici.
     shiny::observe({
       r <- osm_res()
       shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_OSM)
       gp <- tryCatch(r$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
-      d <- tryCatch(sf::st_read(gp, layer = "osm_track", quiet = TRUE),
+      # Couche absente = rien hors corridor (OSM entierement couvert par la
+      # BD TOPO) : rien a peindre.
+      if (!"osm_hors_corridor" %in% tryCatch(sf::st_layers(gp)$name,
+                                             error = function(e) character(0))) return()
+      d <- tryCatch(sf::st_read(gp, layer = "osm_hors_corridor", quiet = TRUE),
                     error = function(e) NULL)
       if (!inherits(d, "sf") || nrow(d) == 0L) return()
       d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
       hw <- as.character(d[["highway"]] %||% rep("", nrow(d)))
+      corridor <- suppressWarnings(as.numeric(r$corridor_m %||% NA_real_))
+      note <- if (is.finite(corridor)) {
+        sprintf(i18n$t("dess_osm_layer_note"), format(corridor))
+      } else ""
       proxy |>
         leaflet::addPolylines(data = d, group = DESS_GROUPE_OSM,
           color = "#546E7A", weight = 2, opacity = 0.85, dashArray = "4,6",
           label = hw,
           popup = paste0("<b>", i18n$t("dess_osm_layer"), "</b><br>",
                          htmltools::htmlEscape(hw), "<br><span class='text-muted'>",
-                         i18n$t("dess_osm_layer_note"), "</span>"))
+                         note, "</span>"))
       if (!is.null(shown) && !(DESS_GROUPE_OSM %in% shown)) {
         leaflet::hideGroup(proxy, DESS_GROUPE_OSM)
       }
