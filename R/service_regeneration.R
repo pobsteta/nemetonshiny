@@ -592,12 +592,23 @@ add_regen_r_indicators <- function(base_sf, project) {
 #' @param units The reGeneration result sf (one row per UGF).
 #' @param top_n Number of species to keep per UGF.
 #' @param region Species-pool region passed to the core (default "BFC").
+#' @param lai_max Optional per-unit LAI (one value per row of `units`), the
+#'   `lai_max` the engine actually used. When given, it activates the core's
+#'   shade axis (`lai_col`, spec 039 sect.7); otherwise the axis is omitted.
 #' @return The long ranking data.frame, or `NULL`.
 #' @noRd
-regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC") {
+regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC",
+                                         lai_max = NULL) {
   if (!inherits(units, "sf") || nrow(units) == 0L) return(NULL)
+  lai <- suppressWarnings(as.numeric(unlist(lai_max)))
+  lai_col <- NULL
+  if (length(lai) == nrow(units) && any(is.finite(lai))) {
+    units$lai_ugf <- lai
+    lai_col <- "lai_ugf"
+  }
   out <- tryCatch(
-    nemeton::regen_rank_species(units, top_n = top_n, region = region),
+    nemeton::regen_rank_species(units, top_n = top_n, region = region,
+                                lai_col = lai_col),
     error = function(e) {
       cli::cli_warn("Species ranking skipped: {conditionMessage(e)}")
       NULL
