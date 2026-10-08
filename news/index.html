@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.2.0" id="nemetonshiny-120-2026-10-08">nemetonshiny 1.2.0 (2026-10-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-120-2026-10-08"></a></h2>
+<p>Restes des briefs cœur → app (audit du 2026-10-07).</p>
+<ul><li>
+<strong>Badge canopée</strong> (brief 033) : la provenance passe par <code><a href="https://pobsteta.github.io/nemeton/reference/canopy_provenance.html" class="external-link">nemeton::canopy_provenance()</a></code> ; troisième état « CHM ML (Open-Canopy) ». Les clés internes deviennent celles du cœur (<code>lidar_hd</code>, <code>prosail_s2</code>, <code>opencanopy</code>).</li>
+<li>
+<strong>Desserte, pistes OSM hors BD TOPO</strong> (brief desserte-visualisation) : le calque montre enfin le gisement, <code>osm_hors_corridor</code> rendu par <code><a href="https://pobsteta.github.io/foretaccess/reference/comparer_desserte_osm.html" class="external-link">foretaccess::comparer_desserte_osm()</a></code>, et non plus l’acquisition brute.</li>
+<li>
+<strong>Étapes E-OBS</strong> (brief 034 §2.1) : requête CDS, décompression, lecture, réduction s’affichent sous le bouton « Auto (E-OBS) ».</li>
+<li>
+<strong>Forçage BILJOU</strong> (brief 027 biljou) : la notification du moteur nomme l’unité SAFRAN ou l’unité × année ERA5 en cours.</li>
+<li>
+<strong>Licence E-OBS</strong> (brief 027 brancheA §5) : attribution ECA&amp;D / Copernicus et licence non commerciale sous la carte de contexte.</li>
+<li>
+<strong>A5</strong> (brief 032 a5-diagnostic) : cause nommée <code>skipped_no_reference</code>.</li>
+<li>
+<strong>Carte reGénération, deux couches</strong> : « ΔT°max × ΔVPD » (brief 027 onglet §4.3), carte bivariée 3 × 3 en terciles des UGF du projet, et « Meilleure essence » (spec 039 §7), l’essence classée première par <code><a href="https://pobsteta.github.io/nemeton/reference/regen_rank_species.html" class="external-link">nemeton::regen_rank_species()</a></code>.</li>
+<li>
+<strong>Typage de desserte, voie IFN</strong> (brief 040) : choix « taux saisi / référentiel IFN (par essence) ». L’essence vient de la BD Forêt du projet, la SER de <code>ensure_ugf_ser()</code> ; en NDP 0, P1 vide est comblé par <code><a href="https://pobsteta.github.io/nemeton/reference/completer_volume_ifn.html" class="external-link">nemeton::completer_volume_ifn()</a></code>. Le résultat affiche l’échelon du taux (SER, GRECO ou national), la part du volume issue de la référence IFN et le nombre d’essences non reconnues. Mesuré sur Couchey : 13 parcelles sur 23 comblées, taux régional SER C20, moins d’une seconde.</li>
+<li>
+<strong>Familles d’indicateurs</strong> (brief indicator-families, points 2, 3 et 5) : le menu des 12 familles est construit par boucle sur <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> ; <code>FAMILLE_NMT_MAP</code> (tiré par <code>getFromNamespace</code>) disparaît au profit de <code>get_famille_code()</code> ; l’ordre des familles de l’export PDF et des objectifs du plan d’actions vient du cœur ; code mort retiré dans <code>mod_synthesis.R</code>. Les clés i18n <code>famille_*</code> restent un repli, écrasé à l’exécution par le cœur et vérifié par un test.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.1.0" id="nemetonshiny-110-2026-10-07">nemetonshiny 1.1.0 (2026-10-07)<a class="anchor" aria-label="anchor" href="#nemetonshiny-110-2026-10-07"></a></h2>
 <ul><li><p><strong>Onglet Atlas à sous-onglets</strong> : « Sélection » et « Synthèse » deviennent deux sous-onglets de l’onglet principal « Atlas », comme les quatre sous-onglets de « Terrain accessible ». La barre de navigation perd un onglet. Le bouton « Voir les résultats », les liens profonds (<code>?tab=synthesis</code>, et maintenant <code>?tab=atlas</code>), le tour guidé et la carte UGF suivent ; les messages qui renvoient à ces écrans disent « Atlas › Sélection » / « Atlas › Synthèse ». Nouveau <code>R/service_navigation.R</code> (onglet logique ↔︎ onglet parent).</p></li>

@@ -69,8 +69,13 @@ avant d’implémenter une fonctionnalité issue du cœur. Lecture seule sur
 | N | Naturalité | N1 (distance infra), N2 (continuité), N3 (composite) |
 
 Détails et formules : voir `nemeton/CLAUDE.md`. Côté app, les noms de
-famille / indicateurs sont **lus depuis `nemeton::INDICATOR_FAMILIES`**
-— ne pas dupliquer la liste.
+famille / indicateurs sont **lus depuis
+[`nemeton::indicator_families()`](https://pobsteta.github.io/nemeton/reference/indicator_families.html)
+et
+[`nemeton::indicator_labels()`](https://pobsteta.github.io/nemeton/reference/indicator_labels.html)**
+(`INDICATOR_FAMILIES` reste interne au cœur ; l’app en reconstruit une
+forme liste via `.build_indicator_families()`) — ne pas dupliquer la
+liste.
 
 ## Système NDP (Niveau De Précision) — ADR-011
 

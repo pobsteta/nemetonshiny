@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 1.2.0 (2026-10-08)
+
+Restes des briefs cœur → app (audit du 2026-10-07).
+
+- **Badge canopée** (brief 033) : la provenance passe par
+  [`nemeton::canopy_provenance()`](https://pobsteta.github.io/nemeton/reference/canopy_provenance.html)
+  ; troisième état « CHM ML (Open-Canopy) ». Les clés internes
+  deviennent celles du cœur (`lidar_hd`, `prosail_s2`, `opencanopy`).
+- **Desserte, pistes OSM hors BD TOPO** (brief desserte-visualisation) :
+  le calque montre enfin le gisement, `osm_hors_corridor` rendu par
+  [`foretaccess::comparer_desserte_osm()`](https://pobsteta.github.io/foretaccess/reference/comparer_desserte_osm.html),
+  et non plus l’acquisition brute.
+- **Étapes E-OBS** (brief 034 §2.1) : requête CDS, décompression,
+  lecture, réduction s’affichent sous le bouton « Auto (E-OBS) ».
+- **Forçage BILJOU** (brief 027 biljou) : la notification du moteur
+  nomme l’unité SAFRAN ou l’unité × année ERA5 en cours.
+- **Licence E-OBS** (brief 027 brancheA §5) : attribution ECA&D /
+  Copernicus et licence non commerciale sous la carte de contexte.
+- **A5** (brief 032 a5-diagnostic) : cause nommée
+  `skipped_no_reference`.
+- **Carte reGénération, deux couches** : « ΔT°max × ΔVPD » (brief 027
+  onglet §4.3), carte bivariée 3 × 3 en terciles des UGF du projet, et «
+  Meilleure essence » (spec 039 §7), l’essence classée première par
+  [`nemeton::regen_rank_species()`](https://pobsteta.github.io/nemeton/reference/regen_rank_species.html).
+- **Typage de desserte, voie IFN** (brief 040) : choix « taux saisi /
+  référentiel IFN (par essence) ». L’essence vient de la BD Forêt du
+  projet, la SER de `ensure_ugf_ser()` ; en NDP 0, P1 vide est comblé
+  par
+  [`nemeton::completer_volume_ifn()`](https://pobsteta.github.io/nemeton/reference/completer_volume_ifn.html).
+  Le résultat affiche l’échelon du taux (SER, GRECO ou national), la
+  part du volume issue de la référence IFN et le nombre d’essences non
+  reconnues. Mesuré sur Couchey : 13 parcelles sur 23 comblées, taux
+  régional SER C20, moins d’une seconde.
+- **Familles d’indicateurs** (brief indicator-families, points 2, 3
+  et 5) : le menu des 12 familles est construit par boucle sur
+  [`nemeton::indicator_families()`](https://pobsteta.github.io/nemeton/reference/indicator_families.html)
+  ; `FAMILLE_NMT_MAP` (tiré par `getFromNamespace`) disparaît au profit
+  de `get_famille_code()` ; l’ordre des familles de l’export PDF et des
+  objectifs du plan d’actions vient du cœur ; code mort retiré dans
+  `mod_synthesis.R`. Les clés i18n `famille_*` restent un repli, écrasé
+  à l’exécution par le cœur et vérifié par un test.
+
 ## nemetonshiny 1.1.0 (2026-10-07)
 
 - **Onglet Atlas à sous-onglets** : « Sélection » et « Synthèse »

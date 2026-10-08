@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -112,7 +112,7 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 </tr><tr><td>N</td>
 <td>Naturalité</td>
 <td>N1 (distance infra), N2 (continuité), N3 (composite)</td>
-</tr></tbody></table><p>Détails et formules : voir <code>nemeton/CLAUDE.md</code>. Côté app, les noms de famille / indicateurs sont <strong>lus depuis <code>nemeton::INDICATOR_FAMILIES</code></strong> — ne pas dupliquer la liste.</p>
+</tr></tbody></table><p>Détails et formules : voir <code>nemeton/CLAUDE.md</code>. Côté app, les noms de famille / indicateurs sont <strong>lus depuis <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_families.html" class="external-link">nemeton::indicator_families()</a></code> et <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_labels.html" class="external-link">nemeton::indicator_labels()</a></code></strong> (<code>INDICATOR_FAMILIES</code> reste interne au cœur ; l’app en reconstruit une forme liste via <code>.build_indicator_families()</code>) — ne pas dupliquer la liste.</p>
 </div>
 <div class="section level2">
 <h2 id="système-ndp-niveau-de-précision--adr-011">Système NDP (Niveau De Précision) — ADR-011<a class="anchor" aria-label="anchor" href="#syst%C3%A8me-ndp-niveau-de-pr%C3%A9cision--adr-011"></a></h2>

@@ -12,6 +12,36 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[1.2.0\] - 2026-10-08
+
+### Added
+
+- Network typing (Desserte): IFN reference route (rate per species, SER
+  from `ensure_ugf_ser()`, species from the project’s BD Forêt); in NDP
+  0, empty P1 is completed by
+  [`nemeton::completer_volume_ifn()`](https://pobsteta.github.io/nemeton/reference/completer_volume_ifn.html).
+  The result shows the rate level, the IFN share of the volume and
+  unresolved species (brief 040).
+- reGénération map: « ΔT°max × ΔVPD » bivariate layer and « Meilleure
+  essence » layer (briefs 027 §4.3, 039 §7).
+- E-OBS acquisition steps under the « Auto (E-OBS) » button; BILJOU
+  forcing progress (SAFRAN unit, ERA5 unit × year) in the engine
+  notification.
+- E-OBS attribution and non-commercial licence under the context map.
+- Canopy badge third state, Open-Canopy ML CHM; A5
+  `skipped_no_reference` cause.
+
+### Changed
+
+- Canopy provenance goes through
+  [`nemeton::canopy_provenance()`](https://pobsteta.github.io/nemeton/reference/canopy_provenance.html)
+  (keys `lidar_hd`, `prosail_s2`, `opencanopy`).
+- The OSM layer of the Desserte map shows the tracks outside the BD TOPO
+  corridor (`osm_hors_corridor`, foretaccess ≥ 2.4.0), not the raw
+  acquisition.
+- Family menu, family order (PDF export, action-plan objectives) and
+  family code lookup read from the core; `FAMILLE_NMT_MAP` removed.
+
 ## \[1.1.0\] - 2026-10-07
 
 ### Changed
