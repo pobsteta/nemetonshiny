@@ -312,7 +312,9 @@ test_that("l'import CSV croise, rattache, et ne purge RIEN", {
   appel <- paste(bloc[i_lance:(i_lance + 2L)], collapse = " ")
   expect_true(grepl('selection = "toutes"', appel, fixed = TRUE))
   expect_true(grepl('origine = "csv"', appel, fixed = TRUE))
-  expect_false(any(grepl("$purger", bloc, fixed = TRUE)))
+  # Aucun reglage de purge lu entre l'import et le lancement (la fenetre de 220
+  # lignes deborde sur le rappel des parametres, qui lit `cfg$purger`).
+  expect_false(any(grepl("$purger", bloc[seq_len(i_lance)], fixed = TRUE)))
 })
 
 test_that("la purge reste offerte au bouton ONF, et a lui seul", {
