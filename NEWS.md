@@ -1,4 +1,4 @@
-# nemetonshiny 1.1.0.9001 (développement)
+# nemetonshiny 1.2.0 (2026-10-08)
 
 Restes des briefs cœur → app (audit du 2026-10-07).
 
