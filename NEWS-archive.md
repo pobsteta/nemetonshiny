@@ -16303,8 +16303,7 @@ The Monitoring tab is now a two-mode forest health workstation.
 
 - **`R/mod_field_ingest.R`** — new “Ingestion terrain” tab that closes
   the terrain → plateforme loop. A field agent drops the GeoPackage
-  returned by QField; the module runs
-  [`nemeton::import_qfield_gpkg()`](https://pobsteta.github.io/nemeton/reference/import_qgis_gpkg.html) +
+  returned by QField; the module runs `nemeton::import_qfield_gpkg()` +
   `validate_field_data()`, renders a validation report (counts, errors,
   warnings), and previews the placettes / arbres on the project map.
 - **NDP bump on attach**: clicking *Rattacher au projet* calls

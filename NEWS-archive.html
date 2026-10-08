@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -7847,7 +7847,7 @@ Cohérent avec les libellés <code>download_pdf</code> (rapport Synthèse) et <c
 <div class="section level3">
 <h3 id="new-feature--field-ingest-e5b--qfield-return-path">New feature — Field ingest (E5.b — QField return path)<a class="anchor" aria-label="anchor" href="#new-feature--field-ingest-e5b--qfield-return-path"></a></h3>
 <ul><li>
-<strong><code>R/mod_field_ingest.R</code></strong> — new “Ingestion terrain” tab that closes the terrain → plateforme loop. A field agent drops the GeoPackage returned by QField; the module runs <code><a href="https://pobsteta.github.io/nemeton/reference/import_qgis_gpkg.html" class="external-link">nemeton::import_qfield_gpkg()</a></code> + <code>validate_field_data()</code>, renders a validation report (counts, errors, warnings), and previews the placettes / arbres on the project map.</li>
+<strong><code>R/mod_field_ingest.R</code></strong> — new “Ingestion terrain” tab that closes the terrain → plateforme loop. A field agent drops the GeoPackage returned by QField; the module runs <code>nemeton::import_qfield_gpkg()</code> + <code>validate_field_data()</code>, renders a validation report (counts, errors, warnings), and previews the placettes / arbres on the project map.</li>
 <li>
 <strong>NDP bump on attach</strong>: clicking <em>Rattacher au projet</em> calls <code>aggregate_plot_metrics()</code> + <code>attach_field_data_to_units()</code> on the project’s UGF sf, tags it via <code>tag_field_data_sources()</code>, runs <code>detect_ndp()</code> along the alternative field path (NDP 2 with plots only, NDP 3 from 10 trees/plot on average), persists the GPKG to <code>&lt;project&gt;/data/field_data.gpkg</code> and updates project metadata so the bumped NDP is picked up by every downstream module (synthesis badge, family tabs). Before/after NDP badges make the change visible to the user.</li>
 <li>
