@@ -1,3 +1,39 @@
+# nemetonshiny 1.3.0 (2026-10-08)
+
+- **Croisement ONF, chemin unique** (spec 058, briefs `ugf-depuis-onf`,
+  `onf-nouveau-chemin-seul`, `onf-chemin-unique-api-coeur`) : le bouton
+  « Croiser avec l'ONF » et l'import CSV ne passent plus que par
+  `nemeton::construire_ugf_onf()`. Le parcellaire ONF est recalé sur le
+  cadastre (calage élastique), qui n'est jamais déformé. Un seul appel couvre
+  tout le projet, communes voisines comprises. L'ancienne chaîne (calage
+  « parcelle entière au-delà de 90 % », purge sur la part forestière,
+  `seuil_foret`) est retirée. Le croisement tourne en tâche asynchrone, car le
+  premier appel télécharge le fichier DGFiP (376 Mo).
+- **Parcelles hors régime forestier** : avec la purge cochée, les parcelles
+  privées, trop peu couvertes par l'ONF ou hors parcellaire ONF quittent le
+  projet. La notification les liste avec leur raison et leur propriétaire
+  DGFiP. L'import CSV garde toujours toutes ses parcelles.
+- **Paramètres ONF** : couverture minimale, et en réglages avancés repliés la
+  tolérance d'accrochage, la largeur et la surface minimales d'une UGF hors
+  ONF et le seuil de rattachement, avec un bouton « Valeurs par défaut ». Les
+  bornes sont contrôlées. Un ancien `metadata.json` qui contient
+  `seuil_foret` se relit sans erreur.
+- **N° ONF dans les UGF** : colonnes `onf_foret_id`, `onf_foret_nom`,
+  `onf_parcelle`, `onf_domaniale` et `onf_part`. Elles sont conservées par
+  l'import, la fusion (si même parcelle forestière) et la division, et
+  affichées dans le tableau, la popup et l'export GeoPackage. Un `ugs.json`
+  antérieur se lit sans erreur.
+- **Outils MCP** `appliquer_ugf` et `croiser_onf` : refus si un calcul tourne
+  ou si le projet est verrouillé. `appliquer_ugf` refuse aussi un IDU inconnu
+  et un pavage inexact, sans modifier le projet. Le retour indique enfin que
+  les indicateurs sont périmés : `save_ug_data()` les avait déjà mis de côté,
+  et le second contrôle répondait « non ».
+- **reGénération** : l'axe ombre du classement des essences s'active avec le
+  LAI réellement utilisé par UGF (spec 039). Sans clé CDS, le `lai_max` de
+  BILJOU est tiré du nuage LiDAR et mis en cache (brief lai-lidar).
+- **R5** : un test verrouille le sens de l'inversion du score.
+- Plancher `Imports: nemeton (>= 1.2.0)`.
+
 # nemetonshiny 1.2.2 (2026-10-08)
 
 - **reGénération, onglets en tête** : « Carte + Tableau » et « Contexte

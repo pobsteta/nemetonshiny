@@ -843,25 +843,68 @@ mod_sources_config_server <- function(id, app_state) {
                 i18n$t("onf_domanialite_autre"))),
             selected = cfg$domanialite),
           htmltools::div(
-            shiny::checkboxInput(ns("onf_purge_cfg"),
-                                 i18n$t("onf_purge_hors"),
-                                 value = isTRUE(cfg$purger)),
-            info_popover_in_label(i18n$t("onf_purge_hors_tip")),
-            shiny::numericInput(
-              ns("onf_seuil_cfg"),
-              label = htmltools::tagList(
-                i18n$t("onf_seuil_foret"),
-                info_popover_in_label(i18n$t("onf_seuil_foret_tip"))),
-              value = round(100 * cfg$seuil_foret), min = 0, max = 100, step = 1)),
+            shiny::checkboxInput(
+              ns("onf_purge_cfg"),
+              htmltools::tagList(i18n$t("onf_purge_hors"),
+                                 info_popover_in_label(i18n$t("onf_purge_hors_tip"))),
+              value = isTRUE(cfg$purger)),
+            # La couverture minimale n'a de sens que si la purge est cochee.
+            shiny::conditionalPanel(
+              condition = "input.onf_purge_cfg",
+              ns = ns,
+              shiny::sliderInput(
+                ns("onf_couverture_cfg"),
+                label = i18n$t("onf_seuil_couverture"),
+                value = round(100 * cfg$seuil_couverture),
+                min = 10, max = 100, step = 5, post = " %"))),
           htmltools::div(
             shiny::checkboxInput(ns("onf_clip_cfg"),
                                  i18n$t("onf_clip_cadastre"),
                                  value = isTRUE(cfg$clip_cadastre)),
             info_popover_in_label(i18n$t("onf_clip_cadastre_tip")))
         ),
+        # Reglages avances, replies : ceux du decoupage, qu'on ne touche
+        # qu'en connaissance de cause.
+        htmltools::tags$details(
+          class = "mb-2",
+          open = if (onf_params_avances_modifies(cfg)) NA else NULL,
+          htmltools::tags$summary(class = "small fw-semibold",
+                                  i18n$t("onf_reglages_avances")),
+          bslib::layout_columns(
+            col_widths = c(3, 3, 3, 3),
+            shiny::numericInput(
+              ns("onf_tol_cfg"),
+              label = htmltools::tagList(i18n$t("onf_tol"),
+                                         info_popover_in_label(i18n$t("onf_tol_tip"))),
+              value = cfg$tol, min = 0, max = 50, step = 1),
+            shiny::numericInput(
+              ns("onf_larg_hors_cfg"), label = i18n$t("onf_larg_hors"),
+              value = cfg$larg_hors, min = 10, max = 200, step = 5),
+            shiny::numericInput(
+              ns("onf_seuil_cfg"),
+              label = htmltools::tagList(i18n$t("onf_seuil"),
+                                         info_popover_in_label(i18n$t("onf_seuil_tip"))),
+              value = cfg$seuil, min = 0, max = 5, step = 0.1),
+            shiny::numericInput(
+              ns("onf_seuil_hors_cfg"), label = i18n$t("onf_seuil_hors"),
+              value = cfg$seuil_hors, min = 0, max = 10, step = 0.1)
+          ),
+          shiny::actionButton(ns("onf_defaut"), i18n$t("onf_params_defaut"),
+                              class = "btn-outline-secondary btn-sm")
+        ),
         shiny::actionButton(ns("onf_save"), i18n$t("onf_params_save"),
                             class = "btn-primary btn-sm")
       )
+    })
+
+    # Valeurs par defaut des reglages avances : remises dans le formulaire,
+    # enregistrees au clic sur " Enregistrer " comme le reste.
+    shiny::observeEvent(input$onf_defaut, {
+      d <- ONF_PARAMS_DEFAULT
+      shiny::updateNumericInput(session, "onf_tol_cfg", value = d$tol)
+      shiny::updateNumericInput(session, "onf_larg_hors_cfg", value = d$larg_hors)
+      shiny::updateNumericInput(session, "onf_seuil_cfg", value = d$seuil)
+      shiny::updateNumericInput(session, "onf_seuil_hors_cfg", value = d$seuil_hors)
     })
 
     shiny::observeEvent(input$onf_save, {
@@ -873,16 +916,19 @@ mod_sources_config_server <- function(id, app_state) {
         return()
       }
       tryCatch({
-        # Le seuil se saisit en POUR CENT et se range en part : l'utilisateur
-        # pense " 10 % ", le coeur compare des parts.
-        seuil <- suppressWarnings(as.numeric(input$onf_seuil_cfg))
-        if (length(seuil) != 1L || is.na(seuil)) seuil <- 0
+        # La couverture se saisit en POUR CENT et se range en part. Les bornes
+        # sont controlees par project_onf_params() : hors bornes = defaut.
+        couv <- suppressWarnings(as.numeric(input$onf_couverture_cfg))
         set_project_onf_params(
           pid,
-          domanialite   = input$onf_domanialite_cfg,
-          purger        = isTRUE(input$onf_purge_cfg),
-          seuil_foret   = max(0, min(1, seuil / 100)),
-          clip_cadastre = isTRUE(input$onf_clip_cfg))
+          domanialite      = input$onf_domanialite_cfg,
+          purger           = isTRUE(input$onf_purge_cfg),
+          seuil_couverture = if (length(couv) == 1L) couv / 100 else NULL,
+          clip_cadastre    = isTRUE(input$onf_clip_cfg),
+          tol              = input$onf_tol_cfg,
+          larg_hors        = input$onf_larg_hors_cfg,
+          seuil            = input$onf_seuil_cfg,
+          seuil_hors       = input$onf_seuil_hors_cfg)
         .refresh_project(pid, "onf")
         shiny::showNotification(i18n$t("onf_params_saved"), type = "message")
       }, error = function(e) {

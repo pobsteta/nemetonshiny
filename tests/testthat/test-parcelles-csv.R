@@ -305,13 +305,16 @@ test_that("l'import CSV croise, rattache, et ne purge RIEN", {
   bloc <- code[i_csv:min(length(code), i_csv + 220)]
   bloc <- bloc[!grepl("^\\s*#", bloc)]
 
-  expect_true(any(grepl("onf_projet_croise", bloc, fixed = TRUE)))
-  # AUCUNE purge sur ce chemin, et aucun reglage de purge lu.
-  expect_false(any(grepl("onf_purger_hors_foret", bloc, fixed = TRUE)))
-  expect_false(any(grepl("cfg_csv$purger", bloc, fixed = TRUE)))
-  expect_false(any(grepl("cfg_csv$seuil_foret", bloc, fixed = TRUE)))
-  # Rien n'etant supprime, il n'y a plus de parcelles a reecrire.
-  expect_true(any(grepl("with_parcels = FALSE", bloc, fixed = TRUE)))
+  # Meme tache asynchrone que le bouton, mais selection " toutes " forcee :
+  # le reglage `purger` du projet n'est pas lu sur ce chemin.
+  i_lance <- grep(".onf_lancer(", bloc, fixed = TRUE)
+  expect_length(i_lance, 1L)
+  appel <- paste(bloc[i_lance:(i_lance + 2L)], collapse = " ")
+  expect_true(grepl('selection = "toutes"', appel, fixed = TRUE))
+  expect_true(grepl('origine = "csv"', appel, fixed = TRUE))
+  # Aucun reglage de purge lu entre l'import et le lancement (la fenetre de 220
+  # lignes deborde sur le rappel des parametres, qui lit `cfg$purger`).
+  expect_false(any(grepl("$purger", bloc[seq_len(i_lance)], fixed = TRUE)))
 })
 
 test_that("la purge reste offerte au bouton ONF, et a lui seul", {
@@ -321,5 +324,9 @@ test_that("la purge reste offerte au bouton ONF, et a lui seul", {
   testthat::skip_if_not(file.exists(f), "sources R absentes")
   code <- readLines(f, warn = FALSE)
   code <- code[!grepl("^\\s*#", code)]
-  expect_equal(sum(grepl("onf_purger_hors_foret\\(", code)), 1L)
+  # Le bouton lance avec `selection = NULL` : le reglage `purger` du projet
+  # decide (" foret " ou " toutes ").
+  i_btn <- grep('origine = "bouton"', code, fixed = TRUE)
+  expect_length(i_btn, 1L)
+  expect_true(grepl("selection = NULL", code[i_btn], fixed = TRUE))
 })

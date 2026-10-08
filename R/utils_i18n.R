@@ -3239,15 +3239,8 @@ TRANSLATIONS <- list(
   # parcelles concernees. Le dire, sinon l'utilisateur cherche une etape qui
   # n'existe pas (la note du bas de sidebar, elle, parle de l'autre bouton).
   onf_auto_select_note = list(
-    fr = paste0(
-      "Aucune s\u00e9lection pr\u00e9alable n'est n\u00e9cessaire : le calcul ",
-      "retient lui-m\u00eame les parcelles cadastrales du projet qui touchent ",
-      "le parcellaire forestier retenu."
-    ),
-    en = paste0(
-      "No prior selection is needed: the computation itself retains the ",
-      "project's cadastral parcels that meet the retained forest parcels."
-    )
+    fr = "Aucune s\u00e9lection pr\u00e9alable n'est n\u00e9cessaire : le calcul part des parcelles cadastrales du projet et du parcellaire forestier ONF. Il ne cr\u00e9e jamais de parcelle.",
+    en = "No prior selection is needed: the computation starts from the project's cadastral parcels and the ONF forest parcels. It never adds a parcel."
   ),
   # Purge optionnelle, DECOCHEE par defaut : elle retire des parcelles du projet,
   # ce qui oblige a repasser par Selection pour les recuperer.
@@ -3259,21 +3252,13 @@ TRANSLATIONS <- list(
     fr = "Ces r\u00e9glages se posent une fois par massif. Le croisement lui-m\u00eame reste dans Carte UGF.",
     en = "These settings are made once per massif. The crossing itself stays in the UGF map."
   ),
-  onf_seuil_foret = list(
-    fr = "Supprimer les parcelles dont la part foresti\u00e8re est inf\u00e9rieure ou \u00e9gale \u00e0 (%)",
-    en = "Drop parcels whose forest share is at or below (%)"
-  ),
-  onf_seuil_foret_tip = list(
-    fr = "\u00c0 0 %, seules partent les parcelles que la for\u00eat publique ne touche pas du tout. Au-dessus, une parcelle for\u00eati\u00e8re \u00e0 3 % est un effet de bord de num\u00e9risation, pas un peuplement \u00e0 g\u00e9rer.",
-    en = "At 0 %, only parcels the public forest does not touch at all are dropped. Above that, a parcel 3 % forested is a digitising edge effect, not a stand to manage."
-  ),
   onf_clip_cadastre = list(
-    fr = "\u00c9carter le parcellaire ONF hors des parcelles cadastrales",
-    en = "Discard ONF forest outside the cadastral parcels"
+    fr = "Masquer le parcellaire ONF hors des parcelles cadastrales (aper\u00e7u et export)",
+    en = "Hide the ONF forest parcels outside the cadastral parcels (preview and export)"
   ),
   onf_clip_cadastre_tip = list(
-    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. La d\u00e9coupe est une vraie intersection \u2014 une parcelle foresti\u00e8re \u00e0 cheval est coup\u00e9e, pas \u00e9cart\u00e9e. Elle ne touche pas aux bouts de parcelle cadastrale hors for\u00eat : c'est la purge, au-dessus, qui les retire.",
-    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. The cut is a real intersection \u2014 a forest parcel straddling the boundary is cut, not dropped. It does not touch the parts of a cadastral parcel outside the forest: that is what the purge above removes."
+    fr = "Le service WFS r\u00e9pond sur une emprise rectangulaire : il rend de la for\u00eat bien au-del\u00e0 des parcelles du projet. Ce r\u00e9glage ne concerne que l'affichage et l'export : le croisement re\u00e7oit toujours le parcellaire brut, dont il a besoin pour le recaler sur le cadastre.",
+    en = "The WFS answers on a rectangular extent: it returns forest well beyond the project's parcels. This setting only affects the display and the export: the crossing always receives the raw parcels, which it needs to warp onto the cadastre."
   ),
   onf_params_save = list(
     fr = "Enregistrer les param\u00e8tres ONF",
@@ -3288,34 +3273,20 @@ TRANSLATIONS <- list(
     en = "Ownership kept: <strong>%s</strong>"
   ),
   onf_rappel_purge = list(
-    fr = "Purge des parcelles peu foresti\u00e8res : %s (seuil %d %%)",
-    en = "Drop of barely forested parcels: %s (threshold %d %%)"
+    fr = "Retrait des parcelles hors r\u00e9gime forestier : %s (couverture minimale %d %%)",
+    en = "Removal of parcels outside the forest regime: %s (minimum cover %d %%)"
   ),
   onf_rappel_ou = list(
     fr = "\u00c0 changer dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
     en = "Change them in Settings \u203a Sources & parameters."
   ),
   onf_purge_hors = list(
-    fr = "Supprimer les parcelles hors for\u00eat publique (< 10 %)",
-    en = "Remove parcels outside public forest (< 10 %)"
+    fr = "Retirer les parcelles hors r\u00e9gime forestier (priv\u00e9es, ou trop peu couvertes par l'ONF)",
+    en = "Remove parcels outside the forest regime (private, or too little covered by the ONF layer)"
   ),
   onf_purge_hors_tip = list(
-    fr = paste0(
-      "Retire du projet les parcelles cadastrales que la for\u00eat publique ",
-      "ne couvre pas, ou couvre \u00e0 moins de 10 % \u2014 parcelles ET ",
-      "t\u00e8nements. Une parcelle foresti\u00e8re \u00e0 10 % ou plus est ",
-      "conserv\u00e9e ENTI\u00c8RE, avec sa part hors for\u00eat : la ",
-      "supprimer seule trouerait une parcelle que vous poss\u00e9dez. Pour ",
-      "r\u00e9cup\u00e9rer les parcelles retir\u00e9es, il faut repasser par ",
-      "l'onglet Atlas \u203a S\u00e9lection."
-    ),
-    en = paste0(
-      "Removes from the project the cadastral parcels the public forest does ",
-      "not cover, or covers by less than 10 % - parcels AND tenements. A ",
-      "parcel forested at 10 % or more is kept WHOLE, non-forest share ",
-      "included: dropping that share alone would punch a hole in a parcel you ",
-      "own. Recovering removed parcels means going back to Atlas \u203a Selection."
-    )
+    fr = "Une parcelle est gard\u00e9e si la DGFiP la donne \u00e0 une personne publique et si le parcellaire ONF, recal\u00e9 sur le cadastre, la couvre au moins au seuil indiqu\u00e9. Les parcelles retir\u00e9es sont list\u00e9es \u00e0 la fin du croisement. C'est une approximation du r\u00e9gime forestier, dont l'arr\u00eat\u00e9 n'est pas publi\u00e9 parcelle par parcelle.",
+    en = "A parcel is kept when the DGFiP file gives it to a public owner and the ONF layer, warped onto the cadastre, covers it at least at the given threshold. Removed parcels are listed at the end of the crossing. This approximates the forest regime, whose decree is not published parcel by parcel."
   ),
   # Une parcelle cadastrale que le parcellaire ONF ne numerote pas garde son
   # UGF : elle est dans le CSV, donc dans la foret. Elle est nommee par la
@@ -3324,33 +3295,9 @@ TRANSLATIONS <- list(
     fr = "Parcelle cadastrale %s",
     en = "Cadastral parcel %s"
   ),
-  onf_purge_hors_fmt = list(
-    fr = "%d parcelle(s) \u00e0 %s %% ou moins de for\u00eat publique retir\u00e9e(s) du projet.",
-    en = "%d parcel(s) at %s %% or less public forest removed from the project."
-  ),
-  # Pourquoi une ligne " Hors foret publique " subsiste malgre la purge : les
-  # parcelles MI-forestieres gardent leur part hors foret. Sans cette phrase,
-  # l'utilisateur croit la suppression incomplete.
-  onf_purge_partielles_fmt = list(
-    fr = paste0(
-      "%d parcelle(s) rest(e/ent) partiellement foresti\u00e8re(s) : leur ",
-      "part hors for\u00eat est conserv\u00e9e, sinon la parcelle serait ",
-      "trou\u00e9e. C'est ce qui maintient l'UGF \u00ab Hors for\u00eat ",
-      "publique \u00bb."
-    ),
-    en = paste0(
-      "%d parcel(s) remain partly forested: their non-forest share is kept, ",
-      "otherwise the parcel would be punched through. That is what keeps the ",
-      "\"Outside public forest\" UGF alive."
-    )
-  ),
-  onf_purge_hors_aucune_fmt = list(
-    fr = "Aucune parcelle \u00e0 %s %% ou moins de for\u00eat publique \u00e0 retirer.",
-    en = "No parcel at %s %% or less public forest to remove."
-  ),
   onf_auto_select_fmt = list(
-    fr = "%d parcelle(s) cadastrale(s) sur %d touchent la for\u00eat publique retenue.",
-    en = "%d of %d cadastral parcels meet the retained public forest."
+    fr = "%d parcelle(s) cadastrale(s) sur %d gard\u00e9e(s) dans le projet.",
+    en = "%d of %d cadastral parcels kept in the project."
   ),
   onf_domanialite_domaniale = list(fr = "Domaniales", en = "State-owned"),
   onf_domanialite_autre = list(
@@ -3373,16 +3320,8 @@ TRANSLATIONS <- list(
   # systematique depuis v0.130.1.9001. Reste a le DIRE, sans quoi une UGF dont
   # le bord suit le cadastre plutot que le trace ONF serait incomprehensible.
   onf_caler_note = list(
-    fr = paste0(
-      "Les UGF sont cal\u00e9es sur les limites cadastrales : une parcelle ",
-      "couverte \u00e0 90 % ou plus par une UGF lui revient enti\u00e8rement. ",
-      "Les limites foresti\u00e8res ONF sont approximatives au bord."
-    ),
-    en = paste0(
-      "UGF are snapped onto cadastral boundaries: a parcel covered 90 % or ",
-      "more by one UGF is given to it whole. ONF forest boundaries are ",
-      "approximate at the edge."
-    )
+    fr = "Le parcellaire ONF est recal\u00e9 sur les limites cadastrales (le cadastre n'est jamais d\u00e9form\u00e9), puis chaque parcelle cadastrale est d\u00e9coup\u00e9e selon les parcelles foresti\u00e8res. Les lani\u00e8res de moins de %s m et les morceaux de moins de %s ha rejoignent l'UGF voisine.",
+    en = "The ONF forest parcels are warped onto the cadastral boundaries (the cadastre is never distorted), then each cadastral parcel is cut along the forest parcels. Strips narrower than %s m and pieces under %s ha join the neighbouring UGF."
   ),
   onf_need_aoi = list(
     fr = "Ouvrez un projet avec des parcelles pour d\u00e9finir l'emprise.",
@@ -3405,15 +3344,8 @@ TRANSLATIONS <- list(
     en = "No overlap between the ONF parcels and your parcels."
   ),
   onf_running = list(
-    fr = "Interrogation du parcellaire ONF",
-    en = "Querying the ONF forest parcels"
-  ),
-  # Les tenements que ne couvre aucune parcelle forestiere. Ils EXISTENT (ils
-  # portent le pavage exact des parcelles cadastrales) et doivent donc porter
-  # une UGF : sans libelle, ce seraient des tenements sans UGF.
-  onf_hors_ugf_label = list(
-    fr = "Hors for\u00eat publique",
-    en = "Outside public forest"
+    fr = "Croisement avec le parcellaire ONF (environ 15 s par commune ; le premier appel t\u00e9l\u00e9charge le fichier DGFiP, 376 Mo)",
+    en = "Crossing with the ONF forest parcels (about 15 s per commune; the first call downloads the DGFiP file, 376 MB)"
   ),
   onf_croise_success_fmt = list(
     fr = "%d UGF cr\u00e9\u00e9es \u00e0 partir de %d parcelles cadastrales.",
@@ -3423,24 +3355,96 @@ TRANSLATIONS <- list(
     fr = "%d UGF \u00e0 cheval sur plusieurs de vos parcelles.",
     en = "%d UGF straddle several of your parcels."
   ),
-  onf_croise_partielle_fmt = list(
-    fr = "%d parcelle(s) foresti\u00e8re(s) d\u00e9tenue(s) en partie seulement.",
-    en = "%d forest parcel(s) only partly held."
-  ),
-  # Le message ne dit plus " hors foret " - depuis le rattachement, rien ne
-  # l'est : il dit ce que le rattachement A FAIT. Taire ce chiffre laisserait
-  # croire que le parcellaire couvrait tout.
-  onf_croise_rattache_fmt = list(
-    fr = paste0(
-      "%.1f ha non num\u00e9rot\u00e9s par le parcellaire ONF ont rejoint ",
-      "les parcelles foresti\u00e8res voisines."
-    ),
-    en = paste0(
-      "%.1f ha unnumbered by the ONF layer joined the neighbouring forest ",
-      "parcels."
-    )
-  ),
   # Le premier bouton REMPLACE les parcelles du projet : le dire avant, pas apres.
+  # Reglages du croisement par construire_ugf_onf() (brief 2026-10-08
+  # onf-nouveau-chemin-seul, sect. 4).
+  onf_seuil_couverture = list(
+    fr = "Couverture ONF minimale d'une parcelle (%)",
+    en = "Minimum ONF cover of a parcel (%)"
+  ),
+  onf_reglages_avances = list(
+    fr = "R\u00e9glages avanc\u00e9s",
+    en = "Advanced settings"
+  ),
+  onf_tol = list(
+    fr = "Tol\u00e9rance d'accrochage aux limites cadastrales (m)",
+    en = "Snapping tolerance to cadastral boundaries (m)"
+  ),
+  onf_tol_tip = list(
+    fr = "Les limites ONF \u00e0 moins de cette distance d'une limite cadastrale sont ramen\u00e9es sur celle-ci, ce qui \u00e9vite les lani\u00e8res.",
+    en = "ONF boundaries closer than this to a cadastral boundary are pulled onto it, which avoids slivers."
+  ),
+  onf_larg_hors = list(
+    fr = "Largeur minimale d'une UGF hors ONF (m)",
+    en = "Minimum width of a UGF outside the ONF parcels (m)"
+  ),
+  onf_seuil = list(
+    fr = "Surface sous laquelle un morceau ou une UGF est rattach\u00e9 \u00e0 sa voisine (ha)",
+    en = "Area under which a piece or a UGF joins its neighbour (ha)"
+  ),
+  onf_seuil_tip = list(
+    fr = "Un morceau plus petit rejoint l'UGF voisine. C'est celle qui partage avec lui la plus longue limite, ou la seule UGF voisine.",
+    en = "A smaller piece joins the neighbouring UGF: the one sharing the longest boundary with it, or the only neighbouring UGF."
+  ),
+  onf_seuil_hors = list(
+    fr = "Surface minimale d'une UGF hors ONF (ha)",
+    en = "Minimum area of a UGF outside the ONF parcels (ha)"
+  ),
+  onf_params_defaut = list(
+    fr = "Valeurs par d\u00e9faut",
+    en = "Default values"
+  ),
+  onf_rappel_avances = list(
+    fr = "R\u00e9glages avanc\u00e9s modifi\u00e9s.",
+    en = "Advanced settings changed."
+  ),
+  # Parcelles retirees par la selection " foret " : listees avec leur raison
+  # et leur proprietaire DGFiP, pour pouvoir les reintegrer depuis la carte.
+  onf_ecartees_fmt = list(
+    fr = "%d parcelle(s) retir\u00e9e(s) du projet : %s. Pour en r\u00e9int\u00e9grer, les res\u00e9lectionner dans Atlas \u203a S\u00e9lection.",
+    en = "%d parcel(s) removed from the project: %s. To take some back, select them again in Atlas \u203a Selection."
+  ),
+  onf_raison_privee = list(
+    fr = "priv\u00e9e",
+    en = "private"
+  ),
+  onf_raison_couverture = list(
+    fr = "couverture ONF %d %%",
+    en = "ONF cover %d %%"
+  ),
+  onf_raison_hors_onf = list(
+    fr = "hors parcellaire ONF",
+    en = "outside the ONF parcels"
+  ),
+  onf_croise_cad_fmt = list(
+    fr = "%d UGF hors parcellaire ONF (bloc d'au moins 1 ha hors r\u00e9gime forestier).",
+    en = "%d UGF outside the ONF parcels (block of at least 1 ha outside the forest regime)."
+  ),
+  onf_calage_fmt = list(
+    fr = "Calage du parcellaire ONF sur le cadastre : \u00e9cart m\u00e9dian %.1f m.",
+    en = "ONF parcels warped onto the cadastre: median gap %.1f m."
+  ),
+  onf_projet_change = list(
+    fr = "Le projet a chang\u00e9 pendant le croisement ONF : r\u00e9sultat ignor\u00e9.",
+    en = "The project changed during the ONF crossing: result discarded."
+  ),
+  # Colonnes ONF des UGF (tableau, fiche, infobulle de la carte).
+  ug_col_onf_foret = list(
+    fr = "For\u00eat ONF",
+    en = "ONF forest"
+  ),
+  ug_col_onf_parcelle = list(
+    fr = "Parcelle ONF",
+    en = "ONF parcel"
+  ),
+  ug_onf_popup_fmt = list(
+    fr = "Parcelle ONF %s \u2014 %s",
+    en = "ONF parcel %s \u2014 %s"
+  ),
+  ug_onf_part_fmt = list(
+    fr = "couverte \u00e0 %d %% par la parcelle ONF recal\u00e9e",
+    en = "%d %% covered by the warped ONF parcel"
+  ),
   onf_source_note = list(
     fr = "Parcellaire forestier : ONF (diffusion publique).",
     en = "Forest parcels: ONF (public distribution)."

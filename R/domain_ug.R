@@ -120,15 +120,102 @@ new_tenement <- function(id, parent_parcelle_id, geometry, surface_m2) {
 }
 
 
+# ==============================================================================
+# ONF forest-parcel columns (brief 2026-10-08 ugf-depuis-onf, sect. 2)
+# ==============================================================================
+
+#' Optional ONF columns carried by a UGF
+#'
+#' @description
+#' The number of the ONF forest parcel a UGF stands for, kept in columns of its
+#' own and not only in its label, which the user may rename. `NA` for a UGF
+#' that is not an ONF forest parcel (private forest, `cad~` block).
+#'
+#' * `onf_foret_id` (chr), e.g. `F22161I`;
+#' * `onf_foret_nom` (chr);
+#' * `onf_parcelle` (chr): text, there are numbers like `12a`;
+#' * `onf_domaniale` (lgl);
+#' * `onf_part` (num, 0-1): share of the UGF covered by its warped ONF parcel,
+#'   weighted by area - a confidence measure.
+#' @noRd
+UG_ONF_COLS <- c("onf_foret_id", "onf_foret_nom", "onf_parcelle",
+                 "onf_domaniale", "onf_part")
+
+#' Coerce one ONF column to its type
+#'
+#' Reads what `jsonlite` gives back: a list column when the field held `null`
+#' in a row-oriented file, a character vector otherwise.
+#' @noRd
+.ug_onf_coerce <- function(x, col, n) {
+  if (is.null(x)) x <- rep(NA, n)
+  if (is.list(x)) {
+    x <- vapply(x, function(v) {
+      if (is.null(v) || length(v) == 0L) NA_character_ else as.character(v[[1L]])
+    }, character(1))
+  }
+  switch(col,
+    onf_domaniale = suppressWarnings(as.logical(x)),
+    onf_part      = suppressWarnings(as.numeric(x)),
+    as.character(x))
+}
+
+#' Make sure a UGF table carries the ONF columns, typed
+#'
+#' Missing columns are added at `NA`: a `ugs.json` written before them reads
+#' without error. Idempotent.
+#'
+#' @param ugs data.frame of UGF, or `NULL`.
+#' @return The data.frame with the five `UG_ONF_COLS`.
+#' @noRd
+.ug_onf_normaliser <- function(ugs) {
+  if (is.null(ugs) || !is.data.frame(ugs)) return(ugs)
+  n <- nrow(ugs)
+  for (col in UG_ONF_COLS) ugs[[col]] <- .ug_onf_coerce(ugs[[col]], col, n)
+  ugs
+}
+
+#' ONF values of a UGF made of several others
+#'
+#' Kept only when every source UGF names the same forest and the same forest
+#' parcel; otherwise the merged UGF is no ONF parcel and every column is `NA`.
+#' `onf_part` is then the area-weighted mean of the sources.
+#'
+#' @param ugs data.frame, the source UGF rows (normalised).
+#' @param poids Numeric, area of each source UGF (same order).
+#' @return A one-row data.frame with the `UG_ONF_COLS`.
+#' @noRd
+.ug_onf_fusion <- function(ugs, poids = NULL) {
+  vide <- .ug_onf_normaliser(data.frame(row.names = 1L))[1L, UG_ONF_COLS]
+  ugs <- .ug_onf_normaliser(ugs)
+  if (is.null(ugs) || nrow(ugs) == 0L) return(vide)
+  foret <- unique(ugs$onf_foret_id)
+  parc  <- unique(ugs$onf_parcelle)
+  if (length(foret) != 1L || length(parc) != 1L || is.na(foret) || is.na(parc)) {
+    return(vide)
+  }
+  out <- ugs[1L, UG_ONF_COLS, drop = FALSE]
+  part <- ugs$onf_part
+  if (is.null(poids) || length(poids) != length(part)) poids <- rep(1, length(part))
+  ok <- !is.na(part) & !is.na(poids)
+  out$onf_part <- if (any(ok) && sum(poids[ok]) > 0) {
+    sum(part[ok] * poids[ok]) / sum(poids[ok])
+  } else NA_real_
+  rownames(out) <- NULL
+  out
+}
+
+
 #' Create a new UG definition
 #'
 #' @param id Character. Unique UG identifier.
 #' @param label Character. User-visible label for this UG.
 #' @param groupe Character. Management group code (optional).
+#' @param onf Optional list or one-row data.frame of ONF values
+#'   (`UG_ONF_COLS`); missing ones are `NA`.
 #'
 #' @return A one-row data.frame representing the UG.
 #' @noRd
-new_ug <- function(id, label, groupe = NA_character_) {
+new_ug <- function(id, label, groupe = NA_character_, onf = NULL) {
   if (is.null(id) || nchar(id) == 0) {
     cli::cli_abort("UG id is required")
   }
@@ -136,12 +223,16 @@ new_ug <- function(id, label, groupe = NA_character_) {
     cli::cli_abort("UG label is required")
   }
 
-  data.frame(
+  out <- data.frame(
     ug_id = id,
     label = trimws(label),
     groupe = as.character(groupe),
     stringsAsFactors = FALSE
   )
+  if (!is.null(onf)) {
+    for (col in intersect(UG_ONF_COLS, names(onf))) out[[col]] <- onf[[col]][1L]
+  }
+  .ug_onf_normaliser(out)
 }
 
 
@@ -218,12 +309,12 @@ ug_init_default <- function(projet) {
     parcel_ids
   }
 
-  ugs <- data.frame(
+  ugs <- .ug_onf_normaliser(data.frame(
     ug_id = ug_ids,
     label = labels,
     groupe = NA_character_,
     stringsAsFactors = FALSE
-  )
+  ))
 
   projet$tenements <- tenements
   projet$ugs <- ugs
@@ -254,7 +345,7 @@ ug_create <- function(projet, tenements_ids, label, groupe = NA_character_) {
   }
 
   tenements <- projet$tenements
-  ugs <- projet$ugs
+  ugs <- .ug_onf_normaliser(projet$ugs)
 
   # Check all tenements exist
   missing <- setdiff(tenements_ids, tenements$tenement_id)
@@ -298,7 +389,7 @@ ug_merge <- function(projet, ug_ids, nouveau_label) {
   }
 
   tenements <- projet$tenements
-  ugs <- projet$ugs
+  ugs <- .ug_onf_normaliser(projet$ugs)
 
   # Check all UGs exist
   missing <- setdiff(ug_ids, ugs$ug_id)
@@ -318,9 +409,17 @@ ug_merge <- function(projet, ug_ids, nouveau_label) {
     NA_character_
   }
 
+  # Colonnes ONF : gardees si toutes les UGF fusionnees sont la MEME parcelle
+  # forestiere (une parcelle ONF coupee en deux puis recollee), sinon NA.
+  sources <- ugs[ugs$ug_id %in% ug_ids, , drop = FALSE]
+  poids <- vapply(sources$ug_id, function(uid) {
+    sum(tenements$surface_m2[tenements$ug_id == uid], na.rm = TRUE)
+  }, numeric(1))
+  merged_onf <- .ug_onf_fusion(sources, poids)
+
   # Create new merged UG
   new_ug_id <- generate_id("ug")
-  new_ug_row <- new_ug(new_ug_id, nouveau_label, merged_groupe)
+  new_ug_row <- new_ug(new_ug_id, nouveau_label, merged_groupe, onf = merged_onf)
 
   # Reassign all tenements
   tenements$ug_id[tenements$tenement_id %in% merged_tenement_ids] <- new_ug_id
@@ -348,7 +447,7 @@ ug_merge <- function(projet, ug_ids, nouveau_label) {
 #' @noRd
 ug_split <- function(projet, ug_id, partition_tenements = NULL) {
   tenements <- projet$tenements
-  ugs <- projet$ugs
+  ugs <- .ug_onf_normaliser(projet$ugs)
 
   if (!ug_id %in% ugs$ug_id) {
     cli::cli_abort("Unknown UG ID: {ug_id}")
@@ -390,7 +489,9 @@ ug_split <- function(projet, ug_id, partition_tenements = NULL) {
     }
 
     tenements$ug_id[tenements$tenement_id %in% group_ids] <- new_id
-    ugs <- rbind(ugs, new_ug(new_id, new_label, old_ug$groupe))
+    # Chaque morceau reste dans la parcelle ONF de l'UGF d'origine.
+    ugs <- rbind(ugs, new_ug(new_id, new_label, old_ug$groupe,
+                             onf = old_ug[, UG_ONF_COLS, drop = FALSE]))
   }
 
   projet$tenements <- tenements
@@ -689,20 +790,21 @@ ug_cadastral_refs <- function(projet, ug_id) {
 #' @param projet List. Project.
 #' @param filter_groupe Character. Optional filter by management group.
 #'
-#' @return Data.frame with ug_id, label, groupe, n_tenements, surface_m2.
+#' @return Data.frame with ug_id, label, groupe, n_tenements, surface_m2,
+#'   surface_sig_m2 and the `UG_ONF_COLS`.
 #' @noRd
 ug_list <- function(projet, filter_groupe = NULL) {
-  ugs <- projet$ugs
+  ugs <- .ug_onf_normaliser(projet$ugs)
   tenements <- projet$tenements
 
   if (is.null(ugs) || nrow(ugs) == 0) {
-    return(data.frame(
+    return(.ug_onf_normaliser(data.frame(
       ug_id = character(0), label = character(0), groupe = character(0),
       n_tenements = integer(0),
       surface_m2 = numeric(0),
       surface_sig_m2 = numeric(0),
       stringsAsFactors = FALSE
-    ))
+    )))
   }
 
   # Filter by groupe if requested
@@ -731,6 +833,7 @@ ug_list <- function(projet, filter_groupe = NULL) {
     }, numeric(1)),
     stringsAsFactors = FALSE
   )
+  for (col in UG_ONF_COLS) result[[col]] <- ugs[[col]]
 
   result
 }
@@ -749,7 +852,7 @@ ug_list <- function(projet, filter_groupe = NULL) {
 #' @param projet List. Project with $tenements, $ugs, $parcels.
 #'
 #' @return sf object with columns: ug_id, label, groupe, surface_m2,
-#'   n_tenements, cadastral_refs, geometry.
+#'   n_tenements, cadastral_refs, the `UG_ONF_COLS`, geometry.
 #' @noRd
 # PERF - MEMOISATION. Le resultat ne depend que de `projet$ugs` et de
 # `projet$tenements` : la fonction est pure. Or au chargement d'un projet,
@@ -807,7 +910,7 @@ ug_build_sf <- function(projet) {
 }
 
 .ug_build_sf_impl <- function(projet) {
-  ugs <- projet$ugs
+  ugs <- .ug_onf_normaliser(projet$ugs)
   tenements <- projet$tenements
 
   if (is.null(ugs) || nrow(ugs) == 0) {
@@ -851,6 +954,7 @@ ug_build_sf <- function(projet) {
     surface_sig_m2 = surfaces_sig,
     n_tenements = n_tenements,
     cadastral_refs = cad_refs,
+    ugs[, UG_ONF_COLS, drop = FALSE],
     geometry = geom_sfc
   )
 }

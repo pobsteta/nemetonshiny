@@ -2520,7 +2520,8 @@ mod_regeneration_server <- function(id, app_state) {
     species_ranking <- shiny::reactive({
       res <- rv$result
       if (is.null(res)) return(NULL)
-      regeneration_species_ranking(res, top_n = 3L)
+      # LAI par UGF reellement utilise par le moteur : active l'axe ombre.
+      regeneration_species_ranking(res, top_n = 3L, lai_max = rv$lai_max)
     })
 
     # --- Conseil de regeneration par IA (spec 039, P2) -----------------------

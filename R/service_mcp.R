@@ -175,27 +175,41 @@ mcp_resume_projet <- function(projet, langue = "fr") {
   invisible(job)
 }
 
+#' Refuse to write into a project that is busy
+#'
+#' Shared by every tool that writes: a computation running (detached or in the
+#' application) gives `nemetonshiny_calcul_en_cours`, an edit lock held in the
+#' application gives `nemetonshiny_projet_verrouille`.
+#'
+#' @param id Project id.
+#' @return The [projet_etat()] list.
+#' @noRd
+.mcp_garde_ecriture <- function(id, call = rlang::caller_env()) {
+  etat <- projet_etat(id)
+  .api_refuser_ancien(etat, call = call)
+  if (.mcp_job_running(.mcp_job_read(etat$chemin))) {
+    .api_abort("Un calcul est d\u00e9j\u00e0 en cours pour ce projet.",
+               "nemetonshiny_calcul_en_cours", call = call)
+  }
+  if (progress_state_age_sec(id) < 60) {
+    .api_abort("L'application calcule ce projet en ce moment.",
+               "nemetonshiny_calcul_en_cours", call = call)
+  }
+  verrou <- tryCatch(lock_status(id), error = function(e) NULL)
+  if (!is.null(verrou) && !isTRUE(verrou$stale)) {
+    detenteur <- verrou$holder_label %||% verrou$holder_id %||% "?"
+    .api_abort("Projet en cours d'\u00e9dition dans l'application ({detenteur}).",
+               "nemetonshiny_projet_verrouille", call = call)
+  }
+  etat
+}
+
 #' @noRd
 mcp_lancer_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
-    etat <- projet_etat(id)
-    .api_refuser_ancien(etat)
+    etat <- .mcp_garde_ecriture(id)
     path <- etat$chemin
-    if (.mcp_job_running(.mcp_job_read(path))) {
-      .api_abort("Un calcul est d\u00e9j\u00e0 en cours pour ce projet.",
-                 "nemetonshiny_calcul_en_cours")
-    }
-    if (progress_state_age_sec(id) < 60) {
-      .api_abort("L'application calcule ce projet en ce moment.",
-                 "nemetonshiny_calcul_en_cours")
-    }
-    verrou <- tryCatch(lock_status(id), error = function(e) NULL)
-    if (!is.null(verrou) && !isTRUE(verrou$stale)) {
-      detenteur <- verrou$holder_label %||% verrou$holder_id %||% "?"
-      .api_abort("Projet en cours d'\u00e9dition dans l'application ({detenteur}).",
-                 "nemetonshiny_projet_verrouille")
-    }
     log_path <- file.path(path, "data", "compute_mcp.log")
     job <- list(job_id = paste0(format(Sys.time(), "%Y%m%d%H%M%S"), "-",
                                 paste0(sample(letters, 4), collapse = "")),
@@ -249,6 +263,239 @@ mcp_annuler_calcul <- function(projet) {
     id <- .mcp_resolve_project(projet)
     cancel_computation(id)
     list(projet = id, message = "Annulation demand\u00e9e ; le calcul s'arr\u00eate au prochain indicateur.")
+  })
+}
+
+# ---------------------------------------------------------------- UGF
+
+#' Load a project for writing its management units
+#'
+#' Parcels, tenements and UGF only - what [save_ug_data()] and
+#' [save_parcels()] write back. A project without UGF gets the default layout
+#' (one UGF per parcel) in memory.
+#' @noRd
+.mcp_projet_ugf <- function(id) {
+  meta <- load_project_metadata(id) %||% list()
+  meta$id <- meta$id %||% id
+  projet <- list(id = id, metadata = meta, parcels = load_parcels(id))
+  if (is.null(projet$parcels) || nrow(projet$parcels) == 0L) {
+    .api_abort("Projet {.val {id}} : aucune parcelle cadastrale.",
+               "nemetonshiny_projet_introuvable")
+  }
+  ug <- load_ug_data(id)
+  if (is.null(ug)) {
+    projet <- ug_init_default(projet)
+  } else {
+    projet$tenements <- ug$tenements
+    projet$ugs <- ug$ugs
+  }
+  projet
+}
+
+#' Gap between each parcel and the tenements given for it
+#'
+#' `|parcel - union|` (holes, overflow) plus `sum - union` (overlaps), in m2,
+#' in Lambert 93. A parcel passes under `max(1, 0.05 %)` of its area, the
+#' tolerance of [validate_tiling()].
+#'
+#' @param parcels `sf` of the project's parcels, `idu` column.
+#' @param imp `sf` of tenements, `idu` column.
+#' @return data.frame `idu`, `ecart_m2`, `ok`.
+#' @noRd
+.mcp_ecart_pavage <- function(parcels, imp) {
+  prev <- sf::sf_use_s2()
+  suppressMessages(sf::sf_use_s2(FALSE))
+  on.exit(suppressMessages(sf::sf_use_s2(prev)), add = TRUE)
+  p <- sf::st_make_valid(sf::st_transform(parcels, 2154))
+  t <- sf::st_make_valid(sf::st_transform(imp, 2154))
+  ids <- unique(as.character(t$idu))
+  ecart <- vapply(ids, function(i) {
+    gp <- sf::st_geometry(p[as.character(p$idu) == i, ])
+    gt <- sf::st_geometry(t[as.character(t$idu) == i, ])
+    a_p <- sum(as.numeric(sf::st_area(gp)))
+    a_s <- sum(as.numeric(sf::st_area(gt)))
+    a_u <- as.numeric(sf::st_area(sf::st_union(gt)))
+    a_i <- as.numeric(sf::st_area(suppressWarnings(
+      sf::st_intersection(sf::st_union(gp), sf::st_union(gt)))))
+    if (!length(a_i)) a_i <- 0
+    # Trous (parcelle non couverte), debords (hors parcelle), chevauchements.
+    (a_p - a_i) + (a_u - a_i) + (a_s - a_u)
+  }, numeric(1))
+  aires <- vapply(ids, function(i) {
+    sum(as.numeric(sf::st_area(p[as.character(p$idu) == i, ])))
+  }, numeric(1))
+  data.frame(idu = ids, ecart_m2 = ecart,
+             ok = ecart <= pmax(1, 0.0005 * aires), stringsAsFactors = FALSE)
+}
+
+#' Persist a re-tiled project and say what it invalidated
+#' @noRd
+.mcp_sauver_ugf <- function(id, projet, avec_parcelles = FALSE) {
+  if (isTRUE(avec_parcelles)) save_parcels(id, projet$parcels)
+  # Les ug_id sont neufs : les indicateurs calcules portent sur les anciens.
+  # save_ug_data() les met deja de cote quand l'affectation change ; un second
+  # invalidate_indicators() ne trouverait plus rien et repondrait FALSE.
+  ok <- save_ug_data(id, projet)
+  isTRUE(attr(ok, "indicateurs_invalides")) ||
+    isTRUE(invalidate_indicators(id, motif = "ugf"))
+}
+
+#' Apply management units from a file
+#'
+#' Replaces the tenement layout of a project with the one of a GeoPackage or
+#' GeoJSON file of tenements - typically the output of
+#' `nemeton::construire_ugf_onf()` reworked outside the application.
+#'
+#' The file needs an IDU column (`idu`, `parent_parcelle_id` or `id`) and a
+#' UGF label (`label_ugf`, `ugf` or `nom_ugf`); it may carry `onf_foret_id`,
+#' `onf_foret_nom`, `onf_parcelle`, `onf_domaniale`, `onf_part` and `groupe`.
+#'
+#' Nothing is written unless every check passes: an IDU absent from the project
+#' is an error (no cadastral parcel is created behind the user's back), and so
+#' is a parcel whose tiling is not exact - the error names the parcels. With
+#' `remplacer = TRUE` every parcel of the project must be in the file; with
+#' `FALSE` only the parcels in the file are re-tiled, the others keep theirs.
+#'
+#' @param projet Project id or name.
+#' @param fichier Path of the file.
+#' @param remplacer Logical. Replace the whole layout (default) or only the
+#'   parcels present in the file.
+#' @return JSON: `ok`, `projet`, `n_ugf`, `n_tenements`, `ecart_pavage_m2`,
+#'   `indicateurs_perimes`, `avertissements`.
+#' @noRd
+mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE) {
+  .mcp_call({
+    id <- .mcp_resolve_project(projet)
+    .mcp_garde_ecriture(id)
+    if (!is.character(fichier) || length(fichier) != 1L || !file.exists(fichier)) {
+      .api_abort("Fichier introuvable : {.file {fichier}}.",
+                 "nemetonshiny_fichier_invalide")
+    }
+    imp <- tryCatch(sf::st_read(fichier, quiet = TRUE), error = function(e) NULL)
+    if (is.null(imp) || !inherits(imp, "sf") || nrow(imp) == 0L) {
+      .api_abort("Fichier illisible ou vide : {.file {fichier}}.",
+                 "nemetonshiny_fichier_invalide")
+    }
+    col_idu <- intersect(c("idu", "parent_parcelle_id", "id"), names(imp))[1]
+    col_lab <- intersect(c("label_ugf", "ugf", "nom_ugf"), names(imp))[1]
+    if (is.na(col_idu) || is.na(col_lab)) {
+      .api_abort(c("Colonnes manquantes dans {.file {fichier}}.",
+                   i = "Il faut un IDU (idu, parent_parcelle_id ou id) et un libell\u00e9 d'UGF (label_ugf, ugf ou nom_ugf)."),
+                 "nemetonshiny_fichier_invalide")
+    }
+    imp$idu <- as.character(imp[[col_idu]])
+    imp$label_ugf <- trimws(as.character(imp[[col_lab]]))
+    if (any(is.na(imp$label_ugf) | !nzchar(imp$label_ugf))) {
+      .api_abort("Des t\u00e8nements n'ont pas de libell\u00e9 d'UGF.",
+                 "nemetonshiny_fichier_invalide")
+    }
+    if (is.na(sf::st_crs(imp))) sf::st_crs(imp) <- .tenement_guess_crs(imp)
+    # Colonne de geometrie au nom fixe (`geom` dans un GeoPackage) : les
+    # tenements repris plus bas lui sont empiles.
+    if (!identical(attr(imp, "sf_column"), "geometry")) sf::st_geometry(imp) <- "geometry"
+
+    p <- .mcp_projet_ugf(id)
+    id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(p$parcels))[1]
+    parcels <- p$parcels
+    parcels$idu <- as.character(parcels[[id_col]])
+
+    inconnus <- setdiff(unique(imp$idu), parcels$idu)
+    if (length(inconnus)) {
+      .api_abort(c("{length(inconnus)} IDU absent{?s} du projet : {.val {utils::head(inconnus, 10)}}.",
+                   i = "Aucune parcelle n'est cr\u00e9\u00e9e ici ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9."),
+                 "nemetonshiny_idu_inconnu", idu = inconnus)
+    }
+    avert <- character(0)
+    if (isTRUE(remplacer)) {
+      manquantes <- setdiff(parcels$idu, imp$idu)
+      if (length(manquantes)) {
+        .api_abort(c("{length(manquantes)} parcelle{?s} du projet sans t\u00e8nement dans le fichier : {.val {utils::head(manquantes, 10)}}.",
+                     i = "Les ajouter au fichier, ou appeler avec remplacer = FALSE ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9."),
+                   "nemetonshiny_pavage_invalide", parcelles = manquantes)
+      }
+    }
+    pav <- .mcp_ecart_pavage(parcels, imp)
+    if (!all(pav$ok)) {
+      mauvaises <- pav$idu[!pav$ok]
+      .api_abort(c("Pavage inexact pour {length(mauvaises)} parcelle{?s} : {.val {utils::head(mauvaises, 10)}}.",
+                   i = "\u00c9cart total {round(sum(pav$ecart_m2[!pav$ok]), 1)} m\u00b2 ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9."),
+                   "nemetonshiny_pavage_invalide", parcelles = mauvaises)
+    }
+
+    # Parcelles hors du fichier (remplacer = FALSE) : leurs tenements sont
+    # repris tels quels, sans libelle, donc rattaches a leur UGF actuelle par
+    # recouvrement.
+    if (!isTRUE(remplacer)) {
+      garder <- p$tenements[!as.character(p$tenements$parent_parcelle_id) %in% imp$idu, ]
+      if (nrow(garder)) {
+        g <- sf::st_transform(garder, sf::st_crs(imp))
+        g <- sf::st_sf(idu = as.character(g$parent_parcelle_id),
+                       label_ugf = NA_character_, geometry = sf::st_geometry(g))
+        commun <- intersect(names(imp), names(g))
+        imp <- rbind(imp[, commun], g[, commun])
+      }
+    }
+
+    p2 <- withCallingHandlers(
+      tenement_import_replace(p, imp),
+      warning = function(w) {
+        avert <<- c(avert, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      })
+    # Groupe d'amenagement du fichier, s'il y en a un.
+    if ("groupe" %in% names(imp)) {
+      grp <- tapply(as.character(imp$groupe), imp$label_ugf, function(x) {
+        x <- unique(stats::na.omit(x)); if (length(x) == 1L) x else NA_character_
+      })
+      k <- match(p2$ugs$label, names(grp))
+      p2$ugs$groupe[!is.na(k)] <- grp[k[!is.na(k)]]
+    }
+    perimes <- .mcp_sauver_ugf(id, p2)
+    list(projet = id, n_ugf = nrow(p2$ugs), n_tenements = nrow(p2$tenements),
+         ecart_pavage_m2 = round(sum(pav$ecart_m2), 3),
+         indicateurs_perimes = perimes,
+         avertissements = if (length(avert)) avert)
+  })
+}
+
+#' Cross a project with the ONF forest parcels
+#'
+#' Same crossing as the application's button (`nemeton::construire_ugf_onf()`,
+#' with the project's ONF settings), applied to the project. About 15 s per
+#' commune; the first call downloads the DGFiP file (376 MB, once).
+#'
+#' @param projet Project id or name.
+#' @param purger Logical or `NULL`. `TRUE` keeps only the parcels under the
+#'   forest regime (the others leave the project), `FALSE` keeps them all,
+#'   `NULL` follows the project's setting.
+#' @return JSON: `ok`, `projet`, `n_ugf`, `n_tenements`, `n_parcelles`,
+#'   `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes`.
+#' @noRd
+mcp_croiser_onf <- function(projet, purger = NULL) {
+  .mcp_call({
+    id <- .mcp_resolve_project(projet)
+    .mcp_garde_ecriture(id)
+    p <- .mcp_projet_ugf(id)
+    cfg <- project_onf_params(p$metadata)
+    if (!is.null(purger)) cfg$purger <- isTRUE(purger)
+    out <- onf_croise_tache(p, cfg)
+    if (!identical(out$status, "ok")) {
+      msg <- switch(out$status,
+        unavailable = "Parcellaire ONF ou fichier DGFiP injoignable.",
+        empty       = "Aucune for\u00eat publique sur l'emprise du projet.",
+        no_overlap  = "Aucun recoupement entre le parcellaire ONF et les parcelles du projet.",
+        "Croisement ONF impossible.")
+      .api_abort(c(msg, i = "Le projet n'a pas \u00e9t\u00e9 modifi\u00e9."),
+                 "nemetonshiny_onf_echec", statut = out$status)
+    }
+    ecartees <- out$ecartees %||% .onf_ecartees_vide()
+    perimes <- .mcp_sauver_ugf(id, out$projet, avec_parcelles = nrow(ecartees) > 0L)
+    r <- onf_croise_resume(out$tenements)
+    list(projet = id, n_ugf = r$n_ugf, n_tenements = nrow(out$projet$tenements),
+         n_parcelles = r$n_parcelles, n_cad = r$n_cad,
+         ecartees = if (nrow(ecartees)) ecartees,
+         ecart_median_m = suppressWarnings(as.numeric(out$calage[["ecart_median_m"]])),
+         indicateurs_perimes = perimes)
   })
 }
 
@@ -325,6 +572,15 @@ mcp_tools <- function() {
     ellmer::tool(mcp_exporter_gpkg, name = "exporter_gpkg",
       description = "Write the GeoPackage of a computed project's results (one feature per management unit) and return the file path.",
       arguments = list(projet = projet_arg)),
+    ellmer::tool(mcp_appliquer_ugf, name = "appliquer_ugf",
+      description = "Replace the management units (UGF) of a project with those of a GeoPackage/GeoJSON file of tenements (columns idu and label_ugf, optional onf_foret_id, onf_parcelle...). Nothing is written if an IDU is unknown or a parcel is not exactly tiled. Computed indicators become outdated.",
+      arguments = list(projet = projet_arg,
+                       fichier = t("Path of the GeoPackage or GeoJSON file."),
+                       remplacer = ellmer::type_boolean("TRUE (default): the file covers every parcel of the project. FALSE: only the parcels in the file are re-tiled.", required = FALSE))),
+    ellmer::tool(mcp_croiser_onf, name = "croiser_onf",
+      description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. About 15 s per commune. Computed indicators become outdated.",
+      arguments = list(projet = projet_arg,
+                       purger = ellmer::type_boolean("TRUE: drop the parcels outside the forest regime (private, or little covered by the ONF). FALSE: keep them all. Default: the project's setting.", required = FALSE))),
     ellmer::tool(mcp_url_app, name = "url_app",
       description = "URL opening the Nemeton application on a project and a tab (synthesis, selection, action_plan, terrain, monitoring, regeneration, famille_*).",
       arguments = list(projet = projet_arg,

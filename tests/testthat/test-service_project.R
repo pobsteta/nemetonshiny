@@ -2160,3 +2160,58 @@ test_that("un identifiant de projet ne designe jamais un dossier hors de la raci
     expect_null(nemetonshiny:::get_project_path("lien"))
   })
 })
+
+# ---- Parametres du croisement ONF (brief 2026-10-08 onf-nouveau-chemin-seul) --
+
+test_that("project_onf_params lit les defauts, borne, et ignore seuil_foret", {
+  d <- nemetonshiny:::project_onf_params(NULL)
+  expect_identical(d$domanialite, c("domaniale", "autre"))
+  expect_true(d$purger)
+  expect_equal(d[c("seuil_couverture", "tol", "larg_hors", "seuil", "seuil_hors")],
+               list(seuil_couverture = 0.5, tol = 15, larg_hors = 50,
+                    seuil = 0.5, seuil_hors = 1))
+  expect_false(nemetonshiny:::onf_params_avances_modifies(d))
+
+  # Un ancien metadata.json : `seuil_foret` est ignore, sans erreur.
+  vieux <- nemetonshiny:::project_onf_params(
+    list(onf_params = list(purger = FALSE, seuil_foret = 0.1)))
+  expect_false(vieux$purger)
+  expect_null(vieux$seuil_foret)
+
+  # Hors bornes, NA ou illisible : retour au defaut.
+  p <- nemetonshiny:::project_onf_params(list(onf_params = list(
+    seuil_couverture = 0.05, tol = 60, larg_hors = NA, seuil = "x",
+    seuil_hors = 2.5)))
+  expect_equal(p$seuil_couverture, 0.5)
+  expect_equal(p$tol, 15)
+  expect_equal(p$larg_hors, 50)
+  expect_equal(p$seuil, 0.5)
+  expect_equal(p$seuil_hors, 2.5)
+  expect_true(nemetonshiny:::onf_params_avances_modifies(p))
+
+  # Aucune domanialite : defaut plutot qu'un etat que le croisement refuse.
+  expect_identical(nemetonshiny:::project_onf_params(
+    list(onf_params = list(domanialite = character(0))))$domanialite,
+    c("domaniale", "autre"))
+})
+
+test_that("set_project_onf_params persiste et relit les parametres", {
+  withr::with_tempdir({
+    testthat::local_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      .package = "nemetonshiny")
+    pid <- suppressMessages(nemetonshiny:::create_project(name = "ONF", parcels = NULL)$id)
+    suppressMessages(nemetonshiny:::set_project_onf_params(
+      pid, domanialite = "domaniale", purger = FALSE, seuil_couverture = 0.7,
+      clip_cadastre = FALSE, tol = 8, larg_hors = 80, seuil = 1.2,
+      seuil_hors = 99))
+    p <- nemetonshiny:::project_onf_params(
+      nemetonshiny:::load_project_metadata(pid))
+    expect_identical(p$domanialite, "domaniale")
+    expect_false(p$purger)
+    expect_false(p$clip_cadastre)
+    expect_equal(c(p$seuil_couverture, p$tol, p$larg_hors, p$seuil),
+                 c(0.7, 8, 80, 1.2))
+    expect_equal(p$seuil_hors, 1)   # 99 ha hors bornes : defaut
+  })
+})

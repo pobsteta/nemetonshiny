@@ -915,6 +915,27 @@ test_that("regeneration_species_ranking : wrapper NA/empty-safe autour du cœur"
   expect_null(nemetonshiny:::regeneration_species_ranking(units))
 })
 
+test_that("regeneration_species_ranking active l'axe ombre avec le LAI par UGF", {
+  skip_if_not_installed("sf")
+  units <- .regen_mod_units(2)
+  vu <- new.env()
+  testthat::local_mocked_bindings(
+    regen_rank_species = function(units, ..., lai_col = NULL) {
+      vu$lai_col <- lai_col
+      vu$lai <- if (!is.null(lai_col)) units[[lai_col]]
+      data.frame(ug_id = "1", rank = 1L, label = "A", suitability = 90)
+    },
+    .package = "nemeton")
+  nemetonshiny:::regeneration_species_ranking(units, lai_max = c(3.2, 5.1))
+  expect_identical(vu$lai_col, "lai_ugf")
+  expect_equal(vu$lai, c(3.2, 5.1))
+  # Absent, scalaire ou de mauvaise longueur : axe ombre omis.
+  nemetonshiny:::regeneration_species_ranking(units)
+  expect_null(vu$lai_col)
+  nemetonshiny:::regeneration_species_ranking(units, lai_max = 4)
+  expect_null(vu$lai_col)
+})
+
 test_that(".regen_species_ranking_ui rend le top-N d'une UGF, traduit facteur/confiance", {
   i18n <- nemetonshiny:::get_i18n("fr")
   rk <- data.frame(ug_id = c("U1", "U1", "U2"), rank = c(1L, 2L, 1L),

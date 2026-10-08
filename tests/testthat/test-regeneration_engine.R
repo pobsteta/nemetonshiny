@@ -1169,3 +1169,80 @@ test_that("la cle i18n du repli porte bien ses deux annees", {
     expect_match(sprintf(tpl, "2018", "2022"), "2018", fixed = TRUE)
   }
 })
+
+# --- brief lai-lidar : LiDAR HD sans cle CDS ----------------------------------
+# microclimf est saute (pas de cle), donc pas de pai.tif : le PAI doit venir du
+# nuage, sans ERA5, et etre mis en cache pour le run suivant.
+
+test_that("LiDAR sans cle CDS : PAI derive du nuage, cache, lai_max par UGF", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    seen <- new.env()
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() FALSE,
+                                    .regen_grille_pai = function(grid, units, ...) "GRILLE")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(...) stop("microclimf must be skipped"),
+      pai_depuis_nuage = function(dossier_las = NULL, grille = NULL, res = 2, ...) {
+        seen$las <- dossier_las; seen$grille <- grille
+        terra::rast(nrows = 2, ncols = 2, vals = 4, crs = "EPSG:2154")
+      },
+      lai_max_depuis_pai = function(units, pai, ...) rep(4.5, nrow(units)),
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ..., lai_max = NULL) {
+        seen$lai_max <- lai_max; units$njstress <- 12; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_equal(seen$las, file.path(p, "cache", "layers", "lidar_nuage"))
+    expect_identical(seen$grille, "GRILLE")
+    expect_equal(seen$lai_max, c(4.5, 4.5))
+    expect_equal(out$canopy, "lidar_hd")
+    expect_equal(out$lai_source, "pai_lidar")
+    expect_true(file.exists(file.path(p, "cache", "regeneration", "pai.tif")))
+  })
+})
+
+test_that("LiDAR sans cle CDS : un nuage illisible laisse le defaut coeur", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    seen <- new.env()
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() FALSE,
+                                    .regen_grille_pai = function(grid, units, ...) "GRILLE")
+    testthat::local_mocked_bindings(
+      pai_depuis_nuage = function(...) stop("COPC corrompu"),
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ..., lai_max = NULL) {
+        seen$lai_max <- lai_max; units$njstress <- 12; units },
+      .package = "nemeton")
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+    expect_null(seen$lai_max)                       # defaut par type, cote coeur
+    expect_true(is.na(out$lai_source))
+    expect_true(any(grepl("PAI LiDAR", out$warnings, fixed = TRUE)))
+  })
+})
+
+test_that("la grille du PAI reproduit celle du coeur (tampon 150 m, 2 m)", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    d <- file.path(getwd(), "mnt"); dir.create(d)
+    r <- terra::rast(xmin = 900000, xmax = 901000, ymin = 6500000, ymax = 6501000,
+                     resolution = 0.5, crs = "EPSG:2154", vals = 1)
+    terra::writeRaster(r, file.path(d, "t.tif"))
+    u <- sf::st_sf(id = 1, geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(900400, 6500400), c(900600, 6500400), c(900600, 6500600),
+      c(900400, 6500600), c(900400, 6500400)))), crs = 2154))
+    g <- nemetonshiny:::.regen_grille_pai(list(mnt_dir = d), u)
+    expect_equal(terra::res(g), c(2, 2))
+    expect_equal(as.vector(terra::ext(g)), c(xmin = 900250, xmax = 900750,
+                                            ymin = 6500250, ymax = 6500750))
+  })
+})

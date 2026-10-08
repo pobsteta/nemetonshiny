@@ -1178,3 +1178,27 @@ test_that("family_scores injecte R6/R7 (reGénération) avant create_family_inde
 
 # Drain async callbacks to prevent testServer session accumulation
 later::run_now(0)
+
+test_that("R5 n'est pas re-inverse par l'app : plus de deperissement, famille R plus basse", {
+  # Brief R5-brief-shiny-radar, test " pas de double inversion " : R5 brut
+  # (80 = deperissement severe) est inverse UNE fois, par le coeur. Si l'app le
+  # re-inversait, la famille R MONTERAIT avec le deperissement.
+  skip_if_not_installed("sf")
+  g <- sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), crs = 2154)
+  base <- sf::st_sf(ug_id = c("p1", "p2"),
+                    indicateur_r1_feu = c(20, 40),
+                    indicateur_r3_secheresse = c(30, 50),
+                    geometry = g)
+  score <- function(r5) {
+    testthat::local_mocked_bindings(
+      add_r5_to_indicators = function(base_sf, project) {
+        base_sf$indicateur_r5_deperissement <- r5; base_sf },
+      add_regen_r_indicators = function(base_sf, project) base_sf)
+    suppressMessages(nemetonshiny:::project_family_scores(
+      list(indicators_sf = base)))$famille_risque
+  }
+  sain <- score(0); moyen <- score(40); severe <- score(80)
+  expect_true(all(severe < moyen & moyen < sain))
+  # Ecart lineaire : R5 entre dans la moyenne pour 1/k, inverse (100 - R5).
+  expect_equal(sain - severe, 2 * (sain - moyen), tolerance = 1e-6)
+})
