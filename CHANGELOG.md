@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-08
+
+### Added
+
+- « New project from the ONF forest » (spec 058, path A): pick a commune; the
+  app keeps its cadastral parcels owned by a public person and covered by the
+  warped ONF forest parcels, creates the project with UGF numbered after the
+  forest parcels and opens it, keeping the current project.
+
+### Changed
+
+- A discarded private parcel also shows its ONF cover from 1 %.
+
+### Fixed
+
+- ONF notifications use the French decimal comma.
+
 ## [1.3.0] - 2026-10-08
 
 ### Added

@@ -1,4 +1,4 @@
-# nemetonshiny 1.3.0.9001 (cycle de développement)
+# nemetonshiny 1.3.1 (2026-10-08)
 
 - **Nouveau projet depuis la forêt ONF** (spec 058, chemin A) : un bouton du
   bloc ONF de la carte UGF ouvre une modale (département, commune). L'app
