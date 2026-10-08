@@ -1,3 +1,10 @@
+# nemetonshiny 1.2.1.9001 (développement)
+
+- **reGénération, onglets en tête** : « Carte + Tableau » et « Contexte
+  régional (E-OBS) » remontent en haut du panneau, soulignés et avec icône,
+  comme dans le Plan d'actions. Le bandeau d'état (projet requis, modèle NDP,
+  avertissements) passe sous les onglets au lieu de les repousser.
+
 # nemetonshiny 1.2.1 (2026-10-08)
 
 Reliquat de l'audit des briefs cœur → app du 2026-10-08, et pictogramme feuillu de RECONFORT.
