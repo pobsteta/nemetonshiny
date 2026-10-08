@@ -164,12 +164,11 @@ test_that("la barre d'actions carte porte l'action ONF, et une seule", {
   # où ils sont partis oblige à les chercher.
   expect_false(grepl("ug-onf_domanialite\"", h))
   expect_true(grepl("ug-onf_params_rappel", h, fixed = TRUE))
-  # v0.130.1.9001 — le calage sur les limites cadastrales est SYSTÉMATIQUE, la
-  # coche est retirée. Il reste annoncé en clair : une UGF dont le bord suit le
-  # cadastre plutôt que le tracé ONF serait incompréhensible sans cette phrase.
+  # Le calage sur les limites cadastrales est SYSTÉMATIQUE, sans coche. Il
+  # reste annoncé en clair dans le « i » à côté du bouton, avec les valeurs du
+  # projet (tolérance, seuil de rattachement) : rendu serveur `onf_note`.
   expect_false(grepl("ug-onf_caler", h, fixed = TRUE))
-  expect_true(grepl(i18n_note <- nemetonshiny:::get_i18n("fr")$t("onf_caler_note"),
-                    h, fixed = TRUE))
+  expect_true(grepl("ug-onf_note", h, fixed = TRUE))
 
   i18n <- nemetonshiny:::get_i18n("fr")
   # La note de grain est permanente, pas repliée : lire une UGF comme un
@@ -179,15 +178,21 @@ test_that("la barre d'actions carte porte l'action ONF, et une seule", {
   expect_true(grepl(i18n$t("onf_source_note"), h, fixed = TRUE))
 })
 
-test_that("le calage cadastral est systematique cote service", {
-  # Le réglage n'est plus exposé à l'utilisateur : il doit donc être actif par
-  # DÉFAUT dans la signature, sinon un appel sans argument produirait des UGF
-  # aux bords ONF bruts, en contradiction avec ce que la note annonce à l'écran.
-  expect_true(isTRUE(
-    formals(nemetonshiny:::onf_projet_croise)$caler_sur_cadastre))
-  # Le paramètre SUBSISTE : le comportement brut reste joignable et testable.
-  expect_true("caler_sur_cadastre" %in%
-                names(formals(nemetonshiny:::onf_projet_croise)))
+test_that("le croisement ne passe plus que par construire_ugf_onf()", {
+  # Brief 2026-10-08 onf-nouveau-chemin-seul : l'ancienne chaîne (calage
+  # « parcelle entière au-delà de 90 % », purge sur la part forestière) est
+  # retirée sans option pour y revenir.
+  args <- names(formals(nemetonshiny:::onf_projet_croise))
+  expect_false(any(c("caler_sur_cadastre", "seuil_calage") %in% args))
+  expect_true(all(c("params", "selection") %in% args))
+  d <- chemin_source("R"); skip_sans_sources(file.path(d, "service_onf.R"))
+  code <- unlist(lapply(list.files(d, "\\.R$", full.names = TRUE), readLines,
+                        warn = FALSE))
+  code <- code[!grepl("^\\s*#", code)]
+  expect_false(any(grepl(
+    "croiser_parcelles_onf|caler_sur_cadastre|seuil_calage|seuil_foret|onf_purger_hors_foret|\\.onf_part_foret",
+    code)))
+  expect_true(any(grepl("nemeton::construire_ugf_onf(", code, fixed = TRUE)))
 })
 
 test_that("les actions ONF refusent un projet sans donnees UGF", {
@@ -236,17 +241,15 @@ test_that("la previsualisation ONF est effacee apres le croisement", {
   # parcellaire que le projet ne contenait plus.
   f <- chemin_source("R", "mod_ug.R"); skip_sans_sources(f)
   src <- readLines(f, warn = FALSE)
-  pose <- grep("rv\\$onf_preview <- res\\$parcelles", src)
+  # Depuis le passage en tâche asynchrone, l'aperçu n'est posé que quand le
+  # croisement n'a PAS abouti (ce qui a été trouvé reste visible), et effacé
+  # après le commit d'un croisement réussi.
+  pose <- grep("rv\\$onf_preview <- out\\$apercu", src)
   efface <- grep("rv\\$onf_preview <- NULL", src)
   expect_length(pose, 1L)
   expect_length(efface, 1L)
-  # L'effacement vient APRÈS la pose, et après le commit du projet.
   expect_gt(efface, pose)
-  # Depuis que l'import CSV purge lui aussi (brief du 2026-08-25), il y a DEUX
-  # appels a `.onf_commit(projet_final, ...)`. Ce test ne parle que du chemin du
-  # BOUTON : la previsualisation orange n'existe que la. On compare donc
-  # l'effacement au commit qui le precede, pas a un appel suppose unique.
-  commit <- grep("\\.onf_commit\\(projet_final", src)
+  commit <- grep("\\.onf_commit\\(out\\$projet", src)
   expect_gte(length(commit), 1L)
   avant <- commit[commit < efface]
   expect_gte(length(avant), 1L)

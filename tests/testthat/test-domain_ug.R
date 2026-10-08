@@ -513,10 +513,7 @@ test_that("projet_validate catches empty UG", {
   projet <- nemetonshiny:::ug_init_default(projet)
 
   # Add an empty UG manually
-  projet$ugs <- rbind(projet$ugs, data.frame(
-    ug_id = "ghost_ug", label = "Ghost", groupe = NA_character_,
-    stringsAsFactors = FALSE
-  ))
+  projet$ugs <- rbind(projet$ugs, nemetonshiny:::new_ug("ghost_ug", "Ghost"))
 
   expect_error(
     nemetonshiny:::projet_validate(projet),
@@ -534,4 +531,111 @@ test_that("projet_validate catches tenements without parent parcel", {
     nemetonshiny:::projet_validate(projet),
     "Invariant 4"
   )
+})
+
+
+# ==============================================================================
+# Colonnes ONF des UGF (brief 2026-10-08 ugf-depuis-onf, sect. 2)
+# ==============================================================================
+
+.ug_onf <- function(parcelle, part = 1, foret = "F1") {
+  list(onf_foret_id = foret, onf_foret_nom = "FD X", onf_parcelle = parcelle,
+       onf_domaniale = TRUE, onf_part = part)
+}
+
+test_that("une UGF porte les cinq colonnes ONF, NA par defaut et typees", {
+  u <- nemetonshiny:::new_ug("u1", "A")
+  expect_true(all(nemetonshiny:::UG_ONF_COLS %in% names(u)))
+  expect_true(all(is.na(u[, nemetonshiny:::UG_ONF_COLS])))
+  expect_type(u$onf_domaniale, "logical")
+  expect_type(u$onf_part, "double")
+  u <- nemetonshiny:::new_ug("u1", "A", onf = .ug_onf("12a", 0.8))
+  expect_identical(u$onf_parcelle, "12a")   # texte : il existe des n. comme 12a
+  expect_equal(u$onf_part, 0.8)
+  # Ce que jsonlite rend d'un champ `null` : une colonne liste.
+  df <- data.frame(ug_id = c("a", "b"))
+  df$onf_part <- list(0.5, NULL)
+  n <- nemetonshiny:::.ug_onf_normaliser(df)
+  expect_equal(n$onf_part, c(0.5, NA))
+  expect_true(all(is.na(n$onf_foret_id)))
+})
+
+test_that("ug_merge garde l'ONF d'une meme parcelle forestiere, NA sinon", {
+  projet <- nemetonshiny:::ug_init_default(create_test_projet())
+  for (col in nemetonshiny:::UG_ONF_COLS) {
+    projet$ugs[[col]] <- .ug_onf(c("1", "1", "2"), c(0.8, 1, 1))[[col]]
+  }
+  ids <- projet$ugs$ug_id
+  m <- nemetonshiny:::ug_merge(projet, ids[1:2], "Parcelle 1")
+  u <- m$ugs[m$ugs$label == "Parcelle 1", ]
+  expect_identical(u$onf_parcelle, "1")
+  expect_equal(u$onf_part, 0.9, tolerance = 1e-6)   # moyenne ponderee (aires egales)
+
+  m <- nemetonshiny:::ug_merge(projet, ids[2:3], "Melange")
+  u <- m$ugs[m$ugs$label == "Melange", ]
+  expect_true(all(is.na(u[, nemetonshiny:::UG_ONF_COLS])))
+})
+
+test_that("ug_split recopie l'ONF sur chaque morceau", {
+  projet <- nemetonshiny:::ug_init_default(create_test_projet())
+  ids <- projet$ugs$ug_id
+  projet <- nemetonshiny:::ug_merge(projet, ids[1:2], "Deux")
+  uid <- projet$ugs$ug_id[projet$ugs$label == "Deux"]
+  k <- projet$ugs$ug_id == uid
+  projet$ugs$onf_parcelle[k] <- "7"; projet$ugs$onf_foret_id[k] <- "F9"
+  s <- nemetonshiny:::ug_split(projet, uid)
+  morceaux <- s$ugs[s$ugs$ug_id %in% s$tenements$ug_id[
+    s$tenements$parent_parcelle_id %in% c("p1", "p2")], ]
+  expect_equal(nrow(morceaux), 2L)
+  expect_true(all(morceaux$onf_parcelle == "7"))
+  expect_true(all(morceaux$onf_foret_id == "F9"))
+})
+
+test_that("ugs.json : colonnes ONF ecrites si renseignees, relues sinon a NA", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    testthat::local_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      .package = "nemetonshiny")
+    pid <- suppressMessages(nemetonshiny:::create_project(name = "ONF", parcels = NULL)$id)
+    projet <- nemetonshiny:::ug_init_default(create_test_projet())
+    f <- file.path(nemetonshiny:::get_project_path(pid), "data", "ugs.json")
+
+    # Sans ONF : aucun champ onf_* (pas de tableaux de null).
+    suppressMessages(nemetonshiny:::save_ug_data(pid, projet))
+    expect_false(any(grepl("onf_", readLines(f))))
+    lu <- nemetonshiny:::load_ug_data(pid)$ugs
+    expect_true(all(nemetonshiny:::UG_ONF_COLS %in% names(lu)))
+    expect_true(all(is.na(lu$onf_parcelle)))
+
+    # Avec ONF : aller-retour sans perte, types compris.
+    projet$ugs$onf_parcelle <- c("1", NA, "12a")
+    projet$ugs$onf_domaniale <- c(TRUE, NA, FALSE)
+    projet$ugs$onf_part <- c(0.95, NA, 1)
+    suppressMessages(nemetonshiny:::save_ug_data(pid, projet))
+    lu <- nemetonshiny:::load_ug_data(pid)$ugs
+    lu <- lu[match(projet$ugs$ug_id, lu$ug_id), ]
+    expect_identical(lu$onf_parcelle, c("1", NA, "12a"))
+    expect_identical(lu$onf_domaniale, c(TRUE, NA, FALSE))
+    expect_equal(lu$onf_part, c(0.95, NA, 1))
+  })
+})
+
+test_that("tenement_import_replace pose les colonnes ONF du fichier sur l'UGF", {
+  skip_if_not_installed("sf")
+  projet <- nemetonshiny:::ug_init_default(create_test_projet())
+  imp <- projet$parcels[, "id"]
+  names(imp)[1] <- "parent_parcelle_id"
+  imp$label_ugf <- c("FD X - parcelle 1", "FD X - parcelle 1", "Autre")
+  imp$onf_foret_id <- c("F1", "F1", NA)
+  imp$onf_parcelle <- c("1", "1", NA)
+  imp$onf_part <- c(1, 0.8, NA)
+  p <- suppressMessages(nemetonshiny:::tenement_import_replace(projet, imp))
+  u <- p$ugs[p$ugs$label == "FD X - parcelle 1", ]
+  expect_identical(u$onf_parcelle, "1")
+  expect_equal(u$onf_part, 0.9, tolerance = 1e-3)
+  expect_true(is.na(p$ugs$onf_parcelle[p$ugs$label == "Autre"]))
+  # ug_build_sf les expose (tableau, carte, export GeoPackage).
+  sfu <- suppressMessages(nemetonshiny:::ug_build_sf(p))
+  expect_true(all(nemetonshiny:::UG_ONF_COLS %in% names(sfu)))
 })

@@ -1158,7 +1158,7 @@ attach_indicators_sf <- function(project) {
         # Drop stale UGF metadata columns from indicators before merge
         dup_cols <- intersect(
           c("label", "groupe", "surface_m2", "surface_sig_m2",
-            "n_tenements", "cadastral_refs"),
+            "n_tenements", "cadastral_refs", UG_ONF_COLS),
           names(project$indicators)
         )
         ind <- project$indicators[, setdiff(names(project$indicators), dup_cols),
@@ -2343,34 +2343,74 @@ set_project_accessibility_params <- function(project_id, buffer_m = NULL) {
 #' Default ONF crossing parameters
 #'
 #' @description
-#' Three settings that shape what the ONF crossing keeps, and they are
-#' calibrations rather than gestures: one sets them once per massif, not at
-#' each attempt. Hence their place in *Sources & parametres* and their
-#' persistence per project.
+#' The settings that shape the ONF crossing. They are calibrations rather
+#' than gestures - set once per massif, not at each attempt - hence their place
+#' in *Sources & parametres* and their persistence per project
+#' (`metadata$onf_params`).
 #'
-#' `seuil_foret` is a **share**, 0 to 1. `0` no longer means "purge nothing":
-#' the comparison is `<=`, so at zero every cadastral parcel the public forest
-#' does not touch **at all** is dropped. That is what makes `purger = TRUE` a
-#' defensible default - at 0 %, only what holds nothing forested goes.
+#' Since the 2026-10-08 brief (`onf-nouveau-chemin-seul`) the crossing goes
+#' through `nemeton::construire_ugf_onf()` only, and the settings are its own:
 #'
-#' `clip_cadastre` discards the ONF forest that spills **outside** the
-#' project's cadastral parcels. The crossing already tiles on the cadastre, so
-#' this changes nothing there; what it changes is the orange preview layer and
-#' any export of the raw parcellaire, which used to carry fragments belonging
-#' to nobody's parcel.
+#' * `domanialite`: which ONF parcels are fetched (filter of the WFS call);
+#' * `purger`: `TRUE` keeps only the parcels under the *regime forestier*
+#'   (`selection = "foret"`: public owner in the DGFiP file AND covered at
+#'   `seuil_couverture` by the warped ONF), `FALSE` keeps the whole selection
+#'   (`selection = "toutes"`);
+#' * `seuil_couverture` (share, 0.1-1): minimum ONF cover of a parcel;
+#' * `clip_cadastre`: display only - cuts the orange preview and the raw
+#'   parcellaire export to the cadastral parcels. The core always receives the
+#'   raw layer, whose overflow the warping needs;
+#' * advanced: `tol` (m), `larg_hors` (m), `seuil` (ha), `seuil_hors` (ha).
+#'
+#' The forest-share threshold of the former chain is gone: an old
+#' `metadata.json` that still holds it is read without error and the key is
+#' ignored.
 #'
 #' @noRd
 ONF_PARAMS_DEFAULT <- list(
-  domanialite   = c("domaniale", "autre"),
-  purger        = TRUE,
-  seuil_foret   = 0,
-  clip_cadastre = TRUE
+  domanialite      = c("domaniale", "autre"),
+  purger           = TRUE,
+  seuil_couverture = 0.5,
+  clip_cadastre    = TRUE,
+  tol              = 15,
+  larg_hors        = 50,
+  seuil            = 0.5,
+  seuil_hors       = 1
 )
+
+#' Bounds of the numeric ONF parameters
+#'
+#' A value outside them, or `NA`, falls back on the default - on reading as on
+#' writing.
+#' @noRd
+ONF_PARAMS_BORNES <- list(
+  seuil_couverture = c(0.1, 1),
+  tol              = c(0, 50),
+  larg_hors        = c(10, 200),
+  seuil            = c(0, 5),
+  seuil_hors       = c(0, 10)
+)
+
+#' Advanced ONF parameters (folded in the settings panel)
+#' @noRd
+ONF_PARAMS_AVANCES <- c("tol", "larg_hors", "seuil", "seuil_hors")
+
+#' Read one bounded numeric ONF parameter
+#' @noRd
+.onf_param_num <- function(src, cle) {
+  v <- suppressWarnings(as.numeric(unlist(src[[cle]] %||% NA)))
+  b <- ONF_PARAMS_BORNES[[cle]]
+  if (length(v) != 1L || is.na(v) || v < b[1] || v > b[2]) {
+    return(ONF_PARAMS_DEFAULT[[cle]])
+  }
+  v
+}
 
 #' Read the ONF crossing parameters of a project
 #'
 #' @param metadata Project metadata list.
-#' @return List with `domanialite`, `purger`, `seuil_foret`, `clip_cadastre`.
+#' @return List with `domanialite`, `purger`, `seuil_couverture`,
+#'   `clip_cadastre`, `tol`, `larg_hors`, `seuil`, `seuil_hors`.
 #' @noRd
 project_onf_params <- function(metadata) {
   src <- metadata$onf_params %||% list()
@@ -2382,43 +2422,59 @@ project_onf_params <- function(metadata) {
   # que de le persister, on retombe sur le defaut.
   if (length(dom) == 0L) dom <- ONF_PARAMS_DEFAULT$domanialite
 
-  seuil <- suppressWarnings(as.numeric(src$seuil_foret %||%
-                                         ONF_PARAMS_DEFAULT$seuil_foret))
-  if (length(seuil) != 1L || is.na(seuil)) seuil <- ONF_PARAMS_DEFAULT$seuil_foret
-
   list(
-    domanialite   = dom,
-    purger        = isTRUE(src$purger %||% ONF_PARAMS_DEFAULT$purger),
-    seuil_foret   = max(0, min(1, seuil)),
-    clip_cadastre = isTRUE(src$clip_cadastre %||% ONF_PARAMS_DEFAULT$clip_cadastre)
+    domanialite      = dom,
+    purger           = isTRUE(src$purger %||% ONF_PARAMS_DEFAULT$purger),
+    seuil_couverture = .onf_param_num(src, "seuil_couverture"),
+    clip_cadastre    = isTRUE(src$clip_cadastre %||% ONF_PARAMS_DEFAULT$clip_cadastre),
+    tol              = .onf_param_num(src, "tol"),
+    larg_hors        = .onf_param_num(src, "larg_hors"),
+    seuil            = .onf_param_num(src, "seuil"),
+    seuil_hors       = .onf_param_num(src, "seuil_hors")
   )
+}
+
+#' Do the advanced ONF parameters differ from their defaults?
+#'
+#' @param cfg Output of [project_onf_params()].
+#' @return Logical scalar.
+#' @noRd
+onf_params_avances_modifies <- function(cfg) {
+  any(vapply(ONF_PARAMS_AVANCES, function(k) {
+    !isTRUE(all.equal(as.numeric(cfg[[k]]), ONF_PARAMS_DEFAULT[[k]]))
+  }, logical(1)))
 }
 
 #' Persist the ONF crossing parameters on a project
 #'
 #' @param project_id Character.
 #' @param domanialite Character vector, `"domaniale"` and/or `"autre"`.
-#' @param purger Logical. Drop parcels below `seuil_foret`.
-#' @param seuil_foret Numeric 0..1. Forest share at or below which a parcel goes.
-#' @param clip_cadastre Logical. Discard ONF forest outside the cadastre.
+#' @param purger Logical. Keep only the parcels under the regime forestier.
+#' @param seuil_couverture Numeric 0.1..1. Minimum ONF cover of a parcel.
+#' @param clip_cadastre Logical. Cut the ONF preview to the cadastre.
+#' @param tol,larg_hors,seuil,seuil_hors Advanced parameters of
+#'   `nemeton::construire_ugf_onf()`.
 #' @return Invisible `TRUE`.
 #' @noRd
 set_project_onf_params <- function(project_id, domanialite = NULL,
-                                   purger = NULL, seuil_foret = NULL,
-                                   clip_cadastre = NULL) {
+                                   purger = NULL, seuil_couverture = NULL,
+                                   clip_cadastre = NULL, tol = NULL,
+                                   larg_hors = NULL, seuil = NULL,
+                                   seuil_hors = NULL) {
   project_path <- get_project_path(project_id)
   if (is.null(project_path) || !dir.exists(project_path)) {
     cli::cli_abort("Project not found: {project_id}")
   }
   cfg <- project_onf_params(list(onf_params = list(
     domanialite = domanialite, purger = purger,
-    seuil_foret = seuil_foret, clip_cadastre = clip_cadastre)))
+    seuil_couverture = seuil_couverture, clip_cadastre = clip_cadastre,
+    tol = tol, larg_hors = larg_hors, seuil = seuil, seuil_hors = seuil_hors)))
   cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
 
   update_project_metadata(project_id, list(onf_params = cfg),
                           project_path = project_path)
   cli::cli_alert_success(
-    "ONF : domanialite {paste(cfg$domanialite, collapse = '+')}, seuil {round(cfg$seuil_foret * 100)} %")
+    "ONF : domanialite {paste(cfg$domanialite, collapse = '+')}, couverture {round(cfg$seuil_couverture * 100)} %")
   invisible(TRUE)
 }
 
@@ -2950,7 +3006,15 @@ save_ug_data <- function(project_id, projet) {
     # imported UGF layout with the default 1-UGF-per-parcel migration.
     # Column-oriented output keeps every key present regardless of NA
     # density.
+    #
+    # Colonnes ONF (brief 2026-10-08) : ecrites seulement quand elles portent
+    # une valeur. Un projet sans parcellaire ONF garde un `ugs.json` sans ces
+    # champs plutot que cinq tableaux de `null` ; la lecture les rajoute a NA.
     ugs_path <- file.path(data_dir, "ugs.json")
+    ugs <- .ug_onf_normaliser(ugs)
+    vides <- UG_ONF_COLS[vapply(UG_ONF_COLS, function(col) all(is.na(ugs[[col]])),
+                                logical(1))]
+    ugs <- ugs[, setdiff(names(ugs), vides), drop = FALSE]
     .write_json_atomic(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE,
                        dataframe = "columns")
 
@@ -3050,6 +3114,10 @@ load_ug_data <- function(project_id) {
       cli::cli_alert_info("Backfilling missing {.val {col}} column in ugs.json")
       ugs[[col]] <- NA_character_
     }
+
+    # Colonnes ONF facultatives : absentes d'un fichier anterieur ou d'un projet
+    # sans parcellaire ONF, elles reviennent a NA.
+    ugs <- .ug_onf_normaliser(ugs)
 
     list(tenements = tenements, ugs = ugs)
 

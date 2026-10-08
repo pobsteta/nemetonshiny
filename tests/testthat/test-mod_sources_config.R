@@ -182,15 +182,23 @@ test_that("le bloc ONF des parametres est complet et coche par defaut", {
     session$setInputs(x = 1)
     h <- paste(as.character(output$onf_block), collapse = " ")
 
-    for (id in c("onf_domanialite_cfg", "onf_purge_cfg", "onf_seuil_cfg",
-                 "onf_clip_cfg", "onf_save")) {
+    for (id in c("onf_domanialite_cfg", "onf_purge_cfg", "onf_couverture_cfg",
+                 "onf_clip_cfg", "onf_tol_cfg", "onf_larg_hors_cfg",
+                 "onf_seuil_cfg", "onf_seuil_hors_cfg", "onf_defaut",
+                 "onf_save")) {
       expect_true(grepl(id, h, fixed = TRUE), info = id)
     }
     # Le libelle, pas la cle.
     expect_true(grepl("Enregistrer les param", h, fixed = TRUE))
 
-    # Defauts demandes : purge cochee, decoupe cochee, seuil a 0 %.
-    expect_true(grepl('value="0"', h, fixed = TRUE))
+    # Defauts du brief : couverture 50 %, tolerance 15 m, largeur 50 m,
+    # rattachement 0,5 ha, hors ONF 1 ha.
+    expect_true(grepl('data-from="50"', h, fixed = TRUE))
+    for (v in c('value="15"', 'value="50"', 'value="0.5"', 'value="1"')) {
+      expect_true(grepl(v, h, fixed = TRUE), info = v)
+    }
+    # Reglages avances replies tant qu'ils sont aux valeurs par defaut.
+    expect_false(grepl("<details[^>]*open", h))
     # Quatre controles coches : purge, decoupe, et les deux domanialites.
     expect_equal(length(gregexpr("checked", h)[[1]]), 8L)
   })

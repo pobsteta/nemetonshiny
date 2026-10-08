@@ -1037,6 +1037,7 @@ tenement_import_replace <- function(projet, imported_sf) {
   }
 
   # Build a label -> ug_id map (reuse existing UG, create new ids otherwise)
+  ugs <- .ug_onf_normaliser(ugs)
   unique_labels <- unique(stats::na.omit(label_ugf_vec))
   label_to_ug <- stats::setNames(character(length(unique_labels)),
                                  unique_labels)
@@ -1050,18 +1051,27 @@ tenement_import_replace <- function(projet, imported_sf) {
     } else {
       new_id <- sprintf("ug_%s_%03d", ts_ugf, i)
       label_to_ug[[lbl]] <- new_id
-      new_ugs_rows[[length(new_ugs_rows) + 1L]] <- data.frame(
-        ug_id = new_id,
-        label = lbl,
-        groupe = NA_character_,
-        stringsAsFactors = FALSE
-      )
+      new_ugs_rows[[length(new_ugs_rows) + 1L]] <- new_ug(new_id, lbl)
     }
   }
   if (length(new_ugs_rows) > 0L) {
     ugs <- rbind(ugs, do.call(rbind, new_ugs_rows))
-    projet$ugs <- ugs
   }
+
+  # Colonnes ONF du fichier (brief 2026-10-08, sect. 2) : agregees par UGF et
+  # posees sur l'UGF, neuve ou reprise. Sans elles le n. de parcelle forestiere
+  # ne survivait que dans le libelle, que l'utilisateur peut renommer.
+  onf_cols <- intersect(UG_ONF_COLS, names(imported_m))
+  if (length(onf_cols) > 0L && length(unique_labels) > 0L) {
+    onf_df <- sf::st_drop_geometry(imported_m)[, onf_cols, drop = FALSE]
+    for (lbl in unique_labels) {
+      rows <- which(label_ugf_vec == lbl)
+      vals <- .ug_onf_fusion(onf_df[rows, , drop = FALSE], geom_areas[rows])
+      idx <- which(ugs$ug_id == label_to_ug[[lbl]])
+      for (col in onf_cols) ugs[[col]][idx] <- vals[[col]]
+    }
+  }
+  projet$ugs <- ugs
 
   # Inherit UGF from the existing tenement with the largest overlap;
   # if a new feature has zero overlap with any existing tenement

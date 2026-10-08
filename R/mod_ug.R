@@ -279,13 +279,9 @@ mod_ug_map_actions_bar <- function(id) {
             width = "100%"
           )
         ),
-        info_popover(
-          htmltools::tagList(
-            htmltools::tags$p(i18n$t("onf_auto_select_note")),
-            htmltools::tags$p(class = "mb-0", i18n$t("onf_caler_note"))
-          ),
-          placement = "left"
-        )
+        # Note rendue cote serveur : elle cite la tolerance et le seuil du
+        # PROJET, pas des constantes.
+        shiny::uiOutput(ns("onf_note"), inline = TRUE)
       ),
       htmltools::tags$p(
         class = "text-muted small fst-italic mt-1 mb-0",
@@ -841,11 +837,18 @@ mod_ug_server <- function(id, app_state) {
             } else {
               ""
             }
+            onf_str <- if (!is.null(ug_sf$onf_parcelle) &&
+                           !is.na(ug_sf$onf_parcelle[i])) {
+              paste0("<br>", htmltools::htmlEscape(sprintf(
+                i18n()$t("ug_onf_popup_fmt"), ug_sf$onf_parcelle[i],
+                ug_sf$onf_foret_nom[i] %||% ug_sf$onf_foret_id[i])))
+            } else ""
             sprintf(
-              "<b>%s</b>%s<br>%d tenement(s) | %s ha",
+              "<b>%s</b>%s<br>%d tenement(s) | %s ha%s",
               htmltools::htmlEscape(ug_sf$label[i]), groupe_str,
               ug_sf$n_tenements[i],
-              format(round(ug_sf$surface_m2[i] / 10000, 2), nsmall = 2)
+              format(round(ug_sf$surface_m2[i] / 10000, 2), nsmall = 2),
+              onf_str
             )
           }, character(1))
 
@@ -1589,6 +1592,17 @@ mod_ug_server <- function(id, app_state) {
       )
       names(display_df)[names(display_df) == "__groupe__"] <- groupe_col
 
+      # Foret et parcelle ONF (brief 2026-10-08) : colonnes affichees seulement
+      # quand le projet en porte, sinon deux colonnes vides pour une foret
+      # privee.
+      if (any(!is.na(listing$onf_foret_id))) {
+        foret <- ifelse(is.na(listing$onf_foret_nom), listing$onf_foret_id,
+                        listing$onf_foret_nom)
+        display_df[[i18n()$t("ug_col_onf_foret")]] <- ifelse(is.na(foret), "---", foret)
+        display_df[[i18n()$t("ug_col_onf_parcelle")]] <-
+          ifelse(is.na(listing$onf_parcelle), "---", listing$onf_parcelle)
+      }
+
       # Get cadastral refs for each UG
       projet <- rv$projet_ug
       refs <- vapply(listing$ug_id, function(uid) {
@@ -1701,6 +1715,19 @@ mod_ug_server <- function(id, app_state) {
                 class = "badge ms-1",
                 style = sprintf("background-color: %s;", color),
                 listing$groupe[sel]
+              )
+            },
+            if (!is.null(listing$onf_parcelle) && !is.na(listing$onf_parcelle[sel])) {
+              part <- listing$onf_part[sel]
+              shiny::tags$div(
+                class = "small",
+                sprintf(i18n()$t("ug_onf_popup_fmt"), listing$onf_parcelle[sel],
+                        listing$onf_foret_nom[sel] %||% listing$onf_foret_id[sel]),
+                if (!is.na(part)) {
+                  shiny::tags$span(class = "text-muted", sprintf(
+                    paste0(" (", i18n()$t("ug_onf_part_fmt"), ")"),
+                    as.integer(round(100 * part))))
+                }
               )
             }
           ),
@@ -1974,6 +2001,10 @@ mod_ug_server <- function(id, app_state) {
             idx <- match(tenements$ug_id, ugs$ug_id)
             tenements$ug_label <- ugs$label[idx]
             tenements$ug_groupe <- ugs$groupe[idx]
+            # Colonnes ONF de l'UGF, sous leur nom : un fichier reimporte avec
+            # une colonne `label_ugf` les reporte sur l'UGF.
+            ugs <- .ug_onf_normaliser(ugs)
+            for (col in UG_ONF_COLS) tenements[[col]] <- ugs[[col]][idx]
           }
 
           # Ensure SIG surface exists
@@ -2273,28 +2304,6 @@ mod_ug_server <- function(id, app_state) {
       TRUE
     }
 
-    # Rend compte de la purge - LES DEUX chemins qui croisent le parcellaire
-    # (bouton ONF et import CSV) passent par ici, sinon ils divergent : le
-    # bouton expliquait ce qui restait, le CSV se taisait.
-    #
-    # Deux messages, parce qu'ils repondent a deux questions. Le premier dit ce
-    # qui a ete RETIRE ; le second dit pourquoi une ligne " Hors foret
-    # publique " SUBSISTE malgre la demande. Les fondre laisserait
-    # l'utilisateur devant une purge apparemment en panne.
-    #
-    # Le seuil est passe au message : il est parametrable depuis
-    # Parametres > Sources & parametres et vaut 0 par defaut, alors que le
-    # texte annoncait " 10 % " en dur - la valeur d'un defaut qui a change.
-    .onf_notify_purge <- function(n_purgees, seuil_foret, i18n_snap) {
-      pct <- format(round(100 * (seuil_foret %||% 0), 1), trim = TRUE)
-      shiny::showNotification(
-        if (n_purgees > 0L) {
-          sprintf(i18n_snap$t("onf_purge_hors_fmt"), n_purgees, pct)
-        } else sprintf(i18n_snap$t("onf_purge_hors_aucune_fmt"), pct),
-        type = if (n_purgees > 0L) "warning" else "message",
-        duration = 10, session = session)
-    }
-
     # Surcouche " Parcellaire ONF " : montre CE QUI VA ETRE IMPORTE avant de
     # toucher au projet. Sans elle, l'utilisateur valide un remplacement de ses
     # parcelles sans avoir vu ce qui les remplace.
@@ -2335,9 +2344,65 @@ mod_ug_server <- function(id, app_state) {
         leaflet::showGroup("Parcellaire ONF")
     })
 
-    # ---- Croiser : GARDE les parcelles du projet -----------------------
+    # ---- Croiser : construire_ugf_onf(), en tache asynchrone ------------
+    #
+    # ~15 s par commune, et le premier appel telecharge le fichier DGFiP
+    # national (376 Mo) : `ExtendedTask` + `future_promise`, comme
+    # l'accessibilite. Un `.later_sur()` bloquerait la session pendant tout ce
+    # temps. Le bouton et l'import CSV passent par la meme tache ; le contexte
+    # de l'appel (projet vise, origine) est garde ici pour le resultat.
+    .onf_dev_path <- tryCatch(
+      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+        find.package("nemetonshiny") else NULL,
+      error = function(e) NULL)
+
+    onf_task <- shiny::ExtendedTask$new(
+      function(projet, cfg, selection, lang, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          utils::getFromNamespace("onf_croise_tache", "nemetonshiny")(
+            projet, cfg, selection = selection, lang = lang)
+        }, seed = TRUE)
+      })
+
+    rv$onf_ctx <- NULL
+
+    # Lance la tache. `selection = NULL` suit le reglage `purger` du projet ;
+    # l'import CSV force " toutes ".
+    #
+    # Appelee aussi depuis le rappel `later` de l'import CSV, hors contexte
+    # reactif : d'ou `isolate()` et le domaine de la session.
+    .onf_pid <- function(p) p$metadata$id %||% p$id
+    .onf_lancer <- function(projet, cfg, selection, origine, i18n_snap) {
+      occupe <- shiny::isolate(identical(onf_task$status(), "running"))
+      if (occupe) return(invisible(FALSE))
+      shiny::withReactiveDomain(session, shiny::isolate({
+        rv$onf_ctx <- list(pid = .onf_pid(projet), origine = origine,
+                           i18n = i18n_snap)
+        .onf_spinner_on(i18n_snap)
+        session$sendCustomMessage("nemetonSetDisabled",
+          list(id = ns("btn_onf_croise"), disabled = TRUE))
+        onf_task$invoke(projet, cfg, selection, i18n_snap$language %||% "fr",
+                        .onf_dev_path, get_app_options())
+      }))
+      invisible(TRUE)
+    }
+
     shiny::observeEvent(input$btn_onf_croise, {
       if (deny_if_readonly(app_state)) return()
+      if (identical(onf_task$status(), "running")) return()
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) {
         shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
@@ -2347,113 +2412,90 @@ mod_ug_server <- function(id, app_state) {
         shiny::showNotification(i18n()$t("onf_need_selection"), type = "warning")
         return()
       }
+      # Les reglages viennent des parametres du projet (Sources & parametres) :
+      # ils y sont persistes, donc les memes pour tous ceux qui l'ouvrent.
+      cfg <- project_onf_params(shiny::isolate(app_state$current_project)$metadata)
+      .onf_lancer(projet, cfg, selection = NULL, origine = "bouton",
+                  i18n_snap = shiny::isolate(i18n()))
+    })
 
-      i18n_snap <- shiny::isolate(i18n())
-      # Vecteur des coches. `onf_load_parcelles()` le traduit en argument coeur
-      # et rend le statut " no_domanialite " si aucune n'est cochee.
-      # Les reglages viennent des parametres du projet, plus de la barre : ils
-      # y sont persistes, donc ils survivent au rechargement et sont les memes
-      # pour tous ceux qui ouvrent le projet.
-      cfg       <- project_onf_params(shiny::isolate(app_state$current_project)$metadata)
-      dom       <- cfg$domanialite
-      purger    <- isTRUE(cfg$purger)
-      .onf_spinner_on(i18n_snap)
+    shiny::observeEvent(onf_task$status(), {
+      st <- onf_task$status()
+      if (!st %in% c("success", "error")) return()
+      ctx <- rv$onf_ctx
+      rv$onf_ctx <- NULL
+      i18n_snap <- ctx$i18n %||% shiny::isolate(i18n())
+      shiny::removeNotification(.onf_notif_id, session = session)
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = ns("btn_onf_croise"), disabled = FALSE))
 
-      .later_sur(function() {
-        tryCatch({
-          # UN SEUL appel WFS, sur l'emprise de toute la selection (le brief
-          # interdit explicitement un appel par parcelle).
-          res <- onf_load_parcelles(projet$parcels, domanialite = dom,
-                                    clip_cadastre = cfg$clip_cadastre)
-          if (!identical(res$status, "ok")) {
-            shiny::removeNotification(.onf_notif_id, session = session)
-            .onf_notify_status(res$status, i18n_snap)
-            return()
-          }
+      out <- tryCatch(onf_task$result(), error = function(e) {
+        list(status = "error", message = conditionMessage(e))
+      })
+      if (identical(out$status, "error")) {
+        shiny::showNotification(
+          paste(i18n_snap$t("ug_split_error"), out$message %||% ""),
+          type = "error", duration = 10, session = session)
+        return()
+      }
 
-          # Surcouche montrant le parcellaire interroge, AVANT que le
-          # croisement n'ait produit les UGF.
-          rv$onf_preview <- res$parcelles
+      # Le projet a pu changer pendant le calcul (autre projet ouvert, import
+      # CSV) : appliquer le resultat ecraserait un projet qui n'est pas celui
+      # qu'on a croise.
+      cur_id <- .onf_pid(shiny::isolate(app_state$current_project))
+      if (!is.null(ctx$pid) && !identical(ctx$pid, cur_id)) {
+        shiny::showNotification(i18n_snap$t("onf_projet_change"),
+                                type = "warning", duration = 10, session = session)
+        return()
+      }
 
-          # Calage systematique (cf. UI ci-dessus) : plus de choix a lire.
-          out <- onf_projet_croise(projet, res$parcelles, i18n = i18n_snap)
-          if (!identical(out$status, "ok")) {
-            shiny::removeNotification(.onf_notif_id, session = session)
-            .onf_notify_status(out$status, i18n_snap)
-            return()
-          }
+      if (!identical(out$status, "ok")) {
+        # Ce qui a ete trouve reste visible : sans lui, " aucun recoupement "
+        # ne se comprend pas.
+        if (!is.null(out$apercu)) rv$onf_preview <- out$apercu
+        .onf_notify_status(out$status, i18n_snap)
+        return()
+      }
 
-          # Purge optionnelle, APRES le croisement. Elle lit la part forestiere
-          # RELEVEE PAR le croisement (`out$part_foret`) et non plus l'UGF
-          # " Hors foret publique " : celle-ci n'existe plus, chaque bout ayant
-          # rejoint son voisin. Ce chemin-ci est le SEUL qui la propose - une
-          # selection faite a la main peut deborder, un CSV ne le peut pas.
-          projet_final <- out$projet
-          n_purgees <- 0L
-          if (purger) {
-            purge <- onf_purger_hors_foret(projet_final, out$part_foret,
-                                           seuil_foret = cfg$seuil_foret)
-            projet_final <- purge$projet
-            n_purgees <- purge$n_supprimees
-          }
+      ecartees <- out$ecartees %||% .onf_ecartees_vide()
+      # `with_parcels` : la selection " foret " retire des parcelles du projet,
+      # il faut les persister ET les refleter dans app_state, sinon l'onglet
+      # Selection continuerait d'afficher des parcelles disparues.
+      .onf_commit(out$projet, with_parcels = nrow(ecartees) > 0L)
+      rv$onf_preview <- NULL
 
-          # `with_parcels` : la purge retire des parcelles du projet, il faut
-          # donc les persister ET les refleter dans app_state, sinon l'onglet
-          # Selection continuerait d'afficher des parcelles disparues.
-          .onf_commit(projet_final, with_parcels = purger)
-
-          # La surcouche a joue son role : les UGF qui viennent d'etre creees
-          # SONT ce parcellaire. La laisser superposait un calque orange
-          # permanent au resultat - d'autant plus trompeur apres une purge,
-          # puisqu'elle continue de montrer un parcellaire que le projet ne
-          # contient plus.
-          rv$onf_preview <- NULL
-
-          shiny::removeNotification(.onf_notif_id, session = session)
-
-          # Tout est lu dans le retour du coeur, rien n'est recalcule.
-          r <- onf_croise_resume(out$tenements)
-          shiny::showNotification(
-            sprintf(i18n_snap$t("onf_croise_success_fmt"), r$n_ugf, r$n_parcelles),
-            type = "message", duration = 10, session = session
-          )
-          # Ce que l'auto-selection a retenu : sans ce chiffre, l'utilisateur ne
-          # sait pas sur quelle part de son cadastre le calcul a porte.
-          if (!is.null(out$n_total) && out$n_total > 0L) {
-            shiny::showNotification(
-              sprintf(i18n_snap$t("onf_auto_select_fmt"),
-                      out$n_retenues, out$n_total),
-              type = "message", duration = 10, session = session)
-          }
-          if (r$n_multi > 0L) {
-            shiny::showNotification(
-              sprintf(i18n_snap$t("onf_croise_multi_fmt"), r$n_multi),
-              type = "message", duration = 10, session = session)
-          }
-          if (length(r$partielles) > 0L) {
-            shiny::showNotification(
-              sprintf(i18n_snap$t("onf_croise_partielle_fmt"), length(r$partielles)),
-              type = "warning", duration = 10, session = session)
-          }
-          # Ce que le rattachement a deplace. Le message d'avant disait
-          # " X ha hors foret publique " : depuis que plus rien ne l'est, il
-          # decrivait une situation qui n'existe plus.
-          sr <- out$surface_rattachee_ha %||% 0
-          if (sr > 0.05) {
-            shiny::showNotification(
-              sprintf(i18n_snap$t("onf_croise_rattache_fmt"), sr),
-              type = "message", duration = 10, session = session)
-          }
-          if (purger) {
-            .onf_notify_purge(n_purgees, cfg$seuil_foret, i18n_snap)
-          }
-        }, error = function(e) {
-          shiny::removeNotification(.onf_notif_id, session = session)
-          shiny::showNotification(
-            paste(i18n_snap$t("ug_split_error"), conditionMessage(e)),
-            type = "error", duration = 10, session = session)
-        })
-      }, delay = 0.05)
+      # Tout est lu dans le retour du coeur, rien n'est recalcule.
+      r <- onf_croise_resume(out$tenements)
+      shiny::showNotification(
+        sprintf(i18n_snap$t("onf_croise_success_fmt"), r$n_ugf, r$n_parcelles),
+        type = "message", duration = 10, session = session)
+      if (!is.null(out$n_total) && !is.na(out$n_retenues) &&
+          out$n_retenues < out$n_total) {
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_auto_select_fmt"), out$n_retenues, out$n_total),
+          type = "message", duration = 10, session = session)
+      }
+      if (r$n_multi > 0L) {
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_croise_multi_fmt"), r$n_multi),
+          type = "message", duration = 10, session = session)
+      }
+      if (r$n_cad > 0L) {
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_croise_cad_fmt"), r$n_cad),
+          type = "message", duration = 10, session = session)
+      }
+      ecart <- suppressWarnings(as.numeric(out$calage[["ecart_median_m"]]))
+      if (length(ecart) == 1L && is.finite(ecart)) {
+        shiny::showNotification(sprintf(i18n_snap$t("onf_calage_fmt"), ecart),
+                                type = "message", duration = 10, session = session)
+      }
+      if (nrow(ecartees) > 0L) {
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_ecartees_fmt"), nrow(ecartees),
+                  onf_ecartees_texte(ecartees, i18n_snap)),
+          type = "warning", duration = NULL, session = session)
+      }
     })
 
     # ================================================================
@@ -2573,45 +2615,6 @@ mod_ug_server <- function(id, app_state) {
             return()
           }
 
-          # Croisement ONF optionnel, sur le projet frais. Les echecs du service
-          # (pas de foret publique, WFS muet) ne doivent PAS annuler l'import :
-          # le projet existe, il est simplement sans UGF forestieres.
-          if (croiser) {
-            cfg_csv <- project_onf_params(charge$metadata)
-            onf <- onf_load_parcelles(charge$parcels,
-                                      domanialite = cfg_csv$domanialite,
-                                      clip_cadastre = cfg_csv$clip_cadastre)
-            if (identical(onf$status, "ok")) {
-              out <- tryCatch(
-                onf_projet_croise(charge, onf$parcelles, i18n = i18n_snap),
-                error = function(e) {
-                  cli::cli_warn("Croisement ONF apres import CSV : {conditionMessage(e)}")
-                  NULL
-                })
-              if (!is.null(out) && identical(out$status, "ok")) {
-                # AUCUNE PURGE ICI, et c'est une decision, pas un oubli
-                # (Pascal, 2026-08-26) : un CSV liste la foret. Ses parcelles
-                # SONT la foret, toutes, et en supprimer contredirait le fichier
-                # que l'utilisateur vient de fournir. Le reglage reste offert au
-                # bouton ONF, ou la selection est faite a la main sur la carte
-                # et peut deborder.
-                #
-                # Ce qui reglait le probleme d'origine - l'UGF " Hors foret
-                # publique " survivant a l'import - n'est plus la purge mais le
-                # RATTACHEMENT : chaque bout de parcelle cadastrale sans numero
-                # forestier rejoint la parcelle voisine avec laquelle il partage
-                # la plus longue frontiere. Rien n'est mis de cote, donc rien ne
-                # reste a purger.
-                .onf_commit(out$projet, with_parcels = FALSE)
-                charge <- load_project(pid)
-              } else {
-                .onf_notify_status(out$status %||% "no_overlap", i18n_snap)
-              }
-            } else {
-              .onf_notify_status(onf$status, i18n_snap)
-            }
-          }
-
           # Etat du module.
           rv$projet_ug <- charge
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
@@ -2634,6 +2637,17 @@ mod_ug_server <- function(id, app_state) {
             selected_ids    = charge$parcels$id,
             timestamp       = Sys.time()
           )
+
+          # Croisement ONF optionnel, lance APRES que le projet est complet et
+          # ouvert : il tourne en tache asynchrone et ses echecs (pas de foret
+          # publique, WFS muet) n'annulent pas l'import. TOUJOURS en selection
+          # " toutes ", quel que soit le reglage de purge (Pascal, 2026-08-26) :
+          # un CSV liste la foret, ses parcelles en font toutes partie.
+          if (croiser && has_ug_data(charge)) {
+            .onf_lancer(charge, project_onf_params(charge$metadata),
+                        selection = "toutes", origine = "csv",
+                        i18n_snap = i18n_snap)
+          }
 
           surface <- sum(as.numeric(res$parcelles$contenance), na.rm = TRUE) / 1e4
           shiny::showNotification(
@@ -2677,8 +2691,26 @@ mod_ug_server <- function(id, app_state) {
         htmltools::tags$div(sprintf(
           i18n$t("onf_rappel_purge"),
           i18n$t(if (isTRUE(cfg$purger)) "yes" else "no"),
-          round(100 * cfg$seuil_foret))),
+          as.integer(round(100 * cfg$seuil_couverture)))),
+        if (onf_params_avances_modifies(cfg)) {
+          htmltools::tags$div(i18n$t("onf_rappel_avances"))
+        },
         htmltools::tags$div(i18n$t("onf_rappel_ou"))
+      )
+    })
+
+    # Note du " i " a cote du bouton : tolerance et seuil du projet.
+    output$onf_note <- shiny::renderUI({
+      i18n <- i18n()
+      cfg <- project_onf_params(app_state$current_project$metadata)
+      fmt <- function(x) format(x, trim = TRUE, decimal.mark = if (identical(i18n$language, "fr")) "," else ".")
+      info_popover(
+        htmltools::tagList(
+          htmltools::tags$p(i18n$t("onf_auto_select_note")),
+          htmltools::tags$p(class = "mb-0", sprintf(i18n$t("onf_caler_note"),
+                                                    fmt(cfg$tol), fmt(cfg$seuil)))
+        ),
+        placement = "left"
       )
     })
 
