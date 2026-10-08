@@ -1,4 +1,4 @@
-# nemetonshiny 1.2.2.9001 (cycle de développement)
+# nemetonshiny 1.3.0 (2026-10-08)
 
 - **Croisement ONF, chemin unique** (spec 058, briefs `ugf-depuis-onf`,
   `onf-nouveau-chemin-seul`, `onf-chemin-unique-api-coeur`) : le bouton
