@@ -1,14 +1,6 @@
-# nemetonshiny 1.2.0.9002 (développement)
+# nemetonshiny 1.2.1 (2026-10-08)
 
-- **Suivi sanitaire, pictogramme RECONFORT** : l'onglet RECONFORT et son
-  sous-onglet de carte portaient un résineux (`tree-fill`), comme FORDEAD.
-  RECONFORT suit les feuillus (chêne, châtaignier) : il porte désormais un arbre
-  à houppier rond, dessiné en SVG au format des icônes Bootstrap (qui n'ont pas
-  de feuillu).
-
-# nemetonshiny 1.2.0.9001 (développement)
-
-Reliquat de l'audit des briefs cœur → app du 2026-10-08.
+Reliquat de l'audit des briefs cœur → app du 2026-10-08, et pictogramme feuillu de RECONFORT.
 
 - **Carte bivariée E-OBS, cache périmé** (brief 034 bivariate-cache, bug A) :
   un `context_bivariate.tif` écrit sous un autre schéma (3 × 3 hérité, ou
@@ -29,6 +21,11 @@ Reliquat de l'audit des briefs cœur → app du 2026-10-08.
   nationale automatique (spec 031) ; commentaire périmé sur la colonne `P1`
   (brief 057 §4 bis) ; guide de l'application à jour de l'onglet **Atlas**
   (sous-onglets Sélection / Synthèse) et des sous-onglets du Suivi sanitaire.
+- **Suivi sanitaire, pictogramme RECONFORT** : l'onglet RECONFORT et son
+  sous-onglet de carte portaient un résineux (`tree-fill`), comme FORDEAD.
+  RECONFORT suit les feuillus (chêne, châtaignier) : il porte désormais un arbre
+  à houppier rond, dessiné en SVG au format des icônes Bootstrap (qui n'ont pas
+  de feuillu).
 
 # nemetonshiny 1.2.0 (2026-10-08)
 
