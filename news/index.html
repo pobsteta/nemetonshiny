@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.3.0" id="nemetonshiny-130-2026-10-08">nemetonshiny 1.3.0 (2026-10-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-130-2026-10-08"></a></h2>
+<ul><li>
+<strong>Croisement ONF, chemin unique</strong> (spec 058, briefs <code>ugf-depuis-onf</code>, <code>onf-nouveau-chemin-seul</code>, <code>onf-chemin-unique-api-coeur</code>) : le bouton « Croiser avec l’ONF » et l’import CSV ne passent plus que par <code><a href="https://pobsteta.github.io/nemeton/reference/construire_ugf_onf.html" class="external-link">nemeton::construire_ugf_onf()</a></code>. Le parcellaire ONF est recalé sur le cadastre (calage élastique), qui n’est jamais déformé. Un seul appel couvre tout le projet, communes voisines comprises. L’ancienne chaîne (calage « parcelle entière au-delà de 90 % », purge sur la part forestière, <code>seuil_foret</code>) est retirée. Le croisement tourne en tâche asynchrone, car le premier appel télécharge le fichier DGFiP (376 Mo).</li>
+<li>
+<strong>Parcelles hors régime forestier</strong> : avec la purge cochée, les parcelles privées, trop peu couvertes par l’ONF ou hors parcellaire ONF quittent le projet. La notification les liste avec leur raison et leur propriétaire DGFiP. L’import CSV garde toujours toutes ses parcelles.</li>
+<li>
+<strong>Paramètres ONF</strong> : couverture minimale, et en réglages avancés repliés la tolérance d’accrochage, la largeur et la surface minimales d’une UGF hors ONF et le seuil de rattachement, avec un bouton « Valeurs par défaut ». Les bornes sont contrôlées. Un ancien <code>metadata.json</code> qui contient <code>seuil_foret</code> se relit sans erreur.</li>
+<li>
+<strong>N° ONF dans les UGF</strong> : colonnes <code>onf_foret_id</code>, <code>onf_foret_nom</code>, <code>onf_parcelle</code>, <code>onf_domaniale</code> et <code>onf_part</code>. Elles sont conservées par l’import, la fusion (si même parcelle forestière) et la division, et affichées dans le tableau, la popup et l’export GeoPackage. Un <code>ugs.json</code> antérieur se lit sans erreur.</li>
+<li>
+<strong>Outils MCP</strong> <code>appliquer_ugf</code> et <code>croiser_onf</code> : refus si un calcul tourne ou si le projet est verrouillé. <code>appliquer_ugf</code> refuse aussi un IDU inconnu et un pavage inexact, sans modifier le projet. Le retour indique enfin que les indicateurs sont périmés : <code>save_ug_data()</code> les avait déjà mis de côté, et le second contrôle répondait « non ».</li>
+<li>
+<strong>reGénération</strong> : l’axe ombre du classement des essences s’active avec le LAI réellement utilisé par UGF (spec 039). Sans clé CDS, le <code>lai_max</code> de BILJOU est tiré du nuage LiDAR et mis en cache (brief lai-lidar).</li>
+<li>
+<strong>R5</strong> : un test verrouille le sens de l’inversion du score.</li>
+<li>Plancher <code>Imports: nemeton (&gt;= 1.2.0)</code>.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.2.2" id="nemetonshiny-122-2026-10-08">nemetonshiny 1.2.2 (2026-10-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-122-2026-10-08"></a></h2>
 <ul><li>

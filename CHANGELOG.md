@@ -12,6 +12,43 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[1.3.0\] - 2026-10-08
+
+### Added
+
+- ONF crossing settings per project: minimum ONF cover, and folded
+  advanced settings (snapping tolerance, minimum width and area of an
+  out-of-ONF UGF, attachment threshold) with a « default values » button
+  (spec 058).
+- UGF carry the ONF forest parcel in columns (`onf_foret_id`,
+  `onf_foret_nom`, `onf_parcelle`, `onf_domaniale`, `onf_part`): stored
+  in `ugs.json`, kept by import, merge and split, shown in the table,
+  popup and GeoPackage export.
+- MCP tools `appliquer_ugf` and `croiser_onf`.
+- reGénération: shade axis of the species ranking, from the LAI used per
+  UGF (spec 039).
+
+### Changed
+
+- The ONF crossing uses
+  [`nemeton::construire_ugf_onf()`](https://pobsteta.github.io/nemeton/reference/construire_ugf_onf.html)
+  only, in one call for the whole project, as an asynchronous task. With
+  the purge on, parcels that are private, too little covered or outside
+  the ONF layer leave the project and are listed with their reason and
+  DGFiP owner. CSV import keeps all parcels.
+- Core floor raised to `nemeton (>= 1.2.0)`.
+
+### Fixed
+
+- reGénération: without a CDS key, the BILJOU `lai_max` comes from the
+  LiDAR point cloud (cached) instead of the stand-type default.
+- MCP: re-tiling tools now report the indicators as stale.
+
+### Removed
+
+- The former ONF chain (whole-parcel snapping above 90 %, purge on the
+  forest share, `seuil_foret` setting).
+
 ## \[1.2.2\] - 2026-10-08
 
 ### Changed
