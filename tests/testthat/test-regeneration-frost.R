@@ -80,9 +80,9 @@ test_that("run_regeneration_frost n'échoue jamais si le cœur lève", {
   expect_false(res$tmin_available)
 })
 
-test_that("le radar résout R7 (sens normal, via i18n) sans routage spécial", {
+test_that("le radar résout R7 (sens normal, via le cœur) sans routage spécial", {
   # R7 est dans INDICATOR_FAMILIES$R (cœur >= 0.151.0) ; l'app doit produire un
-  # libellé lisible via la clé i18n `indicator_R7`, comme R1-R6.
+  # libellé lisible via la table du cœur (indicator_labels()), comme R1-R6.
   has_r7 <- "R7" %in% tryCatch(nemetonshiny:::INDICATOR_FAMILIES$R$indicators,
                                error = function(e) character())
   skip_if_not(has_r7, "cœur installé sans R7")

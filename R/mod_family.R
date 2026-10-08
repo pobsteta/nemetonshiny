@@ -878,11 +878,45 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
   # on ne commente que ce qui merite une reserve.
   if (is.null(key) && !all_na) return(NULL)
 
+  txt <- i18n$t(key %||% "indicator_all_na")
+  # Indicateur partiellement vide avec une cause nommee : dire QUELLES UGF sont
+  # concernees, sinon la phrase laisse chercher sur la carte (brief
+  # trois-derniers-points, point 1.3).
+  if (!all_na && any(is.na(vals))) {
+    txt <- paste0(txt, " ", sprintf(i18n$t("indicator_na_units_fmt"),
+                                    .indicator_na_units(sf_data, vals)))
+  }
+
   htmltools::div(
     class = "small text-muted fst-italic px-1 pb-1",
     bsicons::bs_icon("info-circle", class = "me-1"),
-    i18n$t(key %||% "indicator_all_na")
+    txt
   )
+}
+
+
+#' Name the units an indicator leaves empty
+#'
+#' @param sf_data sf. Indicator table for the family.
+#' @param vals Indicator values, aligned with `sf_data`.
+#' @param max_n Integer. Units named before the list is cut.
+#'
+#' @return Character scalar, e.g. `"UGF 3, UGF 7 (+2)"`.
+#'
+#' @noRd
+.indicator_na_units <- function(sf_data, vals, max_n = 5L) {
+  ids <- if ("label" %in% names(sf_data)) {
+    as.character(sf_data[["label"]])
+  } else if ("ug_id" %in% names(sf_data)) {
+    as.character(sf_data[["ug_id"]])
+  } else {
+    as.character(seq_along(vals))
+  }
+  ids <- ids[is.na(vals)]
+  ids[is.na(ids) | !nzchar(ids)] <- "?"
+  out <- paste(utils::head(ids, max_n), collapse = ", ")
+  if (length(ids) > max_n) out <- paste0(out, " (+", length(ids) - max_n, ")")
+  out
 }
 
 
@@ -1016,46 +1050,23 @@ clean_indicator_label <- function(col_name, i18n) {
   base <- sub("_norm$", "", col_name)
 
   # Resolution par la table des familles, qui vient du coeur depuis le de-fork
-  # (`.build_indicator_families()`). L'ordre des sources compte :
-  #
-  # 1. `fam$indicator_labels[[code]]` - le coeur apparie colonne, code et
-  #    libelle explicitement, ligne par ligne.
-  # 2. la cle i18n `indicator_<code>` - conservee en repli pour les codes que le
-  #    coeur ne documente pas.
-  #
-  # L'inverse (i18n d'abord) etait le bug : l'appariement code <-> colonne est
-  # POSITIONNEL, et il etait croise pour F et L - `F1` pointait sur
-  # `indicateur_f2_erosion`. Les cles i18n etant ecrites selon la semantique du
-  # CODE et non de la colonne, la carte d'erosion sortait libellee
-  # " F1 - Fertilite des sols ". Le coeur a depuis decroise les deux familles
-  # (L en v0.176.0, F en v0.182.0), mais l'ordre des sources reste celui-ci :
-  # le libelle doit decrire la colonne qu'on affiche, pas le rang qu'elle
-  # occupe - sans quoi le prochain renommage coeur rejoue le meme bug.
+  # (`.build_indicator_families()`), par la colonne (`indicateur_f2_erosion`)
+  # ou par le code court (`C1`, `R5`). Le coeur apparie colonne, code et
+  # libelle ligne par ligne : c'est la seule source. Les 40 cles i18n
+  # `indicator_<CODE>` qui servaient de repli ont ete retirees (brief
+  # indicator-families, etape 4) - une copie locale pouvait diverger sans que
+  # rien ne le detecte, et c'est ainsi que F1 et F2 s'etaient croises.
   lang <- i18n$language %||% "fr"
   for (fam in INDICATOR_FAMILIES) {
-    if (!is.null(fam$column_names) && base %in% fam$column_names) {
-      idx <- which(fam$column_names == base)[1]
-      if (idx <= length(fam$indicators)) {
-        code <- fam$indicators[idx]
-
-        lbl <- fam$indicator_labels[[code]]
-        txt <- lbl[[lang]] %||% lbl[["fr"]] %||% lbl[["en"]]
-        if (!is.null(txt) && !is.na(txt) && nzchar(txt)) {
-          return(paste0(code, " - ", txt))
-        }
-
-        short_key <- paste0("indicator_", code)
-        if (i18n$has(short_key)) {
-          return(paste0(code, " - ", i18n$t(short_key)))
-        }
-      }
+    idx <- match(base, fam$column_names)
+    if (is.na(idx)) idx <- match(base, fam$indicators)
+    if (is.na(idx) || idx > length(fam$indicators)) next
+    code <- fam$indicators[idx]
+    lbl <- fam$indicator_labels[[code]]
+    txt <- lbl[[lang]] %||% lbl[["fr"]] %||% lbl[["en"]]
+    if (!is.null(txt) && !is.na(txt) && nzchar(txt)) {
+      return(paste0(code, " - ", txt))
     }
-  }
-
-  # Try i18n key directly (works for short codes like C1, B2)
-  key <- paste0("indicator_", base)
-  if (i18n$has(key)) {
-    return(paste0(base, " - ", i18n$t(key)))
   }
 
   # Fallback: humanize the column name

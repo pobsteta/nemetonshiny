@@ -299,3 +299,26 @@ test_that("an R1 skipped for lack of DEM explains itself", {
   expect_true(grepl(i18n$t("r1_skipped_no_dem"), as.character(b), fixed = TRUE))
   expect_false(grepl(i18n$t("indicator_all_na"), as.character(b), fixed = TRUE))
 })
+
+
+test_that("a partially empty indicator with a named cause names its units", {
+  i18n <- get_i18n("fr")
+  d <- .mk_sf(c(12, NA_real_, NA_real_),
+              status = c("calculated", "skipped_no_reference",
+                         "skipped_no_reference"))
+  d$label <- c("UGF 1", "UGF 2", "UGF 3")
+  html <- as.character(nemetonshiny:::indicator_na_banner(
+    d, "indicateur_a5_rafraichissement", i18n))
+
+  expect_true(grepl(i18n$t("a5_skipped_no_reference"), html, fixed = TRUE))
+  expect_true(grepl("UGF 2, UGF 3", html, fixed = TRUE))
+  expect_false(grepl("UGF 1", html, fixed = TRUE))
+})
+
+
+test_that(".indicator_na_units cuts long lists", {
+  d <- data.frame(label = paste0("U", 1:8))
+  expect_identical(
+    nemetonshiny:::.indicator_na_units(d, rep(NA_real_, 8), max_n = 3L),
+    "U1, U2, U3 (+5)")
+})

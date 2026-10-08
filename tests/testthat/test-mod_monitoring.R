@@ -1911,3 +1911,15 @@ test_that("les modes de suivi sont des sous-onglets, plus un radio", {
     }
   )
 })
+
+
+test_that("RECONFORT (feuillus) porte un pictogramme feuillu, pas le resineux de FORDEAD", {
+  ico <- as.character(nemetonshiny:::.icone_feuillu())
+  expect_match(ico, "^<svg ")
+  expect_match(ico, "bi-feuillu", fixed = TRUE)
+  expect_match(ico, 'aria-hidden="true"', fixed = TRUE)
+  expect_match(ico, "currentColor", fixed = TRUE)
+
+  src <- paste(deparse(nemetonshiny:::mod_monitoring_ui), collapse = "\n")
+  expect_false(grepl("tree-fill", src, fixed = TRUE))
+})

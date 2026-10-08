@@ -150,3 +150,20 @@ test_that("a skipped R5 says why, via the shared banner", {
   expect_true(grepl(i18n$t("r5_skipped_no_fordead"), as.character(b),
                     fixed = TRUE))
 })
+
+
+test_that("no local indicator_<CODE> label copy survives (brief indicator-families, etape 4)", {
+  keys <- names(nemetonshiny:::TRANSLATIONS)
+  expect_length(grep("^indicator_[A-Z][0-9]+$", keys, value = TRUE), 0L)
+})
+
+
+test_that("a short code resolves through the core table", {
+  i18n <- get_i18n("fr")
+  fam_r <- nemetonshiny:::INDICATOR_FAMILIES$R
+  attendu <- fam_r$indicator_labels[["R1"]]$fr
+  expect_identical(nemetonshiny:::clean_indicator_label("R1", i18n),
+                   paste0("R1 - ", attendu))
+  expect_identical(nemetonshiny:::clean_indicator_label("R1_norm", i18n),
+                   paste0("R1 - ", attendu))
+})

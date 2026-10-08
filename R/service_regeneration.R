@@ -322,11 +322,34 @@ regeneration_context_cached <- function(project_path, view = "tx", buffer_m = 25
   if (is.null(project_path)) return(NULL)
   paths <- .regen_context_raster_paths(project_path, view, buffer_m)
   if (!file.exists(paths$tif) || !file.exists(paths$meta)) return(NULL)
-  r <- tryCatch(terra::rast(paths$tif), error = function(e) NULL)
-  if (is.null(r)) return(NULL)
   meta <- tryCatch(jsonlite::read_json(paths$meta, simplifyVector = TRUE),
                    error = function(e) list(status = "ok"))
+  # Un cache bivarie ecrit sous un autre schema (3x3 herite) est recalcule, pas
+  # servi : `ncol` absent = cache anterieur au champ, donc perime (brief 034
+  # bivariate-cache, bug A).
+  if (identical(view, "bivariate") && !.regen_bivariate_cache_current(meta)) {
+    return(NULL)
+  }
+  r <- tryCatch(terra::rast(paths$tif), error = function(e) NULL)
+  if (is.null(r)) return(NULL)
   list(raster = r, meta = meta)
+}
+
+#' Classes per axis of the core's E-OBS bivariate map
+#'
+#' `nemeton::eobs_bivariate_n()` is no longer exported since the 1.0 API
+#' contract (core spec 057): the core's current value (5, i.e. 5 x 5) is
+#' mirrored here.
+#' @noRd
+.REGEN_BIVARIATE_N <- 5L
+
+#' Is a cached bivariate context map built on the current N x N scheme?
+#' @param meta The cached `meta.json`, as read by `jsonlite::read_json()`.
+#' @return `TRUE` when `meta$palette$ncol` equals `.REGEN_BIVARIATE_N`.
+#' @noRd
+.regen_bivariate_cache_current <- function(meta) {
+  n_cache <- suppressWarnings(as.integer(meta$palette$ncol %||% NA)[1])
+  isTRUE(n_cache == .REGEN_BIVARIATE_N)
 }
 
 #' Download the E-OBS precipitation series into the project cache (opt-in)

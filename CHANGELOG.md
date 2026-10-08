@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-08
+
+### Changed
+
+- Indicator labels are read from the core only (`nemeton::indicator_labels()`),
+  short codes included; the 40 local `indicator_<CODE>` keys are removed
+  (brief indicator-families, step 4).
+- The family-view cause banner names the units left empty when an indicator
+  is only partly empty (brief trois-derniers-points, 1.3).
+- RECONFORT (broadleaves) tabs use a broadleaf tree icon instead of the conifer
+  shared with FORDEAD.
+- Application guide: Atlas tab (Sélection / Synthèse sub-tabs) and Suivi
+  sanitaire sub-tabs.
+
+### Fixed
+
+- A bivariate E-OBS context cache built on another N × N scheme (legacy 3 × 3)
+  is recomputed instead of served (brief 034 bivariate-cache, bug A).
+
+### Removed
+
+- Unused i18n keys: `r5_label`, `r5_tooltip`, 15 `foret_ancienne_*`.
+
 ## [1.2.0] - 2026-10-08
 
 ### Added

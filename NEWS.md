@@ -1,3 +1,32 @@
+# nemetonshiny 1.2.1 (2026-10-08)
+
+Reliquat de l'audit des briefs cœur → app du 2026-10-08, et pictogramme feuillu de RECONFORT.
+
+- **Carte bivariée E-OBS, cache périmé** (brief 034 bivariate-cache, bug A) :
+  un `context_bivariate.tif` écrit sous un autre schéma (3 × 3 hérité, ou
+  `palette$ncol` absent) n'est plus servi ; il est recalculé en 5 × 5. La vue
+  T°max et la vue précipitations ne sont pas concernées.
+- **UGF nommées dans le bandeau de cause** (brief trois-derniers-points,
+  point 1.3) : quand un indicateur n'est que partiellement vide et que le cœur
+  en donne la cause (A5 `skipped_no_reference`, repli R1…), le bandeau de la
+  vue famille cite les UGF concernées (cinq au plus, puis « (+n) »).
+- **Libellés d'indicateurs lus dans le cœur seulement** (brief
+  indicator-families, étape 4) : les 40 clés `indicator_<CODE>` retirées ;
+  `clean_indicator_label()` résout aussi les codes courts (`C1`, `R5`) par
+  `nemeton::indicator_labels()`.
+- **R5** (brief 008 R5-brief-shiny-radar) : test « pas de double inversion »
+  (R5 brut transmis au cœur, qui l'inverse) ; clés `r5_label` / `r5_tooltip`
+  inutilisées et périmées (« FORDEAD seul ») retirées.
+- **Nettoyage** : 15 clés `foret_ancienne_*` orphelines depuis la source
+  nationale automatique (spec 031) ; commentaire périmé sur la colonne `P1`
+  (brief 057 §4 bis) ; guide de l'application à jour de l'onglet **Atlas**
+  (sous-onglets Sélection / Synthèse) et des sous-onglets du Suivi sanitaire.
+- **Suivi sanitaire, pictogramme RECONFORT** : l'onglet RECONFORT et son
+  sous-onglet de carte portaient un résineux (`tree-fill`), comme FORDEAD.
+  RECONFORT suit les feuillus (chêne, châtaignier) : il porte désormais un arbre
+  à houppier rond, dessiné en SVG au format des icônes Bootstrap (qui n'ont pas
+  de feuillu).
+
 # nemetonshiny 1.2.0 (2026-10-08)
 
 Restes des briefs cœur → app (audit du 2026-10-07).
