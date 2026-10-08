@@ -67,7 +67,7 @@ test_that("clean_indicator_label strips _norm suffix", {
 
   i18n <- nemetonshiny:::get_i18n("fr")
   label <- nemetonshiny:::clean_indicator_label("C1_norm", i18n)
-  # Should match indicator_C1 translation with code prefix
+  # Libelle du coeur (indicator_labels()) prefixe du code
   expect_equal(label, "C1 - Biomasse carbone (tC/ha)")
 })
 

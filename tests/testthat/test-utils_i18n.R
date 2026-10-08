@@ -56,29 +56,18 @@ test_that("TRANSLATIONS contains navigation keys", {
   }
 })
 
-test_that("TRANSLATIONS contains all indicator keys", {
-  translations <- nemetonshiny:::TRANSLATIONS
-
-  indicator_keys <- c(
-    "indicator_C1", "indicator_C2",
-    "indicator_B1", "indicator_B2", "indicator_B3",
-    "indicator_W1", "indicator_W2", "indicator_W3",
-    "indicator_A1", "indicator_A2",
-    "indicator_F1", "indicator_F2",
-    "indicator_L1", "indicator_L2",
-    "indicator_T1", "indicator_T2",
-    "indicator_R1", "indicator_R2", "indicator_R3", "indicator_R4",
-    "indicator_S1", "indicator_S2", "indicator_S3",
-    "indicator_P1", "indicator_P2", "indicator_P3",
-    "indicator_E1", "indicator_E2",
-    "indicator_N1", "indicator_N2", "indicator_N3"
-  )
-
-  for (key in indicator_keys) {
-    expect_true(
-      key %in% names(translations),
-      info = paste("Missing indicator key:", key)
-    )
+test_that("every core indicator has a FR and EN label (read from the core)", {
+  # Les libelles d'indicateurs ne vivent plus dans TRANSLATIONS : ils viennent
+  # de nemeton::indicator_labels() via INDICATOR_FAMILIES (brief
+  # indicator-families, etape 4).
+  for (fam in nemetonshiny:::INDICATOR_FAMILIES) {
+    for (code in fam$indicators) {
+      lbl <- fam$indicator_labels[[code]]
+      expect_true(is.character(lbl$fr) && nzchar(lbl$fr),
+                  info = paste("Missing FR label:", code))
+      expect_true(is.character(lbl$en) && nzchar(lbl$en),
+                  info = paste("Missing EN label:", code))
+    }
   }
 })
 

@@ -1314,8 +1314,9 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
 #' The core and the app do NOT agree on the column name, which used to surface
 #' as a false " volume P1 absent " error even on a fully computed project:
 #'
-#'   * `nemeton:::indicateur_p1_volume()` writes **`P1`** (its `column_name`
-#'     default) - that is what a freshly computed `sf` carries in memory;
+#'   * `nemeton::indicateur_p1_volume()` writes **`P1`** - the value column
+#'     carries the indicator code (core spec 057, section 1), and that is what a
+#'     freshly computed `sf` carries in memory;
 #'   * the project's `indicators.parquet` persists it as
 #'     **`indicateur_p1_volume`**, aligned with the 30 other `indicateur_*`
 #'     columns - and `.resolve_project_aoi_2154()` returns exactly that.

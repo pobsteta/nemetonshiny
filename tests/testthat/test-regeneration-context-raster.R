@@ -147,3 +147,32 @@ test_that("the context cache is keyed on the radius (audit 1.0)", {
   expect_false(is.null(nemetonshiny:::regeneration_context_cached(pp, "tx", 25000)))
   expect_null(nemetonshiny:::regeneration_context_cached(pp, "tx", 10000))
 })
+
+test_that("un cache bivarie d'un autre schema N x N est recalcule (brief 034 bivariate-cache)", {
+  skip_if_not_installed("terra")
+  pp <- withr::local_tempdir()
+  pb <- nemetonshiny:::.regen_context_raster_paths(pp, "bivariate")
+  dir.create(pb$dir, recursive = TRUE)
+  terra::writeRaster(terra::rast(nrows = 2, ncols = 2, vals = 1), pb$tif)
+  ecrire_meta <- function(path, palette) {
+    jsonlite::write_json(list(status = "ok", palette = palette), path,
+                         auto_unbox = TRUE)
+  }
+
+  ecrire_meta(pb$meta, list(sense = "bivariate", ncol = 3))
+  expect_null(nemetonshiny:::regeneration_context_cached(pp, "bivariate"))
+
+  ecrire_meta(pb$meta, list(sense = "bivariate"))            # champ absent
+  expect_null(nemetonshiny:::regeneration_context_cached(pp, "bivariate"))
+
+  ecrire_meta(pb$meta, list(sense = "bivariate", ncol = 5))
+  expect_s4_class(
+    nemetonshiny:::regeneration_context_cached(pp, "bivariate")$raster,
+    "SpatRaster")
+
+  # La vue tx n'a pas de schema N x N : jamais invalidee par ce controle.
+  pt <- nemetonshiny:::.regen_context_raster_paths(pp, "tx")
+  terra::writeRaster(terra::rast(nrows = 2, ncols = 2, vals = 1), pt$tif)
+  ecrire_meta(pt$meta, list(sense = "hot_unfavorable"))
+  expect_false(is.null(nemetonshiny:::regeneration_context_cached(pp, "tx")))
+})

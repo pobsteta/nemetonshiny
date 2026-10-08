@@ -72,3 +72,44 @@ test_that("alerts present inject R5 and route by intersection", {
   # R5 scored for u1, NA for u2 (no method routed)
   expect_equal(out$indicateur_r5_deperissement, c(50, NA))
 })
+
+test_that("R5 reaches the R family raw: the app never inverts it (no double inversion)", {
+  skip_if_not_installed("sf")
+  # Brief 008 R5-brief-shiny-radar : l'app passe R5 BRUT, le coeur l'inverse
+  # (sens « haut = mauvais ») dans create_family_index(). Une UGF a fort
+  # deperissement (R5 = 80) doit donc tirer la famille R vers le bas.
+  ugf <- make_ugfs()[1, ]
+  for (col in c("indicateur_r2_tempete", "indicateur_r3_secheresse",
+                "indicateur_r4_abroutissement")) {
+    ugf[[col]] <- 70
+  }
+  testthat::local_mocked_bindings(
+    get_monitoring_db_connection = function(...) structure(list(), class = "DBIConnection"),
+    close_monitoring_db_connection = function(con) invisible(NULL))
+  testthat::local_mocked_bindings(
+    list_alerts = function(con, zone_id, ...) make_alerts(),
+    indicateur_r5_deperissement = function(units, ...) {
+      units$R5 <- 80
+      units
+    },
+    .package = "nemeton")
+
+  scores <- project_family_scores(list(
+    indicators_sf = ugf, metadata = list(monitoring_zone_id = 5L)))
+
+  attendu_brut <- ugf
+  attendu_brut$indicateur_r5_deperissement <- 80
+  attendu_brut <- nemeton::create_family_index(attendu_brut, method = "mean",
+                                               na.rm = TRUE)
+  inverse_deux_fois <- ugf
+  inverse_deux_fois$indicateur_r5_deperissement <- 100 - 80
+  inverse_deux_fois <- nemeton::create_family_index(inverse_deux_fois,
+                                                    method = "mean", na.rm = TRUE)
+
+  expect_equal(scores$famille_risque, attendu_brut$famille_risque)
+  expect_false(isTRUE(all.equal(scores$famille_risque,
+                                inverse_deux_fois$famille_risque)))
+  # R1-R4 a 70 sans R5 : la famille baisse quand R5 (deperissement fort) entre.
+  sans_r5 <- nemeton::create_family_index(ugf, method = "mean", na.rm = TRUE)
+  expect_lt(scores$famille_risque, sans_r5$famille_risque)
+})
