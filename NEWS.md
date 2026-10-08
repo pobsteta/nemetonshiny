@@ -1,3 +1,25 @@
+# nemetonshiny 2.0.0 (2026-10-08)
+
+Jalon de la **spec 058** : la plateforme bâtit désormais les UGF d'une forêt
+publique à partir du parcellaire ONF calé sur le cadastre. Elle n'a plus
+d'autre façon de croiser l'ONF. Le code est celui de la 1.3.1. Le numéro
+majeur marque la rupture livrée en 1.3.0 et 1.3.1 :
+
+- **Ancien croisement ONF retiré, sans retour possible.** Ont disparu le
+  calage « parcelle entière au-delà de 90 % », la purge sur la part
+  forestière et le réglage `seuil_foret`. Un projet qui porte `seuil_foret`
+  dans son `metadata.json` se relit sans erreur, mais ce réglage n'a plus
+  d'effet. Les nouveaux réglages sont la couverture minimale, la tolérance
+  d'accrochage, les largeurs et surfaces minimales, et le seuil de
+  rattachement.
+- **Nouveau modèle d'UGF** : chaque UGF peut porter sa parcelle forestière ONF
+  dans les colonnes `onf_*`. Elles sont écrites dans `ugs.json` et dans
+  l'export GeoPackage. Les fichiers antérieurs se lisent sans migration.
+- **Deux chemins vers les UGF ONF** : croiser un projet existant (1.3.0), ou
+  créer un projet depuis la forêt publique d'une commune (1.3.1).
+- **API MCP** : nouveaux outils `appliquer_ugf` et `croiser_onf`.
+- Plancher cœur `nemeton (>= 1.2.0)`.
+
 # nemetonshiny 1.3.1 (2026-10-08)
 
 - **Nouveau projet depuis la forêt ONF** (spec 058, chemin A) : un bouton du

@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-08
+
+Milestone of spec 058; same code as 1.3.1. The major number marks the break
+shipped in 1.3.0 and 1.3.1.
+
+### Removed
+
+- The former ONF crossing (whole-parcel snapping above 90 %, purge on the
+  forest share) and the `seuil_foret` setting, with no way back (see 1.3.0).
+
+### Changed
+
+- UGF are built from the ONF forest parcels warped onto the cadastre, by
+  crossing a project (1.3.0) or by creating one from a commune's public forest
+  (1.3.1); they carry `onf_*` columns.
+
 ## [1.3.1] - 2026-10-08
 
 ### Added
