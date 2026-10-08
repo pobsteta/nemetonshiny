@@ -1,4 +1,4 @@
-# nemetonshiny 1.2.1.9001 (développement)
+# nemetonshiny 1.2.2 (2026-10-08)
 
 - **reGénération, onglets en tête** : « Carte + Tableau » et « Contexte
   régional (E-OBS) » remontent en haut du panneau, soulignés et avec icône,
