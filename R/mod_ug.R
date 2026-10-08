@@ -2546,7 +2546,7 @@ mod_ug_server <- function(id, app_state) {
         size = "m",
         shiny::p(class = "small", i18n_m$t("onf_creer_aide")),
         shiny::selectInput(ns("onf_creer_dept"), i18n_m$t("onf_creer_dept"),
-                           choices = c(stats::setNames("", "—"),
+                           choices = c(stats::setNames("", "\u2014"),
                                        get_departments()),
                            selected = dept %||% ""),
         shiny::selectizeInput(ns("onf_creer_commune"),
@@ -2609,7 +2609,7 @@ mod_ug_server <- function(id, app_state) {
       shiny::showNotification(
         htmltools::tagList(
           shiny::icon("spinner", class = "fa-spin me-2"),
-          sprintf("%s…", i18n_snap$t("onf_creer_en_cours"))),
+          sprintf("%s\u2026", i18n_snap$t("onf_creer_en_cours"))),
         type = "message", duration = NULL, closeButton = FALSE,
         id = "onf_creer_loading", session = session)
       session$sendCustomMessage("nemetonSetDisabled",
