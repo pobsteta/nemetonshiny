@@ -684,6 +684,32 @@ resolve_regen_lidar_grid <- function(project_path) {
   NULL
 }
 
+#' Target grid of the PAI when microclimf does not run (brief lai-lidar)
+#'
+#' `nemeton::pai_depuis_nuage()` needs a target grid. It is built here exactly as
+#' `regen_sensibilite()` builds its DTM grid (DTM tiles cropped to the units
+#' buffered by 150 m, aggregated to 2 m): the cached `pai.tif` then has the
+#' geometry microclimf expects, and a later run WITH a CDS key re-reads it
+#' instead of paying the point-cloud pass again.
+#'
+#' @param grid Result of [resolve_regen_lidar_grid()].
+#' @param units `sf` of the units.
+#' @param res Working resolution in metres (core default 2).
+#' @param tampon Buffer in metres (core default 150).
+#' @return A `SpatRaster`.
+#' @noRd
+.regen_grille_pai <- function(grid, units, res = 2, tampon = 150) {
+  parc <- terra::vect(sf::st_transform(units, 2154))
+  emprise <- terra::ext(terra::buffer(parc, tampon))
+  fich <- list.files(grid$mnt_dir, pattern = "\\.tif$", full.names = TRUE,
+                     ignore.case = TRUE)
+  dtm <- terra::crop(terra::vrt(fich), emprise)
+  f <- max(1, round(res / terra::res(dtm)[1]))
+  if (f > 1) dtm <- terra::aggregate(dtm, f, fun = "mean", na.rm = TRUE)
+  names(dtm) <- "dtm"
+  dtm
+}
+
 #' Whether CDS/ERA5 credentials are configured for the microclimf engine
 #'
 #' The engine path downloads ERA5-Land through `mcera5`/`ecmwfr`, which needs a
@@ -943,6 +969,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   # Sans structure, regen_sensibilite() abandonne AVANT tout ERA5 -> on l'explicite
   # au lieu de laisser un dossier micro_cache vide (fausse impression de run).
   grid <- resolve_regen_lidar_grid(project_path)
+  micro_skip_reason <- NULL   # pose quand microclimf est saute faute de grille/cle
   if (!is.null(grid) && regen_cds_credentials_ready()) {
     veg_args <- list()
     if (!is.null(grid$las_dir)) {
@@ -1043,6 +1070,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       i18n$t("regen_phase_skip_reason_cds")
     }
     .regen_write_phase(out_dir, "microclimf_skipped", list(reason = reason))
+    micro_skip_reason <- reason
   }
 
   # --- BILJOU (SAFRAN par defaut, sans cle ; ERA5 => cle CDS). ---
@@ -1072,6 +1100,34 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
           canopy <- "lidar_hd"
           lai_source <- "pai_lidar"
         }
+      }
+      # LiDAR HD SANS cle CDS (cas RECONFORT, brief lai-lidar) : microclimf a ete
+      # saute, donc pas de pai.tif. Deriver le PAI du nuage sans ERA5, et le
+      # mettre en cache au meme chemin : le cout (~30 min sur un grand nuage)
+      # n'est paye qu'une fois. Echec -> lai_max reste NULL, le coeur applique
+      # son defaut par type de peuplement.
+      if (is.null(lai_max) && !is.null(grid$las_dir) && !is.null(micro_skip_reason)) {
+        .regen_write_phase(out_dir, "pai", list(source = "lidar"))
+        pai_r <- tryCatch(
+          nemeton::pai_depuis_nuage(dossier_las = grid$las_dir,
+                                    grille = .regen_grille_pai(grid, res), res = 2),
+          error = function(e) {
+            warnings <<- c(warnings, .strip_ansi(sprintf("PAI LiDAR: %s", conditionMessage(e))))
+            .regen_log(out_dir, "warning", "pai", conditionMessage(e))
+            NULL
+          })
+        if (!is.null(pai_r)) {
+          tryCatch(terra::writeRaster(pai_r, pai_tif, overwrite = TRUE),
+                   error = function(e) cli::cli_warn("regen engine: PAI cache not written"))
+          lai_max <- tryCatch(nemeton::lai_max_depuis_pai(res, pai_r),
+                              error = function(e) NULL)
+          if (!is.null(lai_max)) {
+            canopy <- "lidar_hd"
+            lai_source <- "pai_lidar"
+          }
+        }
+        # La phase PAI passee, la notif redit pourquoi microclimf n'a pas tourne.
+        .regen_write_phase(out_dir, "microclimf_skipped", list(reason = micro_skip_reason))
       }
       if (is.null(lai_max) && is.null(grid)) {
         lai_r <- .regen_lai_fallback(res, out_dir, cfg)
