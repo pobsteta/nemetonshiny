@@ -152,6 +152,9 @@ test_that("la barre d'actions carte porte l'action ONF, et une seule", {
     as.character(nemetonshiny:::mod_ug_map_actions_bar("ug"))
   )
   expect_true(grepl("ug-btn_onf_croise", h, fixed = TRUE))
+  # Chemin A (spec 058) : action secondaire, en contour, pas un second CTA vert.
+  expect_true(grepl('id="ug-btn_onf_creer"', h, fixed = TRUE))
+  expect_match(h, 'btn-outline-primary[^"]*"[^>]*id="ug-btn_onf_creer"|id="ug-btn_onf_creer"[^>]*btn-outline-primary')
   # v0.130.0.9001 — un « Importer le parcellaire ONF » a existé, qui REMPLAÇAIT
   # les parcelles du projet. Retiré : même emprise, mêmes UGF, mais la
   # composition cadastrale était perdue — un cas dégradé du croisement, et
@@ -245,10 +248,12 @@ test_that("la previsualisation ONF est effacee apres le croisement", {
   # croisement n'a PAS abouti (ce qui a été trouvé reste visible), et effacé
   # après le commit d'un croisement réussi.
   pose <- grep("rv\\$onf_preview <- out\\$apercu", src)
+  # Le chemin A (projet depuis la foret ONF) l'efface aussi : on suit celui du
+  # bouton, le premier apres la pose.
   efface <- grep("rv\\$onf_preview <- NULL", src)
   expect_length(pose, 1L)
-  expect_length(efface, 1L)
-  expect_gt(efface, pose)
+  efface <- efface[efface > pose][1]
+  expect_false(is.na(efface))
   commit <- grep("\\.onf_commit\\(out\\$projet", src)
   expect_gte(length(commit), 1L)
   avant <- commit[commit < efface]
@@ -419,4 +424,55 @@ test_that("la carte UGF declare OSM et Satellite, au rendu ET apres clearControl
   # Plus aucun vestige de l'ancien pilotage par boutons.
   expect_false(any(grepl("toggleBasemapButtons", src)))
   expect_false(any(grepl("rv\\$basemap", src)))
+})
+
+
+test_that("le chemin A ouvre le projet cree sans supprimer le projet courant", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        poly <- sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1),
+                                          c(0, 1), c(0, 0))))
+        parcels <- sf::st_sf(id = "P1", contenance = 1e4,
+                             geometry = sf::st_sfc(poly, crs = 2154))
+        ancien <- nemetonshiny:::create_project(name = "Ancien", parcels = parcels)$id
+        nouveau <- nemetonshiny:::create_project(name = "Nouveau", parcels = parcels)$id
+        app_state <- shiny::reactiveValues(
+          project_id = ancien,
+          current_project = nemetonshiny:::load_project(ancien))
+        out <- nemetonshiny:::.remplacer_projet_courant(
+          app_state, nemetonshiny:::load_project(nouveau), supprimer_ancien = FALSE)
+        expect_identical(out, nouveau)
+        expect_true(dir.exists(nemetonshiny:::get_project_path(ancien)))
+        expect_identical(shiny::isolate(app_state$project_id), nouveau)
+      })
+  })
+  # Et le chemin A l'appelle bien ainsi : un seul appel, sans suppression.
+  f <- chemin_source("R", "mod_ug.R"); skip_sans_sources(f)
+  src <- readLines(f, warn = FALSE)
+  appels <- grep(".remplacer_projet_courant(app_state, charge", src, fixed = TRUE, value = TRUE)
+  expect_length(appels, 2L)
+  expect_equal(sum(grepl("supprimer_ancien = FALSE", appels, fixed = TRUE)), 1L)
+})
+
+test_that("la modale du chemin A propose la commune du projet ouvert", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_departments = function() c("21 - C\u00f4te-d'Or" = "21"),
+    get_communes_in_department = function(d) data.frame(
+      code_insee = c("21610", "21611"), label = c("A (21610)", "Sombernon (21611)")),
+    .package = "nemetonshiny")
+  p <- list(id = "x", metadata = list(name = "X"),
+            parcels = data.frame(code_insee = "21611"))
+  app_state <- shiny::reactiveValues(language = "fr", current_project = p)
+  shiny::testServer(nemetonshiny:::mod_ug_server, args = list(app_state = app_state), {
+    session$setInputs(btn_onf_creer = 1L)
+    session$setInputs(onf_creer_dept = "21")
+    # Sans commune choisie, rien n'est lance.
+    session$setInputs(onf_creer_commune = "", onf_creer_ok = 1L)
+    expect_false(identical(onf_creer_task$status(), "running"))
+  })
 })

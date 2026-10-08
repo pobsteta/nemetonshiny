@@ -1,3 +1,20 @@
+# nemetonshiny 1.3.1 (2026-10-08)
+
+- **Nouveau projet depuis la forêt ONF** (spec 058, chemin A) : un bouton du
+  bloc ONF de la carte UGF ouvre une modale (département, commune). L'app
+  retient les parcelles cadastrales de la commune qui touchent le parcellaire
+  ONF, appartiennent à une personne publique (DGFiP) et sont couvertes au seuil
+  des paramètres. Elle crée le projet avec ses UGF numérotées d'après les
+  parcelles forestières, puis l'ouvre. Le projet courant est conservé, à la
+  différence de l'import CSV. Le travail tourne en tâche asynchrone. Les
+  parcelles non retenues sont listées de la plus couverte à la moins couverte.
+  Mesuré sur Sombernon : « Forêt communale de Sombernon », 20 parcelles
+  (204,7 ha), 58 UGF, écart médian de calage 3,2 m, 48 à 70 s dans l'app.
+- **Parcelles écartées** : une parcelle privée affiche aussi sa couverture
+  ONF dès 1 %. À Sombernon, ZA 0029 est privée mais couverte à 99 %.
+- Surfaces et écarts de calage des notifications ONF en notation française
+  (virgule décimale).
+
 # nemetonshiny 1.3.0 (2026-10-08)
 
 - **Croisement ONF, chemin unique** (spec 058, briefs `ugf-depuis-onf`,

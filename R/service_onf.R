@@ -415,6 +415,117 @@ onf_croise_tache <- function(projet, cfg, selection = NULL, lang = "fr") {
 }
 
 
+#' Build a project's parcels and UGF from a commune's public forest
+#'
+#' @description
+#' Path A of spec 058: the user names a commune, the application finds the
+#' cadastral parcels of its public forest and their UGF numbered after the ONF
+#' forest parcels. Same chain as [onf_projet_croise()] with `selection =
+#' "foret"`: the candidates are the commune's cadastral parcels that touch the
+#' ONF layer, and the core keeps those owned by a public person (DGFiP) and
+#' covered at `seuil_couverture` by the warped ONF.
+#'
+#' The cadastre comes from [get_cadastral_parcels()], the source of every
+#' other project: the parcels stored are the ones the tenements tile, with the
+#' same identifiers.
+#'
+#' Runs in an `ExtendedTask` worker (cadastre, WFS, DGFiP: 15 to 40 s). Writes
+#' nothing: [onf_creer_projet_commune()] does.
+#'
+#' @param code_insee Character scalar, INSEE code of the commune.
+#' @param params Output of [project_onf_params()]; `purger` is ignored (this
+#'   path always selects the forest).
+#' @param i18n Translator for the `cad~` labels, or `NULL`.
+#' @return List with `status` (`"ok"`, `"cadastre"`, `"no_domanialite"`,
+#'   `"unavailable"`, `"empty"` or `"no_overlap"`), `code_insee`, `commune`,
+#'   `geometry` (commune boundary or `NULL`), and when `"ok"`: `projet`
+#'   (`parcels`, `tenements`, `ugs`), `tenements` (the core's table),
+#'   `ecartees` (sorted by decreasing ONF cover), `n_candidates`, `calage` and
+#'   `nom` (name proposed for the project).
+#' @noRd
+onf_projet_depuis_commune <- function(code_insee, params = ONF_PARAMS_DEFAULT,
+                                      i18n = NULL) {
+  code_insee <- as.character(code_insee)[1]
+  cfg <- project_onf_params(list(onf_params = params))
+  out <- list(status = "cadastre", code_insee = code_insee, commune = NULL,
+              geometry = NULL)
+
+  geom <- tryCatch(get_commune_geometry(code_insee), error = function(e) NULL)
+  out$geometry <- geom
+  cad <- tryCatch(get_cadastral_parcels(code_insee, commune_geometry = geom),
+                  error = function(e) NULL)
+  if (is.null(cad) || !inherits(cad, "sf") || nrow(cad) == 0L) return(out)
+  # Le cadastre range le code INSEE dans `commune` : le nom vient du
+  # referentiel des communes du departement (en cache).
+  communes <- tryCatch(get_communes_in_department(substr(code_insee, 1L, 2L)),
+                       error = function(e) NULL)
+  if (!is.null(communes) && all(c("code_insee", "nom") %in% names(communes))) {
+    out$commune <- as.character(communes$nom[communes$code_insee == code_insee])[1]
+  }
+
+  aoi <- if (!is.null(geom)) geom else cad
+  onf <- onf_load_parcelles(aoi, domanialite = cfg$domanialite,
+                            clip_cadastre = FALSE)
+  if (!identical(onf$status, "ok")) {
+    out$status <- onf$status
+    return(out)
+  }
+
+  # Candidates : les parcelles de la commune que le parcellaire ONF touche. Le
+  # reste de la commune (plus d'un millier de parcelles a Sombernon) n'a rien
+  # a faire dans le calage ni dans la liste des ecartees.
+  o <- sf::st_union(sf::st_make_valid(
+    sf::st_transform(onf$parcelles, sf::st_crs(cad))))
+  touche <- lengths(suppressMessages(sf::st_intersects(cad, o))) > 0L
+  if (!any(touche)) {
+    out$status <- "no_overlap"
+    return(out)
+  }
+  projet <- ug_init_default(list(parcels = cad[touche, ]))
+
+  res <- onf_projet_croise(projet, onf$parcelles, params = cfg,
+                           selection = "foret", i18n = i18n)
+  out$status <- res$status
+  if (!identical(res$status, "ok")) return(out)
+
+  ecartees <- res$ecartees
+  if (nrow(ecartees)) {
+    ecartees <- ecartees[order(-ecartees$couverture_onf, na.last = TRUE), ,
+                         drop = FALSE]
+    rownames(ecartees) <- NULL
+  }
+  noms <- as.character(stats::na.omit(res$tenements$foret_nom))
+  nom <- if (length(noms)) names(sort(table(noms), decreasing = TRUE))[1] else
+    out$commune %||% code_insee
+
+  c(out[c("status", "code_insee", "commune", "geometry")],
+    list(projet = res$projet[c("parcels", "tenements", "ugs")],
+         tenements = res$tenements, ecartees = ecartees,
+         n_candidates = sum(touche), calage = res$calage, nom = nom))
+}
+
+
+#' Create a project from [onf_projet_depuis_commune()]
+#'
+#' Writes the project (parcels, commune boundary) then its tenements and UGF.
+#' The current project is not touched.
+#'
+#' @param res An `"ok"` result of [onf_projet_depuis_commune()].
+#' @param nom Project name; defaults to `res$nom`.
+#' @return The new project id.
+#' @noRd
+onf_creer_projet_commune <- function(res, nom = NULL) {
+  if (!identical(res$status, "ok")) {
+    cli::cli_abort("Nothing to create: status {.val {res$status}}.")
+  }
+  nom <- trimws(nom %||% res$nom)
+  pr <- create_project(name = nom, parcels = res$projet$parcels,
+                       commune_geometry = res$geometry)
+  save_ug_data(pr$id, res$projet)
+  pr$id
+}
+
+
 #' Discarded parcels, as a sentence fragment
 #'
 #' @param ecartees data.frame from [.onf_ecartees()].
@@ -427,10 +538,18 @@ onf_croise_tache <- function(projet, cfg, selection = NULL, lang = "fr") {
 onf_ecartees_texte <- function(ecartees, i18n, max_n = 10L) {
   if (is.null(ecartees) || nrow(ecartees) == 0L) return("")
   raison <- vapply(seq_len(nrow(ecartees)), function(i) {
+    couv <- suppressWarnings(as.numeric(ecartees$couverture_onf[i]))
+    txt_couv <- if (length(couv) == 1L && !is.na(couv)) {
+      sprintf(i18n$t("onf_raison_couverture"), as.integer(round(100 * couv)))
+    } else NULL
     switch(ecartees$raison[i],
-      privee     = i18n$t("onf_raison_privee"),
-      couverture = sprintf(i18n$t("onf_raison_couverture"),
-                           as.integer(round(100 * (ecartees$couverture_onf[i] %||% 0)))),
+      # Une parcelle privee que l'ONF couvre presque entierement est celle que
+      # l'utilisateur doit voir : sa couverture est dite, pas seulement son
+      # statut.
+      privee     = paste(c(i18n$t("onf_raison_privee"),
+                           if (!is.null(couv) && isTRUE(couv >= 0.01)) txt_couv),
+                         collapse = ", "),
+      couverture = txt_couv %||% sprintf(i18n$t("onf_raison_couverture"), 0L),
       i18n$t("onf_raison_hors_onf"))
   }, character(1))
   prop <- ecartees$proprietaire

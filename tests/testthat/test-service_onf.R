@@ -399,3 +399,144 @@ test_that("onf_projet_croise exige des donnees UGF et des parcelles", {
     "parcels")
 })
 
+
+
+# ---- Chemin A : projet depuis la foret publique d'une commune (spec 058) ---
+
+# Commune de test : C1 et C2 touchent l'ONF, C3 (loin) non.
+.onf_commune_test <- function() {
+  cad <- .onf_cad_l93()
+  loin <- sf::st_sf(id = "21001000AA0003", contenance = 1e4, code_insee = "21001",
+                    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+                      c(810000, 6710000), c(810100, 6710000), c(810100, 6710100),
+                      c(810000, 6710100), c(810000, 6710000)))), crs = 2154))
+  rbind(cad[, c("id", "contenance", "code_insee")], loin)
+}
+.onf_mock_commune <- function(env = parent.frame(), cadastre = .onf_commune_test()) {
+  local_mocked_bindings(
+    get_commune_geometry = function(code_insee) NULL,
+    get_cadastral_parcels = function(code_insee, commune_geometry = NULL) cadastre,
+    get_communes_in_department = function(d) data.frame(code_insee = "21001",
+                                                        nom = "Testville"),
+    onf_load_parcelles = function(aoi, domanialite, clip_cadastre) {
+      list(status = "ok", parcelles = .onf_l93(.onf_test_parcelles()))
+    },
+    .package = "nemetonshiny", .env = env)
+}
+
+test_that("le chemin A selectionne la foret parmi les parcelles qui touchent l'ONF", {
+  skip_if_not_installed("sf")
+  .onf_mock_commune()
+  vu <- NULL
+  local_mocked_bindings(
+    construire_ugf_onf = function(parcelles_onf, cadastre, selection, ...) {
+      vu <<- list(cadastre = cadastre$idu, selection = selection)
+      x <- cadastre[cadastre$idu == "21001000AA0001", "idu"]
+      x$ugf_id <- "F001-1"; x$nom_ugf <- "FD X - parcelle 1"
+      x$foret_id <- "F001"; x$foret_nom <- "FD X"; x$parcelle <- "1"
+      x$domaniale <- TRUE; x$part_onf <- 1
+      attr(x, "parcelles") <- data.frame(
+        idu = c("21001000AA0001", "21001000AA0002"), retenue = c(TRUE, FALSE),
+        raison = c(NA, "privee"), proprietaire = c("ETAT", NA),
+        couverture_onf = c(1, 0.3))
+      attr(x, "calage") <- c(ecart_median_m = 2)
+      x
+    }, .package = "nemeton")
+
+  # Le reglage `purger` du projet n'a pas cours : ce chemin SELECTIONNE.
+  res <- nemetonshiny:::onf_projet_depuis_commune(
+    "21001", params = .onf_params_test(purger = FALSE))
+  expect_identical(res$status, "ok")
+  expect_identical(vu$selection, "foret")
+  # AA0003 ne touche pas l'ONF : ni candidate ni ecartee.
+  expect_setequal(vu$cadastre, c("21001000AA0001", "21001000AA0002"))
+  expect_identical(res$n_candidates, 2L)
+  expect_identical(res$commune, "Testville")
+  expect_identical(res$nom, "FD X")
+  expect_identical(as.character(res$projet$parcels$id), "21001000AA0001")
+  expect_identical(res$ecartees$idu, "21001000AA0002")
+  expect_silent(nemetonshiny:::projet_validate(res$projet))
+})
+
+test_that("le chemin A trie les ecartees de la plus couverte a la moins couverte", {
+  skip_if_not_installed("sf")
+  .onf_mock_commune()
+  local_mocked_bindings(
+    construire_ugf_onf = function(parcelles_onf, cadastre, selection, ...) {
+      x <- cadastre[cadastre$idu == "21001000AA0001", "idu"]
+      x$ugf_id <- "F001-1"; x$nom_ugf <- "FD X - parcelle 1"; x$foret_nom <- "FD X"
+      attr(x, "parcelles") <- data.frame(
+        idu = c("21001000AA0001", "21001000AA0002"), retenue = c(TRUE, FALSE),
+        raison = c(NA, "privee"), proprietaire = NA, couverture_onf = c(1, 0.9))
+      x
+    }, .package = "nemeton")
+  cad <- .onf_commune_test()
+  sf::st_geometry(cad)[[3]] <- sf::st_geometry(cad)[[2]] + c(0, 100)
+  sf::st_crs(cad) <- 2154
+  .onf_mock_commune(cadastre = cad)
+  res <- nemetonshiny:::onf_projet_depuis_commune("21001")
+  expect_identical(res$ecartees$raison[1], "privee")
+  expect_true(all(diff(res$ecartees$couverture_onf[!is.na(res$ecartees$couverture_onf)]) <= 0))
+})
+
+test_that("le chemin A rend un statut sans rien ecrire quand une source manque", {
+  skip_if_not_installed("sf")
+  .onf_mock_commune()
+  local_mocked_bindings(construire_ugf_onf = function(...) stop("ne doit pas etre appele"),
+                        .package = "nemeton")
+  local_mocked_bindings(get_cadastral_parcels = function(...) NULL,
+                        .package = "nemetonshiny")
+  expect_identical(nemetonshiny:::onf_projet_depuis_commune("21001")$status, "cadastre")
+
+  .onf_mock_commune()
+  local_mocked_bindings(
+    onf_load_parcelles = function(...) list(status = "empty", parcelles = NULL),
+    .package = "nemetonshiny")
+  expect_identical(nemetonshiny:::onf_projet_depuis_commune("21001")$status, "empty")
+
+  # Une commune ou l'ONF ne touche aucune parcelle.
+  .onf_mock_commune(cadastre = .onf_commune_test()[3, ])
+  expect_identical(nemetonshiny:::onf_projet_depuis_commune("21001")$status,
+                   "no_overlap")
+})
+
+test_that("onf_creer_projet_commune ecrit un projet neuf avec ses UGF ONF", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("arrow")
+  .onf_mock_commune()
+  withr::with_tempdir({
+    local_mocked_bindings(get_app_options = function() list(project_dir = getwd()),
+                          .package = "nemetonshiny")
+    # Vrai coeur, mode « toutes » simule par la selection : la foret est
+    # choisie par un mock qui rend le vrai decoupage de AA0001 et AA0002.
+    vrai <- nemeton::construire_ugf_onf
+    local_mocked_bindings(
+      construire_ugf_onf = function(..., selection) {
+        x <- vrai(..., selection = "toutes")
+        p <- attr(x, "parcelles"); p$raison <- NA_character_
+        attr(x, "parcelles") <- p
+        x
+      }, .package = "nemeton")
+    res <- nemetonshiny:::onf_projet_depuis_commune("21001", params = .onf_params_test())
+    expect_identical(res$status, "ok")
+    pid <- suppressMessages(nemetonshiny:::onf_creer_projet_commune(res, "Foret test"))
+    p <- suppressMessages(nemetonshiny:::load_project(pid))
+    expect_identical(p$metadata$name, "Foret test")
+    expect_setequal(p$parcels$id, c("21001000AA0001", "21001000AA0002"))
+    expect_equal(nrow(p$ugs), 3L)
+    expect_setequal(stats::na.omit(p$ugs$onf_parcelle), c("1", "2"))
+    expect_silent(nemetonshiny:::projet_validate(p))
+  })
+  expect_error(nemetonshiny:::onf_creer_projet_commune(list(status = "empty")),
+               "Nothing to create")
+})
+
+test_that("une parcelle privee ecartee dit aussi sa couverture ONF", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  e <- data.frame(idu = c("A", "B"), raison = c("privee", "privee"),
+                  proprietaire = NA_character_, couverture_onf = c(0.987, 0.001))
+  txt <- nemetonshiny:::onf_ecartees_texte(e, i18n)
+  expect_match(txt, "A (privée, couverture ONF 99 %)", fixed = TRUE)
+  # Un effet de bord de numerisation (0,1 %) ne merite pas d'etre chiffre.
+  expect_match(txt, "B (privée)", fixed = TRUE)
+})
