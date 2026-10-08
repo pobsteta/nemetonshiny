@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[1.2.2\] - 2026-10-08
+
+### Changed
+
+- reGénération: the « Carte + Tableau » and « Contexte régional (E-OBS)
+  » tabs sit at the top of the panel, underlined with icons as in the
+  Action plan; the status banner moves below the tabs instead of pushing
+  them down.
+
 ## \[1.2.1\] - 2026-10-08
 
 ### Changed
