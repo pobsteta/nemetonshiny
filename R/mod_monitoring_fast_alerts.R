@@ -253,8 +253,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
     # v0.94.x - Seuils debounces (400 ms) pour le CALCUL du raster. Chaque
     # valeur intermediaire du slider de seuil produit une cle de cache
-    # distincte cote coeur (`compute_fast_alert_mask` : le nom encode
-    # `thr%.2f`) -> un recalcul complet non cache par cran. En debouncant, on
+    # distincte cote coeur (`compute_fast_alert_mask` : le nom du cache est un
+    # hachage des parametres, seuils compris) -> un recalcul complet non cache
+    # par cran. En debouncant, on
     # ne calcule que la valeur finale (le glissement n'empile plus de calculs
     # lourds). L'indice / le mode / la zone / les dates restent NON debounces
     # (reaction immediate). Consomme par l'observer de calcul, `compute_fast_
