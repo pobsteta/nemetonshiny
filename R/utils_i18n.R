@@ -3400,6 +3400,42 @@ TRANSLATIONS <- list(
   ),
   # Parcelles retirees par la selection " foret " : listees avec leur raison
   # et leur proprietaire DGFiP, pour pouvoir les reintegrer depuis la carte.
+  # ----- Chemin A (spec 058) : projet depuis la foret publique d'une commune -----
+  onf_creer_btn = list(
+    fr = "Nouveau projet depuis la for\u00eat ONF",
+    en = "New project from the ONF forest"
+  ),
+  onf_creer_titre = list(
+    fr = "Cr\u00e9er un projet depuis la for\u00eat publique d'une commune",
+    en = "Create a project from a commune's public forest"
+  ),
+  onf_creer_aide = list(
+    fr = "L'application retient les parcelles cadastrales de la commune qui appartiennent \u00e0 une personne publique (fichier DGFiP) et que le parcellaire ONF, recal\u00e9 sur le cadastre, couvre au moins au seuil des param\u00e8tres. Elle les d\u00e9coupe en UGF num\u00e9rot\u00e9es d'apr\u00e8s les parcelles foresti\u00e8res.",
+    en = "The application keeps the commune's cadastral parcels owned by a public person (DGFiP file) and covered, at least at the threshold of the settings, by the ONF forest parcels warped onto the cadastre. It cuts them into UGF numbered after the forest parcels."
+  ),
+  onf_creer_dept = list(fr = "D\u00e9partement", en = "Department"),
+  onf_creer_commune = list(fr = "Commune", en = "Commune"),
+  onf_creer_note = list(
+    fr = "Un nouveau projet est cr\u00e9\u00e9 et ouvert ; le projet courant est conserv\u00e9. Comptez 15 \u00e0 40 s, davantage au premier appel (t\u00e9l\u00e9chargement du fichier DGFiP).",
+    en = "A new project is created and opened; the current project is kept. Allow 15 to 40 s, more on the first call (DGFiP file download)."
+  ),
+  onf_creer_lancer = list(fr = "Cr\u00e9er le projet", en = "Create the project"),
+  onf_creer_sans_commune = list(
+    fr = "Choisissez une commune.",
+    en = "Choose a commune."
+  ),
+  onf_creer_en_cours = list(
+    fr = "Construction des UGF depuis le parcellaire ONF",
+    en = "Building the UGF from the ONF forest parcels"
+  ),
+  onf_creer_ok_fmt = list(
+    fr = "Projet \u00ab %s \u00bb cr\u00e9\u00e9 : %d parcelles (%s ha), %d UGF.",
+    en = "Project \u201c%s\u201d created: %d parcels (%s ha), %d UGF."
+  ),
+  onf_creer_ecartees_fmt = list(
+    fr = "%d parcelle(s) touchant le parcellaire ONF non retenue(s), de la plus couverte \u00e0 la moins couverte : %s. Pour en ajouter, les s\u00e9lectionner dans Atlas \u203a S\u00e9lection puis relancer le croisement.",
+    en = "%d parcel(s) touching the ONF forest parcels not kept, from most to least covered: %s. To add some, select them in Atlas \u203a Selection then run the crossing again."
+  ),
   onf_ecartees_fmt = list(
     fr = "%d parcelle(s) retir\u00e9e(s) du projet : %s. Pour en r\u00e9int\u00e9grer, les res\u00e9lectionner dans Atlas \u203a S\u00e9lection.",
     en = "%d parcel(s) removed from the project: %s. To take some back, select them again in Atlas \u203a Selection."
@@ -3421,8 +3457,8 @@ TRANSLATIONS <- list(
     en = "%d UGF outside the ONF parcels (block of at least 1 ha outside the forest regime)."
   ),
   onf_calage_fmt = list(
-    fr = "Calage du parcellaire ONF sur le cadastre : \u00e9cart m\u00e9dian %.1f m.",
-    en = "ONF parcels warped onto the cadastre: median gap %.1f m."
+    fr = "Calage du parcellaire ONF sur le cadastre : \u00e9cart m\u00e9dian %s m.",
+    en = "ONF parcels warped onto the cadastre: median gap %s m."
   ),
   onf_projet_change = list(
     fr = "Le projet a chang\u00e9 pendant le croisement ONF : r\u00e9sultat ignor\u00e9.",

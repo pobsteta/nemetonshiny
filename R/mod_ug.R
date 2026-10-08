@@ -123,16 +123,19 @@ mod_ug_map_panel <- function(id) {
 #'
 #' @param app_state Reactive values. Application state.
 #' @param charge List. The freshly loaded project that takes over.
+#' @param supprimer_ancien Logical. Delete the previous project (CSV import)
+#'   or only switch to the new one (project created from the ONF forest).
 #'
 #' @return The new project id, invisibly; `NULL` when nothing was done.
 #' @noRd
-.remplacer_projet_courant <- function(app_state, charge) {
+.remplacer_projet_courant <- function(app_state, charge, supprimer_ancien = TRUE) {
   pid <- charge$id %||% charge$metadata$id
   if (is.null(pid) || !nzchar(pid)) return(invisible(NULL))
 
   ancien <- shiny::isolate(app_state$project_id) %||%
     shiny::isolate(app_state$current_project$id)
-  if (!is.null(ancien) && nzchar(ancien) && !identical(ancien, pid)) {
+  if (isTRUE(supprimer_ancien) && !is.null(ancien) && nzchar(ancien) &&
+      !identical(ancien, pid)) {
     try(delete_project(ancien), silent = TRUE)
   }
 
@@ -152,6 +155,15 @@ mod_ug_map_panel <- function(id) {
   app_state$refresh_projects <- Sys.time()
 
   invisible(pid)
+}
+
+
+#' A number with one decimal, in the language's notation
+#' @noRd
+.onf_nombre <- function(x, i18n) {
+  en <- identical(i18n$language, "en")
+  formatC(x, format = "f", digits = 1, big.mark = if (en) "," else "\u202f",
+          decimal.mark = if (en) "." else ",")
 }
 
 
@@ -286,6 +298,16 @@ mod_ug_map_actions_bar <- function(id) {
       htmltools::tags$p(
         class = "text-muted small fst-italic mt-1 mb-0",
         i18n$t("onf_source_note")
+      ),
+      # Chemin A (spec 058) : un projet NEUF a partir de la foret publique
+      # d'une commune. Action secondaire de ce bloc - le croisement ci-dessus
+      # reste le geste courant - et le projet ouvert n'est pas touche.
+      shiny::actionButton(
+        ns("btn_onf_creer"),
+        label = i18n$t("onf_creer_btn"),
+        icon = bsicons::bs_icon("tree"),
+        class = "btn-outline-primary mt-2",
+        width = "100%"
       )
     ),
 
@@ -2487,13 +2509,183 @@ mod_ug_server <- function(id, app_state) {
       }
       ecart <- suppressWarnings(as.numeric(out$calage[["ecart_median_m"]]))
       if (length(ecart) == 1L && is.finite(ecart)) {
-        shiny::showNotification(sprintf(i18n_snap$t("onf_calage_fmt"), ecart),
+        shiny::showNotification(sprintf(i18n_snap$t("onf_calage_fmt"),
+                                        .onf_nombre(ecart, i18n_snap)),
                                 type = "message", duration = 10, session = session)
       }
       if (nrow(ecartees) > 0L) {
         shiny::showNotification(
           sprintf(i18n_snap$t("onf_ecartees_fmt"), nrow(ecartees),
                   onf_ecartees_texte(ecartees, i18n_snap)),
+          type = "warning", duration = NULL, session = session)
+      }
+    })
+
+    # ================================================================
+    # ACTION: nouveau projet depuis la foret publique d'une commune
+    # ================================================================
+    #
+    # Chemin A de la spec 058 : la commune est choisie dans une modale ; le
+    # cadastre, le WFS ONF et la DGFiP sont lus dans un worker (15 a 40 s) ;
+    # le projet est cree puis ouvert ici. Le projet courant n'est PAS supprime
+    # (contrairement a l'import CSV) : rien n'est detruit, on ajoute un projet.
+
+    .onf_commune_projet <- function() {
+      p <- shiny::isolate(app_state$current_project)
+      code <- p$parcels$code_insee %||% NULL
+      if (is.null(code) || !length(code)) return(NULL)
+      as.character(stats::na.omit(code))[1]
+    }
+
+    shiny::observeEvent(input$btn_onf_creer, {
+      i18n_m <- i18n()
+      code <- .onf_commune_projet()
+      dept <- if (!is.null(code)) substr(code, 1L, 2L) else NULL
+      shiny::showModal(shiny::modalDialog(
+        title = i18n_m$t("onf_creer_titre"),
+        size = "m",
+        shiny::p(class = "small", i18n_m$t("onf_creer_aide")),
+        shiny::selectInput(ns("onf_creer_dept"), i18n_m$t("onf_creer_dept"),
+                           choices = c(stats::setNames("", "—"),
+                                       get_departments()),
+                           selected = dept %||% ""),
+        shiny::selectizeInput(ns("onf_creer_commune"),
+                              i18n_m$t("onf_creer_commune"),
+                              choices = NULL),
+        shiny::p(class = "text-muted small mb-0", i18n_m$t("onf_creer_note")),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n_m$t("cancel")),
+          shiny::actionButton(ns("onf_creer_ok"), i18n_m$t("onf_creer_lancer"),
+                              class = "btn-primary",
+                              icon = bsicons::bs_icon("tree"))
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$onf_creer_dept, {
+      d <- input$onf_creer_dept
+      if (is.null(d) || !nzchar(d)) return()
+      choix <- tryCatch(format_communes_for_selectize(get_communes_in_department(d)),
+                        error = function(e) character(0))
+      code <- .onf_commune_projet()
+      sel <- if (!is.null(code) && code %in% choix) code else character(0)
+      shiny::updateSelectizeInput(session, "onf_creer_commune",
+                                  choices = choix, selected = sel, server = TRUE)
+    })
+
+    onf_creer_task <- shiny::ExtendedTask$new(
+      function(code_insee, cfg, lang, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          ns_ <- asNamespace("nemetonshiny")
+          ns_$onf_projet_depuis_commune(code_insee, cfg, i18n = ns_$get_i18n(lang))
+        }, seed = TRUE)
+      })
+
+    rv$onf_creer_i18n <- NULL
+
+    shiny::observeEvent(input$onf_creer_ok, {
+      code <- input$onf_creer_commune
+      if (is.null(code) || !nzchar(code)) {
+        shiny::showNotification(i18n()$t("onf_creer_sans_commune"), type = "warning")
+        return()
+      }
+      if (identical(onf_creer_task$status(), "running")) return()
+      shiny::removeModal()
+      i18n_snap <- i18n()
+      rv$onf_creer_i18n <- i18n_snap
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          sprintf("%s…", i18n_snap$t("onf_creer_en_cours"))),
+        type = "message", duration = NULL, closeButton = FALSE,
+        id = "onf_creer_loading", session = session)
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = ns("btn_onf_creer"), disabled = TRUE))
+      # Les reglages ONF du projet ouvert, a defaut les valeurs par defaut.
+      cfg <- project_onf_params(shiny::isolate(app_state$current_project)$metadata)
+      onf_creer_task$invoke(code, cfg, i18n_snap$language %||% "fr",
+                            .onf_dev_path, get_app_options())
+    })
+
+    shiny::observeEvent(onf_creer_task$status(), {
+      st <- onf_creer_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n_snap <- rv$onf_creer_i18n %||% shiny::isolate(i18n())
+      shiny::removeNotification("onf_creer_loading", session = session)
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = ns("btn_onf_creer"), disabled = FALSE))
+      res <- tryCatch(onf_creer_task$result(), error = function(e) {
+        list(status = "error", message = conditionMessage(e))
+      })
+      if (identical(res$status, "error")) {
+        shiny::showNotification(paste(i18n_snap$t("error"), res$message %||% ""),
+                                type = "error", duration = 12, session = session)
+        return()
+      }
+      if (identical(res$status, "cadastre")) {
+        shiny::showNotification(sprintf(i18n_snap$t("csv_err_cadastre"), res$code_insee),
+                                type = "error", duration = 12, session = session)
+        return()
+      }
+      if (!identical(res$status, "ok")) {
+        .onf_notify_status(res$status, i18n_snap)
+        return()
+      }
+
+      charge <- tryCatch({
+        pid <- onf_creer_projet_commune(res)
+        load_project(pid)
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n_snap$t("error"), conditionMessage(e)),
+                                type = "error", duration = 12, session = session)
+        NULL
+      })
+      if (is.null(charge)) return()
+
+      rv$projet_ug <- charge
+      rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+      rv$selected_tenement_ids <- character(0)
+      rv$map_needs_zoom <- TRUE
+      rv$onf_preview <- NULL
+      .remplacer_projet_courant(app_state, charge, supprimer_ancien = FALSE)
+      app_state$restore_project <- list(
+        commune_code    = res$code_insee,
+        department_code = substr(res$code_insee, 1, 2),
+        parcels         = charge$parcels,
+        geometry        = charge$commune_geometry,
+        selected_ids    = charge$parcels$id,
+        timestamp       = Sys.time()
+      )
+
+      surface <- sum(as.numeric(sf::st_area(charge$parcels))) / 1e4
+      surface <- .onf_nombre(surface, i18n_snap)
+      shiny::showNotification(
+        sprintf(i18n_snap$t("onf_creer_ok_fmt"), charge$metadata$name,
+                nrow(charge$parcels), surface, nrow(charge$ugs)),
+        type = "message", duration = 12, session = session)
+      ecart <- suppressWarnings(as.numeric(res$calage[["ecart_median_m"]]))
+      if (length(ecart) == 1L && is.finite(ecart)) {
+        shiny::showNotification(sprintf(i18n_snap$t("onf_calage_fmt"),
+                                        .onf_nombre(ecart, i18n_snap)),
+                                type = "message", duration = 10, session = session)
+      }
+      if (nrow(res$ecartees) > 0L) {
+        shiny::showNotification(
+          sprintf(i18n_snap$t("onf_creer_ecartees_fmt"), nrow(res$ecartees),
+                  onf_ecartees_texte(res$ecartees, i18n_snap)),
           type = "warning", duration = NULL, session = session)
       }
     })
