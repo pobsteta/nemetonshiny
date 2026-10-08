@@ -40,9 +40,10 @@ public](https://github.com/pobsteta/nemetonshiny/blob/main/CONTRAT.md).
 
 ## Parcours type
 
-### 1. Sélection : parcelles, projet et unités de gestion
+### 1. Atlas › Sélection : parcelles, projet et unités de gestion
 
-L’onglet **Sélection** est le point de départ.
+L’onglet **Atlas** est le point de départ. Il a deux sous-onglets,
+**Sélection** et **Synthèse** ; on commence par **Sélection**.
 
 1.  Choisissez un **département** puis une **commune** : ses parcelles
     cadastrales s’affichent sur la carte.
@@ -75,7 +76,10 @@ Sans données terrain, l’application travaille au **NDP 0** (sources
 publiques seulement). La confiance associée au niveau de précision est
 affichée avec le score.
 
-### 3. Synthèse
+### 3. Atlas › Synthèse
+
+Le sous-onglet **Synthèse** de l’Atlas rassemble les résultats du
+projet.
 
 - **Score global** sur 100 : agrégation des 12 familles par le cœur
   (pondération de Fibonacci selon le NDP). Les scores de famille sont
@@ -117,8 +121,8 @@ martelage, réimport des tiges cubées) et entre dans un rapport dédié.
 
 ### 7. Suivi sanitaire
 
-Surveillance de la santé de la forêt à partir de Sentinel-2, en trois
-modes :
+Surveillance de la santé de la forêt à partir de Sentinel-2. L’onglet a
+un sous-onglet par mode :
 
 | Mode | Usage |
 |----|----|

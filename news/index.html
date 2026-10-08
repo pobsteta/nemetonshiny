@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.2.1" id="nemetonshiny-121-2026-10-08">nemetonshiny 1.2.1 (2026-10-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-121-2026-10-08"></a></h2>
+<p>Reliquat de l’audit des briefs cœur → app du 2026-10-08, et pictogramme feuillu de RECONFORT.</p>
+<ul><li>
+<strong>Carte bivariée E-OBS, cache périmé</strong> (brief 034 bivariate-cache, bug A) : un <code>context_bivariate.tif</code> écrit sous un autre schéma (3 × 3 hérité, ou <code>palette$ncol</code> absent) n’est plus servi ; il est recalculé en 5 × 5. La vue T°max et la vue précipitations ne sont pas concernées.</li>
+<li>
+<strong>UGF nommées dans le bandeau de cause</strong> (brief trois-derniers-points, point 1.3) : quand un indicateur n’est que partiellement vide et que le cœur en donne la cause (A5 <code>skipped_no_reference</code>, repli R1…), le bandeau de la vue famille cite les UGF concernées (cinq au plus, puis « (+n) »).</li>
+<li>
+<strong>Libellés d’indicateurs lus dans le cœur seulement</strong> (brief indicator-families, étape 4) : les 40 clés <code>indicator_&lt;CODE&gt;</code> retirées ; <code>clean_indicator_label()</code> résout aussi les codes courts (<code>C1</code>, <code>R5</code>) par <code><a href="https://pobsteta.github.io/nemeton/reference/indicator_labels.html" class="external-link">nemeton::indicator_labels()</a></code>.</li>
+<li>
+<strong>R5</strong> (brief 008 R5-brief-shiny-radar) : test « pas de double inversion » (R5 brut transmis au cœur, qui l’inverse) ; clés <code>r5_label</code> / <code>r5_tooltip</code> inutilisées et périmées (« FORDEAD seul ») retirées.</li>
+<li>
+<strong>Nettoyage</strong> : 15 clés <code>foret_ancienne_*</code> orphelines depuis la source nationale automatique (spec 031) ; commentaire périmé sur la colonne <code>P1</code> (brief 057 §4 bis) ; guide de l’application à jour de l’onglet <strong>Atlas</strong> (sous-onglets Sélection / Synthèse) et des sous-onglets du Suivi sanitaire.</li>
+<li>
+<strong>Suivi sanitaire, pictogramme RECONFORT</strong> : l’onglet RECONFORT et son sous-onglet de carte portaient un résineux (<code>tree-fill</code>), comme FORDEAD. RECONFORT suit les feuillus (chêne, châtaignier) : il porte désormais un arbre à houppier rond, dessiné en SVG au format des icônes Bootstrap (qui n’ont pas de feuillu).</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.2.0" id="nemetonshiny-120-2026-10-08">nemetonshiny 1.2.0 (2026-10-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-120-2026-10-08"></a></h2>
 <p>Restes des briefs cœur → app (audit du 2026-10-07).</p>
