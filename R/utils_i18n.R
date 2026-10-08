@@ -323,8 +323,8 @@ TRANSLATIONS <- list(
   dess_detect_sans_lidar = list(fr = "D\u00e9tection men\u00e9e sans canal de surface : le c\u0153ur la signale comme nettement moins s\u00fbre. Une absence de d\u00e9tection ne vaut pas constat d'absence de route.", en = "Detection run without the surface channel: the core flags it as markedly less reliable. No detection does not mean no road."),
   dess_detect_conf_fmt = list(fr = "Confiance moyenne du classement : %.0f %% des crit\u00e8res renseign\u00e9s. Les crit\u00e8res foss\u00e9s et NDVI ne sont pas encore fournis par l'application.", en = "Mean classification confidence: %.0f%% of criteria filled. The ditch and NDVI criteria are not yet supplied by the application."),
   dess_detect_osm_fmt = list(fr = "%d tron\u00e7on(s) portent une proposition de balisage OpenStreetMap, export\u00e9e dans le GeoPackage. C'est une PROPOSITION \u00e0 valider : rien n'est t\u00e9l\u00e9vers\u00e9 vers OpenStreetMap.", en = "%d segment(s) carry an OpenStreetMap tagging proposal, exported to the GeoPackage. It is a PROPOSAL to review: nothing is uploaded to OpenStreetMap."),
-  dess_osm_layer = list(fr = "Pistes OpenStreetMap", en = "OpenStreetMap tracks"),
-  dess_osm_layer_note = list(fr = "Acquisition OpenStreetMap compl\u00e8te, doublons de la BD TOPO compris : ce calque n'est pas la liste des pistes manquantes.", en = "Full OpenStreetMap acquisition, BD TOPO duplicates included: this layer is not the list of missing tracks."),
+  dess_osm_layer = list(fr = "Piste OpenStreetMap absente de la BD TOPO", en = "OpenStreetMap track missing from BD TOPO"),
+  dess_osm_layer_note = list(fr = "Partie du tron\u00e7on OSM situ\u00e9e \u00e0 plus de %s m de la BD TOPO : desserte potentiellement manquante, \u00e0 v\u00e9rifier sur le terrain.", en = "Part of the OSM segment more than %s m away from BD TOPO: potentially missing access, to be checked on the ground."),
   dess_detect_popup_conf = list(fr = "Confiance du classement :", en = "Classification confidence:"),
   dess_detect_popup_motif = list(fr = "Crit\u00e8res :", en = "Criteria:"),
   dess_detect_popup_osm = list(fr = "Balisage OpenStreetMap propos\u00e9 :", en = "Proposed OpenStreetMap tagging:"),
@@ -370,6 +370,15 @@ TRANSLATIONS <- list(
   dess_typage_title = list(fr = "Typage du r\u00e9seau", en = "Network typing"),
   dess_typage_intro = list(fr = "Classe les tron\u00e7ons cr\u00e9\u00e9s (primaire / secondaire / tertiaire) selon le flux de bois mobilis\u00e9. N\u00e9cessite un r\u00e9seau g\u00e9n\u00e9r\u00e9 et le volume P1 des parcelles.", en = "Classifies the created tron\u00e7ons (primary / secondary / tertiary) by mobilised wood flux. Requires a generated network and the parcels' P1 volume."),
   dess_typage_taux = list(fr = "Taux de pr\u00e9l\u00e8vement (par an)", en = "Removal rate (per year)"),
+  dess_typage_voie = list(fr = "Taux de pr\u00e9l\u00e8vement", en = "Removal rate"),
+  dess_typage_voie_saisi = list(fr = "Saisi", en = "Typed in"),
+  dess_typage_voie_ifn = list(fr = "R\u00e9f\u00e9rentiel IFN (par essence)", en = "IFN reference (per species)"),
+  dess_typage_taux_regional = list(fr = "Taux IFN r\u00e9gional (SER %s)", en = "Regional IFN rate (SER %s)"),
+  dess_typage_taux_mixte = list(fr = "Taux IFN r\u00e9gional pour %d parcelles sur %d", en = "Regional IFN rate for %d parcels out of %d"),
+  dess_typage_taux_national = list(fr = "Taux IFN national (pas de r\u00e9f\u00e9rence r\u00e9gionale)", en = "National IFN rate (no regional reference)"),
+  dess_typage_volume_ifn = list(fr = "Volume sur pied : r\u00e9f\u00e9rence IFN r\u00e9gionale pour %d parcelles sur %d (pas de mesure).", en = "Standing volume: IFN regional reference for %d parcels out of %d (no measurement)."),
+  dess_typage_essences_nr = list(fr = "%d parcelles portent une essence non reconnue par l'IFN : leur volume mobilis\u00e9 reste vide.", en = "%d parcels carry a species the IFN does not recognise: their mobilised volume stays empty."),
+  desserte_typage_no_species = list(fr = "Le r\u00e9f\u00e9rentiel IFN demande l'essence des parcelles : aucune n'a pu \u00eatre lue dans la BD For\u00eat du projet. Saisissez un taux.", en = "The IFN reference needs the parcels' species: none could be read from the project's BD For\u00eat. Type in a rate."),
   dess_typage_horizon = list(fr = "Horizon (ann\u00e9es)", en = "Horizon (years)"),
   dess_typage_run = list(fr = "Typer le r\u00e9seau", en = "Type the network"),
   dess_typage_running = list(fr = "Typage du r\u00e9seau (flux mobilis\u00e9) en cours\u2026", en = "Typing the network (mobilised flux)\u2026"),
@@ -1112,6 +1121,19 @@ TRANSLATIONS <- list(
     en = paste0(
       "No land-surface-temperature data over this area: Thermocity only ",
       "covers a few metropolitan areas."
+    )
+  ),
+  # Raster LST fourni, mais aucune unite notable (hors emprise, ou pas
+  # d'anneau de reference autour) : `a5_status = "skipped_no_reference"`.
+  a5_skipped_no_reference = list(
+    fr = paste0(
+      "Temp\u00e9rature de surface disponible, mais aucune unit\u00e9 n'a pu \u00eatre ",
+      "compar\u00e9e \u00e0 son voisinage (hors emprise de la sc\u00e8ne, ou pas ",
+      "d'anneau de r\u00e9f\u00e9rence exploitable)."
+    ),
+    en = paste0(
+      "Land-surface temperature is available, but no unit could be compared ",
+      "with its surroundings (outside the scene, or no usable reference ring)."
     )
   ),
   # Repli quand aucune cause n'est disponible : dire \u00ab indisponible \u00bb reste
@@ -5987,8 +6009,26 @@ TRANSLATIONS <- list(
   regen_engine_status_biljou_era5 = list(fr = "BILJOU (ERA5) : identifiants CDS requis.", en = "BILJOU (ERA5): CDS credentials required."),
   regen_engine_ready_micro = list(fr = "microclimf pr\u00eat (LiDAR HD + CDS).", en = "microclimf ready (LiDAR HD + CDS)."),
   regen_engine_ready_biljou = list(fr = "BILJOU pr\u00eat (for\u00e7age m\u00e9t\u00e9o).", en = "BILJOU ready (weather forcing)."),
+  # Etapes de l'acquisition E-OBS (brief 034 sect.2.1), sous le bouton Auto.
+  regen_eobs_dl_request = list(fr = "Requ\u00eate E-OBS au CDS\u2026", en = "Requesting E-OBS from the CDS\u2026"),
+  regen_eobs_dl_done = list(fr = "T\u00e9l\u00e9chargement E-OBS termin\u00e9", en = "E-OBS download complete"),
+  regen_eobs_unzip = list(fr = "D\u00e9compression de l'archive E-OBS\u2026", en = "Unpacking the E-OBS archive\u2026"),
+  regen_eobs_read = list(fr = "Lecture du netCDF E-OBS\u2026", en = "Reading the E-OBS netCDF\u2026"),
+  regen_eobs_reduce = list(fr = "R\u00e9duction estivale par ann\u00e9e\u2026", en = "Summer reduction per year\u2026"),
+  regen_eobs_complete = list(fr = "E-OBS pr\u00eat (%s ann\u00e9es), d\u00e9tection des ann\u00e9es de r\u00e9f\u00e9rence\u2026", en = "E-OBS ready (%s years), detecting the reference years\u2026"),
+  regen_biljou_safran = list(fr = "Bilan hydrique : for\u00e7age SAFRAN par unit\u00e9", en = "Water balance: SAFRAN forcing per unit"),
+  regen_biljou_era5 = list(fr = "Bilan hydrique : t\u00e9l\u00e9chargement ERA5 par unit\u00e9", en = "Water balance: ERA5 download per unit"),
+  regen_eobs_attribution = list(
+    fr = paste0("Donn\u00e9es E-OBS : ECA&D (European Climate Assessment & Dataset), ",
+                "diffus\u00e9es par le Copernicus Climate Change Service. Licence ",
+                "r\u00e9serv\u00e9e \u00e0 la recherche et \u00e0 l'enseignement, usage commercial exclu."),
+    en = paste0("E-OBS data: ECA&D (European Climate Assessment & Dataset), ",
+                "distributed by the Copernicus Climate Change Service. Licensed for ",
+                "research and education only, no commercial use.")),
   regen_canopee_lidar = list(fr = "Canop\u00e9e : LiDAR HD", en = "Canopy: LiDAR HD"),
   regen_canopee_satellite = list(fr = "Canop\u00e9e : satellite (repli)", en = "Canopy: satellite (fallback)"),
+  regen_canopee_chm = list(fr = "Canop\u00e9e : CHM ML (Open-Canopy)", en = "Canopy: ML CHM (Open-Canopy)"),
+  regen_canopee_chm_info = list(fr = "Hauteur de canop\u00e9e pr\u00e9dite par le mod\u00e8le Open-Canopy sur l'ortho IGN, en l'absence de LiDAR HD. Proxy de la structure ; pr\u00e9cision moindre que le LiDAR.", en = "Canopy height predicted by the Open-Canopy model from the IGN orthophoto, without LiDAR HD. Structure proxy; less accurate than LiDAR."),
   regen_canopee_satellite_info = list(fr = "Repli NDP 0 : LAI Sentinel-2 (inversion PROSAIL) en l'absence de LiDAR HD. Proxy d\u00e9grad\u00e9 de la structure de canop\u00e9e (LAI \u2260 PAI) ; pr\u00e9cision moindre.", en = "NDP-0 fallback: Sentinel-2 LAI (PROSAIL inversion) without LiDAR HD. Degraded proxy of canopy structure (LAI \u2260 PAI); lower accuracy."),
   regen_year_auto_tip = list(fr = "D\u00e9tecte l'ann\u00e9e moyenne et l'ann\u00e9e caniculaire repr\u00e9sentatives \u00e0 partir des donn\u00e9es climatiques E-OBS sur la zone du projet, et pr\u00e9-remplit les deux champs.", en = "Detects the representative average and heatwave years from E-OBS climate data over the project area, and fills both fields."),
   regen_auto_done = list(fr = "Ann\u00e9es E-OBS d\u00e9tect\u00e9es : moyenne %s / caniculaire %s.", en = "E-OBS years detected: average %s / heatwave %s."),
@@ -6032,6 +6072,12 @@ TRANSLATIONS <- list(
   regen_map_priorite = list(fr = "Indice de priorit\u00e9", en = "Priority index"),
   regen_map_sensibilite = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
   regen_map_njstress = list(fr = "Jours de stress hydrique", en = "Water-stress days"),
+  regen_map_bivariee = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD", en = "\u0394T\u00b0max \u00d7 \u0394VPD"),
+  regen_map_bivariee_sub = list(fr = "(terciles des UGF du projet)", en = "(terciles of the project's units)"),
+  regen_map_bivariee_info = list(fr = "Croise l'\u00e9cart de temp\u00e9rature maximale et l'\u00e9cart de d\u00e9ficit de pression de vapeur sous couvert. Chaque axe est d\u00e9coup\u00e9 en terciles des UGF du projet : le coin brun fonc\u00e9 (haut-droite) r\u00e9unit les UGF les plus chaudes ET les plus s\u00e8ches, \u00e0 l'inverse du gris clair. Lecture relative, propre au projet.", en = "Crosses the sub-canopy maximum-temperature and vapour-pressure-deficit gaps. Each axis is split into terciles of the project's units: the dark brown corner (top right) gathers the hottest AND driest units, the light grey the opposite. Relative reading, specific to the project."),
+  regen_map_essence = list(fr = "Meilleure essence", en = "Best species"),
+  regen_map_essence_info = list(fr = "Essence class\u00e9e premi\u00e8re pour chaque UGF par le classement d\u00e9terministe du c\u0153ur (tol\u00e9rances \u00e9cologiques face \u00e0 la chaleur, la s\u00e9cheresse et au gel de la station). Le d\u00e9tail du top 3 est dans la fiche parcelle.", en = "Species ranked first for each unit by the core's deterministic ranking (ecological tolerances against the site's heat, drought and frost). The top-3 detail is in the unit sheet."),
+  regen_map_essence_aucune = list(fr = "Pas de recommandation (donn\u00e9es de station manquantes)", en = "No recommendation (missing site data)"),
   regen_map_dtmax = list(fr = "\u0394T\u00b0max sous couvert", en = "Sub-canopy \u0394T\u00b0max"),
   regen_map_bivariate = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD (parcellaire)", en = "\u0394T\u00b0max \u00d7 \u0394VPD (per unit)"),
   regen_map_context = list(fr = "Contexte r\u00e9gional (E-OBS)", en = "Regional context (E-OBS)"),

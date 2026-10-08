@@ -559,7 +559,7 @@ test_that("All 12 family names are translated", {
   i18n_fr <- nemetonshiny:::get_i18n("fr")
   i18n_en <- nemetonshiny:::get_i18n("en")
 
-  family_keys <- unname(nemetonshiny:::FAMILLE_NMT_MAP[c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")])
+  family_keys <- nemeton::indicator_families()$family_column
 
   for (key in family_keys) {
     expect_true(i18n_fr$has(key), info = paste("Missing FR:", key))
@@ -575,7 +575,7 @@ test_that("All 12 family descriptions are translated", {
   i18n_fr <- nemetonshiny:::get_i18n("fr")
   i18n_en <- nemetonshiny:::get_i18n("en")
 
-  family_desc_keys <- paste0(unname(nemetonshiny:::FAMILLE_NMT_MAP[c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")]), "_desc")
+  family_desc_keys <- paste0(nemeton::indicator_families()$family_column, "_desc")
 
   for (key in family_desc_keys) {
     expect_true(i18n_fr$has(key), info = paste("Missing FR desc:", key))

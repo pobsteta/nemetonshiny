@@ -55,12 +55,13 @@ test_that("reGeneration n'utilise plus l'ancien « i » bsicons", {
   )
   h <- as.character(ui)
   expect_false(grepl("bi-info-circle", h, fixed = TRUE))
-  # 8 entrées de couches/vues raster + les 2 paramètres restés dans le sidebar.
+  # 10 entrées de couches/vues raster + les 2 paramètres restés dans le sidebar
+  # (couches « ΔT°max × ΔVPD » et « Meilleure essence » ajoutées en 1.1.0.9001).
   # Le compte était de 14 : quatre « i » de calibrage ont suivi leurs réglages
   # dans Paramètres › Sources & paramètres en v0.128.0. Ils ne sont pas perdus,
   # le test suivant les y retrouve — c'est tout l'objet de le vérifier là-bas
   # plutôt que de baisser un chiffre.
-  expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 10L)
+  expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 12L)
   # Le « i » d'une couche ne doit PAS sélectionner le radio qui le contient :
   # s'informer n'est pas choisir (la vue « rr » déclencherait 800 Mo de E-OBS).
   expect_match(h, "event.preventDefault()", fixed = TRUE)

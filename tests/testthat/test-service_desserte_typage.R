@@ -168,3 +168,98 @@ test_that("run_desserte_typage no longer reports no_volume for a persisted P1", 
     expect_false(identical(res$reason, "desserte_typage_no_volume"))
   })
 })
+
+# --- Voie IFN et comblement de P1 (brief 040 sect.4, 7, 8) -------------------
+
+.typage_mocks_foretaccess <- function(code) {
+  troncons <- sf::st_sf(
+    type = "primaire",
+    geometry = sf::st_sfc(
+      sf::st_linestring(rbind(c(900000, 6500000), c(900040, 6500040))), crs = 2154))
+  testthat::with_mocked_bindings(
+    vectoriser_reseau = function(reseau) list(troncons = troncons),
+    calculer_flux = function(graphe, parcelles, volume_champ = "volume", ...) graphe,
+    typer_desserte = function(graphe, seuils_flux, ...) list(
+      troncons = troncons,
+      recap = data.frame(type = "primaire", longueur = 1000)),
+    .package = "foretaccess", code)
+}
+
+test_that("voie IFN : taux NULL, essence et SER transmises, echelon remonte", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("terra")
+  cache <- withr::local_tempdir()
+  .typage_write_reseau_obj(cache)
+  parc <- .typage_parcelles()
+  parc$species <- "QUPE"
+  vu <- new.env()
+  testthat::local_mocked_bindings(
+    .typage_preparer_ifn = function(parcelles, project_path)
+      list(parcelles = parcelles, has_species = TRUE, ser = "C20", n_non_resolues = 2L))
+  testthat::local_mocked_bindings(
+    volume_mobilisable = function(units, taux_prelevement = NULL, espar_field = NULL,
+                                  ser = NULL, ...) {
+      vu$taux <- taux_prelevement; vu$espar <- espar_field; vu$ser <- ser
+      units$volume_mobilisable <- 10
+      structure(units, niveau_prelevement = "ser")
+    },
+    .package = "nemeton")
+  .typage_mocks_foretaccess({
+    res <- nemetonshiny:::run_desserte_typage(cache, parc, 0.5, 30, voie = "ifn")
+    expect_identical(res$status, "success")
+    expect_null(vu$taux)                         # le taux saisi est ignore
+    expect_identical(vu$espar, "species")
+    expect_identical(vu$ser, "C20")
+    expect_identical(res$niveau_prelevement, c(ser = 1L))
+    expect_identical(res$n_essences_non_resolues, 2L)
+  })
+})
+
+test_that("voie IFN sans essence lisible : refus explicite", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("terra")
+  cache <- withr::local_tempdir()
+  .typage_write_reseau_obj(cache)
+  testthat::local_mocked_bindings(
+    .typage_preparer_ifn = function(parcelles, project_path)
+      list(parcelles = parcelles, has_species = FALSE, ser = NULL, n_non_resolues = 0L))
+  expect_identical(
+    nemetonshiny:::run_desserte_typage(cache, .typage_parcelles(), NA, 30, voie = "ifn")$reason,
+    "desserte_typage_no_species")
+})
+
+test_that("P1 vide en NDP 0 : comble par la reference IFN, provenance comptee", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("terra")
+  cache <- withr::local_tempdir()
+  .typage_write_reseau_obj(cache)
+  parc <- .typage_parcelles(with_p1 = FALSE)
+  parc$species <- "QUPE"
+  testthat::local_mocked_bindings(
+    .typage_preparer_ifn = function(parcelles, project_path)
+      list(parcelles = parcelles, has_species = TRUE, ser = NULL, n_non_resolues = 0L))
+  testthat::local_mocked_bindings(
+    completer_volume_ifn = function(units, volume_col, ...) {
+      units[[volume_col]] <- 150; units$volume_source <- "ifn_national"; units
+    },
+    volume_mobilisable = function(units, ...) { units$volume_mobilisable <- 5; units },
+    .package = "nemeton")
+  .typage_mocks_foretaccess({
+    res <- nemetonshiny:::run_desserte_typage(cache, parc, 0.5, 30)
+    expect_identical(res$status, "success")
+    expect_identical(res$volume_source, c(ifn_national = 1L))
+    expect_null(res$niveau_prelevement)          # voie saisie : pas d'echelon
+  })
+})
+
+test_that("la provenance du typage s'affiche : badge, volume IFN, essences", {
+  i18n <- get_i18n("fr")
+  ui <- function(res) as.character(nemetonshiny:::.typage_provenance_ui(res, i18n))
+  expect_identical(ui(list(voie = "saisi")), character(0))
+  expect_match(ui(list(niveau_prelevement = c(ser = 3L), ser = "C20")), "SER C20", fixed = TRUE)
+  expect_match(ui(list(niveau_prelevement = c(ser = 2L, `NA` = 1L))), "2 parcelles sur 3")
+  expect_match(ui(list(niveau_prelevement = c(national = 3L))),
+               i18n$t("dess_typage_taux_national"), fixed = TRUE)
+  expect_match(ui(list(volume_source = c(mesure = 1L, ifn_ser = 2L))), "2 parcelles sur 3")
+  expect_match(ui(list(n_essences_non_resolues = 4L)), "4 parcelles")
+})

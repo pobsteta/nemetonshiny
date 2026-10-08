@@ -46,11 +46,49 @@ DESS_GROUPE_RESEAU <- "R\u00e9seau cr\u00e9\u00e9"
 DESS_GROUPE_LIGNES <- "Lignes cr\u00e9\u00e9es"
 #' @noRd
 DESS_GROUPE_TYPE <- "R\u00e9seau typ\u00e9"
-# " Pistes OSM " et non " pistes absentes de la BD TOPO " : le GeoPackage porte
-# l'acquisition OSM BRUTE, doublons compris. Le " hors corridor " existe cote
-# coeur mais n'en sort qu'en kilometres agreges (cf. `run_desserte_osm()`).
+# Le calque montre le GISEMENT : les troncons OSM hors du corridor de la BD
+# TOPO (couche `osm_hors_corridor`, cf. `run_desserte_osm()`), pas
+# l'acquisition brute.
 #' @noRd
-DESS_GROUPE_OSM <- "Pistes OSM"
+DESS_GROUPE_OSM <- "Pistes OSM hors BD TOPO"
+# Provenance du typage (brief 040 sect.8) : l'echelon du taux IFN (badge
+# " regional " vs " national "), la part du volume comblee par la reference
+# IFN, et les essences non reconnues. Rien pour un typage " saisi " sur des
+# volumes tous mesures.
+.typage_provenance_ui <- function(res, i18n) {
+  niv <- res$niveau_prelevement
+  src <- res$volume_source
+  n_nr <- as.integer(res$n_essences_non_resolues %||% 0L)
+  badge <- NULL
+  if (length(niv)) {
+    # `NA` = aucun taux (essence non reconnue) : ni regional, ni national.
+    regional <- sum(niv[names(niv) %in% c("ser", "greco")])
+    total <- sum(niv)
+    badge <- htmltools::tags$span(
+      class = paste("badge mt-2 d-inline-block",
+                    if (regional == total) "text-bg-success" else "text-bg-warning"),
+      if (regional == total) {
+        sprintf(i18n$t("dess_typage_taux_regional"), res$ser %||% "?")
+      } else if (regional > 0) {
+        sprintf(i18n$t("dess_typage_taux_mixte"), regional, total)
+      } else i18n$t("dess_typage_taux_national"))
+  }
+  vol <- NULL
+  if (length(src)) {
+    ifn <- sum(src[grepl("^ifn", names(src))])
+    if (ifn > 0) {
+      vol <- htmltools::tags$small(class = "text-muted d-block mt-1",
+        sprintf(i18n$t("dess_typage_volume_ifn"), ifn, sum(src)))
+    }
+  }
+  warn <- if (n_nr > 0) {
+    htmltools::div(class = "alert alert-warning py-1 px-2 small mt-2 mb-0",
+      sprintf(i18n$t("dess_typage_essences_nr"), n_nr))
+  }
+  if (is.null(badge) && is.null(vol) && is.null(warn)) return(NULL)
+  htmltools::tagList(badge, vol, warn)
+}
+
 #' @noRd
 DESS_GROUPE_DETECTEE <- "Routes d\u00e9tect\u00e9es"
 
@@ -314,9 +352,18 @@ mod_desserte_ui <- function(id) {
               title = i18n$t("dess_typage_title"),
               value = "typage",
               icon = bsicons::bs_icon("diagram-2"),
-              shiny::numericInput(
-                ns("typage_taux"), i18n$t("dess_typage_taux"),
-                value = 0.5, min = 0, max = 5, step = 0.1),
+              # Taux saisi, ou resolu par essence dans la table IFN (brief 040
+              # sect.4) - le coeur dit alors quel echelon a servi.
+              shiny::radioButtons(
+                ns("typage_voie"), i18n$t("dess_typage_voie"),
+                choices = stats::setNames(c("saisi", "ifn"),
+                  c(i18n$t("dess_typage_voie_saisi"), i18n$t("dess_typage_voie_ifn"))),
+                selected = "saisi"),
+              shiny::conditionalPanel(
+                condition = sprintf("input['%s'] == 'saisi'", ns("typage_voie")),
+                shiny::numericInput(
+                  ns("typage_taux"), i18n$t("dess_typage_taux"),
+                  value = 0.5, min = 0, max = 5, step = 0.1)),
               shiny::numericInput(
                 ns("typage_horizon"), i18n$t("dess_typage_horizon"),
                 value = 30, min = 1, max = 200, step = 1),
@@ -1409,7 +1456,9 @@ mod_desserte_server <- function(id, app_state) {
       res <- tryCatch(
         run_desserte_typage(cache_dir, parcelles,
                             taux_prelevement = input$typage_taux,
-                            horizon_ans = input$typage_horizon),
+                            horizon_ans = input$typage_horizon,
+                            voie = input$typage_voie %||% "saisi",
+                            project_path = project_path),
         error = function(e) list(status = "error", reason = "desserte_typage_failed",
                                  detail = conditionMessage(e)))
       rv_typage(res)
@@ -1481,12 +1530,14 @@ mod_desserte_server <- function(id, app_state) {
           htmltools::tags$td(class = "small", as.character(rec$type[i])),
           htmltools::tags$td(class = "small text-end", sprintf("%.2f km", km[i])))
       })
-      htmltools::tags$table(
-        class = "table table-sm table-striped small mb-0",
-        htmltools::tags$thead(htmltools::tags$tr(
-          htmltools::tags$th(i18n$t("dess_typage_col_type")),
-          htmltools::tags$th(class = "text-end", i18n$t("dess_typage_col_long")))),
-        htmltools::tags$tbody(rows))
+      htmltools::tagList(
+        htmltools::tags$table(
+          class = "table table-sm table-striped small mb-0",
+          htmltools::tags$thead(htmltools::tags$tr(
+            htmltools::tags$th(i18n$t("dess_typage_col_type")),
+            htmltools::tags$th(class = "text-end", i18n$t("dess_typage_col_long")))),
+          htmltools::tags$tbody(rows)),
+        .typage_provenance_ui(res, i18n))
     })
 
     # Overlay " Reseau type " : polylignes colorees par classe (primaire/secondaire/
@@ -1513,34 +1564,35 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
-    # Overlay " Pistes OSM " : l'acquisition Overpass telle quelle.
-    #
-    # Le libelle dit " pistes OSM " et non " pistes absentes de la BD TOPO ",
-    # parce que c'est ce que contient le fichier. `comparer_desserte_osm()`
-    # calcule bien un lineaire HORS CORRIDOR par troncon, mais ne renvoie que
-    # des kilometres par type : la geometrie du gisement est jetee cote coeur.
-    # La reconstruire ici (corridor + `st_difference`) dupliquerait la logique
-    # du coeur avec un `corridor_m` qui pourrait diverger, pour 104 s de calcul
-    # deja fait ailleurs - d'ou le calque honnete en attendant que
-    # `foretaccess` renvoie `osm_hors_corridor`.
+    # Overlay " Pistes OSM hors BD TOPO " : la part des troncons OSM qui sort
+    # du corridor de la BD TOPO, calculee par `comparer_desserte_osm()`
+    # (foretaccess) et persistee telle quelle - rien n'est recalcule ici.
     shiny::observe({
       r <- osm_res()
       shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_OSM)
       gp <- tryCatch(r$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
-      d <- tryCatch(sf::st_read(gp, layer = "osm_track", quiet = TRUE),
+      # Couche absente = rien hors corridor (OSM entierement couvert par la
+      # BD TOPO) : rien a peindre.
+      if (!"osm_hors_corridor" %in% tryCatch(sf::st_layers(gp)$name,
+                                             error = function(e) character(0))) return()
+      d <- tryCatch(sf::st_read(gp, layer = "osm_hors_corridor", quiet = TRUE),
                     error = function(e) NULL)
       if (!inherits(d, "sf") || nrow(d) == 0L) return()
       d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
       hw <- as.character(d[["highway"]] %||% rep("", nrow(d)))
+      corridor <- suppressWarnings(as.numeric(r$corridor_m %||% NA_real_))
+      note <- if (is.finite(corridor)) {
+        sprintf(i18n$t("dess_osm_layer_note"), format(corridor))
+      } else ""
       proxy |>
         leaflet::addPolylines(data = d, group = DESS_GROUPE_OSM,
           color = "#546E7A", weight = 2, opacity = 0.85, dashArray = "4,6",
           label = hw,
           popup = paste0("<b>", i18n$t("dess_osm_layer"), "</b><br>",
                          htmltools::htmlEscape(hw), "<br><span class='text-muted'>",
-                         i18n$t("dess_osm_layer_note"), "</span>"))
+                         note, "</span>"))
       if (!is.null(shown) && !(DESS_GROUPE_OSM %in% shown)) {
         leaflet::hideGroup(proxy, DESS_GROUPE_OSM)
       }

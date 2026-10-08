@@ -145,7 +145,7 @@ test_that("run_regeneration_engine runs both engines and caches their outputs", 
     expect_equal(seen$ewm, 140)
     expect_true(grepl("lidar_mnt$", seen$mnt))
     expect_true(grepl("lidar_nuage$", seen$las))   # structure de végétation passée
-    expect_equal(out$canopy, "lidar")
+    expect_equal(out$canopy, "lidar_hd")
     # Sortie consommable en fast-path.
     pc <- nemetonshiny:::load_regeneration_precomputed(p)
     expect_true(!is.null(pc$sensibilite))
@@ -220,7 +220,7 @@ test_that("microclimf uses the S2/PROSAIL PAI fallback when no LiDAR point cloud
 
     expect_null(seen$las)                     # pas de nuage → pas de las
     expect_true(seen$pai_ok)                  # repli PAI transmis
-    expect_equal(out$canopy, "satellite")     # provenance repli S2
+    expect_equal(out$canopy, "prosail_s2")     # provenance repli S2
     expect_true("sensibilite" %in% out$cached)
   })
 })
@@ -546,7 +546,7 @@ test_that("BILJOU consumes the cached LiDAR PAI as per-unit lai_max", {
     expect_equal(seen$lai_max, c(4, 5, 6))
     expect_equal(seen$pai, file.path(p, "cache", "regeneration", "pai.tif"))
     expect_equal(out$lai_source, "pai_lidar")
-    expect_equal(out$canopy, "lidar")
+    expect_equal(out$canopy, "lidar_hd")
     expect_equal(attr(out$units, "lai_source"), "pai_lidar")
   })
 })
@@ -975,7 +975,7 @@ test_that(".regen_run_engine_capped uses the capped path when the core supports 
   seen <- new.env(); seen$capped <- NULL; seen$direct <- 0L
   testthat::local_mocked_bindings(
     run_regeneration_engine = function(units, project_path, cfg) {
-      seen$direct <- seen$direct + 1L; list(canopy = "lidar", direct = TRUE)
+      seen$direct <- seen$direct + 1L; list(canopy = "lidar_hd", direct = TRUE)
     },
     .package = "nemetonshiny")
   # Stub « cœur généralisé » : formals incluent package/options.
@@ -983,7 +983,7 @@ test_that(".regen_run_engine_capped uses the capped path when the core supports 
     run_memory_capped = function(fun, args = list(), package = "nemeton",
                                  options = NULL, quiet = FALSE, ...) {
       seen$capped <- list(fun = fun, package = package, args = args, options = options)
-      list(canopy = "lidar", capped = TRUE)
+      list(canopy = "lidar_hd", capped = TRUE)
     },
     .package = "nemeton")
 

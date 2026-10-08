@@ -346,10 +346,9 @@ app_server <- function(input, output, session) {
 
     # Verifier si c'est un onglet famille (format NMT : "famille_*")
     if (grepl("^famille_", tab)) {
-      # Reverse lookup : famille_carbone -> "C"
-      famille_rev <- stats::setNames(names(FAMILLE_NMT_MAP), unname(FAMILLE_NMT_MAP))
-      family_code <- famille_rev[[tab]]
-      if (is.null(family_code)) return()
+      # Reverse lookup : famille_carbone -> "C" (NA si inconnu)
+      family_code <- get_famille_code(tab)
+      if (length(family_code) != 1L || is.na(family_code)) return()
       already_init <- initialized_families()
 
       # Initialize only if not already done

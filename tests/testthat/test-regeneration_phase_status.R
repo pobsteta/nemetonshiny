@@ -174,3 +174,45 @@ test_that(".regen_phase_label mirrors labels in EN", {
   expect_equal(nemetonshiny:::.regen_phase_label(i18n, list(phase = "biljou")),
                i18n$t("regen_phase_biljou"))
 })
+
+test_that("le forcage BILJOU nomme l'unite (et l'annee ERA5) en cours", {
+  i18n <- get_i18n("fr")
+  lbl <- function(st) nemetonshiny:::.regen_phase_label(i18n, st)
+  expect_identical(lbl(list(phase = "biljou_safran", i = 2, n = 5)),
+                   paste0(i18n$t("regen_biljou_safran"), " (2/5)"))
+  expect_identical(lbl(list(phase = "biljou_era5", i = 1, n = 3, year = 2022)),
+                   paste0(i18n$t("regen_biljou_era5"), " (1/3) 2022"))
+})
+
+test_that("le callback du moteur ecrit les phases du forcage BILJOU", {
+  # On n'appelle pas le moteur : on rejoue la correspondance evenement -> phase
+  # par le meme canal disque que lit la notif.
+  d <- withr::local_tempdir()
+  nemetonshiny:::.regen_write_phase(d, "biljou_safran", list(i = 1L, n = 4L))
+  st <- jsonlite::fromJSON(file.path(d, "engine_status.json"))
+  expect_identical(st$phase, "biljou_safran")
+  expect_identical(as.integer(st$n), 4L)
+})
+
+test_that("les etapes E-OBS traversent le worker par eobs_status.json", {
+  i18n <- get_i18n("fr")
+  p <- withr::local_tempdir()
+  d <- file.path(p, "cache", "regeneration", "eobs")
+  dir.create(d, recursive = TRUE)
+  cb <- nemetonshiny:::.regen_eobs_progress_cb(d)
+  expect_null(nemetonshiny:::.regen_eobs_progress_cb(NULL))
+
+  cb(list(current = "eobs:unzip"))
+  st <- nemetonshiny:::.regen_read_eobs_step(p)
+  expect_identical(nemetonshiny:::.regen_eobs_step_label(i18n, st),
+                   i18n$t("regen_eobs_unzip"))
+
+  cb(list(current = "eobs:complete", n_years = 12L))
+  lbl <- nemetonshiny:::.regen_eobs_step_label(i18n, nemetonshiny:::.regen_read_eobs_step(p))
+  expect_match(lbl, "12", fixed = TRUE)
+
+  # Etape inconnue ou fichier absent : NULL, l'appelant garde son libelle.
+  cb(list(current = "eobs:autre"))
+  expect_null(nemetonshiny:::.regen_eobs_step_label(i18n, nemetonshiny:::.regen_read_eobs_step(p)))
+  expect_null(nemetonshiny:::.regen_read_eobs_step(withr::local_tempdir()))
+})

@@ -583,13 +583,6 @@ mod_synthesis_server <- function(id, app_state) {
       result <- do.call(rbind, rows)
 
       # Rename columns for display
-      col_names <- c(
-        i18n$t("famille_carbone"),  # reuse as generic "Family" label
-        "Code",
-        "Score",
-        i18n$t("indicator_column")
-      )
-      # Simpler: just use standard names
       names(result) <- c(
         get_i18n(lang)$t("rapport_famille"),
         "Code",

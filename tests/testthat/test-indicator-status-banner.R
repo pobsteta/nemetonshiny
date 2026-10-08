@@ -67,6 +67,18 @@ test_that("a named cause is preferred over the generic message", {
 })
 
 
+test_that("A5 without a usable reference has its own named cause", {
+  i18n <- get_i18n("fr")
+  b <- nemetonshiny:::indicator_na_banner(
+    .mk_sf(c(NA_real_, NA_real_), status = rep("skipped_no_reference", 2)),
+    "indicateur_a5_rafraichissement", i18n)
+
+  html <- as.character(b)
+  expect_true(grepl(i18n$t("a5_skipped_no_reference"), html, fixed = TRUE))
+  expect_false(grepl(i18n$t("indicator_all_na"), html, fixed = TRUE))
+})
+
+
 test_that("an untranslated cause falls back rather than showing a raw key", {
   i18n <- get_i18n("fr")
   b <- nemetonshiny:::indicator_na_banner(

@@ -175,7 +175,8 @@ test_that("run_desserte_osm renvoie le chemin du GeoPackage et le persiste", {
     acquire_desserte_osm = function(...) osm,
     acquire_desserte = function(...) .dv_ligne(attrs = data.frame(classe = "route")),
     comparer_desserte_osm = function(...) list(
-      resume = c(osm_km = 0.3, osm_hors_km = 0.1), corridor_m = 15),
+      resume = c(osm_km = 0.3, osm_hors_km = 0.1), corridor_m = 15,
+      osm_hors_corridor = osm[1, ]),
     .package = "foretaccess")
 
   res <- nemetonshiny:::run_desserte_osm(cd, aoi, buffer_m = 0)
@@ -185,6 +186,9 @@ test_that("run_desserte_osm renvoie le chemin du GeoPackage et le persiste", {
   expect_true(file.exists(res$gpkg_path))
   expect_identical(basename(res$gpkg_path), "desserte_osm.gpkg")
   expect_true("osm_track" %in% sf::st_layers(res$gpkg_path)$name)
+  # Le gisement rendu par foretaccess est persiste tel quel, pour la carte.
+  hc <- sf::st_read(res$gpkg_path, layer = "osm_hors_corridor", quiet = TRUE)
+  expect_identical(nrow(hc), 1L)
 
   # Et il survit au sidecar : c'est LUI que relit `.load_cached_osm()`.
   relu <- readRDS(file.path(cd, "osm.rds"))
@@ -213,21 +217,20 @@ test_that("les calques OSM et detection ont leur case et partent eteints", {
     "hideGroup(c(DESS_GROUPE_OSM, DESS_GROUPE_DETECTEE))", code, fixed = TRUE)))
 
   # Peints depuis les couches ecrites par les services, pas re-calcules.
-  expect_true(any(grepl('layer = "osm_track"', code, fixed = TRUE)))
+  expect_true(any(grepl('layer = "osm_hors_corridor"', code, fixed = TRUE)))
   expect_true(any(grepl('layer = "desserte_detectee"', code, fixed = TRUE)))
   # Et l'etat de la case reste respecte au re-dessin.
   expect_true(any(grepl("hideGroup(proxy, DESS_GROUPE_OSM)", code, fixed = TRUE)))
   expect_true(any(grepl("hideGroup(proxy, DESS_GROUPE_DETECTEE)", code, fixed = TRUE)))
 })
 
-test_that("le calque OSM ne se presente pas comme le gisement manquant", {
-  # `comparer_desserte_osm()` ne renvoie AUCUNE geometrie : le GeoPackage porte
-  # l'acquisition brute, doublons de la BD TOPO compris. Un libelle " pistes
-  # absentes de la BD TOPO " serait donc faux.
+test_that("le calque OSM montre le gisement hors corridor, avec la largeur du corridor", {
+  # Depuis foretaccess 2.4.0, `comparer_desserte_osm()` rend la geometrie hors
+  # corridor : le calque peut enfin dire " absentes de la BD TOPO ".
   i18n <- nemetonshiny:::get_i18n("fr")
-  expect_identical(nemetonshiny:::DESS_GROUPE_OSM, "Pistes OSM")
-  expect_match(i18n$t("dess_osm_layer_note"), "doublons")
-  expect_false(grepl("absentes", nemetonshiny:::DESS_GROUPE_OSM))
+  expect_identical(nemetonshiny:::DESS_GROUPE_OSM, "Pistes OSM hors BD TOPO")
+  expect_match(sprintf(i18n$t("dess_osm_layer_note"), "15"), "15 m", fixed = TRUE)
+  expect_match(sprintf(get_i18n("en")$t("dess_osm_layer_note"), "15"), "15 m", fixed = TRUE)
 })
 
 # --- Popup de detection : la classe seule serait trompeuse -------------------

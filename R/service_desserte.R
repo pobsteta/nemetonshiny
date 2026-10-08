@@ -477,17 +477,19 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   if (inherits(cmp, "acc_err")) {
     return(list(status = "error", reason = "desserte_osm_failed", detail = cmp$msg))
   }
-  # Le GeoPackage porte la couche OSM pour la carte et pour l'inspection SIG.
-  # ATTENTION AU LIBELLE : c'est la couche OSM BRUTE telle qu'acquise, PAS le
-  # resultat de la comparaison. `comparer_desserte_osm()` calcule bien un
-  # " hors corridor " par troncon mais ne renvoie que des kilometres agreges ;
-  # la geometrie du gisement est jetee cote coeur (brief sect.4, option (b)
-  # deposee la-bas). Nommer ce calque " pistes absentes de la BD TOPO " serait
-  # donc faux : il contient aussi tout ce qui doublonne la BD TOPO.
+  # Le GeoPackage porte deux couches : l'acquisition OSM BRUTE (`osm_track`,
+  # pour l'inspection SIG) et le GISEMENT (`osm_hors_corridor`) - les troncons
+  # OSM amputes de leur part dans le corridor de la BD TOPO, tels que les rend
+  # `comparer_desserte_osm()` (foretaccess >= 2.4.0). C'est ce second calque que
+  # montre la carte : les pistes OSM absentes de la BD TOPO.
+  hc <- tryCatch(cmp$osm_hors_corridor, error = function(e) NULL)
   gp <- file.path(cache_dir, "desserte_osm.gpkg")
   tryCatch({
     unlink(gp)
     sf::st_write(osm, gp, layer = "osm_track", quiet = TRUE, delete_dsn = TRUE)
+    if (inherits(hc, "sf") && nrow(hc) > 0L) {
+      sf::st_write(hc, gp, layer = "osm_hors_corridor", quiet = TRUE, append = FALSE)
+    }
   }, error = function(e) invisible(NULL))
 
   # PROVENANCE DU TRANSPORT (brief unification OSM, sect.4.2 et sect.5.3). Deux
@@ -1374,13 +1376,22 @@ DESSERTE_TYPAGE_SEUILS <- c(tertiaire = 0, secondaire = 100, primaire = 500)
 #' @param volume_col Name of the standing-volume column on `parcelles`, or
 #'   `NULL` (default) to resolve it with `.resolve_volume_col()` - the core and
 #'   the persisted project do NOT use the same name.
+#' @param voie `"saisi"` (default: `taux_prelevement` typed by the user) or
+#'   `"ifn"` (rate per species from the IFN table, `taux_prelevement` ignored;
+#'   brief 040 sect.4).
+#' @param project_path Project directory, or `NULL`. Lets the IFN route read the
+#'   project's BD Foret cache (species) and SER cache; without it the IFN route
+#'   falls back on national rates.
 #' @return A named list: `status`, `recap` (length per type), `gpkg_path`,
-#'   `seuils`, or an error list.
+#'   `seuils`, `voie`, `niveau_prelevement` / `volume_source` (counts, or
+#'   `NULL`), `ser`, `n_essences_non_resolues`, or an error list.
 #' @noRd
 run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
                                 horizon_ans, engine = "glouton",
                                 seuils_flux = DESSERTE_TYPAGE_SEUILS,
-                                volume_col = NULL) {
+                                volume_col = NULL, voie = c("saisi", "ifn"),
+                                project_path = NULL) {
+  voie <- match.arg(voie)
   if (!requireNamespace("foretaccess", quietly = TRUE) ||
       !requireNamespace("nemeton", quietly = TRUE)) {
     return(list(status = "error", reason = "desserte_typage_no_pkg"))
@@ -1396,16 +1407,50 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
   # `indicateur_p1_volume` (nom persiste dans indicators.parquet, et donc ce que
   # renvoie .resolve_project_aoi_2154). Chercher " P1 " en dur produisait un
   # " volume P1 absent " sur un projet pourtant entierement calcule.
+  taux_prelevement <- if (identical(voie, "ifn")) NULL else
+    suppressWarnings(as.numeric(taux_prelevement))
+  horizon_ans <- suppressWarnings(as.numeric(horizon_ans))
+  if (length(horizon_ans) != 1L || !is.finite(horizon_ans) || horizon_ans <= 0 ||
+      (identical(voie, "saisi") &&
+       (length(taux_prelevement) != 1L || !is.finite(taux_prelevement) ||
+        taux_prelevement <= 0))) {
+    return(list(status = "error", reason = "desserte_typage_bad_params"))
+  }
+
+  # Essence (BD Foret) et SER du projet : la voie IFN en a besoin, et le
+  # comblement de P1 aussi (NDP 0, brief 040 sect.7). Best-effort.
+  prep <- .typage_preparer_ifn(parcelles, project_path)
+  parcelles <- prep$parcelles
+
+  # Volume sur pied : la colonne resolue, comblee par la reference IFN la ou
+  # elle est NA (`completer_volume_ifn()`, provenance ligne a ligne dans
+  # `volume_source`). Sans essence, rien a combler : on garde la mesure seule.
   volume_col <- volume_col %||% .resolve_volume_col(parcelles)
-  if (is.null(volume_col) || !volume_col %in% names(parcelles) ||
-      !any(is.finite(suppressWarnings(as.numeric(parcelles[[volume_col]]))))) {
+  if (is.null(volume_col)) {
+    volume_col <- intersect(c("P1", "indicateur_p1_volume"), names(parcelles))[1]
+    if (is.na(volume_col)) {
+      volume_col <- "P1"
+      parcelles$P1 <- NA_real_
+    }
+  }
+  vol <- suppressWarnings(as.numeric(parcelles[[volume_col]]))
+  volume_source <- NULL
+  if (anyNA(vol) && prep$has_species) {
+    parcelles[[volume_col]] <- vol
+    comble <- tryCatch(
+      nemeton::completer_volume_ifn(parcelles, volume_col = volume_col,
+                                    species_field = "species", ser = prep$ser),
+      error = function(e) NULL)
+    if (inherits(comble, "sf")) {
+      parcelles <- comble
+      volume_source <- .compter(parcelles$volume_source)
+    }
+  }
+  if (!any(is.finite(suppressWarnings(as.numeric(parcelles[[volume_col]]))))) {
     return(list(status = "error", reason = "desserte_typage_no_volume"))
   }
-  taux_prelevement <- suppressWarnings(as.numeric(taux_prelevement))
-  horizon_ans <- suppressWarnings(as.numeric(horizon_ans))
-  if (!is.finite(taux_prelevement) || !is.finite(horizon_ans) ||
-      taux_prelevement <= 0 || horizon_ans <= 0) {
-    return(list(status = "error", reason = "desserte_typage_bad_params"))
+  if (identical(voie, "ifn") && !prep$has_species) {
+    return(list(status = "error", reason = "desserte_typage_no_species"))
   }
 
   # Reseau persiste par run_desserte : unwrap du SpatRaster puis vectorisation.
@@ -1433,12 +1478,16 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     return(list(status = "error", reason = "desserte_typage_failed", detail = graphe$msg))
   }
 
-  # Volume MOBILISE, unite m3_total (piege sect.3), voie " saisi " (taux + horizon).
+  # Volume MOBILISE, unite m3_total (piege sect.3). Voie " saisi " : taux +
+  # horizon ; voie " ifn " : `taux_prelevement = NULL`, le coeur resout le taux
+  # par essence (cascade SER -> GRECO -> national) et dit l'echelon atteint.
   parc_vol <- tryCatch(
     nemeton::volume_mobilisable(parcelles, volume_col = volume_col,
                                 unite = "m3_total",
                                 taux_prelevement = taux_prelevement,
-                                horizon_ans = horizon_ans),
+                                horizon_ans = horizon_ans,
+                                espar_field = "species",
+                                ser = if (identical(voie, "ifn")) prep$ser),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(parc_vol, "acc_err")) {
     return(list(status = "error", reason = "desserte_typage_volume_failed",
@@ -1469,13 +1518,82 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     engine = engine,
     recap = typee$recap,
     gpkg_path = if (isTRUE(ok) && file.exists(gpkg_path)) gpkg_path else NULL,
-    seuils = seuils_flux)
+    seuils = seuils_flux,
+    voie = voie,
+    # Ce que l'utilisateur doit voir (brief 040 sect.8) : l'echelon du taux,
+    # la provenance du volume, et les essences que le coeur n'a pas reconnues.
+    niveau_prelevement = if (identical(voie, "ifn"))
+      .compter(attr(parc_vol, "niveau_prelevement")),
+    volume_source = volume_source,
+    ser = prep$ser,
+    n_essences_non_resolues = if (identical(voie, "ifn") || !is.null(volume_source))
+      prep$n_non_resolues else 0L)
   # Sidecar, comme les quatre autres actions du panneau. Le typage etait le seul
   # a n'en avoir aucun : on rouvrait le projet, `typage_<moteur>.gpkg` etait bien
   # sur le disque, et l'onglet redemandait de typer le reseau.
   tryCatch(saveRDS(out, file.path(cache_dir, "typage.rds")),
            error = function(e) invisible(NULL))
   out
+}
+
+#' Species and SER of the parcels for the IFN routes of the typing
+#'
+#' Brief 040 sect.5-6: the core resolves any species nomenclature
+#' (`resoudre_espar()`) but neither the species of a geometry nor its SER. The
+#' species comes from the project's BD Foret cache (`enrich_parcels_bdforet()`,
+#' as in the compute), the SER from `ensure_ugf_ser()` (cached in
+#' `data/ugf_ser.rds`). `volume_mobilisable()` takes ONE SER per call: the most
+#' frequent one among the parcels - a project is local. Never fails: without
+#' them the core falls back on national figures, and says so.
+#'
+#' @param parcelles An `sf` of parcels.
+#' @param project_path Project directory, or `NULL`.
+#' @return `list(parcelles, has_species, ser, n_non_resolues)`.
+#' @noRd
+.typage_preparer_ifn <- function(parcelles, project_path) {
+  # Une colonne `species` peut exister toute vide (resultats persistes sans
+  # enrichissement) : la remplir aussi dans ce cas.
+  vide <- !"species" %in% names(parcelles) ||
+    all(is.na(parcelles$species) | !nzchar(as.character(parcelles$species)))
+  if (vide && !is.null(project_path)) {
+    bd <- .load_project_bdforet(list(path = project_path))
+    if (inherits(bd, "sf") && nrow(bd) > 0L) {
+      enr <- tryCatch(enrich_parcels_bdforet(parcelles, bd), error = function(e) NULL)
+      # Le coeur rend un data.frame (pas un sf), ligne a ligne avec l'entree.
+      if (is.data.frame(enr) && "species" %in% names(enr) &&
+          nrow(enr) == nrow(parcelles)) {
+        parcelles$species <- enr$species
+      }
+    }
+  }
+  sp <- if ("species" %in% names(parcelles)) as.character(parcelles$species) else NULL
+  has_species <- length(sp) > 0L && any(!is.na(sp) & nzchar(sp))
+  n_non_resolues <- 0L
+  if (has_species) {
+    espar <- tryCatch(nemeton::resoudre_espar(sp), error = function(e) NULL)
+    if (length(espar) == length(sp)) {
+      n_non_resolues <- sum(!is.na(sp) & nzchar(sp) & is.na(espar))
+    }
+  }
+
+  ser <- NULL
+  if (!is.null(project_path) && "ug_id" %in% names(parcelles)) {
+    codes <- tryCatch(ensure_ugf_ser(parcelles, project_path)$ser,
+                      error = function(e) NULL)
+    codes <- codes[!is.na(codes) & nzchar(codes)]
+    if (length(codes)) ser <- names(sort(table(codes), decreasing = TRUE))[1]
+  }
+  list(parcelles = parcelles, has_species = has_species, ser = ser,
+       n_non_resolues = n_non_resolues)
+}
+
+# Effectifs nommes d'un vecteur de categories (NA compte comme " NA "), ou NULL.
+.compter <- function(x) {
+  if (is.null(x) || !length(x)) return(NULL)
+  x <- as.character(x)
+  x[is.na(x)] <- "NA"
+  tb <- table(x)
+  stats::setNames(as.integer(tb), names(tb))
 }
 
 #' Read the persisted network-typing result

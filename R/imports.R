@@ -24,9 +24,6 @@
 get_famille_col    <- function(...) nemeton::get_famille_col(...)
 get_famille_code   <- function(...) nemeton::get_famille_code(...)
 
-# Data object (not a function) -- resolved eagerly is fine, it is just data.
-FAMILLE_NMT_MAP <- utils::getFromNamespace("FAMILLE_NMT_MAP", "nemeton")
-
 # i18n (messages CLI)
 msg_info     <- .nemeton_fn("msg_info")
 msg_warn     <- .nemeton_fn("msg_warn")
