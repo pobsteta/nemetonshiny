@@ -57,7 +57,7 @@ mod_monitoring_ui <- function(id) {
     bslib::nav_panel(
       title = i18n$t("monitoring_onglet_reconfort"),
       value = "reconfort",
-      icon  = bsicons::bs_icon("tree-fill")
+      icon  = .icone_feuillu()
     ),
     header = .monitoring_contenu_ui(ns, i18n, lang)
   )
@@ -460,7 +460,7 @@ mod_monitoring_ui <- function(id) {
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_reconfort"),
           value = "pixel_map_reconfort",
-          icon  = bsicons::bs_icon("tree-fill"),
+          icon  = .icone_feuillu(),
           mod_monitoring_reconfort_map_ui(ns("reconfort_map"))
         ),
         # ----- Sub-tabs - Plan de validation (spec 014, v0.43.0) -----
@@ -4865,4 +4865,29 @@ mod_monitoring_server <- function(id, app_state) {
       NULL
     }
   )
+}
+
+#' Broadleaf tree icon for the RECONFORT tabs
+#'
+#' @description
+#' RECONFORT watches broadleaves (oak, chestnut) while FORDEAD watches
+#' conifers. Bootstrap Icons only ship conifers (`tree`, `tree-fill`), so this
+#' draws a round-crowned tree in the same format as [bsicons::bs_icon()]: 1em
+#' square, `currentColor`, hidden from screen readers (the tab title says it).
+#'
+#' @return An [htmltools::HTML] inline SVG.
+#'
+#' @noRd
+.icone_feuillu <- function() {
+  htmltools::HTML(paste0(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" ',
+    'viewBox="0 0 16 16" class="bi bi-feuillu" fill="none" ',
+    'stroke="currentColor" stroke-width="1.2" stroke-linecap="round" ',
+    'stroke-linejoin="round" aria-hidden="true" ',
+    'style="height:1em;width:1em;vertical-align:-0.125em;">',
+    '<path d="M5 10.5 A3 3 0 0 1 3.4 5.2 A3.2 3.2 0 0 1 8 2 ',
+    'A3.2 3.2 0 0 1 12.6 5.2 A3 3 0 0 1 11 10.5 A4 4 0 0 1 5 10.5 Z"/>',
+    '<path d="M8 8.5 V15 M8 11.5 L9.8 9.8 M6 15 H10"/>',
+    '</svg>'
+  ))
 }

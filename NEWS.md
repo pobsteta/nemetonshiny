@@ -1,3 +1,11 @@
+# nemetonshiny 1.2.0.9002 (développement)
+
+- **Suivi sanitaire, pictogramme RECONFORT** : l'onglet RECONFORT et son
+  sous-onglet de carte portaient un résineux (`tree-fill`), comme FORDEAD.
+  RECONFORT suit les feuillus (chêne, châtaignier) : il porte désormais un arbre
+  à houppier rond, dessiné en SVG au format des icônes Bootstrap (qui n'ont pas
+  de feuillu).
+
 # nemetonshiny 1.2.0.9001 (développement)
 
 Reliquat de l'audit des briefs cœur → app du 2026-10-08.
