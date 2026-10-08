@@ -1233,6 +1233,18 @@ test_that("le tableau des UGF de reGeneration est titre Â« Tableau des actions Â
   expect_match(avant, "Tableau des actions", fixed = TRUE)
 })
 
+test_that("les onglets de reGeneration sont en tete, soulignes, comme le Plan d'actions", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_regeneration_ui("rg")))
+  expect_match(h, "nav-underline", fixed = TRUE)
+  # Le bandeau d'etat vient APRES la barre d'onglets, plus au-dessus.
+  onglets <- regexpr("nav-underline", h, fixed = TRUE)
+  statut <- regexpr('id="rg-status"', h, fixed = TRUE)
+  expect_true(statut > onglets)
+})
+
 test_that("the analysis runs asynchronously: the click returns before the result (audit 1.0)", {
   skip_if_not_installed("sf")
   units <- .regen_mod_units(2)

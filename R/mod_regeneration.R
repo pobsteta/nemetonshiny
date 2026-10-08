@@ -608,10 +608,14 @@ mod_regeneration_ui <- function(id) {
     ),
 
     # --- Resultats -------------------------------------------------------
-    shiny::uiOutput(ns("status")),
-    bslib::navset_card_tab(
+    # Onglets en tete du panneau, comme le Plan d'actions : soulignes, avec
+    # icone, et le bandeau d'etat passe en `header` (sous les onglets) au lieu
+    # de les repousser vers le bas.
+    bslib::navset_card_underline(
+      header = shiny::uiOutput(ns("status")),
       bslib::nav_panel(
         i18n$t("regen_map_table_view"),
+        icon = bsicons::bs_icon("map"),
         # Pattern " Plan d'actions " : Carte (colonne gauche, pleine hauteur) et,
         # dans la colonne droite, Tableau des UGF (moitie haute) + Fiches parcelles
         # (moitie basse) empiles. Un clic carte selectionne l'UGF (surlignage + ligne
@@ -800,6 +804,7 @@ mod_regeneration_ui <- function(id) {
         )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
+        icon = bsicons::bs_icon("cloud-sun"),
         # Contexte regional en RASTER downscale (eobs_downscale, coeur >= 0.153.0),
         # 3 vues : tendance Tdegmax (tx), tendance precipitations (rr), et croisement
         # BIVARIE (classes 1-9). La sidebar droite porte le selecteur de vue, le
