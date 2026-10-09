@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-09
+
+### Fixed
+
+- IGN LiDAR HD MNH/MNT tiles served as 100 % NoData (point cloud published
+  before the derived rasters) are now rejected like a 404 and purged from the
+  cache. A cached empty mosaic is discarded, and a mosaic covering less than
+  90 % of the area is not used. A final guard rejects any CHM or DTM with no
+  valid pixel over the project, whatever its source. The empty DTM no longer
+  replaces BD ALTI, and lasR takes over. Accessibility, road network and
+  regeneration (R3) skip an empty LiDAR DTM mosaic.
+
+### Added
+
+- `sans_chm` / `sans_mnt` statuses explain an indicator left empty for lack
+  of a raster in the family view.
+
+### Changed
+
+- Sampling uses `nemeton::create_qgis_project()` instead of the deprecated
+  `create_qfield_project()`.
+
 ## [2.0.0] - 2026-10-08
 
 Milestone of spec 058; same code as 1.3.1. The major number marks the break

@@ -1,4 +1,4 @@
-# nemetonshiny 2.0.0.9001 (cycle dev)
+# nemetonshiny 2.0.1 (2026-10-09)
 
 - **Dalles LiDAR HD vides refusées.** L'IGN publie parfois le nuage de
   points avant les rasters dérivés. Le WMS sert alors des dalles MNH/MNT
