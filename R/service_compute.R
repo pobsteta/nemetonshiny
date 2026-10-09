@@ -2819,10 +2819,11 @@ download_vector_source <- function(source_name,
 #' Cache key of a geometry (units or AOI)
 #'
 #' Hash of the WKB of the geometry in WGS84, so the same units give the same
-#' key whatever their working CRS. `NULL` geometry gives `NA`.
+#' key whatever their working CRS. A `NULL` geometry (no extent) has its own
+#' key, `"sans_emprise"`.
 #' @noRd
 .cache_cle_geometrie <- function(x) {
-  if (is.null(x)) return(NA_character_)
+  if (is.null(x)) return("sans_emprise")
   g <- sf::st_transform(sf::st_geometry(x), 4326)
   rlang::hash(lapply(sf::st_as_binary(g), function(b) as.raw(b)))
 }
