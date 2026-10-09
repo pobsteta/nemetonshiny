@@ -680,8 +680,8 @@ TRANSLATIONS <- list(
     en = "Import Marculus marking"
   ),
   marculus_import_help = list(
-    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 (ligne FormatCsv;2). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
-    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 (FormatCsv;2 line). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
+    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (ligne FormatCsv;2, 3 ou 4). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
+    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2, 3 or 4 line). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
   ),
   marculus_import_fichiers = list(fr = "Fichiers Marculus", en = "Marculus files"),
   marculus_import_run = list(fr = "Importer", en = "Import"),
@@ -694,8 +694,8 @@ TRANSLATIONS <- list(
     en = "%d context(s) with no matching action in this project: ignored."
   ),
   marculus_import_erreur = list(
-    fr = "Fichier illisible : ce n'est pas un export Marculus (.marsync, sauvegarde JSON ou CSV de contexte au format 2).",
-    en = "Unreadable file: not a Marculus export (.marsync, JSON backup or format-2 context CSV)."
+    fr = "Fichier illisible : ce n'est pas un export Marculus (.marsync, sauvegarde JSON ou CSV de contexte au format 2 ou sup\u00e9rieur).",
+    en = "Unreadable file: not a Marculus export (.marsync, JSON backup or context CSV in format 2 or later)."
   ),
   marculus_import_csv_ancien = list(
     fr = "CSV de l'ancien format (sans identifiants), non importable : r\u00e9exportez-le depuis une version de Marculus qui \u00e9crit FormatCsv;2, ou partagez le .marsync :",
@@ -709,6 +709,23 @@ TRANSLATIONS <- list(
     fr = "Aucun contexte de ce projet dans les fichiers import\u00e9s.",
     en = "No context of this project in the imported files."
   ),
+  marculus_import_bilan_lots = list(
+    fr = "Bilan par lot d'affouage (rapport) : importez le .marsync ou le CSV de contexte. Fichier ignor\u00e9 :",
+    en = "Affouage lot summary (report): import the .marsync or the context CSV. File ignored:"
+  ),
+  marculus_import_net = list(
+    fr = "CSV \u00ab tiges \u00e0 comptabiliser \u00bb (Journal;NET) : c'est un \u00e9tat de comptage, sans les annulations, pas un journal de synchronisation. Il ne remplace jamais une tige d\u00e9j\u00e0 import\u00e9e d'un journal complet ou d'un .marsync. Fichier(s) :",
+    en = "\u201cStems to count\u201d CSV (Journal;NET): a count snapshot without cancellations, not a synchronisation log. It never replaces a stem already imported from a full log or a .marsync. File(s):"
+  ),
+  marculus_lots_titre_fmt = list(
+    fr = "Affouage : lots de %s maximum",
+    en = "Affouage: lots of at most %s"
+  ),
+  marculus_col_lot = list(fr = "Lot", en = "Lot"),
+  marculus_col_etat = list(fr = "\u00c9tat", en = "State"),
+  marculus_lot_complet = list(fr = "complet", en = "complete"),
+  marculus_lot_incomplet = list(fr = "incomplet", en = "incomplete"),
+  marculus_lot_sans_lot = list(fr = "sans lot", en = "no lot"),
   marculus_synthese_title = list(fr = "Synth\u00e8se du martelage", en = "Marking summary"),
   marculus_synthese_total_fmt = list(fr = "%d tige(s)", en = "%d stem(s)"),
   marculus_col_essence = list(fr = "Essence", en = "Species"),

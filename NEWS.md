@@ -1,3 +1,24 @@
+# nemetonshiny 2.0.1.9002 (cycle dev)
+
+- **Marculus : CSV au format 4 et lots d'affouage** (brief Marculus du
+  2026-10-07, Marculus v0.52.0 à v0.55.1).
+  - Chaque tige garde le `lot` attribué au martelage (colonne `Lot` du CSV,
+    clé `lot` du `.marsync`). Il n'est jamais recalculé.
+  - Les contextes portent `affouage`, `volumeMaxLotM3`, `Journal`, et, dans le
+    CSV, `Tarif`, `TarifNumero` et `CoefficientForme`. Ces réglages sont gardés
+    sur l'action (`reglages_terrain`) pour l'affichage, mais **jamais
+    réémis** vers le téléphone : une clé absente laisse le terrain décider.
+  - La synthèse du martelage montre, pour un contexte d'affouage, le bilan
+    par lot : tiges, volume net, et état complet ou incomplet. Il suit la
+    règle d'annulation des volumes : le lot de la tige retirée perd son
+    volume. Un lot dont le volume atteint exactement le maximum est clos.
+  - Un CSV `Journal;NET` (tiges à comptabiliser) est signalé comme un état
+    de comptage. Il ne remplace jamais une tige lue dans un journal complet
+    ou un `.marsync`.
+  - Le CSV du bilan par lot (`Lot;Tiges;Volume_m3;Etat`) est reconnu et
+    refusé, avec un message qui dit quoi importer.
+  - Les textes d'aide parlent du « format 2 ou supérieur ».
+
 # nemetonshiny 2.0.1.9001 (cycle dev)
 
 - **Caches contrôlés sur l'emprise** (brief LiDAR HD du 2026-10-07, § 5). Ces
