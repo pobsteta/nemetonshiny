@@ -1,3 +1,19 @@
+# nemetonshiny 2.0.1.9001 (cycle dev)
+
+- **Caches contrôlés sur l'emprise** (brief LiDAR HD du 2026-10-07, § 5). Ces
+  caches étaient réutilisés sur la seule existence du fichier. Désormais :
+  - `irc.tif` est contrôlé sur l'emprise, comme `ndvi.tif` ;
+  - `ndvi_s2_v2.tif` et `spectral/<scène>/` portent une clé de géométrie
+    (`<fichier>.cle`) et sont recalculés si les unités changent ;
+  - un CHM Open-Canopy qui ne couvre plus les parcelles est mis de côté
+    (`.perime`), puis la prédiction est relancée.
+- **Repli lasR plafonné en mémoire.** Il dépassait le plafond de 12 Go avec
+  4 dalles. Il prend désormais au plus 4 workers, et un par 3 Go de la moitié
+  de la RAM disponible. Réglable par `options(nemetonshiny.lasr_ncores =)` ou
+  `NEMETON_LASR_NCORES`.
+- Le reste du brief (la couche `IGNF_LIDAR-HD_METADONNEE:metadata`) était déjà
+  livré par `0dbfaaeb`, gardé tel quel.
+
 # nemetonshiny 2.0.1 (2026-10-09)
 
 - **Dalles LiDAR HD vides refusées.** L'IGN publie parfois le nuage de
