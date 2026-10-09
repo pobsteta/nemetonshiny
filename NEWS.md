@@ -1,3 +1,10 @@
+# nemetonshiny 2026.10.1.9000 (cycle dev)
+
+- **Versionnage calendaire `AAAA.M.N`**, comme le cœur `nemeton` : la
+  prochaine release sera `2026.10.1`. Le cycle de dev reste en `.900x`, et
+  `version-consistency` vérifie le format et sa concordance avec la date de
+  l'entrée NEWS. Les changements cassants auront leur section dans NEWS.
+
 # nemetonshiny 2.0.1.9003 (cycle dev)
 
 - **Nouveau sous-onglet Terrain › Import › « Nuage de points drone »**
