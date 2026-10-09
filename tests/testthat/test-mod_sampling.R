@@ -237,7 +237,7 @@ test_that("mod_sampling_server warns when no project is loaded", {
 })
 
 
-test_that("generated plots feed create_qfield_project() into a valid .qgz", {
+test_that("generated plots feed create_qgis_project() into a valid .qgz", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
   skip_if_not_installed("nemeton")
@@ -273,7 +273,7 @@ test_that("generated plots feed create_qfield_project() into a valid .qgz", {
   expect_true(inherits(plots_captured, "sf"))
 
   withr::with_tempdir({
-    qgz <- nemeton::create_qfield_project(
+    qgz <- nemeton::create_qgis_project(
       placettes    = plots_captured,
       zone_etude   = zone_captured,
       output_dir   = ".",

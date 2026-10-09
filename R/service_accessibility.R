@@ -102,6 +102,25 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   tryCatch(sf::st_transform(d, 4326), error = function(e) d)
 }
 
+#' Project LiDAR HD DTM mosaic, if it holds valid pixels
+#'
+#' @description
+#' `cache/layers/lidar_mnt_mosaic.tif` used to be preferred as soon as the file
+#' existed. When IGN serves NoData-only tiles (product not yet published), that
+#' mosaic is a valid GeoTIFF with no elevation at all, and every terrain
+#' derivative built on it is empty (brief 2026-10-09). Callers fall back on the
+#' WMS DTM when this returns `NULL`.
+#'
+#' @param project_path Project directory, or NULL.
+#' @return The mosaic path, or `NULL`.
+#' @noRd
+.lidar_mnt_mosaique_valide <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  f <- file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
+  if (!file.exists(f) || .raster_part_valide(f) < .RASTER_PART_MIN) return(NULL)
+  f
+}
+
 #' Locate the DEM to feed the RVT relief background
 #'
 #' Preference order - **best terrain source first** :
@@ -122,8 +141,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 .acc_rvt_mnt_path <- function(project_path) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   # 1. MNT LiDAR HD 0.5 m natif (meilleure source).
-  lidar <- file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
-  if (file.exists(lidar)) return(lidar)
+  lidar <- .lidar_mnt_mosaique_valide(project_path)
+  if (!is.null(lidar)) return(lidar)
   # 2/3. Repli WMS.
   acc <- .accessibility_cache_dir(project_path)
   if (!dir.exists(acc)) return(NULL)
@@ -536,9 +555,8 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   acq <- .acquire_mnt_desserte(aoi_path, cache_dir, buffer_m, res_m = 1)
   if (!identical(acq$status, "ok")) return(acq)
 
-  lidar_mnt_path <- file.path(project_path %||% dirname(cache_dir),
-                              "cache", "layers", "lidar_mnt_mosaic.tif")
-  use_lidar_mnt <- !is.null(project_path) && file.exists(lidar_mnt_path)
+  lidar_mnt_path <- .lidar_mnt_mosaique_valide(project_path)
+  use_lidar_mnt <- !is.null(lidar_mnt_path)
   mnt_alsroads <- if (use_lidar_mnt) {
     tryCatch(terra::rast(lidar_mnt_path), error = function(e) acq$mnt)
   } else acq$mnt

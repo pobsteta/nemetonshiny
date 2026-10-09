@@ -42,7 +42,6 @@ test_that("build_sufosat_layer fetches via Theia, caches, and reuses cache", {
 
   calls <- 0L
   testthat::local_mocked_bindings(
-    theia_configure_s3 = function(...) invisible(TRUE),
     load_theia_source = function(source_key, aoi, asset = NULL, ...) {
       calls <<- calls + 1L
       .sufosat_rast(if (identical(asset, "dates")) 18001 else 95)

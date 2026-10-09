@@ -170,12 +170,16 @@ test_that("generate_rvt adopts the precomputed CVAT before any live compute", {
 })
 
 test_that(".acc_rvt_mnt_path prefers the native 0.5 m LiDAR DTM over the WMS DEM", {
+  skip_if_not_installed("terra")
   withr::with_tempdir({
     proj <- getwd()
     lyr <- file.path(proj, "cache", "layers")
     emp <- file.path(proj, "cache", "accessibility", "emprise_1000m")
     dir.create(lyr, recursive = TRUE); dir.create(emp, recursive = TRUE)
-    writeLines("x", file.path(lyr, "lidar_mnt_mosaic.tif"))
+    # Une mosaique LiDAR avec des altitudes : une mosaique sans pixel valide
+    # cede la place au WMS (brief dalles LiDAR vides, 2026-10-09).
+    m <- terra::rast(nrows = 5, ncols = 5, vals = 480)
+    terra::writeRaster(m, file.path(lyr, "lidar_mnt_mosaic.tif"))
     writeLines("x", file.path(emp, "mnt_highres_1m.tif"))
     got <- nemetonshiny:::.acc_rvt_mnt_path(proj)
     expect_match(got, "lidar_mnt_mosaic\\.tif$")

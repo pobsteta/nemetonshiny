@@ -5594,6 +5594,9 @@ test_that("download_ign_lidar_hd lit les URL de la couche de metadonnees LiDAR H
         dest_file
       },
       mosaic_lidar_tiles = function(files, mosaic_cache) basename(files),
+      # Les dalles factices ne sont pas des rasters : on neutralise le controle
+      # des pixels valides, couvert par test-lidar-dalles-vides.R.
+      .raster_part_valide = function(...) 1,
       {
         # MNH : une seule dalle a une URL ; nom canonique tire de FILENAME=.
         expect_equal(nemetonshiny:::download_ign_lidar_hd(c(3.5, 44.5, 3.52, 44.51), cache_dir, product = "mnh"),

@@ -1819,6 +1819,14 @@ download_layers_for_parcels <- function(parcels,
   # resolve_raster_layer(). Replacing BD ALTI 25 m with LiDAR MNT
   # 1 m lifts the terrain-derived indicators to NDP-1 precision
   # whenever LiDAR HD tiles exist for the AOI.
+  # Garde-fou final : un raster LiDAR sans pixel valide sur l'emprise ne doit
+  # remplacer ni le DEM ni servir de CHM (brief 2026-10-09, dalles vides).
+  for (slot in c("lidar_mnh", "lidar_mnt")) {
+    if (inherits(rasters[[slot]], "SpatRaster") &&
+        !.raster_utilisable(rasters[[slot]], parcels, slot)) {
+      rasters[[slot]] <- NULL
+    }
+  }
   if (!is.null(rasters$lidar_mnt) &&
       inherits(rasters$lidar_mnt, "SpatRaster")) {
     cli::cli_alert_success(
@@ -1858,7 +1866,8 @@ download_layers_for_parcels <- function(parcels,
         NULL
       }
     )
-    if (!is.null(lidar_out) && !is.null(lidar_out$chm)) {
+    if (!is.null(lidar_out) && !is.null(lidar_out$chm) &&
+        .raster_utilisable(lidar_out$chm, parcels, "chm lidar_hd")) {
       rasters$chm <- lidar_out$chm
       chm_pct_masked <- lidar_out$pct_masked
       chm_source <- "lidar_hd"
@@ -1899,9 +1908,11 @@ download_layers_for_parcels <- function(parcels,
         NULL
       }
     )
-    if (!is.null(lasr_out) && !is.null(lasr_out$chm)) {
+    if (!is.null(lasr_out) && !is.null(lasr_out$chm) &&
+        .raster_utilisable(lasr_out$chm, parcels, "chm lasr")) {
       rasters$chm <- lasr_out$chm
-      if (!is.null(lasr_out$mnt) && is.null(rasters$lidar_mnt)) {
+      if (!is.null(lasr_out$mnt) && is.null(rasters$lidar_mnt) &&
+          .raster_utilisable(lasr_out$mnt, parcels, "mnt lasr")) {
         rasters$lidar_mnt <- lasr_out$mnt
         rasters$dem <- lasr_out$mnt
         cli::cli_alert_success(
@@ -1942,7 +1953,8 @@ download_layers_for_parcels <- function(parcels,
         NULL
       }
     )
-    if (!is.null(theia_out) && !is.null(theia_out$chm)) {
+    if (!is.null(theia_out) && !is.null(theia_out$chm) &&
+        .raster_utilisable(theia_out$chm, parcels, "chm theia")) {
       rasters$chm <- theia_out$chm
       chm_pct_masked <- theia_out$pct_masked
       chm_source <- theia_out$source
@@ -2035,7 +2047,8 @@ download_layers_for_parcels <- function(parcels,
         NULL
       }
     )
-    if (!is.null(chm_out)) {
+    if (!is.null(chm_out) && !is.null(chm_out$chm) &&
+        .raster_utilisable(chm_out$chm, parcels, "chm opencanopy")) {
       rasters$chm <- chm_out$chm
       chm_pct_masked <- chm_out$pct_masked
       chm_source <- "opencanopy"
@@ -3785,6 +3798,73 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
   isTRUE(out)
 }
 
+#' Is a raster usable over the project extent?
+#'
+#' @description
+#' Last guard, whatever the source: a CHM or DTM whose share of valid pixels
+#' over the project extent is near zero is never retained (`sanitize_chm`
+#' reports "0 % masked" on an all-NA raster, which reads as a clean result).
+#'
+#' @param r SpatRaster.
+#' @param parcels sf of the project units.
+#' @param label Character, for the log.
+#' @return Logical.
+#' @noRd
+.raster_utilisable <- function(r, parcels, label = "raster") {
+  part <- .raster_part_valide(r, sf::st_union(sf::st_geometry(parcels)))
+  if (part >= .RASTER_PART_MIN) return(TRUE)
+  cli::cli_alert_warning(
+    "{label}: no valid pixel over the project extent \u2014 not used"
+  )
+  FALSE
+}
+
+# Seuils de pixels valides (brief 2026-10-09, dalles LiDAR HD vides). L'IGN
+# publie parfois le nuage de points avant les rasters derives : le WMS sert
+# alors des dalles valides au sens GeoTIFF mais 100 % NoData, au lieu d'un 404.
+.LIDAR_DALLE_PART_MIN <- 0.01
+.LIDAR_MOSAIQUE_COUVERTURE_MIN <- 0.9
+.RASTER_PART_MIN <- 0.01
+
+#' Share of valid pixels in a raster, optionally within a zone
+#'
+#' @description
+#' Reads a regular sample of the first layer (cheap on a 2000 x 2000 tile) and
+#' counts the cells that are neither NA nor the IGN NoData value (-9999, in case
+#' the file does not declare it). A raster that cannot be read counts as empty.
+#'
+#' @param r SpatRaster or path to a raster file.
+#' @param zone Optional `sf`/`sfc`/`bbox` limiting the measure to its extent.
+#' @param n Sample size.
+#' @return A share in `[0, 1]`.
+#' @noRd
+.raster_part_valide <- function(r, zone = NULL, n = 10000L) {
+  out <- tryCatch({
+    if (is.character(r)) r <- terra::rast(r)
+    r <- r[[1]]
+    if (!is.null(zone)) {
+      if (inherits(zone, "bbox")) zone <- sf::st_as_sfc(zone)
+      crs_r <- terra::crs(r)
+      if (is.na(crs_r) || !nzchar(crs_r)) crs_r <- "EPSG:2154"
+      zone <- sf::st_transform(sf::st_as_sf(zone), sf::st_crs(crs_r))
+      r <- terra::crop(r, terra::ext(terra::vect(zone)))
+    }
+    v <- terra::spatSample(r, size = n, method = "regular",
+                           na.rm = FALSE, warn = FALSE)[[1]]
+    if (length(v) == 0L) 0 else mean(!is.na(v) & v > -9999)
+  }, error = function(e) 0)
+  as.numeric(out)
+}
+
+#' Request bbox (WGS84 numeric) as an sfc polygon
+#' @noRd
+.lidar_bbox_sfc <- function(bbox) {
+  sf::st_as_sfc(sf::st_bbox(
+    c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
+    crs = sf::st_crs(4326)
+  ))
+}
+
 #' Download IGN LiDAR HD tiles (MNH canopy height model)
 #'
 #' @description
@@ -3859,7 +3939,11 @@ download_ign_lidar_hd <- function(bbox,
   # tiles.
   mosaic_cache <- file.path(cache_dir, paste0("lidar_", product, "_mosaic.tif"))
   if (product != "nuage" && file.exists(mosaic_cache)) {
-    if (.lidar_mosaic_covers_bbox(mosaic_cache, bbox)) {
+    # Une mosaique batie sur des dalles vides (avant la 2.0.0.9001) couvre bien
+    # l'emprise mais n'a aucun pixel : la jeter et repasser par les dalles.
+    couvre <- .lidar_mosaic_covers_bbox(mosaic_cache, bbox)
+    if (couvre && .raster_part_valide(mosaic_cache, .lidar_bbox_sfc(bbox)) >=
+          .LIDAR_MOSAIQUE_COUVERTURE_MIN) {
       cli::cli_alert_success("Using cached LiDAR {toupper(product)} mosaic")
       r <- terra::rast(mosaic_cache)
       # Reassigne l'autorite 2154 si le WKT cache est degenere (describe$code NA),
@@ -3867,9 +3951,16 @@ download_ign_lidar_hd <- function(bbox,
       if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
       return(r)
     }
-    cli::cli_alert_info(
-      "Cached LiDAR {toupper(product)} mosaic does not cover the requested area \u2014 regenerating"
-    )
+    if (couvre) {
+      cli::cli_alert_warning(
+        "Cached LiDAR {toupper(product)} mosaic has no valid pixels \u2014 discarded"
+      )
+      unlink(c(mosaic_cache, paste0(mosaic_cache, ".aux.xml")))
+    } else {
+      cli::cli_alert_info(
+        "Cached LiDAR {toupper(product)} mosaic does not cover the requested area \u2014 regenerating"
+      )
+    }
   }
 
   # v0.38.3 - the previous global COPC short-circuit (return every
@@ -3921,6 +4012,7 @@ download_ign_lidar_hd <- function(bbox,
 
   downloaded_files <- character(0)
   n_tiles <- length(download_urls)
+  n_vides <- 0L
 
   for (i in seq_along(download_urls)) {
     url <- download_urls[i]
@@ -3934,21 +4026,42 @@ download_ign_lidar_hd <- function(bbox,
       ))
     }
 
-    # Skip if already cached
+    # Skip if already cached - unless the cached tile is empty (NoData only):
+    # it is then purged and fetched again, the IGN may have published it since.
     if (file.exists(tile_file) && file.size(tile_file) > 100) {
-      cli::cli_alert_success("  Tile {i}/{n_tiles}: cached")
-      downloaded_files <- c(downloaded_files, tile_file)
-      next
+      if (product == "nuage" ||
+          .raster_part_valide(tile_file) >= .LIDAR_DALLE_PART_MIN) {
+        cli::cli_alert_success("  Tile {i}/{n_tiles}: cached")
+        downloaded_files <- c(downloaded_files, tile_file)
+        next
+      }
+      unlink(c(tile_file, paste0(tile_file, ".aux.xml")))
     }
 
     # Download tile
     result <- download_lidar_tile(url, tile_file)
-    if (!is.null(result)) {
+    if (!is.null(result) && product != "nuage" &&
+        .raster_part_valide(result) < .LIDAR_DALLE_PART_MIN) {
+      # Valide au sens GeoTIFF, mais 100 % NoData : le produit n'est pas
+      # encore publie. Un echec comme un 404, et hors du cache.
+      unlink(c(result, paste0(result, ".aux.xml")))
+      n_vides <- n_vides + 1L
+      cli::cli_alert_warning(
+        "  Tile {i}/{n_tiles}: vide (produit non encore publi\u00e9 par l'IGN)"
+      )
+    } else if (!is.null(result)) {
       downloaded_files <- c(downloaded_files, result)
       cli::cli_alert_success("  Tile {i}/{n_tiles}: downloaded")
     } else {
       cli::cli_alert_warning("  Tile {i}/{n_tiles}: failed")
     }
+  }
+
+  if (length(downloaded_files) == 0 && n_vides > 0L) {
+    cli::cli_alert_warning(
+      "All {n_vides} LiDAR HD {toupper(product)} tiles are empty (not yet published by IGN)"
+    )
+    return(NULL)
   }
 
   if (length(downloaded_files) == 0) {
@@ -3987,6 +4100,20 @@ download_ign_lidar_hd <- function(bbox,
   # ---- Step 3: For raster products, mosaic tiles ----
   if (product != "nuage") {
     result <- mosaic_lidar_tiles(downloaded_files, mosaic_cache)
+    # Couverture partielle (dalles vides ou manquantes) : la mosaique n'est
+    # gardee que si elle couvre l'essentiel de l'emprise, sinon la source
+    # suivante (lasR, BD ALTI...) fera mieux qu'un raster troue.
+    if (!is.null(result)) {
+      part <- .raster_part_valide(result, .lidar_bbox_sfc(bbox))
+      if (part < .LIDAR_MOSAIQUE_COUVERTURE_MIN) {
+        cli::cli_alert_warning(paste0(
+          "LiDAR HD {toupper(product)} mosaic covers only ",
+          "{round(100 * part)}% of the area \u2014 not used"
+        ))
+        unlink(mosaic_cache)
+        return(NULL)
+      }
+    }
     return(result)
   }
 
@@ -4825,6 +4952,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       }
       vals <- .cause_sans_age(vals, indicator, parcels, layers,
                               ifn_mode = isTRUE(ifn_mode))
+      vals <- .cause_sans_raster(vals, indicator, func_args, args)
 
       return(vals)
     }
@@ -4882,6 +5010,41 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     attr(vals, "nemeton_status") <- rep("ndvi_sans_age", n)
     attr(vals, "nemeton_status_name") <- "c1_status"
   }
+  vals
+}
+
+
+#' Name the cause of an indicator left empty for lack of a raster
+#'
+#' @description
+#' An indicator that takes a `chm` or `dem` argument and comes back all `NA`
+#' while that raster was not available gets a `<code>_status` of `sans_chm`
+#' or `sans_mnt`, so the views can say why the cell is empty instead of
+#' reading "completed" with no value (brief 2026-10-09, dalles LiDAR vides).
+#' A status already set by the core or by [.cause_sans_age()] is kept.
+#'
+#' @param vals Indicator values (may carry `nemeton_status` attributes).
+#' @param indicator Indicator name.
+#' @param func_args Formal argument names of the core function.
+#' @param args Arguments actually passed to it.
+#' @return `vals`, possibly with a `sans_chm` / `sans_mnt` status.
+#' @noRd
+.cause_sans_raster <- function(vals, indicator, func_args, args) {
+  n <- length(vals)
+  if (n == 0L || !all(is.na(vals))) return(vals)
+  statut_vide <- is.null(attr(vals, "nemeton_status")) ||
+    all(is.na(attr(vals, "nemeton_status")))
+  if (!statut_vide) return(vals)
+  code <- regmatches(indicator, regexec("^indicateur_([a-z][0-9]+)_", indicator))[[1]]
+  if (length(code) < 2L) return(vals)
+  statut <- if ("chm" %in% func_args && is.null(args$chm)) {
+    "sans_chm"
+  } else if ("dem" %in% func_args && is.null(args$dem)) {
+    "sans_mnt"
+  }
+  if (is.null(statut)) return(vals)
+  attr(vals, "nemeton_status") <- rep(statut, n)
+  attr(vals, "nemeton_status_name") <- paste0(code[2], "_status")
   vals
 }
 

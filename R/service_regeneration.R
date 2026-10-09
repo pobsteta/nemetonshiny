@@ -480,7 +480,9 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
   for (path in candidates) {
     if (file.exists(path)) {
       r <- tryCatch(terra::rast(path), error = function(e) NULL)
-      if (!is.null(r)) {
+      # Un MNT LiDAR sans pixel valide (dalles IGN non publiees) cede la place
+      # au candidat suivant (brief 2026-10-09).
+      if (!is.null(r) && .raster_part_valide(r) >= .RASTER_PART_MIN) {
         cli::cli_alert_info("regen R3: using terrain DEM {.path {basename(path)}}")
         return(r)
       }
