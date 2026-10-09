@@ -1,11 +1,13 @@
-# nemetonshiny 2026.10.1.9000 (cycle dev)
+# nemetonshiny 2026.10.1 (2026-10-09)
 
-- **Versionnage calendaire `AAAA.M.N`**, comme le cœur `nemeton` : la
-  prochaine release sera `2026.10.1`. Le cycle de dev reste en `.900x`, et
-  `version-consistency` vérifie le format et sa concordance avec la date de
-  l'entrée NEWS. Les changements cassants auront leur section dans NEWS.
+Première release au **versionnage calendaire `AAAA.M.N`**, comme le cœur
+`nemeton` : la version dit l'année et le mois de la release, `N` son rang dans
+le mois. Le cycle de dev reste en `.900x`, et `version-consistency` vérifie le
+format et sa concordance avec la date de cette entrée. Elle succède à la 2.0.1.
 
-# nemetonshiny 2.0.1.9003 (cycle dev)
+Changements cassants : aucun.
+
+## Nuage de points drone
 
 - **Nouveau sous-onglet Terrain › Import › « Nuage de points drone »**
   (spec 059 du cœur, `nemeton (>= 2.1.0)`).
@@ -28,7 +30,7 @@
   les nuages de points.
 - Plancher cœur `nemeton (>= 2.1.0)`.
 
-# nemetonshiny 2.0.1.9002 (cycle dev)
+## Marculus
 
 - **Marculus : CSV au format 4 et lots d'affouage** (brief Marculus du
   2026-10-07, Marculus v0.52.0 à v0.55.1).
@@ -49,7 +51,7 @@
     refusé, avec un message qui dit quoi importer.
   - Les textes d'aide parlent du « format 2 ou supérieur ».
 
-# nemetonshiny 2.0.1.9001 (cycle dev)
+## Caches et LiDAR
 
 - **Caches contrôlés sur l'emprise** (brief LiDAR HD du 2026-10-07, § 5). Ces
   caches étaient réutilisés sur la seule existence du fichier. Désormais :
