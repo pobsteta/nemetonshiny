@@ -153,6 +153,11 @@ mod_field_ingest_ui <- function(id) {
           ),
           htmltools::tags$hr(),
           shiny::uiOutput(ns("hv_report"))
+        ),
+        bslib::nav_panel(
+          title = i18n$t("nuage_onglet"),
+          value = "nuage",
+          mod_nuage_points_ui(ns("nuage"), i18n)
         )
       )
     )
@@ -174,6 +179,8 @@ mod_field_ingest_ui <- function(id) {
 #' @noRd
 mod_field_ingest_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
+    # Sous-onglet "Nuage de points drone" (spec 059).
+    mod_nuage_points_server("nuage", app_state)
     ns <- session$ns
 
     field_rv <- shiny::reactiveValues(

@@ -116,7 +116,11 @@ run_app <- function(language = NULL,
   # Store options + disable Shiny/bslib busy indicators (white screen overlays)
   options(
     nemeton.app_options = app_options,
-    shiny.busy_indicators = FALSE
+    shiny.busy_indicators = FALSE,
+    # Nuages de points de drone (spec 059) : plusieurs Go par vol. Le defaut
+    # de Shiny (5 Mo) refuserait le moindre fichier .laz.
+    shiny.maxRequestSize = max(getOption("shiny.maxRequestSize", 0),
+                               20 * 1024^3)
   )
 
   # Resolution de travail des indicateurs de terrain (cf. APP_CONFIG). Resolue

@@ -411,3 +411,140 @@ test_that(".marculus_net_par_contexte garde les contextes a zero", {
   expect_identical(n[["b"]], 1L)
   expect_identical(nemetonshiny:::.marculus_net_par_contexte(t[0, ]), integer(0))
 })
+
+# ---- Format 4 : affouage (brief Marculus du 2026-10-07) -------------------
+
+.csv_v4 <- function(f, journal = "COMPLET", lignes = NULL) {
+  writeLines(c(
+    "Contexte;Affouage 2027", "FormatCsv;4", "ContexteId;a1", "Statut;REALISEE",
+    "DateMartelage;2027-10-15", "Modifie;1790000000000",
+    "Tarif;SCHAEFFER_RAPIDE", "TarifNumero;8", "CoefficientForme;0.5",
+    "VolumeTigeTotalM3;2.0", "VolumeTotalM3;2.0",
+    "SurfaceTerriereTotaleM2;0.3", "NbTigesNonCubees;0",
+    "Mode;DIAMETRE", "Increment;1",
+    "Affouage;true", "VolumeMaxLotM3;1.0", paste0("Journal;", journal), "",
+    "TOTAUX", "Essence;Classe;Total", "Hetre;40;3", "",
+    "JOURNAL",
+    "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m;Uuid;Parcelle;Modifie;VolumeTigeM3;VolumeHouppierM3;VolumeTotalM3;SurfaceTerriereM2;Cubage;Lot",
+    lignes %||% c(
+      "2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;u1;;1;0.6;0;0.6;0.1;S:8;1",
+      "2027-10-15T08:01:00Z;Hetre;40;PLUS;1;;;;;PO;;;u2;;2;0.6;0;0.6;0.1;S:8;1",
+      "2027-10-15T08:02:00Z;Hetre;40;PLUS;1;;;;;PO;;;u3;;3;0.6;0;0.6;0.1;S:8;2",
+      "2027-10-15T08:03:00Z;Hetre;40;ANNULATION;1;;;;;PO;;;u4;;4;0.6;0;0.6;0.1;S:8;",
+      "2027-10-15T08:04:00Z;Hetre;40;PLUS;1;;;;;PO;;;u5;;5;0.6;0;0.6;0.1;S:8;2",
+      "2027-10-15T08:05:00Z;Hetre;40;PLUS;1;;;;;PO;;;u6;;6;0.6;0;0.6;0.1;S:8;3")
+  ), f)
+  f
+}
+
+test_that("le format 4 apporte lot, affouage, volume max et journal", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_true(lu$contextes$affouage)
+  expect_equal(lu$contextes$volumeMaxLotM3, 1)
+  expect_equal(lu$contextes$journal, "COMPLET")
+  expect_equal(lu$contextes$tarif, "SCHAEFFER_RAPIDE")
+  expect_true(lu$contextes$reglages_connus)
+  expect_equal(lu$tiges$lot, c(1L, 1L, 2L, NA, 2L, 3L))
+  expect_length(lu$nets, 0L)
+})
+
+test_that("un CSV au format 2 ou 3 garde les defauts et n'est pas « connu »", {
+  d <- withr::local_tempdir()
+  f <- file.path(d, "v3.csv")
+  writeLines(c("Contexte;P", "FormatCsv;3", "ContexteId;a1", "Modifie;1", "",
+               "JOURNAL",
+               "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m;Uuid;Parcelle;Modifie",
+               "2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;u1;;1"), f)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_false(lu$contextes$affouage)
+  expect_equal(lu$contextes$volumeMaxLotM3, 0)
+  expect_false(lu$contextes$reglages_connus)
+  expect_true(is.na(lu$tiges$lot))
+})
+
+test_that("le bilan par lot suit la regle d'annulation et l'egalite clot le lot", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  b <- nemetonshiny:::marculus_bilan_lots(lu$tiges, "a1", volume_max = 1)
+  # L'annulation (sans lot) retire u3, derniere tige de la case : c'est le
+  # lot 2 qui perd son volume. Restent u1, u2 (lot 1), u5 (lot 2), u6 (lot 3).
+  expect_equal(b$lot, 1:3)
+  expect_equal(b$tiges, c(2L, 1L, 1L))
+  expect_equal(b$volume_m3, c(1.2, 0.6, 0.6))
+  expect_equal(b$etat, c("complet", "incomplet", "incomplet"))
+  # Egalite exacte : clos.
+  expect_equal(nemetonshiny:::marculus_bilan_lots(lu$tiges, "a1", 1.2)$etat[1],
+               "complet")
+})
+
+test_that("les tiges sans lot forment une ligne a part", {
+  t <- data.frame(uuid = c("u1", "u2"), contexteId = "a1", essence = "H",
+                  classe = 40L, action = "PLUS", horodatage = 1:2,
+                  quantite = 1L, modifie = 1, volumeTigeM3 = 0.5,
+                  lot = c(1L, NA))
+  b <- nemetonshiny:::marculus_bilan_lots(t, "a1", 2)
+  expect_equal(b$etat, c("incomplet", "sans_lot"))
+  expect_true(is.na(b$lot[2]))
+})
+
+test_that("un CSV NET ne remplace jamais une tige d'un journal complet", {
+  d <- withr::local_tempdir()
+  complet <- .csv_v4(file.path(d, "complet.csv"))
+  # NET : l'annulation et u3 ont disparu ; u2 porterait une quantite deja
+  # diminuee si elle avait ete comptee par paquet.
+  net <- .csv_v4(file.path(d, "net.csv"), journal = "NET", lignes = c(
+    "2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;u1;;1;0.6;0;0.6;0.1;S:8;1",
+    "2027-10-15T08:01:00Z;Hetre;40;PLUS;9;;;;;PO;;;u2;;2;0.6;0;0.6;0.1;S:8;1"))
+  lu <- nemetonshiny:::marculus_lire_exports(c(net, complet))
+  expect_equal(lu$nets, "net.csv")
+  expect_equal(lu$tiges$quantite[lu$tiges$uuid == "u2"], 1L)
+  expect_equal(nrow(lu$tiges), 6L)
+  expect_equal(lu$contextes$journal, "COMPLET")
+})
+
+test_that("le CSV du bilan par lot est reconnu et refuse", {
+  d <- withr::local_tempdir()
+  f <- file.path(d, "Affouage - lots.csv")
+  writeLines(c("﻿Lot;Tiges;Volume_m3;Etat", "1;2;1,2;Complet", "Total;2;1,2;"), f)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$bilans_lots, "Affouage - lots.csv")
+  expect_length(lu$illisibles, 0L)
+  expect_length(lu$csv_anciens, 0L)
+  expect_equal(nrow(lu$contextes), 0L)
+})
+
+test_that("les reglages de terrain sont gardes sur l'action, pas reemis", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  plan <- list(horizon_annees = 20L, actions = list(list(
+    id = "a1", ug_id = "ug1", type = "coupe", statut = "proposee",
+    annee_cible = 1L)))
+  local_mocked_bindings(validate_action = function(...) list(valid = TRUE),
+                        .package = "nemetonshiny")
+  res <- nemetonshiny:::marculus_appliquer_retour(plan, lu$contextes, lu$tiges,
+                                                  annee_base = 2026L)
+  rt <- res$plan$actions[[1]]$reglages_terrain
+  expect_true(rt$affouage)
+  expect_equal(rt$volume_max_lot_m3, 1)
+  expect_equal(rt$tarif, "SCHAEFFER_RAPIDE")
+  expect_equal(rt$tarif_numero, 8L)
+  # Reexport vers le telephone : aucune de ces cles (le terrain decide).
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    res$plan$actions[[1]], list(id = "p", metadata = list(name = "P")))
+  expect_false(any(c("affouage", "volumeMaxLotM3", "tarif", "tarifNumero",
+                     "coefficientForme") %in% names(ctx)))
+})
+
+test_that("la synthese montre les lots d'un contexte d'affouage", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  i18n <- nemetonshiny:::get_i18n("fr")
+  action <- list(id = "a1", reglages_terrain = list(affouage = TRUE,
+                                                    volume_max_lot_m3 = 1))
+  html <- as.character(nemetonshiny:::.marculus_lots_bloc(lu$tiges, action, i18n))
+  expect_match(html, "incomplet", fixed = TRUE)
+  expect_match(html, "Affouage", fixed = TRUE)
+  action$reglages_terrain$affouage <- FALSE
+  expect_null(nemetonshiny:::.marculus_lots_bloc(lu$tiges, action, i18n))
+})

@@ -2081,6 +2081,18 @@ mod_action_plan_server <- function(id, app_state) {
                 paste(nom_origine(res$vides), collapse = ", ")),
           type = "warning", duration = 15)
       }
+      if (length(res$bilans_lots %||% character())) {
+        shiny::showNotification(
+          paste(i18n$t("marculus_import_bilan_lots"),
+                paste(nom_origine(res$bilans_lots), collapse = ", ")),
+          type = "warning", duration = 15)
+      }
+      if (length(res$nets %||% character())) {
+        shiny::showNotification(
+          paste(i18n$t("marculus_import_net"),
+                paste(nom_origine(res$nets), collapse = ", ")),
+          type = "message", duration = 15)
+      }
       if (length(res$csv_anciens %||% character())) {
         shiny::showNotification(
           paste(i18n$t("marculus_import_csv_ancien"),
@@ -2089,7 +2101,8 @@ mod_action_plan_server <- function(id, app_state) {
       }
       if (is.null(res) || is.null(res$plan)) {
         if (!length(res$csv_anciens %||% character()) &&
-            !length(res$vides %||% character())) {
+            !length(res$vides %||% character()) &&
+            !length(res$bilans_lots %||% character())) {
           shiny::showNotification(i18n$t("marculus_import_erreur"),
                                   type = "error", duration = 10)
         }
@@ -2149,6 +2162,8 @@ mod_action_plan_server <- function(id, app_state) {
             if (!is.na(vol)) htmltools::tags$span(class = "badge bg-success ms-1",
               .format_m3(vol, i18n))),
           .marculus_synthese_table(sub, i18n),
+          .marculus_lots_bloc(marculus_tiges_rv(),
+                              plan$actions[[match(cid, ids)]], i18n),
           if (isTRUE(nc > 0L))
             htmltools::p(class = "small text-warning-emphasis mb-1",
                          sprintf(i18n$t("marculus_non_cubees_fmt"), nc)))
@@ -3190,6 +3205,41 @@ coerce_table_value <- function(field, raw) {
 #' @param i18n An i18n object.
 #' @return A `div` wrapping the table, horizontally scrollable.
 #' @noRd
+#' Affouage lots of one action, for the marking summary
+#'
+#' Shown only when the field settings imported from Marculus say the context
+#' is an affouage one. The last lot is usually incomplete and shown as such.
+#' @noRd
+.marculus_lots_bloc <- function(tiges, action, i18n) {
+  rt <- action$reglages_terrain
+  if (!isTRUE(rt$affouage)) return(NULL)
+  vmax <- as.numeric(rt$volume_max_lot_m3 %||% NA_real_)
+  lots <- marculus_bilan_lots(tiges, action$id, vmax)
+  if (nrow(lots) == 0L) return(NULL)
+  etat <- vapply(lots$etat, function(e) i18n$t(paste0("marculus_lot_", e)), "")
+  lignes <- lapply(seq_len(nrow(lots)), function(k) {
+    htmltools::tags$tr(
+      class = if (lots$etat[k] == "incomplet") "table-warning",
+      htmltools::tags$th(scope = "row",
+                         if (is.na(lots$lot[k])) "\u2014" else lots$lot[k]),
+      htmltools::tags$td(class = "text-end", lots$tiges[k]),
+      htmltools::tags$td(class = "text-end",
+                         .format_m3(lots$volume_m3[k], i18n, unite = FALSE)),
+      htmltools::tags$td(etat[k]))
+  })
+  htmltools::tagList(
+    htmltools::p(class = "small fw-semibold mt-2 mb-1",
+                 sprintf(i18n$t("marculus_lots_titre_fmt"), .format_m3(vmax, i18n))),
+    htmltools::div(class = "table-responsive", htmltools::tags$table(
+      class = "table table-sm table-bordered mb-1",
+      htmltools::tags$thead(htmltools::tags$tr(
+        htmltools::tags$th(i18n$t("marculus_col_lot")),
+        htmltools::tags$th(class = "text-end", i18n$t("marculus_col_tiges")),
+        htmltools::tags$th(class = "text-end", i18n$t("marculus_col_volume")),
+        htmltools::tags$th(i18n$t("marculus_col_etat")))),
+      htmltools::tags$tbody(lignes))))
+}
+
 .marculus_synthese_table <- function(sub, i18n) {
   classes <- sort(unique(as.integer(sub$classe)))
   essences <- unique(sub$essence[order(sub$essence)])

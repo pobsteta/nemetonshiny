@@ -23,6 +23,11 @@
 # `FormatCsv;2` (`ExportCsv.kt`), qui porte les memes cles (ContexteId, Uuid,
 # Statut, DateMartelage, Modifie) et se lit donc comme un `.marsync`. Un CSV
 # sans `FormatCsv` (format 1) n'a ni id ni uuid : il est refuse.
+#
+# Format 4 (Marculus v0.52.0+, brief du 2026-10-07) : contextes d'affouage.
+# Chaque tige porte le `lot` attribue au martelage (jamais recalcule ici), le
+# contexte `affouage` et `volumeMaxLotM3`, et le CSV dit son `Journal`
+# (`COMPLET`, ou `NET` = etat de comptage sans annulations).
 
 
 # ---- Lecture ----------------------------------------------------------
@@ -51,7 +56,35 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              # Mode de mesure du CONTEXTE (DIAMETRE / CIRCONFERENCE), recopie
              # sur chaque tige a l'import : il dit comment lire `classe`.
              mode = character(0),
+             # Lot d'affouage attribue au martelage (format 4), NA sans lot.
+             lot = integer(0),
+             # Journal d'origine : "NET" pour un CSV d'etat de comptage, qui ne
+             # doit jamais remplacer une tige lue dans un journal complet.
+             journal = character(0),
              stringsAsFactors = FALSE)
+}
+
+# Reglages de terrain d'un contexte (Marculus v0.52.0+), avec leur defaut.
+MARCULUS_REGLAGES_CONTEXTE <- list(
+  affouage = FALSE, volumeMaxLotM3 = 0, journal = "COMPLET",
+  tarif = NA_character_, tarifNumero = NA_integer_, coefficientForme = NA_real_)
+
+#' Complete a contexts data.frame with the field settings columns
+#'
+#' Absent keys take their default (`affouage = FALSE`, `volumeMaxLotM3 = 0`,
+#' `journal = "COMPLET"`); `tarif*` stay `NA`, meaning "unknown here".
+#' @noRd
+.marculus_ctx_completer <- function(d, src = list()) {
+  n <- nrow(d)
+  for (k in names(MARCULUS_REGLAGES_CONTEXTE)) {
+    defaut <- MARCULUS_REGLAGES_CONTEXTE[[k]]
+    v <- src[[k]]
+    v <- if (is.null(v) || !length(v)) rep(defaut, n) else rep_len(v, n)
+    v <- methods::as(v, class(defaut))
+    if (!is.na(defaut)) v[is.na(v)] <- defaut
+    d[[k]] <- v
+  }
+  d
 }
 
 # Colonnes de volume d'un contexte (totaux NETS calcules sur le telephone).
@@ -82,6 +115,7 @@ MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeTotalM3",
 marculus_lire_exports <- function(chemins) {
   ctx <- list(); tig <- list(); illisibles <- character()
   csv_anciens <- character(); vides <- character()
+  bilans_lots <- character(); nets <- character()
   for (p in chemins) {
     # Un fichier vide arrive tel quel (transfert du telephone interrompu,
     # synchronisation cloud pas encore faite) : le dire, plutot que
@@ -90,11 +124,17 @@ marculus_lire_exports <- function(chemins) {
       vides <- c(vides, basename(p))
       next
     }
+    # Le bilan par lot (onglet "Par lot") est un rapport, pas un echange.
+    if (.marculus_est_bilan_lots(p)) {
+      bilans_lots <- c(bilans_lots, basename(p))
+      next
+    }
     if (.marculus_est_csv(p)) {
       lu <- .marculus_lire_csv(p)
       if (identical(lu, "format1")) { csv_anciens <- c(csv_anciens, basename(p)); next }
       if (is.null(lu)) { illisibles <- c(illisibles, basename(p)); next }
       ctx[[length(ctx) + 1L]] <- lu$contexte
+      if (identical(lu$contexte$journal, "NET")) nets <- c(nets, basename(p))
       if (nrow(lu$tiges)) tig[[length(tig) + 1L]] <- lu$tiges
       next
     }
@@ -116,6 +156,11 @@ marculus_lire_exports <- function(chemins) {
     for (v in MARCULUS_VOLUMES_CONTEXTE) {
       d0[[v]] <- suppressWarnings(as.numeric(c0[[v]] %||% NA_real_))
     }
+    # Le `.marsync` est un journal de synchronisation : toujours COMPLET.
+    src <- as.list(c0)
+    src$journal <- NULL
+    d0 <- .marculus_ctx_completer(d0, src)
+    d0$reglages_connus <- "affouage" %in% names(c0)
     ctx[[length(ctx) + 1L]] <- d0
     if (is.data.frame(j$tiges) && nrow(j$tiges) > 0L) {
       t0 <- .marculus_tiges_normaliser(j$tiges)
@@ -131,18 +176,32 @@ marculus_lire_exports <- function(chemins) {
                            statut = character(0), dateMartelage = numeric(0),
                            modifie = numeric(0))
     for (v in MARCULUS_VOLUMES_CONTEXTE) vide_ctx[[v]] <- numeric(0)
+    vide_ctx <- .marculus_ctx_completer(vide_ctx)
+    vide_ctx$reglages_connus <- logical(0)
     vide_ctx
   }
-  # Un meme contexte partage deux fois : garder sa version la plus recente.
+  # Un meme contexte partage deux fois : garder sa version la plus recente,
+  # et a egalite celle d'un journal COMPLET plutot que NET.
   if (nrow(contextes) > 1L) {
-    contextes <- contextes[order(-contextes$modifie), , drop = FALSE]
+    contextes <- contextes[order(-contextes$modifie,
+                                 contextes$journal == "NET"), , drop = FALSE]
     contextes <- contextes[!duplicated(contextes$id), , drop = FALSE]
   }
   tiges <- if (length(tig)) do.call(rbind, tig) else .marculus_tiges_vides()
   list(contextes = contextes, tiges = .marculus_tiges_union(tiges),
        n_fichiers = length(chemins) - length(illisibles) - length(csv_anciens) -
-         length(vides),
-       illisibles = illisibles, csv_anciens = csv_anciens, vides = vides)
+         length(vides) - length(bilans_lots),
+       illisibles = illisibles, csv_anciens = csv_anciens, vides = vides,
+       bilans_lots = bilans_lots, nets = nets)
+}
+
+# Le CSV "bilan par lot" de Marculus (onglet "Par lot") : un rapport a
+# lire, sans `FormatCsv`, refuse avec un message qui dit quoi importer.
+.marculus_est_bilan_lots <- function(chemin) {
+  l1 <- tryCatch(readLines(chemin, n = 1L, warn = FALSE, encoding = "UTF-8"),
+                 error = function(e) character(0))
+  length(l1) == 1L && identical(trimws(sub("^\ufeff", "", l1)),
+                                "Lot;Tiges;Volume_m3;Etat")
 }
 
 # Un CSV Marculus commence par `Contexte;` ; le JSON par `{`.
@@ -215,6 +274,18 @@ MARCULUS_QUALITE_FIX <- c(
       cle <- paste0(toupper(substr(v, 1, 1)), substring(v, 2))
       contexte[[v]] <- suppressWarnings(as.numeric(entete[[cle]] %||% NA))
     }
+    # Format 4 : affouage, volume maximal par lot, nature du journal.
+    journal <- toupper(trimws(entete$Journal %||% "COMPLET"))
+    if (!journal %in% c("COMPLET", "NET")) journal <- "COMPLET"
+    contexte <- .marculus_ctx_completer(contexte, list(
+      affouage = identical(tolower(trimws(entete$Affouage %||% "")), "true"),
+      volumeMaxLotM3 = suppressWarnings(as.numeric(entete$VolumeMaxLotM3 %||% 0)),
+      journal = journal,
+      tarif = entete$Tarif %||% NA_character_,
+      tarifNumero = suppressWarnings(as.integer(entete$TarifNumero %||% NA)),
+      coefficientForme = suppressWarnings(as.numeric(entete$CoefficientForme %||% NA))))
+    # Avant le format 4, l'absence de `Affouage` ne dit rien du telephone.
+    contexte$reglages_connus <- fmt >= 4L
 
     j <- which(trimws(lignes) == "JOURNAL")[1]
     tiges <- .marculus_tiges_vides()
@@ -243,6 +314,8 @@ MARCULUS_QUALITE_FIX <- c(
           surfaceTerriereM2 = num(jr$SurfaceTerriereM2 %||% NA),
           cubage = jr$Cubage %||% NA_character_,
           mode = entete$Mode %||% NA_character_,
+          lot = suppressWarnings(as.integer(jr$Lot %||% NA)),
+          journal = journal,
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]
       }
@@ -263,7 +336,11 @@ MARCULUS_QUALITE_FIX <- c(
   tiges <- .marculus_tiges_normaliser(tiges)
   if (nrow(tiges) < 2L) return(tiges)
   # `order()` est stable : a `modifie` egal, la premiere ligne passee gagne.
-  tiges <- tiges[order(-tiges$modifie), , drop = FALSE]
+  # Une tige lue dans un journal COMPLET (ou un `.marsync`) l'emporte toujours
+  # sur sa version NET : le NET peut porter une quantite deja diminuee des
+  # annulations, que le journal complet retire une seconde fois.
+  net <- !is.na(tiges$journal) & tiges$journal == "NET"
+  tiges <- tiges[order(net, -tiges$modifie), , drop = FALSE]
   tiges <- tiges[!duplicated(tiges$uuid), , drop = FALSE]
   tiges[order(tiges$horodatage), , drop = FALSE]
 }
@@ -483,6 +560,19 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
     }
     if (cid %in% names(n_par_ctx) || !is.null(q_vol)) upd$quantite <- q
 
+    # Reglages de terrain, gardes pour l'affichage (brief Marculus 2026-10-07,
+    # 5 bis). Ils ne sont PAS reemis vers le telephone : une cle absente du
+    # fichier y laisse le terrain decider, une cle presente l'ecraserait.
+    if (isTRUE(contextes$reglages_connus[i])) {
+      rt <- list(affouage = isTRUE(contextes$affouage[i]),
+                 volume_max_lot_m3 = as.numeric(contextes$volumeMaxLotM3[i]),
+                 tarif = contextes$tarif[i],
+                 tarif_numero = contextes$tarifNumero[i],
+                 coefficient_forme = contextes$coefficientForme[i])
+      upd$reglages_terrain <- rt[!vapply(rt, function(v) length(v) != 1L || is.na(v),
+                                         logical(1))]
+    }
+
     # Ne garder que ce qui change : un reimport identique ne touche a rien.
     upd <- upd[!vapply(names(upd), function(k) identical(action[[k]], upd[[k]]),
                        logical(1))]
@@ -511,7 +601,8 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
   vide <- list(plan = NULL, n_actions = 0L, n_orphelins = 0L,
                n_tiges_nouvelles = 0L, n_tiges = 0L,
                illisibles = lu$illisibles, csv_anciens = lu$csv_anciens,
-               vides = lu$vides, ids = character())
+               vides = lu$vides, bilans_lots = lu$bilans_lots, nets = lu$nets,
+               ids = character())
   if (nrow(lu$contextes) == 0L) return(vide)
 
   avant <- marculus_charger_tiges(project_id)
@@ -532,7 +623,8 @@ marculus_importer <- function(project_id, chemins, user = NULL) {
   list(plan = res$plan, n_actions = res$n_actions,
        n_orphelins = res$n_orphelins, n_tiges_nouvelles = n_nouvelles,
        n_tiges = nrow(tiges), illisibles = lu$illisibles,
-       csv_anciens = lu$csv_anciens, vides = lu$vides, ids = res$ids)
+       csv_anciens = lu$csv_anciens, vides = lu$vides,
+       bilans_lots = lu$bilans_lots, nets = lu$nets, ids = res$ids)
 }
 
 
@@ -575,6 +667,40 @@ marculus_tiges_designees <- function(tiges, contexte_id) {
   out <- t[garde, , drop = FALSE]
   out$quantite <- reste
   out[out$quantite > 0L, , drop = FALSE]
+}
+
+#' Firewood lots of an affouage context, net of cancellations
+#'
+#' The lot is the one recorded on each stem at marking time and is never
+#' recomputed. Cancellations follow the volume rule
+#' ([marculus_tiges_designees()]): a cancellation carries no lot, it removes
+#' the last stem of its case, and that stem's lot loses its volume.
+#'
+#' @param tiges All stems of the project.
+#' @param contexte_id Character. The context (= action) id.
+#' @param volume_max Numeric. Maximum volume per lot (m3), for the state.
+#' @return A data.frame `lot` (integer, `NA` = stems without a lot), `tiges`,
+#'   `volume_m3`, `etat` (`"complet"` when the volume reaches the maximum,
+#'   `"incomplet"` otherwise, `"sans_lot"` for the `NA` row), ordered by lot.
+#' @noRd
+marculus_bilan_lots <- function(tiges, contexte_id, volume_max = NA_real_) {
+  vide <- data.frame(lot = integer(0), tiges = integer(0),
+                     volume_m3 = numeric(0), etat = character(0))
+  d <- marculus_tiges_designees(tiges, contexte_id)
+  if (nrow(d) == 0L) return(vide)
+  v <- d$volumeTigeM3 * d$quantite
+  cle <- ifelse(is.na(d$lot), -1L, d$lot)
+  n <- tapply(d$quantite, cle, sum)
+  vol <- tapply(v, cle, function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE))
+  lot <- as.integer(names(n))
+  out <- data.frame(lot = ifelse(lot < 0L, NA_integer_, lot),
+                    tiges = as.integer(n), volume_m3 = as.numeric(vol))
+  # Egalite = lot clos (regle du telephone).
+  out$etat <- ifelse(is.na(out$lot), "sans_lot",
+                     ifelse(!is.na(out$volume_m3) & is.finite(volume_max) &
+                              volume_max > 0 & out$volume_m3 >= volume_max,
+                            "complet", "incomplet"))
+  out[order(is.na(out$lot), out$lot), , drop = FALSE]
 }
 
 #' Wood size category of a class, as Marculus files it

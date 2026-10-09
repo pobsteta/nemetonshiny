@@ -591,7 +591,15 @@ build_spectral_diversity <- function(parcels, project_path,
     # Keyed by scene id; invalidated by the project's compute-cache clear.
     spectral_dir <- file.path(project_path, "cache", "layers",
                               "spectral", scene_id)
+    # Les sorties biodivMapR dependent du masque des UGF : un cache calcule
+    # sur d'autres unites est vide puis recalcule (brief 2026-10-07, point 5).
+    cle <- .cache_cle_geometrie(parcels)
+    if (dir.exists(spectral_dir) && !.cache_cle_valide(spectral_dir, cle)) {
+      unlink(spectral_dir, recursive = TRUE)
+      unlink(paste0(spectral_dir, ".cle"))
+    }
     dir.create(spectral_dir, recursive = TRUE, showWarnings = FALSE)
+    .cache_cle_ecrire(spectral_dir, cle)
 
     cli::cli_alert_info(
       "Spectral diversity (B4/L3): running biodivMapR on scene {scene_id} \\
@@ -2291,7 +2299,7 @@ download_chm_lasr_from_copc <- function(parcels, cache_dir,
   # avoid edge artefacts at parcel boundaries.
   aoi_l93 <- sf::st_buffer(sf::st_transform(parcels, 2154), 50)
 
-  ncores <- max(1L, parallel::detectCores(logical = FALSE) - 1L)
+  ncores <- .lasr_ncores()
   start <- Sys.time()
   out <- nemeton::compute_dtm_chm_from_laz(
     laz_dir = laz_dir,
@@ -2330,6 +2338,29 @@ download_chm_lasr_from_copc <- function(parcels, cache_dir,
   )
 
   list(chm = chm_rast, mnt = mnt_rast, source = "lasr")
+}
+
+
+#' Number of lasR workers sized on the available memory
+#'
+#' @description
+#' `cores - 1` workers ran out of the 12 GB ceiling with only 4 COPC tiles
+#' (brief 2026-10-07: ~1.7 GB and more per worker). The count is now capped at
+#' 4 and at one worker per 3 GB of half the available memory. Override with
+#' `options(nemetonshiny.lasr_ncores = n)` or `NEMETON_LASR_NCORES`.
+#'
+#' @return Integer >= 1.
+#' @noRd
+.lasr_ncores <- function() {
+  force_n <- getOption("nemetonshiny.lasr_ncores",
+                       Sys.getenv("NEMETON_LASR_NCORES", ""))
+  force_n <- suppressWarnings(as.integer(force_n))
+  if (length(force_n) == 1L && !is.na(force_n) && force_n >= 1L) return(force_n)
+  coeurs <- max(1L, parallel::detectCores(logical = FALSE) - 1L, na.rm = TRUE)
+  n <- min(coeurs, 4L)
+  dispo <- .available_memory_bytes()
+  if (is.finite(dispo)) n <- min(n, floor(dispo * 0.5 / 3e9))
+  max(1L, as.integer(n))
 }
 
 
@@ -2530,6 +2561,17 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
   #
   # On adopte donc le livrable du pipeline quand il est la. Le temoin est
   # ecrit dans la foulee, pour que le chemin nominal reste inchange ensuite.
+  # Un CHM predit pour une autre emprise (parcelles ajoutees) est mis de cote :
+  # il etait reutilise sur sa seule existence (brief 2026-10-07, point 5).
+  bbox_aoi <- as.numeric(sf::st_bbox(sf::st_transform(parcels, 4326)))
+  for (f in file.path(oc_dir, c("chm_1_5m.tif", "chm_predicted_1_5m.tif"))) {
+    if (file.exists(f) && !.raster_covers_bbox(f, bbox_aoi)) {
+      cli::cli_alert_info(
+        "CHM Open-Canopy {.file {basename(f)}} : l'emprise a chang\u00e9, pr\u00e9diction relanc\u00e9e.")
+      file.rename(f, paste0(f, ".perime"))
+    }
+  }
+
   if (!file.exists(chm_path)) {
     predit <- file.path(oc_dir, "chm_predicted_1_5m.tif")
     if (file.exists(predit)) {
@@ -2772,6 +2814,36 @@ download_vector_source <- function(source_name,
                               digits = NA),
            error = function(e) NULL)
   invisible(cache_file)
+}
+
+#' Cache key of a geometry (units or AOI)
+#'
+#' Hash of the WKB of the geometry in WGS84, so the same units give the same
+#' key whatever their working CRS. A `NULL` geometry (no extent) has its own
+#' key, `"sans_emprise"`.
+#' @noRd
+.cache_cle_geometrie <- function(x) {
+  if (is.null(x)) return("sans_emprise")
+  g <- sf::st_transform(sf::st_geometry(x), 4326)
+  rlang::hash(lapply(sf::st_as_binary(g), function(b) as.raw(b)))
+}
+
+#' Does a cached product carry this key? (`<path>.cle` sidecar)
+#'
+#' A product without a sidecar predates the key: it is not trusted.
+#' @noRd
+.cache_cle_valide <- function(path, cle) {
+  side <- paste0(path, ".cle")
+  if (!file.exists(side)) return(FALSE)
+  identical(tryCatch(readLines(side, n = 1L, warn = FALSE),
+                     error = function(e) ""), as.character(cle))
+}
+
+#' @noRd
+.cache_cle_ecrire <- function(path, cle) {
+  tryCatch(writeLines(as.character(cle), paste0(path, ".cle")),
+           error = function(e) NULL)
+  invisible(path)
 }
 
 #' Move a non-reusable cached layer aside before downloading again
@@ -3568,7 +3640,11 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
     irc_cache_file <- file.path(dirname(cache_file), "irc.tif")
 
     # Use cached IRC if available, otherwise download
-    if (file.exists(irc_cache_file) && file.size(irc_cache_file) > 1000) {
+    # Reutilise SEULEMENT si l'ortho couvre l'emprise demandee : ndvi.tif etait
+    # deja controle, mais l'ancien irc.tif servait encore apres un changement
+    # d'emprise (brief 2026-10-07, point 5).
+    if (file.exists(irc_cache_file) && file.size(irc_cache_file) > 1000 &&
+        .layer_cache_reusable(irc_cache_file, bbox, "raster")) {
       cli::cli_alert_success("Using cached IRC orthophoto")
       irc <- terra::rast(irc_cache_file)
     } else {
@@ -3595,6 +3671,7 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
       # Save IRC to project cache
       file.copy(temp_file, irc_cache_file, overwrite = TRUE)
       unlink(temp_file)
+      .layer_cache_write_bbox(irc_cache_file, bbox)
       cli::cli_alert_success("Saved IRC orthophoto to cache")
       irc <- terra::rast(irc_cache_file)
     }
@@ -3713,6 +3790,13 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
   composite_path <- file.path(cache_dir, "ndvi_s2_v2.tif")
   ancien <- file.path(cache_dir, "ndvi_s2.tif")
   if (file.exists(ancien)) unlink(ancien)
+  # Le composite est masque par `aoi` : il ne vaut que pour CETTE emprise
+  # (brief 2026-10-07, point 5). Cle d'emprise dans `<fichier>.cle`.
+  cle <- .cache_cle_geometrie(aoi)
+  if (file.exists(composite_path) && !.cache_cle_valide(composite_path, cle)) {
+    cli::cli_alert_info("C2 : l'emprise a chang\u00e9, composite NDVI recalcul\u00e9")
+    unlink(c(composite_path, paste0(composite_path, ".cle")))
+  }
   if (file.exists(composite_path)) {
     out <- tryCatch(terra::rast(composite_path), error = function(e) NULL)
     if (!is.null(out)) {
@@ -3735,8 +3819,10 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
   sel <- attr(ndvi, "scenes")
   names(ndvi) <- "ndvi"
 
-  tryCatch(.write_raster_atomic(ndvi, composite_path),
-           error = function(e) cli::cli_warn(
+  tryCatch({
+    .write_raster_atomic(ndvi, composite_path)
+    .cache_cle_ecrire(composite_path, cle)
+  }, error = function(e) cli::cli_warn(
              "C2 : composite NDVI non mis en cache : {conditionMessage(e)}"))
 
   if (is.data.frame(sel) && nrow(sel) > 0L) {

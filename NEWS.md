@@ -1,3 +1,72 @@
+# nemetonshiny 2026.10.1 (2026-10-09)
+
+Première release au **versionnage calendaire `AAAA.M.N`**, comme le cœur
+`nemeton` : la version dit l'année et le mois de la release, `N` son rang dans
+le mois. Le cycle de dev reste en `.900x`, et `version-consistency` vérifie le
+format et sa concordance avec la date de cette entrée. Elle succède à la 2.0.1.
+
+Changements cassants : aucun.
+
+## Nuage de points drone
+
+- **Nouveau sous-onglet Terrain › Import › « Nuage de points drone »**
+  (spec 059 du cœur, `nemeton (>= 2.1.0)`).
+  - On dépose le nuage d'un vol (`.las`, `.laz`, `.copc.laz`) : il est rangé
+    dans `cache/layers/drone_nuage/` du projet.
+  - On choisit LiDAR drone ou photogrammétrie, puis
+    `nemeton::traiter_nuage_points()` produit le MNT, le MNS et le MNH, en
+    tâche de fond (`ExtendedTask`).
+  - En photogrammétrie, le MNT vient du LiDAR HD du projet (ou de la BD ALTI),
+    et le MNH LiDAR HD sert à mesurer le décalage vertical sur sol nu. Les
+    mosaïques LiDAR vides sont écartées.
+  - Le MNH, le MNS et le MNT s'affichent sur une carte, avec les contrôles de
+    qualité : points, densité, parts de sol et de bruit, décalage vertical
+    retiré et son écart interquartile, et les avertissements du cœur. Le bilan
+    est relu à la réouverture du projet.
+  - Aucun code de plus pour la suite : `resolve_project_dem()` et
+    `resolve_project_chm()` prennent les produits drone en premier, et le
+    projet passe en NDP 2.
+- Limite d'envoi de fichiers portée à 20 Go (`shiny.maxRequestSize`), pour
+  les nuages de points.
+- Plancher cœur `nemeton (>= 2.1.0)`.
+
+## Marculus
+
+- **Marculus : CSV au format 4 et lots d'affouage** (brief Marculus du
+  2026-10-07, Marculus v0.52.0 à v0.55.1).
+  - Chaque tige garde le `lot` attribué au martelage (colonne `Lot` du CSV,
+    clé `lot` du `.marsync`). Il n'est jamais recalculé.
+  - Les contextes portent `affouage`, `volumeMaxLotM3`, `Journal`, et, dans le
+    CSV, `Tarif`, `TarifNumero` et `CoefficientForme`. Ces réglages sont gardés
+    sur l'action (`reglages_terrain`) pour l'affichage, mais **jamais
+    réémis** vers le téléphone : une clé absente laisse le terrain décider.
+  - La synthèse du martelage montre, pour un contexte d'affouage, le bilan
+    par lot : tiges, volume net, et état complet ou incomplet. Il suit la
+    règle d'annulation des volumes : le lot de la tige retirée perd son
+    volume. Un lot dont le volume atteint exactement le maximum est clos.
+  - Un CSV `Journal;NET` (tiges à comptabiliser) est signalé comme un état
+    de comptage. Il ne remplace jamais une tige lue dans un journal complet
+    ou un `.marsync`.
+  - Le CSV du bilan par lot (`Lot;Tiges;Volume_m3;Etat`) est reconnu et
+    refusé, avec un message qui dit quoi importer.
+  - Les textes d'aide parlent du « format 2 ou supérieur ».
+
+## Caches et LiDAR
+
+- **Caches contrôlés sur l'emprise** (brief LiDAR HD du 2026-10-07, § 5). Ces
+  caches étaient réutilisés sur la seule existence du fichier. Désormais :
+  - `irc.tif` est contrôlé sur l'emprise, comme `ndvi.tif` ;
+  - `ndvi_s2_v2.tif` et `spectral/<scène>/` portent une clé de géométrie
+    (`<fichier>.cle`) et sont recalculés si les unités changent ;
+  - un CHM Open-Canopy qui ne couvre plus les parcelles est mis de côté
+    (`.perime`), puis la prédiction est relancée.
+- **Repli lasR plafonné en mémoire.** Il dépassait le plafond de 12 Go avec
+  4 dalles. Il prend désormais au plus 4 workers, et un par 3 Go de la moitié
+  de la RAM disponible. Réglable par `options(nemetonshiny.lasr_ncores =)` ou
+  `NEMETON_LASR_NCORES`.
+- Le reste du brief (la couche `IGNF_LIDAR-HD_METADONNEE:metadata`) était déjà
+  livré par `0dbfaaeb`, gardé tel quel.
+
 # nemetonshiny 2.0.1 (2026-10-09)
 
 - **Dalles LiDAR HD vides refusées.** L'IGN publie parfois le nuage de
