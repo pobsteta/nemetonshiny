@@ -1,5 +1,33 @@
 # Changelog
 
+## nemetonshiny 2.0.1 (2026-10-09)
+
+- **Dalles LiDAR HD vides refusées.** L’IGN publie parfois le nuage de
+  points avant les rasters dérivés. Le WMS sert alors des dalles MNH/MNT
+  valides au sens GeoTIFF, mais 100 % NoData, au lieu d’un 404. L’app
+  les acceptait. Le calcul se terminait sans erreur, mais les familles
+  Carbone, Risques, Production et Énergie restaient vides, et le MNT
+  vide remplaçait la BD ALTI (Couchey, `20261008_212542_uywc`).
+  Désormais :
+  - une dalle sans pixel valide (moins de 1 %) est un échec, comme un
+    404 : elle est supprimée du cache et le journal dit « vide (produit
+    non encore publié par l’IGN) ». Les dalles et mosaïques vides déjà
+    en cache sont purgées au recalcul suivant ;
+  - une mosaïque qui couvre moins de 90 % de l’emprise n’est pas
+    retenue. La chaîne passe alors à la source suivante : CHM dérivé du
+    nuage COPC par lasR, puis Theia, puis Open-Canopy. Pour le terrain,
+    elle prend le MNT lasR, sinon garde la BD ALTI ;
+  - garde-fou final, quelle que soit la source : un CHM ou un MNT sans
+    pixel valide sur l’emprise du projet n’est jamais retenu ;
+  - l’accessibilité, la desserte et la reGénération (R3) ne prennent
+    plus une mosaïque MNT LiDAR vide.
+- **Cause des cases vides.** Un indicateur vide faute de CHM ou de MNT
+  porte le statut `sans_chm` ou `sans_mnt`, et la vue famille explique
+  pourquoi la case est vide.
+- Brief cœur 2.0.0 : `create_qfield_project()` est remplacée par
+  `create_qgis_project()` (plan d’échantillonnage). Le mock obsolète de
+  `theia_configure_s3()` est retiré des tests SUFOSAT.
+
 ## nemetonshiny 2.0.0 (2026-10-08)
 
 Jalon de la **spec 058** : la plateforme bâtit désormais les UGF d’une

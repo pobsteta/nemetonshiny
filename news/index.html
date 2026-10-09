@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2.0.1" id="nemetonshiny-201-2026-10-09">nemetonshiny 2.0.1 (2026-10-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-201-2026-10-09"></a></h2>
+<ul><li>
+<strong>Dalles LiDAR HD vides refusées.</strong> L’IGN publie parfois le nuage de points avant les rasters dérivés. Le WMS sert alors des dalles MNH/MNT valides au sens GeoTIFF, mais 100 % NoData, au lieu d’un 404. L’app les acceptait. Le calcul se terminait sans erreur, mais les familles Carbone, Risques, Production et Énergie restaient vides, et le MNT vide remplaçait la BD ALTI (Couchey, <code>20261008_212542_uywc</code>). Désormais :
+<ul><li>une dalle sans pixel valide (moins de 1 %) est un échec, comme un 404 : elle est supprimée du cache et le journal dit « vide (produit non encore publié par l’IGN) ». Les dalles et mosaïques vides déjà en cache sont purgées au recalcul suivant ;</li>
+<li>une mosaïque qui couvre moins de 90 % de l’emprise n’est pas retenue. La chaîne passe alors à la source suivante : CHM dérivé du nuage COPC par lasR, puis Theia, puis Open-Canopy. Pour le terrain, elle prend le MNT lasR, sinon garde la BD ALTI ;</li>
+<li>garde-fou final, quelle que soit la source : un CHM ou un MNT sans pixel valide sur l’emprise du projet n’est jamais retenu ;</li>
+<li>l’accessibilité, la desserte et la reGénération (R3) ne prennent plus une mosaïque MNT LiDAR vide.</li>
+</ul></li>
+<li>
+<strong>Cause des cases vides.</strong> Un indicateur vide faute de CHM ou de MNT porte le statut <code>sans_chm</code> ou <code>sans_mnt</code>, et la vue famille explique pourquoi la case est vide.</li>
+<li>Brief cœur 2.0.0 : <code>create_qfield_project()</code> est remplacée par <code>create_qgis_project()</code> (plan d’échantillonnage). Le mock obsolète de <code>theia_configure_s3()</code> est retiré des tests SUFOSAT.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.0" id="nemetonshiny-200-2026-10-08">nemetonshiny 2.0.0 (2026-10-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-200-2026-10-08"></a></h2>
 <p>Jalon de la <strong>spec 058</strong> : la plateforme bâtit désormais les UGF d’une forêt publique à partir du parcellaire ONF calé sur le cadastre. Elle n’a plus d’autre façon de croiser l’ONF. Le code est celui de la 1.3.1. Le numéro majeur marque la rupture livrée en 1.3.0 et 1.3.1 :</p>
