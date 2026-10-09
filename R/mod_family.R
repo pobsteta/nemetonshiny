@@ -861,7 +861,9 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
       # `fire_exp` sur la plupart des unites, `fallback_*` sur une autre).
       # Une cause sans traduction retombe sur le message generique : mieux vaut
       # une phrase vague qu'une cle brute affichee a l'utilisateur.
-      for (candidate in paste0(code, "_", st)) {
+      # Cause commune a plusieurs indicateurs (`sans_chm`, `sans_mnt`) : une
+      # seule cle generique `indicator_<statut>` apres les cles propres.
+      for (candidate in c(paste0(code, "_", st), paste0("indicator_", st))) {
         if (isTRUE(i18n$has(candidate))) {
           key <- candidate
           break

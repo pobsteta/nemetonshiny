@@ -1347,6 +1347,14 @@ TRANSLATIONS <- list(
     fr = "UGF concern\u00e9es : %s.",
     en = "Units concerned: %s."
   ),
+  indicator_sans_chm = list(
+    fr = "Indicateur non calcul\u00e9 : aucun mod\u00e8le de hauteur de canop\u00e9e (CHM) utilisable sur cette emprise (LiDAR HD non encore publi\u00e9, ou sources de repli indisponibles).",
+    en = "Indicator not computed: no usable canopy height model (CHM) over this area (LiDAR HD not yet published, or fallback sources unavailable)."
+  ),
+  indicator_sans_mnt = list(
+    fr = "Indicateur non calcul\u00e9 : aucun mod\u00e8le num\u00e9rique de terrain utilisable sur cette emprise.",
+    en = "Indicator not computed: no usable digital terrain model over this area."
+  ),
   indicator_all_na = list(
     fr = "Indicateur non disponible sur cette emprise.",
     en = "Indicator not available over this area."

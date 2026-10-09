@@ -595,9 +595,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   # 1 m, sinon 1 m, defaut de `detecter_desserte()`) : l'ancien garde estimait
   # le glouton a 5 m, 25 a 100 fois moins de cellules que la detection n'en
   # traite - sur une grande emprise, le systeme tuait la session.
-  lidar_mnt_pre <- if (!is.null(project_path)) {
-    file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
-  }
+  lidar_mnt_pre <- .lidar_mnt_mosaique_valide(project_path)
   mem <- .desserte_detection_memory_check(
     aoi_ext, res_m = .desserte_detection_res(lidar_mnt_pre))
   if (!isTRUE(mem$ok)) {
@@ -616,10 +614,8 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   # `dsr_calibrer_specs()` ne retient AUCUN canal - AUC ~= 0,50 contre un seuil
   # de 0,55, c'est-a-dire pas mieux que le hasard. Le projet dispose pourtant
   # d'une mosaique LiDAR a 0,5 m.
-  lidar_mnt <- if (!is.null(project_path)) {
-    file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
-  } else NULL
-  a_lidar_mnt <- !is.null(lidar_mnt) && file.exists(lidar_mnt)
+  lidar_mnt <- .lidar_mnt_mosaique_valide(project_path)
+  a_lidar_mnt <- !is.null(lidar_mnt)
   mnt_path <- if (a_lidar_mnt) lidar_mnt else {
     .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
   }

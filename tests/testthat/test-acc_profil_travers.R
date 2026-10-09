@@ -20,7 +20,14 @@
                showWarnings = FALSE)
     file.create(file.path(d, "cache", "layers", "lidar_nuage", "dalle.laz"))
   }
-  if (avec_mnt) file.create(file.path(d, "cache", "layers", "lidar_mnt_mosaic.tif"))
+  if (avec_mnt) {
+    # Un vrai raster avec des altitudes : une mosaique vide ou sans pixel valide
+    # est ignoree depuis le brief des dalles LiDAR vides (2026-10-09).
+    mnt <- terra::rast(nrows = 10, ncols = 10, xmin = 900000, xmax = 900100,
+                       ymin = 6499950, ymax = 6500050, crs = "EPSG:2154",
+                       vals = 480)
+    terra::writeRaster(mnt, file.path(d, "cache", "layers", "lidar_mnt_mosaic.tif"))
+  }
   d
 }
 
