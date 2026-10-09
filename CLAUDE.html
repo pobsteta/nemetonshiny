@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -474,6 +474,9 @@ keycloak/                     → Compose dev + realms pour auth locale
 <h1 id="consignes-de-release-pour-ce-projet">Consignes de release pour ce projet<a class="anchor" aria-label="anchor" href="#consignes-de-release-pour-ce-projet"></a></h1>
 <p><strong>Le tag et la release GitHub sont AUTOMATISÉS</strong> par <code>.github/workflows/release.yml</code> : au push sur <code>main</code>, il lit <code>Version:</code> dans DESCRIPTION et, pour une version stable <code>X.Y.Z</code> dont le tag n’existe pas, crée le tag annoté + la release (<code>--generate-notes</code>). <strong>Ne plus faire <code>git tag</code> / <code>git push origin vX.Y.Z</code> / <code>gh release create</code> à la main.</strong> Le job CI <code>version-consistency</code> (r.yml) garantit en amont <code>DESCRIPTION = NEWS = CITATION</code> (sauté en cycle dev <code>.9000+</code>).</p>
 <p>À chaque push qui modifie le code fonctionnel (hors doc pure, hors CI), Claude doit :</p>
+<blockquote>
+<p><strong>Versionnage calendaire <code>AAAA.M.N</code> depuis le 2026-10-09</strong> (décision de Pascal, alignée sur le cœur, spec 057 § 8 de <code>nemeton</code>). La version stable est <code>AAAA.M.N</code> : année et mois de la release, <strong>mois sans zéro en tête</strong> (<code>2026.1.1</code>, jamais <code>2026.01.1</code>), <code>N</code> = numéro de la release dans le mois, qui repart à 1 chaque mois. Le cycle dev reste en <code>.900x</code> (<code>2026.10.1.9001</code>). Le numéro ne dit plus la nature du changement : la table PATCH/MINOR/MAJOR ci-dessous ne sert plus qu’à <strong>qualifier</strong> le changement dans NEWS ; toute rupture (retrait ou changement de signature d’une fonction exportée, format de projet) va dans une section « Changements cassants » de l’entrée NEWS. <code>version-consistency</code> vérifie la forme et que <code>AAAA.M</code> correspond à la date de l’entrée NEWS. <strong>Sans retour</strong> : revenir en <code>2.x</code> serait une baisse de version (dernière semver : 2.0.1).</p>
+</blockquote>
 <ol style="list-style-type: decimal"><li>
 <p>Déterminer le type de changement selon Conventional Commits (feat: / fix: / BREAKING CHANGE:) → bump semver correspondant (minor / patch / major). <strong>PATCH par défaut</strong> : appliquer la table ci-dessous (révision <strong>2026-06-14</strong> qui INVERSE la révision 2026-06-02 — cf. note ci-dessous).</p>
 <table class="table"><colgroup><col width="89%"><col width="10%"></colgroup><thead><tr><th>Type de changement</th>
@@ -523,13 +526,13 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li><p><strong>Repasser en cycle dev</strong> : bumper DESCRIPTION en <code>X.Y.Z.900x</code> (cf. <em>Cycle dev vs release stable</em> ci-dessous).</p></li>
 </ol><div class="section level2">
 <h2 id="cycle-dev-vs-release-stable">Cycle dev vs release stable<a class="anchor" aria-label="anchor" href="#cycle-dev-vs-release-stable"></a></h2>
-<p>Le repo suit un cycle dev <code>X.Y.Z.9000+</code> qui s’accumule entre les releases stables. Chaque commit fonctionnel pousse le quatrième segment (<code>.9001</code>, <code>.9002</code>, …) sans tag ; quand un chantier est complet (épaississement clos, hardening fini, etc.), on bumpe en <code>vX.Y.Z</code> stable et on crée le tag + release GitHub. Le PLAN.md indique pour chaque entrée le cycle dev concerné (ex. <code>0.21.0.9000</code> → <code>0.21.0.9001</code>).</p>
+<p>Le repo suit un cycle dev <code>AAAA.M.N.9000+</code> (<code>X.Y.Z.9000+</code> avant 2026-10) qui s’accumule entre les releases stables. Chaque commit fonctionnel pousse le quatrième segment (<code>.9001</code>, <code>.9002</code>, …) sans tag ; quand un chantier est complet (épaississement clos, hardening fini, etc.), on bumpe en <code>vX.Y.Z</code> stable et on crée le tag + release GitHub. Le PLAN.md indique pour chaque entrée le cycle dev concerné (ex. <code>0.21.0.9000</code> → <code>0.21.0.9001</code>).</p>
 </div>
 <div class="section level2">
 <h2 id="règles-de-cohérence">Règles de cohérence<a class="anchor" aria-label="anchor" href="#r%C3%A8gles-de-coh%C3%A9rence"></a></h2>
 <ul><li>Pour une version <strong>stable</strong>, DESCRIPTION = tête de NEWS.md = CITATION.cff (vérifié en CI par <code>version-consistency</code>). Le tag et la release, posés automatiquement par <code>release.yml</code>, en découlent et sont identiques par construction.</li>
 <li>Vérifier que la page de documentation (pkgdown) est aussi à jour de la version et de ses tags.</li>
-<li>Toujours demander confirmation avant un bump majeur.</li>
+<li>Toujours demander confirmation avant une release qui contient des changements cassants (ex-« bump majeur »).</li>
 <li>Quand un changement implique aussi <code>nemeton</code>, faire les deux releases dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).</li>
 </ul></div>
 <div class="section level2">

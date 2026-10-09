@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.0.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,50 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.1" id="nemetonshiny-2026101-2026-10-09">nemetonshiny 2026.10.1 (2026-10-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026101-2026-10-09"></a></h2>
+<p>Première release au <strong>versionnage calendaire <code>AAAA.M.N</code></strong>, comme le cœur <code>nemeton</code> : la version dit l’année et le mois de la release, <code>N</code> son rang dans le mois. Le cycle de dev reste en <code>.900x</code>, et <code>version-consistency</code> vérifie le format et sa concordance avec la date de cette entrée. Elle succède à la 2.0.1.</p>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="nuage-de-points-drone-2026-10-1">Nuage de points drone<a class="anchor" aria-label="anchor" href="#nuage-de-points-drone-2026-10-1"></a></h3>
+<ul><li>
+<strong>Nouveau sous-onglet Terrain › Import › « Nuage de points drone »</strong> (spec 059 du cœur, <code>nemeton (&gt;= 2.1.0)</code>).
+<ul><li>On dépose le nuage d’un vol (<code>.las</code>, <code>.laz</code>, <code>.copc.laz</code>) : il est rangé dans <code>cache/layers/drone_nuage/</code> du projet.</li>
+<li>On choisit LiDAR drone ou photogrammétrie, puis <code><a href="https://pobsteta.github.io/nemeton/reference/traiter_nuage_points.html" class="external-link">nemeton::traiter_nuage_points()</a></code> produit le MNT, le MNS et le MNH, en tâche de fond (<code>ExtendedTask</code>).</li>
+<li>En photogrammétrie, le MNT vient du LiDAR HD du projet (ou de la BD ALTI), et le MNH LiDAR HD sert à mesurer le décalage vertical sur sol nu. Les mosaïques LiDAR vides sont écartées.</li>
+<li>Le MNH, le MNS et le MNT s’affichent sur une carte, avec les contrôles de qualité : points, densité, parts de sol et de bruit, décalage vertical retiré et son écart interquartile, et les avertissements du cœur. Le bilan est relu à la réouverture du projet.</li>
+<li>Aucun code de plus pour la suite : <code>resolve_project_dem()</code> et <code>resolve_project_chm()</code> prennent les produits drone en premier, et le projet passe en NDP 2.</li>
+</ul></li>
+<li>Limite d’envoi de fichiers portée à 20 Go (<code>shiny.maxRequestSize</code>), pour les nuages de points.</li>
+<li>Plancher cœur <code>nemeton (&gt;= 2.1.0)</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="marculus-2026-10-1">Marculus<a class="anchor" aria-label="anchor" href="#marculus-2026-10-1"></a></h3>
+<ul><li>
+<strong>Marculus : CSV au format 4 et lots d’affouage</strong> (brief Marculus du 2026-10-07, Marculus v0.52.0 à v0.55.1).
+<ul><li>Chaque tige garde le <code>lot</code> attribué au martelage (colonne <code>Lot</code> du CSV, clé <code>lot</code> du <code>.marsync</code>). Il n’est jamais recalculé.</li>
+<li>Les contextes portent <code>affouage</code>, <code>volumeMaxLotM3</code>, <code>Journal</code>, et, dans le CSV, <code>Tarif</code>, <code>TarifNumero</code> et <code>CoefficientForme</code>. Ces réglages sont gardés sur l’action (<code>reglages_terrain</code>) pour l’affichage, mais <strong>jamais réémis</strong> vers le téléphone : une clé absente laisse le terrain décider.</li>
+<li>La synthèse du martelage montre, pour un contexte d’affouage, le bilan par lot : tiges, volume net, et état complet ou incomplet. Il suit la règle d’annulation des volumes : le lot de la tige retirée perd son volume. Un lot dont le volume atteint exactement le maximum est clos.</li>
+<li>Un CSV <code>Journal;NET</code> (tiges à comptabiliser) est signalé comme un état de comptage. Il ne remplace jamais une tige lue dans un journal complet ou un <code>.marsync</code>.</li>
+<li>Le CSV du bilan par lot (<code>Lot;Tiges;Volume_m3;Etat</code>) est reconnu et refusé, avec un message qui dit quoi importer.</li>
+<li>Les textes d’aide parlent du « format 2 ou supérieur ».</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="caches-et-lidar-2026-10-1">Caches et LiDAR<a class="anchor" aria-label="anchor" href="#caches-et-lidar-2026-10-1"></a></h3>
+<ul><li>
+<strong>Caches contrôlés sur l’emprise</strong> (brief LiDAR HD du 2026-10-07, § 5). Ces caches étaient réutilisés sur la seule existence du fichier. Désormais :
+<ul><li>
+<code>irc.tif</code> est contrôlé sur l’emprise, comme <code>ndvi.tif</code> ;</li>
+<li>
+<code>ndvi_s2_v2.tif</code> et <code>spectral/&lt;scène&gt;/</code> portent une clé de géométrie (<code>&lt;fichier&gt;.cle</code>) et sont recalculés si les unités changent ;</li>
+<li>un CHM Open-Canopy qui ne couvre plus les parcelles est mis de côté (<code>.perime</code>), puis la prédiction est relancée.</li>
+</ul></li>
+<li>
+<strong>Repli lasR plafonné en mémoire.</strong> Il dépassait le plafond de 12 Go avec 4 dalles. Il prend désormais au plus 4 workers, et un par 3 Go de la moitié de la RAM disponible. Réglable par <code>options(nemetonshiny.lasr_ncores =)</code> ou <code>NEMETON_LASR_NCORES</code>.</li>
+<li>Le reste du brief (la couche <code>IGNF_LIDAR-HD_METADONNEE:metadata</code>) était déjà livré par <code>0dbfaaeb</code>, gardé tel quel.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.1" id="nemetonshiny-201-2026-10-09">nemetonshiny 2.0.1 (2026-10-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-201-2026-10-09"></a></h2>
 <ul><li>

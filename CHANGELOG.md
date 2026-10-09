@@ -4,13 +4,44 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/), and this project
-adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) up
+to 2.0.1, then to calendar versioning `YYYY.M.N` (year, month without
+leading zero, rank of the release in the month).
 
 For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
 ## \[Unreleased\]
+
+## \[2026.10.1\] - 2026-10-09
+
+### Added
+
+- Field \> Import \> “Drone point cloud” sub-tab (core spec 059,
+  `nemeton (>= 2.1.0)`): upload a drone LiDAR or photogrammetric cloud,
+  [`nemeton::traiter_nuage_points()`](https://pobsteta.github.io/nemeton/reference/traiter_nuage_points.html)
+  builds the DTM, DSM and CHM in the background, shown on a map with the
+  quality checks; the project reaches NDP 2. Upload limit raised to 20
+  GB.
+- Marculus CSV format 4: felling lots (`lot`), firewood settings kept on
+  the action but never sent back to the phone, per-lot summary in the
+  marking synthesis, `Journal;NET` files flagged as counting states,
+  per-lot summary CSV recognised and refused.
+
+### Changed
+
+- Calendar versioning `YYYY.M.N`, aligned with the core; checked by the
+  `version-consistency` CI job.
+- `irc.tif`, `ndvi_s2_v2.tif` and `spectral/<scene>/` caches are checked
+  against the project footprint (geometry key); an Open-Canopy CHM that
+  no longer covers the parcels is set aside and recomputed.
+
+### Fixed
+
+- lasR fallback capped in memory: at most 4 workers, one per 3 GB of
+  half the available RAM (`nemetonshiny.lasr_ncores` /
+  `NEMETON_LASR_NCORES`).
 
 ## \[2.0.1\] - 2026-10-09
 

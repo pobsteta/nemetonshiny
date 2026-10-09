@@ -452,6 +452,20 @@ la main.** Le job CI `version-consistency` (r.yml) garantit en amont
 À chaque push qui modifie le code fonctionnel (hors doc pure, hors CI),
 Claude doit :
 
+> **Versionnage calendaire `AAAA.M.N` depuis le 2026-10-09** (décision
+> de Pascal, alignée sur le cœur, spec 057 § 8 de `nemeton`). La version
+> stable est `AAAA.M.N` : année et mois de la release, **mois sans zéro
+> en tête** (`2026.1.1`, jamais `2026.01.1`), `N` = numéro de la release
+> dans le mois, qui repart à 1 chaque mois. Le cycle dev reste en
+> `.900x` (`2026.10.1.9001`). Le numéro ne dit plus la nature du
+> changement : la table PATCH/MINOR/MAJOR ci-dessous ne sert plus qu’à
+> **qualifier** le changement dans NEWS ; toute rupture (retrait ou
+> changement de signature d’une fonction exportée, format de projet) va
+> dans une section « Changements cassants » de l’entrée NEWS.
+> `version-consistency` vérifie la forme et que `AAAA.M` correspond à la
+> date de l’entrée NEWS. **Sans retour** : revenir en `2.x` serait une
+> baisse de version (dernière semver : 2.0.1).
+
 1.  Déterminer le type de changement selon Conventional Commits (feat: /
     fix: / BREAKING CHANGE:) → bump semver correspondant (minor / patch
     / major). **PATCH par défaut** : appliquer la table ci-dessous
@@ -517,12 +531,13 @@ Claude doit :
 
 ## Cycle dev vs release stable
 
-Le repo suit un cycle dev `X.Y.Z.9000+` qui s’accumule entre les
-releases stables. Chaque commit fonctionnel pousse le quatrième segment
-(`.9001`, `.9002`, …) sans tag ; quand un chantier est complet
-(épaississement clos, hardening fini, etc.), on bumpe en `vX.Y.Z` stable
-et on crée le tag + release GitHub. Le PLAN.md indique pour chaque
-entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
+Le repo suit un cycle dev `AAAA.M.N.9000+` (`X.Y.Z.9000+` avant 2026-10)
+qui s’accumule entre les releases stables. Chaque commit fonctionnel
+pousse le quatrième segment (`.9001`, `.9002`, …) sans tag ; quand un
+chantier est complet (épaississement clos, hardening fini, etc.), on
+bumpe en `vX.Y.Z` stable et on crée le tag + release GitHub. Le PLAN.md
+indique pour chaque entrée le cycle dev concerné (ex. `0.21.0.9000` →
+`0.21.0.9001`).
 
 ## Règles de cohérence
 
@@ -532,7 +547,8 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
   identiques par construction.
 - Vérifier que la page de documentation (pkgdown) est aussi à jour de la
   version et de ses tags.
-- Toujours demander confirmation avant un bump majeur.
+- Toujours demander confirmation avant une release qui contient des
+  changements cassants (ex-« bump majeur »).
 - Quand un changement implique aussi `nemeton`, faire les deux releases
   dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).
 
