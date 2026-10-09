@@ -142,7 +142,8 @@ mod_nuage_points_server <- function(id, app_state) {
 
     output$carte <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
-        leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery)
+        leaflet::addProviderTiles(leaflet::providers$Esri.WorldImagery) |>
+        leaflet::setView(lng = 2.5, lat = 46.6, zoom = 5)
     })
 
     shiny::observe({
