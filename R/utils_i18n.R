@@ -726,6 +726,50 @@ TRANSLATIONS <- list(
   marculus_lot_complet = list(fr = "complet", en = "complete"),
   marculus_lot_incomplet = list(fr = "incomplet", en = "incomplete"),
   marculus_lot_sans_lot = list(fr = "sans lot", en = "no lot"),
+  # Nuage de points drone (spec 059, Terrain > Import).
+  nuage_onglet = list(fr = "Nuage de points drone", en = "Drone point cloud"),
+  nuage_intro = list(
+    fr = "D\u00e9posez le nuage d'un vol de drone (.las, .laz, .copc.laz). Il est rang\u00e9 dans le projet puis trait\u00e9 : classification du sol et du bruit, MNT, MNS et MNH. Les produits du drone passent avant ceux du LiDAR HD pour les indicateurs, et le projet passe en NDP 2.",
+    en = "Drop the point cloud of a drone flight (.las, .laz, .copc.laz). It is stored in the project, then processed: ground and noise classification, DTM, DSM and CHM. Drone products take precedence over LiDAR HD for the indicators, and the project moves to NDP 2."
+  ),
+  nuage_fichiers = list(fr = "Fichiers du nuage", en = "Point cloud files"),
+  nuage_type = list(fr = "Type d'acquisition", en = "Acquisition type"),
+  nuage_type_lidar = list(fr = "LiDAR drone", en = "Drone LiDAR"),
+  nuage_type_photo = list(fr = "Photogramm\u00e9trie drone", en = "Drone photogrammetry"),
+  nuage_photo_aide = list(
+    fr = "La photogramm\u00e9trie ne voit pas le sol sous le couvert : son MNT vient du LiDAR HD du projet (ou de la BD ALTI), et son d\u00e9calage vertical est mesur\u00e9 sur le sol nu. Calculez d'abord le projet.",
+    en = "Photogrammetry does not see the ground under the canopy: its DTM comes from the project's LiDAR HD (or BD ALTI), and its vertical shift is measured on bare ground. Compute the project first."
+  ),
+  nuage_traiter = list(fr = "Traiter le nuage", en = "Process the cloud"),
+  nuage_en_cours = list(
+    fr = "Traitement du nuage en cours (environ 2 min par km\u00b2)\u2026",
+    en = "Processing the point cloud (about 2 min per km\u00b2)\u2026"
+  ),
+  nuage_ok = list(fr = "Nuage trait\u00e9 : MNT, MNS et MNH pr\u00eats.", en = "Cloud processed: DTM, DSM and CHM ready."),
+  nuage_sans_projet = list(fr = "Ouvrez d'abord un projet.", en = "Open a project first."),
+  nuage_sans_nuage = list(fr = "Aucun nuage de points dans le projet : d\u00e9posez des fichiers .las ou .laz.", en = "No point cloud in the project: drop .las or .laz files."),
+  nuage_sans_mnt = list(
+    fr = "Photogramm\u00e9trie impossible : le projet n'a aucun MNT (LiDAR HD ou BD ALTI). Calculez d'abord le projet.",
+    en = "Photogrammetry not possible: the project has no DTM (LiDAR HD or BD ALTI). Compute the project first."
+  ),
+  nuage_refuses = list(fr = "Fichiers ignor\u00e9s (ni .las ni .laz) :", en = "Files ignored (neither .las nor .laz):"),
+  nuage_aucun = list(fr = "Aucun nuage trait\u00e9 pour ce projet.", en = "No point cloud processed for this project."),
+  nuage_ndp2 = list(
+    fr = "Produits drone disponibles : ils sont utilis\u00e9s en priorit\u00e9 au prochain calcul, et le projet passe en NDP 2. Un vol qui ne couvre qu'une partie du projet n'est utilis\u00e9 que l\u00e0 o\u00f9 il couvre.",
+    en = "Drone products available: they are used first at the next computation, and the project moves to NDP 2. A flight covering only part of the project is used only where it covers."
+  ),
+  nuage_points = list(fr = "Points", en = "Points"),
+  nuage_densite = list(fr = "Densit\u00e9 (points/m\u00b2)", en = "Density (points/m\u00b2)"),
+  nuage_part_sol = list(fr = "Part de sol", en = "Ground share"),
+  nuage_part_bruit = list(fr = "Part de bruit", en = "Noise share"),
+  nuage_mnh_negatif = list(fr = "MNH sous \u22120,5 m (\u00e9cr\u00eat\u00e9)", en = "CHM below \u22120.5 m (clamped)"),
+  nuage_decalage = list(fr = "D\u00e9calage vertical retir\u00e9 (m)", en = "Vertical shift removed (m)"),
+  nuage_decalage_iqr = list(fr = "\u00c9cart interquartile du sol nu (m)", en = "Bare-ground interquartile range (m)"),
+  nuage_sol_nu = list(fr = "Pixels de sol nu", en = "Bare-ground cells"),
+  nuage_avertissements = list(fr = "Avertissements du traitement :", en = "Processing warnings:"),
+  nuage_couche_mnh = list(fr = "MNH (hauteur)", en = "CHM (height)"),
+  nuage_couche_mns = list(fr = "MNS (surface)", en = "DSM (surface)"),
+  nuage_couche_mnt = list(fr = "MNT (sol)", en = "DTM (ground)"),
   marculus_synthese_title = list(fr = "Synth\u00e8se du martelage", en = "Marking summary"),
   marculus_synthese_total_fmt = list(fr = "%d tige(s)", en = "%d stem(s)"),
   marculus_col_essence = list(fr = "Essence", en = "Species"),

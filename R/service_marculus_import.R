@@ -124,7 +124,7 @@ marculus_lire_exports <- function(chemins) {
       vides <- c(vides, basename(p))
       next
     }
-    # Le bilan par lot (onglet « Par lot ») est un rapport, pas un echange.
+    # Le bilan par lot (onglet "Par lot") est un rapport, pas un echange.
     if (.marculus_est_bilan_lots(p)) {
       bilans_lots <- c(bilans_lots, basename(p))
       next
@@ -195,7 +195,7 @@ marculus_lire_exports <- function(chemins) {
        bilans_lots = bilans_lots, nets = nets)
 }
 
-# Le CSV « bilan par lot » de Marculus (onglet « Par lot ») : un rapport a
+# Le CSV "bilan par lot" de Marculus (onglet "Par lot") : un rapport a
 # lire, sans `FormatCsv`, refuse avec un message qui dit quoi importer.
 .marculus_est_bilan_lots <- function(chemin) {
   l1 <- tryCatch(readLines(chemin, n = 1L, warn = FALSE, encoding = "UTF-8"),

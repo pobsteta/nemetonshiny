@@ -1,3 +1,26 @@
+# nemetonshiny 2.0.1.9003 (cycle dev)
+
+- **Nouveau sous-onglet Terrain › Import › « Nuage de points drone »**
+  (spec 059 du cœur, `nemeton (>= 2.1.0)`).
+  - On dépose le nuage d'un vol (`.las`, `.laz`, `.copc.laz`) : il est rangé
+    dans `cache/layers/drone_nuage/` du projet.
+  - On choisit LiDAR drone ou photogrammétrie, puis
+    `nemeton::traiter_nuage_points()` produit le MNT, le MNS et le MNH, en
+    tâche de fond (`ExtendedTask`).
+  - En photogrammétrie, le MNT vient du LiDAR HD du projet (ou de la BD ALTI),
+    et le MNH LiDAR HD sert à mesurer le décalage vertical sur sol nu. Les
+    mosaïques LiDAR vides sont écartées.
+  - Le MNH, le MNS et le MNT s'affichent sur une carte, avec les contrôles de
+    qualité : points, densité, parts de sol et de bruit, décalage vertical
+    retiré et son écart interquartile, et les avertissements du cœur. Le bilan
+    est relu à la réouverture du projet.
+  - Aucun code de plus pour la suite : `resolve_project_dem()` et
+    `resolve_project_chm()` prennent les produits drone en premier, et le
+    projet passe en NDP 2.
+- Limite d'envoi de fichiers portée à 20 Go (`shiny.maxRequestSize`), pour
+  les nuages de points.
+- Plancher cœur `nemeton (>= 2.1.0)`.
+
 # nemetonshiny 2.0.1.9002 (cycle dev)
 
 - **Marculus : CSV au format 4 et lots d'affouage** (brief Marculus du
