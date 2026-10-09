@@ -1,3 +1,7 @@
+# nemetonshiny 2026.10.1.9000 (cycle dev)
+
+- Ouverture du cycle de dev après la release 2026.10.1.
+
 # nemetonshiny 2026.10.1 (2026-10-09)
 
 Première release au **versionnage calendaire `AAAA.M.N`**, comme le cœur
