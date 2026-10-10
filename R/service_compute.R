@@ -4047,6 +4047,10 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
 # publie parfois le nuage de points avant les rasters derives : le WMS sert
 # alors des dalles valides au sens GeoTIFF mais 100 % NoData, au lieu d'un 404.
 .LIDAR_DALLE_PART_MIN <- 0.01
+# Une dalle vide est notee `<dalle>.vide` et n'est pas redemandee avant ce
+# delai (jours) : sans cela, chaque recalcul retelechargeait toutes les dalles
+# vides. Reglable par options(nemetonshiny.lidar_vide_jours =).
+.LIDAR_VIDE_JOURS <- 7
 .LIDAR_MOSAIQUE_COUVERTURE_MIN <- 0.9
 .RASTER_PART_MIN <- 0.01
 
@@ -4078,6 +4082,26 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
     if (length(v) == 0L) 0 else mean(!is.na(v) & v > -9999)
   }, error = function(e) 0)
   as.numeric(out)
+}
+
+#' Is a LiDAR HD tile known to be empty, recently enough to skip it?
+#'
+#' @description
+#' An empty tile (product not yet published by IGN) leaves a `<tile>.vide`
+#' marker. It is skipped while the marker is younger than
+#' `getOption("nemetonshiny.lidar_vide_jours", 7)` days, then asked again.
+#'
+#' @param marqueur Path of the `.vide` marker.
+#' @param maintenant Current time (for tests).
+#' @return TRUE when the tile must not be downloaded again yet.
+#' @noRd
+.lidar_dalle_vide_recente <- function(marqueur, maintenant = Sys.time()) {
+  if (!file.exists(marqueur)) return(FALSE)
+  jours <- suppressWarnings(as.numeric(
+    getOption("nemetonshiny.lidar_vide_jours", .LIDAR_VIDE_JOURS)))
+  if (length(jours) != 1L || is.na(jours)) jours <- .LIDAR_VIDE_JOURS
+  age <- difftime(maintenant, file.mtime(marqueur), units = "days")
+  isTRUE(as.numeric(age) < jours)
 }
 
 #' Request bbox (WGS84 numeric) as an sfc polygon
@@ -4250,6 +4274,16 @@ download_ign_lidar_hd <- function(bbox,
       ))
     }
 
+    # Dalle vide il y a peu : ne pas la redemander a chaque recalcul.
+    marqueur_vide <- paste0(tile_file, ".vide")
+    if (product != "nuage" && .lidar_dalle_vide_recente(marqueur_vide)) {
+      n_vides <- n_vides + 1L
+      cli::cli_alert_info(
+        "  Tile {i}/{n_tiles}: vide (d\u00e9j\u00e0 constat\u00e9, pas redemand\u00e9e)"
+      )
+      next
+    }
+
     # Skip if already cached - unless the cached tile is empty (NoData only):
     # it is then purged and fetched again, the IGN may have published it since.
     if (file.exists(tile_file) && file.size(tile_file) > 100) {
@@ -4269,11 +4303,13 @@ download_ign_lidar_hd <- function(bbox,
       # Valide au sens GeoTIFF, mais 100 % NoData : le produit n'est pas
       # encore publie. Un echec comme un 404, et hors du cache.
       unlink(c(result, paste0(result, ".aux.xml")))
+      writeLines(format(Sys.time(), "%Y-%m-%dT%H:%M:%S"), marqueur_vide)
       n_vides <- n_vides + 1L
       cli::cli_alert_warning(
         "  Tile {i}/{n_tiles}: vide (produit non encore publi\u00e9 par l'IGN)"
       )
     } else if (!is.null(result)) {
+      unlink(marqueur_vide)
       downloaded_files <- c(downloaded_files, result)
       cli::cli_alert_success("  Tile {i}/{n_tiles}: downloaded")
     } else {

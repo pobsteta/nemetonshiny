@@ -1,3 +1,15 @@
+# nemetonshiny 2026.10.2.9001 (cycle dev)
+
+## Dalles LiDAR HD vides
+
+- Une dalle MNH, MNT ou MNS que l'IGN sert vide (100 % NoData, produit pas
+  encore publié) laisse un marqueur `<dalle>.vide` dans le cache. Elle n'est
+  plus redemandée pendant 7 jours, ce qui est réglable par
+  `options(nemetonshiny.lidar_vide_jours =)`. Elle est redemandée ensuite.
+  Le marqueur disparaît dès que la dalle arrive pleine.
+- Sur Couchey, les 28 dalles MNH vides prenaient 300 s à chaque calcul. Elles
+  prennent maintenant 1 s au calcul suivant, sans appel à l'IGN.
+
 # nemetonshiny 2026.10.2.9000 (cycle dev)
 
 - Ouverture du cycle de dev après la release 2026.10.2.

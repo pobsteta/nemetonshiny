@@ -180,3 +180,72 @@ test_that("l'accessibilite ignore une mosaique MNT LiDAR vide", {
                  file.path(getwd(), f))
   })
 })
+
+test_that("une dalle vide n'est pas redemandee au recalcul suivant", {
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    appels <- 0L
+    msgs <- character(0)
+    lancer <- function() withCallingHandlers(
+      with_mocked_bindings(
+        query_lidar_wfs = .wfs_une_dalle("http://example.com/0846_6687.tif"),
+        download_lidar_tile = function(url, dest_file) {
+          appels <<- appels + 1L
+          .ecrire_dalle(.dalle_l93(), dest_file)
+        },
+        nemetonshiny:::download_ign_lidar_hd(.bbox_dalle(), cache_dir, product = "mnh")
+      ),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+    expect_null(lancer())
+    marqueur <- file.path(cache_dir, "lidar_mnh", "0846_6687.tif.vide")
+    expect_true(file.exists(marqueur))
+    expect_equal(appels, 1L)
+
+    # Recalcul : pas de nouvel appel reseau, toujours NULL, message explicite
+    expect_null(lancer())
+    expect_equal(appels, 1L)
+    expect_true(any(grepl("pas redemand", msgs)))
+    expect_true(any(grepl("All 1 LiDAR HD MNH tiles are empty", msgs)))
+
+    # Delai depasse : redemandee
+    Sys.setFileTime(marqueur, Sys.time() - 8 * 86400)
+    expect_null(lancer())
+    expect_equal(appels, 2L)
+  })
+})
+
+test_that("le marqueur saute quand la dalle est enfin publiee", {
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    dir.create(file.path(cache_dir, "lidar_mnh"))
+    marqueur <- file.path(cache_dir, "lidar_mnh", "0846_6687.tif.vide")
+    writeLines("2026-10-01T00:00:00", marqueur)
+    withr::local_options(nemetonshiny.lidar_vide_jours = 0)
+    res <- suppressMessages(with_mocked_bindings(
+      query_lidar_wfs = .wfs_une_dalle("http://example.com/0846_6687.tif"),
+      download_lidar_tile = function(url, dest_file)
+        .ecrire_dalle(.dalle_l93(n = 200L, valeur = 18), dest_file),
+      nemetonshiny:::download_ign_lidar_hd(.bbox_dalle(), cache_dir, product = "mnh")
+    ))
+    expect_s4_class(res, "SpatRaster")
+    expect_false(file.exists(marqueur))
+  })
+})
+
+test_that(".lidar_dalle_vide_recente suit l'age du marqueur et l'option", {
+  f <- nemetonshiny:::.lidar_dalle_vide_recente
+  withr::with_tempdir({
+    expect_false(f("absent.vide"))
+    writeLines("x", "d.vide")
+    expect_true(f("d.vide"))
+    expect_false(f("d.vide", maintenant = Sys.time() + 8 * 86400))
+    withr::local_options(nemetonshiny.lidar_vide_jours = 30)
+    expect_true(f("d.vide", maintenant = Sys.time() + 8 * 86400))
+    withr::local_options(nemetonshiny.lidar_vide_jours = "n'importe quoi")
+    expect_true(f("d.vide"))
+  })
+})
