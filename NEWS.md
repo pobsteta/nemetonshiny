@@ -1,3 +1,22 @@
+# nemetonshiny 2026.10.1.9002 (cycle dev)
+
+- **Repli lasR sous le plafond mémoire du calcul** (brief du 2026-10-09,
+  Couchey : 28 dalles COPC, tué deux fois par l'OOM à 12 Go après 16 min).
+  - Le nombre de workers se calcule sur le budget du calcul : le plus petit
+    de `MemAvailable`, de la marge du cgroup où tourne le calcul
+    (`memory.max - memory.current`) et du plafond du cœur
+    (`NEMETON_MEMORY_MAX`, `options(nemeton.memory_max=)`). Ce n'est plus la
+    moitié de la RAM libre.
+  - Un worker est compté à 22 fois la taille de sa dalle COPC (3 Go au
+    moins). Mesure sur Couchey : 7,3 Go pour une dalle de 342 Mo, 15,1 Go à
+    deux workers. Les 3 Go supposés jusqu'ici faisaient lancer deux workers
+    sous 12 Go. À Couchey, le calcul prend maintenant 1 worker de lui-même.
+  - lasR tourne dans son propre scope plafonné (`run_memory_capped()`) :
+    un dépassement ne tue plus tout le calcul. Tué faute de mémoire, il est
+    relancé une fois à 1 worker ; sinon la chaîne passe à Theia puis
+    Open-Canopy. Le journal de l'enfant est dans `data/lasr_child.log`.
+  - Le traitement du nuage de points drone suit la même règle.
+
 # nemetonshiny 2026.10.1.9001 (cycle dev)
 
 - **E2, N3 et R4 ne sont plus vides** (brief du 2026-10-09, Couchey).

@@ -67,16 +67,94 @@ test_that("une ortho IRC d'une autre emprise n'est pas reutilisee", {
   })
 })
 
-test_that("le nombre de workers lasR est borne par la memoire", {
-  local_mocked_bindings(.available_memory_bytes = function() 8e9,
-                        .package = "nemetonshiny")
+test_that("le nombre de workers lasR est borne par le budget du calcul", {
   withr::local_options(nemetonshiny.lasr_ncores = NULL)
   withr::local_envvar(NEMETON_LASR_NCORES = "")
-  expect_lte(nemetonshiny:::.lasr_ncores(), 1L)   # 4 Go / 3 Go -> 1
-  local_mocked_bindings(.available_memory_bytes = function() 64e9,
-                        .package = "nemetonshiny")
-  expect_lte(nemetonshiny:::.lasr_ncores(), 4L)
-  expect_gte(nemetonshiny:::.lasr_ncores(), 1L)
+  f <- nemetonshiny:::.lasr_ncores
+  # Cas du brief : plafond de 12 Go, 28 dalles COPC d'environ 260 Mo -> 1
+  dalles <- rep(260e6, 28)
+  expect_equal(f(dalles, budget = 12 * 1024^3), 1L)
+  # Dalle de 342 Mo mesuree a 7,3 Go : deux workers demandent 15 Go
+  expect_equal(nemetonshiny:::.lasr_octets_par_worker(342e6), 22 * 342e6)
+  expect_equal(f(342e6, budget = 15e9), 1L)
+  expect_lte(f(342e6, budget = 64e9), 4L)
+  # Sans taille connue : 3 Go par worker au minimum
+  expect_equal(nemetonshiny:::.lasr_octets_par_worker(), 3e9)
+  expect_equal(f(budget = 4e9), 1L)
+  # Budget inconnu : borne par les coeurs et 4 seulement
+  expect_lte(f(dalles, budget = NA_real_), 4L)
+  expect_gte(f(dalles, budget = 1), 1L)
   withr::local_options(nemetonshiny.lasr_ncores = 6)
-  expect_equal(nemetonshiny:::.lasr_ncores(), 6L)
+  expect_equal(f(dalles, budget = 1), 6L)
+})
+
+test_that("le budget lasR prend le plus petit de MemAvailable, cgroup et plafond", {
+  local_mocked_bindings(.available_memory_bytes = function() 24e9,
+                        .cgroup_marge_octets = function(...) 9e9,
+                        .package = "nemetonshiny")
+  local_mocked_bindings(.memory_ceiling_bytes = function(...) 12 * 1024^3,
+                        .package = "nemeton")
+  expect_equal(nemetonshiny:::.lasr_budget_octets(), 9e9)
+  local_mocked_bindings(.cgroup_marge_octets = function(...) NA_real_,
+                        .package = "nemetonshiny")
+  expect_equal(nemetonshiny:::.lasr_budget_octets(), 12 * 1024^3)
+})
+
+test_that(".cgroup_marge_octets lit la plus petite marge de la hierarchie", {
+  withr::with_tempdir({
+    dir.create("cg/user.slice/job.scope", recursive = TRUE)
+    writeLines("max", "cg/user.slice/memory.max")
+    writeLines("20000000000", "cg/user.slice/memory.current")
+    writeLines("12884901888", "cg/user.slice/job.scope/memory.max")
+    writeLines("4000000000", "cg/user.slice/job.scope/memory.current")
+    writeLines("0::/user.slice/job.scope", "cgroup")
+    expect_equal(nemetonshiny:::.cgroup_marge_octets("cg", "cgroup"),
+                 12884901888 - 4e9)
+    # Aucun plafond dans la hierarchie : NA
+    writeLines("max", "cg/user.slice/job.scope/memory.max")
+    expect_true(is.na(nemetonshiny:::.cgroup_marge_octets("cg", "cgroup")))
+    expect_true(is.na(nemetonshiny:::.cgroup_marge_octets("cg", "absent")))
+  })
+})
+
+test_that("un lasR tue par la memoire est relance une fois a 1 worker", {
+  withr::local_options(nemetonshiny.lasr_ncores = 3)
+  appels <- integer(0)
+  local_mocked_bindings(
+    run_memory_capped = function(fun, args, ...) {
+      appels <<- c(appels, args$ncores)
+      if (args$ncores > 1L) {
+        stop("\"compute_dtm_chm_from_laz\" ran out of memory and was killed (ceiling: 12G).")
+      }
+      list(chm = "chm.tif")
+    },
+    .package = "nemeton")
+  out <- suppressWarnings(suppressMessages(
+    nemetonshiny:::.lasr_executer(list(laz_dir = "x"), 3e8, budget = 12e9)))
+  expect_equal(appels, c(3L, 1L))
+  expect_equal(out$chm, "chm.tif")
+
+  # Deuxieme echec : NULL, la chaine passe a la source suivante
+  appels <- integer(0)
+  local_mocked_bindings(
+    run_memory_capped = function(fun, args, ...) {
+      appels <<- c(appels, args$ncores)
+      stop("\"compute_dtm_chm_from_laz\" ran out of memory and was killed (ceiling: 12G).")
+    },
+    .package = "nemeton")
+  expect_null(suppressWarnings(suppressMessages(
+    nemetonshiny:::.lasr_executer(list(laz_dir = "x"), 3e8, budget = 12e9))))
+  expect_equal(appels, c(3L, 1L))
+
+  # Une autre erreur n'est pas relancee
+  appels <- integer(0)
+  local_mocked_bindings(
+    run_memory_capped = function(fun, args, ...) {
+      appels <<- c(appels, args$ncores)
+      stop("lasR: fichier illisible")
+    },
+    .package = "nemeton")
+  expect_null(suppressWarnings(suppressMessages(
+    nemetonshiny:::.lasr_executer(list(laz_dir = "x"), 3e8, budget = 12e9))))
+  expect_equal(appels, 3L)
 })

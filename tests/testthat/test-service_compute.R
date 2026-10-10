@@ -5255,11 +5255,12 @@ test_that("download_chm_lasr_from_copc forwards to nemeton::compute_dtm_chm_from
     )
   )
 
+  # lasR tourne dans son propre scope plafonne (brief du 2026-10-09) : l'appel
+  # passe par run_memory_capped(), simule ici sans processus enfant.
+  appel <- NULL
   testthat::local_mocked_bindings(
-    compute_dtm_chm_from_laz = function(laz_dir, dtm_dir = NULL,
-                                        chm_dir = NULL, res = 1,
-                                        aoi = NULL, ncores = 1L,
-                                        overwrite = FALSE, verbose = TRUE) {
+    run_memory_capped = function(fun, args, package, ...) {
+      appel <<- list(fun = fun, package = package, args = args)
       list(chm = chm_path, dtm = dtm_path, source = "lasr")
     },
     .package = "nemeton"
@@ -5270,6 +5271,10 @@ test_that("download_chm_lasr_from_copc forwards to nemeton::compute_dtm_chm_from
   expect_true(inherits(out$chm, "SpatRaster"))
   expect_true(inherits(out$mnt, "SpatRaster"))
   expect_equal(out$source, "lasr")
+  expect_equal(appel$fun, "compute_dtm_chm_from_laz")
+  expect_equal(appel$package, "nemeton")
+  expect_equal(appel$args$laz_dir, laz_dir)
+  expect_gte(appel$args$ncores, 1L)
 })
 
 test_that("compute_single_indicator delegates value extraction to nemeton (v0.108.0)", {
