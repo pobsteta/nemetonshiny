@@ -14,6 +14,21 @@ the concise, categorised trail.
 
 ## \[Unreleased\]
 
+## \[2026.10.2\] - 2026-10-10
+
+### Fixed
+
+- lasR fallback sized on the job’s budget: the smallest of
+  `MemAvailable`, the cgroup headroom and the core’s memory ceiling, at
+  22 times the COPC tile size per worker (measured: 7.3 GB for a 342 MB
+  tile). lasR runs in its own memory-capped scope; an out-of-memory kill
+  is retried once with one worker, then the CHM chain moves on to Theia
+  and Open-Canopy.
+- E2 and N3 were NA on every project: the app now hands them `E1`, and
+  `N1`, `N2`, `L1`, `B3`. R4 receives the retained CHM (lasR, Theia,
+  Open-Canopy) as its canopy height model. P2 without a stand age says
+  so in the log.
+
 ## \[2026.10.1\] - 2026-10-09
 
 ### Added

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -2383,7 +2383,7 @@ Current Memory Usage: 17.1G</code></pre>
 <li>
 <strong>CRS WMS NDP 0 → EPSG:4326 à la source</strong> : le DEM BD ALTI et l’IRC servis par le WMS IGN (datum « unknown ») se voient réassigner l’autorité 4326 demandée ; le NDVI dérivé en hérite — plus de « CRS do not match » sur C2/R1/R2/R3/W3.</li>
 <li>
-<strong>Theia</strong> : retrait de l’appel déprécié <code><a href="https://pobsteta.github.io/nemeton/reference/theia_configure_s3.html" class="external-link">nemeton::theia_configure_s3()</a></code> (le cœur signe en interne via la gateway STAC, R pur) ; commentaires <code>reticulate</code> périmés mis à jour. <code>reticulate</code> reste requis ailleurs (FORDEAD/RECONFORT).</li>
+<strong>Theia</strong> : retrait de l’appel déprécié <code>nemeton::theia_configure_s3()</code> (le cœur signe en interne via la gateway STAC, R pur) ; commentaires <code>reticulate</code> périmés mis à jour. <code>reticulate</code> reste requis ailleurs (FORDEAD/RECONFORT).</li>
 </ul></div>
 <div class="section level3">
 <h3 id="changed--regénération--feedback-des-boutons-async-moteur-réel--auto-e-obs">Changed — reGénération : feedback des boutons async (moteur réel &amp; Auto E-OBS)<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--feedback-des-boutons-async-moteur-r%C3%A9el--auto-e-obs"></a></h3>
@@ -5803,7 +5803,7 @@ ERROR: relation "monitoring_zone" does not exist</code></pre>
 <h3 id="hors-scope-v1">Hors scope (V1)<a class="anchor" aria-label="anchor" href="#hors-scope-v1"></a></h3>
 <ul><li>Auto-call de <code>compute_fast_alert_mask()</code> à chaque ingestion FAST — V2 potentielle. Pour l’instant déclenché par le bouton Générer côté Validation.</li>
 <li>Suivi historique des plans (UI dédiée). La trace est en place via <code>generated_at</code> + <code>source_run_id</code> dans la couche, mais pas encore exploitée visuellement.</li>
-<li>Export QField direct mobile (V1 fournit le <code>.qgz</code> QGIS Desktop ; <code><a href="https://pobsteta.github.io/nemeton/reference/create_qgis_project.html" class="external-link">nemeton::create_qfield_project()</a></code> reste disponible pour V2).</li>
+<li>Export QField direct mobile (V1 fournit le <code>.qgz</code> QGIS Desktop ; <code>nemeton::create_qfield_project()</code> reste disponible pour V2).</li>
 </ul></div>
 </div>
 <div class="section level1">
@@ -7864,7 +7864,7 @@ Cohérent avec les libellés <code>download_pdf</code> (rapport Synthèse) et <c
 <div class="section level3">
 <h3 id="new-feature--field-sampling--qfield-export-e5a">New feature — Field sampling / QField export (E5.a)<a class="anchor" aria-label="anchor" href="#new-feature--field-sampling--qfield-export-e5a"></a></h3>
 <ul><li>
-<strong><code>R/mod_sampling.R</code></strong> — new “Terrain” tab: given the current project’s study area (union of <code>indicators_sf</code> polygons), the user sets <code>n_base</code> / <code>n_over</code> / seed / biogeographic region, clicks <em>Générer</em>, and previews the sample plots on a leaflet map. A <em>Télécharger le projet QField (.qgz)</em> button produces a QField-ready project via <code><a href="https://pobsteta.github.io/nemeton/reference/create_qgis_project.html" class="external-link">nemeton::create_qfield_project()</a></code> (placettes + empty arbres layer + pre-configured forms).</li>
+<strong><code>R/mod_sampling.R</code></strong> — new “Terrain” tab: given the current project’s study area (union of <code>indicators_sf</code> polygons), the user sets <code>n_base</code> / <code>n_over</code> / seed / biogeographic region, clicks <em>Générer</em>, and previews the sample plots on a leaflet map. A <em>Télécharger le projet QField (.qgz)</em> button produces a QField-ready project via <code>nemeton::create_qfield_project()</code> (placettes + empty arbres layer + pre-configured forms).</li>
 <li>First iteration uses a spatial random draw (<code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample</a></code>). The full stratified GRTS + TSP pipeline from the 09-sampling tutorial will be lifted to <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> in a follow-up.</li>
 <li>
 <code>DESCRIPTION</code> now requires <code>nemeton (&gt;= 0.18.0.9000)</code> for <code>create_qfield_project()</code>.</li>

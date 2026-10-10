@@ -5156,10 +5156,9 @@ toute la variabilité vient du sol et du LAI qu’on lui passe.
   l’autorité 4326 demandée ; le NDVI dérivé en hérite — plus de « CRS do
   not match » sur C2/R1/R2/R3/W3.
 - **Theia** : retrait de l’appel déprécié
-  [`nemeton::theia_configure_s3()`](https://pobsteta.github.io/nemeton/reference/theia_configure_s3.html)
-  (le cœur signe en interne via la gateway STAC, R pur) ; commentaires
-  `reticulate` périmés mis à jour. `reticulate` reste requis ailleurs
-  (FORDEAD/RECONFORT).
+  `nemeton::theia_configure_s3()` (le cœur signe en interne via la
+  gateway STAC, R pur) ; commentaires `reticulate` périmés mis à jour.
+  `reticulate` reste requis ailleurs (FORDEAD/RECONFORT).
 
 ### Changed — reGénération : feedback des boutons async (moteur réel & Auto E-OBS)
 
@@ -12039,8 +12038,7 @@ Suite full green : **6476 PASS / 0 FAIL** (+63 nouveaux).
   `generated_at` + `source_run_id` dans la couche, mais pas encore
   exploitée visuellement.
 - Export QField direct mobile (V1 fournit le `.qgz` QGIS Desktop ;
-  [`nemeton::create_qfield_project()`](https://pobsteta.github.io/nemeton/reference/create_qgis_project.html)
-  reste disponible pour V2).
+  `nemeton::create_qfield_project()` reste disponible pour V2).
 
 # nemetonshiny 0.42.1 (2026-05-25)
 
@@ -16345,9 +16343,8 @@ The Monitoring tab is now a two-mode forest health workstation.
   sets `n_base` / `n_over` / seed / biogeographic region, clicks
   *Générer*, and previews the sample plots on a leaflet map. A
   *Télécharger le projet QField (.qgz)* button produces a QField-ready
-  project via
-  [`nemeton::create_qfield_project()`](https://pobsteta.github.io/nemeton/reference/create_qgis_project.html)
-  (placettes + empty arbres layer + pre-configured forms).
+  project via `nemeton::create_qfield_project()` (placettes + empty
+  arbres layer + pre-configured forms).
 - First iteration uses a spatial random draw
   ([`sf::st_sample`](https://r-spatial.github.io/sf/reference/st_sample.html)).
   The full stratified GRTS + TSP pipeline from the 09-sampling tutorial

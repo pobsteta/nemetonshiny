@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,29 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.2" id="nemetonshiny-2026102-2026-10-10">nemetonshiny 2026.10.2 (2026-10-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026102-2026-10-10"></a></h2>
+<p>Changements cassants : aucun. Testée contre nemeton 2026.10.2, qui retire <code>create_qfield_project()</code> et <code>theia_configure_s3()</code> : l’app ne les appelle plus depuis la 2.0.1.</p>
+<div class="section level3">
+<h3 id="lasr-et-la-mémoire-2026-10-2">lasR et la mémoire<a class="anchor" aria-label="anchor" href="#lasr-et-la-m%C3%A9moire-2026-10-2"></a></h3>
+<ul><li>
+<strong>Repli lasR sous le plafond mémoire du calcul</strong> (brief du 2026-10-09, Couchey : 28 dalles COPC, tué deux fois par l’OOM à 12 Go après 16 min).
+<ul><li>Le nombre de workers se calcule sur le budget du calcul : le plus petit de <code>MemAvailable</code>, de la marge du cgroup où tourne le calcul (<code>memory.max - memory.current</code>) et du plafond du cœur (<code>NEMETON_MEMORY_MAX</code>, <code>options(nemeton.memory_max=)</code>). Ce n’est plus la moitié de la RAM libre.</li>
+<li>Un worker est compté à 22 fois la taille de sa dalle COPC (3 Go au moins). Mesure sur Couchey : 7,3 Go pour une dalle de 342 Mo, 15,1 Go à deux workers. Les 3 Go supposés jusqu’ici faisaient lancer deux workers sous 12 Go. À Couchey, le calcul prend maintenant 1 worker de lui-même.</li>
+<li>lasR tourne dans son propre scope plafonné (<code>run_memory_capped()</code>) : un dépassement ne tue plus tout le calcul. Tué faute de mémoire, il est relancé une fois à 1 worker ; sinon la chaîne passe à Theia puis Open-Canopy. Le journal de l’enfant est dans <code>data/lasr_child.log</code>.</li>
+<li>Le traitement du nuage de points drone suit la même règle.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="indicateurs-2026-10-2">Indicateurs<a class="anchor" aria-label="anchor" href="#indicateurs-2026-10-2"></a></h3>
+<ul><li>
+<strong>E2, N3 et R4 ne sont plus vides</strong> (brief du 2026-10-09, Couchey).
+<ul><li>E2 et N3 étaient NA dans <strong>tous</strong> les projets. Le cœur lit <code>E1</code> (E2), et <code>N1</code>, <code>N2</code>, <code>L1</code>, <code>B3</code> (N3) dans les unités, et l’app ne les lui passait pas. Elle les transmet maintenant depuis les indicateurs calculés avant, comme elle le faisait déjà pour T2.</li>
+<li>R4 ne lisait que le MNH LiDAR HD publié (<code>lidar_mnh</code>). Il reçoit maintenant le CHM retenu, quelle qu’en soit la source : lasR, Theia ou Open-Canopy. Le NDP et le statut de C1 lisent toujours le vrai MNH.</li>
+<li>P2 sans âge du peuplement : le journal le dit (« stand age unknown »), au lieu du seul « Calculated » du cœur. La vue l’expliquait déjà.</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.1" id="nemetonshiny-2026101-2026-10-09">nemetonshiny 2026.10.1 (2026-10-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026101-2026-10-09"></a></h2>
 <p>Première release au <strong>versionnage calendaire <code>AAAA.M.N</code></strong>, comme le cœur <code>nemeton</code> : la version dit l’année et le mois de la release, <code>N</code> son rang dans le mois. Le cycle de dev reste en <code>.900x</code>, et <code>version-consistency</code> vérifie le format et sa concordance avec la date de cette entrée. Elle succède à la 2.0.1.</p>

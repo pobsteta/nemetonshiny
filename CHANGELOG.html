@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,14 @@
 <h2 id="unreleased">[Unreleased]<a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
 </div>
 <div class="section level2">
+<h2 id="id_2026102---2026-10-10">[2026.10.2] - 2026-10-10<a class="anchor" aria-label="anchor" href="#id_2026102---2026-10-10"></a></h2>
+<div class="section level3">
+<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<ul><li>lasR fallback sized on the job’s budget: the smallest of <code>MemAvailable</code>, the cgroup headroom and the core’s memory ceiling, at 22 times the COPC tile size per worker (measured: 7.3 GB for a 342 MB tile). lasR runs in its own memory-capped scope; an out-of-memory kill is retried once with one worker, then the CHM chain moves on to Theia and Open-Canopy.</li>
+<li>E2 and N3 were NA on every project: the app now hands them <code>E1</code>, and <code>N1</code>, <code>N2</code>, <code>L1</code>, <code>B3</code>. R4 receives the retained CHM (lasR, Theia, Open-Canopy) as its canopy height model. P2 without a stand age says so in the log.</li>
+</ul></div>
+</div>
+<div class="section level2">
 <h2 id="id_2026101---2026-10-09">[2026.10.1] - 2026-10-09<a class="anchor" aria-label="anchor" href="#id_2026101---2026-10-09"></a></h2>
 <div class="section level3">
 <h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
@@ -55,14 +63,14 @@
 <code>irc.tif</code>, <code>ndvi_s2_v2.tif</code> and <code>spectral/&lt;scene&gt;/</code> caches are checked against the project footprint (geometry key); an Open-Canopy CHM that no longer covers the parcels is set aside and recomputed.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
 <ul><li>lasR fallback capped in memory: at most 4 workers, one per 3 GB of half the available RAM (<code>nemetonshiny.lasr_ncores</code> / <code>NEMETON_LASR_NCORES</code>).</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_201---2026-10-09">[2.0.1] - 2026-10-09<a class="anchor" aria-label="anchor" href="#id_201---2026-10-09"></a></h2>
 <div class="section level3">
-<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
+<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
 <ul><li>IGN LiDAR HD MNH/MNT tiles served as 100 % NoData (point cloud published before the derived rasters) are now rejected like a 404 and purged from the cache. A cached empty mosaic is discarded, and a mosaic covering less than 90 % of the area is not used. A final guard rejects any CHM or DTM with no valid pixel over the project, whatever its source. The empty DTM no longer replaces BD ALTI, and lasR takes over. Accessibility, road network and regeneration (R3) skip an empty LiDAR DTM mosaic.</li>
 </ul></div>
 <div class="section level3">
@@ -98,7 +106,7 @@
 <ul><li>A discarded private parcel also shows its ONF cover from 1 %.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
+<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
 <ul><li>ONF notifications use the French decimal comma.</li>
 </ul></div>
 </div>
@@ -117,7 +125,7 @@
 <li>Core floor raised to <code>nemeton (&gt;= 1.2.0)</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
+<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
 <ul><li>reGénération: without a CDS key, the BILJOU <code>lai_max</code> comes from the LiDAR point cloud (cached) instead of the stand-type default.</li>
 <li>MCP: re-tiling tools now report the indicators as stale.</li>
 </ul></div>
@@ -143,7 +151,7 @@
 <li>Application guide: Atlas tab (Sélection / Synthèse sub-tabs) and Suivi sanitaire sub-tabs.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
+<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
 <ul><li>A bivariate E-OBS context cache built on another N × N scheme (legacy 3 × 3) is recomputed instead of served (brief 034 bivariate-cache, bug A).</li>
 </ul></div>
 <div class="section level3">
@@ -176,7 +184,7 @@
 <li>« Suivi sanitaire »: the « Mode de suivi » radio is replaced by three sub-tabs, FAST, FORDEAD and RECONFORT (same <code>mode</code> input and values).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
+<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
 <ul><li>LiDAR HD tiles are listed through the IGN <code>IGNF_LIDAR-HD_METADONNEE:metadata</code> WFS layer; the per-product layers now answer 404.</li>
 </ul></div>
 </div>
@@ -234,7 +242,7 @@
 <ul><li>Signal ” page prete ” : <code>postMessage</code> a la page qui a ouvert l’app (VICTOR), <code>ready</code> apres application du lien profond et repos stable, <code>invalid</code> pour un lien refuse ; origine <code>NEMETON_VICTOR_ORIGIN</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
+<h3 id="fixed-7">Fixed<a class="anchor" aria-label="anchor" href="#fixed-7"></a></h3>
 <ul><li>Fermer un onglet pendant la restauration d’un projet arretait tout le serveur (shiny 1.14) : rappels <code>later</code> via <code>.later_sur()</code>.</li>
 <li>Mode dev <code>load_all()</code> : les patches de test (<code>future_promise</code> rendant NULL, <code>testServer</code>) ne s’appliquent plus que sous testthat.</li>
 </ul></div>
@@ -242,7 +250,7 @@
 <div class="section level2">
 <h2 id="id_01560---2026-10-05">[0.156.0] - 2026-10-05<a class="anchor" aria-label="anchor" href="#id_01560---2026-10-05"></a></h2>
 <div class="section level3">
-<h3 id="fixed-7">Fixed<a class="anchor" aria-label="anchor" href="#fixed-7"></a></h3>
+<h3 id="fixed-8">Fixed<a class="anchor" aria-label="anchor" href="#fixed-8"></a></h3>
 <ul><li>Audit 1.0, lots 1 a 8 : fichiers de cles owner-only, TLS impose et identifiants masques pour la base de suivi, messages ntfy assainis.</li>
 <li>Lecture seule respectee partout (commentaires, desserte, plan d’actions) et recalculee au changement d’authentification ; audit signe par l’utilisateur.</li>
 <li>Langue par session ; analyse reGeneration, appels LLM et battement du verrou hors de la boucle Shiny ; delais Python et chien de garde de la chaine.</li>
@@ -273,7 +281,7 @@
 <li>Libelles FR/EN de <code>r1_status</code> et des motifs d’import des validations.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-8">Fixed<a class="anchor" aria-label="anchor" href="#fixed-8"></a></h3>
+<h3 id="fixed-9">Fixed<a class="anchor" aria-label="anchor" href="#fixed-9"></a></h3>
 <ul><li>T2 n’est plus NA : N2 calcule avant T2 et transmis, T1 en repli.</li>
 <li>Bandeau d’indicateur : premier statut traduit retenu (repli R1 visible).</li>
 <li>
@@ -297,7 +305,7 @@
 <li>Plancher <code>Imports: nemeton (&gt;= 0.212.0)</code> (borne E1/E2 a 2,64).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-9">Fixed<a class="anchor" aria-label="anchor" href="#fixed-9"></a></h3>
+<h3 id="fixed-10">Fixed<a class="anchor" aria-label="anchor" href="#fixed-10"></a></h3>
 <ul><li>Les indicateurs invalides sont renommes (<code>indicators.perime-v&lt;n&gt;-&lt;date&gt;.parquet</code>, deux generations), plus jamais supprimes : un simple chargement d’un projet au sens perime les detruisait.</li>
 <li>Un projet neuf porte le marqueur de sens courant : cree puis calcule hors interface, il n’est plus invalide a sa premiere ouverture.</li>
 </ul></div>
@@ -327,7 +335,7 @@
 <div class="section level2">
 <h2 id="id_01525---2026-10-03">[0.152.5] - 2026-10-03<a class="anchor" aria-label="anchor" href="#id_01525---2026-10-03"></a></h2>
 <div class="section level3">
-<h3 id="fixed-10">Fixed<a class="anchor" aria-label="anchor" href="#fixed-10"></a></h3>
+<h3 id="fixed-11">Fixed<a class="anchor" aria-label="anchor" href="#fixed-11"></a></h3>
 <ul><li>Plus de NDVI aleatoire en cache quand le WMS IGN echoue (un ancien NDVI synthetique est detecte et jete) ; plus de valeurs aleatoires pour un indicateur inconnu du coeur.</li>
 <li>Plans de validation : union des colonnes dans <code>samples.gpkg</code> (plus de colonnes perdues) ; plantage <code>.format_m3()</code> sur tige non cubee ; lecture seule a tort sans base de donnees.</li>
 <li>Ecritures atomiques des fichiers de projet ; UGF illisibles et plan d’actions illisible sauvegardes avant remplacement ; synchronisation PostGIS transactionnelle.</li>
@@ -353,14 +361,14 @@
 <div class="section level2">
 <h2 id="id_01523---2026-10-02">[0.152.3] - 2026-10-02<a class="anchor" aria-label="anchor" href="#id_01523---2026-10-02"></a></h2>
 <div class="section level3">
-<h3 id="fixed-11">Fixed<a class="anchor" aria-label="anchor" href="#fixed-11"></a></h3>
+<h3 id="fixed-12">Fixed<a class="anchor" aria-label="anchor" href="#fixed-12"></a></h3>
 <ul><li>Bandeau d’invalidation des indicateurs : un projet venu de la version de sens 1 est prevenu que la famille Risques change aussi (inversion v2, spec 048), et pas seulement Paysage, Dynamique temporelle et Energie.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_01522---2026-10-02">[0.152.2] - 2026-10-02<a class="anchor" aria-label="anchor" href="#id_01522---2026-10-02"></a></h2>
 <div class="section level3">
-<h3 id="fixed-12">Fixed<a class="anchor" aria-label="anchor" href="#fixed-12"></a></h3>
+<h3 id="fixed-13">Fixed<a class="anchor" aria-label="anchor" href="#fixed-13"></a></h3>
 <ul><li>Houppiers : chaque calcul consigne <code>metadata$houppiers</code> (statut, nombre, date, detail) ; une erreur de segmentation n’est plus confondue avec un resultat vide ; l’export Marculus signale en avertissement une couche houppiers absente (avec la raison) ou une desserte absente.</li>
 </ul></div>
 <div class="section level3">
@@ -375,7 +383,7 @@
 <ul><li>Production du massif (spec 054 lot 5-bis, <code>nemeton &gt;= 0.206.0</code>) : covariables FORMS-T (Theia, 10 m) et MNT du projet passees a <code>ifn_production_domaines()</code> pour la prevision hybride ; le panneau nomme la prevision (SER ou SER corrigee par FORMS-T) et signale <code>hors_calibrage</code> et le massif sans placette (<code>nature = "prediction"</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-13">Fixed<a class="anchor" aria-label="anchor" href="#fixed-13"></a></h3>
+<h3 id="fixed-14">Fixed<a class="anchor" aria-label="anchor" href="#fixed-14"></a></h3>
 <ul><li>P2 en mode CHM ne sature plus a 100/100 (ecart n. 17, <code>nemeton &gt;= 0.207.0</code>) : le statut <code>.p2_status</code> est passe a <code>normalize_indicator()</code> (plafond 40 m) ; le statut d’un calcul precedent est retire a chaque recalcul.</li>
 </ul></div>
 <div class="section level3">
@@ -427,7 +435,7 @@
 <div class="section level2">
 <h2 id="id_01511---2026-09-25">[0.151.1] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01511---2026-09-25"></a></h2>
 <div class="section level3">
-<h3 id="fixed-14">Fixed<a class="anchor" aria-label="anchor" href="#fixed-14"></a></h3>
+<h3 id="fixed-15">Fixed<a class="anchor" aria-label="anchor" href="#fixed-15"></a></h3>
 <ul><li>Import Marculus : une tige reimportee avec ses volumes (CSV au format 3 apres un format 2, meme <code>uuid</code> et meme <code>modifie</code>) remplace desormais la version stockee sans volume. Il suffit de reimporter les fichiers pour que les tiges recuperent leurs volumes.</li>
 </ul></div>
 </div>
@@ -442,7 +450,7 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-15">Fixed<a class="anchor" aria-label="anchor" href="#fixed-15"></a></h3>
+<h3 id="fixed-16">Fixed<a class="anchor" aria-label="anchor" href="#fixed-16"></a></h3>
 <ul><li>Les widgets DT et leaflet places dans une fenetre restaient vides : <code>custom.js</code> relaie maintenant <code>shown.bs.modal</code> vers <code>shown.htmlwidgets</code>.</li>
 </ul></div>
 </div>
@@ -464,14 +472,14 @@
 <li>La synthese d’import prend la forme d’une feuille (une ligne par essence, une colonne par classe, des totaux) dans une fenetre defilante. Le bilan de l’import s’y affiche, au lieu d’un toast qui masquait « Fermer ».</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-16">Fixed<a class="anchor" aria-label="anchor" href="#fixed-16"></a></h3>
+<h3 id="fixed-17">Fixed<a class="anchor" aria-label="anchor" href="#fixed-17"></a></h3>
 <ul><li>Import Marculus : un fichier vide (0 octet) est signale comme vide, et non comme « illisible ». Le message d’erreur cite aussi le CSV au format 2, et les messages donnent le nom d’origine des fichiers.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_01483---2026-09-25">[0.148.3] - 2026-09-25<a class="anchor" aria-label="anchor" href="#id_01483---2026-09-25"></a></h2>
 <div class="section level3">
-<h3 id="fixed-17">Fixed<a class="anchor" aria-label="anchor" href="#fixed-17"></a></h3>
+<h3 id="fixed-18">Fixed<a class="anchor" aria-label="anchor" href="#fixed-18"></a></h3>
 <ul><li>Import CSV Marculus (<code>FormatCsv;2</code>, Marculus v0.48.0) : la colonne <code>QualiteFix</code> porte le libelle (« RTK fixe »), alors que le <code>.marsync</code> porte le nom de l’enum (<code>RTK_FIXE</code>). Le libelle est desormais ramene au nom, pour qu’une meme tige garde une seule forme quel que soit le fichier.</li>
 </ul></div>
 </div>
@@ -514,14 +522,14 @@
 <div class="section level2">
 <h2 id="id_01462---2026-09-24">[0.146.2] - 2026-09-24<a class="anchor" aria-label="anchor" href="#id_01462---2026-09-24"></a></h2>
 <div class="section level3">
-<h3 id="fixed-18">Fixed<a class="anchor" aria-label="anchor" href="#fixed-18"></a></h3>
+<h3 id="fixed-19">Fixed<a class="anchor" aria-label="anchor" href="#fixed-19"></a></h3>
 <ul><li>Marculus ne proposait jamais le fond « Ortho ». GDAL (<code>GoogleMapsCompatible</code>) declare des matrices de tuiles vides pour les zooms 0 a 12 ; la reprojection NGA de Marculus leve une <code>NullPointerException</code> sur une matrice vide. Ces matrices sont maintenant retirees a la construction du fond, et les fonds deja en cache sont repares a l’export. Reproduit puis verifie avec la bibliotheque NGA de bureau (<code>geopackage-core</code> 6.6.7).</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_01461---2026-09-24">[0.146.1] - 2026-09-24<a class="anchor" aria-label="anchor" href="#id_01461---2026-09-24"></a></h2>
 <div class="section level3">
-<h3 id="fixed-19">Fixed<a class="anchor" aria-label="anchor" href="#fixed-19"></a></h3>
+<h3 id="fixed-20">Fixed<a class="anchor" aria-label="anchor" href="#fixed-20"></a></h3>
 <ul><li>« Telecharger vers Marculus » ne telechargeait rien en 0.146.0 : le <code>downloadButton</code> masque, que le serveur clique apres la preparation des fonds ortho, n’etait pas rendu par Shiny (sortie invisible suspendue : <code>href</code> vide). Il est desormais declare <code>suspendWhenHidden = FALSE</code> ; le correctif est verifie sous Chrome headless.</li>
 <li>Export Marculus : deux actions du meme type sur la meme UGF partageaient leur nom de contexte et leur fichier (20 contextes pour 17 GeoPackages sur « Reconfort »). Les doublons prennent leur annee, puis un rang.</li>
 </ul></div>
@@ -533,7 +541,7 @@
 <ul><li>Export Marculus : chaque GeoPackage de chantier emporte le fond orthophoto IGN 20 cm (<code>HR.ORTHOIMAGERY.ORTHOPHOTOS</code>, zoom 19 Web Mercator avec sa pyramide), sur les parcelles de l’UGF + 50 m. Marculus propose alors OSM -&gt; Satellite -&gt; Ortho. Les fonds manquants sont prepares en tache de fond (<code>ExtendedTask</code>) au clic, mis en cache par UGF (<code>cache/layers/ortho_marculus/</code>), puis le telechargement se declenche seul. « Reconfort » : 16 fonds en 239 s la premiere fois, export 13 s, zip 111 Mo.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-20">Fixed<a class="anchor" aria-label="anchor" href="#fixed-20"></a></h3>
+<h3 id="fixed-21">Fixed<a class="anchor" aria-label="anchor" href="#fixed-21"></a></h3>
 <ul><li>Export Marculus : <code>dateMartelage</code> etait au 1er janvier de l’an 1 a 13, car <code>annee_cible</code> (un decalage) etait lu comme une annee civile. Les contextes portent maintenant l’annee reelle.</li>
 </ul></div>
 </div>
@@ -541,7 +549,7 @@
 <h2 id="id_01450---2026-09-24">[0.145.0] - 2026-09-24<a class="anchor" aria-label="anchor" href="#id_01450---2026-09-24"></a></h2>
 <p>Jalon mineur qui clot le lot « Plan d’actions + Marculus » des 0.144.1 a 0.144.2 : suppression des actions selectionnees, houppiers de nouveau produits et exportes (cœur 0.199.2), couche RECONFORT « Probabilite d’atteinte », et export Marculus 14 fois plus rapide.</p>
 <div class="section level3">
-<h3 id="fixed-21">Fixed<a class="anchor" aria-label="anchor" href="#fixed-21"></a></h3>
+<h3 id="fixed-22">Fixed<a class="anchor" aria-label="anchor" href="#fixed-22"></a></h3>
 <ul><li>« Telecharger vers Marculus » : 133 s -&gt; 9,4 s sur « Reconfort », pour un contenu identique. Repartition des houppiers par chantier en une passe GEOS plane (81 s -&gt; 2,3 s), GeoPackages temporaires ecrits sans synchronisation SQLite (31,2 s -&gt; 1,4 s), <code>zip -6</code> au lieu de <code>-9</code> (6,5 s -&gt; 1,7 s).</li>
 </ul></div>
 </div>
@@ -561,7 +569,7 @@
 <ul><li>Plan d’actions : bouton « Supprimer la selection » sous « Ajouter une action » (<code>btn-outline-danger</code>), avec une modale de confirmation (<code>btn-danger</code>) qui liste les actions visees. Chaque suppression est tracee dans l’audit, via <code>delete_actions_from_plan()</code>, et la garde de lecture seule s’applique a l’ouverture ET a la confirmation.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-22">Fixed<a class="anchor" aria-label="anchor" href="#fixed-22"></a></h3>
+<h3 id="fixed-23">Fixed<a class="anchor" aria-label="anchor" href="#fixed-23"></a></h3>
 <ul><li>Export Marculus : la couche <code>houppier</code> manquait depuis fin aout, car la segmentation echouait a chaque calcul. L’emprise est maintenant reparee (<code>st_make_valid()</code> en 2154 avant l’union) et <code>segment_houppiers()</code> est appele sans emprise dans un processus R neuf (<code>callr</code>). L’emprise est appliquee ensuite, cote app, par selection. « Reconfort » : 85 300 houppiers, et les 11 GeoPackages portent <code>houppier</code>. Il faut recalculer les indicateurs pour regenerer le cache.</li>
 </ul></div>
 </div>
@@ -569,7 +577,7 @@
 <h2 id="id_01440---2026-09-23">[0.144.0] - 2026-09-23<a class="anchor" aria-label="anchor" href="#id_01440---2026-09-23"></a></h2>
 <p>Jalon mineur qui regroupe le lot « Suivi sanitaire et CI » des 0.143.29 a 0.143.31 : plus de recalcul au retour sur l’onglet, stack d’indice de la Carte FAST en cache disque (cœur 0.198.0), CI entierement verte (<code>tests</code>, <code>R-CMD-check</code> et <code>coverage</code>) pour la premiere fois depuis le 2026-09-14.</p>
 <div class="section level3">
-<h3 id="fixed-23">Fixed<a class="anchor" aria-label="anchor" href="#fixed-23"></a></h3>
+<h3 id="fixed-24">Fixed<a class="anchor" aria-label="anchor" href="#fixed-24"></a></h3>
 <ul><li>Sauvegarde en base : la note S4 « methode avec la signature ‘DBIObject#sf’ choisie pour dbDataType » ne s’affiche plus en console. <code>sf</code> et <code>RPostgres</code> definissent tous deux cette methode ; le choix est correct. Le <code><a href="https://r-spatial.github.io/sf/reference/st_write.html" class="external-link">sf::st_write()</a></code> de <code>db_save_parcels()</code> est entoure de <code><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages()</a></code>.</li>
 </ul></div>
 </div>
@@ -582,14 +590,14 @@
 <li>Plancher <code>Imports: nemeton (&gt;= 0.198.0)</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-24">Fixed<a class="anchor" aria-label="anchor" href="#fixed-24"></a></h3>
+<h3 id="fixed-25">Fixed<a class="anchor" aria-label="anchor" href="#fixed-25"></a></h3>
 <ul><li>CI <code>coverage</code> : sous covr, <code>../../R</code> est le <code>R/</code> du paquet installe (<code>.rdb</code> seul) ; <code>test-app_ui</code> et <code>test-service_python</code> sautent desormais quand aucune source <code>.R</code> n’est trouvee, au lieu de tester l’existence du dossier.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_014330---2026-09-23">[0.143.30] - 2026-09-23<a class="anchor" aria-label="anchor" href="#id_014330---2026-09-23"></a></h2>
 <div class="section level3">
-<h3 id="fixed-25">Fixed<a class="anchor" aria-label="anchor" href="#fixed-25"></a></h3>
+<h3 id="fixed-26">Fixed<a class="anchor" aria-label="anchor" href="#fixed-26"></a></h3>
 <ul><li>CI <code>R-CMD-check</code> rouge depuis <code>0fc7a5e1</code> (2026-09-14) : cinq tests lisaient les sources <code>R/*.R</code>, absentes du paquet installe sous <code>R CMD check</code> (<code>test-mod_ug</code>, <code>test-service_pipeline</code>, <code>test-service_tour</code>, <code>test-app_ui</code>, <code>test-service_python</code>). Garde <code>skip_if_not(file.exists(...))</code> du repo.</li>
 <li>NEWS 0.143.29 : le rouge CI datait du 14 septembre, pas du plancher cœur 0.197.0.</li>
 </ul></div>
@@ -601,7 +609,7 @@
 <div class="section level2">
 <h2 id="id_014329---2026-09-23">[0.143.29] - 2026-09-23<a class="anchor" aria-label="anchor" href="#id_014329---2026-09-23"></a></h2>
 <div class="section level3">
-<h3 id="fixed-26">Fixed<a class="anchor" aria-label="anchor" href="#fixed-26"></a></h3>
+<h3 id="fixed-27">Fixed<a class="anchor" aria-label="anchor" href="#fixed-27"></a></h3>
 <ul><li>Suivi sanitaire : revenir sur l’onglet relancait les deux calculs (Carte FAST ~9 s bloquantes via <code>build_index_stack()</code>, alertes FAST + toast + repeint). <code>mod_monitoring_fast_alerts</code> et <code>mod_monitoring_pixel_map</code> memorisent la signature des entrees du dernier calcul reussi ; meme signature = aucun recalcul, un echec est retente.</li>
 <li>Plan d’actions : la Carte des actions montrait le monde entier apres un changement de projet fait depuis un autre onglet (carte masquee, dimensions nulles). Le cadrage est differe puis applique apres <code>invalidateSize</code> a l’arrivee sur l’onglet.</li>
 <li>CI <code>R-CMD-check</code> : sept tests de <code>normalize_indicator</code> verifiaient encore les anciennes bornes E1/E2, alignees sur 1,32 par le cœur v0.197.0.</li>
@@ -614,7 +622,7 @@
 <div class="section level2">
 <h2 id="id_014328---2026-09-19">[0.143.28] - 2026-09-19<a class="anchor" aria-label="anchor" href="#id_014328---2026-09-19"></a></h2>
 <div class="section level3">
-<h3 id="fixed-27">Fixed<a class="anchor" aria-label="anchor" href="#fixed-27"></a></h3>
+<h3 id="fixed-28">Fixed<a class="anchor" aria-label="anchor" href="#fixed-28"></a></h3>
 <ul><li>Tour guide : l’etape « Plan d’action » tremblait sans fin. La sidebar ancree fait 793 px de haut dans une fenetre de 900 : driver.js, faute de place, poussait son popover hors de l’ecran, la page oscillait entre avec et sans barre de defilement, et chaque bascule reveillait le <code>ResizeObserver</code> de bslib qui redispatchait un <code>resize</code> que driver.js ecoutait pour se recadrer (326 evenements en 6,4 s). L’etape est desormais ancree sur la carte « Tableau des actions » avec <code>position = "left"</code> : 0 evenement, geometrie stable, popover entierement visible.</li>
 </ul></div>
 <div class="section level3">
@@ -626,7 +634,7 @@
 <div class="section level2">
 <h2 id="id_014327---2026-09-19">[0.143.27] - 2026-09-19<a class="anchor" aria-label="anchor" href="#id_014327---2026-09-19"></a></h2>
 <div class="section level3">
-<h3 id="fixed-28">Fixed<a class="anchor" aria-label="anchor" href="#fixed-28"></a></h3>
+<h3 id="fixed-29">Fixed<a class="anchor" aria-label="anchor" href="#fixed-29"></a></h3>
 <ul><li>Tour guide : les etapes Synthese et Famille etaient proposees alors que l’app renvoie sur l’Accueil toute navigation vers ces onglets tant que le projet n’est pas <code>completed</code>. Le tour declenchait donc son propre renvoi - l’onglet s’affichait puis sautait. Le predicat de restriction (<code>.tab_requires_completed_project</code>) est desormais partage entre la garde de navigation d’<code>app_server</code> et le filtre des etapes.</li>
 <li>Tour guide : une ancre rendue cote serveur mesure 0 de haut a l’instant du cadrage (un <code>uiOutput</code> porte par un onglet masque est suspendu par Shiny), <code>canHighlight()</code> est faux et driver.js saute l’etape en silence sans toucher au popover. Ancres desormais statiques : <code>synthesis-summary_card</code> et <code>famille_carbone-family_header</code>.</li>
 </ul></div>
@@ -634,7 +642,7 @@
 <div class="section level2">
 <h2 id="id_014326---2026-09-19">[0.143.26] - 2026-09-19<a class="anchor" aria-label="anchor" href="#id_014326---2026-09-19"></a></h2>
 <div class="section level3">
-<h3 id="fixed-29">Fixed<a class="anchor" aria-label="anchor" href="#fixed-29"></a></h3>
+<h3 id="fixed-30">Fixed<a class="anchor" aria-label="anchor" href="#fixed-30"></a></h3>
 <ul><li>Tour guide : le clic synthetique de bascule d’onglet remontait jusqu’a <code>window</code>, ou driver.js l’interpretait comme un clic hors popover et fermait le tour (<code>reset()</code>). L’etape suivante s’affichait encore, mais <code>isActivated</code> etait FALSE : ni « Suivant », ni « Fermer », ni le clavier ne repondaient, et la re-mesure <code>resize</code> etait inoperante. Le clic est etouffe au niveau de <code>document</code>, apres le handler delegue de Bootstrap.</li>
 <li>Tour guide : l’etape « Recherche » etait ancree sur <code>home-search_collapse</code> (le corps repliable seul), laissant le titre « Rechercher une commune… » sous le voile sombre. Nouvelle ancre <code>home-search_card</code>, la carte entiere.</li>
 </ul></div>
@@ -648,7 +656,7 @@
 <code>load_project()</code> porte <code>indicators_invalidated</code> et un bandeau nomme les trois familles qui changent : l’utilisateur voyait son projet repasser en brouillon sans explication.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-30">Fixed<a class="anchor" aria-label="anchor" href="#fixed-30"></a></h3>
+<h3 id="fixed-31">Fixed<a class="anchor" aria-label="anchor" href="#fixed-31"></a></h3>
 <ul><li>Le tour guide cadrait a cote. Cliquer ACTIVE un onglet mais ne le MESURE pas : un <code>.tab-pane</code> masque est en <code>display: none</code>, dimensions nulles, plus une transition <code>.fade</code>. On attend <code>shown.bs.tab</code> puis on force une re-mesure via <code>resize</code>, que driver.js ecoute deja. Le demarrage, lui, reposait sur un <code>setTimeout</code> aveugle apres un <code>collapse('show')</code> anime : il suit desormais <code>shown.bs.collapse</code>.</li>
 <li>La carte cadastrale ne se recadrait pas au retour de l’onglet UGF : <code>input$main_tabs</code> n’etait observe nulle part. <code>invalidateSize()</code> seul restaure la taille, pas la vue — il faut recadrer derriere.</li>
 <li>
@@ -675,7 +683,7 @@
 <div class="section level2">
 <h2 id="id_014322---2026-09-17">[0.143.22] - 2026-09-17<a class="anchor" aria-label="anchor" href="#id_014322---2026-09-17"></a></h2>
 <div class="section level3">
-<h3 id="fixed-31">Fixed<a class="anchor" aria-label="anchor" href="#fixed-31"></a></h3>
+<h3 id="fixed-32">Fixed<a class="anchor" aria-label="anchor" href="#fixed-32"></a></h3>
 <ul><li>Un moteur Sante <strong>annule</strong> n’est plus enregistre « ok » dans la chaine. Le coeur rend <code>status = "cancelled"</code> sans lever, donc l’<code>ExtendedTask</code> est en <code>"success"</code> : le rapport final annoncait une reussite la ou rien n’avait ete produit. Defaut preexistant sur FAST et FORDEAD, etendu a RECONFORT par le cablage de <code>cancel_path</code> en 0.143.21 ; corrige pour les trois.</li>
 </ul></div>
 <div class="section level3">
@@ -693,7 +701,7 @@
 <li>Deux cles i18n : « arret demande » au clic (le worker termine son etape) et « arrete » a l’arrivee du resultat — deux moments distincts.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-32">Fixed<a class="anchor" aria-label="anchor" href="#fixed-32"></a></h3>
+<h3 id="fixed-33">Fixed<a class="anchor" aria-label="anchor" href="#fixed-33"></a></h3>
 <ul><li>Un run RECONFORT annule serait passe pour un succes : le handler de resultat ne testait pas <code>result$status</code>, donc <code>n_alerts = NA</code> dans un <code>sprintf</code> et un <code>$rasters</code> NULL passe au sous-module carte.</li>
 <li>Le chronometre du toast de succes RECONFORT affichait <code>0</code> depuis toujours : le handler lisait <code>duration_sec</code> (nom FORDEAD) la ou le coeur rend <code>elapsed_sec</code>.</li>
 </ul></div>
@@ -717,7 +725,7 @@
 <div class="section level2">
 <h2 id="id_014319---2026-09-14">[0.143.19] - 2026-09-14<a class="anchor" aria-label="anchor" href="#id_014319---2026-09-14"></a></h2>
 <div class="section level3">
-<h3 id="fixed-33">Fixed<a class="anchor" aria-label="anchor" href="#fixed-33"></a></h3>
+<h3 id="fixed-34">Fixed<a class="anchor" aria-label="anchor" href="#fixed-34"></a></h3>
 <ul><li>Le bandeau « Tuile Sentinel-2 (n/N) » de <code>mod_monitoring</code> survivait a « Arreter les calculs » et restait inclosable (<code>duration = NULL</code> + <code>closeButton = FALSE</code>). Il n’etait pas oublie mais RECREE chaque seconde par l’observer du chrono : seul <code>fast_run_start(NULL)</code> en coupe la source.</li>
 </ul></div>
 <div class="section level3">
@@ -736,7 +744,7 @@
 <div class="section level2">
 <h2 id="id_014318---2026-09-14">[0.143.18] - 2026-09-14<a class="anchor" aria-label="anchor" href="#id_014318---2026-09-14"></a></h2>
 <div class="section level3">
-<h3 id="fixed-34">Fixed<a class="anchor" aria-label="anchor" href="#fixed-34"></a></h3>
+<h3 id="fixed-35">Fixed<a class="anchor" aria-label="anchor" href="#fixed-35"></a></h3>
 <ul><li>Modele Mistral par defaut hors palier : <code>mistral-large-latest</code> -&gt; <code>mistral-medium-latest</code>. Le modele existe toujours cote API mais est ferme aux paliers d’entree, ce qui rendait l’analyse IA inutilisable (<code>HTTP 403 ... not available in your subscription tier</code>).</li>
 <li>Modele Anthropic par defaut : <code>claude-sonnet-4-5-20250929</code> -&gt; <code>claude-opus-5</code> (generation precedente, suffixe de date obsolete).</li>
 </ul></div>
@@ -755,7 +763,7 @@
 <strong>« Tout calculer » passe de <code>btn-primary</code> a <code>btn-outline-primary</code></strong> : le regroupement mettait deux verts cote a cote, et ce bouton n’est pas le CTA du lancement — il ouvre la modale, dont le « Lancer la chaine » reste vert plein.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-35">Fixed<a class="anchor" aria-label="anchor" href="#fixed-35"></a></h3>
+<h3 id="fixed-36">Fixed<a class="anchor" aria-label="anchor" href="#fixed-36"></a></h3>
 <ul><li>
 <strong>Deux tests du chronometre tombaient sous charge</strong> : <code>.fmt_elapsed()</code> tronque, et les tests attendaient la seconde exacte dans une fenetre d’une seconde. L’horloge devient injectable (<code>now = Sys.time()</code>), le formatage exact est teste sur horloge figee, le rendu ne verifie plus que le cablage.</li>
 </ul></div>
@@ -777,7 +785,7 @@
 <div class="section level2">
 <h2 id="id_014315---2026-09-03">[0.143.15] - 2026-09-03<a class="anchor" aria-label="anchor" href="#id_014315---2026-09-03"></a></h2>
 <div class="section level3">
-<h3 id="fixed-36">Fixed<a class="anchor" aria-label="anchor" href="#fixed-36"></a></h3>
+<h3 id="fixed-37">Fixed<a class="anchor" aria-label="anchor" href="#fixed-37"></a></h3>
 <ul><li>
 <strong>La trace d’un run en échec n’est plus effacée.</strong> Les chemins d’erreur de FAST, FORDEAD et RECONFORT archivent le JSON et le NDJSON de progression en <code>&lt;fichier&gt;.failed-&lt;horodatage&gt;</code> au lieu de les supprimer (cinq archives gardées par fichier de base). Succès et annulation inchangés.</li>
 </ul></div>
@@ -799,7 +807,7 @@
 <strong>Toast « Tous les calculs en cours… » en bas à droite</strong> pendant la chaîne, retiré à la clôture (nouvelle clé i18n <code>pipeline_running_toast</code>, FR/EN).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-37">Fixed<a class="anchor" aria-label="anchor" href="#fixed-37"></a></h3>
+<h3 id="fixed-38">Fixed<a class="anchor" aria-label="anchor" href="#fixed-38"></a></h3>
 <ul><li>
 <strong>Double lancement de la chaîne impossible</strong> : garde serveur sur <code>input$open</code> en plus du grisage. Un second <code>pipeline_new_run()</code> écrasait le run en cours, dont les réponses étaient ensuite rejetées sur le <code>run_id</code>.</li>
 </ul></div>
@@ -807,7 +815,7 @@
 <div class="section level2">
 <h2 id="id_014313---2026-09-02">[0.143.13] - 2026-09-02<a class="anchor" aria-label="anchor" href="#id_014313---2026-09-02"></a></h2>
 <div class="section level3">
-<h3 id="fixed-38">Fixed<a class="anchor" aria-label="anchor" href="#fixed-38"></a></h3>
+<h3 id="fixed-39">Fixed<a class="anchor" aria-label="anchor" href="#fixed-39"></a></h3>
 <ul><li>
 <strong>Le moteur de reGénération et le gel R7 tournaient sur les années par défaut (2018 / 2022) sans le signaler</strong> quand l’étape E-OBS était sautée — cas du projet Lajoux. <code>annees_pipeline()</code> n’est rempli qu’en cas de succès E-OBS ; le repli lisait les champs du formulaire, et le rapport affichait les deux étapes en vert. Elles nomment désormais les années utilisées et signalent le repli.</li>
 </ul></div>
@@ -815,7 +823,7 @@
 <div class="section level2">
 <h2 id="id_014312---2026-09-02">[0.143.12] - 2026-09-02<a class="anchor" aria-label="anchor" href="#id_014312---2026-09-02"></a></h2>
 <div class="section level3">
-<h3 id="fixed-39">Fixed<a class="anchor" aria-label="anchor" href="#fixed-39"></a></h3>
+<h3 id="fixed-40">Fixed<a class="anchor" aria-label="anchor" href="#fixed-40"></a></h3>
 <ul><li>
 <strong>La garde anti-recréation des zones se sabotait à son premier usage.</strong> <code>.zones_a_jour()</code> exigeait le fichier de clé, écrit seulement <em>après</em> un enregistrement : au premier run il n’existait pas et la garde déclarait périmées des zones valides. Les zones existantes sans clé sont désormais adoptées (la clé est amorcée, rien n’est recréé).</li>
 </ul></div>
@@ -823,7 +831,7 @@
 <div class="section level2">
 <h2 id="id_014311---2026-09-01">[0.143.11] - 2026-09-01<a class="anchor" aria-label="anchor" href="#id_014311---2026-09-01"></a></h2>
 <div class="section level3">
-<h3 id="fixed-40">Fixed<a class="anchor" aria-label="anchor" href="#fixed-40"></a></h3>
+<h3 id="fixed-41">Fixed<a class="anchor" aria-label="anchor" href="#fixed-41"></a></h3>
 <ul><li>
 <strong>Les zones de suivi étaient recréées à chaque lancement de la chaîne.</strong> <code>build_project_monitoring_zones(replace = TRUE)</code> supprime puis réinsère : les identifiants changent, et tout ce qui est indexé dessus devient orphelin (<code>output_zone_&lt;id&gt;/</code>). Mesuré sur Couchey : 6,3 Go sous des zones qui n’existent plus, et les marqueurs de reprise de RECONFORT laissés derrière, ce qui faisait tout re-télécharger.</li>
 <li>
@@ -833,7 +841,7 @@
 <div class="section level2">
 <h2 id="id_014310---2026-09-01">[0.143.10] - 2026-09-01<a class="anchor" aria-label="anchor" href="#id_014310---2026-09-01"></a></h2>
 <div class="section level3">
-<h3 id="fixed-41">Fixed<a class="anchor" aria-label="anchor" href="#fixed-41"></a></h3>
+<h3 id="fixed-42">Fixed<a class="anchor" aria-label="anchor" href="#fixed-42"></a></h3>
 <ul><li>
 <strong>RECONFORT emportait la session entière.</strong> <code>systemd-oomd</code> a tué le scope RStudio (9 processus) pendant l’item 82/203 de l’ingestion — pression à 56,87 % sur <code>user@1000.service</code>, scope à 14,5 Go, aucun événement d’erreur. Le cœur ne plafonnait que le sous-processus Python ; la boucle d’ingestion des 203 scènes est du R pur et le run mourait avant d’atteindre Python. RECONFORT passe en enfant plafonné (<code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code>), comme FORDEAD.</li>
 </ul></div>
@@ -846,7 +854,7 @@
 <div class="section level2">
 <h2 id="id_01439---2026-09-01">[0.143.9] - 2026-09-01<a class="anchor" aria-label="anchor" href="#id_01439---2026-09-01"></a></h2>
 <div class="section level3">
-<h3 id="fixed-42">Fixed<a class="anchor" aria-label="anchor" href="#fixed-42"></a></h3>
+<h3 id="fixed-43">Fixed<a class="anchor" aria-label="anchor" href="#fixed-43"></a></h3>
 <ul><li>
 <strong>« objet ‘con’ introuvable » sur les moteurs Santé.</strong> Les handlers <code>on.exit</code> s’exécutent dans l’ordre d’enregistrement ; <code>.release_worker_memory()</code>, enregistré en tête de corps, efface <code>con</code> de la frame du worker avant que la fermeture de connexion ne l’utilise. Les trois fermetures passent devant (<code>after = FALSE</code>). L’échec survenait après le travail utile, d’où sa discrétion.</li>
 <li>Même défaut, silencieux, sur <code>close(.ws_log_conn)</code> : enveloppé d’un <code>tryCatch</code>, il échouait sans rien dire et la connexion de log n’était jamais fermée.</li>
@@ -855,7 +863,7 @@
 <div class="section level2">
 <h2 id="id_01438---2026-09-01">[0.143.8] - 2026-09-01<a class="anchor" aria-label="anchor" href="#id_01438---2026-09-01"></a></h2>
 <div class="section level3">
-<h3 id="fixed-43">Fixed<a class="anchor" aria-label="anchor" href="#fixed-43"></a></h3>
+<h3 id="fixed-44">Fixed<a class="anchor" aria-label="anchor" href="#fixed-44"></a></h3>
 <ul><li>
 <strong>Le rapport de la chaîne nommait l’erreur, pas l’endroit.</strong> <code>pipeline_task_error()</code> ajoute <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionCall()</a></code>, qui nomme l’appel fautif et traverse la frontière <code>future</code> (vérifié de bout en bout sur un vrai worker). Sur le run Couchey du 2026-08-31, « objet ‘con’ introuvable » n’était pas localisable : une recherche statique dans les deux paquets n’a rien donné.</li>
 </ul></div>
@@ -869,7 +877,7 @@
 <li>Plancher <code>Imports: nemeton (&gt;= 0.192.0)</code> -&gt; <code>(&gt;= 0.193.0)</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-44">Fixed<a class="anchor" aria-label="anchor" href="#fixed-44"></a></h3>
+<h3 id="fixed-45">Fixed<a class="anchor" aria-label="anchor" href="#fixed-45"></a></h3>
 <ul><li>
 <code>.chm_exploitable()</code> pouvait lever : le <code>tryCatch</code> ne couvrait que <code>spatSample()</code>, qui peut aussi <em>rendre</em> un <code>data.frame</code> sans colonne, sur lequel <code>v[[1]]</code> levait. Passé en <code>validate</code>, une erreur y arrêtait la résolution du cœur au lieu de passer au candidat suivant. Le prédicat est total.</li>
 </ul></div>
@@ -877,7 +885,7 @@
 <div class="section level2">
 <h2 id="id_01436---2026-08-31">[0.143.6] - 2026-08-31<a class="anchor" aria-label="anchor" href="#id_01436---2026-08-31"></a></h2>
 <div class="section level3">
-<h3 id="fixed-45">Fixed<a class="anchor" aria-label="anchor" href="#fixed-45"></a></h3>
+<h3 id="fixed-46">Fixed<a class="anchor" aria-label="anchor" href="#fixed-46"></a></h3>
 <ul><li>
 <strong>Le rapport de la chaîne affichait « Erreur » sans la cause.</strong> <code>task$result()</code> re-lève l’erreur du worker — seul endroit où son message subsiste — et il était jeté au profit d’un libellé générique. Sur des moteurs tournant 13 h 40 (ingest FAST) et 4 h 10 (FORDEAD), c’était la seule information exploitable sans tout relancer. <code>pipeline_task_error()</code> l’extrait sur les sept réponses concernées, gère les échecs rendus par valeur (<code>list(status = "error", reason =, detail =)</code>) et tronque les tracebacks Python à 300 caractères.</li>
 </ul></div>
@@ -885,7 +893,7 @@
 <div class="section level2">
 <h2 id="id_01435---2026-08-30">[0.143.5] - 2026-08-30<a class="anchor" aria-label="anchor" href="#id_01435---2026-08-30"></a></h2>
 <div class="section level3">
-<h3 id="fixed-46">Fixed<a class="anchor" aria-label="anchor" href="#fixed-46"></a></h3>
+<h3 id="fixed-47">Fixed<a class="anchor" aria-label="anchor" href="#fixed-47"></a></h3>
 <ul><li>
 <strong>Le typage de la desserte s’affichait en rouge sur le meilleur résultat possible.</strong> Sur Couchey, le réseau existant (17 056 tronçons) desservait déjà les 76 UGF : zéro route nouvelle à créer, coût 0. <code><a href="https://pobsteta.github.io/foretaccess/reference/vectoriser_reseau.html" class="external-link">foretaccess::vectoriser_reseau()</a></code> travaille sur les routes nouvelles et abandonne quand il n’y en a aucune. Ce cas est distingué avant l’appel, par un statut propre : information, et étape <em>Sautée</em> plutôt qu’<em>Échec</em>.</li>
 <li>
@@ -903,7 +911,7 @@
 <div class="section level2">
 <h2 id="id_01433---2026-08-30">[0.143.3] - 2026-08-30<a class="anchor" aria-label="anchor" href="#id_01433---2026-08-30"></a></h2>
 <div class="section level3">
-<h3 id="fixed-47">Fixed<a class="anchor" aria-label="anchor" href="#fixed-47"></a></h3>
+<h3 id="fixed-48">Fixed<a class="anchor" aria-label="anchor" href="#fixed-48"></a></h3>
 <ul><li>
 <strong>Les trois moteurs Santé se sautaient alors que les zones existaient en base.</strong> La garde interrogeait <code>input$zone_id</code>, alimenté par <code>updateSelectInput()</code> — pas encore remonté du client juste après l’étape de création. Résolution désormais en base via <code>fordead_zone_id()</code>, zone transmise aux moteurs. Troisième occurrence de ce piège dans la chaîne.</li>
 <li>
@@ -917,7 +925,7 @@
 <ul><li>Étape <strong>« Santé — création des zones de suivi »</strong> dans la chaîne, avant les trois moteurs Santé qui exigent un <code>zone_id</code>. Même chemin que le bouton d’enregistrement de l’onglet ; upsert, donc relançable. La chaîne compte 17 étapes.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-48">Fixed<a class="anchor" aria-label="anchor" href="#fixed-48"></a></h3>
+<h3 id="fixed-49">Fixed<a class="anchor" aria-label="anchor" href="#fixed-49"></a></h3>
 <ul><li>
 <strong>La perspective IA était rapportée « Réussie » sans rien avoir généré</strong> : l’appel LLM échouait, <code>tryCatch</code> rendait <code>NULL</code>, et la fonction continuait jusqu’à <code>invisible(TRUE)</code>. Constaté sur Couchey — étape verte en 1 s pour 13 appels LLM. Une synthèse vide fait désormais échouer l’étape. Expliquait aussi le plan d’actions sauté juste après.</li>
 <li>Les 12 commentaires de famille n’étaient pas générés par la chaîne : le switch « toutes les familles » est décoché par défaut et la chaîne le suivait, malgré un libellé d’étape annonçant « synthèse + 12 familles ».</li>
@@ -927,7 +935,7 @@
 <div class="section level2">
 <h2 id="id_01431---2026-08-29">[0.143.1] - 2026-08-29<a class="anchor" aria-label="anchor" href="#id_01431---2026-08-29"></a></h2>
 <div class="section level3">
-<h3 id="fixed-49">Fixed<a class="anchor" aria-label="anchor" href="#fixed-49"></a></h3>
+<h3 id="fixed-50">Fixed<a class="anchor" aria-label="anchor" href="#fixed-50"></a></h3>
 <ul><li>
 <strong>La chaîne « Tout calculer » restait bloquée sur « Indicateurs / En cours »</strong> alors que le calcul s’était terminé. La réponse au pipeline était posée depuis <code>poll_fn</code>, un callback <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later()</a></code> qui s’exécute hors contexte réactif : la lecture du <code>reactiveVal</code> y lève <code>Operation not allowed without an active reactive context</code>, l’erreur remonte et la réponse n’est jamais posée.</li>
 <li>Dans les six autres modules, les lectures de la mémoire de requête abonnaient l’observer de statut à celle-ci : poser la requête le redéclenchait et, sur un statut <code>success</code> hérité d’un run précédent, il répondait avant que le moteur n’ait redémarré — l’étape aurait été rapportée réussie sans avoir tourné. Toutes les lectures sont isolées.</li>
@@ -951,14 +959,14 @@
 <code>.lancer_moteur_regen()</code>, <code>.lancer_gel()</code> acceptent des années explicites ; <code>.lancer_accessibilite()</code> un <code>use_corrected_force</code> ; <code>.generer_ia_synthese()</code> un profil. Ces valeurs transitent d’ordinaire par <code>updateNumericInput()</code> / <code>renderUI()</code>, qui ne remontent au serveur qu’après un aller-retour client : l’étape suivante de la chaîne y lirait la valeur précédente. <code>NULL</code> conserve le comportement des boutons manuels.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-50">Fixed<a class="anchor" aria-label="anchor" href="#fixed-50"></a></h3>
+<h3 id="fixed-51">Fixed<a class="anchor" aria-label="anchor" href="#fixed-51"></a></h3>
 <ul><li>Les gardes internes des modules (pas de zone monitoring, pas de clé API, lecture seule) faisaient sortir la fonction de lancement sans démarrer de tâche : personne ne répondait et la chaîne se serait bloquée en silence sur cette étape. Les branchements testent désormais la valeur de retour du lancement et répondent « sautée ». Les deux générations IA rendaient <code>TRUE</code> en dur — une perspective jamais générée aurait été rapportée « réussie ».</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_01423---2026-08-28">[0.142.3] - 2026-08-28<a class="anchor" aria-label="anchor" href="#id_01423---2026-08-28"></a></h2>
 <div class="section level3">
-<h3 id="fixed-51">Fixed<a class="anchor" aria-label="anchor" href="#fixed-51"></a></h3>
+<h3 id="fixed-52">Fixed<a class="anchor" aria-label="anchor" href="#fixed-52"></a></h3>
 <ul><li>
 <strong>La carte UGF restait vide au premier passage sur son sous-onglet</strong> : passer de « Carte cadastrale » à « Carte UGF » n’affichait ni tènements ni UGF, il fallait aller sur « Tableau UGF » et revenir. <code>output$ug_map</code> était la seule des six cartes leaflet de l’app à rester suspendue quand son onglet est caché ; « Carte UGF » étant un sous-onglet non-défaut, la carte n’existait pas encore côté client quand l’observer de dessin émettait ses <code>leafletProxy()</code>, et leaflet jette silencieusement les messages adressés à une carte absente du DOM. <code>mod_ug</code> posait déjà l’option sur son tableau et ses compteurs, mais avait oublié sa carte.</li>
 </ul></div>
@@ -970,7 +978,7 @@
 <div class="section level2">
 <h2 id="id_01422---2026-08-28">[0.142.2] - 2026-08-28<a class="anchor" aria-label="anchor" href="#id_01422---2026-08-28"></a></h2>
 <div class="section level3">
-<h3 id="fixed-52">Fixed<a class="anchor" aria-label="anchor" href="#fixed-52"></a></h3>
+<h3 id="fixed-53">Fixed<a class="anchor" aria-label="anchor" href="#fixed-53"></a></h3>
 <ul><li>
 <strong>Chargement d’un projet récent : 13,2 s → 5,1 s</strong> (médiane de 3 mesures Chrome piloté, Couchey / 75 UGF / 223 tènements). Trois causes cumulées :
 <ul><li>
@@ -1017,7 +1025,7 @@
 <div class="section level2">
 <h2 id="id_01411---2026-08-27">[0.141.1] - 2026-08-27<a class="anchor" aria-label="anchor" href="#id_01411---2026-08-27"></a></h2>
 <div class="section level3">
-<h3 id="fixed-53">Fixed<a class="anchor" aria-label="anchor" href="#fixed-53"></a></h3>
+<h3 id="fixed-54">Fixed<a class="anchor" aria-label="anchor" href="#fixed-54"></a></h3>
 <ul><li>
 <code>test-indicator-families-defork.R</code> lisait <code>../../R/app_config.R</code> en direct. <code>R/</code> ne survit pas à l’installation : sous <code>R CMD check</code>, <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code> échoue sur « cannot open the connection ». Le passage en <code>helper-sources.R</code> (v0.140.1.9001) avait traité onze fichiers et manqué celui-là, qui suffisait à faire échouer <code>R-CMD-check</code> sur <code>main</code>. Remède identique : <code>chemin_source()</code> + <code>skip_sans_sources()</code>.</li>
 </ul></div>
@@ -1053,7 +1061,7 @@
 <code>.regen_micro_lbl()</code> rend chaque morceau du libellé indépendamment : l’année s’affiche même sans compteur <code>(i/n)</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-54">Fixed<a class="anchor" aria-label="anchor" href="#fixed-54"></a></h3>
+<h3 id="fixed-55">Fixed<a class="anchor" aria-label="anchor" href="#fixed-55"></a></h3>
 <ul><li>R-CMD-check : onze tests d’arbre source échouaient sous le paquet installé.</li>
 <li>L’export Marculus partait sans table <code>desserte</code> quand le réseau venait de l’onglet Accessibilité : <code>.marculus_desserte()</code> ne lisait que <code>cache/desserte/</code>. L’Accessibilité sert désormais de repli (et non d’union : les deux caches redisent la même BD TOPO).</li>
 </ul></div>
@@ -1066,7 +1074,7 @@
 <div class="section level2">
 <h2 id="id_01401---2026-08-26">[0.140.1] - 2026-08-26<a class="anchor" aria-label="anchor" href="#id_01401---2026-08-26"></a></h2>
 <div class="section level3">
-<h3 id="fixed-55">Fixed<a class="anchor" aria-label="anchor" href="#fixed-55"></a></h3>
+<h3 id="fixed-56">Fixed<a class="anchor" aria-label="anchor" href="#fixed-56"></a></h3>
 <ul><li>
 <code>test-parcelles-csv.R</code> : <code>grepl("^\s*#", ...)</code> au lieu de <code>"^\\s*#"</code> rendait le fichier entier non analysable (<code>'\s' is an unrecognized escape</code>), et R-CMD-check échouait. Un fichier qui ne parse pas n’apparaît ni en <code>[failure]</code> ni en <code>[error]</code> : il disparaît du compte, d’où un faux vert en local.</li>
 </ul></div>
@@ -1097,7 +1105,7 @@
 <li>La résolution du modèle de hauteur passe par <code><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">nemeton::resolve_project_chm()</a></code>, qui préfère LiDAR HD à Open-Canopy.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-56">Fixed<a class="anchor" aria-label="anchor" href="#fixed-56"></a></h3>
+<h3 id="fixed-57">Fixed<a class="anchor" aria-label="anchor" href="#fixed-57"></a></h3>
 <ul><li>Les houppiers ne se calculaient sur aucun projet : mauvaise source de MNH, et refus de lidR de segmenter un raster stocké sur disque.</li>
 <li>Les messages de purge annonçaient « sous 10 % » en dur alors que le seuil est paramétrable et vaut 0 par défaut.</li>
 </ul></div>
@@ -1125,7 +1133,7 @@
 <li>L’onglet Familles d’indicateurs affiche désormais les valeurs normalisées (conséquence de la persistance des <code>_norm</code>, que <code>create_family_index()</code> préfère).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-57">Fixed<a class="anchor" aria-label="anchor" href="#fixed-57"></a></h3>
+<h3 id="fixed-58">Fixed<a class="anchor" aria-label="anchor" href="#fixed-58"></a></h3>
 <ul><li>L’import CSV purge désormais comme le bouton ONF, avec la persistance des parcelles (<code>with_parcels</code>) et un compte rendu de ce qui est retiré.</li>
 <li>L’import CSV rafraîchit les sous-onglets de Sélection (relais de <code>restore_project</code> vers la réactive locale de <code>mod_home</code>).</li>
 <li>Cadre manquant du bloc ONF dans les paramètres ; <code>&lt;strong&gt;</code> affichés en clair dans deux infobulles ; libellé de la découpe cadastre clarifié.</li>
@@ -1161,7 +1169,7 @@
 <li>Les contextes Marculus sont nommés par leur <strong>parcelle forestière</strong> (« Couchey - parcelle 1 - coupe_rase ») et non par leur <code>ug_id</code> ; le nom de la forêt est élidé quand il répète celui du projet. Repli sur l’identifiant quand aucun libellé n’existe.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-58">Fixed<a class="anchor" aria-label="anchor" href="#fixed-58"></a></h3>
+<h3 id="fixed-59">Fixed<a class="anchor" aria-label="anchor" href="#fixed-59"></a></h3>
 <ul><li>Le cache Open-Canopy adopte <code>chm_predicted_1_5m.tif</code> : un pipeline interrompu ne fait plus recommencer 11 Go de travail valide.</li>
 <li>Le bouton « Générer les actions (IA) » et celui qui lance la génération prennent l’accent ambre <code>btn-ia</code> + trois étoiles. Test de source ajouté sur toutes les surfaces génératrices.</li>
 <li>Clé i18n <code>onf_params_save</code> manquante (le bouton affichait sa clé brute).</li>
@@ -1200,7 +1208,7 @@
 <div class="section level2">
 <h2 id="id_01341---2026-08-23">[0.134.1] - 2026-08-23<a class="anchor" aria-label="anchor" href="#id_01341---2026-08-23"></a></h2>
 <div class="section level3">
-<h3 id="fixed-59">Fixed<a class="anchor" aria-label="anchor" href="#fixed-59"></a></h3>
+<h3 id="fixed-60">Fixed<a class="anchor" aria-label="anchor" href="#fixed-60"></a></h3>
 <ul><li>
 <code>.compute_error_message()</code> re-atténuait un message que le cœur <strong>affirme</strong>. Depuis <code>nemeton 0.183.1</code>, « ran out of memory » vient d’un <code>Result=oom-kill</code> constaté auprès de systemd : l’app l’affiche désormais à l’affirmatif, et réserve la formulation prudente au cas « tué, verdict indisponible » (mode dégradé). Implémente <code>briefs/vers-nemetonshiny/2026-08-23-reponse-oom-sigterm-scope.md</code>.</li>
 <li>Quand systemd répond <code>signal</code>, le cœur précise que ce n’est <strong>pas</strong> le plafond mémoire : l’app ne le contredit plus et passe le message tel quel.</li>
@@ -1217,7 +1225,7 @@
 <li>Un test interdit toute fraction de RAM (<code>MemTotal</code>, <code>/proc/meminfo</code>) dans <code>service_compute.R</code>, <code>service_monitoring.R</code> et <code>mod_regeneration.R</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-60">Fixed<a class="anchor" aria-label="anchor" href="#fixed-60"></a></h3>
+<h3 id="fixed-61">Fixed<a class="anchor" aria-label="anchor" href="#fixed-61"></a></h3>
 <ul><li>Un calcul tué par le plafond mémoire s’affichait « failed in its capped child process (exit -15) ». <code>processx</code> surveille le client <code>systemd-run</code>, pas le R tué dans le scope : l’OOM (SIGKILL) devient un SIGTERM de démontage, que le cœur ne reconnaît pas comme mémoire. <code>.compute_error_message()</code> traduit −9, −15, 137 et 143 en un message qui nomme le plafond et le remède.</li>
 <li>Le message d’erreur de calcul était un <code>paste("Erreur de calcul:", …)</code> en dur en français (règle i18n) et recrachait le message brut du moteur sans échappement. Nouvelles clés <code>compute_error_fmt</code> et <code>compute_error_oom</code>.</li>
 </ul></div>
@@ -1229,7 +1237,7 @@
 <div class="section level2">
 <h2 id="id_01330---2026-08-22">[0.133.0] - 2026-08-22<a class="anchor" aria-label="anchor" href="#id_01330---2026-08-22"></a></h2>
 <div class="section level3">
-<h3 id="fixed-61">Fixed<a class="anchor" aria-label="anchor" href="#fixed-61"></a></h3>
+<h3 id="fixed-62">Fixed<a class="anchor" aria-label="anchor" href="#fixed-62"></a></h3>
 <ul><li>L’import CSV ne posait pas <code>app_state$project_id</code> : les commentaires du nouveau projet s’écrivaient dans le répertoire du précédent (<code>save_comments()</code> le lit dans <code>mod_synthesis</code> et <code>mod_family</code>), le verrou restait sur l’ancien projet (cycle de vie branché sur <code>project_id</code> dans <code>app_server.R</code>), et les gardes qui comparent <code>project_id</code> raisonnaient sur le projet précédent. Les deux valeurs bougent désormais ensemble.</li>
 </ul></div>
 <div class="section level3">
@@ -1283,7 +1291,7 @@
 <div class="section level2">
 <h2 id="id_01310---2026-08-21">[0.131.0] - 2026-08-21<a class="anchor" aria-label="anchor" href="#id_01310---2026-08-21"></a></h2>
 <div class="section level3">
-<h3 id="fixed-62">Fixed<a class="anchor" aria-label="anchor" href="#fixed-62"></a></h3>
+<h3 id="fixed-63">Fixed<a class="anchor" aria-label="anchor" href="#fixed-63"></a></h3>
 <ul><li>Suivi de <code>nemeton 0.181.0</code> (spec 048) : R1 à R4 sont désormais inversés à la normalisation comme R5, une UGF très exposée n’obtient plus un <code>famille_risque</code> flatteur. L’app n’inverse rien elle-même — un test le vérifie sur les sources.</li>
 <li>Les indicateurs calculés sous l’ancien sens sont invalidés une fois, via un marqueur <code>indicator_sense_version</code> : le parquet restait lisible, donc <code>compute_all_indicators()</code> aurait sauté le recalcul.</li>
 <li>
@@ -1302,7 +1310,7 @@
 <li>Une ligne « Ambre » entre dans le tableau des couleurs de bouton du <code>CLAUDE.md</code>, avec la raison pour laquelle elle échappe à la hiérarchie sémantique (elle encode une provenance, pas un niveau d’action) et l’interdiction de l’employer pour une action de l’utilisateur.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-63">Fixed<a class="anchor" aria-label="anchor" href="#fixed-63"></a></h3>
+<h3 id="fixed-64">Fixed<a class="anchor" aria-label="anchor" href="#fixed-64"></a></h3>
 <ul><li>
 <code>updateActionButton()</code> restaurait l’icône robot après chaque génération (Synthèse et Famille) : l’accent se défaisait au premier clic. Un test lit désormais les sources et exige qu’aucune icône <code>robot</code> ne subsiste — ces appels ne s’exécutant qu’en session, aucun test d’UI ne pouvait les voir.</li>
 <li>Le bouton « insérer le conseil IA » de reGénération avait échappé au lot précédent.</li>
@@ -1319,7 +1327,7 @@
 <div class="section level2">
 <h2 id="id_01308---2026-08-20">[0.130.8] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_01308---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="fixed-64">Fixed<a class="anchor" aria-label="anchor" href="#fixed-64"></a></h3>
+<h3 id="fixed-65">Fixed<a class="anchor" aria-label="anchor" href="#fixed-65"></a></h3>
 <ul><li>La couche « Parcellaire ONF » de la Carte UGF n’était déclarée dans aucun des deux <code>overlayGroups</code> : sans case dans le contrôle de couches, elle restait affichée et ne pouvait pas être masquée.</li>
 <li>La prévisualisation ONF (<code>rv$onf_preview</code>) n’était jamais remise à <code>NULL</code> après le croisement : la surcouche restait superposée au résultat, affichant un parcellaire que le projet ne contenait plus après une purge.</li>
 </ul></div>
@@ -1331,7 +1339,7 @@
 <div class="section level2">
 <h2 id="id_01307---2026-08-20">[0.130.7] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_01307---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="fixed-65">Fixed<a class="anchor" aria-label="anchor" href="#fixed-65"></a></h3>
+<h3 id="fixed-66">Fixed<a class="anchor" aria-label="anchor" href="#fixed-66"></a></h3>
 <ul><li>L’onglet Sélection continuait d’afficher les parcelles retirées par la purge « hors forêt publique » : il ne lit pas <code>current_project</code>, sa carte tient son propre état. Nouveau signal étroit <code>app_state$parcels_changed</code>, posé par les modules qui modifient <code>projet$parcels</code> et écouté par la carte seule — elle redessine et restreint la sélection, sans jamais l’élargir. <code>restore_project</code> a été écarté : il réveille <code>mod_search</code> (appel réseau) et exige des données que les autres modules n’ont pas.</li>
 </ul></div>
 <div class="section level3">
@@ -1350,7 +1358,7 @@
 <div class="section level2">
 <h2 id="id_01305---2026-08-20">[0.130.5] - 2026-08-20<a class="anchor" aria-label="anchor" href="#id_01305---2026-08-20"></a></h2>
 <div class="section level3">
-<h3 id="fixed-66">Fixed<a class="anchor" aria-label="anchor" href="#fixed-66"></a></h3>
+<h3 id="fixed-67">Fixed<a class="anchor" aria-label="anchor" href="#fixed-67"></a></h3>
 <ul><li>L’indicateur T3 (coupes rases) ne recevait pas <code>reference_year</code> : la fenêtre de récence s’ancrait sur la coupe la plus récente des UGF analysées, et non sur l’année courante. « Les 5 dernières années » pouvait donc désigner 2017-2021, et deux projets n’étaient pas comparables si leur dernière coupe différait. La fenêtre s’ancre désormais sur l’année courante. Les scores T3 déjà calculés peuvent changer sur les projets sans coupe récente.</li>
 </ul></div>
 </div>
@@ -1362,7 +1370,7 @@
 <code>.onf_parcelles_concernees()</code> et la réinjection des parcelles écartées : <code>nemeton 0.180.0</code> fait ce tri lui-même et expose le compteur via l’attribut <code>parcelles_concernees</code>. <code>onf_projet_croise()</code> redevient un appel direct. Plancher relevé à <code>nemeton (&gt;= 0.180.0)</code>. Résultat identique.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-67">Fixed<a class="anchor" aria-label="anchor" href="#fixed-67"></a></h3>
+<h3 id="fixed-68">Fixed<a class="anchor" aria-label="anchor" href="#fixed-68"></a></h3>
 <ul><li>Le bloc roxygen d’<code>onf_projet_croise()</code> était détaché de sa fonction depuis v0.130.3, un helper s’étant inséré entre les deux. Sans effet au build (<code>@noRd</code>), corrigé par le retrait.</li>
 </ul></div>
 </div>
@@ -1393,7 +1401,7 @@
 <div class="section level2">
 <h2 id="id_01300---2026-08-19">[0.130.0] - 2026-08-19<a class="anchor" aria-label="anchor" href="#id_01300---2026-08-19"></a></h2>
 <div class="section level3">
-<h3 id="fixed-68">Fixed<a class="anchor" aria-label="anchor" href="#fixed-68"></a></h3>
+<h3 id="fixed-69">Fixed<a class="anchor" aria-label="anchor" href="#fixed-69"></a></h3>
 <ul><li>
 <code>onf_projet_from_parcelles()</code> échouait dès que le parcellaire forestier n’avait pas le même nombre de lignes que les parcelles du projet (« replacement has 427 rows, data has 1 »). L’idiome <code>utils::modifyList(projet, list(parcels = ...))</code>, repris de l’esquisse du brief, récurse dans les listes — et un <code>data.frame</code> en est une : il fusionnait les colonnes au lieu de remplacer l’objet. Remplacé par une affectation directe, avec un test de régression à tailles différentes.</li>
 </ul></div>
