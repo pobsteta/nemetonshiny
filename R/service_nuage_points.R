@@ -85,7 +85,7 @@ nuage_references_lidar <- function(project_path) {
 #'   (messages of the core's warnings), `message` on error.
 #' @noRd
 nuage_traiter <- function(project_path, type = c("lidar_drone", "photogrammetrie"),
-                          ncores = .lasr_ncores()) {
+                          ncores = .lasr_ncores(file.size(nuage_fichiers(project_path)))) {
   type <- match.arg(type)
   if (length(nuage_fichiers(project_path)) == 0L) {
     return(list(status = "sans_nuage"))

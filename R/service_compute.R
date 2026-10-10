@@ -2299,18 +2299,12 @@ download_chm_lasr_from_copc <- function(parcels, cache_dir,
   # avoid edge artefacts at parcel boundaries.
   aoi_l93 <- sf::st_buffer(sf::st_transform(parcels, 2154), 50)
 
-  ncores <- .lasr_ncores()
   start <- Sys.time()
-  out <- nemeton::compute_dtm_chm_from_laz(
-    laz_dir = laz_dir,
-    dtm_dir = dtm_dir,
-    chm_dir = chm_dir,
-    res     = 1,
-    aoi     = aoi_l93,
-    ncores  = ncores,
-    overwrite = FALSE,
-    verbose = TRUE
-  )
+  out <- .lasr_executer(
+    list(laz_dir = laz_dir, dtm_dir = dtm_dir, chm_dir = chm_dir, res = 1,
+         aoi = aoi_l93, overwrite = FALSE, verbose = TRUE),
+    tailles_dalles = file.size(laz_files),
+    log_dir = dirname(dirname(cache_dir)))
   elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
 
   if (is.null(out) || is.null(out$chm)) {
@@ -2341,26 +2335,170 @@ download_chm_lasr_from_copc <- function(parcels, cache_dir,
 }
 
 
-#' Number of lasR workers sized on the available memory
+#' Run the lasR derivation in its own memory-capped scope, retrying once
 #'
 #' @description
-#' `cores - 1` workers ran out of the 12 GB ceiling with only 4 COPC tiles
-#' (brief 2026-10-07: ~1.7 GB and more per worker). The count is now capped at
-#' 4 and at one worker per 3 GB of half the available memory. Override with
-#' `options(nemetonshiny.lasr_ncores = n)` or `NEMETON_LASR_NCORES`.
+#' An out-of-memory kill inside the computation's scope took the whole
+#' computation with it (Couchey, 28 COPC tiles, killed twice at 12 GB after
+#' 16 min). lasR now runs through `nemeton::run_memory_capped()`, in a sibling
+#' scope capped at the job's budget: an overshoot kills lasR alone. A run killed
+#' for memory is retried once with one worker; any other failure, or a second
+#' one, returns `NULL`, and the CHM chain moves on to Theia and Open-Canopy.
 #'
+#' @param args Arguments of `nemeton::compute_dtm_chm_from_laz()`, `ncores`
+#'   excepted.
+#' @param tailles_dalles Numeric. Sizes of the COPC tiles, in bytes.
+#' @param log_dir Directory of the child's log (project root), or `NULL`.
+#' @param budget Bytes available to the run.
+#' @return The value of `compute_dtm_chm_from_laz()`, or `NULL`.
+#' @noRd
+.lasr_executer <- function(args, tailles_dalles, log_dir = NULL,
+                           budget = .lasr_budget_octets()) {
+  ncores <- .lasr_ncores(tailles_dalles, budget)
+  memory_max <- if (is.finite(budget)) sprintf("%dM", as.integer(budget / 2^20))
+  log_path <- if (!is.null(log_dir) && dir.exists(file.path(log_dir, "data"))) {
+    file.path(log_dir, "data", "lasr_child.log")
+  }
+  cli::cli_alert_info(
+    "lasR: {ncores} worker(s), budget {round(budget / 1e9, 1)} GB, \
+     about {round(.lasr_octets_par_worker(tailles_dalles) / 1e9, 1)} GB per worker")
+  lancer <- function(n) {
+    extra <- list()
+    if ("log_path" %in% names(formals(nemeton::run_memory_capped)) &&
+        !is.null(log_path)) extra$log_path <- log_path
+    do.call(nemeton::run_memory_capped,
+            c(list(fun = "compute_dtm_chm_from_laz", package = "nemeton",
+                   args = c(args, list(ncores = n)), memory_max = memory_max,
+                   quiet = FALSE), extra))
+  }
+  essai <- function(n) {
+    tryCatch(lancer(n), error = function(e) {
+      cli::cli_warn("lasR ({n} worker(s)) failed: {conditionMessage(e)}")
+      structure(list(), class = "lasr_echec", message = conditionMessage(e))
+    })
+  }
+  out <- essai(ncores)
+  # Seule une mort par la memoire (verdict `oom-kill`, ou signal sans verdict
+  # systemd) a une chance de passer avec moins de workers.
+  par_memoire <- inherits(out, "lasr_echec") &&
+    grepl("ran out of memory|was killed", attr(out, "message"))
+  if (par_memoire && ncores > 1L) {
+    cli::cli_alert_info("lasR: retrying with 1 worker")
+    out <- essai(1L)
+  }
+  if (inherits(out, "lasr_echec")) {
+    cli::cli_alert_warning("lasR abandoned; the CHM chain moves on to the next source")
+    return(NULL)
+  }
+  out
+}
+
+
+# Pic de memoire d'un worker lasR, en multiple de la taille de sa dalle COPC.
+# Mesure du 2026-10-10 sur Couchey (pipeline MNT + MNH a 1 m) : 7,3 Go pour
+# une dalle de 342 Mo, 15,1 Go pour deux dalles a deux workers, 7,9 Go pour
+# deux dalles a un worker (pas d'accumulation d'une dalle a l'autre). Les 3 Go par
+# worker supposes jusqu'ici en faisaient passer deux sous le plafond de 12 Go,
+# qui mouraient ensuite en OOM (brief du 2026-10-09).
+.LASR_OCTETS_PAR_OCTET_COPC <- 22
+.LASR_WORKER_MIN_OCTETS <- 3e9
+# Part du budget laissee aux workers : le reste couvre R et les rasters.
+.LASR_PART_BUDGET <- 0.85
+
+#' Memory headroom left by the cgroups of this process
+#'
+#' @description
+#' Walks the cgroup v2 hierarchy of the current process up to the root and
+#' returns the smallest `memory.max - memory.current` found. Under
+#' `nemeton::run_memory_capped()` the computation runs in a systemd scope whose
+#' `memory.max` is the ceiling the core applies: this is what the job may
+#' still use, which `MemAvailable` does not reflect.
+#'
+#' @param racine Root of the cgroup filesystem (tests).
+#' @param cgroup_file The process cgroup file (tests).
+#' @return Bytes, or `NA_real_` when no ceiling is set or readable.
+#' @noRd
+.cgroup_marge_octets <- function(racine = "/sys/fs/cgroup",
+                                 cgroup_file = "/proc/self/cgroup") {
+  if (!file.exists(cgroup_file)) return(NA_real_)
+  ligne <- tryCatch(readLines(cgroup_file, warn = FALSE), error = function(e) NULL)
+  ligne <- grep("^0::", ligne, value = TRUE)
+  if (length(ligne) == 0L) return(NA_real_)
+  chemin <- sub("^0::", "", ligne[1])
+  parties <- strsplit(chemin, "/", fixed = TRUE)[[1]]
+  parties <- parties[nzchar(parties)]
+  lire <- function(f) {
+    if (!file.exists(f)) return(NA_real_)
+    v <- tryCatch(readLines(f, n = 1L, warn = FALSE), error = function(e) NA)
+    suppressWarnings(as.numeric(v[1]))
+  }
+  marge <- NA_real_
+  for (k in rev(seq_along(parties))) {
+    d <- file.path(racine, paste(parties[seq_len(k)], collapse = "/"))
+    mx <- lire(file.path(d, "memory.max"))
+    cur <- lire(file.path(d, "memory.current"))
+    if (is.finite(mx) && is.finite(cur)) {
+      marge <- min(marge, max(0, mx - cur), na.rm = TRUE)
+    }
+  }
+  marge
+}
+
+#' Memory budget for a lasR run
+#'
+#' @description
+#' The smallest of: the host's `MemAvailable`, the headroom of the cgroups
+#' the job runs in ([.cgroup_marge_octets()]), and the core's memory ceiling
+#' (`NEMETON_MEMORY_MAX`, `options(nemeton.memory_max=)`, else a fraction of
+#' `MemTotal`), which bounds the run even outside a capped scope.
+#'
+#' @return Bytes, or `NA_real_` when nothing is known.
+#' @noRd
+.lasr_budget_octets <- function() {
+  plafond <- tryCatch(
+    utils::getFromNamespace(".memory_ceiling_bytes", "nemeton")(),
+    error = function(e) NA_real_)
+  b <- suppressWarnings(min(c(.available_memory_bytes(), .cgroup_marge_octets(),
+                              plafond), na.rm = TRUE))
+  if (is.finite(b)) b else NA_real_
+}
+
+#' Number of lasR workers sized on the job's memory budget
+#'
+#' @description
+#' Each worker processes one COPC tile at a time and peaks at about
+#' `.LASR_OCTETS_PAR_OCTET_COPC` times the tile size (at least 3 GB). The
+#' count is the number of such workers that fit in `.LASR_PART_BUDGET` of the
+#' budget ([.lasr_budget_octets()]), capped at 4 and at `cores - 1`, and never
+#' below 1. Override with `options(nemetonshiny.lasr_ncores = n)` or
+#' `NEMETON_LASR_NCORES`.
+#'
+#' @param tailles_dalles Numeric. Sizes of the COPC tiles, in bytes. Empty:
+#'   the 3 GB minimum per worker.
+#' @param budget Bytes available to the run.
 #' @return Integer >= 1.
 #' @noRd
-.lasr_ncores <- function() {
+.lasr_ncores <- function(tailles_dalles = numeric(0),
+                         budget = .lasr_budget_octets()) {
   force_n <- getOption("nemetonshiny.lasr_ncores",
                        Sys.getenv("NEMETON_LASR_NCORES", ""))
   force_n <- suppressWarnings(as.integer(force_n))
   if (length(force_n) == 1L && !is.na(force_n) && force_n >= 1L) return(force_n)
   coeurs <- max(1L, parallel::detectCores(logical = FALSE) - 1L, na.rm = TRUE)
   n <- min(coeurs, 4L)
-  dispo <- .available_memory_bytes()
-  if (is.finite(dispo)) n <- min(n, floor(dispo * 0.5 / 3e9))
+  if (is.finite(budget)) {
+    n <- min(n, floor(budget * .LASR_PART_BUDGET / .lasr_octets_par_worker(tailles_dalles)))
+  }
   max(1L, as.integer(n))
+}
+
+#' Expected peak memory of one lasR worker
+#' @param tailles_dalles Numeric. Sizes of the COPC tiles, in bytes.
+#' @return Bytes.
+#' @noRd
+.lasr_octets_par_worker <- function(tailles_dalles = numeric(0)) {
+  t <- suppressWarnings(max(c(0, tailles_dalles), na.rm = TRUE))
+  max(.LASR_WORKER_MIN_OCTETS, .LASR_OCTETS_PAR_OCTET_COPC * t)
 }
 
 
@@ -4829,7 +4967,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
 
     # layers parameter (optional - only pass if function accepts it)
     if ("layers" %in% func_args) {
-      args$layers <- layers
+      args$layers <- .layers_mnh_depuis_chm(indicator, layers)
     }
 
     # Extract specific layers from nemeton_layers structure
@@ -5060,6 +5198,32 @@ compute_single_indicator <- function(indicator, parcels, layers) {
 }
 
 
+#' Expose the retained CHM as `lidar_mnh` to the indicators that read it
+#'
+#' @description
+#' R4 reads its vulnerability from `resolve_raster_layer(layers, "lidar_mnh")`,
+#' a slot filled only by the published LiDAR HD mosaic. With a CHM from lasR,
+#' Theia or Open-Canopy, R4 was NA everywhere although C1 and P1 used that CHM
+#' (brief du 2026-10-09). The retained CHM is handed to R4 under that name, in
+#' a copy of `layers` only: the NDP (`has_lidar_hd`) and the C1 status keep
+#' reading the real `lidar_mnh` slot.
+#'
+#' @param indicator Indicator name.
+#' @param layers `nemeton_layers`.
+#' @return `layers`, possibly with `rasters$lidar_mnh` set to the CHM.
+#' @noRd
+.layers_mnh_depuis_chm <- function(indicator, layers) {
+  if (!identical(indicator, "indicateur_r4_abroutissement") ||
+      is.null(layers$rasters$chm) || !is.null(layers$rasters$lidar_mnh)) {
+    return(layers)
+  }
+  layers$rasters$lidar_mnh <- layers$rasters$chm
+  cli::cli_alert_info(
+    "R4: CHM ({layers$chm_source %||% 'unknown'}) used as canopy height model")
+  layers
+}
+
+
 #' Name the cause of a P2 / C1 computed without a real stand age
 #'
 #' @description
@@ -5089,6 +5253,10 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       all(is.na(vals)) && statut_vide) {
     attr(vals, "nemeton_status") <- rep("sans_age", n)
     attr(vals, "nemeton_status_name") <- "p2_status"
+    # Le coeur journalise « Calculated P2 ... via CHM » meme quand toutes les
+    # valeurs sont NA : le journal dit ici pourquoi (brief du 2026-10-09).
+    cli::cli_alert_warning(
+      "P2: NA on every unit, stand age unknown (BD For\u00eat has none); enter an age or switch P2 to IFN mode")
   } else if (identical(indicator, "indicateur_c1_biomasse") && statut_vide &&
              any(!is.na(vals)) &&
              is.null(tryCatch(resolve_raster_layer(layers, "lidar_mnh"),
