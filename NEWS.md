@@ -1,3 +1,16 @@
+# nemetonshiny 2026.10.1.9001 (cycle dev)
+
+- **E2, N3 et R4 ne sont plus vides** (brief du 2026-10-09, Couchey).
+  - E2 et N3 étaient NA dans **tous** les projets. Le cœur lit `E1` (E2), et
+    `N1`, `N2`, `L1`, `B3` (N3) dans les unités, et l'app ne les lui passait
+    pas. Elle les transmet maintenant depuis les indicateurs calculés avant,
+    comme elle le faisait déjà pour T2.
+  - R4 ne lisait que le MNH LiDAR HD publié (`lidar_mnh`). Il reçoit
+    maintenant le CHM retenu, quelle qu'en soit la source : lasR, Theia ou
+    Open-Canopy. Le NDP et le statut de C1 lisent toujours le vrai MNH.
+  - P2 sans âge du peuplement : le journal le dit (« stand age unknown »), au
+    lieu du seul « Calculated » du cœur. La vue l'expliquait déjà.
+
 # nemetonshiny 2026.10.1.9000 (cycle dev)
 
 - Ouverture du cycle de dev après la release 2026.10.1.

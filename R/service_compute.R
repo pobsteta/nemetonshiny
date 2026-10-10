@@ -4829,7 +4829,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
 
     # layers parameter (optional - only pass if function accepts it)
     if ("layers" %in% func_args) {
-      args$layers <- layers
+      args$layers <- .layers_mnh_depuis_chm(indicator, layers)
     }
 
     # Extract specific layers from nemeton_layers structure
@@ -5060,6 +5060,32 @@ compute_single_indicator <- function(indicator, parcels, layers) {
 }
 
 
+#' Expose the retained CHM as `lidar_mnh` to the indicators that read it
+#'
+#' @description
+#' R4 reads its vulnerability from `resolve_raster_layer(layers, "lidar_mnh")`,
+#' a slot filled only by the published LiDAR HD mosaic. With a CHM from lasR,
+#' Theia or Open-Canopy, R4 was NA everywhere although C1 and P1 used that CHM
+#' (brief du 2026-10-09). The retained CHM is handed to R4 under that name, in
+#' a copy of `layers` only: the NDP (`has_lidar_hd`) and the C1 status keep
+#' reading the real `lidar_mnh` slot.
+#'
+#' @param indicator Indicator name.
+#' @param layers `nemeton_layers`.
+#' @return `layers`, possibly with `rasters$lidar_mnh` set to the CHM.
+#' @noRd
+.layers_mnh_depuis_chm <- function(indicator, layers) {
+  if (!identical(indicator, "indicateur_r4_abroutissement") ||
+      is.null(layers$rasters$chm) || !is.null(layers$rasters$lidar_mnh)) {
+    return(layers)
+  }
+  layers$rasters$lidar_mnh <- layers$rasters$chm
+  cli::cli_alert_info(
+    "R4: CHM ({layers$chm_source %||% 'unknown'}) used as canopy height model")
+  layers
+}
+
+
 #' Name the cause of a P2 / C1 computed without a real stand age
 #'
 #' @description
@@ -5089,6 +5115,10 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       all(is.na(vals)) && statut_vide) {
     attr(vals, "nemeton_status") <- rep("sans_age", n)
     attr(vals, "nemeton_status_name") <- "p2_status"
+    # Le coeur journalise « Calculated P2 ... via CHM » meme quand toutes les
+    # valeurs sont NA : le journal dit ici pourquoi (brief du 2026-10-09).
+    cli::cli_alert_warning(
+      "P2: NA on every unit, stand age unknown (BD For\u00eat has none); enter an age or switch P2 to IFN mode")
   } else if (identical(indicator, "indicateur_c1_biomasse") && statut_vide &&
              any(!is.na(vals)) &&
              is.null(tryCatch(resolve_raster_layer(layers, "lidar_mnh"),
