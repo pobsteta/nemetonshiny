@@ -1,4 +1,10 @@
-# nemetonshiny 2026.10.1.9002 (cycle dev)
+# nemetonshiny 2026.10.2 (2026-10-10)
+
+Changements cassants : aucun. Testée contre nemeton 2026.10.2, qui retire
+`create_qfield_project()` et `theia_configure_s3()` : l'app ne les appelle
+plus depuis la 2.0.1.
+
+## lasR et la mémoire
 
 - **Repli lasR sous le plafond mémoire du calcul** (brief du 2026-10-09,
   Couchey : 28 dalles COPC, tué deux fois par l'OOM à 12 Go après 16 min).
@@ -17,7 +23,7 @@
     Open-Canopy. Le journal de l'enfant est dans `data/lasr_child.log`.
   - Le traitement du nuage de points drone suit la même règle.
 
-# nemetonshiny 2026.10.1.9001 (cycle dev)
+## Indicateurs
 
 - **E2, N3 et R4 ne sont plus vides** (brief du 2026-10-09, Couchey).
   - E2 et N3 étaient NA dans **tous** les projets. Le cœur lit `E1` (E2), et
@@ -29,10 +35,6 @@
     Open-Canopy. Le NDP et le statut de C1 lisent toujours le vrai MNH.
   - P2 sans âge du peuplement : le journal le dit (« stand age unknown »), au
     lieu du seul « Calculated » du cœur. La vue l'expliquait déjà.
-
-# nemetonshiny 2026.10.1.9000 (cycle dev)
-
-- Ouverture du cycle de dev après la release 2026.10.1.
 
 # nemetonshiny 2026.10.1 (2026-10-09)
 
