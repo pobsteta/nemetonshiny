@@ -231,6 +231,30 @@ COMPUTE_STATUS <- list(
   CANCELLED = "cancelled"
 )
 
+# Statuts d'un calcul fini ("failed" en plus, au cas ou un ecrivain l'emploie).
+.COMPUTE_STATUS_TERMINAUX <- c(COMPUTE_STATUS$COMPLETED, COMPUTE_STATUS$ERROR,
+                               COMPUTE_STATUS$CANCELLED, "failed")
+
+#' Does a progress state describe a finished computation?
+#'
+#' @description
+#' A computation that ends writes `progress_state.json` one last time, so a
+#' fresh file alone does not mean a live run (brief 2026-10-11, MCP refusals
+#' for 60 s after a compute).
+#'
+#' @param state List from [read_progress_state()], or NULL.
+#' @return TRUE when `status` is terminal or `phase` is `"complete"`; FALSE
+#'   for NULL, an unreadable or an unknown state (the cautious answer).
+#' @noRd
+progress_state_termine <- function(state) {
+  if (!is.list(state)) return(FALSE)
+  statut <- state$status
+  phase <- state$phase
+  (is.character(statut) && length(statut) == 1L &&
+     statut %in% .COMPUTE_STATUS_TERMINAUX) ||
+    identical(phase, "complete")
+}
+
 
 #' Initialize computation state
 #'
