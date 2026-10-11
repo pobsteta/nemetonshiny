@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.3" id="nemetonshiny-2026103-2026-10-11">nemetonshiny 2026.10.3 (2026-10-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026103-2026-10-11"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="dalles-lidar-hd-vides-2026-10-3">Dalles LiDAR HD vides<a class="anchor" aria-label="anchor" href="#dalles-lidar-hd-vides-2026-10-3"></a></h3>
+<p>Brief <code>nemetonclaude</code> du 2026-10-11. Une dalle MNH, MNT ou MNS que l’IGN sert vide (100 % NoData, produit pas encore publié) n’est plus retéléchargée à chaque calcul.</p>
+<ul><li>
+<strong>Mémo</strong> <code>cache/layers/lidar_&lt;produit&gt;/vides.json</code>. Chaque entrée porte le nom de la dalle, le produit, la date du dernier constat, la <code>date_edition</code> du nuage et l’URL du produit, toutes deux lues dans la couche de métadonnées. Aucun raster n’y est stocké. Un mémo illisible ou d’un autre format est ignoré, puis réécrit.</li>
+<li>
+<strong>Nouvel essai</strong>, dans trois cas :
+<ul><li>à l’échéance, 7 jours par défaut. Le délai se règle par <code>options(nemetonshiny.lidar_vide_ttl_jours =)</code> ou par la variable <code>NEMETON_LIDAR_VIDE_TTL_JOURS</code>, que le connecteur MCP peut poser ;</li>
+<li>dès que la <code>date_edition</code> ou l’URL de la dalle change chez l’IGN ;</li>
+<li>en forçant avec <code>NEMETON_LIDAR_VIDE_TTL_JOURS=0</code>, ou en supprimant le cache. L’app n’a pas de bouton de purge des sources.</li>
+</ul></li>
+<li>
+<strong>Sonde.</strong> À l’échéance, seule la dalle la plus centrale est redemandée. Si elle est encore vide, l’échéance des autres est repoussée sans les télécharger. Si elle est pleine, tout le lot est redemandé, et les dalles pleines quittent le mémo.</li>
+<li>
+<strong>Journal</strong> : « Tile i/n: vide (mémo du AAAA-MM-JJ, nouvel essai après le AAAA-MM-JJ) ».</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.2" id="nemetonshiny-2026102-2026-10-10">nemetonshiny 2026.10.2 (2026-10-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026102-2026-10-10"></a></h2>
 <p>Changements cassants : aucun. Testée contre nemeton 2026.10.2, qui retire <code>create_qfield_project()</code> et <code>theia_configure_s3()</code> : l’app ne les appelle plus depuis la 2.0.1.</p>
