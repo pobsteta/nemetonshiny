@@ -10,6 +10,18 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.10.3] - 2026-10-11
+
+### Fixed
+- Empty LiDAR HD tiles (100 % NoData, product not yet published by IGN) are
+  kept in a `lidar_<product>/vides.json` memo and no longer downloaded on
+  every compute. They are tried again:
+  - after 7 days (`options(nemetonshiny.lidar_vide_ttl_jours =)` or
+    `NEMETON_LIDAR_VIDE_TTL_JOURS`);
+  - as soon as the tile's `date_edition` or URL changes.
+
+  At the due date a single central tile is probed before the rest.
+
 ## [Unreleased]
 
 ## [2026.10.2] - 2026-10-10

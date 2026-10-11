@@ -4047,6 +4047,11 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
 # publie parfois le nuage de points avant les rasters derives : le WMS sert
 # alors des dalles valides au sens GeoTIFF mais 100 % NoData, au lieu d'un 404.
 .LIDAR_DALLE_PART_MIN <- 0.01
+# Les dalles vides sont notees dans `lidar_<produit>/vides.json` et ne sont
+# pas redemandees avant ce delai (jours) : sans cela, chaque recalcul
+# retelechargeait toutes les dalles vides (brief 2026-10-11).
+.LIDAR_VIDE_TTL_JOURS <- 7
+.LIDAR_MEMO_FORMAT <- 1L
 .LIDAR_MOSAIQUE_COUVERTURE_MIN <- 0.9
 .RASTER_PART_MIN <- 0.01
 
@@ -4078,6 +4083,111 @@ build_s2_ndvi_layer <- function(cache_dir, aoi = NULL, max_scenes = 12L) {
     if (length(v) == 0L) 0 else mean(!is.na(v) & v > -9999)
   }, error = function(e) 0)
   as.numeric(out)
+}
+
+#' Retry delay (days) for LiDAR HD tiles found empty
+#'
+#' @description
+#' `options(nemetonshiny.lidar_vide_ttl_jours =)` first, then the
+#' `NEMETON_LIDAR_VIDE_TTL_JOURS` environment variable (reachable from the MCP
+#' connector, which cannot set an R option in the compute process), else 7.
+#' `0` retries every empty tile on the next compute.
+#'
+#' @return A non-negative number of days.
+#' @noRd
+.lidar_vide_ttl_jours <- function() {
+  lire <- function(x) {
+    v <- suppressWarnings(as.numeric(x))
+    if (length(v) == 1L && !is.na(v) && v >= 0) v else NA_real_
+  }
+  v <- lire(getOption("nemetonshiny.lidar_vide_ttl_jours"))
+  if (is.na(v)) v <- lire(Sys.getenv("NEMETON_LIDAR_VIDE_TTL_JOURS", ""))
+  if (is.na(v)) .LIDAR_VIDE_TTL_JOURS else v
+}
+
+#' Read the memo of empty LiDAR HD tiles
+#'
+#' @description
+#' `lidar_<product>/vides.json` lists the tiles IGN served empty, keyed by
+#' file name: product, date of the last "empty" finding (`constat`), and the
+#' `date_edition` and download URL read in the metadata layer at that time.
+#' No raster is stored. An unreadable memo, or one of another format, is
+#' ignored (it is rewritten at the next write).
+#'
+#' @param dir The `lidar_<product>` cache directory.
+#' @return A named list of entries (possibly empty).
+#' @noRd
+.lidar_memo_lire <- function(dir) {
+  f <- file.path(dir, "vides.json")
+  if (!file.exists(f)) return(list())
+  m <- tryCatch(jsonlite::read_json(f), error = function(e) NULL)
+  if (!is.list(m) || !identical(as.integer(m$format %||% NA), .LIDAR_MEMO_FORMAT) ||
+      !is.list(m$dalles)) {
+    cli::cli_alert_info("LiDAR HD empty-tile memo unreadable \u2014 ignored")
+    return(list())
+  }
+  m$dalles
+}
+
+#' Write the memo of empty LiDAR HD tiles
+#' @param dir The `lidar_<product>` cache directory.
+#' @param dalles Named list of entries, see [.lidar_memo_lire()].
+#' @noRd
+.lidar_memo_ecrire <- function(dir, dalles) {
+  f <- file.path(dir, "vides.json")
+  if (!length(dalles)) {
+    unlink(f)
+    return(invisible(NULL))
+  }
+  tryCatch(
+    jsonlite::write_json(list(format = .LIDAR_MEMO_FORMAT, dalles = dalles),
+                         f, auto_unbox = TRUE, pretty = TRUE, null = "null"),
+    error = function(e) {
+      cli::cli_alert_warning("LiDAR HD empty-tile memo not written: {e$message}")
+    }
+  )
+  invisible(NULL)
+}
+
+#' State of a LiDAR HD tile against the empty-tile memo
+#'
+#' @param entree Memo entry or NULL.
+#' @param date_edition,url Current values from the metadata layer.
+#' @param maintenant Current time.
+#' @param ttl Retry delay in days.
+#' @return `"inconnue"` (not in the memo, or its metadata changed: download),
+#'   `"attente"` (empty, not due: no request) or `"echue"` (empty, due).
+#' @noRd
+.lidar_memo_etat <- function(entree, date_edition, url,
+                             maintenant = Sys.time(),
+                             ttl = .lidar_vide_ttl_jours()) {
+  if (is.null(entree)) return("inconnue")
+  same <- function(a, b) identical(as.character(a %||% NA), as.character(b %||% NA))
+  if (!same(entree$date_edition, date_edition) || !same(entree$url, url)) {
+    return("inconnue")
+  }
+  constat <- as.POSIXct(entree$constat %||% NA_character_,
+                        format = "%Y-%m-%dT%H:%M:%S")
+  if (is.na(constat)) return("echue")
+  age <- as.numeric(difftime(maintenant, constat, units = "days"))
+  if (age < ttl) "attente" else "echue"
+}
+
+#' Index of the tile closest to the centre of the request bbox
+#' @param tiles_sf Tiles (sf, WGS84).
+#' @param idx Candidate row indices.
+#' @param bbox Numeric WGS84 bbox.
+#' @noRd
+.lidar_dalle_centrale <- function(tiles_sf, idx, bbox) {
+  if (length(idx) <= 1L) return(idx[1])
+  tryCatch({
+    centre <- sf::st_sfc(sf::st_point(c(mean(bbox[c(1, 3)]), mean(bbox[c(2, 4)]))),
+                         crs = 4326)
+    g <- sf::st_geometry(tiles_sf)[idx]
+    xy <- suppressWarnings(sf::st_coordinates(sf::st_centroid(g)))
+    c0 <- sf::st_coordinates(centre)
+    idx[which.min((xy[, 1] - c0[1])^2 + (xy[, 2] - c0[2])^2)]
+  }, error = function(e) idx[1])
 }
 
 #' Request bbox (WGS84 numeric) as an sfc polygon
@@ -4238,16 +4348,58 @@ download_ign_lidar_hd <- function(bbox,
   n_tiles <- length(download_urls)
   n_vides <- 0L
 
-  for (i in seq_along(download_urls)) {
+  # Memo des dalles vides (brief 2026-10-11) : une dalle notee vide n'est pas
+  # redemandee avant l'echeance, sauf si ses metadonnees IGN ont change. A
+  # l'echeance, une seule dalle (la plus centrale) sert de sonde : encore vide,
+  # elle repousse l'echeance des autres sans les telecharger.
+  memo_actif <- product != "nuage"
+  memo <- if (memo_actif) .lidar_memo_lire(cache_subdir) else list()
+  maintenant <- Sys.time()
+  ttl <- .lidar_vide_ttl_jours()
+  constat <- format(maintenant, "%Y-%m-%dT%H:%M:%S")
+  colonne <- function(nm) {
+    if (nm %in% names(tiles_sf)) as.character(tiles_sf[[nm]]) else rep(NA_character_, n_tiles)
+  }
+  date_edition <- colonne("date_edition")
+  dalle_id <- colonne("coordonnees_nw")
+  dalle_id[is.na(dalle_id)] <- tile_names[is.na(dalle_id)]
+  etats <- vapply(seq_len(n_tiles), function(i) {
+    if (!memo_actif) return("inconnue")
+    .lidar_memo_etat(memo[[tile_names[i]]], date_edition[i], download_urls[i],
+                     maintenant, ttl)
+  }, character(1))
+  noter_vide <- function(i) {
+    memo[[tile_names[i]]] <<- list(dalle = dalle_id[i], produit = product,
+                                   constat = constat,
+                                   date_edition = date_edition[i],
+                                   url = download_urls[i])
+  }
+  echues <- which(etats == "echue")
+  sonde <- if (length(echues) > 1L) .lidar_dalle_centrale(tiles_sf, echues, bbox) else NA_integer_
+  ordre <- if (is.na(sonde)) seq_len(n_tiles) else c(sonde, setdiff(seq_len(n_tiles), sonde))
+
+  for (k in seq_along(ordre)) {
+    i <- ordre[k]
     url <- download_urls[i]
     tile_file <- file.path(cache_subdir, tile_names[i])
 
     if (!is.null(progress_callback)) {
       progress_callback(list(
-        current = paste0("download_lidar:", toupper(product), ":", i, "/", n_tiles),
-        lidar_tile = i - 1,
+        current = paste0("download_lidar:", toupper(product), ":", k, "/", n_tiles),
+        lidar_tile = k - 1,
         lidar_tiles_total = n_tiles
       ))
+    }
+
+    # Dalle vide, echeance non atteinte : comptee vide sans requete.
+    if (etats[i] == "attente") {
+      n_vides <- n_vides + 1L
+      vu <- as.POSIXct(memo[[tile_names[i]]]$constat, format = "%Y-%m-%dT%H:%M:%S")
+      cli::cli_alert_info(paste0(
+        "  Tile {i}/{n_tiles}: vide (m\u00e9mo du {format(vu, '%Y-%m-%d')}, ",
+        "nouvel essai apr\u00e8s le {format(vu + ttl * 86400, '%Y-%m-%d')})"
+      ))
+      next
     }
 
     # Skip if already cached - unless the cached tile is empty (NoData only):
@@ -4257,6 +4409,7 @@ download_ign_lidar_hd <- function(bbox,
           .raster_part_valide(tile_file) >= .LIDAR_DALLE_PART_MIN) {
         cli::cli_alert_success("  Tile {i}/{n_tiles}: cached")
         downloaded_files <- c(downloaded_files, tile_file)
+        memo[[tile_names[i]]] <- NULL
         next
       }
       unlink(c(tile_file, paste0(tile_file, ".aux.xml")))
@@ -4267,19 +4420,33 @@ download_ign_lidar_hd <- function(bbox,
     if (!is.null(result) && product != "nuage" &&
         .raster_part_valide(result) < .LIDAR_DALLE_PART_MIN) {
       # Valide au sens GeoTIFF, mais 100 % NoData : le produit n'est pas
-      # encore publie. Un echec comme un 404, et hors du cache.
+      # encore publie. Un echec comme un 404, hors du cache, note au memo.
       unlink(c(result, paste0(result, ".aux.xml")))
+      noter_vide(i)
       n_vides <- n_vides + 1L
       cli::cli_alert_warning(
         "  Tile {i}/{n_tiles}: vide (produit non encore publi\u00e9 par l'IGN)"
       )
+      if (identical(i, sonde)) {
+        # Sonde encore vide : les autres dalles echues attendent l'echeance
+        # suivante, sans requete.
+        autres <- setdiff(echues, sonde)
+        for (j in autres) noter_vide(j)
+        etats[autres] <- "attente"
+        cli::cli_alert_info(paste0(
+          "  Sonde toujours vide : {length(autres)} autre{?s} dalle{?s} ",
+          "repouss\u00e9e{?s} sans t\u00e9l\u00e9chargement"
+        ))
+      }
     } else if (!is.null(result)) {
+      memo[[tile_names[i]]] <- NULL
       downloaded_files <- c(downloaded_files, result)
       cli::cli_alert_success("  Tile {i}/{n_tiles}: downloaded")
     } else {
       cli::cli_alert_warning("  Tile {i}/{n_tiles}: failed")
     }
   }
+  if (memo_actif) .lidar_memo_ecrire(cache_subdir, memo)
 
   if (length(downloaded_files) == 0 && n_vides > 0L) {
     cli::cli_alert_warning(
