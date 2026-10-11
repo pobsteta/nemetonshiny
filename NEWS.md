@@ -4,13 +4,28 @@ Changements cassants : aucun.
 
 ## Dalles LiDAR HD vides
 
-- Une dalle MNH, MNT ou MNS que l'IGN sert vide (100 % NoData, produit pas
-  encore publié) laisse un marqueur `<dalle>.vide` dans le cache. Elle n'est
-  plus redemandée pendant 7 jours, ce qui est réglable par
-  `options(nemetonshiny.lidar_vide_jours =)`. Elle est redemandée ensuite.
-  Le marqueur disparaît dès que la dalle arrive pleine.
-- Sur Couchey, les 28 dalles MNH vides prenaient 300 s à chaque calcul. Elles
-  prennent maintenant 1 s au calcul suivant, sans appel à l'IGN.
+Brief `nemetonclaude` du 2026-10-11. Une dalle MNH, MNT ou MNS que l'IGN sert
+vide (100 % NoData, produit pas encore publié) n'est plus retéléchargée à
+chaque calcul.
+
+- **Mémo** `cache/layers/lidar_<produit>/vides.json`. Chaque entrée porte le
+  nom de la dalle, le produit, la date du dernier constat, la `date_edition`
+  du nuage et l'URL du produit, toutes deux lues dans la couche de
+  métadonnées. Aucun raster n'y est stocké. Un mémo illisible ou d'un autre
+  format est ignoré, puis réécrit.
+- **Nouvel essai**, dans trois cas :
+  - à l'échéance, 7 jours par défaut. Le délai se règle par
+    `options(nemetonshiny.lidar_vide_ttl_jours =)` ou par la variable
+    `NEMETON_LIDAR_VIDE_TTL_JOURS`, que le connecteur MCP peut poser ;
+  - dès que la `date_edition` ou l'URL de la dalle change chez l'IGN ;
+  - en forçant avec `NEMETON_LIDAR_VIDE_TTL_JOURS=0`, ou en supprimant le
+    cache. L'app n'a pas de bouton de purge des sources.
+- **Sonde.** À l'échéance, seule la dalle la plus centrale est redemandée.
+  Si elle est encore vide, l'échéance des autres est repoussée sans les
+  télécharger. Si elle est pleine, tout le lot est redemandé, et les dalles
+  pleines quittent le mémo.
+- **Journal** : « Tile i/n: vide (mémo du AAAA-MM-JJ, nouvel essai après le
+  AAAA-MM-JJ) ».
 
 # nemetonshiny 2026.10.2 (2026-10-10)
 

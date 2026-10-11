@@ -13,9 +13,14 @@ For a narrative, per-feature description of each release, see
 ## [2026.10.3] - 2026-10-11
 
 ### Fixed
-- An empty LiDAR HD tile (100 % NoData, product not yet published by IGN)
-  leaves a `<tile>.vide` marker and is not requested again for 7 days
-  (`options(nemetonshiny.lidar_vide_jours =)`), instead of on every compute.
+- Empty LiDAR HD tiles (100 % NoData, product not yet published by IGN) are
+  kept in a `lidar_<product>/vides.json` memo and no longer downloaded on
+  every compute. They are tried again:
+  - after 7 days (`options(nemetonshiny.lidar_vide_ttl_jours =)` or
+    `NEMETON_LIDAR_VIDE_TTL_JOURS`);
+  - as soon as the tile's `date_edition` or URL changes.
+
+  At the due date a single central tile is probed before the rest.
 
 ## [Unreleased]
 

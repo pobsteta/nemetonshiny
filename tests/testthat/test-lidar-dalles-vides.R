@@ -181,71 +181,185 @@ test_that("l'accessibilite ignore une mosaique MNT LiDAR vide", {
   })
 })
 
-test_that("une dalle vide n'est pas redemandee au recalcul suivant", {
+# Memo des dalles vides (brief 2026-10-11) -----------------------------------
+
+# n dalles de 1 km sur une ligne, avec les colonnes de la couche de metadonnees.
+.wfs_meta <- function(n, date_edition = "2026-09-16", x0 = 846000, y0 = 6687000) {
+  noms <- sprintf("LHD_FXX_%04d_%04d_MNH.tif", (x0 / 1000) + seq_len(n) - 1L,
+                  y0 / 1000)
+  centres <- sf::st_transform(sf::st_sfc(lapply(seq_len(n), function(k)
+    sf::st_point(c(x0 + (k - 1) * 1000 + 500, y0 + 500))), crs = 2154), 4326)
+  function(...) {
+    sf::st_sf(url_mnh = paste0("http://example.com/x?FILENAME=", noms),
+              date_edition = date_edition,
+              coordonnees_nw = sprintf("%04d-%04d", (x0 / 1000) + seq_len(n) - 1L,
+                                       y0 / 1000 + 1),
+              geometry = centres)
+  }
+}
+
+# bbox WGS84 couvrant n dalles alignees.
+.bbox_ligne <- function(n, x0 = 846000, y0 = 6687000) {
+  p <- sf::st_as_sfc(sf::st_bbox(c(xmin = x0 + 10, ymin = y0 + 10,
+                                   xmax = x0 + n * 1000 - 10, ymax = y0 + 990),
+                                 crs = sf::st_crs(2154)))
+  as.numeric(sf::st_bbox(sf::st_transform(p, 4326)))
+}
+
+# Lance download_ign_lidar_hd ; `pleines` = noms de dalles servies pleines.
+.lancer_meta <- function(cache_dir, n, pleines = character(0), env, ...) {
+  msgs <- character(0)
+  res <- withCallingHandlers(
+    with_mocked_bindings(
+      query_lidar_wfs = .wfs_meta(n, ...),
+      download_lidar_tile = function(url, dest_file) {
+        env$appels <- c(env$appels, basename(dest_file))
+        x0 <- as.numeric(sub(".*LHD_FXX_(\\d{4})_.*", "\\1", dest_file)) * 1000
+        pleine <- basename(dest_file) %in% pleines
+        .ecrire_dalle(.dalle_l93(x0 = x0, n = 100L,
+                                 valeur = if (pleine) 18 else -9999), dest_file)
+      },
+      nemetonshiny:::download_ign_lidar_hd(.bbox_ligne(n), cache_dir, product = "mnh")
+    ),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  env$msgs <- msgs
+  res
+}
+
+.vieillir_memo <- function(cache_dir, jours) {
+  f <- file.path(cache_dir, "lidar_mnh", "vides.json")
+  m <- jsonlite::read_json(f)
+  for (k in names(m$dalles)) {
+    m$dalles[[k]]$constat <- format(Sys.time() - jours * 86400, "%Y-%m-%dT%H:%M:%S")
+  }
+  jsonlite::write_json(m, f, auto_unbox = TRUE)
+}
+
+test_that("une dalle memorisee vide n'est redemandee qu'a l'echeance", {
+  withr::local_envvar(NEMETON_LIDAR_VIDE_TTL_JOURS = NA)
   withr::with_tempdir({
     cache_dir <- getwd()
-    appels <- 0L
-    msgs <- character(0)
-    lancer <- function() withCallingHandlers(
-      with_mocked_bindings(
-        query_lidar_wfs = .wfs_une_dalle("http://example.com/0846_6687.tif"),
-        download_lidar_tile = function(url, dest_file) {
-          appels <<- appels + 1L
-          .ecrire_dalle(.dalle_l93(), dest_file)
-        },
-        nemetonshiny:::download_ign_lidar_hd(.bbox_dalle(), cache_dir, product = "mnh")
-      ),
-      message = function(m) {
-        msgs <<- c(msgs, conditionMessage(m))
-        invokeRestart("muffleMessage")
-      }
-    )
-    expect_null(lancer())
-    marqueur <- file.path(cache_dir, "lidar_mnh", "0846_6687.tif.vide")
-    expect_true(file.exists(marqueur))
-    expect_equal(appels, 1L)
+    env <- new.env()
+    expect_null(.lancer_meta(cache_dir, 1, env = env))
+    expect_length(env$appels, 1)
+    m <- jsonlite::read_json(file.path(cache_dir, "lidar_mnh", "vides.json"))
+    e <- m$dalles[[1]]
+    expect_equal(e$produit, "mnh")
+    expect_equal(e$dalle, "0846-6688")
+    expect_equal(e$date_edition, "2026-09-16")
 
-    # Recalcul : pas de nouvel appel reseau, toujours NULL, message explicite
-    expect_null(lancer())
-    expect_equal(appels, 1L)
-    expect_true(any(grepl("pas redemand", msgs)))
-    expect_true(any(grepl("All 1 LiDAR HD MNH tiles are empty", msgs)))
+    # 6 jours : pas de requete, journal date
+    .vieillir_memo(cache_dir, 6)
+    expect_null(.lancer_meta(cache_dir, 1, env = env))
+    expect_length(env$appels, 1)
+    expect_true(any(grepl("m\u00e9mo du .*nouvel essai apr\u00e8s le", env$msgs)))
+    expect_true(any(grepl("All 1 LiDAR HD MNH tiles are empty", env$msgs)))
 
-    # Delai depasse : redemandee
-    Sys.setFileTime(marqueur, Sys.time() - 8 * 86400)
-    expect_null(lancer())
-    expect_equal(appels, 2L)
+    # 8 jours : redemandee
+    .vieillir_memo(cache_dir, 8)
+    expect_null(.lancer_meta(cache_dir, 1, env = env))
+    expect_length(env$appels, 2)
   })
 })
 
-test_that("le marqueur saute quand la dalle est enfin publiee", {
+test_that("une date_edition changee declenche le telechargement avant l'echeance", {
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    env <- new.env()
+    .lancer_meta(cache_dir, 2, env = env)
+    expect_length(env$appels, 2)
+    .lancer_meta(cache_dir, 2, env = env)
+    expect_length(env$appels, 2)
+    res <- .lancer_meta(cache_dir, 2, env = env, date_edition = "2026-10-11",
+                        pleines = sprintf("LHD_FXX_%04d_6687_MNH.tif", 846:847))
+    expect_length(env$appels, 4)
+    expect_s4_class(res, "SpatRaster")
+    # Pleines : sorties du memo, qui disparait
+    expect_false(file.exists(file.path(cache_dir, "lidar_mnh", "vides.json")))
+  })
+})
+
+test_that("28 dalles echues : une seule sonde, encore vide, repousse les 27 autres", {
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    env <- new.env()
+    .lancer_meta(cache_dir, 28, env = env)
+    expect_length(env$appels, 28)
+    .vieillir_memo(cache_dir, 8)
+    env$appels <- character(0)
+    expect_null(.lancer_meta(cache_dir, 28, env = env))
+    expect_length(env$appels, 1)
+    # La sonde est la dalle centrale (14e ou 15e sur 28)
+    expect_true(env$appels %in% sprintf("LHD_FXX_%04d_6687_MNH.tif", 859:860))
+    expect_true(any(grepl("27 autres dalles repouss", env$msgs)))
+    m <- jsonlite::read_json(file.path(cache_dir, "lidar_mnh", "vides.json"))
+    constats <- as.POSIXct(vapply(m$dalles, `[[`, "", "constat"),
+                           format = "%Y-%m-%dT%H:%M:%S")
+    expect_length(constats, 28)
+    expect_true(all(difftime(Sys.time(), constats, units = "hours") < 1))
+    # Et le calcul suivant ne fait aucune requete
+    .lancer_meta(cache_dir, 28, env = env)
+    expect_length(env$appels, 1)
+  })
+})
+
+test_that("une sonde pleine declenche le lot et les dalles pleines quittent le memo", {
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    env <- new.env()
+    .lancer_meta(cache_dir, 4, env = env)
+    .vieillir_memo(cache_dir, 8)
+    env$appels <- character(0)
+    # Trois dalles publiees, une encore vide
+    pleines <- sprintf("LHD_FXX_%04d_6687_MNH.tif", 846:848)
+    res <- .lancer_meta(cache_dir, 4, pleines = pleines, env = env)
+    expect_length(env$appels, 4)
+    m <- jsonlite::read_json(file.path(cache_dir, "lidar_mnh", "vides.json"))
+    expect_identical(names(m$dalles), "LHD_FXX_0849_6687_MNH.tif")
+    expect_true(all(file.exists(file.path(cache_dir, "lidar_mnh", pleines))))
+  })
+})
+
+test_that("un memo illisible ou d'un autre format est ignore puis reecrit", {
   withr::with_tempdir({
     cache_dir <- getwd()
     dir.create(file.path(cache_dir, "lidar_mnh"))
-    marqueur <- file.path(cache_dir, "lidar_mnh", "0846_6687.tif.vide")
-    writeLines("2026-10-01T00:00:00", marqueur)
-    withr::local_options(nemetonshiny.lidar_vide_jours = 0)
-    res <- suppressMessages(with_mocked_bindings(
-      query_lidar_wfs = .wfs_une_dalle("http://example.com/0846_6687.tif"),
-      download_lidar_tile = function(url, dest_file)
-        .ecrire_dalle(.dalle_l93(n = 200L, valeur = 18), dest_file),
-      nemetonshiny:::download_ign_lidar_hd(.bbox_dalle(), cache_dir, product = "mnh")
-    ))
-    expect_s4_class(res, "SpatRaster")
-    expect_false(file.exists(marqueur))
+    f <- file.path(cache_dir, "lidar_mnh", "vides.json")
+    env <- new.env()
+    writeLines("{ pas du json", f)
+    expect_null(.lancer_meta(cache_dir, 1, env = env))
+    expect_length(env$appels, 1)
+    expect_equal(jsonlite::read_json(f)$format, 1L)
+    jsonlite::write_json(list(format = 99, dalles = list()), f, auto_unbox = TRUE)
+    .lancer_meta(cache_dir, 1, env = env)
+    expect_length(env$appels, 2)
   })
 })
 
-test_that(".lidar_dalle_vide_recente suit l'age du marqueur et l'option", {
-  f <- nemetonshiny:::.lidar_dalle_vide_recente
+test_that(".lidar_vide_ttl_jours : option, puis variable d'environnement, puis 7", {
+  f <- nemetonshiny:::.lidar_vide_ttl_jours
+  withr::local_options(nemetonshiny.lidar_vide_ttl_jours = NULL)
+  withr::local_envvar(NEMETON_LIDAR_VIDE_TTL_JOURS = NA)
+  expect_equal(f(), 7)
+  withr::local_envvar(NEMETON_LIDAR_VIDE_TTL_JOURS = "0")
+  expect_equal(f(), 0)
+  withr::local_envvar(NEMETON_LIDAR_VIDE_TTL_JOURS = "abc")
+  expect_equal(f(), 7)
+  withr::local_options(nemetonshiny.lidar_vide_ttl_jours = 30)
+  expect_equal(f(), 30)
+})
+
+test_that("NEMETON_LIDAR_VIDE_TTL_JOURS=0 force le nouvel essai", {
   withr::with_tempdir({
-    expect_false(f("absent.vide"))
-    writeLines("x", "d.vide")
-    expect_true(f("d.vide"))
-    expect_false(f("d.vide", maintenant = Sys.time() + 8 * 86400))
-    withr::local_options(nemetonshiny.lidar_vide_jours = 30)
-    expect_true(f("d.vide", maintenant = Sys.time() + 8 * 86400))
-    withr::local_options(nemetonshiny.lidar_vide_jours = "n'importe quoi")
-    expect_true(f("d.vide"))
+    cache_dir <- getwd()
+    env <- new.env()
+    .lancer_meta(cache_dir, 1, env = env)
+    withr::local_envvar(NEMETON_LIDAR_VIDE_TTL_JOURS = "0")
+    .lancer_meta(cache_dir, 1, env = env)
+    expect_length(env$appels, 2)
   })
 })
