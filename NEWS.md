@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.3.9001 (cycle dev)
+# nemetonshiny 2026.10.4 (2026-10-11)
+
+Changements cassants : aucun.
 
 ## MCP : plus de refus juste après un calcul
 
@@ -16,10 +18,6 @@ une dernière fois `progress_state.json`, et seul l'âge du fichier comptait.
   changent pas.
 - La reprise d'un calcul interrompu dans l'accueil n'est pas touchée : elle
   ne reprend déjà que `downloading` et `computing`.
-
-# nemetonshiny 2026.10.3.9000 (cycle dev)
-
-- Ouverture du cycle de dev après la release 2026.10.3.
 
 # nemetonshiny 2026.10.3 (2026-10-11)
 
