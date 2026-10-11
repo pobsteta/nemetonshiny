@@ -126,6 +126,64 @@ test_that("lancer_calcul writes the job and spawns a detached process", {
   expect_identical(r2$classe, "nemetonshiny_calcul_en_cours")
 })
 
+test_that("un progress_state recent mais termine ne fait plus refuser (brief 2026-10-11)", {
+  .mcp_env()
+  id <- .mcp_projet(calcule = FALSE)
+  path <- get_project_path(id)
+  f <- file.path(path, "data", "progress_state.json")
+  local_mocked_bindings(.mcp_spawn = function(...) invisible(TRUE))
+  ecrire <- function(x) {
+    if (is.character(x)) writeLines(x, f) else jsonlite::write_json(x, f, auto_unbox = TRUE)
+    Sys.setFileTime(f, Sys.time() - 5)
+  }
+
+  # Termine il y a 5 s, sans job vivant : accepte
+  ecrire(list(status = "completed", phase = "complete"))
+  expect_lt(progress_state_age_sec(id), 60)
+  expect_true(.lit(mcp_lancer_calcul(id))$ok)
+  unlink(.mcp_job_path(path))
+  for (st in c("error", "cancelled", "failed")) {
+    ecrire(list(status = st))
+    expect_true(.lit(mcp_lancer_calcul(id))$ok, label = st)
+    unlink(.mcp_job_path(path))
+  }
+  # Phase complete seule suffit
+  ecrire(list(status = "?", phase = "complete"))
+  expect_true(.lit(mcp_lancer_calcul(id))$ok)
+  unlink(.mcp_job_path(path))
+
+  # En cours il y a 5 s : refus, comme avant
+  for (st in c("computing", "downloading", "pending")) {
+    ecrire(list(status = st, phase = "indicators"))
+    expect_identical(.lit(mcp_lancer_calcul(id))$classe,
+                     "nemetonshiny_calcul_en_cours", label = st)
+  }
+  # Illisible ou statut inconnu, fichier recent : refus
+  ecrire("{ pas du json")
+  expect_identical(.lit(mcp_lancer_calcul(id))$classe, "nemetonshiny_calcul_en_cours")
+  ecrire(list(status = "bizarre"))
+  expect_identical(.lit(mcp_lancer_calcul(id))$classe, "nemetonshiny_calcul_en_cours")
+
+  # Termine mais job MCP vivant : refus, comme avant
+  ecrire(list(status = "completed", phase = "complete"))
+  .mcp_job_write(path, list(job_id = "x", statut = "en_cours", pid = Sys.getpid()))
+  expect_identical(.lit(mcp_lancer_calcul(id))$classe, "nemetonshiny_calcul_en_cours")
+  unlink(.mcp_job_path(path))
+
+  # Termine mais verrou d'edition : refus verrou, comme avant
+  local_mocked_bindings(lock_status = function(pid) list(holder_label = "Pascal", stale = FALSE))
+  expect_identical(.lit(mcp_lancer_calcul(id))$classe, "nemetonshiny_projet_verrouille")
+})
+
+test_that("progress_state_termine", {
+  expect_false(progress_state_termine(NULL))
+  expect_false(progress_state_termine(list()))
+  expect_false(progress_state_termine(list(status = "computing")))
+  expect_true(progress_state_termine(list(status = "completed")))
+  expect_true(progress_state_termine(list(status = "computing", phase = "complete")))
+  expect_false(progress_state_termine(list(status = list("completed", "x"))))
+})
+
 test_that("lancer_calcul refuses a running job, an app computation, a lock, a stale project", {
   skip_if_not_installed("arrow")
   .mcp_env()

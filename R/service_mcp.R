@@ -191,7 +191,10 @@ mcp_resume_projet <- function(projet, langue = "fr") {
     .api_abort("Un calcul est d\u00e9j\u00e0 en cours pour ce projet.",
                "nemetonshiny_calcul_en_cours", call = call)
   }
-  if (progress_state_age_sec(id) < 60) {
+  # Un fichier recent ne veut dire calcul vivant que s'il n'est pas termine :
+  # le calcul qui finit l'ecrit une derniere fois a `completed`.
+  if (progress_state_age_sec(id) < 60 &&
+      !progress_state_termine(read_progress_state(id))) {
     .api_abort("L'application calcule ce projet en ce moment.",
                "nemetonshiny_calcul_en_cours", call = call)
   }

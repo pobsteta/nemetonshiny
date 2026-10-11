@@ -1,3 +1,22 @@
+# nemetonshiny 2026.10.3.9001 (cycle dev)
+
+## MCP : plus de refus juste après un calcul
+
+Brief `nemetonclaude` du 2026-10-11. Pendant 60 s après la fin d'un calcul,
+`lancer_calcul` et tous les outils d'écriture MCP répondaient « L'application
+calcule ce projet en ce moment ». La cause : le calcul qui se termine écrit
+une dernière fois `progress_state.json`, et seul l'âge du fichier comptait.
+
+- Un fichier récent ne fait plus refuser s'il décrit un calcul fini : statut
+  `completed`, `error`, `cancelled` ou `failed`, ou phase `complete`. Le
+  statut est lu par `read_progress_state()`, comme dans l'app. Les statuts
+  terminaux viennent de `COMPUTE_STATUS`.
+- Un fichier illisible ou un statut inconnu fait toujours refuser, par
+  prudence. Les refus pour un job MCP vivant ou pour le verrou d'édition ne
+  changent pas.
+- La reprise d'un calcul interrompu dans l'accueil n'est pas touchée : elle
+  ne reprend déjà que `downloading` et `computing`.
+
 # nemetonshiny 2026.10.3.9000 (cycle dev)
 
 - Ouverture du cycle de dev après la release 2026.10.3.
