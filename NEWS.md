@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.2.9001 (cycle dev)
+# nemetonshiny 2026.10.3 (2026-10-11)
+
+Changements cassants : aucun.
 
 ## Dalles LiDAR HD vides
 
@@ -9,10 +11,6 @@
   Le marqueur disparaît dès que la dalle arrive pleine.
 - Sur Couchey, les 28 dalles MNH vides prenaient 300 s à chaque calcul. Elles
   prennent maintenant 1 s au calcul suivant, sans appel à l'IGN.
-
-# nemetonshiny 2026.10.2.9000 (cycle dev)
-
-- Ouverture du cycle de dev après la release 2026.10.2.
 
 # nemetonshiny 2026.10.2 (2026-10-10)
 

@@ -10,6 +10,13 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.10.3] - 2026-10-11
+
+### Fixed
+- An empty LiDAR HD tile (100 % NoData, product not yet published by IGN)
+  leaves a `<tile>.vide` marker and is not requested again for 7 days
+  (`options(nemetonshiny.lidar_vide_jours =)`), instead of on every compute.
+
 ## [Unreleased]
 
 ## [2026.10.2] - 2026-10-10
