@@ -1,3 +1,7 @@
+# nemetonshiny 2026.10.4.9000 (cycle dev)
+
+- Ouverture du cycle de dev après la release 2026.10.4.
+
 # nemetonshiny 2026.10.4 (2026-10-11)
 
 Changements cassants : aucun.
