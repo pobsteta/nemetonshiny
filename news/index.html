@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.4" id="nemetonshiny-2026104-2026-10-11">nemetonshiny 2026.10.4 (2026-10-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026104-2026-10-11"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="mcp--plus-de-refus-juste-après-un-calcul-2026-10-4">MCP : plus de refus juste après un calcul<a class="anchor" aria-label="anchor" href="#mcp--plus-de-refus-juste-apr%C3%A8s-un-calcul-2026-10-4"></a></h3>
+<p>Brief <code>nemetonclaude</code> du 2026-10-11. Pendant 60 s après la fin d’un calcul, <code>lancer_calcul</code> et tous les outils d’écriture MCP répondaient « L’application calcule ce projet en ce moment ». La cause : le calcul qui se termine écrit une dernière fois <code>progress_state.json</code>, et seul l’âge du fichier comptait.</p>
+<ul><li>Un fichier récent ne fait plus refuser s’il décrit un calcul fini : statut <code>completed</code>, <code>error</code>, <code>cancelled</code> ou <code>failed</code>, ou phase <code>complete</code>. Le statut est lu par <code>read_progress_state()</code>, comme dans l’app. Les statuts terminaux viennent de <code>COMPUTE_STATUS</code>.</li>
+<li>Un fichier illisible ou un statut inconnu fait toujours refuser, par prudence. Les refus pour un job MCP vivant ou pour le verrou d’édition ne changent pas.</li>
+<li>La reprise d’un calcul interrompu dans l’accueil n’est pas touchée : elle ne reprend déjà que <code>downloading</code> et <code>computing</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.3" id="nemetonshiny-2026103-2026-10-11">nemetonshiny 2026.10.3 (2026-10-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026103-2026-10-11"></a></h2>
 <p>Changements cassants : aucun.</p>

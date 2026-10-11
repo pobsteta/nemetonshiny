@@ -12,6 +12,15 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.10.4\] - 2026-10-11
+
+### Fixed
+
+- MCP write tools no longer refuse (“L’application calcule ce projet en
+  ce moment”) for 60 s after a compute ends: a fresh
+  `progress_state.json` only blocks when it does not describe a finished
+  computation.
+
 ## \[2026.10.3\] - 2026-10-11
 
 ### Fixed
