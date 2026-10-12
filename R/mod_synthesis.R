@@ -730,26 +730,45 @@ mod_synthesis_server <- function(id, app_state) {
           }
         }
       }
-      if (length(prompts) > 1L) {
-        shiny::removeNotification(notif_id)
-        notif_id <- shiny::showNotification(
-          htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
-                         sprintf("%s (%d)", i18n$t("ai_generating"), length(prompts))),
-          type = "message", duration = NULL)
-      }
       ia_ctx$notif <- notif_id
+      # Progression (i/n) : le worker l'ecrit dans ce fichier avant chaque
+      # appel, `ia_progression()` la relit (regression de l'audit 1.0, lot 5 :
+      # le passage en worker avait fait perdre le "Famille (i/13)").
+      ia_ctx$progress_file <- if (length(prompts) > 1L) {
+        tempfile("nemeton_ia_", fileext = ".txt")
+      }
+      ia_ctx$labels <- c(.synthese = i18n$t("tab_synthesis"), unlist(fam_names))
       ia_ctx$pid <- shiny::isolate(app_state$project_id)
       ia_ctx$familles <- length(prompts) > 1L
       ia_ctx$skipped <- skipped_families
       ia_ctx$fam_names <- fam_names
       ia_ctx$fam_base <- as.list(shiny::isolate(app_state$family_comments))
-      ia_task$invoke(system_prompt, prompts)
+      ia_task$invoke(system_prompt, prompts, ia_ctx$progress_file)
       "en_cours"
     }
 
     ia_ctx <- new.env(parent = emptyenv())
-    ia_task <- shiny::ExtendedTask$new(function(system_prompt, prompts) {
-      llm_batch_async(system_prompt, prompts, retries = 1L)
+    ia_task <- shiny::ExtendedTask$new(function(system_prompt, prompts,
+                                                progress_file = NULL) {
+      llm_batch_async(system_prompt, prompts, retries = 1L,
+                      progress_file = progress_file)
+    })
+
+    # Relue chaque seconde, et seulement pendant la generation.
+    ia_progression <- shiny::reactive({
+      if (!identical(ia_task$status(), "running")) return(NULL)
+      shiny::invalidateLater(1000)
+      .llm_progress_read(ia_ctx$progress_file)
+    })
+    shiny::observeEvent(ia_progression(), {
+      p <- ia_progression()
+      if (is.null(ia_ctx$notif)) return()
+      i18n <- get_i18n(app_state$language)
+      label <- if (p$nom %in% names(ia_ctx$labels)) ia_ctx$labels[[p$nom]] else p$nom
+      shiny::showNotification(
+        htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
+                       sprintf(i18n$t("ai_progression_fmt"), label, p$i, p$n)),
+        id = ia_ctx$notif, type = "message", duration = NULL)
     })
 
     # Application du resultat de la generation IA (synthese + familles).
@@ -758,6 +777,9 @@ mod_synthesis_server <- function(id, app_state) {
       if (!st %in% c("success", "error")) return()
       i18n <- get_i18n(app_state$language)
       if (!is.null(ia_ctx$notif)) shiny::removeNotification(ia_ctx$notif)
+      if (!is.null(ia_ctx$progress_file)) {
+        unlink(c(ia_ctx$progress_file, paste0(ia_ctx$progress_file, ".tmp")))
+      }
       # Restore button. L'icone doit etre celle de l'accent IA : la restaurer
       # en " robot " reviendrait a defaire l'accent des la premiere generation.
       shiny::updateActionButton(session, "ai_generate",

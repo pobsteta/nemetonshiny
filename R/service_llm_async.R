@@ -39,14 +39,19 @@
 #'   family comments make no sense).
 #' @param retries Attempts per prompt after the first one (an empty response
 #'   counts as a failure: free tiers throttle bursts of requests).
+#' @param progress_file Path or `NULL`. Before each prompt, receives one
+#'   tab-separated line `i, n, name`, read back by the session (see
+#'   [.llm_progress_read()]): the worker cannot update the UI itself.
 #' @return `list(results = <named list of character>, errors = <named
 #'   character>)`.
 #' @noRd
-.llm_batch_run <- function(system_prompt, prompts, retries = 1L) {
+.llm_batch_run <- function(system_prompt, prompts, retries = 1L,
+                           progress_file = NULL) {
   results <- list()
   errors <- character(0)
   for (i in seq_along(prompts)) {
     nom <- names(prompts)[i]
+    .llm_progress_write(progress_file, i, length(prompts), nom)
     rep <- NULL
     derniere <- NULL
     for (essai in seq_len(1L + if (i == 1L) 0L else retries)) {
@@ -74,12 +79,45 @@
   list(results = results, errors = errors)
 }
 
+#' Write the progress of a batch (worker side)
+#'
+#' Written to a temporary file then renamed, so the session never reads a
+#' half-written line. Any failure is ignored: progress is a courtesy.
+#' @noRd
+.llm_progress_write <- function(progress_file, i, n, nom) {
+  if (is.null(progress_file)) return(invisible(NULL))
+  tryCatch({
+    tmp <- paste0(progress_file, ".tmp")
+    writeLines(paste(i, n, nom, sep = "\t"), tmp)
+    file.rename(tmp, progress_file)
+  }, error = function(e) NULL)
+  invisible(NULL)
+}
+
+#' Read the progress of a batch (session side)
+#'
+#' @param progress_file Path or `NULL`.
+#' @return `list(i, n, nom)`, or `NULL` when nothing readable is there yet.
+#' @noRd
+.llm_progress_read <- function(progress_file) {
+  if (is.null(progress_file) || !file.exists(progress_file)) return(NULL)
+  ligne <- tryCatch(readLines(progress_file, n = 1L, warn = FALSE),
+                    error = function(e) character(0))
+  champs <- strsplit(ligne[1] %||% "", "\t", fixed = TRUE)[[1]]
+  if (length(champs) < 3L) return(NULL)
+  i <- suppressWarnings(as.integer(champs[1]))
+  n <- suppressWarnings(as.integer(champs[2]))
+  if (is.na(i) || is.na(n)) return(NULL)
+  list(i = i, n = n, nom = champs[3])
+}
+
 #' Run LLM prompts off the Shiny loop
 #'
 #' @inheritParams .llm_batch_run
 #' @return A promise resolving to the value of [.llm_batch_run()].
 #' @noRd
-llm_batch_async <- function(system_prompt, prompts, retries = 1L) {
+llm_batch_async <- function(system_prompt, prompts, retries = 1L,
+                            progress_file = NULL) {
   env <- .llm_env_snapshot()
   app_opts <- getOption("nemeton.app_options")
   dev_path <- .dev_pkg_path_courant()
@@ -87,7 +125,8 @@ llm_batch_async <- function(system_prompt, prompts, retries = 1L) {
     # Tests : dans le processus (doublures visibles), derriere une promesse.
     return(promises::promise(function(resolve, reject) {
       .later_sur(function() {
-        tryCatch(resolve(.llm_batch_run(system_prompt, prompts, retries)),
+        tryCatch(resolve(.llm_batch_run(system_prompt, prompts, retries,
+                                        progress_file)),
                  error = function(e) reject(e))
       })
     }))
@@ -106,7 +145,8 @@ llm_batch_async <- function(system_prompt, prompts, retries = 1L) {
       loadNamespace("nemetonshiny")
     }
     options(nemeton.app_options = app_opts)
-    utils::getFromNamespace(".llm_batch_run", "nemetonshiny")(system_prompt, prompts, retries)
+    utils::getFromNamespace(".llm_batch_run", "nemetonshiny")(
+      system_prompt, prompts, retries, progress_file)
   }, seed = TRUE)
 }
 

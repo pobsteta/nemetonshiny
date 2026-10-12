@@ -2244,6 +2244,7 @@ TRANSLATIONS <- list(
   ),
   ai_generate = list(fr = "G\u00e9n\u00e9rer par IA", en = "Generate by AI"),
   ai_generating = list(fr = "Analyse en cours...", en = "Analyzing..."),
+  ai_progression_fmt = list(fr = "Analyse en cours : %s (%d/%d)...", en = "Analyzing: %s (%d/%d)..."),
   ai_error = list(fr = "Erreur lors de l'analyse IA", en = "AI analysis error"),
   ai_no_api_key = list(
     fr = "Cl\u00e9 API non configur\u00e9e. D\u00e9finissez la variable d'environnement {key_var}.",
