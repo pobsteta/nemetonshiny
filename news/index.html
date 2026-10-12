@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,29 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.5" id="nemetonshiny-2026105-2026-10-12">nemetonshiny 2026.10.5 (2026-10-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026105-2026-10-12"></a></h2>
+<p>Changements cassants : aucun. Plancher <code>Imports: nemeton (&gt;= 2026.10.3)</code>.</p>
+<div class="section level3">
+<h3 id="les-notes-des-indicateurs-sont-enfin-enregistrées-2026-10-5">Les notes 0-100 des indicateurs sont enfin enregistrées<a class="anchor" aria-label="anchor" href="#les-notes-des-indicateurs-sont-enfin-enregistr%C3%A9es-2026-10-5"></a></h3>
+<p>Brief <code>nemetonclaude</code> du 2026-10-12. <code>.add_normalized_indicators()</code> n’était appelée nulle part depuis son ajout (<code>a43833ff</code>, 25/08) : <code>indicators.parquet</code> n’avait aucune colonne <code>_norm</code>, et <code><a href="../reference/projet_lire.html">projet_lire()</a></code>, l’Atlas, la base et les exports voyaient les notes manquantes (C1 « manquant » à Couchey alors que Carbone &amp; Vitalité valait environ 23).</p>
+<ul><li>Chaque écriture du parquet (enregistrement final et incrémental, donc app, calcul enfant / MCP et recalcul partiel) ajoute le jumeau <code>_norm</code> de chaque indicateur, normalisé par <code><a href="https://pobsteta.github.io/nemeton/reference/normalize_indicator.html" class="external-link">nemeton::normalize_indicator()</a></code> avec son statut.</li>
+<li>À la lecture, un projet enregistré sans <code>_norm</code> les reçoit ; ceux déjà enregistrés sont gardés.</li>
+<li>R5, R6 et R7, injectés à l’affichage, reçoivent aussi leur <code>_norm</code>, dans la vue Famille comme dans <code>projet_lire()$familles</code>.</li>
+<li>
+<strong>Effet visible</strong> : la vue Famille, écrite pour préférer les <code>_norm</code>, affiche désormais les notes 0-100 (cartes, tableau, statistiques envoyées à l’IA) au lieu des valeurs brutes. Les scores de famille et le radar ne bougent pas : le cœur part toujours de la valeur brute.</li>
+<li>Vérifié sur Couchey : 35 notes <code>_norm</code> rendues par <code><a href="../reference/projet_lire.html">projet_lire()</a></code>, sans écriture du parquet.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="t2-mesuré-sur-forms-t-spec-du-cœur-2026-10-5">T2 mesuré sur FORMS-T (spec 060 du cœur)<a class="anchor" aria-label="anchor" href="#t2-mesur%C3%A9-sur-forms-t-spec-du-c%C5%93ur-2026-10-5"></a></h3>
+<p>Brief <code>nemeton</code> du 2026-10-11. T2 recopiait N2 ou T1 : la famille T comptait deux fois la même information. Avec <code>nemeton &gt;= 2026.10.3</code>, T2 mesure la stabilité du couvert sur la série annuelle des hauteurs FORMS-T.</p>
+<ul><li>La série est chargée une fois par calcul, quand T2 est demandé, par <code><a href="https://pobsteta.github.io/nemeton/reference/charger_forms_t_hauteurs.html" class="external-link">nemeton::charger_forms_t_hauteurs()</a></code> : copie locale si <code>NEMETON_FORMS_T_DIR</code> est posée, sinon Theia. Elle est mise en cache dans <code>cache/layers/forms_t/forms_t_2019-2024.tif</code>, avec une clé d’emprise, puis posée dans <code>layers$rasters$forms_t</code> et passée à T2 par <code>forms_t =</code>.</li>
+<li>Sans série (ni Theia ni copie locale, moins de trois années, erreur), T2 garde son repli N2 / T1, comme avant.</li>
+<li>Les diagnostics <code>t2_perte_pct</code>, <code>t2_croissance_m_an</code> et <code>t2_annees</code> suivent T2 en colonnes annexes <code>.t2_*</code>. Sous la carte T2, la vue famille dit la fenêtre lue, la part du couvert perdu selon les unités et la croissance médiane : un T2 de 92 se lit « 8 % du couvert perdu ».</li>
+<li>Les statuts <code>proxy</code> et <code>no_source</code> ont leur libellé ; la mesure nominale <code>forms_t</code> n’affiche pas de réserve. Nouvelle étape de progression « chargement de la série FORMS-T ».</li>
+<li>Vérifié contre le cœur 2026.10.3 : Dabo, T2 de 95,5 à 99,95 ; Fordead, de 67 à 100 % du couvert perdu selon les parcelles. Deuxième passage lu depuis le cache.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.4" id="nemetonshiny-2026104-2026-10-11">nemetonshiny 2026.10.4 (2026-10-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026104-2026-10-11"></a></h2>
 <p>Changements cassants : aucun.</p>
