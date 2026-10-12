@@ -43,6 +43,7 @@ TRANSLATIONS <- list(
   # Accessibilit\u00e9 foresti\u00e8re (For\u00eatAccess \u2014 onglet Terrain)
   # ============================================================
   tab_terrain_desserte = list(fr = "Desserte", en = "Road network"),
+  tab_terrain_video = list(fr = "Inventaire vid\u00e9o", en = "Video inventory"),
 
   # Infobulle d'une route creee (couche vectorielle " Lignes creees ").
   dess_ligne_label_fmt = list(
@@ -726,6 +727,123 @@ TRANSLATIONS <- list(
   marculus_lot_complet = list(fr = "complet", en = "complete"),
   marculus_lot_incomplet = list(fr = "incomplet", en = "incomplete"),
   marculus_lot_sans_lot = list(fr = "sans lot", en = "no lot"),
+  # Inventaire video Groma (Terrain > Inventaire video, brief 2026-10-12).
+  video_bloc_preparer = list(fr = "Pr\u00e9parer", en = "Prepare"),
+  video_bloc_suivre = list(fr = "Suivre", en = "Track"),
+  video_bloc_integrer = list(fr = "Int\u00e9grer", en = "Integrate"),
+  video_placettes = list(fr = "Placettes du plan", en = "Sampling plots"),
+  video_rayon = list(fr = "Rayon de placette (m)", en = "Plot radius (m)"),
+  video_seuil_diam = list(
+    fr = "Diam\u00e8tre minimal (cm)",
+    en = "Minimum diameter (cm)"
+  ),
+  video_unite_azimut = list(fr = "Unit\u00e9 d'azimut", en = "Azimuth unit"),
+  video_degres = list(fr = "Degr\u00e9s", en = "Degrees"),
+  video_grades = list(fr = "Grades", en = "Gradians"),
+  video_declinaison = list(
+    fr = "D\u00e9clinaison magn\u00e9tique (\u00b0, est positive)",
+    en = "Magnetic declination (\u00b0, east positive)"
+  ),
+  video_declinaison_aide = list(
+    fr = "Calculer la d\u00e9clinaison du lieu (NOAA)",
+    en = "Look up the local declination (NOAA)"
+  ),
+  video_declinaison_requise = list(
+    fr = "Saisissez la d\u00e9clinaison magn\u00e9tique du lieu avant de g\u00e9n\u00e9rer le projet.",
+    en = "Enter the local magnetic declination before building the project."
+  ),
+  video_avec_lidar = list(
+    fr = "Inclure MNT, MNH et houppiers",
+    en = "Include DTM, CHM and crowns"
+  ),
+  video_lidar_absent = list(
+    fr = "Aucun MNH dans le projet : hauteurs non pr\u00e9-remplies",
+    en = "No CHM in the project: heights not pre-filled"
+  ),
+  video_generer = list(
+    fr = "G\u00e9n\u00e9rer le projet QField",
+    en = "Build the QField project"
+  ),
+  video_en_cours = list(
+    fr = "G\u00e9n\u00e9ration du projet QField de l'inventaire vid\u00e9o\u2026",
+    en = "Building the video inventory QField project\u2026"
+  ),
+  video_telecharger = list(
+    fr = "T\u00e9l\u00e9charger le projet (.qgz)",
+    en = "Download the project (.qgz)"
+  ),
+  video_sans_plan = list(
+    fr = "Aucun plan d'\u00e9chantillonnage dans le projet : tirez d'abord les placettes (Terrain > Export).",
+    en = "No sampling plan in the project: draw the plots first (Field > Export)."
+  ),
+  video_coeur_absent = list(
+    fr = "La version install\u00e9e de nemeton ne fournit pas encore l'inventaire vid\u00e9o.",
+    en = "The installed nemeton version does not provide the video inventory yet."
+  ),
+  video_serveur = list(fr = "Serveur Groma", en = "Groma server"),
+  video_serveur_absent = list(
+    fr = "Serveur Groma non configur\u00e9 : renseignez GROMA_URL et GROMA_JETON dans .Renviron.",
+    en = "Groma server not configured: set GROMA_URL and GROMA_JETON in .Renviron."
+  ),
+  video_erreur_serveur = list(
+    fr = "Serveur Groma injoignable : %s",
+    en = "Groma server unreachable: %s"
+  ),
+  video_actualiser = list(fr = "Actualiser", en = "Refresh"),
+  video_col_placette = list(fr = "Placette", en = "Plot"),
+  video_col_etat = list(fr = "\u00c9tat", en = "State"),
+  video_col_date = list(fr = "Date", en = "Date"),
+  video_col_verdict = list(fr = "Verdict", en = "Verdict"),
+  video_col_arbres = list(fr = "Arbres", en = "Trees"),
+  video_col_alertes = list(fr = "Alertes", en = "Alerts"),
+  video_etat_a_faire = list(fr = "\u00c0 faire", en = "To do"),
+  video_etat_provisoire = list(fr = "Provisoire", en = "Provisional"),
+  video_etat_envoye = list(fr = "Envoy\u00e9e", en = "Uploaded"),
+  video_etat_definitif = list(fr = "D\u00e9finitive", en = "Final"),
+  video_verdict_conforme = list(fr = "Conforme", en = "Compliant"),
+  video_verdict_a_verifier = list(fr = "\u00c0 v\u00e9rifier", en = "To check"),
+  video_rapport = list(fr = "Rapport de qualit\u00e9", en = "Quality report"),
+  video_rapport_absent = list(
+    fr = "Aucun rapport d\u00e9finitif pour cette placette.",
+    en = "No final report for this plot."
+  ),
+  video_gpkg_terrain = list(
+    fr = "GeoPackage revenu du terrain",
+    en = "GeoPackage back from the field"
+  ),
+  video_recuperer_resultats = list(
+    fr = "R\u00e9cup\u00e9rer les r\u00e9sultats d\u00e9finitifs",
+    en = "Fetch the final results"
+  ),
+  video_aucun_definitif = list(
+    fr = "Aucune placette d\u00e9finitive sur le serveur.",
+    en = "No final plot on the server."
+  ),
+  video_resultats_serveur = list(
+    fr = "R\u00e9sultats du serveur (.gpkg)",
+    en = "Server results (.gpkg)"
+  ),
+  video_integrer = list(fr = "Int\u00e9grer", en = "Integrate"),
+  video_a_completer = list(
+    fr = "Arbres \u00e0 compl\u00e9ter",
+    en = "Trees to complete"
+  ),
+  video_a_verifier = list(
+    fr = "Arbres \u00e0 v\u00e9rifier",
+    en = "Trees to check"
+  ),
+  video_numeros_modifies = list(
+    fr = "Num\u00e9ros modifi\u00e9s",
+    en = "Changed numbers"
+  ),
+  video_fusion_classique = list(
+    fr = "Inventaire classique conserv\u00e9 pour %d placette(s)",
+    en = "Classic inventory kept for %d plot(s)"
+  ),
+  video_integration_ok = list(
+    fr = "Inventaire vid\u00e9o int\u00e9gr\u00e9",
+    en = "Video inventory integrated"
+  ),
   # Nuage de points drone (spec 059, Terrain > Import).
   nuage_onglet = list(fr = "Nuage de points drone", en = "Drone point cloud"),
   nuage_intro = list(

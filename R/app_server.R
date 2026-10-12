@@ -316,6 +316,7 @@ app_server <- function(input, output, session) {
 
   # Field ingest module (E5.b - QField return path)
   mod_field_ingest_server("field_ingest", app_state)
+  mod_inventaire_video_server("inventaire_video", app_state)
 
   # Accessibility module (ForetAccess - terrestrial engines)
   mod_accessibility_server("accessibility", app_state)

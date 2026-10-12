@@ -130,6 +130,12 @@ app_ui <- function(request) {
             mod_field_ingest_ui("field_ingest")
           ),
           bslib::nav_panel(
+            title = i18n$t("tab_terrain_video"),
+            value = "inventaire_video",
+            icon = bsicons::bs_icon("camera-video"),
+            mod_inventaire_video_ui("inventaire_video")
+          ),
+          bslib::nav_panel(
             title = i18n$t("tab_terrain_accessibilite"),
             value = "accessibility",
             icon = bsicons::bs_icon("signpost-split"),
