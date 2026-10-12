@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.5.9001 (cycle dev)
+# nemetonshiny 2026.10.6 (2026-10-12)
+
+Changements cassants : aucun.
 
 ## Synthèse IA : la progression (i/13) revient
 
