@@ -1,3 +1,7 @@
+# nemetonshiny 2026.10.5.9000 (cycle dev)
+
+- Ouverture du cycle de dev après la release 2026.10.5.
+
 # nemetonshiny 2026.10.5 (2026-10-12)
 
 Changements cassants : aucun. Plancher `Imports: nemeton (>= 2026.10.3)`.
