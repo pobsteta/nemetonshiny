@@ -45,7 +45,11 @@ mod_family_server <- function(id, family_code, app_state) {
         # R5 (deperissement, alertes suivi) + R6/R7 (sensibilite / gel, resultat
         # reGeneration persiste) : injectes pour etre affiches et comptes a cote
         # de R1-R4 des qu'ils sont accessibles. Best-effort chacun.
-        add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project)
+        # Leur `_norm` est ajoute comme a la lecture du parquet : la vue
+        # prefere les notes 0-100 et ne doit pas melanger les echelles.
+        .add_normalized_indicators(
+          add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project),
+          quiet = TRUE)
       } else {
         base_sf
       }
@@ -194,8 +198,8 @@ mod_family_server <- function(id, family_code, app_state) {
           # n'est PAS. Lu sur l'sf enrichi, qui porte la valeur brute et les
           # colonnes annexes que la vue filtree ne garde pas.
           production_ifn_banner(enriched_sf(), ind_cols[i], i18n),
-          # T2 mesure sur FORMS-T (spec 060) : un T2 de 92 se lit « 8 % du
-          # couvert perdu ». Memes colonnes annexes, meme sf enrichi.
+          # T2 mesure sur FORMS-T (spec 060) : un T2 de 92 se lit "8 % du
+          # couvert perdu". Memes colonnes annexes, meme sf enrichi.
           t2_forms_t_banner(enriched_sf(), ind_cols[i], i18n)
         )
       })

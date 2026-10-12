@@ -406,7 +406,7 @@ build_forms_t_series <- function(parcels, project_path = NULL) {
       .cache_cle_valide(cache_file, cle)) {
     h <- tryCatch(terra::rast(cache_file), error = function(e) NULL)
     if (!is.null(h)) {
-      cli::cli_alert_info("T2 : série FORMS-T lue depuis le cache")
+      cli::cli_alert_info("T2 : s\u00e9rie FORMS-T lue depuis le cache")
       return(h)
     }
   }
@@ -434,7 +434,7 @@ build_forms_t_series <- function(parcels, project_path = NULL) {
     }
   }
   cli::cli_alert_success(
-    "T2 : série FORMS-T chargée ({paste(range(names(h)), collapse = '-')})")
+    "T2 : s\u00e9rie FORMS-T charg\u00e9e ({paste(range(names(h)), collapse = '-')})")
   h
 }
 

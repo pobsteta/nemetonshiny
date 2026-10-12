@@ -2,6 +2,28 @@
 
 Changements cassants : aucun. Plancher `Imports: nemeton (>= 2026.10.3)`.
 
+## Les notes 0-100 des indicateurs sont enfin enregistrées
+
+Brief `nemetonclaude` du 2026-10-12. `.add_normalized_indicators()` n'était
+appelée nulle part depuis son ajout (`a43833ff`, 25/08) : `indicators.parquet`
+n'avait aucune colonne `_norm`, et `projet_lire()`, l'Atlas, la base et les
+exports voyaient les notes manquantes (C1 « manquant » à Couchey alors que
+Carbone & Vitalité valait environ 23).
+
+- Chaque écriture du parquet (enregistrement final et incrémental, donc app,
+  calcul enfant / MCP et recalcul partiel) ajoute le jumeau `_norm` de chaque
+  indicateur, normalisé par `nemeton::normalize_indicator()` avec son statut.
+- À la lecture, un projet enregistré sans `_norm` les reçoit ; ceux déjà
+  enregistrés sont gardés.
+- R5, R6 et R7, injectés à l'affichage, reçoivent aussi leur `_norm`, dans la
+  vue Famille comme dans `projet_lire()$familles`.
+- **Effet visible** : la vue Famille, écrite pour préférer les `_norm`, affiche
+  désormais les notes 0-100 (cartes, tableau, statistiques envoyées à l'IA) au
+  lieu des valeurs brutes. Les scores de famille et le radar ne bougent pas :
+  le cœur part toujours de la valeur brute.
+- Vérifié sur Couchey : 35 notes `_norm` rendues par `projet_lire()`, sans
+  écriture du parquet.
+
 ## T2 mesuré sur FORMS-T (spec 060 du cœur)
 
 Brief `nemeton` du 2026-10-11. T2 recopiait N2 ou T1 : la famille T comptait

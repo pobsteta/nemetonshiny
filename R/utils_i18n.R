@@ -1385,19 +1385,19 @@ TRANSLATIONS <- list(
   # T2 mesure sur FORMS-T (spec 060) : `forms_t` est la mesure nominale, sans
   # cle (rien a nuancer) ; la lecture du score passe par t2_forms_t_bandeau.
   t2_proxy = list(
-    fr = "T2 approché par la continuité (N2) ou l'ancienneté (T1) là où la série FORMS-T des hauteurs de canopée manque : la valeur ne mesure pas l'évolution du couvert.",
+    fr = "T2 approch\u00e9 par la continuit\u00e9 (N2) ou l'anciennet\u00e9 (T1) l\u00e0 o\u00f9 la s\u00e9rie FORMS-T des hauteurs de canop\u00e9e manque : la valeur ne mesure pas l'\u00e9volution du couvert.",
     en = "T2 approximated from continuity (N2) or age (T1) where the FORMS-T canopy-height series is missing: the value does not measure how the cover changed."
   ),
   t2_no_source = list(
-    fr = "T2 non calculé : ni série FORMS-T des hauteurs de canopée, ni continuité (N2) ou ancienneté (T1) disponible.",
+    fr = "T2 non calcul\u00e9 : ni s\u00e9rie FORMS-T des hauteurs de canop\u00e9e, ni continuit\u00e9 (N2) ou anciennet\u00e9 (T1) disponible.",
     en = "T2 not computed: neither a FORMS-T canopy-height series nor continuity (N2) or age (T1) is available."
   ),
   t2_forms_t_bandeau = list(
-    fr = "T2 mesuré sur la série FORMS-T %s : de %s à %s %% du couvert en perte durable (≥ 5 m) selon les unités.",
-    en = "T2 measured on the FORMS-T series %s: %s to %s %% of the cover in durable loss (≥ 5 m) across units."
+    fr = "T2 mesur\u00e9 sur la s\u00e9rie FORMS-T %s : de %s \u00e0 %s %% du couvert en perte durable (\u2265 5 m) selon les unit\u00e9s.",
+    en = "T2 measured on the FORMS-T series %s: %s to %s %% of the cover in durable loss (\u2265 5 m) across units."
   ),
   t2_croissance_fmt = list(
-    fr = "Croissance médiane du couvert sans perte : %s m/an (hors score).",
+    fr = "Croissance m\u00e9diane du couvert sans perte : %s m/an (hors score).",
     en = "Median growth of the cover without loss: %s m/yr (not scored)."
   ),
   b4_skipped_no_spectral = list(fr = "B4 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
@@ -2716,7 +2716,7 @@ TRANSLATIONS <- list(
     en = "Production modes saved: rerun the computation to update P2 and E1."
   ),
   task_forms_t = list(
-    fr = "T2 : chargement de la série FORMS-T des hauteurs de canopée...",
+    fr = "T2 : chargement de la s\u00e9rie FORMS-T des hauteurs de canop\u00e9e...",
     en = "T2: loading the FORMS-T canopy-height series..."
   ),
   task_production_ifn = list(

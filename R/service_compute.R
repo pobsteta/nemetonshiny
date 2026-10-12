@@ -5557,6 +5557,9 @@ save_indicators_incremental <- function(project_id, results, indicator) {
       return(FALSE)
     }
 
+    # Brut ET normalise, comme l'enregistrement final (save_indicators()).
+    results_df <- .add_normalized_indicators(results_df, quiet = TRUE)
+
     # Write parquet via temp file to avoid Windows memory-mapped file lock
     tmp_path <- paste0(results_path, ".tmp")
     arrow::write_parquet(results_df, tmp_path)

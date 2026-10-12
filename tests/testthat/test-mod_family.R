@@ -447,10 +447,12 @@ test_that("family R injects the live R5 dieback indicator", {
     {
       data <- indicators_data()
       expect_false(is.null(data))
-      expect_true("indicateur_r5_deperissement" %in% names(data))
+      # La vue montre la note 0-100 : R5, injecte, recoit son `_norm` comme
+      # R1-R4 lus du parquet (pas de melange d'echelles).
+      expect_true("indicateur_r5_deperissement_norm" %in% names(data))
 
       sf_data <- indicators_sf()
-      expect_true("indicateur_r5_deperissement" %in% names(sf_data))
+      expect_true("indicateur_r5_deperissement_norm" %in% names(sf_data))
     }
   )
 })

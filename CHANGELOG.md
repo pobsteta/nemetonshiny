@@ -22,6 +22,13 @@ For a narrative, per-feature description of each release, see
 
 ### Changed
 - Core floor raised to `nemeton (>= 2026.10.3)`.
+- The family view shows the 0-100 indicator scores (`_norm`) instead of raw
+  values; family scores and the radar are unchanged.
+
+### Fixed
+- `indicators.parquet` now stores the `_norm` twin of every indicator, on the
+  final and incremental saves; projects saved without them get them on read,
+  and R5-R7 injected at display time get theirs too.
 
 ## [2026.10.4] - 2026-10-11
 
