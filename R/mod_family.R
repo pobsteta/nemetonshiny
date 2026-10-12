@@ -193,7 +193,10 @@ mod_family_server <- function(id, family_code, app_state) {
           # P2 / E1 en mode IFN (spec 054) : echelon, RSE, et ce que la valeur
           # n'est PAS. Lu sur l'sf enrichi, qui porte la valeur brute et les
           # colonnes annexes que la vue filtree ne garde pas.
-          production_ifn_banner(enriched_sf(), ind_cols[i], i18n)
+          production_ifn_banner(enriched_sf(), ind_cols[i], i18n),
+          # T2 mesure sur FORMS-T (spec 060) : un T2 de 92 se lit « 8 % du
+          # couvert perdu ». Memes colonnes annexes, meme sf enrichi.
+          t2_forms_t_banner(enriched_sf(), ind_cols[i], i18n)
         )
       })
 
@@ -887,6 +890,51 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
   if (!all_na && any(is.na(vals))) {
     txt <- paste0(txt, " ", sprintf(i18n$t("indicator_na_units_fmt"),
                                     .indicator_na_units(sf_data, vals)))
+  }
+
+  htmltools::div(
+    class = "small text-muted fst-italic px-1 pb-1",
+    bsicons::bs_icon("info-circle", class = "me-1"),
+    txt
+  )
+}
+
+
+#' Banner reading a T2 measured on FORMS-T
+#'
+#' @description
+#' Measured on the FORMS-T height series (spec 060), T2 is
+#' `100 x (1 - share of cover in durable loss)`. The score alone does not say
+#' it: this line gives the window read, the lost-cover range over the units and
+#' the median growth of the cover without loss (outside the score). `NULL`
+#' when T2 was not measured (proxy N2 / T1, or no FORMS-T annex).
+#'
+#' @param data data.frame / sf carrying the `.t2_*` annex columns.
+#' @param ind_col Character. Indicator column (raw or `_norm`).
+#' @param i18n Translator object.
+#'
+#' @return A [htmltools::div] or `NULL`.
+#'
+#' @noRd
+t2_forms_t_banner <- function(data, ind_col, i18n) {
+  if (!identical(sub("_norm$", "", ind_col), "indicateur_t2_changement")) {
+    return(NULL)
+  }
+  if (is.null(data)) return(NULL)
+  perte <- suppressWarnings(as.numeric(data[[".t2_perte_pct"]]))
+  perte <- perte[!is.na(perte)]
+  if (length(perte) == 0L) return(NULL)
+
+  annees <- .annex_values(data, ".t2_annees")
+  annees <- if (length(annees)) annees[1] else "FORMS-T"
+  txt <- sprintf(i18n$t("t2_forms_t_bandeau"), annees,
+                 .fmt_num(min(perte), i18n, 1), .fmt_num(max(perte), i18n, 1))
+
+  croissance <- suppressWarnings(as.numeric(data[[".t2_croissance_m_an"]]))
+  croissance <- croissance[!is.na(croissance)]
+  if (length(croissance)) {
+    txt <- paste(txt, sprintf(i18n$t("t2_croissance_fmt"),
+                              .fmt_num(stats::median(croissance), i18n, 2)))
   }
 
   htmltools::div(

@@ -994,6 +994,18 @@ start_computation <- function(project_id,
       if (!is.null(fa_layer)) layers$vectors$foret_ancienne <- fa_layer
     }
 
+    # T2 mesure sur FORMS-T (spec 060, nemeton >= 2026.10.3). La serie annuelle
+    # des hauteurs est chargee une fois (cache disque a cle d'emprise) et posee
+    # dans layers$rasters$forms_t, ou indicateur_t2_changement() la trouve seul.
+    # Pas de serie (coeur trop ancien, Theia absent, < 3 annees) -> T2 garde son
+    # proxy N2 / T1, sans regression.
+    if ("indicateur_t2_changement" %in% effective_indicators) {
+      state$current_task <- "forms_t"
+      report_progress(state)
+      forms_t <- build_forms_t_series(compute_unit, project_path)
+      if (!is.null(forms_t)) layers$rasters$forms_t <- forms_t
+    }
+
     # Coupes rases -> T3 (spec 030). SUFOSAT is a national source ENABLED BY
     # DEFAULT (project_sufosat_enabled): T3 is always in
     # list_available_indicators() (like N2), and the Theia fetch happens unless
@@ -5237,6 +5249,12 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("lst" %in% func_args) {
       lst <- resolve_raster_layer(layers, "lst")
       if (!is.null(lst)) args$lst <- lst
+    }
+    # Serie FORMS-T (spec 060) -> T2, stagee dans layers$rasters$forms_t par
+    # start_computation(). Absente -> T2 garde son proxy N2 / T1.
+    if ("forms_t" %in% func_args) {
+      ft <- resolve_raster_layer(layers, "forms_t")
+      if (!is.null(ft)) args$forms_t <- ft
     }
     if ("buffer_m" %in% func_args && !is.null(layers$lst_buffer_m)) {
       args$buffer_m <- layers$lst_buffer_m

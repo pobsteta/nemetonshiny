@@ -361,6 +361,90 @@ download_forms_t_height <- function(aoi, years = NULL) {
 FORMS_T_FIRST_YEAR <- 2019L
 
 
+#' Core loader of the FORMS-T series, or `NULL` when the core predates it
+#'
+#' `charger_forms_t_hauteurs()` comes with `nemeton 2026.10.3`; an older core
+#' leaves T2 on its proxy. A function of its own so tests can stand in for it.
+#' @noRd
+.forms_t_loader <- function() {
+  ns <- asNamespace("nemeton")
+  if (!exists("charger_forms_t_hauteurs", envir = ns, inherits = FALSE)) {
+    return(NULL)
+  }
+  get("charger_forms_t_hauteurs", envir = ns)
+}
+
+
+#' Load the FORMS-T canopy-height series for T2 (spec 060)
+#'
+#' T2 measures canopy stability on the annual FORMS-T height series
+#' (`nemeton >= 2026.10.3`). The series is loaded once per computation by
+#' `nemeton::charger_forms_t_hauteurs()` - from the local copy named by
+#' `NEMETON_FORMS_T_DIR` when set, otherwise from Theia, about 10 s per year -
+#' and cached on disk under `cache/layers/forms_t/forms_t_<years>.tif`, keyed
+#' on the units' extent (`.cle` sidecar). GeoTIFF keeps the layer names, which
+#' are the years T2 reads.
+#'
+#' Returns `NULL` whenever the series cannot be had: core too old, neither
+#' Theia nor a local copy, fewer than three years, or any error. T2 then keeps
+#' its N2 / T1 proxy, exactly as before.
+#'
+#' @param parcels sf. Units of the computation (any CRS).
+#' @param project_path Character. Project directory, or `NULL` for no cache.
+#'
+#' @return A SpatRaster (one layer per year, centimetres) or `NULL`.
+#' @noRd
+build_forms_t_series <- function(parcels, project_path = NULL) {
+  charger <- .forms_t_loader()
+  if (is.null(charger)) return(NULL)
+  local_dir <- Sys.getenv("NEMETON_FORMS_T_DIR", "")
+  if (!nzchar(local_dir) && !isTRUE(theia_status()$ready)) return(NULL)
+
+  # La fenetre par defaut est celle du coeur : une seule source de verite.
+  annees <- eval(formals(charger)$annees)
+  cache_file <- if (!is.null(project_path)) {
+    file.path(project_path, "cache", "layers", "forms_t",
+              sprintf("forms_t_%d-%d.tif", min(annees), max(annees)))
+  }
+  cle <- .cache_cle_geometrie(parcels)
+
+  if (!is.null(cache_file) && file.exists(cache_file) &&
+      .cache_cle_valide(cache_file, cle)) {
+    h <- tryCatch(terra::rast(cache_file), error = function(e) NULL)
+    if (!is.null(h)) {
+      cli::cli_alert_info("T2 : série FORMS-T lue depuis le cache")
+      return(h)
+    }
+  }
+
+  h <- tryCatch(charger(parcels, annees = annees), error = function(e) {
+    cli::cli_warn("FORMS-T series for T2 unavailable: {conditionMessage(e)}")
+    NULL
+  })
+  if (!inherits(h, "SpatRaster")) return(NULL)
+
+  if (!is.null(cache_file)) {
+    dir.create(dirname(cache_file), recursive = TRUE, showWarnings = FALSE)
+    ok <- tryCatch({
+      terra::writeRaster(h, cache_file, overwrite = TRUE)
+      TRUE
+    }, error = function(e) {
+      cli::cli_warn("FORMS-T series not cached: {conditionMessage(e)}")
+      FALSE
+    })
+    if (ok) {
+      .cache_cle_ecrire(cache_file, cle)
+      # Relire le fichier : le raster rendu ne depend plus d'un tampon
+      # memoire (ni d'une source distante) une fois le calcul lance.
+      h <- tryCatch(terra::rast(cache_file), error = function(e) h)
+    }
+  }
+  cli::cli_alert_success(
+    "T2 : série FORMS-T chargée ({paste(range(names(h)), collapse = '-')})")
+  h
+}
+
+
 #' Load secondary Theia rasters for non-Production indicators
 #'
 #' Loads FAPAR (C2), snow days (R3) and soil moisture (R3) from their

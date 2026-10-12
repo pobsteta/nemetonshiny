@@ -169,3 +169,108 @@ test_that("theia_clear_api_key removes the file and unsets env vars", {
   # Idempotent : a second call has nothing to clear → FALSE.
   expect_false(nemetonshiny:::theia_clear_api_key())
 })
+
+
+# ---- build_forms_t_series (T2 sur FORMS-T, spec 060) -------------------------
+
+.forms_t_units <- function() {
+  sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(
+        c(900000, 6500000), c(900500, 6500000),
+        c(900500, 6500500), c(900000, 6500500), c(900000, 6500000)
+      ))),
+      crs = 2154
+    )
+  )
+}
+
+.forms_t_fake_series <- function(annees) {
+  r <- terra::rast(nrows = 5, ncols = 5, nlyrs = length(annees),
+                   xmin = 900000, xmax = 900500, ymin = 6500000, ymax = 6500500,
+                   crs = "EPSG:2154", vals = 1500)
+  names(r) <- as.character(annees)
+  r
+}
+
+test_that("build_forms_t_series returns NULL when the core has no loader", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(.forms_t_loader = function() NULL)
+  expect_null(nemetonshiny:::build_forms_t_series(.forms_t_units(), NULL))
+})
+
+test_that("build_forms_t_series returns NULL without Theia nor a local copy", {
+  skip_if_not_installed("sf")
+  appele <- FALSE
+  testthat::local_mocked_bindings(
+    .forms_t_loader = function() function(aoi, annees = 2019:2024, dossier = NULL) {
+      appele <<- TRUE
+      NULL
+    },
+    theia_status = function() list(ready = FALSE)
+  )
+  withr::local_envvar(NEMETON_FORMS_T_DIR = NA)
+  expect_null(nemetonshiny:::build_forms_t_series(.forms_t_units(), NULL))
+  expect_false(appele)
+})
+
+test_that("build_forms_t_series loads once, caches with year names, then reads the cache", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  proj <- withr::local_tempdir()
+  n_appels <- 0L
+  testthat::local_mocked_bindings(
+    .forms_t_loader = function() function(aoi, annees = 2019:2024, dossier = NULL) {
+      n_appels <<- n_appels + 1L
+      .forms_t_fake_series(annees)
+    },
+    theia_status = function() list(ready = TRUE)
+  )
+  withr::local_envvar(NEMETON_FORMS_T_DIR = NA)
+  units <- .forms_t_units()
+
+  h1 <- nemetonshiny:::build_forms_t_series(units, proj)
+  cache <- file.path(proj, "cache", "layers", "forms_t", "forms_t_2019-2024.tif")
+  expect_true(file.exists(cache))
+  expect_true(file.exists(paste0(cache, ".cle")))
+  expect_identical(names(h1), as.character(2019:2024))
+
+  h2 <- nemetonshiny:::build_forms_t_series(units, proj)
+  expect_identical(n_appels, 1L)
+  expect_identical(names(h2), as.character(2019:2024))
+
+  # Autre emprise : le cache ne vaut plus, la serie est rechargee.
+  units2 <- sf::st_buffer(units, 100)
+  nemetonshiny:::build_forms_t_series(units2, proj)
+  expect_identical(n_appels, 2L)
+})
+
+test_that("build_forms_t_series uses a local copy even when Theia is not ready", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  testthat::local_mocked_bindings(
+    .forms_t_loader = function() function(aoi, annees = 2019:2024, dossier = NULL) {
+      .forms_t_fake_series(annees)
+    },
+    theia_status = function() list(ready = FALSE)
+  )
+  withr::local_envvar(NEMETON_FORMS_T_DIR = withr::local_tempdir())
+  h <- nemetonshiny:::build_forms_t_series(.forms_t_units(), NULL)
+  expect_s4_class(h, "SpatRaster")
+})
+
+test_that("build_forms_t_series swallows a loader error and leaves T2 on its proxy", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    .forms_t_loader = function() function(aoi, annees = 2019:2024, dossier = NULL) {
+      stop("Theia down")
+    },
+    theia_status = function() list(ready = TRUE)
+  )
+  expect_warning(
+    h <- nemetonshiny:::build_forms_t_series(.forms_t_units(), NULL),
+    "FORMS-T"
+  )
+  expect_null(h)
+})
