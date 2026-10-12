@@ -194,12 +194,6 @@ test_that("theia_clear_api_key removes the file and unsets env vars", {
   r
 }
 
-test_that("build_forms_t_series returns NULL when the core has no loader", {
-  skip_if_not_installed("sf")
-  testthat::local_mocked_bindings(.forms_t_loader = function() NULL)
-  expect_null(nemetonshiny:::build_forms_t_series(.forms_t_units(), NULL))
-})
-
 test_that("build_forms_t_series returns NULL without Theia nor a local copy", {
   skip_if_not_installed("sf")
   appele <- FALSE

@@ -361,17 +361,12 @@ download_forms_t_height <- function(aoi, years = NULL) {
 FORMS_T_FIRST_YEAR <- 2019L
 
 
-#' Core loader of the FORMS-T series, or `NULL` when the core predates it
+#' Core loader of the FORMS-T series
 #'
-#' `charger_forms_t_hauteurs()` comes with `nemeton 2026.10.3`; an older core
-#' leaves T2 on its proxy. A function of its own so tests can stand in for it.
+#' A function of its own so tests can stand in for the core loader.
 #' @noRd
 .forms_t_loader <- function() {
-  ns <- asNamespace("nemeton")
-  if (!exists("charger_forms_t_hauteurs", envir = ns, inherits = FALSE)) {
-    return(NULL)
-  }
-  get("charger_forms_t_hauteurs", envir = ns)
+  nemeton::charger_forms_t_hauteurs
 }
 
 
@@ -385,8 +380,8 @@ FORMS_T_FIRST_YEAR <- 2019L
 #' on the units' extent (`.cle` sidecar). GeoTIFF keeps the layer names, which
 #' are the years T2 reads.
 #'
-#' Returns `NULL` whenever the series cannot be had: core too old, neither
-#' Theia nor a local copy, fewer than three years, or any error. T2 then keeps
+#' Returns `NULL` whenever the series cannot be had: neither Theia nor a
+#' local copy, fewer than three years, or any error. T2 then keeps
 #' its N2 / T1 proxy, exactly as before.
 #'
 #' @param parcels sf. Units of the computation (any CRS).
@@ -396,7 +391,6 @@ FORMS_T_FIRST_YEAR <- 2019L
 #' @noRd
 build_forms_t_series <- function(parcels, project_path = NULL) {
   charger <- .forms_t_loader()
-  if (is.null(charger)) return(NULL)
   local_dir <- Sys.getenv("NEMETON_FORMS_T_DIR", "")
   if (!nzchar(local_dir) && !isTRUE(theia_status()$ready)) return(NULL)
 

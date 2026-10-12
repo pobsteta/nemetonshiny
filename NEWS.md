@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.4.9001 (cycle dev)
+# nemetonshiny 2026.10.5 (2026-10-12)
+
+Changements cassants : aucun. Plancher `Imports: nemeton (>= 2026.10.3)`.
 
 ## T2 mesuré sur FORMS-T (spec 060 du cœur)
 
@@ -11,10 +13,8 @@ stabilité du couvert sur la série annuelle des hauteurs FORMS-T.
   `NEMETON_FORMS_T_DIR` est posée, sinon Theia. Elle est mise en cache dans
   `cache/layers/forms_t/forms_t_2019-2024.tif`, avec une clé d'emprise, puis
   posée dans `layers$rasters$forms_t` et passée à T2 par `forms_t =`.
-- Sans série (cœur plus ancien, ni Theia ni copie locale, moins de trois
-  années, erreur), T2 garde son repli N2 / T1, comme avant. Le plancher
-  `Imports: nemeton` ne bouge pas tant que la 2026.10.3 du cœur n'est pas
-  publiée.
+- Sans série (ni Theia ni copie locale, moins de trois années, erreur), T2
+  garde son repli N2 / T1, comme avant.
 - Les diagnostics `t2_perte_pct`, `t2_croissance_m_an` et `t2_annees`
   suivent T2 en colonnes annexes `.t2_*`. Sous la carte T2, la vue famille
   dit la fenêtre lue, la part du couvert perdu selon les unités et la
@@ -22,7 +22,7 @@ stabilité du couvert sur la série annuelle des hauteurs FORMS-T.
 - Les statuts `proxy` et `no_source` ont leur libellé ; la mesure nominale
   `forms_t` n'affiche pas de réserve. Nouvelle étape de progression
   « chargement de la série FORMS-T ».
-- Vérifié contre le cœur local 2026.10.3 : Dabo, T2 de 95,5 à 99,95 ;
+- Vérifié contre le cœur 2026.10.3 : Dabo, T2 de 95,5 à 99,95 ;
   Fordead, de 67 à 100 % du couvert perdu selon les parcelles. Deuxième
   passage lu depuis le cache.
 

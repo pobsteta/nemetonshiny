@@ -997,8 +997,8 @@ start_computation <- function(project_id,
     # T2 mesure sur FORMS-T (spec 060, nemeton >= 2026.10.3). La serie annuelle
     # des hauteurs est chargee une fois (cache disque a cle d'emprise) et posee
     # dans layers$rasters$forms_t, ou indicateur_t2_changement() la trouve seul.
-    # Pas de serie (coeur trop ancien, Theia absent, < 3 annees) -> T2 garde son
-    # proxy N2 / T1, sans regression.
+    # Pas de serie (Theia absent, < 3 annees) -> T2 garde son proxy N2 / T1,
+    # sans regression.
     if ("indicateur_t2_changement" %in% effective_indicators) {
       state$current_task <- "forms_t"
       report_progress(state)
