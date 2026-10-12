@@ -68,3 +68,75 @@ test_that("family AI generation runs as a task and fills the comment", {
     expect_identical(maj, "Analyse famille C")
   })
 })
+
+
+test_that(".llm_batch_run reports i/n before each prompt (synthesis progress)", {
+  # Regression du lot 5 de l'audit 1.0 : dans le worker, la notification ne
+  # montrait plus que « Analyse en cours (13) » au lieu de « Famille (i/13) ».
+  f <- withr::local_tempfile(fileext = ".txt")
+  vus <- list()
+  local_mocked_bindings(create_llm_chat = function(system_prompt) {
+    list(chat = function(prompt, echo = FALSE) {
+      vus[[length(vus) + 1L]] <<- .llm_progress_read(f)
+      "ok"
+    })
+  })
+  .llm_batch_run("sys", list(.synthese = "a", B = "b", C = "c"),
+                 progress_file = f)
+  expect_identical(vapply(vus, `[[`, integer(1), "i"), 1:3)
+  expect_identical(vapply(vus, `[[`, character(1), "nom"), c(".synthese", "B", "C"))
+  expect_identical(vus[[3]]$n, 3L)
+})
+
+test_that(".llm_progress_read tolerates a missing or garbled file", {
+  expect_null(.llm_progress_read(NULL))
+  expect_null(.llm_progress_read(tempfile()))
+  f <- withr::local_tempfile(lines = "pas une progression")
+  expect_null(.llm_progress_read(f))
+})
+
+test_that("the synthesis notification follows the worker progress (i/n)", {
+  skip_if_not_installed("sf")
+  geom <- sf::st_sfc(sf::st_polygon(list(matrix(c(0,0,1,0,1,1,0,1,0,0), ncol = 2, byrow = TRUE))),
+                     crs = 2154)
+  ind_sf <- sf::st_sf(ug_id = "u1", indicateur_c1_biomasse = 50,
+                      indicateur_b1_protection = 40, geometry = geom)
+  st <- shiny::reactiveValues(
+    current_project = list(indicators = sf::st_drop_geometry(ind_sf), indicators_sf = ind_sf),
+    language = "fr", family_comments = list(), project_id = "p1")
+
+  fichier <- NULL
+  resoudre <- NULL
+  notes <- character(0)
+  local_mocked_bindings(
+    get_llm_api_key_var = function(provider) NULL,
+    project_family_scores = function(project) {
+      s <- project$indicators_sf; s$famille_carbone <- 50; s
+    },
+    rag_context = function(...) list(prompt_block = "", sources_md = "", n_sources = 0L),
+    is_db_configured = function() FALSE,
+    llm_batch_async = function(system_prompt, prompts, retries = 1L, progress_file = NULL) {
+      fichier <<- progress_file
+      promises::promise(function(resolve, reject) resoudre <<- resolve)
+    }
+  )
+  local_mocked_bindings(
+    showNotification = function(ui, ..., id = NULL) {
+      notes <<- c(notes, paste(as.character(ui), collapse = ""))
+      id %||% "n1"
+    },
+    removeNotification = function(...) NULL,
+    .package = "shiny"
+  )
+
+  shiny::testServer(nemetonshiny:::mod_synthesis_server, args = list(app_state = st), {
+    session$setInputs(expert_profile = "generalist", fill_all_comments = TRUE)
+    suppressWarnings(session$setInputs(ai_generate = 1))  # familles sans donnees
+    expect_false(is.null(fichier))
+    nemetonshiny:::.llm_progress_write(fichier, 2L, 13L, "B")
+    session$elapse(1100)
+    expect_true(any(grepl("Biodiversit", notes) & grepl("(2/13)", notes, fixed = TRUE)))
+    resoudre(list(results = list(.synthese = "ok"), errors = character(0)))
+    for (i in 1:10) later::run_now(0.02)
+  })
+})
