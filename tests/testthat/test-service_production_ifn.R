@@ -531,3 +531,25 @@ test_that("the profile colours vegetation by height above ground", {
   b <- plotly::plotly_build(p)
   expect_equal(as.numeric(b$x$data[[1]]$marker$color), c(5, 12, 20))
 })
+
+
+test_that("T2 FORMS-T diagnostics travel as dot-prefixed annex columns (spec 060)", {
+  res <- data.frame(T2 = c(92, 99), t2_status = c("forms_t", "forms_t"),
+                    t2_perte_pct = c(8, 1), t2_croissance_m_an = c(0.3, 0.2),
+                    t2_annees = c("2019-2024", "2019-2024"))
+  vals <- nemetonshiny:::.capture_annex_attr(c(92, 99), res,
+                                             "indicateur_t2_changement")
+  results <- data.frame(ug_id = 1:2, .t2_perte_pct = c(50, 50))
+  out <- nemetonshiny:::.write_production_annex(
+    results, "indicateur_t2_changement", vals, NULL)
+  expect_identical(out$.t2_perte_pct, c(8, 1))
+  expect_identical(out$.t2_annees, c("2019-2024", "2019-2024"))
+
+  # Un T2 repasse en proxy ne garde pas la perte d'un calcul precedent.
+  proxy <- nemetonshiny:::.capture_annex_attr(
+    c(70, 80), data.frame(T2 = c(70, 80), t2_status = "proxy"),
+    "indicateur_t2_changement")
+  out2 <- nemetonshiny:::.write_production_annex(
+    out, "indicateur_t2_changement", proxy, NULL)
+  expect_false(".t2_perte_pct" %in% names(out2))
+})

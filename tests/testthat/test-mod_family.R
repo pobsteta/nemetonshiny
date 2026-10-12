@@ -447,10 +447,12 @@ test_that("family R injects the live R5 dieback indicator", {
     {
       data <- indicators_data()
       expect_false(is.null(data))
-      expect_true("indicateur_r5_deperissement" %in% names(data))
+      # La vue montre la note 0-100 : R5, injecte, recoit son `_norm` comme
+      # R1-R4 lus du parquet (pas de melange d'echelles).
+      expect_true("indicateur_r5_deperissement_norm" %in% names(data))
 
       sf_data <- indicators_sf()
-      expect_true("indicateur_r5_deperissement" %in% names(sf_data))
+      expect_true("indicateur_r5_deperissement_norm" %in% names(sf_data))
     }
   )
 })
@@ -735,4 +737,36 @@ test_that("mod_family_server ai_sources lists the cited documentary sources", {
       expect_false(nzchar(.html(output$ai_sources)))
     }
   )
+})
+
+
+test_that("t2_forms_t_banner reads a measured T2 as lost cover (spec 060)", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  d <- data.frame(indicateur_t2_changement = c(92, 99.5),
+                  .t2_perte_pct = c(8, 0.5),
+                  .t2_croissance_m_an = c(0.3, 0.2),
+                  .t2_annees = "2019-2024")
+  html <- as.character(nemetonshiny:::t2_forms_t_banner(
+    d, "indicateur_t2_changement_norm", i18n))
+  expect_match(html, "2019-2024", fixed = TRUE)
+  expect_match(html, "0,5", fixed = TRUE)
+  expect_match(html, "0,25", fixed = TRUE)
+
+  # Autre indicateur, ou T2 en proxy (pas de perte mesuree) : rien.
+  expect_null(nemetonshiny:::t2_forms_t_banner(d, "indicateur_t1_anciennete", i18n))
+  d$.t2_perte_pct <- NA_real_
+  expect_null(nemetonshiny:::t2_forms_t_banner(d, "indicateur_t2_changement", i18n))
+})
+
+test_that("indicator_na_banner names a T2 left on its proxy", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  d <- data.frame(indicateur_t2_changement = c(70, 80),
+                  .t2_status = c("forms_t", "proxy"))
+  html <- as.character(nemetonshiny:::indicator_na_banner(
+    d, "indicateur_t2_changement", i18n))
+  expect_match(html, i18n$t("t2_proxy"), fixed = TRUE)
+  # Mesure nominale partout : aucun bandeau.
+  d$.t2_status <- "forms_t"
+  expect_null(nemetonshiny:::indicator_na_banner(
+    d, "indicateur_t2_changement", i18n))
 })

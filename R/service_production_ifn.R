@@ -30,6 +30,10 @@ NULL
 #' `ser` is not an annex of the core: it is the input column, read back from
 #' P2's result so the display can name the SER without a second lookup.
 #'
+#' T2 rides the same mechanism (spec 060): measured on FORMS-T, it ships the
+#' lost-cover share, the median growth and the window it read - diagnostics,
+#' not statuses, that let the view say what a T2 of 92 means.
+#'
 #' @noRd
 PRODUCTION_ANNEX_COLS <- list(
   indicateur_p2_station = c(
@@ -40,6 +44,11 @@ PRODUCTION_ANNEX_COLS <- list(
   ),
   indicateur_e1_bois_energie = c(
     E1_mode = ".e1_mode"
+  ),
+  indicateur_t2_changement = c(
+    t2_perte_pct       = ".t2_perte_pct",
+    t2_croissance_m_an = ".t2_croissance_m_an",
+    t2_annees          = ".t2_annees"
   )
 )
 

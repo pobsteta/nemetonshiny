@@ -1,3 +1,53 @@
+# nemetonshiny 2026.10.5 (2026-10-12)
+
+Changements cassants : aucun. Plancher `Imports: nemeton (>= 2026.10.3)`.
+
+## Les notes 0-100 des indicateurs sont enfin enregistrées
+
+Brief `nemetonclaude` du 2026-10-12. `.add_normalized_indicators()` n'était
+appelée nulle part depuis son ajout (`a43833ff`, 25/08) : `indicators.parquet`
+n'avait aucune colonne `_norm`, et `projet_lire()`, l'Atlas, la base et les
+exports voyaient les notes manquantes (C1 « manquant » à Couchey alors que
+Carbone & Vitalité valait environ 23).
+
+- Chaque écriture du parquet (enregistrement final et incrémental, donc app,
+  calcul enfant / MCP et recalcul partiel) ajoute le jumeau `_norm` de chaque
+  indicateur, normalisé par `nemeton::normalize_indicator()` avec son statut.
+- À la lecture, un projet enregistré sans `_norm` les reçoit ; ceux déjà
+  enregistrés sont gardés.
+- R5, R6 et R7, injectés à l'affichage, reçoivent aussi leur `_norm`, dans la
+  vue Famille comme dans `projet_lire()$familles`.
+- **Effet visible** : la vue Famille, écrite pour préférer les `_norm`, affiche
+  désormais les notes 0-100 (cartes, tableau, statistiques envoyées à l'IA) au
+  lieu des valeurs brutes. Les scores de famille et le radar ne bougent pas :
+  le cœur part toujours de la valeur brute.
+- Vérifié sur Couchey : 35 notes `_norm` rendues par `projet_lire()`, sans
+  écriture du parquet.
+
+## T2 mesuré sur FORMS-T (spec 060 du cœur)
+
+Brief `nemeton` du 2026-10-11. T2 recopiait N2 ou T1 : la famille T comptait
+deux fois la même information. Avec `nemeton >= 2026.10.3`, T2 mesure la
+stabilité du couvert sur la série annuelle des hauteurs FORMS-T.
+
+- La série est chargée une fois par calcul, quand T2 est demandé, par
+  `nemeton::charger_forms_t_hauteurs()` : copie locale si
+  `NEMETON_FORMS_T_DIR` est posée, sinon Theia. Elle est mise en cache dans
+  `cache/layers/forms_t/forms_t_2019-2024.tif`, avec une clé d'emprise, puis
+  posée dans `layers$rasters$forms_t` et passée à T2 par `forms_t =`.
+- Sans série (ni Theia ni copie locale, moins de trois années, erreur), T2
+  garde son repli N2 / T1, comme avant.
+- Les diagnostics `t2_perte_pct`, `t2_croissance_m_an` et `t2_annees`
+  suivent T2 en colonnes annexes `.t2_*`. Sous la carte T2, la vue famille
+  dit la fenêtre lue, la part du couvert perdu selon les unités et la
+  croissance médiane : un T2 de 92 se lit « 8 % du couvert perdu ».
+- Les statuts `proxy` et `no_source` ont leur libellé ; la mesure nominale
+  `forms_t` n'affiche pas de réserve. Nouvelle étape de progression
+  « chargement de la série FORMS-T ».
+- Vérifié contre le cœur 2026.10.3 : Dabo, T2 de 95,5 à 99,95 ;
+  Fordead, de 67 à 100 % du couvert perdu selon les parcelles. Deuxième
+  passage lu depuis le cache.
+
 # nemetonshiny 2026.10.4 (2026-10-11)
 
 Changements cassants : aucun.

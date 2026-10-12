@@ -43,7 +43,11 @@ test_that("project_family_scores delegates to the core aggregation", {
     create_family_index(p$indicators_sf, method = "mean", na.rm = TRUE)
   )
   expect_s3_class(got, "sf")
-  expect_identical(sf::st_drop_geometry(got), sf::st_drop_geometry(want))
+  # Les scores de famille sont ceux du coeur : les `_norm` ajoutes n'y changent
+  # rien, la colonne brute l'emporte (nemeton >= 0.208.0).
+  fam <- grep("^famille_", names(want), value = TRUE)
+  expect_identical(sf::st_drop_geometry(got)[fam], sf::st_drop_geometry(want)[fam])
+  expect_true("indicateur_c1_biomasse_norm" %in% names(got))
 })
 
 test_that("project_family_scores returns NULL when the core aggregation fails", {

@@ -392,3 +392,49 @@ test_that("NEMETON_PROJECT_DIR sets the default projects directory", {
   withr::local_envvar(NEMETON_PROJECT_DIR = "")
   expect_false(identical(get_default_project_dir(), d))
 })
+
+
+test_that("les notes _norm sont enregistrees et rendues par projet_lire()", {
+  # Brief nemetonclaude du 2026-10-12 : `.add_normalized_indicators()` n'etait
+  # appelee nulle part, le parquet n'avait aucune colonne `_norm`.
+  skip_if_not_installed("arrow")
+  .api_env()
+  id <- .api_projet_calcule()
+
+  pq <- arrow::read_parquet(file.path(get_project_path(id), "data",
+                                      "indicators.parquet"))
+  expect_true(all(c("indicateur_c1_biomasse_norm",
+                    "indicateur_b1_protection_norm") %in% names(pq)))
+  expect_equal(pq$indicateur_c1_biomasse_norm,
+               nemeton::normalize_indicator("indicateur_c1_biomasse",
+                                            pq$indicateur_c1_biomasse))
+
+  lu <- projet_lire(id)
+  expect_true("indicateur_c1_biomasse_norm" %in% names(lu$familles))
+})
+
+test_that("un projet enregistre sans _norm les recoit a la lecture", {
+  skip_if_not_installed("arrow")
+  .api_env()
+  id <- .api_projet_calcule()
+  f <- file.path(get_project_path(id), "data", "indicators.parquet")
+  pq <- as.data.frame(arrow::read_parquet(f))
+  arrow::write_parquet(pq[, !grepl("_norm$", names(pq))], f)
+
+  out <- load_indicators(id)
+  expect_true("indicateur_c1_biomasse_norm" %in% names(out))
+  expect_false(any(grepl("_norm_norm", names(out))))
+})
+
+test_that("l'enregistrement incremental ecrit aussi les _norm", {
+  skip_if_not_installed("arrow")
+  .api_env()
+  id <- .api_projet_calcule()
+  ugs <- load_ug_data(id)$ugs
+  res <- data.frame(ug_id = ugs$ug_id, indicateur_c1_biomasse = c(10, 20),
+                    geometry_wkt = "POINT (0 0)")
+  suppressWarnings(save_indicators_incremental(id, res, "indicateur_c1_biomasse"))
+  pq <- arrow::read_parquet(file.path(get_project_path(id), "data",
+                                      "indicators.parquet"))
+  expect_true("indicateur_c1_biomasse_norm" %in% names(pq))
+})

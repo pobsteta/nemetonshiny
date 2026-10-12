@@ -604,9 +604,14 @@ backfill_all_commune_geometries <- function() {
 #' own yardstick, and the same stand would score differently depending on its
 #' neighbours.
 #'
-#' It is also the function `create_family_index()` uses - and that one **prefers
-#' `_norm` columns when they exist**. Persisting them therefore makes the stored
-#' number and the displayed number the same, instead of two truths that drift.
+#' It is also the function `create_family_index()` applies to the raw column
+#' (the raw column wins there since `nemeton 0.208.0`), so the stored `_norm` and
+#' the family score rest on the same rule. The family view shows the `_norm`.
+#'
+#' Called on every write of `indicators.parquet` (final and incremental saves),
+#' which refreshes every twin against its raw value; on read, with
+#' `only_missing = TRUE`, it fills in the twins of projects saved before they
+#' were persisted and leaves stored ones alone.
 #'
 #' **Only indicators the core declares** get a twin. `normalize_indicator()`
 #' returns an unknown indicator's values **unchanged** rather than failing - a
@@ -620,12 +625,16 @@ backfill_all_commune_geometries <- function() {
 #' m3/ha/yr, which do not share a ceiling.
 #'
 #' @param df A data.frame of indicators.
+#' @param quiet Logical. `TRUE` skips the warning about indicators the core
+#'   does not declare (read and incremental paths; the final save warns once).
+#' @param only_missing Logical. `TRUE` only adds the twins that are absent.
 #' @return The same data.frame with `<indicateur>_norm` columns added.
 #' @noRd
-.add_normalized_indicators <- function(df) {
+.add_normalized_indicators <- function(df, quiet = FALSE, only_missing = FALSE) {
   if (!is.data.frame(df) || nrow(df) == 0L) return(df)
   cols <- grep("^indicateur_", names(df), value = TRUE)
   cols <- cols[!grepl("_norm$", cols)]
+  if (only_missing) cols <- cols[!paste0(cols, "_norm") %in% names(df)]
   if (length(cols) == 0L) return(df)
 
   connus <- tryCatch(as.character(nemeton::list_indicators()),
@@ -645,7 +654,7 @@ backfill_all_commune_geometries <- function() {
     if (is.null(n) || length(n) != nrow(df)) next
     df[[paste0(cc, "_norm")]] <- as.numeric(n)
   }
-  if (length(inconnus)) {
+  if (length(inconnus) && !quiet) {
     cli::cli_warn(c(
       "Normalisation impossible pour {length(inconnus)} indicateur{?s} : {.field {inconnus}}.",
       i = "Leur valeur brute est conserv\u00e9e ; la colonne {.code _norm} manque."))
@@ -688,6 +697,9 @@ save_indicators <- function(project_id, indicators) {
     } else {
       indicators_df <- indicators
     }
+
+    # Chaque indicateur est enregistre brut ET normalise 0-100 (jumeau `_norm`).
+    indicators_df <- .add_normalized_indicators(indicators_df)
 
     # Write via temp file to avoid Windows memory-mapped file lock
     # (renommage atomique ; la cible n'est supprimee avant que si le renommage
@@ -752,6 +764,11 @@ load_indicators <- function(project_id) {
     # perte, prend les variantes `_norm`, et laisse intact un jeu deja migre -
     # il se pose donc une fois pour toutes dans le chemin de lecture.
     results <- nemeton::migrer_colonnes_l(results, quiet = TRUE)
+
+    # Un projet enregistre avant que les `_norm` ne soient persistes (jusqu'a
+    # 2026.10.4) les recoit ici ; ceux deja enregistres sont gardes tels quels.
+    results <- .add_normalized_indicators(results, quiet = TRUE,
+                                          only_missing = TRUE)
 
     # Restaurer les attributs NDP depuis les metadonnees projet
     meta <- load_project_metadata(project_id)

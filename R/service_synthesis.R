@@ -37,6 +37,10 @@ project_family_scores <- function(project) {
   # sans cache reGeneration, base_sf est inchange.
   base_sf <- add_regen_r_indicators(base_sf, project)
 
+  # R5-R7, injectes ici, recoivent leur `_norm` comme les indicateurs lus du
+  # parquet : `projet_lire()$familles` porte les notes de tous.
+  base_sf <- .add_normalized_indicators(base_sf, quiet = TRUE)
+
   tryCatch(
     create_family_index(base_sf, method = "mean", na.rm = TRUE),
     error = function(e) {
