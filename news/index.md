@@ -1,5 +1,25 @@
 # Changelog
 
+## nemetonshiny 2026.10.6 (2026-10-12)
+
+Changements cassants : aucun.
+
+### Synthèse IA : la progression (i/13) revient
+
+Régression du lot 5 de l’audit 1.0 (`3179dbc9`). Pour ne plus geler les
+autres sessions, les 13 appels IA de la synthèse sont partis dans un
+worker `future`. La boucle qui annonçait « Biodiversité (2/13)… » a
+disparu avec eux : la notification ne disait plus que « Analyse en cours
+(13) ».
+
+- Le worker écrit, avant chaque appel, sa position dans un petit fichier
+  temporaire (`.llm_batch_run(progress_file =)`).
+- L’onglet Synthèse relit ce fichier chaque seconde, seulement pendant
+  la génération, et met à jour la notification en place : « Analyse en
+  cours : Biodiversité (2/13)… ». Le fichier est supprimé à la fin.
+- Vérifié avec un vrai worker `multisession` ; un test du module échoue
+  si la relecture est retirée.
+
 ## nemetonshiny 2026.10.5 (2026-10-12)
 
 Changements cassants : aucun. Plancher

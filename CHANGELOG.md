@@ -12,6 +12,16 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.10.6\] - 2026-10-12
+
+### Fixed
+
+- The Synthesis AI notification shows the progress again (“Analyse en
+  cours : Biodiversite (2/13)…”): the worker writes its position to a
+  temporary file before each call, read back every second while the
+  generation runs. Lost when the LLM calls moved to a `future` worker
+  (audit 1.0, lot 5).
+
 ## \[2026.10.5\] - 2026-10-12
 
 ### Added

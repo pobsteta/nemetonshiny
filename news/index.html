@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.6" id="nemetonshiny-2026106-2026-10-12">nemetonshiny 2026.10.6 (2026-10-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026106-2026-10-12"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="synthèse-ia--la-progression-i13-revient-2026-10-6">Synthèse IA : la progression (i/13) revient<a class="anchor" aria-label="anchor" href="#synth%C3%A8se-ia--la-progression-i13-revient-2026-10-6"></a></h3>
+<p>Régression du lot 5 de l’audit 1.0 (<code>3179dbc9</code>). Pour ne plus geler les autres sessions, les 13 appels IA de la synthèse sont partis dans un worker <code>future</code>. La boucle qui annonçait « Biodiversité (2/13)… » a disparu avec eux : la notification ne disait plus que « Analyse en cours (13) ».</p>
+<ul><li>Le worker écrit, avant chaque appel, sa position dans un petit fichier temporaire (<code>.llm_batch_run(progress_file =)</code>).</li>
+<li>L’onglet Synthèse relit ce fichier chaque seconde, seulement pendant la génération, et met à jour la notification en place : « Analyse en cours : Biodiversité (2/13)… ». Le fichier est supprimé à la fin.</li>
+<li>Vérifié avec un vrai worker <code>multisession</code> ; un test du module échoue si la relecture est retirée.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.5" id="nemetonshiny-2026105-2026-10-12">nemetonshiny 2026.10.5 (2026-10-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026105-2026-10-12"></a></h2>
 <p>Changements cassants : aucun. Plancher <code>Imports: nemeton (&gt;= 2026.10.3)</code>.</p>
