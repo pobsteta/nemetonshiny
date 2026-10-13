@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,36 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.7" id="nemetonshiny-2026107-2026-10-13">nemetonshiny 2026.10.7 (2026-10-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026107-2026-10-13"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="nouveau-sous-onglet-terrain--inventaire-vidéo-groma-2026-10-7">Nouveau sous-onglet Terrain &gt; Inventaire vidéo (Groma)<a class="anchor" aria-label="anchor" href="#nouveau-sous-onglet-terrain--inventaire-vid%C3%A9o-groma-2026-10-7"></a></h3>
+<p>Brief <code>groma</code> du 2026-10-12. L’app n’en fait que l’interface : tout le métier (projet QField, rapprochement provisoire → définitif, validation, agrégats, fusion par <code>plot_id</code>) vient du cœur.</p>
+<ul><li>
+<strong>Préparer</strong> : placettes du plan d’échantillonnage (toutes cochées), rayon, seuil de diamètre, unité d’azimut, déclinaison magnétique obligatoire (lien vers le calculateur NOAA), MNT/MNH/houppiers (case grisée sans MNH). <code>creer_projet_inventaire_video()</code> tourne dans un <code>ExtendedTask</code>, puis le <code>.qgz</code> est proposé au téléchargement.</li>
+<li>
+<strong>Suivre</strong> : état des placettes sur le serveur Groma (<code>groma_etat_placettes()</code>), croisé avec <code>etat_traitement</code> du dernier GeoPackage intégré ; clic sur une placette → rapport HTML dans une modale, alertes en tête. Bouton « Actualiser », pas de scrutation. URL du serveur dans les métadonnées du projet (<code>groma_url</code>) ou <code>GROMA_URL</code> ; le jeton uniquement dans <code>GROMA_JETON</code> (<code>.Renviron</code>), jamais affiché.</li>
+<li>
+<strong>Intégrer</strong> : GeoPackage revenu du terrain + résultats définitifs (téléchargés du serveur ou déposés), <code>importer_inventaire_video()</code> sur <code>data/field_data.gpkg</code> ; bilan de validation, arbres à compléter / à vérifier, numéros modifiés (<code>ancien → nouveau</code>), nouveau NDP persisté.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="inventaire-vidéo-branché-sur-le-cœur-2026-10-7">Inventaire vidéo branché sur le cœur 2026.10.5<a class="anchor" aria-label="anchor" href="#inventaire-vid%C3%A9o-branch%C3%A9-sur-le-c%C5%93ur-2026-10-7"></a></h3>
+<p>Réponse <code>nemeton</code> du 2026-10-12 aux formes de retour. Plancher <code>Imports: nemeton (&gt;= 2026.10.5)</code>.</p>
+<ul><li>Le test d’intégration réelle tourne désormais contre le vrai cœur (P002 classique conservé, P001 vidéo ajouté, NDP 3).</li>
+<li>
+<code>creer_projet_inventaire_video()</code> reçoit <code>project_path</code> : le cœur résout lui-même le MNT manquant ; l’app ne lui passe plus que le MNH.</li>
+<li>Numéros modifiés affichés par placette (<code>P001 : 5 → 4</code>), le cœur rendant désormais <code>plot_id</code> en tête.</li>
+<li>
+<strong>Renvoyer sur le terrain</strong> : après une intégration valide qui laisse des arbres à compléter ou à vérifier, un bouton construit un nouveau projet QField (<code>renvoyer_inventaire_video()</code>) avec ces seules placettes, rasters repris du premier <code>.qgz</code>, puis le propose au téléchargement.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="t2-sans-proxy-n2--t1-2026-10-7">T2 sans proxy N2 / T1<a class="anchor" aria-label="anchor" href="#t2-sans-proxy-n2--t1-2026-10-7"></a></h3>
+<p>Brief <code>nemeton</code> du 2026-10-13 (spec 060 § 9) : le cœur ne recopie plus N2 ni l’âge T1 dans T2. Sans série FORMS-T, T2 est vide et la famille T est la moyenne de T1 et T3.</p>
+<ul><li>L’app ne passe plus les colonnes <code>N2</code> / <code>T1</code> à T2 et ne force plus N2 avant T2 (<code>.order_indicators_for_dependencies()</code> retirée).</li>
+<li>Clé <code>t2_proxy</code> retirée (plus aucun cas ne la déclenche) ; <code>t2_no_source</code> dit seulement que la série FORMS-T manque.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.6" id="nemetonshiny-2026106-2026-10-12">nemetonshiny 2026.10.6 (2026-10-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026106-2026-10-12"></a></h2>
 <p>Changements cassants : aucun.</p>
