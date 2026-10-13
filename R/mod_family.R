@@ -911,7 +911,7 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
 #' `100 x (1 - share of cover in durable loss)`. The score alone does not say
 #' it: this line gives the window read, the lost-cover range over the units and
 #' the median growth of the cover without loss (outside the score). `NULL`
-#' when T2 was not measured (proxy N2 / T1, or no FORMS-T annex).
+#' when T2 was not measured (no FORMS-T annex).
 #'
 #' @param data data.frame / sf carrying the `.t2_*` annex columns.
 #' @param ind_col Character. Indicator column (raw or `_norm`).

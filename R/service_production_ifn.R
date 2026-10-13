@@ -162,10 +162,6 @@ PRODUCTION_ANNEX_COLS <- list(
 #' * E1 in flux mode reads P2 in **its own** units (`production_field = "P2"`)
 #'   and detects the degenerate case through `P2_provenance` (P2 is computed
 #'   before E1).
-#' * T2 reads its stability source from the units: `N2` first, else `T1`.
-#'   Since `nemeton 0.212.0` it returns NA without a source (no more default
-#'   50), and the bare parcels carry neither, so T2 was NA on every project.
-#'   [.order_indicators_for_dependencies()] computes N2 before T2.
 #' * E2 reads `E1`, and N3 reads `N1`, `N2`, `L1` and `B3`
 #'   ([.COMPOSANTES_LUES]); all of them come earlier in the canonical order.
 #'   Without these columns the core returned NA on every project.
@@ -175,22 +171,13 @@ PRODUCTION_ANNEX_COLS <- list(
 #' @param results sf / data.frame. Results accumulated so far.
 #' @param cfg List from [project_production_ifn_params()].
 #'
-#' @return `parcels`, possibly with `P2` / `P2_provenance`, `N2` / `T1`,
-#'   `E1`, or `N1` / `N2` / `L1` / `B3`.
+#' @return `parcels`, possibly with `P2` / `P2_provenance`, `E1`, or
+#'   `N1` / `N2` / `L1` / `B3`.
 #'
 #' @noRd
 .units_for_indicator <- function(indicator, parcels, results, cfg) {
   n <- nrow(parcels)
-  if (identical(indicator, "indicateur_t2_changement")) {
-    # Une source toute NA n'en est pas une : le coeur prendrait la colonne
-    # N2 meme vide et rendrait NA partout, au lieu de se replier sur T1.
-    utilisable <- function(v) length(v) == n && any(!is.na(v))
-    n2 <- results[["indicateur_n2_continuite"]]
-    t1 <- results[["indicateur_t1_anciennete"]]
-    if (utilisable(n2)) parcels$N2 <- as.numeric(n2)
-    if (utilisable(t1)) parcels$T1 <- as.numeric(t1)
-    return(parcels)
-  }
+  # T2 ne lit plus N2 / T1 : mesure FORMS-T seule depuis nemeton 2026.10.5.
   # E2 et N3 lisent les colonnes courtes de leurs composantes : sans elles,
   # le coeur rend NA partout (brief du 2026-10-09).
   composantes <- .COMPOSANTES_LUES[[indicator]]

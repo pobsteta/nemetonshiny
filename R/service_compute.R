@@ -997,8 +997,8 @@ start_computation <- function(project_id,
     # T2 mesure sur FORMS-T (spec 060, nemeton >= 2026.10.3). La serie annuelle
     # des hauteurs est chargee une fois (cache disque a cle d'emprise) et posee
     # dans layers$rasters$forms_t, ou indicateur_t2_changement() la trouve seul.
-    # Pas de serie (Theia absent, < 3 annees) -> T2 garde son proxy N2 / T1,
-    # sans regression.
+    # Pas de serie (Theia absent, < 3 annees) -> T2 = NA (le proxy N2 / T1 est
+    # retire du coeur depuis nemeton 2026.10.5).
     if ("indicateur_t2_changement" %in% effective_indicators) {
       state$current_task <- "forms_t"
       report_progress(state)
@@ -4825,27 +4825,6 @@ mosaic_lidar_tiles <- function(tile_files, output_file) {
 }
 
 
-#' Order indicators so each one comes after those it reads
-#'
-#' @description
-#' The canonical order ([list_available_indicators()]) lists N2 after T2, but
-#' T2 reads N2 as its first stability source (see [.units_for_indicator()]).
-#' N2 is therefore moved just before T2 when both are to compute. Every other
-#' indicator keeps its position.
-#'
-#' @param indicators Character. Indicators to compute.
-#' @return The same indicators, reordered.
-#' @noRd
-.order_indicators_for_dependencies <- function(indicators) {
-  t2 <- "indicateur_t2_changement"
-  n2 <- "indicateur_n2_continuite"
-  if (!all(c(t2, n2) %in% indicators)) return(indicators)
-  if (match(n2, indicators) < match(t2, indicators)) return(indicators)
-  sans_n2 <- setdiff(indicators, n2)
-  pos <- match(t2, sans_n2)
-  append(sans_n2, n2, after = pos - 1L)
-}
-
 #' Compute all indicators
 #'
 #' @description
@@ -4934,8 +4913,7 @@ compute_all_indicators <- function(parcels,
   }
 
   # Filter out already computed indicators
-  indicators_to_compute <- .order_indicators_for_dependencies(
-    setdiff(indicators, computed_indicators))
+  indicators_to_compute <- setdiff(indicators, computed_indicators)
   n_indicators <- length(indicators)
   n_to_compute <- length(indicators_to_compute)
 
@@ -5251,7 +5229,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       if (!is.null(lst)) args$lst <- lst
     }
     # Serie FORMS-T (spec 060) -> T2, stagee dans layers$rasters$forms_t par
-    # start_computation(). Absente -> T2 garde son proxy N2 / T1.
+    # start_computation(). Absente -> T2 = NA.
     if ("forms_t" %in% func_args) {
       ft <- resolve_raster_layer(layers, "forms_t")
       if (!is.null(ft)) args$forms_t <- ft

@@ -1,3 +1,56 @@
+# nemetonshiny 2026.10.7 (2026-10-13)
+
+Changements cassants : aucun.
+
+## Nouveau sous-onglet Terrain > Inventaire vidéo (Groma)
+
+Brief `groma` du 2026-10-12. L'app n'en fait que l'interface : tout le métier
+(projet QField, rapprochement provisoire → définitif, validation, agrégats,
+fusion par `plot_id`) vient du cœur.
+
+- **Préparer** : placettes du plan d'échantillonnage (toutes cochées), rayon,
+  seuil de diamètre, unité d'azimut, déclinaison magnétique obligatoire (lien
+  vers le calculateur NOAA), MNT/MNH/houppiers (case grisée sans MNH).
+  `creer_projet_inventaire_video()` tourne dans un `ExtendedTask`, puis le
+  `.qgz` est proposé au téléchargement.
+- **Suivre** : état des placettes sur le serveur Groma
+  (`groma_etat_placettes()`), croisé avec `etat_traitement` du dernier
+  GeoPackage intégré ; clic sur une placette → rapport HTML dans une modale,
+  alertes en tête. Bouton « Actualiser », pas de scrutation. URL du serveur
+  dans les métadonnées du projet (`groma_url`) ou `GROMA_URL` ; le jeton
+  uniquement dans `GROMA_JETON` (`.Renviron`), jamais affiché.
+- **Intégrer** : GeoPackage revenu du terrain + résultats définitifs
+  (téléchargés du serveur ou déposés), `importer_inventaire_video()` sur
+  `data/field_data.gpkg` ; bilan de validation, arbres à compléter / à
+  vérifier, numéros modifiés (`ancien → nouveau`), nouveau NDP persisté.
+
+## Inventaire vidéo branché sur le cœur 2026.10.5
+
+Réponse `nemeton` du 2026-10-12 aux formes de retour. Plancher
+`Imports: nemeton (>= 2026.10.5)`.
+
+- Le test d'intégration réelle tourne désormais contre le vrai cœur (P002
+  classique conservé, P001 vidéo ajouté, NDP 3).
+- `creer_projet_inventaire_video()` reçoit `project_path` : le cœur résout
+  lui-même le MNT manquant ; l'app ne lui passe plus que le MNH.
+- Numéros modifiés affichés par placette (`P001 : 5 → 4`), le cœur rendant
+  désormais `plot_id` en tête.
+- **Renvoyer sur le terrain** : après une intégration valide qui laisse des
+  arbres à compléter ou à vérifier, un bouton construit un nouveau projet
+  QField (`renvoyer_inventaire_video()`) avec ces seules placettes, rasters
+  repris du premier `.qgz`, puis le propose au téléchargement.
+
+## T2 sans proxy N2 / T1
+
+Brief `nemeton` du 2026-10-13 (spec 060 § 9) : le cœur ne recopie plus N2 ni
+l'âge T1 dans T2. Sans série FORMS-T, T2 est vide et la famille T est la
+moyenne de T1 et T3.
+
+- L'app ne passe plus les colonnes `N2` / `T1` à T2 et ne force plus N2 avant
+  T2 (`.order_indicators_for_dependencies()` retirée).
+- Clé `t2_proxy` retirée (plus aucun cas ne la déclenche) ; `t2_no_source`
+  dit seulement que la série FORMS-T manque.
+
 # nemetonshiny 2026.10.6 (2026-10-12)
 
 Changements cassants : aucun.

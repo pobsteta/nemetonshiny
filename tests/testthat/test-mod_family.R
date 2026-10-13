@@ -752,20 +752,21 @@ test_that("t2_forms_t_banner reads a measured T2 as lost cover (spec 060)", {
   expect_match(html, "0,5", fixed = TRUE)
   expect_match(html, "0,25", fixed = TRUE)
 
-  # Autre indicateur, ou T2 en proxy (pas de perte mesuree) : rien.
+  # Autre indicateur, ou T2 sans serie (pas de perte mesuree) : rien.
   expect_null(nemetonshiny:::t2_forms_t_banner(d, "indicateur_t1_anciennete", i18n))
   d$.t2_perte_pct <- NA_real_
   expect_null(nemetonshiny:::t2_forms_t_banner(d, "indicateur_t2_changement", i18n))
 })
 
-test_that("indicator_na_banner names a T2 left on its proxy", {
+test_that("indicator_na_banner names a T2 without FORMS-T series", {
   i18n <- nemetonshiny:::get_i18n("fr")
-  d <- data.frame(indicateur_t2_changement = c(70, 80),
-                  .t2_status = c("forms_t", "proxy"))
+  d <- data.frame(indicateur_t2_changement = c(70, NA),
+                  .t2_status = c("forms_t", "no_source"))
   html <- as.character(nemetonshiny:::indicator_na_banner(
     d, "indicateur_t2_changement", i18n))
-  expect_match(html, i18n$t("t2_proxy"), fixed = TRUE)
+  expect_match(html, i18n$t("t2_no_source"), fixed = TRUE)
   # Mesure nominale partout : aucun bandeau.
+  d$indicateur_t2_changement <- c(70, 80)
   d$.t2_status <- "forms_t"
   expect_null(nemetonshiny:::indicator_na_banner(
     d, "indicateur_t2_changement", i18n))
