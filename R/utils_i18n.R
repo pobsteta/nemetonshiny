@@ -819,6 +819,22 @@ TRANSLATIONS <- list(
     fr = "Aucune placette d\u00e9finitive sur le serveur.",
     en = "No final plot on the server."
   ),
+  video_renvoyer = list(
+    fr = "Renvoyer sur le terrain",
+    en = "Send back to the field"
+  ),
+  video_renvoi_aide = list(
+    fr = "Cr\u00e9e un nouveau projet QField avec les placettes dont des arbres restent \u00e0 compl\u00e9ter ou \u00e0 v\u00e9rifier.",
+    en = "Builds a new QField project with the plots that still hold trees to complete or to check."
+  ),
+  video_renvoi_pret = list(
+    fr = "Projet de retour terrain pr\u00eat : %d arbre(s) sur %d placette(s).",
+    en = "Field return project ready: %d tree(s) on %d plot(s)."
+  ),
+  video_renvoi_telecharger = list(
+    fr = "T\u00e9l\u00e9charger le projet de retour (.qgz)",
+    en = "Download the return project (.qgz)"
+  ),
   video_resultats_serveur = list(
     fr = "R\u00e9sultats du serveur (.gpkg)",
     en = "Server results (.gpkg)"
@@ -1502,13 +1518,9 @@ TRANSLATIONS <- list(
                                en = "T3 not computed: the clear-cut source (SUFOSAT) is not enabled for this project."),
   # T2 mesure sur FORMS-T (spec 060) : `forms_t` est la mesure nominale, sans
   # cle (rien a nuancer) ; la lecture du score passe par t2_forms_t_bandeau.
-  t2_proxy = list(
-    fr = "T2 approch\u00e9 par la continuit\u00e9 (N2) ou l'anciennet\u00e9 (T1) l\u00e0 o\u00f9 la s\u00e9rie FORMS-T des hauteurs de canop\u00e9e manque : la valeur ne mesure pas l'\u00e9volution du couvert.",
-    en = "T2 approximated from continuity (N2) or age (T1) where the FORMS-T canopy-height series is missing: the value does not measure how the cover changed."
-  ),
   t2_no_source = list(
-    fr = "T2 non calcul\u00e9 : ni s\u00e9rie FORMS-T des hauteurs de canop\u00e9e, ni continuit\u00e9 (N2) ou anciennet\u00e9 (T1) disponible.",
-    en = "T2 not computed: neither a FORMS-T canopy-height series nor continuity (N2) or age (T1) is available."
+    fr = "T2 non calcul\u00e9 : la s\u00e9rie FORMS-T des hauteurs de canop\u00e9e n'est pas disponible pour cette unit\u00e9.",
+    en = "T2 not computed: the FORMS-T canopy-height series is not available for this unit."
   ),
   t2_forms_t_bandeau = list(
     fr = "T2 mesur\u00e9 sur la s\u00e9rie FORMS-T %s : de %s \u00e0 %s %% du couvert en perte durable (\u2265 5 m) selon les unit\u00e9s.",

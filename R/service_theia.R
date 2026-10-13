@@ -381,8 +381,8 @@ FORMS_T_FIRST_YEAR <- 2019L
 #' are the years T2 reads.
 #'
 #' Returns `NULL` whenever the series cannot be had: neither Theia nor a
-#' local copy, fewer than three years, or any error. T2 then keeps
-#' its N2 / T1 proxy, exactly as before.
+#' local copy, fewer than three years, or any error. T2 is then `NA`
+#' (no N2 / T1 proxy since nemeton 2026.10.5).
 #'
 #' @param parcels sf. Units of the computation (any CRS).
 #' @param project_path Character. Project directory, or `NULL` for no cache.

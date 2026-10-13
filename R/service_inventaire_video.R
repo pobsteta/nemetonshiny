@@ -4,7 +4,8 @@
 # serveur Groma et l'integration (rapprochement, validation, agregats, fusion
 # par plot_id sans ecraser l'inventaire classique) sont dans le coeur
 # (`nemeton::creer_projet_inventaire_video()`, `groma_etat_placettes()`,
-# `groma_telecharger_resultats()`, `importer_inventaire_video()`).
+# `groma_telecharger_resultats()`, `importer_inventaire_video()`,
+# `renvoyer_inventaire_video()`), experimentales depuis nemeton 2026.10.5.
 #
 # Les fonctions coeur sont resolues a l'execution (`.video_coeur()`) : le module
 # reste chargeable, et testable, avec un coeur qui ne les exporte pas encore ; il
@@ -139,8 +140,54 @@ video_args_generation <- function(project_path, placettes, plot_ids,
     unite_azimut = unite_azimut %||% "deg", declinaison_deg = decl,
     avec_lidar = avec_lidar,
     dem = if (avec_lidar) .source(dem), chm = if (avec_lidar) .source(chm),
+    # Le coeur resout le MNT manquant depuis le projet.
+    project_path = project_path,
     output_dir = video_dossier(project_path), lang = lang
   )
+}
+
+#' Can the core send trees back to the field?
+#' @noRd
+video_renvoi_disponible <- function() {
+  !is.null(.video_coeur("renvoyer_inventaire_video"))
+}
+
+#' Does an integration leave trees to complete or to check?
+#' @param bilan Result of [video_bilan()], or `NULL`.
+#' @noRd
+video_a_renvoyer <- function(bilan) {
+  !is.null(bilan) && isTRUE(bilan$validation$ok) &&
+    (nrow(bilan$a_completer) + nrow(bilan$a_verifier)) > 0L
+}
+
+#' Build the field return project of an integration
+#'
+#' Thin wrapper over `nemeton::renvoyer_inventaire_video()`: a new `.qgz` for
+#' the plots that still hold trees to complete or to check. The other layers
+#' come from the last integrated GeoPackage, the per-plot rasters from the
+#' first `.qgz` of the project when it is still there.
+#'
+#' @param import Raw result of `importer_inventaire_video()`.
+#' @param project_path Project directory.
+#' @return Path of the `.qgz`, with attributes `plot_ids` and `n_arbres`.
+#' @noRd
+video_renvoyer <- function(import, project_path) {
+  vdir <- video_dossier(project_path)
+  gpkg <- file.path(vdir, "terrain_integre.gpkg")
+  rasters <- NULL
+  qgz <- file.path(vdir, "inventaire_video.qgz")
+  if (file.exists(qgz)) {
+    noms <- tryCatch(utils::unzip(qgz, list = TRUE)$Name, error = function(e) character(0))
+    tifs <- grep("^rasters/.+\\.tif$", noms, value = TRUE)
+    if (length(tifs)) {
+      d <- tempfile("rasters_retour_")
+      utils::unzip(qgz, files = tifs, exdir = d)
+      rasters <- file.path(d, "rasters")
+    }
+  }
+  .video_appeler("renvoyer_inventaire_video", import = import,
+                 gpkg = if (file.exists(gpkg)) gpkg else NULL,
+                 rasters = rasters, output_dir = vdir)
 }
 
 #' Start the QField project build in the background

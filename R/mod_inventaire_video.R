@@ -89,7 +89,9 @@ mod_inventaire_video_ui <- function(id) {
                               icon = bsicons::bs_icon("check2-circle"),
                               class = "btn-primary w-100")
         ),
-        shiny::uiOutput(ns("bilan"))
+        htmltools::div(
+          shiny::uiOutput(ns("bilan")),
+          shiny::uiOutput(ns("renvoi")))
       )
     )
   ))
@@ -99,15 +101,16 @@ mod_inventaire_video_ui <- function(id) {
 #'
 #' @param id Module namespace ID.
 #' @param app_state Shared reactiveValues (`current_project`, `language`).
-#' @return A reactiveValues (`qgz`, `etats`, `resultats`, `integration`),
-#'   for tests.
+#' @return A reactiveValues (`qgz`, `etats`, `resultats`, `integration`,
+#'   `import`, `qgz_retour`), for tests.
 #' @noRd
 mod_inventaire_video_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     i18n <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
     rv <- shiny::reactiveValues(qgz = NULL, etats = NULL, resultats = NULL,
-                                integration = NULL)
+                                integration = NULL, import = NULL,
+                                qgz_retour = NULL)
 
     project_path <- shiny::reactive({
       p <- app_state$current_project
@@ -124,7 +127,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       if (identical(project_path(), projet_vu)) return()
       projet_vu <<- project_path()
       rv$qgz <- NULL; rv$etats <- NULL; rv$resultats <- NULL
-      rv$integration <- NULL
+      rv$integration <- NULL; rv$import <- NULL; rv$qgz_retour <- NULL
     }, ignoreNULL = FALSE)
 
     plan <- shiny::reactive(video_placettes_plan(project_path()))
@@ -195,14 +198,12 @@ mod_inventaire_video_server <- function(id, app_state) {
     # (NULL with a notification when something is missing).
     .args_generation <- function() {
       pp <- project_path()
-      avec_lidar <- isTRUE(input$lidar) && !is.null(chm())
-      dem <- if (avec_lidar && !is.null(pp))
-        tryCatch(nemeton::resolve_project_dem(pp), error = function(e) NULL)
+      # Le MNT est resolu par le coeur depuis `project_path`.
       res <- video_args_generation(
         project_path = pp, placettes = plan(), plot_ids = input$placettes,
         rayon_m = input$rayon, seuil_diam_cm = input$seuil,
         unite_azimut = input$unite, declinaison_deg = input$declinaison,
-        avec_lidar = avec_lidar, dem = dem, chm = chm(),
+        avec_lidar = isTRUE(input$lidar), chm = chm(),
         lang = app_state$language %||% "fr")
       if (is.character(res)) {
         shiny::showNotification(i18n()$t(res), type = "warning")
@@ -422,6 +423,8 @@ mod_inventaire_video_server <- function(id, app_state) {
       }
       bilan <- video_bilan(res)
       rv$integration <- bilan
+      rv$import <- res
+      rv$qgz_retour <- NULL
       if (!isTRUE(bilan$validation$ok)) {
         shiny::showNotification(
           sprintf(tr$t("field_ingest_errors"), nrow(bilan$validation$errors)),
@@ -448,6 +451,56 @@ mod_inventaire_video_server <- function(id, app_state) {
 
     output$bilan <- shiny::renderUI(
       video_bilan_ui(rv$integration, i18n(), app_state$language %||% "fr"))
+
+    # Renvoi sur le terrain des arbres a completer / a verifier (option du
+    # brief groma, section 4).
+    output$renvoi <- shiny::renderUI({
+      if (!video_a_renvoyer(rv$integration) || !video_renvoi_disponible()) {
+        return(NULL)
+      }
+      tr <- i18n()
+      htmltools::div(
+        class = "border-top pt-2 mt-2",
+        htmltools::p(class = "small text-muted mb-2", tr$t("video_renvoi_aide")),
+        shiny::actionButton(ns("renvoyer"), tr$t("video_renvoyer"),
+                            icon = bsicons::bs_icon("arrow-repeat"),
+                            class = "btn-outline-primary w-100 mb-2"),
+        if (!is.null(rv$qgz_retour))
+          shiny::downloadButton(ns("qgz_retour_dl"), tr$t("video_renvoi_telecharger"),
+                                class = "btn-outline-primary w-100"))
+    })
+
+    shiny::observeEvent(input$renvoyer, {
+      if (deny_if_readonly(app_state)) return()
+      tr <- i18n()
+      pp <- project_path()
+      if (is.null(rv$import) || is.null(pp)) return()
+      session$sendCustomMessage("nemetonSetDisabled",
+                                list(id = ns("renvoyer"), disabled = TRUE))
+      on.exit(session$sendCustomMessage("nemetonSetDisabled",
+                                        list(id = ns("renvoyer"), disabled = FALSE)),
+              add = TRUE)
+      qgz <- tryCatch(video_renvoyer(rv$import, pp), error = function(e) e)
+      if (inherits(qgz, "error") || !is.character(qgz) || !file.exists(qgz[1])) {
+        msg <- if (inherits(qgz, "video_coeur_absent")) tr$t("video_coeur_absent")
+               else paste(tr$t("error"),
+                          if (inherits(qgz, "error")) conditionMessage(qgz) else "")
+        shiny::showNotification(msg, type = "error", duration = 12)
+        return()
+      }
+      rv$qgz_retour <- qgz[1]
+      shiny::showNotification(
+        sprintf(tr$t("video_renvoi_pret"),
+                as.integer(attr(qgz, "n_arbres") %||% NA_integer_),
+                length(attr(qgz, "plot_ids"))),
+        type = "message", duration = 8)
+    })
+
+    output$qgz_retour_dl <- shiny::downloadHandler(
+      filename = function() basename(rv$qgz_retour %||% "inventaire_video_retour.qgz"),
+      content = function(file) file.copy(rv$qgz_retour, file, overwrite = TRUE),
+      contentType = "application/zip"
+    )
 
     rv
   })
@@ -485,7 +538,9 @@ video_bilan_ui <- function(bilan, i18n, lang = "fr") {
     htmltools::tagList(
       htmltools::tags$h6(class = "mt-2", i18n$t("video_numeros_modifies")),
       htmltools::tags$ul(class = "small", lapply(seq_len(nrow(nm)), function(i)
-        htmltools::tags$li(sprintf("%s \u2192 %s", nm$ancien[i], nm$nouveau[i])))))
+        htmltools::tags$li(paste0(
+          if ("plot_id" %in% names(nm)) paste0(nm$plot_id[i], " : "),
+          sprintf("%s \u2192 %s", nm$ancien[i], nm$nouveau[i]))))))
   }
   htmltools::tagList(
     htmltools::div(

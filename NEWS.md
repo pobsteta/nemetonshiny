@@ -1,3 +1,32 @@
+# nemetonshiny 2026.10.6.9002 (cycle dev)
+
+## Inventaire vidéo branché sur le cœur 2026.10.5
+
+Réponse `nemeton` du 2026-10-12 aux formes de retour. Plancher
+`Imports: nemeton (>= 2026.10.5)`.
+
+- Le test d'intégration réelle tourne désormais contre le vrai cœur (P002
+  classique conservé, P001 vidéo ajouté, NDP 3).
+- `creer_projet_inventaire_video()` reçoit `project_path` : le cœur résout
+  lui-même le MNT manquant ; l'app ne lui passe plus que le MNH.
+- Numéros modifiés affichés par placette (`P001 : 5 → 4`), le cœur rendant
+  désormais `plot_id` en tête.
+- **Renvoyer sur le terrain** : après une intégration valide qui laisse des
+  arbres à compléter ou à vérifier, un bouton construit un nouveau projet
+  QField (`renvoyer_inventaire_video()`) avec ces seules placettes, rasters
+  repris du premier `.qgz`, puis le propose au téléchargement.
+
+## T2 sans proxy N2 / T1
+
+Brief `nemeton` du 2026-10-13 (spec 060 § 9) : le cœur ne recopie plus N2 ni
+l'âge T1 dans T2. Sans série FORMS-T, T2 est vide et la famille T est la
+moyenne de T1 et T3.
+
+- L'app ne passe plus les colonnes `N2` / `T1` à T2 et ne force plus N2 avant
+  T2 (`.order_indicators_for_dependencies()` retirée).
+- Clé `t2_proxy` retirée (plus aucun cas ne la déclenche) ; `t2_no_source`
+  dit seulement que la série FORMS-T manque.
+
 # nemetonshiny 2026.10.6.9001 (cycle dev)
 
 ## Nouveau sous-onglet Terrain > Inventaire vidéo (Groma)
@@ -26,8 +55,6 @@ fusion par `plot_id`) vient du cœur.
   l'onglet affiche un avertissement au lieu de planter, et le test
   d'intégration réelle (P002 classique conservé, P001 vidéo ajouté, NDP 3)
   est sauté.
-- Hors périmètre de ce lot : le bouton facultatif « Renvoyer sur le terrain
-  les arbres à compléter » (aucune fonction cœur nommée par le brief).
 
 # nemetonshiny 2026.10.6 (2026-10-12)
 

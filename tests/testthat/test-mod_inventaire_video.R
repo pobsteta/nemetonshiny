@@ -64,6 +64,8 @@ test_that("video_args_generation transmet les reglages tels quels", {
                         declinaison_deg = 1.5, avec_lidar = TRUE,
                         dem = "/x/mnt.tif", chm = "/x/mnh.tif", lang = "en"))
   expect_identical(a$output_dir, video_dossier(pp))
+  # Le coeur resout le MNT manquant depuis le projet.
+  expect_identical(a$project_path, pp)
   # Sans MNH : pas de LiDAR, quoi que dise la case.
   b <- video_args_generation(pp, .plan_video(), "P001", declinaison_deg = 0,
                              avec_lidar = TRUE, dem = "/x/mnt.tif", chm = NULL)
@@ -229,7 +231,8 @@ test_that("Integrer : NDP du coeur persiste et projet recharge", {
       list(validation = list(ok = TRUE, errors = data.frame(), warnings = data.frame()),
            a_completer = data.frame(plot_id = "P001", tree_id = "4"),
            a_verifier = data.frame(),
-           numeros_modifies = data.frame(uuid = "u1", ancien = "5", nouveau = "4"),
+           numeros_modifies = data.frame(plot_id = "P001", uuid = "u1",
+                                         ancien = "5", nouveau = "4"),
            classique_conserve = "P002", ndp = 3L)
     },
     update_project_metadata = function(id, updates, ...) maj <<- updates,
@@ -245,7 +248,7 @@ test_that("Integrer : NDP du coeur persiste et projet recharge", {
     expect_true(recharge)
     html <- output$bilan$html
     expect_match(html, "Inventaire classique conserv\u00e9 pour 1 placette", fixed = TRUE)
-    expect_match(html, "5 \u2192 4", fixed = TRUE)
+    expect_match(html, "P001 : 5 \u2192 4", fixed = TRUE)
     expect_match(html, "Arbres \u00e0 compl\u00e9ter (1)", fixed = TRUE)
   })
 })
@@ -302,4 +305,67 @@ test_that("integration reelle : P002 classique conserve, P001 video ajoute, NDP 
   expect_true("P001" %in% a$plot_id)
   # Le GeoPackage integre sert ensuite d'etat local a " Suivre ".
   expect_true("P001" %in% names(video_etat_local(pp)))
+
+  # Renvoi sur le terrain : le coeur refuse s'il n'y a rien a reprendre.
+  skip_if_not(video_renvoi_disponible(), "nemeton sans renvoyer_inventaire_video")
+  if (!video_a_renvoyer(b)) {
+    expect_error(suppressMessages(video_renvoyer(res, pp)), "nothing to send back")
+    # L'exemple est complet : on marque un arbre de P001 a completer.
+    i <- which(res$arbres$plot_id == "P001")[1]
+    res$arbres$etat_detection[i] <- "a_completer"
+  }
+  qgz <- suppressMessages(video_renvoyer(res, pp))
+  expect_true(file.exists(qgz))
+  expect_identical(dirname(qgz), normalizePath(video_dossier(pp), winslash = "/"))
+  expect_true("P001" %in% attr(qgz, "plot_ids"))
+  expect_gt(attr(qgz, "n_arbres"), 0)
+})
+
+test_that("video_a_renvoyer : seulement une integration valide avec des arbres a reprendre", {
+  b <- list(validation = list(ok = TRUE), a_completer = data.frame(x = 1),
+            a_verifier = data.frame())
+  expect_true(video_a_renvoyer(b))
+  b$validation$ok <- FALSE
+  expect_false(video_a_renvoyer(b))
+  b$validation$ok <- TRUE
+  b$a_completer <- data.frame()
+  expect_false(video_a_renvoyer(b))
+  expect_false(video_a_renvoyer(NULL))
+})
+
+test_that("Renvoyer : le bouton apparait apres integration et sert le .qgz", {
+  pp <- withr::local_tempdir()
+  qgz <- file.path(pp, "inventaire_video_retour.qgz")
+  writeLines("zip", qgz)
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL,
+    deny_if_readonly = function(app_state, ...) FALSE,
+    video_renvoi_disponible = function() TRUE,
+    video_integrer = function(gpkg, resultats, project_path) {
+      list(validation = list(ok = TRUE, errors = data.frame(), warnings = data.frame()),
+           a_completer = data.frame(plot_id = "P001", tree_id = "4"),
+           a_verifier = data.frame(), ndp = NA_integer_, marqueur = "import")
+    },
+    video_renvoyer = function(import, project_path) {
+      recu <<- import$marqueur
+      structure(qgz, plot_ids = "P001", n_arbres = 1L)
+    },
+    update_project_metadata = function(id, updates, ...) NULL,
+    load_project = function(id, ...) list(id = id)
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    expect_null(output$renvoi)
+    session$setInputs(gpkg_terrain = data.frame(
+      name = "inventaire_video.gpkg", size = 1, type = "",
+      datapath = .fixture_video()))
+    session$setInputs(integrer = 1)
+    expect_match(output$renvoi$html, "Renvoyer sur le terrain", fixed = TRUE)
+    session$setInputs(renvoyer = 1)
+    expect_identical(recu, "import")
+    expect_identical(rv$qgz_retour, qgz)
+    expect_match(output$renvoi$html, "projet de retour", fixed = TRUE)
+  })
 })
