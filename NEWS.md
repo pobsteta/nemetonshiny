@@ -1,4 +1,28 @@
-# nemetonshiny 2026.10.6.9002 (cycle dev)
+# nemetonshiny 2026.10.7 (2026-10-13)
+
+Changements cassants : aucun.
+
+## Nouveau sous-onglet Terrain > Inventaire vidéo (Groma)
+
+Brief `groma` du 2026-10-12. L'app n'en fait que l'interface : tout le métier
+(projet QField, rapprochement provisoire → définitif, validation, agrégats,
+fusion par `plot_id`) vient du cœur.
+
+- **Préparer** : placettes du plan d'échantillonnage (toutes cochées), rayon,
+  seuil de diamètre, unité d'azimut, déclinaison magnétique obligatoire (lien
+  vers le calculateur NOAA), MNT/MNH/houppiers (case grisée sans MNH).
+  `creer_projet_inventaire_video()` tourne dans un `ExtendedTask`, puis le
+  `.qgz` est proposé au téléchargement.
+- **Suivre** : état des placettes sur le serveur Groma
+  (`groma_etat_placettes()`), croisé avec `etat_traitement` du dernier
+  GeoPackage intégré ; clic sur une placette → rapport HTML dans une modale,
+  alertes en tête. Bouton « Actualiser », pas de scrutation. URL du serveur
+  dans les métadonnées du projet (`groma_url`) ou `GROMA_URL` ; le jeton
+  uniquement dans `GROMA_JETON` (`.Renviron`), jamais affiché.
+- **Intégrer** : GeoPackage revenu du terrain + résultats définitifs
+  (téléchargés du serveur ou déposés), `importer_inventaire_video()` sur
+  `data/field_data.gpkg` ; bilan de validation, arbres à compléter / à
+  vérifier, numéros modifiés (`ancien → nouveau`), nouveau NDP persisté.
 
 ## Inventaire vidéo branché sur le cœur 2026.10.5
 
@@ -26,35 +50,6 @@ moyenne de T1 et T3.
   T2 (`.order_indicators_for_dependencies()` retirée).
 - Clé `t2_proxy` retirée (plus aucun cas ne la déclenche) ; `t2_no_source`
   dit seulement que la série FORMS-T manque.
-
-# nemetonshiny 2026.10.6.9001 (cycle dev)
-
-## Nouveau sous-onglet Terrain > Inventaire vidéo (Groma)
-
-Brief `groma` du 2026-10-12. L'app n'en fait que l'interface : tout le métier
-(projet QField, rapprochement provisoire → définitif, validation, agrégats,
-fusion par `plot_id`) vient du cœur.
-
-- **Préparer** : placettes du plan d'échantillonnage (toutes cochées), rayon,
-  seuil de diamètre, unité d'azimut, déclinaison magnétique obligatoire (lien
-  vers le calculateur NOAA), MNT/MNH/houppiers (case grisée sans MNH).
-  `creer_projet_inventaire_video()` tourne dans un `ExtendedTask`, puis le
-  `.qgz` est proposé au téléchargement.
-- **Suivre** : état des placettes sur le serveur Groma
-  (`groma_etat_placettes()`), croisé avec `etat_traitement` du dernier
-  GeoPackage intégré ; clic sur une placette → rapport HTML dans une modale,
-  alertes en tête. Bouton « Actualiser », pas de scrutation. URL du serveur
-  dans les métadonnées du projet (`groma_url`) ou `GROMA_URL` ; le jeton
-  uniquement dans `GROMA_JETON` (`.Renviron`), jamais affiché.
-- **Intégrer** : GeoPackage revenu du terrain + résultats définitifs
-  (téléchargés du serveur ou déposés), `importer_inventaire_video()` sur
-  `data/field_data.gpkg` ; bilan de validation, arbres à compléter / à
-  vérifier, numéros modifiés (`ancien → nouveau`), nouveau NDP persisté.
-- **En attente du cœur** : les fonctions sont résolues à l'exécution
-  (`R/service_inventaire_video.R`) ; tant que `nemeton` ne les exporte pas,
-  l'onglet affiche un avertissement au lieu de planter, et le test
-  d'intégration réelle (P002 classique conservé, P001 vidéo ajouté, NDP 3)
-  est sauté.
 
 # nemetonshiny 2026.10.6 (2026-10-12)
 

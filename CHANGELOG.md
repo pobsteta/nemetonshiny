@@ -10,6 +10,24 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.10.7] - 2026-10-13
+
+### Added
+- Terrain > Inventaire video sub-tab (Groma): prepare the QField project
+  (`creer_projet_inventaire_video()`), track the plots on the Groma server,
+  integrate the field and server GeoPackages (`importer_inventaire_video()`)
+  with validation report and NDP update.
+- "Send back to the field" button: a new QField project for the plots that
+  still hold trees to complete or to check (`renvoyer_inventaire_video()`).
+
+### Changed
+- Requires `nemeton (>= 2026.10.5)`.
+- T2 no longer receives N2 / T1 from the app: without a FORMS-T series it is
+  NA (core 2026.10.5). `t2_proxy` key removed, `t2_no_source` reworded.
+
+### Removed
+- `.order_indicators_for_dependencies()` (N2 no longer needs to precede T2).
+
 ## [2026.10.6] - 2026-10-12
 
 ### Fixed
