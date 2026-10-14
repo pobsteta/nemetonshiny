@@ -1,3 +1,21 @@
+# nemetonshiny 2026.10.7.9001 (cycle dev)
+
+## reGénération : cache ERA5 partagé entre projets (cœur 2026.10.6)
+
+Réponse du cœur au brief du 2026-10-14 : sur Couchey, 7 h 40 des 9 h 04 de
+l'étape étaient de l'attente dans la file Copernicus.
+
+- `regen_sensibilite()` et `load_biljou_forcing()` reçoivent
+  `era5_cache_dir = <R_user_dir("nemeton", "cache")>/era5`. Les fichiers ERA5
+  sont nommés par position et par année : un second projet de la même zone ne
+  repaie plus l'attente. Les caches microclimat `.tif` restent dans le projet.
+- Le cœur envoie désormais les requêtes mensuelles en lot. La notification
+  affiche une phase « Téléchargement ERA5 (Copernicus) — mois i/n », avec `n`
+  la taille du lot (12 × années manquantes). L'année n'y figure plus, car les
+  années se mélangent dans le lot. Côté BILJOU, `biljou:era5_download` sans
+  `id` alimente la même phase.
+- Plancher `Imports: nemeton (>= 2026.10.6)`.
+
 # nemetonshiny 2026.10.7 (2026-10-13)
 
 Changements cassants : aucun.

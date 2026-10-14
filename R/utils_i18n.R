@@ -6157,6 +6157,7 @@ TRANSLATIONS <- list(
   regen_phase_biljou = list(fr = "Bilan hydrique du sol (BILJOU)\u2026", en = "Soil water balance (BILJOU)\u2026"),
   regen_phase_micro_skip = list(fr = "Exposition microclimf ignor\u00e9e : %s", en = "microclimf exposure skipped: %s"),
   regen_phase_silence = list(fr = " \u2014 dernier signe de vie il y a %d min", en = " \u2014 last sign of life %d min ago"),
+  regen_phase_era5_lot = list(fr = "T\u00e9l\u00e9chargement ERA5 (Copernicus)", en = "ERA5 download (Copernicus)"),
   regen_phase_micro_mois = list(fr = " \u2014 mois %d/%d", en = " \u2014 month %d/%d"),
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
   # Distincte de `..._structure` : sans grille, microclimf ne demarre meme pas,

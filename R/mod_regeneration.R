@@ -252,6 +252,9 @@
                              "regen_phase_pai_raster"))),         # repli satellite S2/PROSAIL
     "microclimf_moyenne"  = .regen_micro_lbl(i18n, "regen_phase_micro_moy", st),
     "microclimf_canicule" = .regen_micro_lbl(i18n, "regen_phase_micro_can", st),
+    # Lot ERA5 (coeur >= 2026.10.6) : compteur global des mois termines, sans
+    # annee ni categorie - elles se melangent dans le lot.
+    "era5_lot"   = .regen_micro_lbl(i18n, "regen_phase_era5_lot", st),
     "exposition" = i18n$t("regen_phase_exposition"),
     # Reserve utile SoilGrids : " (i/n) " compte les horizons de profondeur.
     "ewm"        = .regen_step_lbl(i18n, "regen_phase_ewm", st),
