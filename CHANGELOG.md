@@ -10,6 +10,18 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.10.8] - 2026-10-15
+
+### Added
+- reGeneration: shared ERA5 cache across projects
+  (`era5_cache_dir = R_user_dir("nemeton", "cache")/era5`, passed to
+  `regen_sensibilite()` and `load_biljou_forcing()`).
+
+### Changed
+- Progress notification: one "ERA5 download (Copernicus) - month i/n" phase
+  for the core's batched monthly requests (n = batch size).
+- `Imports: nemeton (>= 2026.10.6)`.
+
 ## [2026.10.7] - 2026-10-13
 
 ### Added

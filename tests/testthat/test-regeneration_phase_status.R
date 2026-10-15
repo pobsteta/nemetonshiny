@@ -126,6 +126,18 @@ test_that(".regen_micro_lbl compte les MOIS quand le coeur les emet", {
                "2020 (1/2) \u2014 mois 7/12", fixed = TRUE)
 })
 
+test_that("le lot ERA5 affiche un compteur global, sans annee", {
+  lbl <- function(st, lang = "fr")
+    nemetonshiny:::.regen_phase_label(get_i18n(lang), st)
+  expect_equal(lbl(list(phase = "era5_lot", mois_i = 5, mois_n = 24)),
+               "T\u00e9l\u00e9chargement ERA5 (Copernicus) \u2014 mois 5/24")
+  expect_equal(lbl(list(phase = "era5_lot", mois_i = 5, mois_n = 24), "en"),
+               "ERA5 download (Copernicus) \u2014 month 5/24")
+  # Avant le premier mois termine : le libelle nu.
+  expect_equal(lbl(list(phase = "era5_lot")),
+               "T\u00e9l\u00e9chargement ERA5 (Copernicus)")
+})
+
 test_that("la notif garde la phase ERA5 nommee et y accroche le silence", {
   i18n <- get_i18n("fr")
   # L'état exact observé sur le projet Fordead : microclimf année canicule,

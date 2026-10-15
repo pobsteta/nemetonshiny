@@ -919,13 +919,14 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:era5" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
                            list(year = p$year, i = p$i, n = p$n)),
-      # Un evenement par MOIS telecharge (cf. specs/BRIEF-nemeton-
-      # era5-progression-mensuelle.md). Le compteur d'ANNEES disparait ici : le
-      # coeur n'en connait pas le rang depuis .rsen_forcage_era5(), et "2022 -
-      # mois 3/12" dit deja tout ce que "(1/1)" pretendait dire.
+      # Un evenement par MOIS TERMINE du lot ERA5 (coeur >= 2026.10.6) : les
+      # requetes de toutes les annees partent ensemble, `mois_n` est la taille du
+      # lot (12 x annees manquantes) et category/year sont ceux du dernier mois
+      # termine - ils changent en cours de route. On n'affiche donc que le
+      # compteur global, dans une phase propre au lot.
       "regen_expo:era5_mois" =
-        .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
-                           list(year = p$year, mois_i = p$mois_i, mois_n = p$mois_n)),
+        .regen_write_phase(out_dir, "era5_lot",
+                           list(mois_i = p$mois_i, mois_n = p$mois_n)),
       "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
       "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
       "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),
@@ -933,7 +934,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       # ou par unite x annee ERA5 - le telechargement ERA5 dure des minutes.
       "biljou:safran_unit" =
         .regen_write_phase(out_dir, "biljou_safran", list(i = p$i, n = p$n)),
-      "biljou:era5_download" =
+      # Sans `id`, c'est le lot ERA5 (i/n = mois termines / taille du lot) ;
+      # avec `id`, la lecture par unite qui suit, une fois tout en cache.
+      "biljou:era5_download" = if (is.null(p$id))
+        .regen_write_phase(out_dir, "era5_lot", list(mois_i = p$i, mois_n = p$n))
+      else
         .regen_write_phase(out_dir, "biljou_era5", list(i = p$i, n = p$n, year = p$year)),
       "biljou:complete" = .regen_write_phase(out_dir, "biljou"),
       # Reserve utile SoilGrids (spec 035 B1.e) : un evenement par horizon de
@@ -1017,7 +1022,8 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
           # rapide, moins de cellules). Le radio existait depuis longtemps mais
           # n'etait transmis a personne - le moteur tournait donc toujours a 2 m.
           res = micro_res,
-          cache_dir = micro_cache, progress_callback = on_prog), pai_arg, veg_args)),
+          cache_dir = micro_cache, era5_cache_dir = .regen_era5_cache_dir(),
+          progress_callback = on_prog), pai_arg, veg_args)),
         error = function(e) {
           msg <- conditionMessage(e)
           # Throttle/coupure CDS pendant l'acquisition ERA5 (~12 req/an) : la
@@ -1160,6 +1166,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     bil <- tryCatch({
       meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
                                             cache_dir = biljou_cache,
+                                            era5_cache_dir = .regen_era5_cache_dir(),
                                             progress_callback = on_prog)
       # Sol : SoilGrids 250 m par defaut (reserve utile derivee par UGF via la
       # fonction de pedotransfert Saxton & Rawls, spec 035 D3) -> liste nommee par
@@ -1479,6 +1486,23 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
     })
   if (is.null(yrs) || is.null(yrs$year_moyenne)) return(NULL)
   list(year_moyenne = yrs$year_moyenne, year_canicule = yrs$year_canicule)
+}
+
+#' Shared ERA5 cache directory
+#'
+#' ERA5 files are named by rounded position and year, so they can be shared
+#' across projects: a second project in the same area no longer waits for the
+#' CDS queue (7 h 40 of the 9 h 04 run on Couchey, 2026-10-13). Passed as
+#' `era5_cache_dir` to `nemeton::regen_sensibilite()` and
+#' `nemeton::load_biljou_forcing()` (nemeton >= 2026.10.6); microclimate `.tif`
+#' caches stay in the project.
+#'
+#' @return Path to `<R_user_dir("nemeton", "cache")>/era5`, created if needed.
+#' @noRd
+.regen_era5_cache_dir <- function() {
+  d <- file.path(tools::R_user_dir("nemeton", "cache"), "era5")
+  if (!dir.exists(d)) dir.create(d, recursive = TRUE)
+  d
 }
 
 #' Progress callback of the E-OBS acquisition (brief 034 sect.2.1)

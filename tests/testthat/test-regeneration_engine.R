@@ -478,6 +478,64 @@ test_that("engine ntfy on_prog maps core events to messages", {
   })
 })
 
+test_that("engine shares the ERA5 cache and maps the ERA5 batch to one phase", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    withr::local_envvar(R_USER_CACHE_DIR = file.path(p, "user_cache"))
+    seen <- new.env(); seen$phases <- list()
+    real_write <- nemetonshiny:::.regen_write_phase
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() NULL,
+      .regen_write_phase = function(out_dir, phase, extra = list()) {
+        seen$phases[[length(seen$phases) + 1L]] <- c(list(phase = phase), extra)
+        real_write(out_dir, phase, extra)
+      },
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ..., cache_dir = NULL,
+                                   era5_cache_dir = NULL, progress_callback = NULL) {
+        seen$micro_cache <- cache_dir; seen$era5_micro <- era5_cache_dir
+        # Lot ERA5 (coeur >= 2026.10.6) : category/year du dernier mois termine.
+        progress_callback(list(current = "regen_expo:era5_mois", category = "canicule",
+                               year = 2022, mois_i = 5, mois_n = 24))
+        units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ..., era5_cache_dir = NULL,
+                                     progress_callback = NULL) {
+        seen$era5_biljou <- era5_cache_dir
+        progress_callback(list(current = "biljou:era5_download", i = 7, n = 24,
+                               year = 2018))
+        progress_callback(list(current = "biljou:era5_download", i = 1, n = 2,
+                               year = 2018, id = "u1"))
+        data.frame(year = 2018) },
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "era5"))
+
+    era5_dir <- file.path(p, "user_cache", "R", "nemeton", "era5")
+    expect_equal(normalizePath(seen$era5_micro), normalizePath(era5_dir))
+    expect_equal(seen$era5_biljou, seen$era5_micro)
+    # Les .tif microclimat restent dans le projet.
+    expect_equal(seen$micro_cache,
+                 file.path(p, "cache", "regeneration", "microclimf"))
+
+    phases <- seen$phases
+    lot <- Filter(function(x) identical(x$phase, "era5_lot"), phases)
+    expect_length(lot, 2L)
+    expect_equal(lot[[1]][c("mois_i", "mois_n")], list(mois_i = 5, mois_n = 24))
+    expect_null(lot[[1]]$year)   # l'annee se melange dans le lot : pas affichee
+    expect_equal(lot[[2]][c("mois_i", "mois_n")], list(mois_i = 7, mois_n = 24))
+    # Avec `id`, la lecture par unite garde sa phase.
+    expect_true(any(vapply(phases, function(x) identical(x$phase, "biljou_era5") &&
+                             identical(x$i, 1), logical(1))))
+  })
+})
+
 test_that("run_regeneration_detect_years builds eobs then detects the years", {
   skip_if_not_installed("sf")
   withr::with_tempdir({
