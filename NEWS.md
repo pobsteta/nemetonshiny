@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.7.9001 (cycle dev)
+# nemetonshiny 2026.10.8 (2026-10-15)
+
+Changements cassants : aucun.
 
 ## reGénération : cache ERA5 partagé entre projets (cœur 2026.10.6)
 
