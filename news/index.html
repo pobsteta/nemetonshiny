@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.8" id="nemetonshiny-2026108-2026-10-15">nemetonshiny 2026.10.8 (2026-10-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026108-2026-10-15"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="regénération--cache-era5-partagé-entre-projets-cœur-2026-10-8">reGénération : cache ERA5 partagé entre projets (cœur 2026.10.6)<a class="anchor" aria-label="anchor" href="#reg%C3%A9n%C3%A9ration--cache-era5-partag%C3%A9-entre-projets-c%C5%93ur-2026-10-8"></a></h3>
+<p>Réponse du cœur au brief du 2026-10-14 : sur Couchey, 7 h 40 des 9 h 04 de l’étape étaient de l’attente dans la file Copernicus.</p>
+<ul><li>
+<code>regen_sensibilite()</code> et <code>load_biljou_forcing()</code> reçoivent <code>era5_cache_dir = &lt;R_user_dir("nemeton", "cache")&gt;/era5</code>. Les fichiers ERA5 sont nommés par position et par année : un second projet de la même zone ne repaie plus l’attente. Les caches microclimat <code>.tif</code> restent dans le projet.</li>
+<li>Le cœur envoie désormais les requêtes mensuelles en lot. La notification affiche une phase « Téléchargement ERA5 (Copernicus) — mois i/n », avec <code>n</code> la taille du lot (12 × années manquantes). L’année n’y figure plus, car les années se mélangent dans le lot. Côté BILJOU, <code>biljou:era5_download</code> sans <code>id</code> alimente la même phase.</li>
+<li>Plancher <code>Imports: nemeton (&gt;= 2026.10.6)</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.7" id="nemetonshiny-2026107-2026-10-13">nemetonshiny 2026.10.7 (2026-10-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026107-2026-10-13"></a></h2>
 <p>Changements cassants : aucun.</p>
