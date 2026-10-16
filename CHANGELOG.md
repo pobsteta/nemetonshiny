@@ -10,6 +10,21 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.10.9] - 2026-10-16
+
+### Added
+- Marculus import: `FormatCsv;5` (Marculus v0.59.0) - header lines
+  `VolumeHouppierTotalM3`, `PartHouppier`, `AffouageLotTotalM3`, journal
+  column `AffouageLotM3`, and the same `.marsync` keys.
+- Affouage lot table: bole and crown columns when a crown exists; the crown
+  share per species is kept in the action's field settings (never re-emitted).
+
+### Changed
+- Lot volume = sum of the volume counted in the lot (`AffouageLotM3`), net of
+  cancellations; falls back on the bole volume for format <= 4 files.
+- The lot report CSV is recognised (and refused) under its new header too.
+- Import help text: "FormatCsv;2 to 5".
+
 ## [2026.10.8] - 2026-10-15
 
 ### Added

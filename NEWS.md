@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.8.9001 (cycle dev)
+# nemetonshiny 2026.10.9 (2026-10-16)
+
+Changements cassants : aucun.
 
 ## Marculus : CSV `FormatCsv;5`, houppier et volume des lots d'affouage
 
