@@ -411,3 +411,154 @@ test_that("les informations de validation ne comptent pas comme avertissements",
   expect_match(html, "alert alert-success", fixed = TRUE)
   expect_match(html, "Informations", fixed = TRUE)
 })
+
+# ---- Envoi au telephone via le serveur Groma (brief 2026-10-17) ------------
+
+# Balise du bouton " Envoyer " seule : le downloadButton voisin porte lui
+# aussi une classe `disabled` tant que Shiny ne l'a pas arme.
+.bouton_envoyer <- function(html) {
+  regmatches(html, regexpr('<button[^>]*id="[^"]*envoyer"[^>]*>', html))
+}
+
+.etat_video_serveur <- function() {
+  shiny::reactiveValues(
+    current_project = list(id = "p_video",
+                           metadata = list(groma_url = "https://groma.test/")),
+    language = "fr")
+}
+
+test_that("Envoyer : bouton absent sans .qgz, desactive sans serveur", {
+  pp <- withr::local_tempdir()
+  qgz <- file.path(pp, "inventaire_video.qgz"); writeLines("qgz", qgz)
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_envoi_disponible = function() TRUE)
+  withr::local_envvar(GROMA_URL = "", GROMA_JETON = "")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    expect_null(output$telechargement)
+    # Premier flush : l'observateur de changement de projet remet rv$qgz a NULL.
+    session$flushReact()
+    rv <- session$getReturned()
+    rv$qgz <- qgz
+    session$flushReact()
+    html <- output$telechargement$html
+    expect_match(html, "Envoyer au téléphone", fixed = TRUE)
+    expect_match(.bouton_envoyer(html), "disabled", fixed = TRUE)
+    expect_match(html, "Renseigner l&#39;adresse et le jeton du serveur Groma", fixed = TRUE)
+  })
+})
+
+test_that("Envoyer : un clic publie le .qgz avec la configuration du serveur", {
+  pp <- withr::local_tempdir()
+  qgz <- file.path(pp, "inventaire_video.qgz"); writeLines("qgz", qgz)
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_envoi_disponible = function() TRUE,
+    video_lancer_envoi = function(tache, qgz, cfg, dev_path = NULL)
+      recu <<- list(qgz = qgz, cfg = cfg))
+  withr::local_envvar(GROMA_URL = "", GROMA_JETON = "secret")
+  shiny::testServer(mod_inventaire_video_server,
+                    args = list(app_state = .etat_video_serveur()), {
+    # Premier flush : l'observateur de changement de projet remet rv$qgz a NULL.
+    session$flushReact()
+    rv <- session$getReturned()
+    rv$qgz <- qgz
+    session$flushReact()
+    b <- .bouton_envoyer(output$telechargement$html)
+    expect_length(b, 1L)
+    expect_false(grepl("disabled", b, fixed = TRUE))
+    session$setInputs(envoyer = 1)
+    expect_identical(recu$qgz, qgz)
+    expect_identical(recu$cfg, list(url = "https://groma.test", jeton = "secret"))
+  })
+})
+
+test_that("Envoyer : sans serveur, le clic n'envoie rien", {
+  pp <- withr::local_tempdir()
+  qgz <- file.path(pp, "inventaire_video.qgz"); writeLines("qgz", qgz)
+  lance <- FALSE
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_envoi_disponible = function() TRUE,
+    video_lancer_envoi = function(...) lance <<- TRUE)
+  withr::local_envvar(GROMA_URL = "", GROMA_JETON = "")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    # Premier flush : l'observateur de changement de projet remet rv$qgz a NULL.
+    session$flushReact()
+    rv <- session$getReturned()
+    rv$qgz <- qgz
+    session$setInputs(envoyer = 1)
+    expect_false(lance)
+  })
+})
+
+test_that("Envoyer : une erreur au lancement est affichee sans planter", {
+  pp <- withr::local_tempdir()
+  qgz <- file.path(pp, "inventaire_video.qgz"); writeLines("qgz", qgz)
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_envoi_disponible = function() TRUE,
+    video_lancer_envoi = function(...) stop("serveur injoignable"))
+  withr::local_envvar(GROMA_URL = "", GROMA_JETON = "secret")
+  shiny::testServer(mod_inventaire_video_server,
+                    args = list(app_state = .etat_video_serveur()), {
+    # Premier flush : l'observateur de changement de projet remet rv$qgz a NULL.
+    session$flushReact()
+    rv <- session$getReturned()
+    rv$qgz <- qgz
+    expect_no_error(session$setInputs(envoyer = 1))
+    expect_null(rv$envoi)
+  })
+})
+
+test_that("le message d'envoi donne la version, ou la raison de l'echec", {
+  i18n <- get_i18n("fr")
+  ok <- video_message_envoi(list(projet_id = "p", version = 3L, taille = 10), i18n)
+  expect_identical(ok$type, "message")
+  expect_match(ok$message, "(version 3)", fixed = TRUE)
+  expect_match(ok$message, "Projets du serveur", fixed = TRUE)
+  ko <- video_message_envoi(simpleError("jeton refusé"), i18n)
+  expect_identical(ko$type, "error")
+  expect_match(ko$message, "jeton refusé", fixed = TRUE)
+  absent <- tryCatch(video_envoyer_projet("x.qgz", "u", "j"), error = function(e) e)
+  if (inherits(absent, "video_coeur_absent")) {
+    expect_match(video_message_envoi(absent, i18n)$message, "groma_envoyer_projet",
+                 fixed = TRUE)
+  }
+})
+
+test_that("le bouton reste inactif tant que le coeur ne sait pas envoyer", {
+  local_mocked_bindings(video_envoi_disponible = function() FALSE)
+  expect_identical(video_raison_envoi_inactif(list(url = "u", jeton = "j")),
+                   "video_envoi_coeur_absent")
+  local_mocked_bindings(video_envoi_disponible = function() TRUE)
+  expect_identical(video_raison_envoi_inactif(list(url = "u", jeton = "")),
+                   "video_envoi_sans_serveur")
+  expect_null(video_raison_envoi_inactif(list(url = "u", jeton = "j")))
+})
+
+test_that("un changement de projet efface l'etat de l'envoi", {
+  pp1 <- withr::local_tempdir(); pp2 <- withr::local_tempdir()
+  etat <- .etat_video()
+  local_mocked_bindings(
+    get_project_path = function(id) if (identical(id, "p2")) pp2 else pp1,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    rv <- session$getReturned()
+    rv$envoi <- list(version = 1L)
+    etat$current_project <- list(id = "p2", metadata = list())
+    session$flushReact()
+    expect_null(rv$envoi)
+  })
+})

@@ -194,6 +194,67 @@ video_renvoyer <- function(import, project_path) {
                  rasters = rasters, output_dir = vdir)
 }
 
+#' Can the core publish a QField project on the Groma server?
+#'
+#' `nemeton::groma_envoyer_projet()` (brief groma du 2026-10-17) is not in
+#' every core: without it the "Send to phone" button stays disabled.
+#' @noRd
+video_envoi_disponible <- function() {
+  !is.null(.video_coeur("groma_envoyer_projet"))
+}
+
+#' Publish a QField project on the Groma server
+#'
+#' Thin wrapper over `nemeton::groma_envoyer_projet()`, which takes the Groma
+#' plugin `.qml` next to the `.qgz` and reads the project id inside it. The
+#' phone then fetches it from Groma (menu > Server projects).
+#'
+#' @param qgz Path of the `.qgz`.
+#' @param url,jeton Groma server settings ([video_config_serveur()]).
+#' @return `list(projet_id, version, taille)`.
+#' @noRd
+video_envoyer_projet <- function(qgz, url, jeton) {
+  .video_appeler("groma_envoyer_projet", qgz = qgz, url = url, jeton = jeton)
+}
+
+#' Start the upload to the Groma server in the background
+#' @param tache The module's upload `ExtendedTask`.
+#' @noRd
+video_lancer_envoi <- function(tache, qgz, cfg, dev_path = NULL) {
+  tache$invoke(qgz, cfg$url, cfg$jeton, dev_path, get_app_options())
+}
+
+#' End-of-upload notification
+#'
+#' @param res Result of [video_envoyer_projet()], or an error condition.
+#' @param i18n Translator.
+#' @return `list(message, type)`.
+#' @noRd
+video_message_envoi <- function(res, i18n) {
+  if (inherits(res, "error")) {
+    msg <- if (inherits(res, "video_coeur_absent")) i18n$t("video_envoi_coeur_absent")
+           else conditionMessage(res)
+    return(list(message = paste(i18n$t("error"), msg), type = "error"))
+  }
+  version <- res$version %||% ""
+  list(message = sprintf(i18n$t("video_envoi_ok"),
+                         if (length(version) == 1L && !is.na(version))
+                           as.character(version) else ""),
+       type = "message")
+}
+
+#' Why the "Send to phone" button is disabled, or `NULL` when it is enabled
+#' @param cfg Groma server settings.
+#' @return An i18n key, or `NULL`.
+#' @noRd
+video_raison_envoi_inactif <- function(cfg) {
+  if (!video_envoi_disponible()) return("video_envoi_coeur_absent")
+  if (!nzchar(cfg$url %||% "") || !nzchar(cfg$jeton %||% "")) {
+    return("video_envoi_sans_serveur")
+  }
+  NULL
+}
+
 #' Start the QField project build in the background
 #' @param tache The module's `ExtendedTask`.
 #' @noRd
