@@ -444,7 +444,7 @@ test_that("Envoyer : bouton absent sans .qgz, desactive sans serveur", {
     rv$qgz <- qgz
     session$flushReact()
     html <- output$telechargement$html
-    expect_match(html, "Envoyer au téléphone", fixed = TRUE)
+    expect_match(html, "Envoyer au t\u00e9l\u00e9phone", fixed = TRUE)
     expect_match(.bouton_envoyer(html), "disabled", fixed = TRUE)
     expect_match(html, "Renseigner l&#39;adresse et le jeton du serveur Groma", fixed = TRUE)
   })
@@ -526,9 +526,16 @@ test_that("le message d'envoi donne la version, ou la raison de l'echec", {
   expect_identical(ok$type, "message")
   expect_match(ok$message, "(version 3)", fixed = TRUE)
   expect_match(ok$message, "Projets du serveur", fixed = TRUE)
-  ko <- video_message_envoi(simpleError("jeton refusé"), i18n)
+  ko <- video_message_envoi(simpleError("jeton refus\u00e9"), i18n)
   expect_identical(ko$type, "error")
-  expect_match(ko$message, "jeton refusé", fixed = TRUE)
+  expect_match(ko$message, "jeton refus\u00e9", fixed = TRUE)
+  # Chaine d'erreurs rlang : seule la tete est affichee.
+  inj <- video_message_envoi(simpleError(
+    "Groma server unreachable at <http://x>.\nCaused by error in `curl`:\n! Couldn't connect"), i18n)
+  expect_identical(inj$message, "Erreur Groma server unreachable at <http://x>.")
+  # Version absente du serveur (NA) : pas de " NA " dans le message.
+  sans <- video_message_envoi(list(projet_id = "p", version = NA, taille = 1), i18n)
+  expect_match(sans$message, "(version ?)", fixed = TRUE)
   absent <- tryCatch(video_envoyer_projet("x.qgz", "u", "j"), error = function(e) e)
   if (inherits(absent, "video_coeur_absent")) {
     expect_match(video_message_envoi(absent, i18n)$message, "groma_envoyer_projet",

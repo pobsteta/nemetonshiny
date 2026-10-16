@@ -232,14 +232,18 @@ video_lancer_envoi <- function(tache, qgz, cfg, dev_path = NULL) {
 #' @noRd
 video_message_envoi <- function(res, i18n) {
   if (inherits(res, "error")) {
+    # Premiere ligne seulement : la chaine " Caused by " de rlang (curl,
+    # httr2) ne se lit pas dans une notification ; la raison du coeur
+    # (jeton refuse, projet trop gros, serveur injoignable) est en tete.
     msg <- if (inherits(res, "video_coeur_absent")) i18n$t("video_envoi_coeur_absent")
-           else conditionMessage(res)
+           else strsplit(conditionMessage(res), "\n", fixed = TRUE)[[1]][1]
     return(list(message = paste(i18n$t("error"), msg), type = "error"))
   }
-  version <- res$version %||% ""
+  # Le coeur rend `version = NA` quand le serveur n'en donne pas.
+  version <- res$version %||% NA
   list(message = sprintf(i18n$t("video_envoi_ok"),
                          if (length(version) == 1L && !is.na(version))
-                           as.character(version) else ""),
+                           as.character(version) else "?"),
        type = "message")
 }
 

@@ -22,6 +22,15 @@ QField : plus de copie par câble.
   pourquoi. Le plancher `Imports: nemeton` n'est pas relevé. Côté Groma, les
   routes `/projets/…/qfield` du serveur sont en cours.
 - Un changement de projet efface l'état de l'envoi.
+- Une erreur s'affiche réduite à sa première ligne, la raison donnée par le
+  cœur, sans la chaîne « Caused by » de curl et httr2. Une version absente
+  s'affiche « ? ».
+- Essai de bout en bout contre un faux serveur Groma, avec le cœur local :
+  envoi du `.qgz`, puis du `.qml`, puis publication, et la version arrive
+  dans le message. Un 401 arrête l'envoi dès le premier fichier. Cet essai
+  a révélé un défaut du cœur, signalé par le brief
+  `2026-10-17-groma-sha256-json.md` : la publication échoue sans cette
+  correction.
 
 # nemetonshiny 2026.10.10 (2026-10-16)
 
