@@ -681,8 +681,8 @@ TRANSLATIONS <- list(
     en = "Import Marculus marking"
   ),
   marculus_import_help = list(
-    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (ligne FormatCsv;2, 3 ou 4). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
-    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2, 3 or 4 line). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
+    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (FormatCsv;2 \u00e0 5). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
+    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2 to 5). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
   ),
   marculus_import_fichiers = list(fr = "Fichiers Marculus", en = "Marculus files"),
   marculus_import_run = list(fr = "Importer", en = "Import"),
@@ -723,6 +723,14 @@ TRANSLATIONS <- list(
     en = "Affouage: lots of at most %s"
   ),
   marculus_col_lot = list(fr = "Lot", en = "Lot"),
+  # Format 5 (Marculus v0.59.0) : volume compte au lot, tige et houppier.
+  marculus_col_volume_tige = list(fr = "Tige (m\u00b3)", en = "Bole (m\u00b3)"),
+  marculus_col_volume_houppier = list(fr = "Houppier (m\u00b3)", en = "Crown (m\u00b3)"),
+  marculus_col_volume_lot = list(fr = "Au lot (m\u00b3)", en = "In the lot (m\u00b3)"),
+  marculus_part_houppier_fmt = list(
+    fr = "Part de houppier (terrain) : %s",
+    en = "Crown share (field): %s"
+  ),
   marculus_col_etat = list(fr = "\u00c9tat", en = "State"),
   marculus_lot_complet = list(fr = "complet", en = "complete"),
   marculus_lot_incomplet = list(fr = "incomplet", en = "incomplete"),
