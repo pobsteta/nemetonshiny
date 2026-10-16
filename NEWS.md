@@ -1,3 +1,31 @@
+# nemetonshiny 2026.10.8.9001 (cycle dev)
+
+## Marculus : CSV `FormatCsv;5`, houppier et volume des lots d'affouage
+
+Brief `marculus` du 2026-10-15 (Marculus v0.59.0). En Schaeffer, une part de
+houppier par essence ajoute le houppier au bois fort tige ; en affouage, une
+tige n'apporte au lot que son houppier quand elle en a un (la tige est vendue
+à part), l'arbre entier sinon.
+
+- Lecture du format 5 : `VolumeHouppierTotalM3`, `PartHouppier` et
+  `AffouageLotTotalM3` dans l'en-tête, colonne `AffouageLotM3` dans le
+  journal ; mêmes clés dans le `.marsync` (`partHouppier`,
+  `volumeHouppierTotalM3`, `affouageLotTotalM3`, `affouageLotM3`). Un fichier
+  au format 4 ou plus ancien se lit comme avant.
+- Bilan par lot : le volume d'un lot est la somme des volumes comptés au lot
+  (`AffouageLotM3 × Quantite`, nets des annulations), lu et jamais recalculé ;
+  repli sur le volume tige pour un fichier au format 4. Dès qu'un houppier
+  existe, le tableau ajoute les colonnes « Tige » et « Houppier », comme
+  l'onglet « Par lot » de Marculus.
+- `partHouppier` rejoint les réglages du terrain de l'action (affiché sous le
+  titre des lots) ; il n'est jamais réémis vers le téléphone.
+- L'action reçoit aussi `volume_houppier_m3` et `volume_lots_affouage_m3`
+  quand le fichier les porte.
+- Le rapport « bilan par lot » est reconnu sous son nouvel en-tête
+  (`Lot;Tiges;VolumeTige_m3;VolumeHouppier_m3;VolumeLot_m3;Etat`) comme sous
+  l'ancien, et toujours refusé à l'import.
+- Aide de l'import : « format 2 ou supérieur (FormatCsv;2 à 5) ».
+
 # nemetonshiny 2026.10.8 (2026-10-15)
 
 Changements cassants : aucun.

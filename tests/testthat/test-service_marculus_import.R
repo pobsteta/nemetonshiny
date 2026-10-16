@@ -548,3 +548,150 @@ test_that("la synthese montre les lots d'un contexte d'affouage", {
   action$reglages_terrain$affouage <- FALSE
   expect_null(nemetonshiny:::.marculus_lots_bloc(lu$tiges, action, i18n))
 })
+
+# ---- Format 5 : houppier et volume au lot (brief Marculus du 2026-10-15) ----
+
+.csv_v5 <- function(f, parts = "Hetre=0.5") {
+  writeLines(c(
+    "Contexte;Affouage 2027", "FormatCsv;5", "ContexteId;a1", "Statut;REALISEE",
+    "DateMartelage;2027-10-15", "Modifie;1790000000000",
+    "Tarif;SCHAEFFER_RAPIDE", "TarifNumero;8", "CoefficientForme;0.5",
+    "VolumeTigeTotalM3;1.0", "VolumeTotalM3;1.6",
+    "SurfaceTerriereTotaleM2;0.2", "NbTigesNonCubees;0",
+    "Mode;DIAMETRE", "Increment;1",
+    "Affouage;true", "VolumeMaxLotM3;1.0",
+    "VolumeHouppierTotalM3;0.6", paste0("PartHouppier;", parts),
+    "AffouageLotTotalM3;1.0", "Journal;COMPLET", "",
+    "JOURNAL",
+    "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m;Uuid;Parcelle;Modifie;VolumeTigeM3;VolumeHouppierM3;VolumeTotalM3;SurfaceTerriereM2;Cubage;Lot;AffouageLotM3",
+    # Hetre (p = 0,5) : seul le houppier compte au lot ; Chene (p = 0) : tout.
+    "2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;u1;;1;0.6;0.6;1.2;0.1;S:8;1;0.600000",
+    "2027-10-15T08:01:00Z;Chene;35;PLUS;1;;;;;PO;;;u2;;2;0.4;0;0.4;0.1;S:8;1;0.400000",
+    "2027-10-15T08:02:00Z;Hetre;40;PLUS;1;;;;;PO;;;u3;;3;0.6;0.6;1.2;0.1;S:8;2;0.600000",
+    "2027-10-15T08:03:00Z;Hetre;40;ANNULATION;1;;;;;PO;;;u4;;4;0.6;0.6;1.2;0.1;S:8;;0.600000"
+  ), f)
+  f
+}
+
+test_that("le format 5 apporte part de houppier, totaux et volume au lot", {
+  f <- .csv_v5(file.path(withr::local_tempdir(), "v5.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$contextes$partHouppier, "Hetre=0.5")
+  expect_equal(lu$contextes$volumeHouppierTotalM3, 0.6)
+  expect_equal(lu$contextes$affouageLotTotalM3, 1)
+  expect_equal(lu$tiges$affouageLotM3, c(0.6, 0.4, 0.6, 0.6))
+  # Ligne vide : aucune part saisie, ce qui n'est pas " inconnu ".
+  g <- .csv_v5(file.path(withr::local_tempdir(), "v5b.csv"), parts = "")
+  expect_identical(nemetonshiny:::marculus_lire_exports(g)$contextes$partHouppier, "")
+})
+
+test_that("un fichier au format 4 n'a ni part ni volume au lot", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_true(is.na(lu$contextes$partHouppier))
+  expect_true(all(is.na(lu$tiges$affouageLotM3)))
+})
+
+test_that("le volume d'un lot est le volume compte au lot, pas la tige", {
+  f <- .csv_v5(file.path(withr::local_tempdir(), "v5.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  b <- nemetonshiny:::marculus_bilan_lots(lu$tiges, "a1", volume_max = 1)
+  # L'annulation retire u3 (lot 2, derniere tige Hetre 40) : reste le lot 1.
+  expect_equal(b$lot, 1L)
+  expect_equal(b$volume_m3, 1.0)          # 0,6 (houppier Hetre) + 0,4 (Chene)
+  expect_equal(b$volume_tige_m3, 1.0)     # 0,6 + 0,4
+  expect_equal(b$volume_houppier_m3, 0.6)
+  expect_equal(b$etat, "complet")
+})
+
+test_that("au format 4, le volume au lot retombe sur le volume tige", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  b <- nemetonshiny:::marculus_bilan_lots(lu$tiges, "a1", volume_max = 1)
+  expect_equal(b$volume_m3, b$volume_tige_m3)
+})
+
+test_that("le .marsync au format 5 se lit comme le CSV", {
+  d <- withr::local_tempdir()
+  t <- .tiges(c("u1", "u2"))
+  t$volumeTigeM3 <- 0.6; t$volumeHouppierM3 <- 0.6; t$lot <- 1L
+  t$affouageLotM3 <- 0.6
+  f <- .marsync(d, contextes = list(
+    list(id = "a1", nom = "A", statut = "REALISEE", modifie = 2,
+         affouage = TRUE, volumeMaxLotM3 = 2, tarif = "SCHAEFFER_LENT",
+         partHouppier = list("Hêtre" = 0.25, "Chêne" = 0.1),
+         volumeHouppierTotalM3 = 1.2, affouageLotTotalM3 = 1.2),
+    list(id = "b2", nom = "B", statut = "PREVU", modifie = 1,
+         affouage = FALSE, partHouppier = setNames(list(), character(0)),
+         volumeHouppierTotalM3 = 0)), tiges = t)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  ctx <- lu$contextes[order(lu$contextes$id), ]
+  expect_equal(ctx$partHouppier, c("Hêtre=0.25|Chêne=0.1", ""))
+  expect_equal(ctx$affouageLotTotalM3, c(1.2, NA))
+  expect_equal(lu$tiges$affouageLotM3, c(0.6, 0.6))
+})
+
+test_that("la part de houppier est gardee sur l'action, jamais reemise", {
+  f <- .csv_v5(file.path(withr::local_tempdir(), "v5.csv"),
+               parts = "\"Chêne=0.3|Hêtre=0.25\"")
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  plan <- list(horizon_annees = 20L, actions = list(list(
+    id = "a1", ug_id = "ug1", type = "coupe", statut = "proposee",
+    annee_cible = 1L)))
+  local_mocked_bindings(validate_action = function(...) list(valid = TRUE),
+                        .package = "nemetonshiny")
+  res <- nemetonshiny:::marculus_appliquer_retour(plan, lu$contextes, lu$tiges,
+                                                  annee_base = 2026L)
+  a <- res$plan$actions[[1]]
+  expect_equal(a$reglages_terrain$part_houppier,
+               list("Chêne" = 0.3, "Hêtre" = 0.25))
+  expect_equal(a$quantite$volume_houppier_m3, 0.6)
+  expect_equal(a$quantite$volume_lots_affouage_m3, 1)
+  ctx <- nemetonshiny:::marculus_context_from_action(
+    a, list(id = "p", metadata = list(name = "P")))
+  expect_false(any(c("partHouppier", "part_houppier") %in% names(ctx)))
+})
+
+test_that("un retour au format 4 n'ajoute pas les volumes du format 5", {
+  f <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  plan <- list(horizon_annees = 20L, actions = list(list(
+    id = "a1", ug_id = "ug1", type = "coupe", statut = "proposee",
+    annee_cible = 1L)))
+  local_mocked_bindings(validate_action = function(...) list(valid = TRUE),
+                        .package = "nemetonshiny")
+  a <- nemetonshiny:::marculus_appliquer_retour(plan, lu$contextes, lu$tiges,
+                                                annee_base = 2026L)$plan$actions[[1]]
+  expect_null(a$quantite$volume_houppier_m3)
+  expect_null(a$quantite$volume_lots_affouage_m3)
+  expect_null(a$reglages_terrain$part_houppier)
+})
+
+test_that("le nouvel en-tete du bilan par lot est reconnu et refuse", {
+  d <- withr::local_tempdir()
+  f <- file.path(d, "Affouage - lots.csv")
+  writeLines(c("Lot;Tiges;VolumeTige_m3;VolumeHouppier_m3;VolumeLot_m3;Etat",
+               "1;2;1,0;0,6;1,0;Complet"), f)
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  expect_equal(lu$bilans_lots, "Affouage - lots.csv")
+  expect_length(lu$illisibles, 0L)
+})
+
+test_that("la synthese des lots montre tige, houppier et part du terrain", {
+  f <- .csv_v5(file.path(withr::local_tempdir(), "v5.csv"))
+  lu <- nemetonshiny:::marculus_lire_exports(f)
+  i18n <- nemetonshiny:::get_i18n("fr")
+  action <- list(id = "a1", reglages_terrain = list(
+    affouage = TRUE, volume_max_lot_m3 = 1, part_houppier = list(Hetre = 0.5)))
+  html <- as.character(nemetonshiny:::.marculus_lots_bloc(lu$tiges, action, i18n))
+  expect_match(html, "Houppier (m³)", fixed = TRUE)
+  expect_match(html, "Au lot (m³)", fixed = TRUE)
+  expect_match(html, "Hetre 50 %", fixed = TRUE)
+  # Sans houppier (format 4) : une seule colonne de volume, comme avant.
+  g <- .csv_v4(file.path(withr::local_tempdir(), "v4.csv"))
+  html4 <- as.character(nemetonshiny:::.marculus_lots_bloc(
+    nemetonshiny:::marculus_lire_exports(g)$tiges,
+    list(id = "a1", reglages_terrain = list(affouage = TRUE, volume_max_lot_m3 = 1)),
+    i18n))
+  expect_false(grepl("Houppier", html4, fixed = TRUE))
+})

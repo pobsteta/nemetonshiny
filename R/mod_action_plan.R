@@ -3217,25 +3217,47 @@ coerce_table_value <- function(field, raw) {
   lots <- marculus_bilan_lots(tiges, action$id, vmax)
   if (nrow(lots) == 0L) return(NULL)
   etat <- vapply(lots$etat, function(e) i18n$t(paste0("marculus_lot_", e)), "")
+  # Colonnes tige et houppier, comme l'onglet " Par lot " de Marculus, des
+  # qu'un houppier existe : sans lui, le volume au lot EST le volume tige.
+  a_houppier <- any(!is.na(lots$volume_houppier_m3) & lots$volume_houppier_m3 > 0)
+  td_m3 <- function(v) htmltools::tags$td(class = "text-end",
+                                          .format_m3(v, i18n, unite = FALSE))
   lignes <- lapply(seq_len(nrow(lots)), function(k) {
     htmltools::tags$tr(
       class = if (lots$etat[k] == "incomplet") "table-warning",
       htmltools::tags$th(scope = "row",
                          if (is.na(lots$lot[k])) "\u2014" else lots$lot[k]),
       htmltools::tags$td(class = "text-end", lots$tiges[k]),
-      htmltools::tags$td(class = "text-end",
-                         .format_m3(lots$volume_m3[k], i18n, unite = FALSE)),
+      if (a_houppier) td_m3(lots$volume_tige_m3[k]),
+      if (a_houppier) td_m3(lots$volume_houppier_m3[k]),
+      td_m3(lots$volume_m3[k]),
       htmltools::tags$td(etat[k]))
   })
+  parts <- rt$part_houppier
+  parts_txt <- if (length(parts)) {
+    paste(sprintf("%s %s\u00a0%%", names(parts),
+                  vapply(100 * unlist(parts), function(x) format(
+                    round(x, 1), trim = TRUE,
+                    decimal.mark = if (identical(i18n$language, "fr")) "," else "."), "")),
+          collapse = ", ")
+  }
   htmltools::tagList(
     htmltools::p(class = "small fw-semibold mt-2 mb-1",
                  sprintf(i18n$t("marculus_lots_titre_fmt"), .format_m3(vmax, i18n))),
+    if (!is.null(parts_txt))
+      htmltools::p(class = "small text-muted mb-1",
+                   sprintf(i18n$t("marculus_part_houppier_fmt"), parts_txt)),
     htmltools::div(class = "table-responsive", htmltools::tags$table(
       class = "table table-sm table-bordered mb-1",
       htmltools::tags$thead(htmltools::tags$tr(
         htmltools::tags$th(i18n$t("marculus_col_lot")),
         htmltools::tags$th(class = "text-end", i18n$t("marculus_col_tiges")),
-        htmltools::tags$th(class = "text-end", i18n$t("marculus_col_volume")),
+        if (a_houppier)
+          htmltools::tags$th(class = "text-end", i18n$t("marculus_col_volume_tige")),
+        if (a_houppier)
+          htmltools::tags$th(class = "text-end", i18n$t("marculus_col_volume_houppier")),
+        htmltools::tags$th(class = "text-end", i18n$t(
+          if (a_houppier) "marculus_col_volume_lot" else "marculus_col_volume")),
         htmltools::tags$th(i18n$t("marculus_col_etat")))),
       htmltools::tags$tbody(lignes))))
 }

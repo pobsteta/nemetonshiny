@@ -28,6 +28,12 @@
 # Chaque tige porte le `lot` attribue au martelage (jamais recalcule ici), le
 # contexte `affouage` et `volumeMaxLotM3`, et le CSV dit son `Journal`
 # (`COMPLET`, ou `NET` = etat de comptage sans annulations).
+#
+# Format 5 (Marculus v0.59.0, brief du 2026-10-15) : part de houppier par
+# essence en Schaeffer (`PartHouppier`, reglage du terrain) et volume COMPTE AU
+# LOT d'une tige (`AffouageLotM3`) : l'arbre entier s'il n'a pas de houppier,
+# son seul houppier sinon (la tige est vendue a part). Ce volume ferme le lot ;
+# il est lu, jamais recalcule.
 
 
 # ---- Lecture ----------------------------------------------------------
@@ -58,6 +64,9 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              mode = character(0),
              # Lot d'affouage attribue au martelage (format 4), NA sans lot.
              lot = integer(0),
+             # Volume UNITAIRE compte au lot d'affouage (format 5), NA hors
+             # affouage ou dans un fichier plus ancien.
+             affouageLotM3 = numeric(0),
              # Journal d'origine : "NET" pour un CSV d'etat de comptage, qui ne
              # doit jamais remplacer une tige lue dans un journal complet.
              journal = character(0),
@@ -67,7 +76,10 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
 # Reglages de terrain d'un contexte (Marculus v0.52.0+), avec leur defaut.
 MARCULUS_REGLAGES_CONTEXTE <- list(
   affouage = FALSE, volumeMaxLotM3 = 0, journal = "COMPLET",
-  tarif = NA_character_, tarifNumero = NA_integer_, coefficientForme = NA_real_)
+  tarif = NA_character_, tarifNumero = NA_integer_, coefficientForme = NA_real_,
+  # Parts de houppier (format 5), encodees `Chene=0.3|Hetre=0.25` comme dans
+  # l'en-tete du CSV ; NA = inconnu, "" = aucune part saisie.
+  partHouppier = NA_character_)
 
 #' Complete a contexts data.frame with the field settings columns
 #'
@@ -89,7 +101,55 @@ MARCULUS_REGLAGES_CONTEXTE <- list(
 
 # Colonnes de volume d'un contexte (totaux NETS calcules sur le telephone).
 MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeTotalM3",
-                               "surfaceTerriereTotaleM2", "nbTigesNonCubees")
+                               "surfaceTerriereTotaleM2", "nbTigesNonCubees",
+                               # Format 5.
+                               "volumeHouppierTotalM3", "affouageLotTotalM3")
+
+#' Encode the `partHouppier` object of `.marsync` contexts as the CSV does
+#'
+#' `jsonlite` turns the per-context object `{"Chene": 0.3}` into a data.frame
+#' column (one column per species seen in the file, `NA` where a context has
+#' no part). Zero and missing parts are dropped.
+#'
+#' @param x The `partHouppier` column, a data.frame, a list or `NULL`.
+#' @param n Number of contexts.
+#' @return Character, one per context: `"Chene=0.3|Hetre=0.25"`, `""` when no
+#'   part, `NA` when the key is absent from the file.
+#' @noRd
+.marculus_parts_encoder <- function(x, n) {
+  if (is.null(x)) return(rep(NA_character_, n))
+  lignes <- if (is.data.frame(x)) {
+    lapply(seq_len(nrow(x)), function(i) unlist(x[i, , drop = FALSE]))
+  } else if (is.list(x)) {
+    lapply(x, function(v) unlist(v))
+  } else {
+    return(rep(NA_character_, n))
+  }
+  out <- vapply(lignes, function(v) {
+    if (!length(v)) return("")
+    v <- stats::setNames(suppressWarnings(as.numeric(v)), names(v))
+    garde <- !is.na(v) & v > 0
+    if (!any(garde)) return("")
+    paste(paste0(names(v)[garde], "=", as.character(v[garde])), collapse = "|")
+  }, character(1))
+  rep_len(out, n)
+}
+
+#' Decode a `PartHouppier` value into a named list of fractions
+#'
+#' @param x Character. `"Chene=0.3|Hetre=0.25"`, `""` or `NA`.
+#' @return A named list (species -> fraction), empty for `""`, `NULL` for `NA`.
+#' @noRd
+.marculus_parts_decoder <- function(x) {
+  if (length(x) != 1L || is.na(x)) return(NULL)
+  morceaux <- strsplit(trimws(x), "|", fixed = TRUE)[[1]]
+  morceaux <- morceaux[nzchar(morceaux) & grepl("=", morceaux, fixed = TRUE)]
+  if (!length(morceaux)) return(stats::setNames(list(), character(0)))
+  nom <- trimws(sub("=[^=]*$", "", morceaux))
+  val <- suppressWarnings(as.numeric(sub("^.*=", "", morceaux)))
+  garde <- nzchar(nom) & !is.na(val) & val > 0
+  as.list(stats::setNames(val[garde], nom[garde]))
+}
 
 # Aligne un data.frame de tiges sur les colonnes attendues (champs optionnels
 # absents -> NA), dans l'ordre de `.marculus_tiges_vides()`.
@@ -159,6 +219,7 @@ marculus_lire_exports <- function(chemins) {
     # Le `.marsync` est un journal de synchronisation : toujours COMPLET.
     src <- as.list(c0)
     src$journal <- NULL
+    src$partHouppier <- .marculus_parts_encoder(c0$partHouppier, nrow(c0))
     d0 <- .marculus_ctx_completer(d0, src)
     d0$reglages_connus <- "affouage" %in% names(c0)
     ctx[[length(ctx) + 1L]] <- d0
@@ -200,8 +261,11 @@ marculus_lire_exports <- function(chemins) {
 .marculus_est_bilan_lots <- function(chemin) {
   l1 <- tryCatch(readLines(chemin, n = 1L, warn = FALSE, encoding = "UTF-8"),
                  error = function(e) character(0))
-  length(l1) == 1L && identical(trimws(sub("^\ufeff", "", l1)),
-                                "Lot;Tiges;Volume_m3;Etat")
+  # Deux en-tetes : celui des rapports deja produits, et celui de Marculus
+  # v0.59.0 (volumes tige, houppier et lot).
+  length(l1) == 1L && trimws(sub("^\ufeff", "", l1)) %in% c(
+    "Lot;Tiges;Volume_m3;Etat",
+    "Lot;Tiges;VolumeTige_m3;VolumeHouppier_m3;VolumeLot_m3;Etat")
 }
 
 # Un CSV Marculus commence par `Contexte;` ; le JSON par `{`.
@@ -283,7 +347,9 @@ MARCULUS_QUALITE_FIX <- c(
       journal = journal,
       tarif = entete$Tarif %||% NA_character_,
       tarifNumero = suppressWarnings(as.integer(entete$TarifNumero %||% NA)),
-      coefficientForme = suppressWarnings(as.numeric(entete$CoefficientForme %||% NA))))
+      coefficientForme = suppressWarnings(as.numeric(entete$CoefficientForme %||% NA)),
+      # Format 5 : la ligne existe meme vide (aucune part saisie).
+      partHouppier = if (fmt >= 5L) entete$PartHouppier %||% "" else NA_character_))
     # Avant le format 4, l'absence de `Affouage` ne dit rien du telephone.
     contexte$reglages_connus <- fmt >= 4L
 
@@ -315,6 +381,7 @@ MARCULUS_QUALITE_FIX <- c(
           cubage = jr$Cubage %||% NA_character_,
           mode = entete$Mode %||% NA_character_,
           lot = suppressWarnings(as.integer(jr$Lot %||% NA)),
+          affouageLotM3 = num(jr$AffouageLotM3 %||% NA),
           journal = journal,
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]
@@ -548,6 +615,14 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
         volume_total_m3 = round(contextes$volumeTotalM3[i], 4),
         surface_terriere_m2 = round(contextes$surfaceTerriereTotaleM2[i], 4),
         nb_tiges_non_cubees = as.integer(contextes$nbTigesNonCubees[i]))
+      # Format 5 : n'ajouter que ce que le fichier porte, pour qu'un retour
+      # au format 4 laisse la quantite telle qu'avant.
+      vh <- contextes$volumeHouppierTotalM3[i] %||% NA
+      if (length(vh) == 1L && !is.na(vh)) q_vol$volume_houppier_m3 <- round(vh, 4)
+      vl <- contextes$affouageLotTotalM3[i] %||% NA
+      if (isTRUE(contextes$affouage[i]) && length(vl) == 1L && !is.na(vl)) {
+        q_vol$volume_lots_affouage_m3 <- round(vl, 4)
+      }
     }
     if (cid %in% names(n_par_ctx) || !is.null(q_vol)) {
       q <- action$quantite %||% list()
@@ -569,8 +644,12 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
                  tarif = contextes$tarif[i],
                  tarif_numero = contextes$tarifNumero[i],
                  coefficient_forme = contextes$coefficientForme[i])
-      upd$reglages_terrain <- rt[!vapply(rt, function(v) length(v) != 1L || is.na(v),
-                                         logical(1))]
+      rt <- rt[!vapply(rt, function(v) length(v) != 1L || is.na(v), logical(1))]
+      # Parts de houppier (format 5) : reglage du terrain, garde pour
+      # l'affichage et jamais reemis, comme `tarif`.
+      ph <- .marculus_parts_decoder(contextes$partHouppier[i] %||% NA_character_)
+      if (length(ph)) rt$part_houppier <- ph
+      upd$reglages_terrain <- rt
     }
 
     # Ne garder que ce qui change : un reimport identique ne touche a rien.
@@ -679,22 +758,35 @@ marculus_tiges_designees <- function(tiges, contexte_id) {
 #' @param tiges All stems of the project.
 #' @param contexte_id Character. The context (= action) id.
 #' @param volume_max Numeric. Maximum volume per lot (m3), for the state.
+#' The volume that closes a lot is the one the phone counted for it
+#' (`affouageLotM3`, format 5): the whole tree without a crown, the crown only
+#' otherwise. A file in format 4 or older has none, and the bole volume
+#' (`volumeTigeM3`) stands in, which is what the phone counted then.
+#'
 #' @return A data.frame `lot` (integer, `NA` = stems without a lot), `tiges`,
-#'   `volume_m3`, `etat` (`"complet"` when the volume reaches the maximum,
-#'   `"incomplet"` otherwise, `"sans_lot"` for the `NA` row), ordered by lot.
+#'   `volume_m3` (volume counted in the lot), `volume_tige_m3`,
+#'   `volume_houppier_m3`, `etat` (`"complet"` when the volume reaches the
+#'   maximum, `"incomplet"` otherwise, `"sans_lot"` for the `NA` row), ordered
+#'   by lot.
 #' @noRd
 marculus_bilan_lots <- function(tiges, contexte_id, volume_max = NA_real_) {
   vide <- data.frame(lot = integer(0), tiges = integer(0),
-                     volume_m3 = numeric(0), etat = character(0))
+                     volume_m3 = numeric(0), volume_tige_m3 = numeric(0),
+                     volume_houppier_m3 = numeric(0), etat = character(0))
   d <- marculus_tiges_designees(tiges, contexte_id)
   if (nrow(d) == 0L) return(vide)
-  v <- d$volumeTigeM3 * d$quantite
+  v_lot <- ifelse(is.na(d$affouageLotM3), d$volumeTigeM3, d$affouageLotM3)
   cle <- ifelse(is.na(d$lot), -1L, d$lot)
+  somme <- function(x) {
+    as.numeric(tapply(x * d$quantite, cle, function(y)
+      if (all(is.na(y))) NA_real_ else sum(y, na.rm = TRUE)))
+  }
   n <- tapply(d$quantite, cle, sum)
-  vol <- tapply(v, cle, function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE))
   lot <- as.integer(names(n))
   out <- data.frame(lot = ifelse(lot < 0L, NA_integer_, lot),
-                    tiges = as.integer(n), volume_m3 = as.numeric(vol))
+                    tiges = as.integer(n), volume_m3 = somme(v_lot),
+                    volume_tige_m3 = somme(d$volumeTigeM3),
+                    volume_houppier_m3 = somme(d$volumeHouppierM3))
   # Egalite = lot clos (regle du telephone).
   out$etat <- ifelse(is.na(out$lot), "sans_lot",
                      ifelse(!is.na(out$volume_m3) & is.finite(volume_max) &
