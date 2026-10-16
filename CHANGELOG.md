@@ -12,6 +12,31 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.10.10\] - 2026-10-16
+
+### Added
+
+- Marculus bundle: Schaeffer tariff numbers per species and type (spec
+  062), computed once per project by
+  [`nemeton::tarif_schaeffer_local()`](https://pobsteta.github.io/nemeton/reference/tarif_schaeffer_local.html)
+  in the Marculus preparation worker, cached in
+  `cache/marculus_tarifs.json`; each context carries `ser`,
+  `millesimeTarifs` and `tarifsProposes` (never the `tarif*` field
+  settings). End-of-export message counts species per level.
+- Video inventory: the QField project downloads as a `.zip` with the
+  Groma plugin `.qml` next to the `.qgz` (creation and send-back).
+
+### Changed
+
+- Video inventory: magnetic declination is optional (empty -\> computed
+  by Groma with WMM2025); validation items with `severity = "info"` are
+  shown as information, not counted as warnings.
+- Requires `nemeton (>= 2026.10.8)`.
+
+### Removed
+
+- i18n key `video_declinaison_requise` and the NOAA declination link.
+
 ## \[2026.10.9\] - 2026-10-16
 
 ### Added
