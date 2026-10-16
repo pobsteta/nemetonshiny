@@ -105,8 +105,10 @@ video_integrer <- function(gpkg, resultats, project_path) {
 
 #' Arguments of `creer_projet_inventaire_video()` from the form
 #'
-#' Checks what the core cannot guess (project, plots, magnetic declination)
-#' and passes the settings through unchanged. Rasters are passed as file paths:
+#' Checks what the core cannot guess (project, plots) and passes the settings
+#' through unchanged. The magnetic declination is optional: left empty, it goes
+#' as `NULL` (the core writes `NA`, never 0) and Groma computes it at the plot
+#' with its embedded WMM2025 model; a value typed in wins. Rasters are passed as file paths:
 #' a terra pointer does not survive the trip to the `future` worker.
 #'
 #' @param project_path Project directory, or `NULL`.
@@ -126,7 +128,7 @@ video_args_generation <- function(project_path, placettes, plot_ids,
   if (is.null(project_path)) return("field_ingest_no_project")
   if (is.null(placettes) || !length(plot_ids)) return("video_sans_plan")
   decl <- suppressWarnings(as.numeric(declinaison_deg))
-  if (length(decl) != 1L || !is.finite(decl)) return("video_declinaison_requise")
+  decl <- if (length(decl) == 1L && is.finite(decl)) decl else NULL
   .source <- function(r) {
     if (is.null(r)) return(NULL)
     if (is.character(r)) return(r[1])
@@ -137,7 +139,9 @@ video_args_generation <- function(project_path, placettes, plot_ids,
   list(
     placettes = placettes, plot_ids = as.character(plot_ids),
     rayon_m = rayon_m, seuil_diam_cm = seuil_diam_cm,
-    unite_azimut = unite_azimut %||% "deg", declinaison_deg = decl,
+    unite_azimut = unite_azimut %||% "deg",
+    # `list(x = NULL)` garde la cle : le coeur recoit bien NULL.
+    declinaison_deg = decl,
     avec_lidar = avec_lidar,
     dem = if (avec_lidar) .source(dem), chm = if (avec_lidar) .source(chm),
     # Le coeur resout le MNT manquant depuis le projet.
@@ -302,4 +306,59 @@ video_bilan <- function(res) {
     },
     ndp = suppressWarnings(as.integer(res$ndp %||% NA_integer_))
   )
+}
+
+
+#' Files to deliver to the phone with a QField project
+#'
+#' Since core 2026.10.7 the Groma project plugin `<name>.qml` is written next
+#' to `<name>.qgz` (never inside: QField looks for it on disk, under the
+#' project's name). Without it the Groma button does not exist in QField.
+#' Older cores write no `.qml`: the `.qgz` then goes alone.
+#'
+#' @param qgz Path of the `.qgz`.
+#' @return Paths of the files that exist, `.qgz` first.
+#' @noRd
+video_fichiers_livraison <- function(qgz) {
+  if (is.null(qgz) || !length(qgz)) return(character(0))
+  f <- c(qgz[1], sub("\\.qgz$", ".qml", qgz[1]))
+  unique(f[file.exists(f)])
+}
+
+#' Zip a QField project with its plugin, side by side
+#'
+#' @param qgz Path of the `.qgz`.
+#' @param file Destination `.zip`.
+#' @return `file`, invisibly.
+#' @noRd
+video_zip_livraison <- function(qgz, file) {
+  f <- video_fichiers_livraison(qgz)
+  if (!length(f)) stop("QField project not found")
+  # `-j` : a plat, les deux fichiers cote a cote, comme QField les attend.
+  utils::zip(zipfile = file, files = f, flags = "-j9Xq")
+  invisible(file)
+}
+
+#' Name of the delivered archive (`<name>.zip`)
+#' @noRd
+video_nom_livraison <- function(qgz, defaut) {
+  sub("\\.qgz$", ".zip", basename(qgz %||% defaut))
+}
+
+#' Validation warnings that are not mere information
+#'
+#' `valider_inventaire_video()` reports several measured centres per plot with
+#' `severity = "info"`: shown, but neither counted nor coloured as a warning.
+#'
+#' @param warnings The `warnings` data.frame of a validation.
+#' @return `list(avertissements, infos)`.
+#' @noRd
+video_separer_infos <- function(warnings) {
+  if (is.null(warnings) || !is.data.frame(warnings) || !nrow(warnings) ||
+      !"severity" %in% names(warnings)) {
+    return(list(avertissements = warnings, infos = NULL))
+  }
+  info <- !is.na(warnings$severity) & warnings$severity == "info"
+  list(avertissements = warnings[!info, , drop = FALSE],
+       infos = warnings[info, , drop = FALSE])
 }

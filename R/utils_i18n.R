@@ -636,6 +636,23 @@ TRANSLATIONS <- list(
     fr = "Sans couche desserte : lancez l'onglet Desserte pour la produire.",
     en = "No road layer: run the Roads tab to produce it."
   ),
+  # Numeros de tarif Schaeffer proposes (spec 062 du coeur).
+  marculus_export_tarifs_fmt = list(
+    fr = "Num\u00e9ros de tarif Schaeffer propos\u00e9s pour %d essences sur %d (niveau for\u00eat : %d, SER : %d, repli : %d).",
+    en = "Schaeffer tariff numbers proposed for %d species out of %d (forest level: %d, SER: %d, fallback: %d)."
+  ),
+  marculus_export_tarifs_echec = list(
+    fr = "Sans num\u00e9ros de tarif propos\u00e9s : le calcul IFN a \u00e9chou\u00e9 (%s). Marculus garde sa table embarqu\u00e9e ; relancez la pr\u00e9paration pour r\u00e9essayer.",
+    en = "No proposed tariff numbers: the IFN computation failed (%s). Marculus keeps its embedded table; run the preparation again to retry."
+  ),
+  marculus_export_tarifs_absents = list(
+    fr = "Sans num\u00e9ros de tarif propos\u00e9s : pas encore calcul\u00e9s pour ce p\u00e9rim\u00e8tre et ces essences.",
+    en = "No proposed tariff numbers: not computed yet for this extent and these species."
+  ),
+  marculus_tarifs_running = list(
+    fr = "Calcul des num\u00e9ros de tarif Schaeffer sur les placettes IFN de la for\u00eat\u2026",
+    en = "Computing Schaeffer tariff numbers on the forest's IFN plots\u2026"
+  ),
   marculus_export_date_annee = list(
     fr = "%d contexte(s) non encore martel\u00e9(s) portent le 1er janvier de leur ann\u00e9e cible : c'est une ann\u00e9e de programme, pas une date de chantier, \u00e0 corriger dans Marculus au martelage.",
     en = "%d context(s) not yet marked carry 1 January of their target year: a programme year, not a site date, to be corrected in Marculus when marking."
@@ -753,13 +770,10 @@ TRANSLATIONS <- list(
     en = "Magnetic declination (\u00b0, east positive)"
   ),
   video_declinaison_aide = list(
-    fr = "Calculer la d\u00e9clinaison du lieu (NOAA)",
-    en = "Look up the local declination (NOAA)"
+    fr = "Facultatif. Laisser vide : Groma la calcule \u00e0 chaque placette avec le mod\u00e8le WMM2025. Une valeur saisie reste prioritaire.",
+    en = "Optional. Leave empty: Groma computes it at each plot with the WMM2025 model. A value typed in takes precedence."
   ),
-  video_declinaison_requise = list(
-    fr = "Saisissez la d\u00e9clinaison magn\u00e9tique du lieu avant de g\u00e9n\u00e9rer le projet.",
-    en = "Enter the local magnetic declination before building the project."
-  ),
+  video_infos_validation = list(fr = "Informations", en = "Information"),
   video_avec_lidar = list(
     fr = "Inclure MNT, MNH et houppiers",
     en = "Include DTM, CHM and crowns"
@@ -777,8 +791,8 @@ TRANSLATIONS <- list(
     en = "Building the video inventory QField project\u2026"
   ),
   video_telecharger = list(
-    fr = "T\u00e9l\u00e9charger le projet (.qgz)",
-    en = "Download the project (.qgz)"
+    fr = "T\u00e9l\u00e9charger le projet QField (.qgz + plugin Groma, zip)",
+    en = "Download the QField project (.qgz + Groma plugin, zip)"
   ),
   video_sans_plan = list(
     fr = "Aucun plan d'\u00e9chantillonnage dans le projet : tirez d'abord les placettes (Terrain > Export).",
@@ -840,8 +854,8 @@ TRANSLATIONS <- list(
     en = "Field return project ready: %d tree(s) on %d plot(s)."
   ),
   video_renvoi_telecharger = list(
-    fr = "T\u00e9l\u00e9charger le projet de retour (.qgz)",
-    en = "Download the return project (.qgz)"
+    fr = "T\u00e9l\u00e9charger le projet de retour (.qgz + plugin Groma, zip)",
+    en = "Download the return project (.qgz + Groma plugin, zip)"
   ),
   video_resultats_serveur = list(
     fr = "R\u00e9sultats du serveur (.gpkg)",

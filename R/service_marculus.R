@@ -268,11 +268,17 @@ MARCULUS_STATUTS <- c(
 #' @param suffixe Optional text appended to the name, to tell apart two
 #'   contexts that would otherwise read the same (see
 #'   [.marculus_suffixes_doublons()]).
+#' @param tarifs Schaeffer tariff proposal of the project
+#'   ([marculus_tarifs_preparer()]), or `NULL`. When given, the context carries
+#'   `ser`, `millesimeTarifs` and `tarifsProposes` (restricted to `essences`),
+#'   keys unknown to Marculus releases before the spec 062 ones, hence inert
+#'   there. `tarif`, `tarifNumero` and `tarifNumeroParEssence` are field
+#'   settings and are never emitted.
 #' @return A named list, ready for `jsonlite::toJSON()`.
 #' @noRd
 marculus_context_from_action <- function(action, project, essences = character(0),
                                          gpkg_nom = NULL, suffixe = NULL,
-                                         annee_base = NULL) {
+                                         annee_base = NULL, tarifs = NULL) {
   nom_projet <- project$metadata$name %||% project$id
   ug <- .marculus_ug_label(project, action$ug_id, nom_projet)
   type <- action$type %||% "autre"
@@ -338,6 +344,16 @@ marculus_context_from_action <- function(action, project, essences = character(0
   # Nom de fichier NU, jamais un chemin : le lot est a plat, et un chemin
   # relatif ouvrirait la porte au zip-slip cote telephone.
   if (!is.null(gpkg_nom) && nzchar(gpkg_nom)) ctx$gpkgNom <- basename(gpkg_nom)
+  if (!is.null(tarifs)) {
+    if (length(tarifs$ser) == 1L && nzchar(tarifs$ser)) ctx$ser <- tarifs$ser
+    if (length(tarifs$millesime) == 1L) ctx$millesimeTarifs <- tarifs$millesime
+    # Cles = libelles EXACTEMENT tels qu'emis dans `essences` ; une essence
+    # sans proposition est absente. Objet nomme, meme vide (`{}` en JSON).
+    props <- tarifs$essences %||% list()
+    props <- props[intersect(essences, names(props))]
+    if (!length(props)) props <- stats::setNames(list(), character(0))
+    ctx$tarifsProposes <- props
+  }
   ctx
 }
 
@@ -1155,7 +1171,9 @@ marculus_eligible_actions <- function(plan) {
 #' @return Invisibly a list: `n_contexts`, `n_gpkg`, `n_essences`,
 #'   `has_desserte`, `n_houppiers`, `houppiers_statut` (from
 #'   `metadata$houppiers`), `n_date_annee` (contexts dated by their target
-#'   year only), `n_ortho`.
+#'   year only), `n_ortho`, `tarifs_statut` (`"ok"`, `"non_calcule"`,
+#'   `"echec"`), `tarifs_erreur`, `tarifs_comptes`
+#'   ([.marculus_tarifs_comptes()]).
 #' @noRd
 marculus_export_bundle <- function(project_id, file, essences = NULL) {
   project <- load_project(project_id)
@@ -1180,6 +1198,11 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   # segmenter ici gelerait la session le temps du telechargement.
   desserte  <- .marculus_desserte(project_id)
   houppiers <- .marculus_houppiers(project_id)
+  # Numeros de tarif Schaeffer (spec 062) : LUS du cache que la preparation
+  # en tache de fond a ecrit, jamais calcules ici (telechargement IFN).
+  tarifs <- tryCatch(marculus_tarifs_pour_export(project, essences),
+                     error = function(e) list(tarifs = NULL, statut = "echec",
+                                              erreur = conditionMessage(e)))
 
   tmp <- file.path(tempdir(), paste0("marculus_", project_id))
   unlink(tmp, recursive = TRUE)
@@ -1226,7 +1249,8 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
     ctx <- marculus_context_from_action(a, project, essences = essences,
                                         gpkg_nom = nom_gpkg,
                                         suffixe = suffixes[i],
-                                        annee_base = annee_base)
+                                        annee_base = annee_base,
+                                        tarifs = tarifs$tarifs)
     contexts[[length(contexts) + 1L]] <- ctx
     ok <- marculus_write_action_gpkg(project, a, file.path(tmp, nom_gpkg),
                                      desserte = desserte,
@@ -1253,7 +1277,11 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
                    NA_character_,
                  n_date_annee = sum(vapply(actions, .marculus_date_depuis_annee,
                                            logical(1), base = annee_base)),
-                 n_ortho = sum(!vapply(ortho_par_ug, is.null, logical(1)))))
+                 n_ortho = sum(!vapply(ortho_par_ug, is.null, logical(1))),
+                 tarifs_statut = tarifs$statut,
+                 tarifs_erreur = tarifs$erreur %||% NA_character_,
+                 tarifs_comptes = if (!is.null(tarifs$tarifs))
+                   .marculus_tarifs_comptes(tarifs$tarifs, essences)))
 }
 
 
@@ -1325,6 +1353,21 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   n_annee <- as.integer(res$n_date_annee %||% 0L)
   if (n_annee > 0L) {
     parts <- c(parts, sprintf(i18n$t("marculus_export_date_annee"), n_annee))
+  }
+  # Numeros de tarif Schaeffer proposes (spec 062) : leur absence ne bloque
+  # rien (Marculus garde sa table embarquee), mais elle se dit.
+  st <- res$tarifs_statut %||% NA_character_
+  if (identical(st, "ok")) {
+    cpt <- res$tarifs_comptes
+    parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_fmt"),
+                              cpt$n %||% 0L, res$n_essences %||% 0L,
+                              cpt$foret %||% 0L, cpt$ser %||% 0L, cpt$repli %||% 0L))
+  } else if (identical(st, "echec")) {
+    parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_echec"),
+                              res$tarifs_erreur %||% ""))
+    manque <- TRUE
+  } else if (identical(st, "non_calcule")) {
+    parts <- c(parts, i18n$t("marculus_export_tarifs_absents"))
   }
   list(message = paste(parts, collapse = " "),
        type = if (manque) "warning" else "message")
