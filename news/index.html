@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.9" id="nemetonshiny-2026109-2026-10-16">nemetonshiny 2026.10.9 (2026-10-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026109-2026-10-16"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="marculus--csv-formatcsv5-houppier-et-volume-des-lots-daffouage-2026-10-9">Marculus : CSV <code>FormatCsv;5</code>, houppier et volume des lots d’affouage<a class="anchor" aria-label="anchor" href="#marculus--csv-formatcsv5-houppier-et-volume-des-lots-daffouage-2026-10-9"></a></h3>
+<p>Brief <code>marculus</code> du 2026-10-15 (Marculus v0.59.0). En Schaeffer, une part de houppier par essence ajoute le houppier au bois fort tige ; en affouage, une tige n’apporte au lot que son houppier quand elle en a un (la tige est vendue à part), l’arbre entier sinon.</p>
+<ul><li>Lecture du format 5 : <code>VolumeHouppierTotalM3</code>, <code>PartHouppier</code> et <code>AffouageLotTotalM3</code> dans l’en-tête, colonne <code>AffouageLotM3</code> dans le journal ; mêmes clés dans le <code>.marsync</code> (<code>partHouppier</code>, <code>volumeHouppierTotalM3</code>, <code>affouageLotTotalM3</code>, <code>affouageLotM3</code>). Un fichier au format 4 ou plus ancien se lit comme avant.</li>
+<li>Bilan par lot : le volume d’un lot est la somme des volumes comptés au lot (<code>AffouageLotM3 × Quantite</code>, nets des annulations), lu et jamais recalculé ; repli sur le volume tige pour un fichier au format 4. Dès qu’un houppier existe, le tableau ajoute les colonnes « Tige » et « Houppier », comme l’onglet « Par lot » de Marculus.</li>
+<li>
+<code>partHouppier</code> rejoint les réglages du terrain de l’action (affiché sous le titre des lots) ; il n’est jamais réémis vers le téléphone.</li>
+<li>L’action reçoit aussi <code>volume_houppier_m3</code> et <code>volume_lots_affouage_m3</code> quand le fichier les porte.</li>
+<li>Le rapport « bilan par lot » est reconnu sous son nouvel en-tête (<code>Lot;Tiges;VolumeTige_m3;VolumeHouppier_m3;VolumeLot_m3;Etat</code>) comme sous l’ancien, et toujours refusé à l’import.</li>
+<li>Aide de l’import : « format 2 ou supérieur (FormatCsv;2 à 5) ».</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.8" id="nemetonshiny-2026108-2026-10-15">nemetonshiny 2026.10.8 (2026-10-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026108-2026-10-15"></a></h2>
 <p>Changements cassants : aucun.</p>
