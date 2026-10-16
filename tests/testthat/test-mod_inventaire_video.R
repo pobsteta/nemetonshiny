@@ -71,9 +71,15 @@ test_that("video_args_generation transmet les reglages tels quels", {
                              avec_lidar = TRUE, dem = "/x/mnt.tif", chm = NULL)
   expect_false(b$avec_lidar)
   expect_null(b$dem)
+  # Declinaison vide : facultative, transmise a NULL (Groma la calcule avec
+  # WMM2025 ; le coeur ecrit NA, jamais 0).
+  v <- video_args_generation(pp, .plan_video(), "P001")
+  expect_true(is.list(v))
+  expect_true("declinaison_deg" %in% names(v))
+  expect_null(v$declinaison_deg)
+  expect_null(video_args_generation(pp, .plan_video(), "P001",
+                                    declinaison_deg = NA)$declinaison_deg)
   # Ce qui manque est rendu comme cle i18n.
-  expect_identical(video_args_generation(pp, .plan_video(), "P001"),
-                   "video_declinaison_requise")
   expect_identical(video_args_generation(pp, NULL, "P001", declinaison_deg = 0),
                    "video_sans_plan")
   expect_identical(video_args_generation(NULL, .plan_video(), "P001"),
@@ -112,19 +118,21 @@ test_that("Preparer : le formulaire arrive a la generation, et le .qgz est servi
   })
 })
 
-test_that("Preparer : sans declinaison, rien n'est lance", {
+test_that("Preparer : sans declinaison, la generation part (Groma la calcule)", {
   pp <- withr::local_tempdir()
-  lance <- FALSE
+  recu <- NULL
   local_mocked_bindings(
     get_project_path = function(id) pp,
     .project_chm = function(id) NULL,
     video_placettes_plan = function(project_path) .plan_video(),
     video_coeur_disponible = function() TRUE,
-    video_lancer_generation = function(...) lance <<- TRUE
+    video_lancer_generation = function(tache, args, ...) recu <<- args
   )
   shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
     session$setInputs(placettes = "P001", declinaison = NA, generer = 1)
-    expect_false(lance)
+    expect_false(is.null(recu))
+    expect_true("declinaison_deg" %in% names(recu))
+    expect_null(recu$declinaison_deg)
   })
 })
 
@@ -368,4 +376,38 @@ test_that("Renvoyer : le bouton apparait apres integration et sert le .qgz", {
     expect_identical(rv$qgz_retour, qgz)
     expect_match(output$renvoi$html, "projet de retour", fixed = TRUE)
   })
+})
+
+test_that("le projet QField est livre en zip avec son plugin Groma", {
+  d <- withr::local_tempdir()
+  qgz <- file.path(d, "inventaire_video.qgz")
+  writeLines("qgz", qgz)
+  # Coeur < 2026.10.7 : pas de .qml, le .qgz part seul.
+  expect_identical(video_fichiers_livraison(qgz), qgz)
+  writeLines("qml", file.path(d, "inventaire_video.qml"))
+  z <- file.path(d, "sortie.zip")
+  video_zip_livraison(qgz, z)
+  expect_setequal(utils::unzip(z, list = TRUE)$Name,
+                  c("inventaire_video.qgz", "inventaire_video.qml"))
+  expect_identical(video_nom_livraison(qgz, "x.qgz"), "inventaire_video.zip")
+  expect_identical(video_nom_livraison(NULL, "retour.qgz"), "retour.zip")
+  expect_error(video_zip_livraison(file.path(d, "absent.qgz"), z))
+})
+
+test_that("les informations de validation ne comptent pas comme avertissements", {
+  w <- data.frame(plot_id = c("P1", "P2"), message = c("a", "b"),
+                  severity = c("info", "warning"))
+  s <- video_separer_infos(w)
+  expect_identical(s$avertissements$plot_id, "P2")
+  expect_identical(s$infos$plot_id, "P1")
+  # Sans colonne severity : tout reste avertissement.
+  expect_identical(video_separer_infos(w[, 1:2])$avertissements, w[, 1:2])
+  i18n <- get_i18n("fr")
+  bilan <- list(validation = list(ok = TRUE, errors = data.frame(),
+                                  warnings = w[1, ]),
+                numeros_modifies = data.frame(), classique_conserve = 0L,
+                ndp = NA)
+  html <- as.character(video_bilan_ui(bilan, i18n))
+  expect_match(html, "alert alert-success", fixed = TRUE)
+  expect_match(html, "Informations", fixed = TRUE)
 })

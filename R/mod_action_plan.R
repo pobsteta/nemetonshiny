@@ -1859,17 +1859,19 @@ mod_action_plan_server <- function(id, app_state) {
     # par la FUSION (union par UUID), pas par la restauration de sauvegarde -
     # rien n'est ecrase, les tiges deja saisies survivent.
 
-    # --- Fonds ortho 20 cm : preparation en tache de fond ---------------------
+    # --- Fonds ortho 20 cm et tarifs : preparation en tache de fond ----------
     # Un fond par UGF de chantier, mis en cache (`cache/layers/ortho_marculus/`).
-    # Le clic ne lance le worker que pour les fonds MANQUANTS ; quand tout est
-    # en cache, le telechargement part aussitot.
+    # Le meme worker calcule ensuite les numeros de tarif Schaeffer de la
+    # foret (spec 062, `cache/marculus_tarifs.json`), qui telechargent les
+    # donnees IFN. Le clic ne lance le worker que pour ce qui MANQUE ; quand
+    # tout est en cache, le telechargement part aussitot.
     .dev_pkg_path <- tryCatch(
       if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
         find.package("nemetonshiny") else NULL,
       error = function(e) NULL
     )
     marculus_ortho_task <- shiny::ExtendedTask$new(
-      function(travaux, dev_path, app_opts) {
+      function(travaux, tarifs_job, dev_path, app_opts) {
         promises::future_promise({
           on.exit(utils::getFromNamespace(".release_worker_memory",
                                           "nemetonshiny")(), add = TRUE)
@@ -1879,7 +1881,13 @@ mod_action_plan_server <- function(id, app_state) {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          utils::getFromNamespace("marculus_ortho_preparer", "nemetonshiny")(travaux)
+          res <- utils::getFromNamespace("marculus_ortho_preparer", "nemetonshiny")(travaux)
+          # Un echec des tarifs est ecrit dans leur cache (l'export le dit) ;
+          # il ne doit jamais faire perdre les fonds deja construits.
+          res$tarifs <- tryCatch(
+            utils::getFromNamespace("marculus_tarifs_preparer", "nemetonshiny")(tarifs_job)$statut,
+            error = function(e) "echec")
+          res
         }, seed = TRUE)
       })
 
@@ -1900,19 +1908,23 @@ mod_action_plan_server <- function(id, app_state) {
       }
       manquants <- tryCatch(marculus_ortho_manquants(project, actions),
                             error = function(e) list())
-      if (length(manquants) == 0L) {
+      tarifs_job <- tryCatch(marculus_tarifs_travail(project),
+                             error = function(e) NULL)
+      if (length(manquants) == 0L && is.null(tarifs_job)) {
         .telecharger_marculus()
         return()
       }
       session$sendCustomMessage("nemetonSetDisabled",
         list(id = session$ns("prepare_marculus"), disabled = TRUE))
       shiny::showNotification(
-        .running_notif_content(sprintf(i18n$t("marculus_ortho_running_fmt"),
-                                       length(manquants))),
+        .running_notif_content(if (length(manquants))
+          sprintf(i18n$t("marculus_ortho_running_fmt"), length(manquants))
+          else i18n$t("marculus_tarifs_running")),
         id = session$ns("marculus_ortho_notif"), type = "message",
         duration = NULL)
       tryCatch(
-        marculus_ortho_task$invoke(manquants, .dev_pkg_path, get_app_options()),
+        marculus_ortho_task$invoke(manquants, tarifs_job, .dev_pkg_path,
+                                   get_app_options()),
         error = function(e) {
           shiny::removeNotification(session$ns("marculus_ortho_notif"))
           session$sendCustomMessage("nemetonSetDisabled",

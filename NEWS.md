@@ -1,3 +1,51 @@
+# nemetonshiny 2026.10.10 (2026-10-16)
+
+Changements cassants : aucun.
+
+## Marculus : numéros de tarif Schaeffer proposés dans les lots (spec 062)
+
+Brief `nemetonshiny` de la spec 062 du cœur (2026-10-16). Le marteleur
+retrouve sur le téléphone, hors ligne, un numéro de tarif Schaeffer par
+essence et par type (rapide, intermédiaire, lent, très lent).
+
+- Calcul **une fois par projet**, sur toutes les parcelles, par
+  `nemeton::tarif_schaeffer_local()` : placettes IFN de la forêt élargie
+  (~2 000 ha), repli sur la SER majoritaire (`localiser_ser()`), la GRECO ou
+  la France. Il tourne dans le worker « Préparer pour Marculus » qui construit
+  déjà les fonds ortho, et il est mis en cache dans
+  `cache/marculus_tarifs.json`. L'export, qui est un téléchargement bloquant,
+  ne fait que lire ce cache. Un changement d'essences ou de périmètre invalide
+  le cache, et un échec (réseau IFN, couche SER) est retenté au clic suivant.
+- Les noms d'essence sont convertis en codes IFN par `nemeton::resoudre_espar()`,
+  qui lit les libellés français depuis le cœur 2026.10.7. Un nom de genre
+  (« Frêne », « Peuplier »…) recouvre plusieurs espèces : il reste sans
+  proposition.
+- Chaque contexte du `.marsync` reçoit trois clés nouvelles, `ser`,
+  `millesimeTarifs` et `tarifsProposes` (filtrées sur ses essences, `cv` en
+  fraction, niveaux `foret` / `ser` / `greco` / `national`). Les versions de
+  Marculus d'avant la spec 062 les ignorent. `tarif`, `tarifNumero` et
+  `tarifNumeroParEssence` ne sont jamais émis : ce sont des réglages du
+  terrain.
+- Message de fin d'export : « numéros de tarif proposés pour X essences sur Y
+  (niveau forêt : a, SER : b, repli : c) ». Sans cache, l'export réussit sans
+  les trois clés et le dit.
+
+## Inventaire vidéo : plugin QField et déclinaison facultative (cœur 2026.10.7)
+
+- Le projet QField se télécharge en `.zip` contenant le `.qgz` et le plugin
+  Groma `<nom>.qml` côte à côte, à la création comme au renvoi. Sans ce
+  plugin, le bouton Groma n'existe pas dans QField. Avec un cœur plus ancien,
+  qui n'écrit pas de `.qml`, le `.qgz` part seul.
+- La déclinaison magnétique devient facultative : un champ vide est transmis
+  à `NULL` (le cœur écrit `NA`, jamais 0) et Groma la calcule à la placette
+  avec le modèle WMM2025. Une valeur saisie reste prioritaire. La clé
+  `video_declinaison_requise` est retirée, le lien NOAA aussi.
+- Validation : plusieurs centres mesurés pour une même placette sont signalés
+  `severity = "info"`. Ce signalement s'affiche dans un bloc « Informations »
+  et ne compte plus comme un avertissement.
+
+Plancher `Imports: nemeton (>= 2026.10.8)`.
+
 # nemetonshiny 2026.10.9 (2026-10-16)
 
 Changements cassants : aucun.

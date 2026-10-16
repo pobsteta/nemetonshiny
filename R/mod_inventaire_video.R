@@ -5,8 +5,8 @@
 # definitifs dans `data/field_data.gpkg`). Aucune logique metier : tout passe
 # par `R/service_inventaire_video.R`, qui appelle le coeur.
 
-# Calculateur de declinaison magnetique (aucun modele geomagnetique embarque).
-.VIDEO_URL_DECLINAISON <- "https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml"
+# Declinaison magnetique facultative : vide, Groma la calcule a la placette
+# avec le modele WMM2025 qu'il embarque (brief nemeton du 2026-10-16).
 
 #' Video inventory sub-tab - UI
 #'
@@ -38,8 +38,7 @@ mod_inventaire_video_ui <- function(id) {
                                 c(i18n$t("video_degres"), i18n$t("video_grades")))),
           shiny::numericInput(ns("declinaison"), i18n$t("video_declinaison"),
                               value = NA, min = -30, max = 30, step = 0.1),
-          htmltools::tags$a(href = .VIDEO_URL_DECLINAISON, target = "_blank",
-                            rel = "noopener", class = "small d-block mb-3",
+          htmltools::tags$p(class = "small text-muted mb-3",
                             i18n$t("video_declinaison_aide")),
           shiny::checkboxInput(ns("lidar"), i18n$t("video_avec_lidar"), value = TRUE),
           shiny::uiOutput(ns("lidar_info")),
@@ -256,9 +255,11 @@ mod_inventaire_video_server <- function(id, app_state) {
                             class = "btn-outline-primary w-100")
     })
 
+    # Un .zip : le .qgz ET le plugin Groma (.qml) a cote, que QField
+    # cherche sur le disque sous le nom du projet.
     output$qgz <- shiny::downloadHandler(
-      filename = function() basename(rv$qgz %||% "inventaire_video.qgz"),
-      content = function(file) file.copy(rv$qgz, file, overwrite = TRUE),
+      filename = function() video_nom_livraison(rv$qgz, "inventaire_video.qgz"),
+      content = function(file) video_zip_livraison(rv$qgz, file),
       contentType = "application/zip"
     )
 
@@ -497,8 +498,9 @@ mod_inventaire_video_server <- function(id, app_state) {
     })
 
     output$qgz_retour_dl <- shiny::downloadHandler(
-      filename = function() basename(rv$qgz_retour %||% "inventaire_video_retour.qgz"),
-      content = function(file) file.copy(rv$qgz_retour, file, overwrite = TRUE),
+      filename = function() video_nom_livraison(rv$qgz_retour,
+                                                "inventaire_video_retour.qgz"),
+      content = function(file) video_zip_livraison(rv$qgz_retour, file),
       contentType = "application/zip"
     )
 
@@ -530,7 +532,10 @@ video_bilan_ui <- function(bilan, i18n, lang = "fr") {
               htmltools::tags$td(as.character(v)))))))))
   }
   val <- bilan$validation
-  n_err <- nrow(val$errors); n_warn <- nrow(val$warnings)
+  # Plusieurs centres par placette = information (severity "info"), pas un
+  # avertissement : ni compte, ni colore comme tel.
+  sep <- video_separer_infos(val$warnings)
+  n_err <- nrow(val$errors); n_warn <- NROW(sep$avertissements)
   classe <- if (val$ok && n_warn == 0) "alert alert-success"
             else if (val$ok) "alert alert-warning" else "alert alert-danger"
   nm <- bilan$numeros_modifies
@@ -548,7 +553,10 @@ video_bilan_ui <- function(bilan, i18n, lang = "fr") {
       htmltools::tags$strong(
         sprintf(i18n$t("field_ingest_report_header"), n_err, n_warn)),
       table_df(val$errors, i18n$t("field_ingest_report_errors")),
-      table_df(val$warnings, i18n$t("field_ingest_report_warnings"))),
+      table_df(sep$avertissements, i18n$t("field_ingest_report_warnings"))),
+    if (NROW(sep$infos))
+      htmltools::div(class = "alert alert-info small",
+                     table_df(sep$infos, i18n$t("video_infos_validation"))),
     if (bilan$classique_conserve > 0L)
       htmltools::div(class = "alert alert-info small",
                      sprintf(i18n$t("video_fusion_classique"),
