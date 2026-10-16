@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.9.9001 (cycle dev)
+# nemetonshiny 2026.10.10 (2026-10-16)
+
+Changements cassants : aucun.
 
 ## Marculus : numéros de tarif Schaeffer proposés dans les lots (spec 062)
 
