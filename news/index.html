@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.12" id="nemetonshiny-20261012-2026-10-17">nemetonshiny 2026.10.12 (2026-10-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261012-2026-10-17"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="inventaire-vidéo--le-zip-livré-contient-le-dossier-ouvrable-du-projet-2026-10-12">Inventaire vidéo : le zip livré contient le dossier ouvrable du projet<a class="anchor" aria-label="anchor" href="#inventaire-vid%C3%A9o--le-zip-livr%C3%A9-contient-le-dossier-ouvrable-du-projet-2026-10-12"></a></h3>
+<p>Brief <code>nemeton</code> du 2026-10-17. QGIS résout <code>./inventaire_video.gpkg</code> depuis le dossier du fichier projet, pas dans l’archive <code>.qgz</code> : le zip de « Télécharger » (<code>.qgz</code> + <code>.qml</code>), une fois décompressé dans QField ou QGIS, ouvrait un projet dont toutes les couches étaient introuvables.</p>
+<ul><li>Depuis <code>nemeton</code> 2026.10.12, le cœur écrit à côté du <code>.qgz</code> un dossier <code>&lt;nom&gt;/</code> (<code>&lt;nom&gt;.qgs</code>, <code>inventaire_video.gpkg</code>, <code>rasters/</code>, <code>&lt;nom&gt;.qml</code>). Quand il existe, <code>video_zip_livraison()</code> zippe ce dossier, à la racine de l’archive, à la place du <code>.qgz</code>. Vaut pour le projet initial et pour le projet de retour.</li>
+<li>Avec un cœur plus ancien (pas de dossier), rien ne change : le <code>.qgz</code> et son <code>.qml</code> partent à plat. Le plancher <code>nemeton (&gt;= 2026.10.11)</code> n’est donc pas relevé.</li>
+<li>« Envoyer au téléphone » ne change pas : le serveur Groma lit le <code>.qgz</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.11" id="nemetonshiny-20261011-2026-10-17">nemetonshiny 2026.10.11 (2026-10-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261011-2026-10-17"></a></h2>
 <p>Changements cassants : aucun.</p>
