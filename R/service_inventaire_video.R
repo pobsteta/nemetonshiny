@@ -424,6 +424,13 @@ video_fichiers_livraison <- function(qgz) {
 
 #' Zip a QField project with its plugin, side by side
 #'
+#' Since core 2026.10.12 an openable folder `<name>/` (`<name>.qgs`,
+#' `inventaire_video.gpkg`, `rasters/`, `<name>.qml`) is written next to the
+#' `.qgz`. QGIS resolves `./inventaire_video.gpkg` from the folder of the
+#' project file, not inside the archive: once unzipped, the `.qgz` alone opens
+#' with every layer missing. The folder is then zipped instead, at the root of
+#' the archive. Older cores write no folder: the `.qgz` and its `.qml` go flat.
+#'
 #' @param qgz Path of the `.qgz`.
 #' @param file Destination `.zip`.
 #' @return `file`, invisibly.
@@ -431,6 +438,15 @@ video_fichiers_livraison <- function(qgz) {
 video_zip_livraison <- function(qgz, file) {
   f <- video_fichiers_livraison(qgz)
   if (!length(f)) stop("QField project not found")
+  dossier <- sub("\\.qgz$", "", f[1])
+  if (dir.exists(dossier)) {
+    # Chemins relatifs : le dossier `<name>/` a la racine du zip.
+    dest <- normalizePath(file, winslash = "/", mustWork = FALSE)
+    old <- setwd(dirname(dossier))
+    on.exit(setwd(old), add = TRUE)
+    utils::zip(zipfile = dest, files = basename(dossier), flags = "-r9Xq")
+    return(invisible(file))
+  }
   # `-j` : a plat, les deux fichiers cote a cote, comme QField les attend.
   utils::zip(zipfile = file, files = f, flags = "-j9Xq")
   invisible(file)

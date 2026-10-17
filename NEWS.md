@@ -1,6 +1,21 @@
-# nemetonshiny 2026.10.11.9000 (cycle dev)
+# nemetonshiny 2026.10.11.9001 (cycle dev)
 
-- Ouverture du cycle dev.
+## Inventaire vidéo : le zip livré contient le dossier ouvrable du projet
+
+Brief `nemeton` du 2026-10-17. QGIS résout `./inventaire_video.gpkg` depuis
+le dossier du fichier projet, pas dans l'archive `.qgz` : le zip de
+« Télécharger » (`.qgz` + `.qml`), une fois décompressé dans QField ou QGIS,
+ouvrait un projet dont toutes les couches étaient introuvables.
+
+- Depuis `nemeton` 2026.10.12, le cœur écrit à côté du `.qgz` un dossier
+  `<nom>/` (`<nom>.qgs`, `inventaire_video.gpkg`, `rasters/`, `<nom>.qml`).
+  Quand il existe, `video_zip_livraison()` zippe ce dossier, à la racine de
+  l'archive, à la place du `.qgz`. Vaut pour le projet initial et pour le
+  projet de retour.
+- Avec un cœur plus ancien (pas de dossier), rien ne change : le `.qgz` et
+  son `.qml` partent à plat. Le plancher `nemeton (>= 2026.10.11)` n'est donc
+  pas relevé.
+- « Envoyer au téléphone » ne change pas : le serveur Groma lit le `.qgz`.
 
 # nemetonshiny 2026.10.11 (2026-10-17)
 
