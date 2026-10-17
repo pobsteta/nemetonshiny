@@ -159,6 +159,27 @@ mod_action_plan_ui <- function(id) {
           icon = shiny::icon("file-import"),
           class = "btn-sm btn-outline-primary w-100 mb-2"
         ),
+        # Tournee de travaux (Surculus) : le prevu part en GeoPackage vers
+        # sommieR, le realise revient par le CSV de sommieR, seul a faire foi.
+        htmltools::tagAppendAttributes(
+          shiny::downloadButton(
+            ns("download_programme"),
+            label = i18n$t("action_plan_dl_programme"),
+            icon = shiny::icon("seedling"),
+            class = "btn-sm btn-outline-success w-100 mb-2"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("tournee_export_en_cours"),
+                             auto_unbox = TRUE)
+          )
+        ),
+        shiny::actionButton(
+          ns("import_realise"),
+          label = i18n$t("action_plan_import_realise"),
+          icon = shiny::icon("file-import"),
+          class = "btn-sm btn-outline-primary w-100 mb-2"
+        ),
         htmltools::tagAppendAttributes(
           shiny::downloadButton(
             ns("download_pdf"),
@@ -1849,6 +1870,144 @@ mod_action_plan_server <- function(id, app_state) {
         }
       }
     )
+
+    # ============================================================
+    # Tournee de travaux (Surculus / sommieR)
+    # ============================================================
+
+    output$download_programme <- shiny::downloadHandler(
+      filename = function() {
+        paste0(.project_export_slug(app_state$current_project, "nemeton"),
+               "-programme-travaux.gpkg")
+      },
+      content = function(file) {
+        i18n <- get_i18n(app_state$language)
+        on.exit(
+          session$sendCustomMessage("nemetonHideDownloadToast", list()),
+          add = TRUE
+        )
+        plan <- plan_rv()
+        sf_ug <- ug_sf_4326()
+        if (is.null(plan) || is.null(sf_ug) ||
+            !length(tournee_travaux_action_ids(plan))) {
+          shiny::showNotification(i18n$t("tournee_export_vide"),
+                                  type = "warning", duration = 8)
+          writeLines("No data available", file)
+          return()
+        }
+        if (!isTRUE(export_programme_travaux_gpkg(plan, sf_ug, file))) {
+          shiny::showNotification(i18n$t("action_plan_export_terrain_failed"),
+                                  type = "error", duration = NULL)
+        }
+      }
+    )
+
+    # Propositions en attente de confirmation (sortie de
+    # `proposer_actions_realisees()`), avec le projet lu : un changement de
+    # projet avant la confirmation les rend caduques.
+    tournee_rv <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(input$import_realise, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("tournee_import_titre"), size = "m", easyClose = TRUE,
+        shiny::p(class = "text-muted", i18n$t("tournee_import_aide")),
+        shiny::fileInput(ns("realise_fichier"), i18n$t("tournee_import_fichier"),
+                         accept = ".csv"),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("realise_lire"),
+                              label = i18n$t("tournee_import_lire"),
+                              icon = shiny::icon("file-import"),
+                              class = "btn-primary")
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$realise_lire, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      f <- input$realise_fichier
+      if (is.null(f) || !nrow(f)) return()
+      shiny::removeModal()
+      realise <- tryCatch(lire_actions_realisees(f$datapath[1]),
+                          error = function(e) NULL)
+      if (is.null(realise)) {
+        shiny::showNotification(i18n$t("tournee_csv_invalide"),
+                                type = "error", duration = 10)
+        return()
+      }
+      prop <- proposer_actions_realisees(plan_rv(), realise)
+      .compter <- function(etat, cle) {
+        n <- sum(prop$etat == etat)
+        if (n > 0L) shiny::showNotification(sprintf(i18n$t(cle), n),
+                                            type = "warning", duration = 10)
+      }
+      .compter("inconnue", "tournee_ignore_inconnue_fmt")
+      .compter("deja_realisee", "tournee_ignore_deja_fmt")
+      .compter("transition_invalide", "tournee_ignore_invalide_fmt")
+      a_passer <- prop[prop$etat == "a_passer", , drop = FALSE]
+      if (!nrow(a_passer)) {
+        tournee_rv(NULL)
+        shiny::showNotification(i18n$t("tournee_propose_aucune"),
+                                type = "warning", duration = 8)
+        return()
+      }
+      tournee_rv(list(pid = app_state$current_project$id, prop = a_passer))
+      df <- actions_df_all()
+      lbl <- df$ug_label[match(a_passer$ug_id, df$ug_id)]
+      lbl <- ifelse(is.na(lbl), a_passer$ug_id, lbl)
+      libelles <- vapply(seq_len(nrow(a_passer)), function(i) {
+        qte <- if (is.na(a_passer$quantite[i])) a_passer$unite[i]
+               else trimws(paste(format(a_passer$quantite[i]), a_passer$unite[i]))
+        paste0(lbl[i], " \u2014 ", a_passer$type[i], " (",
+               i18n$t(paste0("action_plan_status_", a_passer$statut[i])), ") : ",
+               sprintf(i18n$t("tournee_travaux_fmt"), a_passer$n_travaux[i]),
+               if (nzchar(qte %||% "")) paste0(", ", qte) else "",
+               if (!is.na(a_passer$date_reception[i]))
+                 paste0(", ", a_passer$date_reception[i]) else "")
+      }, character(1))
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(i18n$t("tournee_propose_titre_fmt"), nrow(a_passer)),
+        size = "l", easyClose = TRUE,
+        shiny::checkboxGroupInput(
+          ns("realise_ids"), label = NULL, width = "100%",
+          choiceNames = libelles, choiceValues = a_passer$action_id,
+          selected = a_passer$action_id),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("realise_appliquer"),
+                              label = i18n$t("tournee_appliquer"),
+                              icon = shiny::icon("check"),
+                              class = "btn-primary")
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$realise_appliquer, {
+      shiny::removeModal()
+      if (deny_if_readonly()) return()
+      attente <- tournee_rv()
+      tournee_rv(NULL)
+      if (is.null(attente) ||
+          !identical(attente$pid, app_state$current_project$id)) return()
+      ids <- intersect(input$realise_ids %||% character(), attente$prop$action_id)
+      if (!length(ids)) return()
+      i18n <- get_i18n(app_state$language)
+      res <- tryCatch(
+        appliquer_actions_realisees(plan_rv(), ids,
+                                    user = .acting_user(app_state)),
+        error = function(e) {
+          cli::cli_warn("Realise sommieR : {conditionMessage(e)}")
+          NULL
+        })
+      if (is.null(res) || res$n == 0L) return()
+      if (!.sauver_plan(app_state$current_project$id, res$plan)) return()
+      shiny::showNotification(
+        sprintf(i18n$t("tournee_appliquer_ok_fmt"), res$n),
+        type = "message", duration = 5)
+    })
 
     # ============================================================
     # Export Marculus (martelage sur telephone)

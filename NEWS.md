@@ -1,6 +1,35 @@
-# nemetonshiny 2026.10.12.9000 (cycle dev)
+# nemetonshiny 2026.10.12.9001 (cycle dev)
 
-- Ouverture du cycle dev.
+## Plan d'action : programme et réalisé de la tournée de travaux (Surculus)
+
+Brief `surculus` du 2026-10-15. Surculus, l'application Android de la tournée
+de travaux, propose sur le terrain les actions prévues au plan. Les saisies
+vont à sommieR. nemetonshiny fournit le prévu et reçoit le réalisé, jamais les
+saisies elles-mêmes. C'est le pendant de l'export Marculus, qui exclut la
+plantation.
+
+- **Programme de travaux (sommieR)** : le GeoPackage de
+  `export_action_plan_gpkg()` (couches `actions` et `ugf`), restreint aux
+  actions *validées* ou *planifiées* hors coupes rases, éclaircies et
+  observations. Fichier `<projet>-programme-travaux.gpkg`. Aucun nouveau
+  format : sommieR lit ce fichier tel quel (brief `travaux-3`).
+- **Relire le réalisé (sommieR)** : importe le CSV écrit par
+  `sommier_actions_realisees()` (`action_id, travaux_id, code_travaux,
+  date_reception, quantite, unite`). Une action citée par plusieurs travaux
+  est proposée une seule fois, avec la somme de ses quantités (sauf si les
+  unités diffèrent). Chaque passage en *réalisée* est proposé dans une
+  fenêtre à cases à cocher, puis confirmé.
+- Le passage respecte le Kanban (`is_valid_status_transition()`) et écrit
+  l'audit (`op = update`, utilisateur, date). Une action *validée* passe par
+  *planifiée*, chaque pas étant autorisé et audité. Une action *proposée* ou
+  *abandonnée* est refusée, une action inconnue est ignorée, une action déjà
+  *réalisée* reste intacte. Chacun de ces cas est signalé.
+- Les saisies du téléphone ne font jamais passer une action en *réalisée* :
+  seul le fichier de sommieR fait foi.
+- Côté sommieR, l'écriture du CSV (`sommier_actions_realisees()`, brief
+  `travaux-3`) n'est pas encore livrée. En attendant, la relecture est testée
+  sur le contrat du brief.
+- Nouveau service `R/service_tournee_travaux.R`, 17 clés i18n FR/EN.
 
 # nemetonshiny 2026.10.12 (2026-10-17)
 
