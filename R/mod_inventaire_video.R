@@ -101,7 +101,7 @@ mod_inventaire_video_ui <- function(id) {
 #' @param id Module namespace ID.
 #' @param app_state Shared reactiveValues (`current_project`, `language`).
 #' @return A reactiveValues (`qgz`, `etats`, `resultats`, `integration`,
-#'   `import`, `qgz_retour`), for tests.
+#'   `import`, `qgz_retour`, `envoi`), for tests.
 #' @noRd
 mod_inventaire_video_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -109,7 +109,7 @@ mod_inventaire_video_server <- function(id, app_state) {
     i18n <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
     rv <- shiny::reactiveValues(qgz = NULL, etats = NULL, resultats = NULL,
                                 integration = NULL, import = NULL,
-                                qgz_retour = NULL)
+                                qgz_retour = NULL, envoi = NULL)
 
     project_path <- shiny::reactive({
       p <- app_state$current_project
@@ -127,6 +127,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       projet_vu <<- project_path()
       rv$qgz <- NULL; rv$etats <- NULL; rv$resultats <- NULL
       rv$integration <- NULL; rv$import <- NULL; rv$qgz_retour <- NULL
+      rv$envoi <- NULL
     }, ignoreNULL = FALSE)
 
     plan <- shiny::reactive(video_placettes_plan(project_path()))
@@ -251,9 +252,83 @@ mod_inventaire_video_server <- function(id, app_state) {
 
     output$telechargement <- shiny::renderUI({
       if (is.null(rv$qgz)) return(NULL)
-      shiny::downloadButton(ns("qgz"), i18n()$t("video_telecharger"),
-                            class = "btn-outline-primary w-100")
+      tr <- i18n()
+      raison <- video_raison_envoi_inactif(serveur())
+      envoyer <- shiny::actionButton(
+        ns("envoyer"), tr$t("video_envoyer_telephone"),
+        icon = bsicons::bs_icon("send"), class = "btn-outline-primary w-100")
+      if (!is.null(raison)) envoyer <- htmltools::tagAppendAttributes(envoyer,
+                                                                      disabled = NA)
+      htmltools::tagList(
+        shiny::downloadButton(ns("qgz"), tr$t("video_telecharger"),
+                              class = "btn-outline-primary w-100 mb-2"),
+        # Un bouton desactive ne recoit pas le survol : l'info-bulle est sur
+        # son conteneur.
+        htmltools::tags$span(class = "d-block", title = if (!is.null(raison)) tr$t(raison),
+                             envoyer))
     })
+
+    # --- Envoi au telephone via le serveur Groma (brief 2026-10-17) -------
+    # nemetonshiny publie le projet sur le serveur ; sur le telephone, Groma
+    # le telecharge (menu > Projets du serveur) et l'ouvre dans QField.
+    tache_envoi <- shiny::ExtendedTask$new(function(qgz, url, jeton, dev, app_opts) {
+      if (requireNamespace("future", quietly = TRUE)) {
+        plan_classes <- class(future::plan())
+        if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+          .ensure_async_plan()
+        }
+      }
+      promises::future_promise({
+        if (!is.null(dev) && requireNamespace("pkgload", quietly = TRUE)) {
+          pkgload::load_all(dev, quiet = TRUE)
+        } else {
+          loadNamespace("nemetonshiny")
+        }
+        options(nemeton.app_options = app_opts)
+        asNamespace("nemetonshiny")$video_envoyer_projet(qgz, url, jeton)
+      }, seed = TRUE)
+    })
+
+    shiny::observeEvent(input$envoyer, {
+      tr <- i18n()
+      if (identical(tache_envoi$status(), "running")) return()
+      if (is.null(rv$qgz) || !file.exists(rv$qgz)) return()
+      cfg <- serveur()
+      raison <- video_raison_envoi_inactif(cfg)
+      if (!is.null(raison)) {
+        shiny::showNotification(tr$t(raison), type = "warning")
+        return()
+      }
+      rv$envoi <- NULL
+      shiny::showNotification(
+        htmltools::tagList(shiny::icon("spinner", class = "fa-spin me-2"),
+                           tr$t("video_envoi_en_cours")),
+        type = "message", duration = NULL, closeButton = FALSE,
+        id = "video_envoi_en_cours", session = session)
+      session$sendCustomMessage("nemetonSetDisabled",
+                                list(id = ns("envoyer"), disabled = TRUE))
+      tryCatch(video_lancer_envoi(tache_envoi, rv$qgz, cfg, dev_path),
+               error = function(e) {
+                 shiny::removeNotification("video_envoi_en_cours", session = session)
+                 session$sendCustomMessage("nemetonSetDisabled",
+                                           list(id = ns("envoyer"), disabled = FALSE))
+                 m <- video_message_envoi(e, tr)
+                 shiny::showNotification(m$message, type = m$type, duration = 15)
+               })
+    })
+
+    shiny::observeEvent(tache_envoi$status(), {
+      st <- tache_envoi$status()
+      if (!st %in% c("success", "error")) return()
+      shiny::removeNotification("video_envoi_en_cours", session = session)
+      session$sendCustomMessage("nemetonSetDisabled",
+                                list(id = ns("envoyer"), disabled = FALSE))
+      res <- tryCatch(tache_envoi$result(), error = function(e) e)
+      if (!inherits(res, "error")) rv$envoi <- res
+      m <- video_message_envoi(res, i18n())
+      shiny::showNotification(m$message, type = m$type,
+                              duration = if (m$type == "error") 15 else 10)
+    }, ignoreInit = TRUE)
 
     # Un .zip : le .qgz ET le plugin Groma (.qml) a cote, que QField
     # cherche sur le disque sous le nom du projet.

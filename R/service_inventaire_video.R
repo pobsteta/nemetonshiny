@@ -194,6 +194,103 @@ video_renvoyer <- function(import, project_path) {
                  rasters = rasters, output_dir = vdir)
 }
 
+#' Can the core publish a QField project on the Groma server?
+#'
+#' `nemeton::groma_envoyer_projet()` (brief groma du 2026-10-17) is not in
+#' every core: without it the "Send to phone" button stays disabled.
+#' @noRd
+video_envoi_disponible <- function() {
+  !is.null(.video_coeur("groma_envoyer_projet"))
+}
+
+#' Publish a QField project on the Groma server
+#'
+#' Thin wrapper over `nemeton::groma_envoyer_projet()`, which takes the Groma
+#' plugin `.qml` next to the `.qgz` and reads the project id inside it. The
+#' phone then fetches it from Groma (menu > Server projects).
+#'
+#' @param qgz Path of the `.qgz`.
+#' @param url,jeton Groma server settings ([video_config_serveur()]).
+#' @return `list(projet_id, version, taille)`.
+#' @noRd
+video_envoyer_projet <- function(qgz, url, jeton) {
+  .video_appeler("groma_envoyer_projet", qgz = qgz, url = url, jeton = jeton)
+}
+
+#' Start the upload to the Groma server in the background
+#' @param tache The module's upload `ExtendedTask`.
+#' @noRd
+video_lancer_envoi <- function(tache, qgz, cfg, dev_path = NULL) {
+  tache$invoke(qgz, cfg$url, cfg$jeton, dev_path, get_app_options())
+}
+
+#' End-of-upload notification
+#'
+#' @param res Result of [video_envoyer_projet()], or an error condition.
+#' @param i18n Translator.
+#' @return `list(message, type)`.
+#' @noRd
+video_message_envoi <- function(res, i18n) {
+  if (inherits(res, "error")) {
+    # Premiere ligne seulement : la chaine " Caused by " de rlang (curl,
+    # httr2) ne se lit pas dans une notification ; la raison du coeur
+    # (jeton refuse, projet trop gros, serveur injoignable) est en tete.
+    msg <- if (inherits(res, "video_coeur_absent")) i18n$t("video_envoi_coeur_absent")
+           else .video_traduire_envoi(
+             strsplit(conditionMessage(res), "\n", fixed = TRUE)[[1]][1], i18n)
+    return(list(message = paste(i18n$t("error"), msg), type = "error"))
+  }
+  # Le coeur rend `version = NA` quand le serveur n'en donne pas.
+  version <- res$version %||% NA
+  list(message = sprintf(i18n$t("video_envoi_ok"),
+                         if (length(version) == 1L && !is.na(version))
+                           as.character(version) else "?"),
+       type = "message")
+}
+
+# Messages d'erreur de `nemeton::groma_envoyer_projet()` : en anglais
+# (convention du coeur), classe non typee mais textes stables (reponse du
+# coeur du 2026-10-17). Motif -> cle i18n ; un message inconnu reste tel quel.
+VIDEO_ERREURS_ENVOI <- c(
+  "refused the token" = "video_envoi_jeton_refuse",
+  "too large" = "video_envoi_trop_gros",
+  "altered during the upload" = "video_envoi_altere",
+  "unreachable" = "video_envoi_injoignable"
+)
+
+#' Translate a known Groma send error from the core
+#' @param msg First line of the core error message.
+#' @param i18n Translator.
+#' @return The translated message, or `msg` when it is not recognised.
+#' @noRd
+.video_traduire_envoi <- function(msg, i18n) {
+  trouve <- names(VIDEO_ERREURS_ENVOI)[vapply(
+    names(VIDEO_ERREURS_ENVOI), grepl, logical(1), x = msg, fixed = TRUE)]
+  if (length(trouve) == 0L) return(msg)
+  cle <- VIDEO_ERREURS_ENVOI[[trouve[1]]]
+  if (cle == "video_envoi_injoignable") {
+    url <- regmatches(msg, regexpr("(?<=<)[^>]+(?=>)", msg, perl = TRUE))
+    return(sprintf(i18n$t(cle), if (length(url)) url else "?"))
+  }
+  if (cle == "video_envoi_jeton_refuse") {
+    code <- regmatches(msg, regexpr("(?<=HTTP )[0-9]{3}", msg, perl = TRUE))
+    return(sprintf(i18n$t(cle), if (length(code)) code else "?"))
+  }
+  i18n$t(cle)
+}
+
+#' Why the "Send to phone" button is disabled, or `NULL` when it is enabled
+#' @param cfg Groma server settings.
+#' @return An i18n key, or `NULL`.
+#' @noRd
+video_raison_envoi_inactif <- function(cfg) {
+  if (!video_envoi_disponible()) return("video_envoi_coeur_absent")
+  if (!nzchar(cfg$url %||% "") || !nzchar(cfg$jeton %||% "")) {
+    return("video_envoi_sans_serveur")
+  }
+  NULL
+}
+
 #' Start the QField project build in the background
 #' @param tache The module's `ExtendedTask`.
 #' @noRd
