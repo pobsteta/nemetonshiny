@@ -394,6 +394,32 @@ test_that("le projet QField est livre en zip avec son plugin Groma", {
   expect_error(video_zip_livraison(file.path(d, "absent.qgz"), z))
 })
 
+test_that("le dossier ouvrable du projet est livre a la place du .qgz", {
+  d <- withr::local_tempdir()
+  qgz <- file.path(d, "inventaire_video.qgz")
+  writeLines("qgz", qgz)
+  writeLines("qml", file.path(d, "inventaire_video.qml"))
+  # Coeur >= 2026.10.12 : dossier <name>/ a cote du .qgz.
+  dossier <- file.path(d, "inventaire_video")
+  dir.create(file.path(dossier, "rasters"), recursive = TRUE)
+  for (f in c("inventaire_video.qgs", "inventaire_video.gpkg",
+              "inventaire_video.qml", "rasters/P1_chm.tif")) {
+    writeLines("x", file.path(dossier, f))
+  }
+  wd <- getwd()
+  z <- file.path(d, "sortie.zip")
+  expect_identical(video_zip_livraison(qgz, z), z)
+  expect_identical(getwd(), wd)
+  noms <- utils::unzip(z, list = TRUE)$Name
+  fichiers <- noms[!grepl("/$", noms)]
+  expect_setequal(fichiers, c("inventaire_video/inventaire_video.qgs",
+                              "inventaire_video/inventaire_video.gpkg",
+                              "inventaire_video/inventaire_video.qml",
+                              "inventaire_video/rasters/P1_chm.tif"))
+  # Le .qgz seul, decompresse, ouvrirait des couches introuvables.
+  expect_false(any(grepl("\\.qgz$", noms)))
+})
+
 test_that("les informations de validation ne comptent pas comme avertissements", {
   w <- data.frame(plot_id = c("P1", "P2"), message = c("a", "b"),
                   severity = c("info", "warning"))
