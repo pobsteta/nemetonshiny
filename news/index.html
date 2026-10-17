@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.13" id="nemetonshiny-20261013-2026-10-17">nemetonshiny 2026.10.13 (2026-10-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261013-2026-10-17"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="plan-daction--programme-et-réalisé-de-la-tournée-de-travaux-surculus-2026-10-13">Plan d’action : programme et réalisé de la tournée de travaux (Surculus)<a class="anchor" aria-label="anchor" href="#plan-daction--programme-et-r%C3%A9alis%C3%A9-de-la-tourn%C3%A9e-de-travaux-surculus-2026-10-13"></a></h3>
+<p>Brief <code>surculus</code> du 2026-10-15. Surculus, l’application Android de la tournée de travaux, propose sur le terrain les actions prévues au plan. Les saisies vont à sommieR. nemetonshiny fournit le prévu et reçoit le réalisé, jamais les saisies elles-mêmes. C’est le pendant de l’export Marculus, qui exclut la plantation.</p>
+<ul><li>
+<strong>Programme de travaux (sommieR)</strong> : le GeoPackage de <code>export_action_plan_gpkg()</code> (couches <code>actions</code> et <code>ugf</code>), restreint aux actions <em>validées</em> ou <em>planifiées</em> hors coupes rases, éclaircies et observations. Fichier <code>&lt;projet&gt;-programme-travaux.gpkg</code>. Aucun nouveau format : sommieR lit ce fichier tel quel (brief <code>travaux-3</code>).</li>
+<li>
+<strong>Relire le réalisé (sommieR)</strong> : importe le CSV écrit par <code>sommier_actions_realisees()</code> (<code>action_id, travaux_id, code_travaux, date_reception, quantite, unite</code>). Une action citée par plusieurs travaux est proposée une seule fois, avec la somme de ses quantités (sauf si les unités diffèrent). Chaque passage en <em>réalisée</em> est proposé dans une fenêtre à cases à cocher, puis confirmé.</li>
+<li>Le passage respecte le Kanban (<code>is_valid_status_transition()</code>) et écrit l’audit (<code>op = update</code>, utilisateur, date). Une action <em>validée</em> passe par <em>planifiée</em>, chaque pas étant autorisé et audité. Une action <em>proposée</em> ou <em>abandonnée</em> est refusée, une action inconnue est ignorée, une action déjà <em>réalisée</em> reste intacte. Chacun de ces cas est signalé.</li>
+<li>Les saisies du téléphone ne font jamais passer une action en <em>réalisée</em> : seul le fichier de sommieR fait foi.</li>
+<li>Côté sommieR, l’écriture du CSV (<code>sommier_actions_realisees()</code>, brief <code>travaux-3</code>) n’est pas encore livrée. En attendant, la relecture est testée sur le contrat du brief.</li>
+<li>Nouveau service <code>R/service_tournee_travaux.R</code>, 17 clés i18n FR/EN.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.12" id="nemetonshiny-20261012-2026-10-17">nemetonshiny 2026.10.12 (2026-10-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261012-2026-10-17"></a></h2>
 <p>Changements cassants : aucun.</p>
