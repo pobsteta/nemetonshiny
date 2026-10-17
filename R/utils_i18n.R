@@ -693,6 +693,69 @@ TRANSLATIONS <- list(
     fr = "Importer de Marculus",
     en = "Import from Marculus"
   ),
+  # Tournee de travaux (Surculus / sommieR)
+  action_plan_dl_programme = list(
+    fr = "Programme de travaux (sommieR)",
+    en = "Works programme (sommieR)"
+  ),
+  action_plan_import_realise = list(
+    fr = "Relire le r\u00e9alis\u00e9 (sommieR)",
+    en = "Read back completed works (sommieR)"
+  ),
+  tournee_export_en_cours = list(
+    fr = "Export du programme de travaux\u2026",
+    en = "Exporting the works programme\u2026"
+  ),
+  tournee_export_vide = list(
+    fr = "Aucune action de travaux valid\u00e9e ou planifi\u00e9e \u00e0 exporter (les coupes et les observations vont \u00e0 Marculus).",
+    en = "No validated or planned works action to export (cuts and observations go to Marculus)."
+  ),
+  tournee_import_titre = list(
+    fr = "Relire le r\u00e9alis\u00e9 de sommieR",
+    en = "Read back completed works from sommieR"
+  ),
+  tournee_import_aide = list(
+    fr = "CSV \u00e9crit par sommieR (sommier_actions_realisees()). Seul ce fichier fait passer une action en \u00ab R\u00e9alis\u00e9e \u00bb : sommieR a valid\u00e9 l'import, les saisies du t\u00e9l\u00e9phone ne suffisent pas. Chaque passage est propos\u00e9, puis confirm\u00e9.",
+    en = "CSV written by sommieR (sommier_actions_realisees()). Only this file marks an action as \"Done\": sommieR validated the import, phone entries are not enough. Each change is proposed, then confirmed."
+  ),
+  tournee_import_fichier = list(
+    fr = "Actions r\u00e9alis\u00e9es (CSV)",
+    en = "Completed actions (CSV)"
+  ),
+  tournee_import_lire = list(fr = "Lire", en = "Read"),
+  tournee_csv_invalide = list(
+    fr = "Fichier illisible : ce n'est pas un CSV d'actions r\u00e9alis\u00e9es de sommieR (colonnes action_id, travaux_id, code_travaux, date_reception, quantite, unite).",
+    en = "Unreadable file: not a sommieR completed-actions CSV (columns action_id, travaux_id, code_travaux, date_reception, quantite, unite)."
+  ),
+  tournee_propose_titre_fmt = list(
+    fr = "%d action(s) \u00e0 passer en \u00ab R\u00e9alis\u00e9e \u00bb",
+    en = "%d action(s) to mark as \"Done\""
+  ),
+  tournee_propose_aucune = list(
+    fr = "Aucune action du fichier ne peut passer en \u00ab R\u00e9alis\u00e9e \u00bb.",
+    en = "No action in the file can be marked as \"Done\"."
+  ),
+  tournee_ignore_inconnue_fmt = list(
+    fr = "%d action(s) inconnue(s) dans ce projet : ignor\u00e9e(s).",
+    en = "%d action(s) unknown in this project: ignored."
+  ),
+  tournee_ignore_deja_fmt = list(
+    fr = "%d action(s) d\u00e9j\u00e0 r\u00e9alis\u00e9e(s).",
+    en = "%d action(s) already done."
+  ),
+  tournee_ignore_invalide_fmt = list(
+    fr = "%d action(s) propos\u00e9e(s) ou abandonn\u00e9e(s) : leur statut interdit le passage en \u00ab R\u00e9alis\u00e9e \u00bb.",
+    en = "%d proposed or abandoned action(s): their status forbids marking them as \"Done\"."
+  ),
+  tournee_travaux_fmt = list(fr = "%d travaux", en = "%d works"),
+  tournee_appliquer = list(
+    fr = "Passer en \u00ab R\u00e9alis\u00e9e \u00bb",
+    en = "Mark as \"Done\""
+  ),
+  tournee_appliquer_ok_fmt = list(
+    fr = "%d action(s) pass\u00e9e(s) en \u00ab R\u00e9alis\u00e9e \u00bb.",
+    en = "%d action(s) marked as \"Done\"."
+  ),
   marculus_import_title = list(
     fr = "Importer le martelage Marculus",
     en = "Import Marculus marking"

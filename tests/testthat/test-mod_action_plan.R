@@ -647,3 +647,88 @@ test_that("la chaine « Tout calculer » n'efface jamais les actions existantes"
     }
   )
 })
+
+
+# ---- Tournee de travaux : realise relu depuis sommieR -------------------
+
+test_that("les boutons de la tournee de travaux sont des actions auxiliaires", {
+  skip_if_not_installed("bslib")
+  h <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_action_plan_ui("ap")))
+  dl <- regmatches(h, regexpr('<a[^>]*id="ap-download_programme"[^>]*>', h))
+  expect_match(dl, "btn-outline-success", fixed = TRUE)
+  imp <- regmatches(h, regexpr('<button[^>]*id="ap-import_realise"[^>]*>', h))
+  expect_match(imp, "btn-outline-primary", fixed = TRUE)
+})
+
+test_that("relire le realise propose puis passe les actions confirmees", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  plan0 <- init_empty_action_plan("p1")
+  for (a in list(c("a_plan", "plantation", "planifiee"),
+                 c("a_val", "protection", "validee"),
+                 c("a_ab", "entretien", "abandonnee"))) {
+    plan0 <- add_action_to_plan(plan0, list(
+      id = a[1], ug_id = "ug1", type = a[2], annee_cible = 2L,
+      statut = a[3]), ug_ids = "ug1")
+  }
+  csv <- withr::local_tempfile(fileext = ".csv")
+  utils::write.csv(data.frame(
+    action_id = c("a_plan", "a_val", "a_ab", "zz"),
+    travaux_id = paste0("t", 1:4), code_travaux = "PL",
+    date_reception = "2026-04-02", quantite = "1", unite = "ha"),
+    csv, row.names = FALSE)
+  pas_csv <- withr::local_tempfile(fileext = ".csv")
+  writeLines("a;b\n1;2", pas_csv)
+
+  sauve <- NULL
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = function(project_id) plan0,
+    save_action_plan = function(project_id, plan) { sauve <<- plan; TRUE }
+  )
+  app_state <- shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5),
+    auth = list(authenticated = TRUE, anonymous = TRUE, user_roles = character())
+  )
+  shiny::testServer(
+    nemetonshiny:::mod_action_plan_server,
+    args = list(app_state = app_state),
+    {
+      session$flushReact()
+      # Un fichier qui n'est pas de sommieR : rien en attente, pas de plantage.
+      session$setInputs(realise_fichier = data.frame(
+        name = "x.csv", datapath = pas_csv, stringsAsFactors = FALSE))
+      session$setInputs(realise_lire = 1)
+      expect_null(tournee_rv())
+
+      session$setInputs(realise_fichier = data.frame(
+        name = "realise.csv", datapath = csv, stringsAsFactors = FALSE))
+      session$setInputs(realise_lire = 2)
+      expect_setequal(tournee_rv()$prop$action_id, c("a_plan", "a_val"))
+      expect_null(sauve)
+
+      # L'utilisateur decoche a_val : seule a_plan passe.
+      session$setInputs(realise_ids = "a_plan")
+      session$setInputs(realise_appliquer = 1)
+      statuts <- vapply(plan_rv()$actions, `[[`, "", "statut")
+      names(statuts) <- vapply(plan_rv()$actions, `[[`, "", "id")
+      expect_identical(unname(statuts[c("a_plan", "a_val", "a_ab")]),
+                       c("realisee", "validee", "abandonnee"))
+      expect_false(is.null(sauve))
+      expect_null(tournee_rv())
+
+      # Propositions lues sur un projet, confirmees sur un autre : caduques.
+      sauve <<- NULL
+      session$setInputs(realise_lire = 3)
+      expect_identical(tournee_rv()$prop$action_id, "a_val")
+      app_state$current_project <- list(id = "p2", x0 = 5)
+      session$flushReact()
+      session$setInputs(realise_ids = "a_val", realise_appliquer = 2)
+      expect_null(sauve)
+    }
+  )
+})
