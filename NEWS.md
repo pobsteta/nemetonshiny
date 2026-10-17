@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.12.9001 (cycle dev)
+# nemetonshiny 2026.10.13 (2026-10-17)
+
+Changements cassants : aucun.
 
 ## Plan d'action : programme et réalisé de la tournée de travaux (Surculus)
 
