@@ -532,7 +532,7 @@ test_that("le message d'envoi donne la version, ou la raison de l'echec", {
   # Chaine d'erreurs rlang : seule la tete est affichee.
   inj <- video_message_envoi(simpleError(
     "Groma server unreachable at <http://x>.\nCaused by error in `curl`:\n! Couldn't connect"), i18n)
-  expect_identical(inj$message, "Erreur Groma server unreachable at <http://x>.")
+  expect_identical(inj$message, "Erreur Serveur Groma injoignable (http://x).")
   # Version absente du serveur (NA) : pas de " NA " dans le message.
   sans <- video_message_envoi(list(projet_id = "p", version = NA, taille = 1), i18n)
   expect_match(sans$message, "(version ?)", fixed = TRUE)
@@ -541,6 +541,24 @@ test_that("le message d'envoi donne la version, ou la raison de l'echec", {
     expect_match(video_message_envoi(absent, i18n)$message, "groma_envoyer_projet",
                  fixed = TRUE)
   }
+})
+
+test_that("les erreurs connues du coeur sont traduites, les autres gardees", {
+  fr <- get_i18n("fr"); en <- get_i18n("en")
+  m <- function(txt, i18n = fr) video_message_envoi(simpleError(txt), i18n)$message
+  expect_identical(m("Groma server refused the token (HTTP 403)."),
+                   "Erreur Le serveur Groma a refus\u00e9 le jeton (HTTP 403). V\u00e9rifier GROMA_JETON.")
+  expect_match(m("Project too large for the Groma server (HTTP 413)."),
+               "trop volumineux", fixed = TRUE)
+  expect_match(m("A file was altered during the upload: the server's checksum differs (HTTP 422)."),
+               "Relancer l'envoi", fixed = TRUE)
+  expect_match(m("Groma server unreachable at <http://127.0.0.1:1>.", en),
+               "Groma server unreachable (http://127.0.0.1:1).", fixed = TRUE)
+  # Message inconnu : remonte tel quel, sans traduction.
+  expect_identical(m("HTTP 500 Internal Server Error."),
+                   "Erreur HTTP 500 Internal Server Error.")
+  # Chaque motif renvoie a une cle existante.
+  for (cle in VIDEO_ERREURS_ENVOI) expect_false(identical(fr$t(cle), cle))
 })
 
 test_that("le bouton reste inactif tant que le coeur ne sait pas envoyer", {

@@ -789,6 +789,22 @@ TRANSLATIONS <- list(
     fr = "La version install\u00e9e de nemeton ne sait pas encore envoyer le projet au serveur Groma (groma_envoyer_projet).",
     en = "The installed nemeton cannot send the project to the Groma server yet (groma_envoyer_projet)."
   ),
+  video_envoi_jeton_refuse = list(
+    fr = "Le serveur Groma a refus\u00e9 le jeton (HTTP %s). V\u00e9rifier GROMA_JETON.",
+    en = "The Groma server refused the token (HTTP %s). Check GROMA_JETON."
+  ),
+  video_envoi_trop_gros = list(
+    fr = "Projet trop volumineux pour le serveur Groma (HTTP 413).",
+    en = "Project too large for the Groma server (HTTP 413)."
+  ),
+  video_envoi_altere = list(
+    fr = "Un fichier a \u00e9t\u00e9 alt\u00e9r\u00e9 pendant l'envoi : l'empreinte du serveur diff\u00e8re (HTTP 422). Relancer l'envoi.",
+    en = "A file was altered during the upload: the server's checksum differs (HTTP 422). Send again."
+  ),
+  video_envoi_injoignable = list(
+    fr = "Serveur Groma injoignable (%s).",
+    en = "Groma server unreachable (%s)."
+  ),
   video_avec_lidar = list(
     fr = "Inclure MNT, MNH et houppiers",
     en = "Include DTM, CHM and crowns"

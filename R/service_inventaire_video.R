@@ -236,7 +236,8 @@ video_message_envoi <- function(res, i18n) {
     # httr2) ne se lit pas dans une notification ; la raison du coeur
     # (jeton refuse, projet trop gros, serveur injoignable) est en tete.
     msg <- if (inherits(res, "video_coeur_absent")) i18n$t("video_envoi_coeur_absent")
-           else strsplit(conditionMessage(res), "\n", fixed = TRUE)[[1]][1]
+           else .video_traduire_envoi(
+             strsplit(conditionMessage(res), "\n", fixed = TRUE)[[1]][1], i18n)
     return(list(message = paste(i18n$t("error"), msg), type = "error"))
   }
   # Le coeur rend `version = NA` quand le serveur n'en donne pas.
@@ -245,6 +246,37 @@ video_message_envoi <- function(res, i18n) {
                          if (length(version) == 1L && !is.na(version))
                            as.character(version) else "?"),
        type = "message")
+}
+
+# Messages d'erreur de `nemeton::groma_envoyer_projet()` : en anglais
+# (convention du coeur), classe non typee mais textes stables (reponse du
+# coeur du 2026-10-17). Motif -> cle i18n ; un message inconnu reste tel quel.
+VIDEO_ERREURS_ENVOI <- c(
+  "refused the token" = "video_envoi_jeton_refuse",
+  "too large" = "video_envoi_trop_gros",
+  "altered during the upload" = "video_envoi_altere",
+  "unreachable" = "video_envoi_injoignable"
+)
+
+#' Translate a known Groma send error from the core
+#' @param msg First line of the core error message.
+#' @param i18n Translator.
+#' @return The translated message, or `msg` when it is not recognised.
+#' @noRd
+.video_traduire_envoi <- function(msg, i18n) {
+  trouve <- names(VIDEO_ERREURS_ENVOI)[vapply(
+    names(VIDEO_ERREURS_ENVOI), grepl, logical(1), x = msg, fixed = TRUE)]
+  if (length(trouve) == 0L) return(msg)
+  cle <- VIDEO_ERREURS_ENVOI[[trouve[1]]]
+  if (cle == "video_envoi_injoignable") {
+    url <- regmatches(msg, regexpr("(?<=<)[^>]+(?=>)", msg, perl = TRUE))
+    return(sprintf(i18n$t(cle), if (length(url)) url else "?"))
+  }
+  if (cle == "video_envoi_jeton_refuse") {
+    code <- regmatches(msg, regexpr("(?<=HTTP )[0-9]{3}", msg, perl = TRUE))
+    return(sprintf(i18n$t(cle), if (length(code)) code else "?"))
+  }
+  i18n$t(cle)
 }
 
 #' Why the "Send to phone" button is disabled, or `NULL` when it is enabled

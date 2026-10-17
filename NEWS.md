@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.10.9001 (cycle dev)
+# nemetonshiny 2026.10.11 (2026-10-17)
+
+Changements cassants : aucun.
 
 ## Inventaire vidéo : « Envoyer au téléphone » via le serveur Groma
 
@@ -16,21 +18,25 @@ QField : plus de copie par câble.
 - Le serveur est le même que pour « Actualiser » et « Récupérer les
   résultats » (`groma_url` du projet ou `GROMA_URL`, jeton `GROMA_JETON`).
   Sans serveur configuré, le bouton est désactivé, avec une info-bulle.
-- **En attente du cœur** : tant que la version installée de `nemeton`
-  n'exporte pas `groma_envoyer_projet()` (brief
-  `2026-10-17-groma-envoyer-projet.md`), le bouton reste désactivé et dit
-  pourquoi. Le plancher `Imports: nemeton` n'est pas relevé. Côté Groma, les
-  routes `/projets/…/qfield` du serveur sont en cours.
+- **Requiert `nemeton (>= 2026.10.11)`** : c'est la première release du
+  cœur qui exporte `groma_envoyer_projet()` avec des empreintes SHA-256
+  sérialisables (brief `2026-10-17-groma-sha256-json.md`). Avec un cœur plus
+  ancien déjà installé, le bouton reste désactivé et dit pourquoi. Côté
+  Groma, les routes `/projets/…/qfield` du serveur sont en cours.
 - Un changement de projet efface l'état de l'envoi.
+- Les erreurs connues du cœur, en anglais par convention, sont traduites
+  d'après leur texte stable (réponse du cœur du 2026-10-17) : jeton refusé
+  (401/403, avec un renvoi à `GROMA_JETON`), projet trop volumineux (413),
+  fichier altéré pendant l'envoi (422) et serveur injoignable (avec
+  l'adresse). Une erreur inconnue s'affiche telle quelle.
 - Une erreur s'affiche réduite à sa première ligne, la raison donnée par le
   cœur, sans la chaîne « Caused by » de curl et httr2. Une version absente
   s'affiche « ? ».
-- Essai de bout en bout contre un faux serveur Groma, avec le cœur local :
-  envoi du `.qgz`, puis du `.qml`, puis publication, et la version arrive
-  dans le message. Un 401 arrête l'envoi dès le premier fichier. Cet essai
-  a révélé un défaut du cœur, signalé par le brief
-  `2026-10-17-groma-sha256-json.md` : la publication échoue sans cette
-  correction.
+- Essai de bout en bout contre un faux serveur Groma, avec le cœur publié
+  2026.10.11 installé (aucune surcharge). L'envoi du `.qgz`, puis du `.qml`,
+  puis la publication passent, avec un JSON aux empreintes en chaînes, et la
+  version arrive dans le message. Un 401 arrête l'envoi dès le premier
+  fichier, et un port fermé s'affiche « serveur injoignable ».
 
 # nemetonshiny 2026.10.10 (2026-10-16)
 
