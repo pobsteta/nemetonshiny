@@ -1,5 +1,50 @@
 # Changelog
 
+## nemetonshiny 2026.10.11 (2026-10-17)
+
+Changements cassants : aucun.
+
+### Inventaire vidéo : « Envoyer au téléphone » via le serveur Groma
+
+Brief `groma_nemeton` du 2026-10-17. Après « Générer le projet QField »,
+un bouton **Envoyer au téléphone** apparaît à côté de « Télécharger ».
+Il publie le projet (le `.qgz` et le plugin `.qml`) sur le serveur
+Groma. Sur le téléphone, Groma → ⋮ → « Projets du serveur… » le
+télécharge et l’ouvre dans QField : plus de copie par câble.
+
+- L’envoi passe par
+  [`nemeton::groma_envoyer_projet()`](https://pobsteta.github.io/nemeton/reference/groma_envoyer_projet.html)
+  et tourne en tâche de fond (`ExtendedTask`), avec le toast « Envoi en
+  cours… » et le bouton désactivé pendant l’opération. Après un succès,
+  un message donne la version publiée. Après un échec, il donne la
+  raison renvoyée par le cœur (jeton refusé, projet trop gros, serveur
+  injoignable).
+- Le serveur est le même que pour « Actualiser » et « Récupérer les
+  résultats » (`groma_url` du projet ou `GROMA_URL`, jeton
+  `GROMA_JETON`). Sans serveur configuré, le bouton est désactivé, avec
+  une info-bulle.
+- **Requiert `nemeton (>= 2026.10.11)`** : c’est la première release du
+  cœur qui exporte `groma_envoyer_projet()` avec des empreintes SHA-256
+  sérialisables (brief `2026-10-17-groma-sha256-json.md`). Avec un cœur
+  plus ancien déjà installé, le bouton reste désactivé et dit pourquoi.
+  Côté Groma, les routes `/projets/…/qfield` du serveur sont en cours.
+- Un changement de projet efface l’état de l’envoi.
+- Les erreurs connues du cœur, en anglais par convention, sont traduites
+  d’après leur texte stable (réponse du cœur du 2026-10-17) : jeton
+  refusé (401/403, avec un renvoi à `GROMA_JETON`), projet trop
+  volumineux (413), fichier altéré pendant l’envoi (422) et serveur
+  injoignable (avec l’adresse). Une erreur inconnue s’affiche telle
+  quelle.
+- Une erreur s’affiche réduite à sa première ligne, la raison donnée par
+  le cœur, sans la chaîne « Caused by » de curl et httr2. Une version
+  absente s’affiche « ? ».
+- Essai de bout en bout contre un faux serveur Groma, avec le cœur
+  publié 2026.10.11 installé (aucune surcharge). L’envoi du `.qgz`, puis
+  du `.qml`, puis la publication passent, avec un JSON aux empreintes en
+  chaînes, et la version arrive dans le message. Un 401 arrête l’envoi
+  dès le premier fichier, et un port fermé s’affiche « serveur
+  injoignable ».
+
 ## nemetonshiny 2026.10.10 (2026-10-16)
 
 Changements cassants : aucun.

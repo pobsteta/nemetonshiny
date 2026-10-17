@@ -12,6 +12,25 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.10.11\] - 2026-10-17
+
+### Added
+
+- Video inventory: “Send to phone” button next to the QField project
+  download; publishes the `.qgz` and the Groma plugin `.qml` to the
+  Groma server through
+  [`nemeton::groma_envoyer_projet()`](https://pobsteta.github.io/nemeton/reference/groma_envoyer_projet.html)
+  in an `ExtendedTask` (toast, button disabled while running, version in
+  the success message). Disabled with a tooltip when no server is
+  configured or the installed core lacks the function. Known core errors
+  (token refused, too large, altered upload, unreachable) are
+  translated; unknown ones are shown as is.
+
+### Changed
+
+- Requires `nemeton (>= 2026.10.11)` (SHA-256 digests serialised as
+  strings in the publish request).
+
 ## \[2026.10.10\] - 2026-10-16
 
 ### Added

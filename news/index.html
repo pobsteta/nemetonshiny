@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.11" id="nemetonshiny-20261011-2026-10-17">nemetonshiny 2026.10.11 (2026-10-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261011-2026-10-17"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="inventaire-vidéo---envoyer-au-téléphone--via-le-serveur-groma-2026-10-11">Inventaire vidéo : « Envoyer au téléphone » via le serveur Groma<a class="anchor" aria-label="anchor" href="#inventaire-vid%C3%A9o---envoyer-au-t%C3%A9l%C3%A9phone--via-le-serveur-groma-2026-10-11"></a></h3>
+<p>Brief <code>groma_nemeton</code> du 2026-10-17. Après « Générer le projet QField », un bouton <strong>Envoyer au téléphone</strong> apparaît à côté de « Télécharger ». Il publie le projet (le <code>.qgz</code> et le plugin <code>.qml</code>) sur le serveur Groma. Sur le téléphone, Groma → ⋮ → « Projets du serveur… » le télécharge et l’ouvre dans QField : plus de copie par câble.</p>
+<ul><li>L’envoi passe par <code><a href="https://pobsteta.github.io/nemeton/reference/groma_envoyer_projet.html" class="external-link">nemeton::groma_envoyer_projet()</a></code> et tourne en tâche de fond (<code>ExtendedTask</code>), avec le toast « Envoi en cours… » et le bouton désactivé pendant l’opération. Après un succès, un message donne la version publiée. Après un échec, il donne la raison renvoyée par le cœur (jeton refusé, projet trop gros, serveur injoignable).</li>
+<li>Le serveur est le même que pour « Actualiser » et « Récupérer les résultats » (<code>groma_url</code> du projet ou <code>GROMA_URL</code>, jeton <code>GROMA_JETON</code>). Sans serveur configuré, le bouton est désactivé, avec une info-bulle.</li>
+<li>
+<strong>Requiert <code>nemeton (&gt;= 2026.10.11)</code></strong> : c’est la première release du cœur qui exporte <code>groma_envoyer_projet()</code> avec des empreintes SHA-256 sérialisables (brief <code>2026-10-17-groma-sha256-json.md</code>). Avec un cœur plus ancien déjà installé, le bouton reste désactivé et dit pourquoi. Côté Groma, les routes <code>/projets/…/qfield</code> du serveur sont en cours.</li>
+<li>Un changement de projet efface l’état de l’envoi.</li>
+<li>Les erreurs connues du cœur, en anglais par convention, sont traduites d’après leur texte stable (réponse du cœur du 2026-10-17) : jeton refusé (401/403, avec un renvoi à <code>GROMA_JETON</code>), projet trop volumineux (413), fichier altéré pendant l’envoi (422) et serveur injoignable (avec l’adresse). Une erreur inconnue s’affiche telle quelle.</li>
+<li>Une erreur s’affiche réduite à sa première ligne, la raison donnée par le cœur, sans la chaîne « Caused by » de curl et httr2. Une version absente s’affiche « ? ».</li>
+<li>Essai de bout en bout contre un faux serveur Groma, avec le cœur publié 2026.10.11 installé (aucune surcharge). L’envoi du <code>.qgz</code>, puis du <code>.qml</code>, puis la publication passent, avec un JSON aux empreintes en chaînes, et la version arrive dans le message. Un 401 arrête l’envoi dès le premier fichier, et un port fermé s’affiche « serveur injoignable ».</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.10" id="nemetonshiny-20261010-2026-10-16">nemetonshiny 2026.10.10 (2026-10-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261010-2026-10-16"></a></h2>
 <p>Changements cassants : aucun.</p>
