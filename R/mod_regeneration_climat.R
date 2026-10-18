@@ -36,15 +36,16 @@
           min = 10, max = 100, value = 25, step = 5, ticks = FALSE),
         shiny::conditionalPanel(hors_nuages,
           shiny::radioButtons(ns("climat_periode"), i18n$t("regen_climat_periode"),
-            choiceValues = c("complete", "if49", "libre"),
-            choiceNames = list(i18n$t("regen_climat_periode_complete"),
-                               i18n$t("regen_climat_periode_if49"),
-                               i18n$t("regen_climat_periode_libre")),
-            selected = "complete"),
+            # Choix des annees par defaut, sur 2006-2020 : la periode de la
+            # Figure 1 de L'IF n. 49.
+            choiceValues = c("libre", "complete"),
+            choiceNames = list(i18n$t("regen_climat_periode_libre"),
+                               i18n$t("regen_climat_periode_complete")),
+            selected = "libre"),
           shiny::conditionalPanel(
             sprintf("input['%s'] == 'libre'", ns("climat_periode")),
             shiny::sliderInput(ns("climat_periode_libre"), NULL,
-              min = 1950, max = an_max, value = c(1991, 2020), step = 1,
+              min = 1950, max = an_max, value = .REGEN_CLIMAT_PERIODE_DEFAUT, step = 1,
               sep = "", ticks = FALSE)),
           shiny::sliderInput(ns("climat_opacite"), i18n$t("regen_climat_opacite"),
             min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE)),
@@ -165,7 +166,6 @@
   per <- suppressWarnings(as.integer(meta$periode))
   mode <- meta$bornes$mode %||% "emprise"
   lib_mode <- switch(mode,
-    if49 = i18n$t("regen_climat_bornes_if49"),
     france = i18n$t("regen_climat_bornes_france"),
     i18n$t("regen_climat_bornes_emprise"))
   sous_titre <- if (length(per) == 2L && all(is.finite(per)))
@@ -289,8 +289,8 @@
   onglet <- function() input$climat_onglet %||% "eobs"
   rayon <- function() as.numeric(input$climat_rayon_km %||% 25)
   periode <- function() {
-    p <- input$climat_periode %||% "complete"
-    if (identical(p, "libre")) input$climat_periode_libre %||% c(1991, 2020) else p
+    p <- input$climat_periode %||% "libre"
+    if (identical(p, "libre")) input$climat_periode_libre %||% .REGEN_CLIMAT_PERIODE_DEFAUT else p
   }
   source_nuages <- function() input$climat_nuages_source %||% "chelsa"
   mode_nuages <- function() input$climat_nuages_mode %||% "anomalie"

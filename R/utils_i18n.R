@@ -6372,8 +6372,7 @@ TRANSLATIONS <- list(
   regen_climat_rayon = list(fr = "Rayon autour du projet (km)", en = "Radius around the project (km)"),
   regen_climat_periode = list(fr = "P\u00e9riode", en = "Period"),
   regen_climat_periode_complete = list(fr = "Compl\u00e8te", en = "Full"),
-  regen_climat_periode_if49 = list(fr = "2006-2020 (L'IF n\u00b0 49)", en = "2006-2020 (L'IF no. 49)"),
-  regen_climat_periode_libre = list(fr = "Libre", en = "Custom"),
+  regen_climat_periode_libre = list(fr = "Choix des ann\u00e9es", en = "Chosen years"),
   regen_climat_periode_utilisee = list(fr = "P\u00e9riode utilis\u00e9e : %d-%d (%d \u00e9t\u00e9s)", en = "Period used: %d-%d (%d summers)"),
   regen_climat_nuages_source = list(fr = "Source", en = "Source"),
   regen_climat_nuages_mode = list(fr = "Lecture", en = "Reading"),
@@ -6407,7 +6406,6 @@ TRANSLATIONS <- list(
   regen_climat_axe_precip = list(fr = "\u0394 pr\u00e9cipitations (mm)", en = "\u0394 precipitation (mm)"),
   regen_climat_axe_tmax = list(fr = "\u0394 T\u00b0max (\u00b0C)", en = "\u0394 T\u00b0max (\u00b0C)"),
   regen_climat_legende_titre = list(fr = "Tendances estivales mai-sept.", en = "Summer trends May-Sept."),
-  regen_climat_bornes_if49 = list(fr = "bornes L'IF n\u00b0 49", en = "L'IF no. 49 bounds"),
   regen_climat_bornes_france = list(fr = "bornes France", en = "France bounds"),
   regen_climat_bornes_emprise = list(fr = "bornes du cercle", en = "circle bounds"),
   regen_climat_bornes_relatives = list(

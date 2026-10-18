@@ -1,6 +1,18 @@
-# nemetonshiny 2026.10.15.9000 (cycle dev)
+# nemetonshiny 2026.10.15.9001 (cycle dev)
 
-- Ouverture du cycle dev.
+Changements cassants : aucun.
+
+## reGénération : période du contexte climatique
+
+- L'option « 2006-2020 (L'IF n° 49) » disparaît. La période se règle au
+  curseur « Choix des années », sélectionné par défaut sur **2006-2020**, ou
+  sur « Complète ». Les cartes 2006-2020 utilisent donc les bornes France,
+  comme toute période choisie, et non plus les bornes fixes de la figure.
+- Retrait des clés i18n `regen_climat_periode_if49` et
+  `regen_climat_bornes_if49`.
+- Les dernières mentions d'`eobs_downscale*()` sont retirées (un commentaire de
+  section i18n, un commentaire de test) : brief `nemeton` du 2026-10-18 sur la
+  dépréciation de ces fonctions, que l'app n'appelle plus depuis 2026.10.14.
 
 # nemetonshiny 2026.10.15 (2026-10-18)
 
