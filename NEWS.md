@@ -1,3 +1,7 @@
+# nemetonshiny 2026.10.16.9000 (cycle dev)
+
+- Ouverture du cycle dev.
+
 # nemetonshiny 2026.10.16 (2026-10-18)
 
 Changements cassants : aucun.
