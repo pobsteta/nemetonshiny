@@ -285,6 +285,16 @@ test_that("generated plots feed create_qgis_project() into a valid .qgz", {
     contents <- utils::unzip(qgz, list = TRUE)
     expect_true(any(grepl("\\.qgs$",  contents$Name)))
     expect_true(any(grepl("\\.gpkg$", contents$Name)))
+
+    # Ce que l'app livre (brief 2026-10-17) : le dossier ouvrable `dl_test/`,
+    # zippe a la racine ; une fois decompresse, le .qgs trouve son GeoPackage.
+    if (dir.exists("dl_test")) {
+      nemetonshiny:::qgis_zip_livraison(qgz, "livre.zip")
+      noms <- utils::unzip("livre.zip", list = TRUE)$Name
+      expect_true(all(startsWith(noms, "dl_test/")))
+      expect_true("dl_test/dl_test.qgs" %in% noms)
+      expect_true("dl_test/dl_test.gpkg" %in% noms)
+    }
   })
 })
 

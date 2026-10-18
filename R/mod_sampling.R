@@ -1292,11 +1292,14 @@ mod_sampling_server <- function(id, app_state) {
       }
     })
 
-    # --- Download handler: .qgz --------------------------------------
+    # --- Download handler: projet QGIS zippe ---------------------------
+    # Le `.qgz` seul s'ouvre sans couche (QGIS resout `./<nom>.gpkg` depuis le
+    # dossier du projet, pas dans l'archive) : on livre le dossier ouvrable
+    # `<nom>/` ecrit par le coeur (>= 2026.10.14), zippe.
     output$download_qgz <- shiny::downloadHandler(
       filename = function() {
         nm <- gsub("[^a-zA-Z0-9_-]", "_", input$project_name %||% "echantillon")
-        paste0(nm, ".qgz")
+        paste0(nm, ".zip")
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language %||% "fr")
@@ -1324,7 +1327,7 @@ mod_sampling_server <- function(id, app_state) {
           region       = input$region %||% "BFC",
           lang         = app_state$language %||% "fr"
         )
-        file.copy(qgz, file, overwrite = TRUE)
+        qgis_zip_livraison(qgz, file)
 
         shiny::showNotification(i18n$t("qfield_ready"),
                                 type = "message", duration = 5)

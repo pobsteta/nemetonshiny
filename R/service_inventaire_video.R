@@ -438,18 +438,9 @@ video_fichiers_livraison <- function(qgz) {
 video_zip_livraison <- function(qgz, file) {
   f <- video_fichiers_livraison(qgz)
   if (!length(f)) stop("QField project not found")
-  dossier <- sub("\\.qgz$", "", f[1])
-  if (dir.exists(dossier)) {
-    # Chemins relatifs : le dossier `<name>/` a la racine du zip.
-    dest <- normalizePath(file, winslash = "/", mustWork = FALSE)
-    old <- setwd(dirname(dossier))
-    on.exit(setwd(old), add = TRUE)
-    utils::zip(zipfile = dest, files = basename(dossier), flags = "-r9Xq")
-    return(invisible(file))
-  }
-  # `-j` : a plat, les deux fichiers cote a cote, comme QField les attend.
-  utils::zip(zipfile = file, files = f, flags = "-j9Xq")
-  invisible(file)
+  # Sans dossier ouvrable (coeur ancien) : le `.qgz` et son `.qml` a plat,
+  # comme QField les attend.
+  qgis_zip_livraison(f[1], file, a_plat = f)
 }
 
 #' Name of the delivered archive (`<name>.zip`)

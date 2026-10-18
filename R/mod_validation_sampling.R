@@ -10,7 +10,7 @@
 #
 # Sortie : carte Leaflet (raster d'alerte + markers Validation / Temoin),
 # table DT du plan, bouton " Persister dans samples.gpkg " et bouton
-# " Exporter pour QGIS " qui produit un .qgz dans <project>/exports/.
+# " Exporter pour QGIS " qui livre le dossier QGIS ouvrable du plan, zippe.
 
 
 #' Plan de validation sub-tab UI
@@ -906,7 +906,9 @@ mod_validation_sampling_server <- function(id, app_state,
 
     output$export_qgis <- shiny::downloadHandler(
       filename = function() {
-        sprintf("validation_%s.qgz", format(Sys.time(), "%Y%m%dT%H%M%S"))
+        # Dossier ouvrable zippe (cf. qgis_zip_livraison) : le `.qgz` seul
+        # s'ouvrirait sans couche.
+        sprintf("validation_%s.zip", format(Sys.time(), "%Y%m%dT%H%M%S"))
       },
       content = function(file) {
         i18n <- i18n_r()
@@ -948,13 +950,14 @@ mod_validation_sampling_server <- function(id, app_state,
           file.create(file)
           return(invisible())
         }
-        file.copy(qgz, file, overwrite = TRUE)
+        qgis_zip_livraison(qgz, file)
         shiny::showNotification(
           sprintf(i18n$t("validation_qgis_exported_toast"),
                   basename(qgz)),
           type = "message", duration = 6
         )
-      }
+      },
+      contentType = "application/zip"
     )
 
     # Force the panel renderUI to evaluate while the sub-tab is

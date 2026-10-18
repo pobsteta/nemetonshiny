@@ -145,3 +145,28 @@ test_that("changer les parcelles d'un projet met le decoupage UGF de cote", {
     expect_false(isTRUE(p$metadata$indicators_computed))
   })
 })
+
+# --- qgis_zip_livraison (brief 2026-10-17 plan-echantillonnage-dossier-projet) --
+
+test_that("qgis_zip_livraison zips the openable folder at the archive root", {
+  d <- withr::local_tempdir()
+  qgz <- file.path(d, "plan.qgz"); writeLines("qgz", qgz)
+  dir.create(file.path(d, "plan"))
+  writeLines("qgs", file.path(d, "plan", "plan.qgs"))
+  writeLines("gpkg", file.path(d, "plan", "plan.gpkg"))
+  z <- file.path(withr::local_tempdir(), "sortie.zip")
+  expect_identical(nemetonshiny:::qgis_zip_livraison(qgz, z), z)
+  noms <- sort(utils::unzip(z, list = TRUE)$Name)
+  expect_true(all(c("plan/plan.gpkg", "plan/plan.qgs") %in% noms))
+  expect_false("plan.qgz" %in% noms)
+})
+
+test_that("qgis_zip_livraison falls back to the flat .qgz without a folder", {
+  d <- withr::local_tempdir()
+  qgz <- file.path(d, "plan.qgz"); writeLines("qgz", qgz)
+  z <- file.path(withr::local_tempdir(), "sortie.zip")
+  nemetonshiny:::qgis_zip_livraison(qgz, z)
+  expect_identical(utils::unzip(z, list = TRUE)$Name, "plan.qgz")
+  expect_error(nemetonshiny:::qgis_zip_livraison(file.path(d, "absent.qgz"), z),
+               "not found")
+})
