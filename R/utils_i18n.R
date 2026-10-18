@@ -6426,8 +6426,7 @@ TRANSLATIONS <- list(
     en = "%s \u00b7 %d cells in the circle, up to 4,000 sampled per year \u00b7 white dot: circle mean"),
   regen_climat_nuages_grille = list(fr = "Toutes les ann\u00e9es", en = "All years"),
   regen_climat_unite_totale = list(fr = "variation totale sur la p\u00e9riode", en = "total change over the period"),
-  # Statuts de d\u00e9gradation d'eobs_downscale (meta$reason) \u2014 carte contexte raster.
-  # S\u00e9lecteur 3 vues du contexte r\u00e9gional (raster).
+  # S\u00e9ries CDS du projet (diagramme ombrothermique du clic, onglet E-OBS).
   regen_eobs_rr_fetch = list(
     fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~800 Mo)",
     en = "Download precipitation (~800 MB)"

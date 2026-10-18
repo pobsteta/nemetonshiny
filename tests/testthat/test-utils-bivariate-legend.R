@@ -29,7 +29,7 @@ test_that("bivariate_legend_html accepte une palette du cœur (meta$palette_matr
 
 test_that("bivariate_legend_html dessine une grille 5×5 (25 cases) via ncol", {
   skip_if_not_installed("htmltools")
-  # Le cœur eobs_downscale_bivariate livre 25 classes + ncol = 5 (comme l'IF IGN).
+  # Grille 5×5 générique (25 classes, ncol = 5) : la légende suit `ncol`.
   pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
   html <- as.character(nemetonshiny:::bivariate_legend_html(palette = pal, ncol = 5))
   # 25 cases (cellules 22px au-delà de 3×3, lisibles sans ascenseur).
