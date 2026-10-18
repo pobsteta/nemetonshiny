@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.14</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.15" id="nemetonshiny-20261015-2026-10-18">nemetonshiny 2026.10.15 (2026-10-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261015-2026-10-18"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="plans-déchantillonnage--le-projet-qgis-livré-souvre-avec-ses-couches-2026-10-15">Plans d’échantillonnage : le projet QGIS livré s’ouvre avec ses couches<a class="anchor" aria-label="anchor" href="#plans-d%C3%A9chantillonnage--le-projet-qgis-livr%C3%A9-souvre-avec-ses-couches-2026-10-15"></a></h3>
+<p>Brief <code>nemeton</code> du 2026-10-17 (<code>plan-echantillonnage-dossier-projet</code>). Depuis le cœur 2026.10.14, <code>create_qgis_project()</code> écrit à côté du <code>.qgz</code> un dossier ouvrable <code>&lt;nom&gt;/</code> (<code>&lt;nom&gt;.qgs</code> et <code>&lt;nom&gt;.gpkg</code>). Le <code>.qgz</code> téléchargé seul s’ouvrait sans aucune couche : QGIS cherche <code>./&lt;nom&gt;.gpkg</code> dans le dossier du projet, pas dans l’archive.</p>
+<ul><li>
+<strong>Plan d’échantillonnage</strong> (« Télécharger le projet QGIS ») et <strong>Plan de validation</strong> (« Exporter pour QGIS ») livrent désormais un <code>.zip</code> contenant ce dossier à la racine, comme l’inventaire vidéo depuis 2026.10.12.</li>
+<li>Sans dossier (cœur plus ancien), le <code>.qgz</code> part seul dans le zip.</li>
+<li>Helper commun <code>qgis_zip_livraison()</code>, que <code>video_zip_livraison()</code> réutilise.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.14" id="nemetonshiny-20261014-2026-10-18">nemetonshiny 2026.10.14 (2026-10-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261014-2026-10-18"></a></h2>
 <p>Changements cassants : aucun (format de projet inchangé ; les anciens caches <code>cache/regeneration/eobs/context_*.tif</code> sont simplement ignorés).</p>
