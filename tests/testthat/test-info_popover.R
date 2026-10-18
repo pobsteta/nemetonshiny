@@ -61,7 +61,10 @@ test_that("reGeneration n'utilise plus l'ancien « i » bsicons", {
   # dans Paramètres › Sources & paramètres en v0.128.0. Ils ne sont pas perdus,
   # le test suivant les y retrouve — c'est tout l'objet de le vérifier là-bas
   # plutôt que de baisser un chiffre.
-  expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 12L)
+  # 12 -> 9 (spec 063) : les trois « i » du sélecteur de vue tx / rr / bivariée
+  # du contexte E-OBS sont partis AVEC ce sélecteur (contexte climatique en
+  # sous-onglets, carte bivariée seule) ; ils ne sont déplacés nulle part.
+  expect_equal(lengths(regmatches(h, gregexpr("fa-circle-info", h))), 9L)
   # Le « i » d'une couche ne doit PAS sélectionner le radio qui le contient :
   # s'informer n'est pas choisir (la vue « rr » déclencherait 800 Mo de E-OBS).
   expect_match(h, "event.preventDefault()", fixed = TRUE)

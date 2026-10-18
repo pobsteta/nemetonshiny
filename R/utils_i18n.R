@@ -6161,12 +6161,9 @@ TRANSLATIONS <- list(
   regen_res_5m = list(fr = "5 m", en = "5 m"),
   regen_species_target = list(fr = "Essence cible (option)", en = "Target species (optional)"),
   regen_species_generic = list(fr = "G\u00e9n\u00e9rique (d\u00e9faut)", en = "Generic (default)"),
-  regen_buffer = list(fr = "Buffer contexte r\u00e9gional (km)", en = "Regional context buffer (km)"),
-  regen_buffer_help = list(fr = "\u00c9largit l'emprise du contexte climatique (rasters E-OBS) autour de la for\u00eat pour situer la maille dans son environnement r\u00e9gional.", en = "Widens the climate context extent (E-OBS rasters) around the forest to place the plot within its regional setting."),
   regen_run = list(fr = "Lancer l'analyse", en = "Run analysis"),
   regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
   regen_restore_loading = list(fr = "Chargement des cartes reG\u00e9n\u00e9ration\u2026", en = "Loading reGeneration maps\u2026"),
-  regen_context_opacity = list(fr = "Opacit\u00e9 E-OBS", en = "E-OBS opacity"),
   # Moteur \u00ab risque de gel tardif \u00bb (R7) \u2014 meteoland Tmin -> indicateur_r7_gel.
   regen_frost_section = list(fr = "Risque de gel tardif (R7)", en = "Late-frost risk (R7)"),
   regen_frost_run = list(fr = "Risque de gel (meteoland)", en = "Frost risk (meteoland)"),
@@ -6366,66 +6363,71 @@ TRANSLATIONS <- list(
   regen_map_essence_aucune = list(fr = "Pas de recommandation (donn\u00e9es de station manquantes)", en = "No recommendation (missing site data)"),
   regen_map_dtmax = list(fr = "\u0394T\u00b0max sous couvert", en = "Sub-canopy \u0394T\u00b0max"),
   regen_map_bivariate = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD (parcellaire)", en = "\u0394T\u00b0max \u00d7 \u0394VPD (per unit)"),
-  regen_map_context = list(fr = "Contexte r\u00e9gional (E-OBS)", en = "Regional context (E-OBS)"),
-  regen_context_need_tx = list(
-    fr = "Contexte r\u00e9gional indisponible : la s\u00e9rie E-OBS de temp\u00e9ratures maximales n'est pas t\u00e9l\u00e9charg\u00e9e. Lancez \u00ab Auto (E-OBS) \u00bb dans le panneau Ann\u00e9es de r\u00e9f\u00e9rence.",
-    en = "Regional context unavailable: the E-OBS maximum-temperature series is not downloaded. Run \u201cAuto (E-OBS)\u201d in the Reference years panel."
-  ),
-  regen_context_need_rr = list(
-    fr = "Contexte r\u00e9gional indisponible : cette carte croise temp\u00e9ratures et pr\u00e9cipitations, et la s\u00e9rie E-OBS de pr\u00e9cipitations n'est pas t\u00e9l\u00e9charg\u00e9e.",
-    en = "Regional context unavailable: this map crosses temperature with precipitation, and the E-OBS precipitation series is not downloaded."
-  ),
+  # --- Contexte climatique estival sur un cercle (spec 063) ---
+  regen_climat = list(fr = "Contexte climatique", en = "Climate context"),
+  regen_climat_onglet_eobs = list(fr = "Tendances E-OBS (0,1\u00b0)", en = "E-OBS trends (0.1\u00b0)"),
+  regen_climat_onglet_chelsa = list(fr = "Tendances CHELSA (1 km)", en = "CHELSA trends (1 km)"),
+  regen_climat_onglet_safran = list(fr = "Tendances SAFRAN (8 km)", en = "SAFRAN trends (8 km)"),
+  regen_climat_onglet_nuages = list(fr = "Nuages annuels", en = "Yearly clouds"),
+  regen_climat_rayon = list(fr = "Rayon autour du projet (km)", en = "Radius around the project (km)"),
+  regen_climat_periode = list(fr = "P\u00e9riode", en = "Period"),
+  regen_climat_periode_complete = list(fr = "Compl\u00e8te", en = "Full"),
+  regen_climat_periode_if49 = list(fr = "2006-2020 (L'IF n\u00b0 49)", en = "2006-2020 (L'IF no. 49)"),
+  regen_climat_periode_libre = list(fr = "Libre", en = "Custom"),
+  regen_climat_periode_utilisee = list(fr = "P\u00e9riode utilis\u00e9e : %d-%d (%d \u00e9t\u00e9s)", en = "Period used: %d-%d (%d summers)"),
+  regen_climat_nuages_source = list(fr = "Source", en = "Source"),
+  regen_climat_nuages_mode = list(fr = "Lecture", en = "Reading"),
+  regen_climat_mode_anomalie = list(fr = "\u00c9cart \u00e0 1981-2010", en = "Departure from 1981-2010"),
+  regen_climat_mode_tendance = list(fr = "Tendance cumul\u00e9e", en = "Cumulative trend"),
+  regen_climat_opacite = list(fr = "Opacit\u00e9", en = "Opacity"),
+  regen_climat_calculer = list(fr = "Calculer", en = "Compute"),
+  regen_climat_recalculer = list(fr = "Recalculer cette carte", en = "Recompute this map"),
+  regen_climat_recalcul_lance = list(fr = "Cache de la carte supprim\u00e9 : relance du calcul.", en = "Map cache removed: computing again."),
+  regen_climat_a_calculer = list(
+    fr = "Cette carte n'est pas encore calcul\u00e9e pour ce rayon et cette p\u00e9riode. Cliquez sur \u00ab Calculer \u00bb.",
+    en = "This map is not computed yet for this radius and period. Click \u201cCompute\u201d."),
+  regen_climat_nuages_a_calculer = list(
+    fr = "Ces nuages ne sont pas encore calcul\u00e9s pour cette source et ce rayon. Cliquez sur \u00ab Calculer \u00bb.",
+    en = "These clouds are not computed yet for this source and radius. Click \u201cCompute\u201d."),
+  regen_climat_eobs_1er_usage = list(
+    fr = "Premier usage d'E-OBS sur ce poste : t\u00e9l\u00e9chargement de 8 Go, puis quelques minutes de pr\u00e9paration. Les projets suivants ne prennent que quelques secondes.",
+    en = "First use of E-OBS on this machine: an 8 GB download, then a few minutes of preparation. Later projects take only a few seconds."),
+  regen_climat_en_cours = list(fr = "Contexte climatique", en = "Climate context"),
+  regen_climat_etape_dl = list(fr = "T\u00e9l\u00e9chargement E-OBS (%s)\u2026", en = "Downloading E-OBS (%s)\u2026"),
+  regen_climat_etape_mensuel = list(fr = "Pr\u00e9paration E-OBS : ann\u00e9e %d (%d/%d)", en = "Preparing E-OBS: year %d (%d/%d)"),
+  regen_climat_etape_annee = list(fr = "%s : ann\u00e9e %d (%d/%d)", en = "%s: year %d (%d/%d)"),
+  regen_climat_etape_cache = list(fr = "Lecture du cache", en = "Reading the cache"),
+  regen_climat_termine = list(fr = "Contexte climatique calcul\u00e9.", en = "Climate context computed."),
+  regen_climat_echec = list(fr = "Le calcul du contexte climatique a \u00e9chou\u00e9 : %s", en = "The climate-context computation failed: %s"),
+  regen_climat_hors_couverture = list(
+    fr = "Hors couverture : SAFRAN ne couvre que la France m\u00e9tropolitaine, l'agr\u00e9gat E-OBS que la France m\u00e9tropolitaine et la Corse.",
+    en = "Out of coverage: SAFRAN covers metropolitan France only, the E-OBS aggregate metropolitan France and Corsica."),
+  regen_climat_indisponible = list(fr = "Donn\u00e9es indisponibles", en = "Data unavailable"),
+  regen_climat_insuffisant = list(fr = "Donn\u00e9es insuffisantes", en = "Not enough data"),
+  regen_climat_axe_precip = list(fr = "\u0394 pr\u00e9cipitations (mm)", en = "\u0394 precipitation (mm)"),
+  regen_climat_axe_tmax = list(fr = "\u0394 T\u00b0max (\u00b0C)", en = "\u0394 T\u00b0max (\u00b0C)"),
+  regen_climat_legende_titre = list(fr = "Tendances estivales mai-sept.", en = "Summer trends May-Sept."),
+  regen_climat_bornes_if49 = list(fr = "bornes L'IF n\u00b0 49", en = "L'IF no. 49 bounds"),
+  regen_climat_bornes_france = list(fr = "bornes France", en = "France bounds"),
+  regen_climat_bornes_emprise = list(fr = "bornes du cercle", en = "circle bounds"),
+  regen_climat_bornes_relatives = list(
+    fr = "Couleurs relatives au cercle : pr\u00e9parer d'abord E-OBS pour des couleurs comparables entre projets.",
+    en = "Colours relative to the circle: prepare E-OBS first for colours comparable across projects."),
+  regen_climat_cercle = list(fr = "Cercle", en = "Circle"),
+  regen_climat_couche = list(fr = "Tendances", en = "Trends"),
+  regen_climat_nuages_x_anomalie = list(fr = "\u00c9cart des pr\u00e9cipitations d'\u00e9t\u00e9 \u00e0 1981-2010 (mm)", en = "Summer precipitation departure from 1981-2010 (mm)"),
+  regen_climat_nuages_y_anomalie = list(fr = "\u00c9cart de la T\u00b0max d'\u00e9t\u00e9 \u00e0 1981-2010 (\u00b0C)", en = "Summer T\u00b0max departure from 1981-2010 (\u00b0C)"),
+  regen_climat_nuages_x_tendance = list(fr = "Tendance des pr\u00e9cipitations d'\u00e9t\u00e9 depuis %d (mm)", en = "Summer precipitation trend since %d (mm)"),
+  regen_climat_nuages_y_tendance = list(fr = "Tendance de la T\u00b0max d'\u00e9t\u00e9 depuis %d (\u00b0C)", en = "Summer T\u00b0max trend since %d (\u00b0C)"),
+  regen_climat_nuages_moyenne = list(fr = "Moyenne du cercle", en = "Circle mean"),
+  regen_climat_nuages_mailles = list(fr = "Mailles", en = "Cells"),
+  regen_climat_nuages_legende = list(
+    fr = "%s \u00b7 %d mailles dans le cercle, jusqu'\u00e0 4 000 tir\u00e9es par ann\u00e9e \u00b7 point blanc : moyenne du cercle",
+    en = "%s \u00b7 %d cells in the circle, up to 4,000 sampled per year \u00b7 white dot: circle mean"),
+  regen_climat_nuages_grille = list(fr = "Toutes les ann\u00e9es", en = "All years"),
+  regen_climat_unite_totale = list(fr = "variation totale sur la p\u00e9riode", en = "total change over the period"),
   # Statuts de d\u00e9gradation d'eobs_downscale (meta$reason) \u2014 carte contexte raster.
-  eobs_downscale_no_dem = list(
-    fr = "\u00c9l\u00e9vation de contexte indisponible (service IGN injoignable). R\u00e9essayez plus tard.",
-    en = "Context elevation unavailable (IGN service unreachable). Try again later."
-  ),
-  eobs_downscale_dem_too_small = list(
-    fr = "MNT de contexte indisponible pour cette zone.",
-    en = "Context DEM unavailable for this area."
-  ),
-  eobs_downscale_too_few_cells = list(
-    fr = "Zone trop petite pour un contexte r\u00e9gional E-OBS : \u00e9largissez le rayon.",
-    en = "Area too small for an E-OBS regional context: widen the radius."
-  ),
-  eobs_downscale_rr_out_of_scope = list(
-    fr = "Contexte \u00ab pr\u00e9cipitations \u00bb non disponible (version 1).",
-    en = "Precipitation context not available (version 1)."
-  ),
-  regen_context_value_tx_trend = list(
-    fr = "Tendance T\u00b0max estivale (\u00b0C/d\u00e9cennie)", en = "Summer max-T trend (\u00b0C/decade)"
-  ),
-  regen_context_computing = list(
-    fr = "Calcul du contexte r\u00e9gional (E-OBS)\u2026", en = "Computing regional context (E-OBS)\u2026"
-  ),
   # S\u00e9lecteur 3 vues du contexte r\u00e9gional (raster).
-  regen_context_recompute = list(
-    fr = "Recalculer le contexte", en = "Recompute context"
-  ),
-  regen_context_recomputing = list(
-    fr = "Cache du contexte purg\u00e9 \u2014 recalcul de la vue courante en cours\u2026",
-    en = "Context cache purged \u2014 recomputing the current view\u2026"
-  ),
-  regen_context_view = list(fr = "Contexte affich\u00e9", en = "Displayed context"),
-  regen_context_view_tx = list(fr = "Tendance T\u00b0max", en = "Max-T trend"),
-  regen_context_view_rr = list(fr = "Tendance pr\u00e9cipitations", en = "Precipitation trend"),
-  regen_context_view_bivariate = list(fr = "Bivari\u00e9e (T\u00b0max \u00d7 pr\u00e9cip)", en = "Bivariate (max-T \u00d7 precip)"),
-  regen_context_view_tx_info = list(
-    fr = "Tendance des temp\u00e9ratures maximales estivales (\u00b0C/d\u00e9cennie) downscal\u00e9e sur le contexte r\u00e9gional. Rouge = r\u00e9chauffement plus fort.",
-    en = "Downscaled summer maximum-temperature trend (\u00b0C/decade) over the regional context. Red = stronger warming."),
-  regen_context_view_rr_info = list(
-    fr = "Tendance des pr\u00e9cipitations estivales (mm/d\u00e9cennie) downscal\u00e9e. Rouge = ass\u00e8chement (baisse). Fiabilit\u00e9 faible (relation pluie/relief bruit\u00e9e).",
-    en = "Downscaled summer precipitation trend (mm/decade). Red = drying (decrease). Low reliability (noisy rain/terrain relationship)."),
-  regen_context_view_bivariate_info = list(
-    fr = "Croisement des deux tendances (T\u00b0max \u00d7 pr\u00e9cipitations) en 9 classes. Coin chaud & plus sec = rouge = le plus d\u00e9favorable. L\u00e9gende 2D en bas.",
-    en = "Cross of both trends (max-T \u00d7 precipitation) in 9 classes. Hot & drier corner = red = most unfavourable. 2D legend at the bottom."),
-  regen_context_axis_tx = list(fr = "T\u00b0max", en = "Max-T"),
-  regen_context_axis_rr = list(fr = "Pr\u00e9cipitations", en = "Precipitation"),
-  regen_context_bivariate = list(fr = "Contexte bivari\u00e9", en = "Bivariate context"),
-  regen_context_reliability_low = list(
-    fr = "Fiabilit\u00e9 faible : downscaling des pr\u00e9cipitations (relation orographique bruit\u00e9e) \u2014 contexte r\u00e9gional uniquement.",
-    en = "Low reliability: precipitation downscaling (noisy orographic relationship) \u2014 regional context only."
-  ),
   regen_eobs_rr_fetch = list(
     fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~800 Mo)",
     en = "Download precipitation (~800 MB)"

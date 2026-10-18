@@ -1,9 +1,9 @@
 # Legende bivariee 2D (matrice NxN) - pure visualisation.
 #
-# Cablee sur la carte " Contexte regional (E-OBS) ". Le coeur
-# `nemeton::eobs_downscale_bivariate()` livre le raster `classe_bivariee`
-# (1..N*N) + `meta$palette` (`colors`, `classes`, `ncol`). Il classe en 5 par axe
-# (25 classes, `ncol = 5`), comme l'IF IGN. AUCUN classement ici (regle 1) : le
+# Cablee sur les cartes du " Contexte climatique " de reGeneration (spec 063).
+# Le coeur `nemeton::climat_tendance_bivariee()` livre le raster
+# `classe_bivariee` (1..N*N) + `meta$palette` (`colors`, `classes`, `ncol` = 10,
+# palette 10 x 10 de L'IF n. 49). AUCUN classement ici (regle 1) : le
 # classement/les bornes viennent du coeur ; l'app ne fait que dessiner la grille.
 #
 # Convention d'indexation (alignee sur `classe_bivariee` du coeur, N = ncol) :
@@ -28,9 +28,9 @@ bivariate_palette_default <- function() {
 #' Bivariate 2D legend (NxN grid) as an htmltools tag
 #'
 #' Pure viz: renders an NxN colour matrix with two axis labels/arrows. Designed to
-#' sit in a Leaflet `addControl()` or an overlay `div` on the context map. The
-#' grid side N follows the core palette: `nemeton::eobs_downscale_bivariate()`
-#' returns 5 classes per axis (25 classes, `meta$palette$ncol = 5`). Pass that
+#' sit in a Leaflet `addControl()` or an overlay `div` on the climate maps. The
+#' grid side N follows the core palette: `nemeton::climat_tendance_bivariee()`
+#' returns 10 classes per axis (100 classes, `meta$palette$ncol = 10`). Pass that
 #' `ncol`; otherwise N is inferred from the palette length (sqrt), falling back to
 #' 3x3 for the built-in default.
 #'
@@ -69,13 +69,16 @@ bivariate_legend_html <- function(palette = NULL,
   # Cellules un peu plus petites au-dela de 3x3, mais assez grandes pour rester
   # lisibles sans ascenseur (la classe `nmt-bivariate-control` retire le plafond
   # de hauteur du controle leaflet, cf. custom.css).
-  px <- if (n > 3L) 22L else 20L
+  # La grille 10 x 10 du contexte climatique (spec 063) ferait 220 px a 22 px.
+  px <- if (n >= 10L) 14L else if (n > 3L) 22L else 20L
   W <- n * px; H <- n * px
   cell <- function(cls) {
     col <- pal[[as.character(cls)]] %||% "#cccccc"
     htmltools::tags$div(
       style = sprintf(
-        "width:%dpx;height:%dpx;background:%s;border:1px solid rgba(0,0,0,.15);",
+        # border-box : la bordure tient DANS les px de la cellule, sinon la
+        # grille deborde de son cadre (N * (px + 2)) et recouvre l'axe X.
+        "box-sizing:border-box;width:%dpx;height:%dpx;background:%s;border:1px solid rgba(0,0,0,.15);",
         px, px, col),
       title = paste0("classe ", cls))
   }
@@ -123,16 +126,19 @@ bivariate_legend_html <- function(palette = NULL,
       paste0("\u2191 ", axis_y)),
     if (has_y) htmltools::tags$div(fmtv(min(as.numeric(y_range), na.rm = TRUE))))
 
-  # Axe X (precipitations) sous la grille (largeur = grille) : min / label / max.
+  # Axe X (precipitations) sous la grille : bornes min / max sur une ligne de la
+  # largeur de la grille, libelle centre dessous. Sur une seule ligne, bornes +
+  # libelle depassaient la grille 10 x 10 (140 px).
   has_x <- any(is.finite(suppressWarnings(as.numeric(x_range))))
   x_row <- htmltools::tags$div(
-    style = sprintf(paste0("display:flex;align-items:center;width:%dpx;margin-top:3px;",
-      "font-size:9px;%s"), W,
-      if (has_x) "justify-content:space-between;" else "justify-content:center;"),
-    if (has_x) htmltools::tags$span(fmtv(min(as.numeric(x_range), na.rm = TRUE))),
-    htmltools::tags$span(style = "font-size:11px;white-space:nowrap;",
-                         paste0(axis_x, " \u2192")),
-    if (has_x) htmltools::tags$span(fmtv(max(as.numeric(x_range), na.rm = TRUE))))
+    style = sprintf("width:%dpx;margin-top:3px;", W),
+    if (has_x) htmltools::tags$div(
+      style = "display:flex;justify-content:space-between;font-size:9px;",
+      htmltools::tags$span(fmtv(min(as.numeric(x_range), na.rm = TRUE))),
+      htmltools::tags$span(fmtv(max(as.numeric(x_range), na.rm = TRUE)))),
+    htmltools::tags$div(
+      style = "text-align:center;font-size:11px;white-space:nowrap;margin-top:2px;",
+      paste0(axis_x, " \u2192")))
 
   htmltools::tags$div(
     class = "nmt-bivariate-legend",
