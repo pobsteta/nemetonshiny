@@ -16,6 +16,11 @@
 #' @noRd
 .REGEN_CLIMAT_N <- 10L
 
+#' Default period of the climate maps: 2006-2020, the period of Figure 1 of
+#' L'IF n. 49
+#' @noRd
+.REGEN_CLIMAT_PERIODE_DEFAUT <- c(2006L, 2020L)
+
 #' Directory of the climate-context cache of a project
 #' @noRd
 .regen_climat_dir <- function(project_path) {
@@ -24,13 +29,12 @@
 
 #' Normalise the period of a climate map into the core argument and a file tag
 #'
-#' @param periode `"complete"`, `"if49"`, or a length-2 numeric `c(debut, fin)`.
+#' @param periode `"complete"` or a length-2 numeric `c(debut, fin)`.
 #' @return `list(arg, tag)`: `arg` is passed to
 #'   `nemeton::climat_tendance_bivariee(periode =)`, `tag` names the cache file
-#'   (`complete`, `if49` or `AAAA-AAAA`).
+#'   (`complete` or `AAAA-AAAA`).
 #' @noRd
 .regen_climat_periode <- function(periode) {
-  if (identical(periode, "if49")) return(list(arg = "if49", tag = "if49"))
   p <- suppressWarnings(as.integer(periode))
   if (length(p) == 2L && all(is.finite(p))) {
     p <- sort(p)

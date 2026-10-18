@@ -36,15 +36,16 @@
           min = 10, max = 100, value = 25, step = 5, ticks = FALSE),
         shiny::conditionalPanel(hors_nuages,
           shiny::radioButtons(ns("climat_periode"), i18n$t("regen_climat_periode"),
-            choiceValues = c("complete", "if49", "libre"),
-            choiceNames = list(i18n$t("regen_climat_periode_complete"),
-                               i18n$t("regen_climat_periode_if49"),
-                               i18n$t("regen_climat_periode_libre")),
-            selected = "complete"),
+            # Choix des annees par defaut, sur 2006-2020 : la periode de la
+            # Figure 1 de L'IF n. 49.
+            choiceValues = c("libre", "complete"),
+            choiceNames = list(i18n$t("regen_climat_periode_libre"),
+                               i18n$t("regen_climat_periode_complete")),
+            selected = "libre"),
           shiny::conditionalPanel(
             sprintf("input['%s'] == 'libre'", ns("climat_periode")),
             shiny::sliderInput(ns("climat_periode_libre"), NULL,
-              min = 1950, max = an_max, value = c(1991, 2020), step = 1,
+              min = 1950, max = an_max, value = .REGEN_CLIMAT_PERIODE_DEFAUT, step = 1,
               sep = "", ticks = FALSE)),
           shiny::sliderInput(ns("climat_opacite"), i18n$t("regen_climat_opacite"),
             min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE)),
@@ -85,9 +86,8 @@
         onglet_carte("chelsa"),
         onglet_carte("safran"),
         bslib::nav_panel(i18n$t("regen_climat_onglet_nuages"), value = "nuages",
-          plotly::plotlyOutput(ns("climat_nuages"), height = "60vh"),
-          htmltools::tags$h6(class = "mt-3", i18n$t("regen_climat_nuages_grille")),
-          shiny::plotOutput(ns("climat_nuages_grille"), height = "auto"))
+          # Le nuage anime occupe toute la hauteur utile de l'ecran.
+          plotly::plotlyOutput(ns("climat_nuages"), height = "calc(100vh - 190px)"))
       ),
       shiny::uiOutput(ns("climat_attribution"))
     ))
@@ -165,7 +165,6 @@
   per <- suppressWarnings(as.integer(meta$periode))
   mode <- meta$bornes$mode %||% "emprise"
   lib_mode <- switch(mode,
-    if49 = i18n$t("regen_climat_bornes_if49"),
     france = i18n$t("regen_climat_bornes_france"),
     i18n$t("regen_climat_bornes_emprise"))
   sous_titre <- if (length(per) == 2L && all(is.finite(per)))
@@ -243,25 +242,6 @@
   plotly::animation_slider(p, currentvalue = list(prefix = ""))
 }
 
-#' Small multiples of the yearly clouds (one panel per year, shared axes)
-#' @noRd
-.regen_nuages_grille <- function(res, i18n) {
-  ax <- .regen_nuages_axes(res$meta, i18n)
-  moy <- res$moyennes[is.finite(res$moyennes$x) & is.finite(res$moyennes$y), , drop = FALSE]
-  ggplot2::ggplot(res$points, ggplot2::aes(x = .data$x, y = .data$y)) +
-    ggplot2::geom_hline(yintercept = 0, colour = "grey70", linewidth = 0.3) +
-    ggplot2::geom_vline(xintercept = 0, colour = "grey70", linewidth = 0.3) +
-    ggplot2::geom_point(size = 0.4, alpha = 0.3, stroke = 0, colour = "#A3195B") +
-    ggplot2::geom_point(data = moy, shape = 21, size = 2, fill = "white",
-                        colour = "black", stroke = 0.5) +
-    ggplot2::facet_wrap(~annee, ncol = 6) +
-    ggplot2::coord_cartesian(xlim = res$limites$x, ylim = res$limites$y) +
-    ggplot2::labs(x = ax$x, y = ax$y) +
-    ggplot2::theme_minimal(base_size = 9) +
-    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
-                   strip.text = ggplot2::element_text(face = "bold"))
-}
-
 # ---- Serveur ------------------------------------------------------------------
 
 #' Server side of the climate-context panel
@@ -289,8 +269,8 @@
   onglet <- function() input$climat_onglet %||% "eobs"
   rayon <- function() as.numeric(input$climat_rayon_km %||% 25)
   periode <- function() {
-    p <- input$climat_periode %||% "complete"
-    if (identical(p, "libre")) input$climat_periode_libre %||% c(1991, 2020) else p
+    p <- input$climat_periode %||% "libre"
+    if (identical(p, "libre")) input$climat_periode_libre %||% .REGEN_CLIMAT_PERIODE_DEFAUT else p
   }
   source_nuages <- function() input$climat_nuages_source %||% "chelsa"
   mode_nuages <- function() input$climat_nuages_mode %||% "anomalie"
@@ -527,16 +507,6 @@
                      as.integer(m$n_cellules %||% 0L)),
       xref = "paper", yref = "paper", x = 0, y = 1.06, showarrow = FALSE,
       xanchor = "left", font = list(size = 10, color = "#555555"))))
-  })
-
-  output$climat_nuages_grille <- shiny::renderPlot({
-    e <- cl$nuages
-    shiny::req(e$res)
-    .regen_nuages_grille(e$res, i18n)
-  }, height = function() {
-    e <- cl$nuages
-    n <- length(unique(e$res$moyennes$annee %||% integer(0)))
-    max(200L, 150L * ceiling(max(n, 1L) / 6L) + 60L)
   })
 
   cl

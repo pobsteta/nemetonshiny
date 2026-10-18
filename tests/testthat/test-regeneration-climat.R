@@ -19,8 +19,8 @@
   utils::modifyList(list(
     status = "ok", periode = c(1950L, 2024L), n_annees = 75L,
     statistique = statistique,
-    bornes = list(tmax = c(-0.7, 4), precip = c(-270, 120), mode = "if49",
-                  reference = "if49_figure1"),
+    bornes = list(tmax = c(-0.7, 4), precip = c(-270, 120), mode = "france",
+                  reference = "eobs_france_metropole"),
     palette = list(classes = seq_len(ncol * ncol),
                    colors = rep("#E52521", ncol * ncol), ncol = ncol,
                    zero = list(tmax = 0.149, precip = 0.692)),
@@ -75,7 +75,6 @@
 test_that(".regen_climat_periode maps the period to the core argument and a tag", {
   f <- nemetonshiny:::.regen_climat_periode
   expect_identical(f("complete"), list(arg = "complete", tag = "complete"))
-  expect_identical(f("if49"), list(arg = "if49", tag = "if49"))
   expect_identical(f(c(2020, 1991)), list(arg = c(1991L, 2020L), tag = "1991-2020"))
   expect_identical(f(NULL)$arg, "complete")
 })
@@ -84,10 +83,10 @@ test_that("map cache paths are keyed on source, radius and period", {
   pp <- withr::local_tempdir()
   f <- function(...) nemetonshiny:::.regen_climat_paths(pp, ...)$tif
   chemins <- c(f("eobs", 25, "complete"), f("chelsa", 25, "complete"),
-               f("eobs", 50, "complete"), f("eobs", 25, "if49"),
+               f("eobs", 50, "complete"), f("eobs", 25, c(2006, 2020)),
                f("eobs", 25, c(1991, 2020)))
   expect_length(unique(chemins), 5L)
-  expect_match(f("safran", 25, "if49"), "climat/carte_safran_r25_if49\\.tif$")
+  expect_match(f("safran", 25, c(2006, 2020)), "climat/carte_safran_r25_2006-2020\\.tif$")
 })
 
 test_that("regeneration_climat_cached reads the map back, and rejects a stale scheme", {
@@ -212,8 +211,8 @@ test_that(".regen_climat_legende flags relative colours when the France bounds a
   expect_true(grepl(i18n$t("regen_climat_bornes_relatives"), rel, fixed = TRUE))
 })
 
-test_that("the yearly clouds build an animated plotly and a small-multiples grid", {
-  skip_if_not_installed("plotly"); skip_if_not_installed("ggplot2")
+test_that("the yearly clouds build an animated plotly", {
+  skip_if_not_installed("plotly")
   i18n <- nemetonshiny:::get_i18n("fr")
   res <- list(points = data.frame(annee = rep(2001:2012, each = 5), x = rnorm(60), y = rnorm(60)),
               moyennes = data.frame(annee = 2001:2012, x = 0, y = 0),
@@ -227,7 +226,6 @@ test_that("the yearly clouds build an animated plotly and a small-multiples grid
   # Tendance cumulee : la 1re annee de la serie = 2001 - (10 - 1) = 1992.
   titre <- b$x$layout$xaxis$title
   expect_match(if (is.list(titre)) titre$text else titre, "1992")
-  expect_s3_class(nemetonshiny:::.regen_nuages_grille(res, i18n), "ggplot")
 })
 
 # --- Module (testServer) ---------------------------------------------------------
@@ -256,15 +254,45 @@ test_that("no cache: the tab shows 'to compute' and launches nothing", {
   })
 })
 
-test_that("a cached map is shown without any computation", {
+test_that("the period defaults to the chosen years 2006-2020, without an IF49 option", {
+  skip_if_not_installed("bslib")
+  ui <- with_mocked_bindings(get_app_options = function() list(language = "fr"),
+    nemetonshiny:::mod_regeneration_ui("regen"), .package = "nemetonshiny")
+  h <- as.character(ui)
+  expect_false(grepl("if49", h, fixed = TRUE))
+  # Radio « Choix des annees » coche, curseur 2006-2020.
+  expect_match(h, 'value="libre"\\s+checked', perl = TRUE)
+  expect_match(h, 'data-from="2006"', fixed = TRUE)
+  expect_match(h, 'data-to="2020"', fixed = TRUE)
+  # Nuages annuels : le seul graphe anime, en grand, sans grille des annees.
+  expect_false(grepl("climat_nuages_grille", h, fixed = TRUE))
+  expect_match(h, "height:calc(100vh - 190px)", fixed = TRUE)
+})
+
+test_that("without any period input, the server reads the 2006-2020 map", {
   skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("terra")
   pp <- withr::local_tempdir()
-  .climat_ecrire_cache(pp, source = "chelsa", rayon = 30, periode = "if49")
+  .climat_ecrire_cache(pp, source = "eobs", rayon = 25, periode = c(2006, 2020))
   as <- shiny::reactiveValues(current_project = list(id = "p1", path = pp,
                                                      indicators_sf = .climat_units()))
   .climat_mocks_app()
   shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
-    session$setInputs(climat_onglet = "chelsa", climat_rayon_km = 30, climat_periode = "if49")
+    session$setInputs(climat_onglet = "eobs", climat_rayon_km = 25)
+    expect_identical(climat$eobs$status, "ok")
+    expect_match(climat$eobs$cle, "2006-2020$")
+  })
+})
+
+test_that("a cached map is shown without any computation", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("terra")
+  pp <- withr::local_tempdir()
+  .climat_ecrire_cache(pp, source = "chelsa", rayon = 30, periode = c(2006, 2020))
+  as <- shiny::reactiveValues(current_project = list(id = "p1", path = pp,
+                                                     indicators_sf = .climat_units()))
+  .climat_mocks_app()
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(climat_onglet = "chelsa", climat_rayon_km = 30,
+                      climat_periode = "libre", climat_periode_libre = c(2006, 2020))
     expect_identical(climat$chelsa$status, "ok")
     expect_s4_class(climat$chelsa$raster, "SpatRaster")
     expect_identical(climat_task$status(), "initial")
@@ -361,7 +389,7 @@ test_that("Recompute purges only the current map, then computes again", {
   withr::local_options(nemetonshiny.analyse_inline = TRUE)
   pp <- withr::local_tempdir()
   courant <- .climat_ecrire_cache(pp, "eobs", 25, "complete")
-  autre <- .climat_ecrire_cache(pp, "eobs", 25, "if49")
+  autre <- .climat_ecrire_cache(pp, "eobs", 25, c(2006, 2020))
   as <- shiny::reactiveValues(current_project = list(id = "p1", path = pp,
                                                      indicators_sf = .climat_units()))
   .climat_mocks_app()
