@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.13</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,30 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.14" id="nemetonshiny-20261014-2026-10-18">nemetonshiny 2026.10.14 (2026-10-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261014-2026-10-18"></a></h2>
+<p>Changements cassants : aucun (format de projet inchangé ; les anciens caches <code>cache/regeneration/eobs/context_*.tif</code> sont simplement ignorés).</p>
+<div class="section level3">
+<h3 id="regénération--contexte-climatique-estival-sur-un-cercle-spec-2026-10-14">reGénération : contexte climatique estival sur un cercle (spec 063)<a class="anchor" aria-label="anchor" href="#reg%C3%A9n%C3%A9ration--contexte-climatique-estival-sur-un-cercle-spec-2026-10-14"></a></h3>
+<p>Brief <code>nemeton</code> du 2026-10-18 (<code>contexte-climatique-cercle-cablage</code>), en réponse au brief de l’app du même jour. La carte « Contexte régional (E-OBS) » était fausse : tendance sur 12 étés seulement (2013-2024), recalculée sur le relief par krigeage (précipitations comprises), en pente par décennie, sur juin-août et en palette 5 × 5. Elle est remplacée par la méthode des scripts de référence (L’IF n° 49).</p>
+<ul><li>
+<strong>Onglet « Contexte climatique »</strong> (même place, même icône) à quatre sous-onglets : <em>Tendances E-OBS (0,1°)</em>, <em>Tendances CHELSA (1 km)</em>, <em>Tendances SAFRAN (8 km)</em> et <em>Nuages annuels</em>.</li>
+<li>
+<strong>Cercle de 10 à 100 km</strong> autour du centroïde du projet (défaut 25 km), tracé sur la carte. Les données sont affichées <strong>à leur résolution native</strong>, maille par maille (plus proche voisin, jamais d’interpolation), mailles du bord entières.</li>
+<li>
+<strong>Période</strong> : complète, 2006-2020 (L’IF n° 49) ou libre. Saison mai à septembre. La carte croise les <strong>variations totales</strong> sur la période (pente × durée) de la T°max et des précipitations, en palette 10 × 10 relevée sur la Figure 1 de L’IF n° 49. Bornes France métropolitaine (couleurs comparables d’un projet à l’autre), bornes de la figure pour 2006-2020 ; repli signalé sur des bornes relatives au cercle tant qu’E-OBS n’est pas préparé.</li>
+<li>
+<strong>Calcul au clic seulement</strong> (« Calculer », toast avec l’étape du cœur et bouton désactivé). Sans clic, l’onglet ne fait que relire le cache du projet. Le premier usage d’E-OBS télécharge 8 Go dans un cache partagé par le poste (avertissement affiché) ; les projets suivants prennent quelques secondes. « Recalculer cette carte » ne purge que la carte courante.</li>
+<li>
+<strong>Nuages annuels</strong> : un point par maille, écart à 1981-2010 ou tendance cumulée, curseur d’année animé (plotly) et grille de toutes les années.</li>
+<li>Le <strong>clic sur une maille</strong> (4 graphes, spec 036) lit désormais les séries estivales du sous-onglet. Le diagramme ombrothermique garde ses deux boutons de téléchargement, visibles sur le sous-onglet E-OBS.</li>
+<li>
+<strong>Légende bivariée</strong> : les cellules débordaient de leur cadre (bordure en plus de leur taille, 160 px pour 140 en 10 × 10) et recouvraient l’axe des précipitations, dont les bornes n’étaient plus lisibles. Défaut déjà présent en 5 × 5, moins visible. Les bornes de l’axe sont maintenant sur leur propre ligne, le libellé dessous.</li>
+<li>Le rayon du risque de gel tardif (R7) suit le rayon de l’onglet.</li>
+<li>Retirés : la chaîne <code>run_regeneration_context_raster()</code> / downscaling, le sélecteur de vue tx / rr / bivariée et 25 clés i18n devenues inutiles.</li>
+<li>Plancher <code>nemeton (&gt;= 2026.10.15)</code> (<code>climat_ete_series()</code>, <code>climat_tendance_bivariee()</code>, <code>climat_nuages_annuels()</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.13" id="nemetonshiny-20261013-2026-10-17">nemetonshiny 2026.10.13 (2026-10-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261013-2026-10-17"></a></h2>
 <p>Changements cassants : aucun.</p>

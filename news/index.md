@@ -1,5 +1,57 @@
 # Changelog
 
+## nemetonshiny 2026.10.14 (2026-10-18)
+
+Changements cassants : aucun (format de projet inchangé ; les anciens
+caches `cache/regeneration/eobs/context_*.tif` sont simplement ignorés).
+
+### reGénération : contexte climatique estival sur un cercle (spec 063)
+
+Brief `nemeton` du 2026-10-18 (`contexte-climatique-cercle-cablage`), en
+réponse au brief de l’app du même jour. La carte « Contexte régional
+(E-OBS) » était fausse : tendance sur 12 étés seulement (2013-2024),
+recalculée sur le relief par krigeage (précipitations comprises), en
+pente par décennie, sur juin-août et en palette 5 × 5. Elle est
+remplacée par la méthode des scripts de référence (L’IF n° 49).
+
+- **Onglet « Contexte climatique »** (même place, même icône) à quatre
+  sous-onglets : *Tendances E-OBS (0,1°)*, *Tendances CHELSA (1 km)*,
+  *Tendances SAFRAN (8 km)* et *Nuages annuels*.
+- **Cercle de 10 à 100 km** autour du centroïde du projet (défaut 25
+  km), tracé sur la carte. Les données sont affichées **à leur
+  résolution native**, maille par maille (plus proche voisin, jamais
+  d’interpolation), mailles du bord entières.
+- **Période** : complète, 2006-2020 (L’IF n° 49) ou libre. Saison mai à
+  septembre. La carte croise les **variations totales** sur la période
+  (pente × durée) de la T°max et des précipitations, en palette 10 × 10
+  relevée sur la Figure 1 de L’IF n° 49. Bornes France métropolitaine
+  (couleurs comparables d’un projet à l’autre), bornes de la figure pour
+  2006-2020 ; repli signalé sur des bornes relatives au cercle tant
+  qu’E-OBS n’est pas préparé.
+- **Calcul au clic seulement** (« Calculer », toast avec l’étape du cœur
+  et bouton désactivé). Sans clic, l’onglet ne fait que relire le cache
+  du projet. Le premier usage d’E-OBS télécharge 8 Go dans un cache
+  partagé par le poste (avertissement affiché) ; les projets suivants
+  prennent quelques secondes. « Recalculer cette carte » ne purge que la
+  carte courante.
+- **Nuages annuels** : un point par maille, écart à 1981-2010 ou
+  tendance cumulée, curseur d’année animé (plotly) et grille de toutes
+  les années.
+- Le **clic sur une maille** (4 graphes, spec 036) lit désormais les
+  séries estivales du sous-onglet. Le diagramme ombrothermique garde ses
+  deux boutons de téléchargement, visibles sur le sous-onglet E-OBS.
+- **Légende bivariée** : les cellules débordaient de leur cadre (bordure
+  en plus de leur taille, 160 px pour 140 en 10 × 10) et recouvraient
+  l’axe des précipitations, dont les bornes n’étaient plus lisibles.
+  Défaut déjà présent en 5 × 5, moins visible. Les bornes de l’axe sont
+  maintenant sur leur propre ligne, le libellé dessous.
+- Le rayon du risque de gel tardif (R7) suit le rayon de l’onglet.
+- Retirés : la chaîne `run_regeneration_context_raster()` / downscaling,
+  le sélecteur de vue tx / rr / bivariée et 25 clés i18n devenues
+  inutiles.
+- Plancher `nemeton (>= 2026.10.15)` (`climat_ete_series()`,
+  `climat_tendance_bivariee()`, `climat_nuages_annuels()`).
+
 ## nemetonshiny 2026.10.13 (2026-10-17)
 
 Changements cassants : aucun.
