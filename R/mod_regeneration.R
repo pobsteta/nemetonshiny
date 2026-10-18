@@ -1417,8 +1417,10 @@ mod_regeneration_server <- function(id, app_state) {
 
     # Contexte climatique (spec 063) : sidebar, cartes, nuages. Renvoie l'etat
     # par source, lu par le clic sur une maille (graphes spec 036).
+    climat_pipeline_req <- shiny::reactiveVal(NULL)  # etape " regen_climat "
     climat <- .regen_climat_server(input, output, session, i18n, app_state,
-                                   units_sf, climat_task, deny_if_busy, .dev_pkg_path)
+                                   units_sf, climat_task, deny_if_busy, .dev_pkg_path,
+                                   pipeline_req = climat_pipeline_req)
 
     # ORCHESTRATION - telechargement E-OBS des precipitations (~800 Mo, CDS).
     .lancer_eobs_rr <- function() {
@@ -1889,6 +1891,24 @@ mod_regeneration_server <- function(id, app_state) {
         pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
       }
+    })
+
+    # 4. Contexte climatique (spec 063) : les trois cartes E-OBS, CHELSA et
+    # SAFRAN du rayon et de la periode affiches. Le module climat les enchaine
+    # et repond lui-meme a la requete.
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "regen_climat")) return()
+      if (!.regen_pipeline_pret(req)) return()
+      if (isTRUE(busy())) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      if (project_is_readonly(app_state)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+        return()
+      }
+      climat_pipeline_req(req)
     })
 
     # Reponses des etapes 1 et 2 (le moteur repond depuis son propre observer

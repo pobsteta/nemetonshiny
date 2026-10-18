@@ -67,6 +67,11 @@ PIPELINE_STEPS <- list(
   list(id = "regen_eobs_tg",   module = "regeneration",  label = "pipeline_step_regen_eobs_tg"),
   list(id = "regen_gel",       module = "regeneration",  label = "pipeline_step_regen_gel"),
   list(id = "regeneration",    module = "regeneration",  label = "pipeline_step_regeneration"),
+  # Contexte climatique (spec 063) : cartes E-OBS, CHELSA et SAFRAN du rayon et
+  # de la periode affiches. Independant du moteur, place apres lui parce que
+  # long et sans consommateur dans la chaine ; la premiere carte E-OBS d'un
+  # poste telecharge environ 8 Go.
+  list(id = "regen_climat",    module = "regeneration",  label = "pipeline_step_regen_climat"),
   # Creation des zones de suivi AVANT les trois moteurs sante : ils exigent
   # tous un `zone_id`, et sans zone enregistree ils se sautent - ce qu'a montre
   # le premier run reel sur Couchey (" Aucune zone de suivi enregistree ").

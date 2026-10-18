@@ -1,6 +1,18 @@
-# nemetonshiny 2026.10.16.9000 (cycle dev)
+# nemetonshiny 2026.10.16.9001 (cycle dev)
 
-- Ouverture du cycle dev.
+## « Tout calculer » : contexte climatique
+
+- Nouvelle étape `regen_climat` après le moteur reGénération : les cartes
+  E-OBS, CHELSA et SAFRAN sont calculées l'une après l'autre, avec le rayon et
+  la période affichés dans l'onglet. Une carte déjà en cache n'est pas relancée.
+  Une source hors couverture ou en échec n'arrête pas les suivantes. Le rapport
+  donne le bilan par source, par exemple « E-OBS : déjà en cache · CHELSA :
+  calculée · SAFRAN : hors couverture ». L'étape échoue seulement si aucune des
+  trois cartes n'a pu être produite. La première carte E-OBS d'un poste
+  télécharge environ 8 Go. Les nuages annuels restent hors de la chaîne.
+- Nouvelles clés i18n `pipeline_step_regen_climat`, `regen_climat_bilan_ok`,
+  `regen_climat_bilan_cache`, `regen_climat_bilan_hors` et
+  `regen_climat_bilan_echec`.
 
 # nemetonshiny 2026.10.16 (2026-10-18)
 
