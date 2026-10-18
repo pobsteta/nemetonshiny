@@ -547,18 +547,6 @@ test_that("regen_fetch_eobs_tg valide ses entrées (sf + project_path)", {
   expect_false(nemetonshiny:::regen_fetch_eobs_tg(.regen_units(1), NULL))
 })
 
-test_that("regen_context_availability reports each series separately", {
-  withr::with_tempdir({
-    p <- getwd()
-    expect_equal(nemetonshiny:::regen_context_availability(p), list(tx = FALSE, rr = FALSE))
-    .stub_eobs_nc(p, "tx")
-    # Le cas réel : « Auto (E-OBS) » n'a rapatrié que la température.
-    expect_equal(nemetonshiny:::regen_context_availability(p), list(tx = TRUE, rr = FALSE))
-    .stub_eobs_nc(p, "rr")
-    expect_equal(nemetonshiny:::regen_context_availability(p), list(tx = TRUE, rr = TRUE))
-  })
-})
-
 # --- regen_reprioritize : mise à jour live de l'essence cible ----------------
 
 test_that("regen_reprioritize delegates to the core priority index with species", {

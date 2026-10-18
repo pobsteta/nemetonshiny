@@ -206,41 +206,6 @@
     quiet   = FALSE), extra))
 }
 
-# Plage d'un axe de la legende bivariee (Contexte regional E-OBS). Utilise la
-# plage REELLEMENT observee sur la zone - quantiles du raster downscale exposes
-# par le coeur dans la sous-meta `sub$palette$low/high` - plutot que les seuils
-# fixes de classification. Garantit que 0 (et sa ligne pointillee blanche) reste
-# DANS la plage, avec une marge de 10 %, meme si toutes les tendances sont du
-# meme signe. La position fractionnaire du 0 est alors recalculee sur cette plage.
-# Repli sur les seuils coeur (`break_vec`) + la position 0 coeur (`core_zero`) quand
-# la plage observee est absente (vieux cache, sous-meta manquante).
-# Renvoie `list(range = c(lo, hi), zero = frac_0_dans_range)`.
-.regen_biv_axis <- function(sub, break_vec, core_zero) {
-  lo <- suppressWarnings(as.numeric(sub$palette$low))
-  hi <- suppressWarnings(as.numeric(sub$palette$high))
-  if (length(lo) == 1L && length(hi) == 1L && is.finite(lo) && is.finite(hi)) {
-    if (hi < lo) { t <- lo; lo <- hi; hi <- t }
-    pad <- 0.1 * max(hi - lo, abs(lo), abs(hi), 1e-6)   # marge visibilite du 0
-    lo <- min(lo, -pad); hi <- max(hi, pad)             # 0 strictement dans [lo, hi]
-    return(list(range = c(lo, hi), zero = (0 - lo) / (hi - lo)))
-  }
-  list(range = break_vec, zero = core_zero)             # repli seuils fixes
-}
-
-# Decoupe le libelle de la legende bivariee en deux lignes : la partie AVANT la
-# premiere parenthese (titre principal) + le contenu de la parenthese finale
-# (sous-titre, le couple de variables " Tdegmax estivale x precipitations ").
-# Sans parenthese : titre seul, sous-titre NULL (compat cache/label ancien).
-# Renvoie `list(title = ..., subtitle = ...|NULL)`.
-.regen_biv_title <- function(raw) {
-  raw <- trimws(as.character(raw %||% ""))
-  m <- regmatches(raw, regexec("^(.*?)\\s*\\(([^()]*)\\)\\s*$", raw))[[1]]
-  if (length(m) == 3L && nzchar(trimws(m[2])) && nzchar(trimws(m[3]))) {
-    return(list(title = trimws(m[2]), subtitle = paste0("(", trimws(m[3]), ")")))
-  }
-  list(title = raw, subtitle = NULL)
-}
-
 # Libelle i18n d'une phase (voir modele 6 phases + etats terminaux du brief).
 .regen_phase_label <- function(i18n, st) {
   switch(st$phase %||% "",
@@ -806,60 +771,9 @@ mod_regeneration_ui <- function(id) {
         )
         )
       ),
-      bslib::nav_panel(i18n$t("regen_map_context"),
-        icon = bsicons::bs_icon("cloud-sun"),
-        # Contexte regional en RASTER downscale (eobs_downscale, coeur >= 0.153.0),
-        # 3 vues : tendance Tdegmax (tx), tendance precipitations (rr), et croisement
-        # BIVARIE (classes 1-9). La sidebar droite porte le selecteur de vue, le
-        # rayon (buffer) et l'opacite - tout ce qui ne concerne que cette carte.
-        bslib::layout_sidebar(
-          fillable = TRUE,
-          sidebar = bslib::sidebar(
-            position = "right", open = "always", width = 260,
-            htmltools::tags$strong(i18n$t("regen_context_view")),
-            shiny::radioButtons(ns("context_view"), NULL,
-              choiceValues = c("tx", "rr", "bivariate"),
-              # Chaque vue porte un " i " expliquant la variable et la lecture.
-              choiceNames  = list(
-                layer_tt(i18n$t("regen_context_view_tx"), i18n$t("regen_context_view_tx_info")),
-                layer_tt(i18n$t("regen_context_view_rr"), i18n$t("regen_context_view_rr_info")),
-                layer_tt(i18n$t("regen_context_view_bivariate"), i18n$t("regen_context_view_bivariate_info"))),
-              selected = "tx"),
-            # Telechargement de la serie precipitations (~800 Mo) : requis pour les
-            # vues rr / bivariee.
-            bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
-              icon = bsicons::bs_icon("cloud-download"),
-              label_busy = i18n$t("regen_busy_generic"),
-              type = "outline-secondary", class = "btn-sm w-100 mb-2 regen-calc-btn"),
-            # Temperature moyenne (tg) : requise par le diagramme ombrothermique
-            # (Gaussen) du panneau au clic. Opt-in, meme cout (~800 Mo) que rr.
-            bslib::input_task_button(ns("fetch_eobs_tg"), i18n$t("regen_fetch_tg"),
-              icon = bsicons::bs_icon("thermometer-half"),
-              label_busy = i18n$t("regen_busy_generic"),
-              type = "outline-secondary", class = "btn-sm w-100 mb-2 regen-calc-btn"),
-            htmltools::tags$hr(class = "my-2"),
-            shiny::numericInput(ns("buffer_km"), i18n$t("regen_buffer"),
-              value = 25, min = 5, max = 100, step = 5),
-            htmltools::tags$p(class = "text-muted small", i18n$t("regen_buffer_help")),
-            htmltools::tags$strong(i18n$t("regen_context_opacity")),
-            shiny::sliderInput(ns("context_opacity"), NULL,
-              min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE),
-            # Purge le cache raster (.tif + meta) des 3 vues et relance le calcul
-            # de la vue courante : a utiliser quand un raster cache est perime
-            # (ancienne version coeur, bornes/classement changes).
-            htmltools::tags$hr(class = "my-2"),
-            shiny::actionButton(ns("recompute_context"), i18n$t("regen_context_recompute"),
-              icon = bsicons::bs_icon("arrow-repeat"),
-              class = "btn-outline-warning btn-sm w-100")
-          ),
-          shiny::uiOutput(ns("context_status")),
-          leaflet::leafletOutput(ns("context_map"), height = "70vh"),
-          # Attribution et licence E-OBS (brief 027 brancheA sect.5) : donnees
-          # ECA&D sous licence recherche / enseignement non commerciale.
-          htmltools::tags$p(class = "text-muted small mt-1 mb-0",
-            bsicons::bs_icon("c-circle", class = "me-1"),
-            i18n$t("regen_eobs_attribution"))
-        ))
+      # Contexte climatique estival sur un cercle autour du projet (spec 063) :
+      # quatre sous-onglets E-OBS / CHELSA / SAFRAN / nuages annuels.
+      .regen_climat_ui(ns, i18n)
     )
   )
 }
@@ -925,8 +839,6 @@ mod_regeneration_server <- function(id, app_state) {
       # Valeurs derivees par le moteur (spec 035 B4.a) : rendent visible la
       # spatialisation du lai_max et de la reserve utile.
       lai_max = NULL, ewm = NULL, ewm_source = NA_character_,
-      # Incremente apres acquisition de la serie `rr` : re-rend la carte contexte.
-      context_refresh = 0L,
       # Incremente a chaque clic sur un bouton de calcul : force l'observer de
       # verrou a re-synchroniser l'etat des boutons (verrou instantane cote client).
       click_tick = 0L,
@@ -946,12 +858,6 @@ mod_regeneration_server <- function(id, app_state) {
       # Bilan persistant du dernier calcul gel (status none/detected/skipped/error
       # + stats) affiche sous le bouton " Risque de gel " - retour UX.
       frost_summary = NULL,
-      # Raster de contexte regional (E-OBS downscale) + son meta (status, palette,
-      # value_label) ; chrono du calcul async (WMS IGN + krigeage, ~4 s).
-      context_raster = NULL, context_meta = NULL,
-      context_running = FALSE, context_start = NULL,
-      context_loaded_view = NULL,   # vue actuellement chargee : tx / rr / bivariate
-      context_loaded_buffer = NULL, # rayon (m) du raster charge
       # Restauration differee a l'entree dans l'onglet reGeneration (et non a
       # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
       # l'observer de restauration ne le consomme (toast + relecture cache) que
@@ -1005,10 +911,6 @@ mod_regeneration_server <- function(id, app_state) {
       rv$lai_source <- NA_character_
       app_state$regeneration_result <- NULL
       rv$regen_needs_restore <- TRUE
-      # Raster de contexte : perime au changement de projet/UGF -> recalcul lazy.
-      rv$context_raster <- NULL
-      rv$context_meta <- NULL
-      rv$context_loaded_view <- NULL
     }, ignoreNULL = FALSE)
 
     # (B) Observateur RESTAURATION - uniquement quand l'onglet reGeneration est
@@ -1433,30 +1335,8 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
-    # Raster de contexte regional (E-OBS downscale, ~4 s WMS + krigeage) : worker
-    # future, sortie cachee (.tif + meta.json). Renvoie le CHEMIN du raster (le
-    # pointeur SpatRaster ne traverse pas la frontiere future) + le meta.
-    context_task <- shiny::ExtendedTask$new(
-      function(units, project_path, view, buffer_m, dev_path, app_opts) {
-        if (requireNamespace("future", quietly = TRUE)) {
-          plan_classes <- class(future::plan())
-          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            .ensure_async_plan()
-          }
-        }
-        promises::future_promise({
-          # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
-          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
-          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
-            pkgload::load_all(dev_path, quiet = TRUE)
-          } else {
-            loadNamespace("nemetonshiny")
-          }
-          options(nemeton.app_options = app_opts)
-          fn <- utils::getFromNamespace("run_regeneration_context_raster", "nemetonshiny")
-          fn(units, project_path, view = view, buffer_m = buffer_m)
-        }, seed = TRUE)
-      })
+    # Contexte climatique (spec 063) : cartes et nuages, au clic seulement.
+    climat_task <- .regen_climat_task()
 
     # Lier chaque input_task_button a sa tache : bslib desactive le bouton +
     # affiche le spinner tant que la tache tourne, puis le reactive (succes OU
@@ -1467,28 +1347,30 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(eobs_rr_task, "fetch_eobs_rr")
     bslib::bind_task_button(eobs_tg_task, "fetch_eobs_tg")
     bslib::bind_task_button(frost_task, "run_frost")
+    bslib::bind_task_button(climat_task, "climat_calculer")
 
     # --- Verrou d'exclusion mutuelle des calculs (brief 035 verrou-boutons) ---
     # Chaque task button ne connait que SA tache (bind_task_button) : rien
     # n'empeche de lancer un 2e calcul lourd pendant qu'un 1er tourne (workers
     # future concurrents sur les memes rasters/RAM/cache/regeneration). `busy()`
-    # est vrai des qu'une tache UTILISATEUR tourne. `context_task` est EXCLU : il
-    # est auto-declenche par un changement de vue/buffer et griserait la sidebar
-    # de facon erratique sans que l'utilisateur ait rien lance.
+    # est vrai des qu'une tache UTILISATEUR tourne. Le contexte climatique en fait
+    # partie : il n'est plus lance qu'au clic (spec 063, E-OBS = 8 Go).
     busy <- shiny::reactive({
       any(vapply(
-        list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task, analysis_task),
+        list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task, analysis_task,
+             climat_task),
         function(t) identical(t$status(), "running"),
         logical(1)))
     })
 
     # Grisage client : task buttons via update_task_button (le binding bslib
     # ignore la cle `disabled`), actionButton classiques via updateActionButton.
-    TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "fetch_eobs_tg", "run_frost")
+    TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "fetch_eobs_tg", "run_frost",
+                     "climat_calculer")
     # `export_terrain` porte `.regen-calc-btn` (le verrou client le grise au clic)
     # mais n'est ni un task button ni un moteur : il DOIT figurer ici, sinon
     # l'observer d'autorite ne le re-active jamais et il reste grise a vie.
-    ACTION_BTNS <- c("run", "recompute_pai", "persist_db", "export_terrain")
+    ACTION_BTNS <- c("run", "recompute_pai", "persist_db", "export_terrain", "climat_recalculer")
     # meteoland absent -> run_frost est rendu desactive : ne jamais le repasser
     # " ready " (sinon l'observer l'activerait alors qu'il ne doit pas l'etre).
     frost_ok <- regen_meteoland_available()
@@ -1517,7 +1399,8 @@ mod_regeneration_server <- function(id, app_state) {
     shiny::observeEvent(
       list(input$run_engine, input$run_frost, input$auto_years,
            input$fetch_eobs_rr, input$fetch_eobs_tg, input$run,
-           input$recompute_pai, input$persist_db, input$export_terrain), {
+           input$recompute_pai, input$persist_db, input$export_terrain,
+           input$climat_calculer, input$climat_recalculer), {
         rv$click_tick <- (rv$click_tick %||% 0L) + 1L
       }, ignoreInit = TRUE)
 
@@ -1531,6 +1414,11 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::showNotification(i18n$t("regen_busy_already"), type = "warning", duration = 5)
       TRUE
     }
+
+    # Contexte climatique (spec 063) : sidebar, cartes, nuages. Renvoie l'etat
+    # par source, lu par le clic sur une maille (graphes spec 036).
+    climat <- .regen_climat_server(input, output, session, i18n, app_state,
+                                   units_sf, climat_task, deny_if_busy, .dev_pkg_path)
 
     # ORCHESTRATION - telechargement E-OBS des precipitations (~800 Mo, CDS).
     .lancer_eobs_rr <- function() {
@@ -1581,7 +1469,6 @@ mod_regeneration_server <- function(id, app_state) {
       if (identical(st, "success")) {
         ok <- tryCatch(eobs_rr_task$result(), error = function(e) FALSE)
         if (isTRUE(ok)) {
-          rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-rend la carte
           shiny::showNotification(i18n$t("regen_eobs_rr_done"), type = "message", duration = 6)
         } else {
           shiny::showNotification(i18n$t("regen_eobs_rr_failed"), type = "warning", duration = 10)
@@ -1674,7 +1561,8 @@ mod_regeneration_server <- function(id, app_state) {
       cfg <- list(
         year_moyenne = annees$moyenne %||% na_null(input$year_moyenne),
         year_canicule = annees$canicule %||% na_null(input$year_canicule),
-        buffer_m = (input$buffer_km %||% 25) * 1000)
+        # Rayon de contexte de l'onglet Contexte climatique (ex-`buffer_km`).
+        buffer_m = (input$climat_rayon_km %||% 25) * 1000)
       rv$frost_running <- TRUE
       rv$frost_start <- Sys.time()
       shiny::showNotification(
@@ -1766,109 +1654,6 @@ mod_regeneration_server <- function(id, app_state) {
         },
         "skipped" = frost_line("text-muted", "dash-circle", i18n$t("regen_frost_skipped")),
         NULL)
-    })
-
-    # --- Contexte regional (raster E-OBS downscale) ----------------------
-    # Calcul lazy quand l'onglet reGeneration est actif et que la serie tx est la.
-    # Fast-path cache (.tif + meta.json) -> rendu instantane ; sinon worker async
-    # (~4 s WMS + krigeage). Une seule tentative par projet (rv$context_raster).
-    # Declenche aussi par le SELECTEUR de vue (tx / rr / bivariate) : chaque vue a
-    # son propre raster + cache. Cache-first, sinon worker async. Bandeau
-    # need_tx / need_rr si une serie requise manque.
-    shiny::observeEvent(
-      list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view,
-           input$buffer_km), {
-      if (!identical(app_state$active_main_tab, "regeneration")) return()
-      if (isTRUE(rv$context_running)) return()
-      view <- input$context_view %||% "tx"
-      buffer_m <- (input$buffer_km %||% 25) * 1000
-      # Deja charge pour CETTE vue ET ce rayon -> ne rien refaire.
-      if (identical(rv$context_loaded_view, view) &&
-          identical(rv$context_loaded_buffer, buffer_m) &&
-          (!is.null(rv$context_raster) ||
-           (!is.null(rv$context_meta) && !identical(rv$context_meta$status, "ok")))) return()
-      units <- units_sf(); if (is.null(units)) return()
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
-      if (is.null(project_path)) return()
-
-      av <- regen_context_availability(project_path)
-      set_state <- function(rast, meta) {
-        rv$context_raster <- rast; rv$context_meta <- meta; rv$context_loaded_view <- view
-        rv$context_loaded_buffer <- buffer_m
-      }
-      if (view %in% c("tx", "bivariate") && !isTRUE(av$tx)) return(set_state(NULL, list(status = "need_tx")))
-      if (view %in% c("rr", "bivariate") && !isTRUE(av$rr)) return(set_state(NULL, list(status = "need_rr")))
-
-      cached <- regeneration_context_cached(project_path, view, buffer_m)
-      if (!is.null(cached)) return(set_state(cached$raster, cached$meta))
-
-      rv$context_raster <- NULL; rv$context_loaded_view <- view
-      rv$context_loaded_buffer <- buffer_m
-      rv$context_running <- TRUE; rv$context_start <- Sys.time()
-      shiny::showNotification(
-        .running_notif_content(i18n$t("regen_context_computing"), rv$context_start),
-        id = session$ns("context_notif"), type = "message", duration = NULL)
-      rv$context_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
-      context_task$invoke(units, project_path, view, buffer_m,
-                          .dev_pkg_path, get_app_options())
-    }, ignoreNULL = FALSE)
-
-    # Recalcul force du contexte : purge le cache disque (.tif + meta) des 3 vues
-    # - sinon l'observer lazy relit un raster perime - puis re-declenche le calcul
-    # de la vue courante. Les autres vues se recalculeront a leur prochaine
-    # selection (cache absent). Indispensable apres un changement coeur (classement
-    # bivarie, bornes) qui rend un raster cache incorrect.
-    shiny::observeEvent(input$recompute_context, {
-      if (deny_if_busy()) return()
-      if (deny_if_readonly(app_state, i18n)) return()
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
-      if (is.null(project_path)) {
-        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
-        return()
-      }
-      # Tous les rayons : un fichier par (vue, rayon) depuis l'audit 1.0.
-      d <- dirname(.regen_context_raster_paths(project_path, "tx")$tif)
-      unlink(list.files(d, "^context_(tx|rr|bivariate)(_[0-9.]+km)?\\.(tif|meta\\.json)$",
-                        full.names = TRUE))
-      rv$context_raster <- NULL; rv$context_meta <- NULL; rv$context_loaded_view <- NULL
-      rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-declenche l'observer lazy
-      shiny::showNotification(i18n$t("regen_context_recomputing"), type = "message", duration = 4)
-    })
-
-    # Tick 1 s : chrono de la notif " contexte regional ".
-    shiny::observe({
-      if (!isTRUE(rv$context_running)) return()
-      shiny::invalidateLater(1000)
-      shiny::showNotification(
-        .running_notif_content(i18n$t("regen_context_computing"),
-                               shiny::isolate(rv$context_start)),
-        id = session$ns("context_notif"), type = "message", duration = NULL)
-    })
-
-    shiny::observeEvent(context_task$status(), {
-      st <- context_task$status()
-      if (identical(st, "success") || identical(st, "error")) {
-        rv$context_running <- FALSE
-        rv$context_start <- NULL
-        shiny::removeNotification(session$ns("context_notif"))
-      }
-      if (identical(st, "success") && !.est_projet_courant(app_state, rv$context_pid)) {
-        # Raster d'un autre projet : ne pas le marquer " charge " pour celui-ci,
-        # et relancer le chargement pour le projet ouvert.
-        rv$context_loaded_view <- NULL
-        rv$context_raster <- NULL
-        rv$context_refresh <- (shiny::isolate(rv$context_refresh) %||% 0) + 1
-        return()
-      }
-      if (identical(st, "success")) {
-        res <- tryCatch(context_task$result(), error = function(e) NULL)
-        rv$context_meta <- res$meta %||% list(status = "insufficient_data")
-        if (!is.null(res$cache_path) && !is.na(res$cache_path) && file.exists(res$cache_path)) {
-          rv$context_raster <- tryCatch(terra::rast(res$cache_path), error = function(e) NULL)
-        }
-      } else if (identical(st, "error")) {
-        rv$context_meta <- list(status = "insufficient_data", reason = "eobs_downscale_no_dem")
-      }
     })
 
     # Invalidation manuelle du cache PAI (sect.3 brief pai-cache) : supprime
@@ -2696,176 +2481,19 @@ mod_regeneration_server <- function(id, app_state) {
         color = "#FF8C00", weight = 4, fill = FALSE, opacity = 0.95)
     })
 
-    # Bandeau du contexte regional (raster). La serie requise depend de la vue :
-    # `tx` seule pour la tendance Tdegmax, `tx` + `rr` pour les precipitations et la
-    # bivariee. Quatre cas : serie absente -> bandeau `need_tx` / `need_rr` ; calcul
-    # en cours -> rien (la notif chrono suffit) ; degrade -> message issu de
-    # `meta$reason`. Statut " ok " -> pas de bandeau (hors note de fiabilite basse).
-    output$context_status <- shiny::renderUI({
-      rv$context_refresh
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
-      if (is.null(project_path)) return(NULL)
-      if (isTRUE(rv$context_running)) return(NULL)         # chrono en bas-droite
-      warn <- function(msg) htmltools::div(
-        class = "alert alert-warning py-2 small d-flex align-items-center",
-        bsicons::bs_icon("exclamation-triangle-fill", class = "me-2"),
-        htmltools::div(class = "flex-grow-1", msg))
-      meta   <- rv$context_meta %||% list()
-      status <- meta$status
-      # Serie requise manquante (poussee par l'observer de declenchement).
-      if (identical(status, "need_tx")) return(warn(i18n$t("regen_context_need_tx")))
-      if (identical(status, "need_rr")) return(warn(i18n$t("regen_context_need_rr")))
-      if (identical(status, "ok")) {
-        # OK : note de fiabilite basse (rr / bivarie), en info discrete.
-        if (identical(meta$reliability, "low")) {
-          return(htmltools::div(class = "alert alert-info py-2 small d-flex align-items-center",
-            bsicons::bs_icon("info-circle", class = "me-2"),
-            htmltools::div(class = "flex-grow-1", i18n$t("regen_context_reliability_low"))))
-        }
-        return(NULL)
-      }
-      if (is.null(status)) return(NULL)                    # pas encore evalue
-      # Degrade : mapper meta$reason (cle i18n) ; repli generique sinon.
-      reason <- meta$reason %||% "eobs_downscale_too_few_cells"
-      warn(if (i18n$has(reason)) i18n$t(reason) else i18n$t("eobs_downscale_too_few_cells"))
-    })
+    # --- Graphiques au clic sur une maille (spec 036) ------------------------
+    # Le clic leaflet sur une des trois cartes du contexte climatique (lng/lat
+    # 4326) ouvre un panneau de 4 graphes rendant la donnee SOUS la couleur, a la
+    # maille cliquee, a partir des series ESTIVALES du sous-onglet (spec 063 :
+    # une couche par an nommee par l'annee, lue telle quelle par
+    # `eobs_summer_series()`). Toute la donnee vient des accesseurs coeur ; l'app
+    # ne fait que clic -> point -> trace.
 
-    # Ajoute le raster de contexte + sa legende a une carte/proxy leaflet, selon
-    # la vue : univariee tx/rr (colorNumeric, sens de palette pilote par
-    # meta$palette$sense - hot_unfavorable=haut rouge, dry_unfavorable=bas rouge)
-    # ou bivariee (colorFactor 1-9 + legende 2D 3x3). Partage rendu/proxy.
-    .context_add_layer <- function(m, rast, meta, op) {
-      if (!inherits(rast, "SpatRaster") || !identical(meta$status, "ok")) return(m)
-      pal <- meta$palette %||% list()
-      opts <- leaflet::gridOptions(pane = "contexteRaster")
-      if (!is.null(pal$colors)) {
-        # Bivarie : classes 1..N*N -> colorFactor + legende bivariee 2D NxN. Le
-        # coeur livre 25 classes (5x5, `ncol = 5`) ; la legende suit `pal$ncol`.
-        classes <- pal$classes %||% seq_along(pal$colors)
-        # Coercition en entier : les classes bivariees SONT des entiers 1-25 ; une
-        # valeur decimale (source ou reprojection) ne matcherait aucune classe et
-        # laisserait un trou. Garde-fou complementaire du `method = "ngb"` ci-dessous.
-        rast <- terra::round(rast)
-        cmap <- leaflet::colorFactor(pal$colors, domain = classes, na.color = "transparent")
-        # Axes annotes par la plage REELLEMENT observee sur la zone (quantiles des
-        # rasters downscales) via `.regen_biv_axis`, avec 0 garanti dans la plage.
-        zcore <- pal$zero %||% list()
-        ys <- .regen_biv_axis(meta$tx, meta$breaks$tmax,   suppressWarnings(as.numeric(zcore[["tmax"]])))
-        xs <- .regen_biv_axis(meta$rr, meta$breaks$precip, suppressWarnings(as.numeric(zcore[["precip"]])))
-        # Titre en deux lignes : " Tendance bivariee " + le couple de variables
-        # entre parentheses (Tdegmax estivale x precipitations) en sous-titre.
-        raw_title <- meta$value_label %||% i18n$t("regen_context_bivariate")
-        biv_title <- .regen_biv_title(raw_title)
-        leg <- as.character(bivariate_legend_html(
-          palette  = stats::setNames(pal$colors, classes),
-          axis_x   = i18n$t("regen_context_axis_rr"),
-          axis_y   = i18n$t("regen_context_axis_tx"),
-          title    = biv_title$title,
-          subtitle = biv_title$subtitle,
-          ncol     = pal$ncol,
-          zero    = list(tmax = ys$zero, precip = xs$zero),
-          x_range = xs$range,
-          y_range = ys$range))
-        # method = "ngb" (plus proche voisin) OBLIGATOIRE pour un raster
-        # CATEGORIEL : la reprojection par defaut (bilineaire) interpole les codes
-        # de classe entiers 1-25 en valeurs decimales (3.4, 7.2...) qui ne
-        # correspondent a aucune classe de la palette -> pixels transparents (trous).
-        m |>
-          leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
-            method = "ngb", group = "Contexte E-OBS", options = opts) |>
-          leaflet::addControl(html = leg, position = "bottomright", layerId = "context_legend",
-            className = "nmt-bivariate-control")
-      } else {
-        # Univarie : colorNumeric, sens pilote par meta$palette$sense.
-        lo <- pal$low; hi <- pal$high
-        if (is.null(lo) || is.null(hi)) {
-          vv <- suppressWarnings(range(terra::values(rast), na.rm = TRUE)); lo <- vv[1]; hi <- vv[2]
-        }
-        if (!is.finite(lo) || !is.finite(hi) || lo == hi) return(m)
-        rev <- !identical(pal$sense, "dry_unfavorable")   # dry_unfavorable -> bas = rouge
-        cn <- leaflet::colorNumeric("RdYlBu", domain = c(lo, hi), reverse = rev,
-                                    na.color = "transparent")
-        m |>
-          leaflet::addRasterImage(rast, colors = cn, opacity = op, project = TRUE,
-            group = "Contexte E-OBS", options = opts) |>
-          leaflet::addLegend(pal = cn, values = c(lo, hi), position = "bottomright",
-            title = meta$value_label %||% i18n$t("regen_context_value_tx_trend"),
-            layerId = "context_legend")
-      }
-    }
-
-    # Carte de contexte - patron FAST/FORDEAD : fond STABLE (jamais re-rendu) +
-    # `leafletProxy` pour le raster/l'opacite/la legende. Rendu de base lit raster
-    # + opacite en `isolate` -> zoom + fond OSM/Satellite preserves au slider et au
-    # changement de fond ; l'observer proxy met a jour sans reconstruire. Raster
-    # dans un map-pane dedie SOUS l'emprise UGF.
-    output$context_map <- leaflet::renderLeaflet({
-      units <- units_sf()
-      shiny::req(units)
-      geo_ugf <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
-      op <- max(0, min(1, as.numeric(shiny::isolate(input$context_opacity) %||% 0.8)))
-      m <- leaflet::leaflet() |>
-        leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
-        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
-        leaflet::addMapPane("contexteRaster", zIndex = 250) |>
-        leaflet::addLayersControl(
-          baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = c("Contexte E-OBS", "UGF"),
-          options       = leaflet::layersControlOptions(collapsed = TRUE))
-      m <- .context_add_layer(m, shiny::isolate(rv$context_raster),
-                              shiny::isolate(rv$context_meta) %||% list(), op)
-      m <- leaflet::addPolygons(m, data = geo_ugf, group = "UGF", weight = 1.5,
-        color = "#1f6feb", fillColor = "#1f6feb", fillOpacity = 0.05)
-      bb <- tryCatch(as.numeric(sf::st_bbox(geo_ugf)), error = function(e) NULL)
-      if (!is.null(bb) && all(is.finite(bb))) {
-        m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
-      }
-      m
-    })
-
-    # Mise a jour RASTER + LEGENDE via leafletProxy : reagit au raster (calcul
-    # async / changement de vue), au meta et au curseur d'opacite - sans
-    # re-render (zoom + fond preserves). Respecte la decoche du group.
-    shiny::observe({
-      rast <- rv$context_raster
-      meta <- rv$context_meta %||% list()
-      op   <- max(0, min(1, as.numeric(input$context_opacity %||% 0.8)))
-      # `isolate()` : leaflet renvoie cet input a chaque ajout/retrait de
-      # groupe, et cet observe en ajoute - une lecture reactive le rendrait
-      # auto-declenchant (peintures multiples). Cf. mod_accessibility.
-      shown <- shiny::isolate(input$context_map_groups)
-      proxy <- leaflet::leafletProxy("context_map") |>
-        leaflet::clearGroup("Contexte E-OBS") |>
-        leaflet::removeControl("context_legend")
-      proxy <- .context_add_layer(proxy, rast, meta, op)
-      if (!is.null(shown) && !("Contexte E-OBS" %in% shown)) {
-        leaflet::hideGroup(proxy, "Contexte E-OBS")
-      }
-    })
-
-    # --- Graphiques au clic sur la maille E-OBS (spec 036) -------------------
-    # Le clic leaflet (input$context_map_click, lng/lat 4326) ouvre un panneau de
-    # 4 graphes rendant la donnee SOUS la couleur, a la maille cliquee. Toute la
-    # donnee vient des accesseurs coeur (eobs_summer_series / eobs_trend_fit /
-    # eobs_monthly_climatology) ; l'app ne fait que clic -> point -> trace.
-    #
-    # Cache de session des stacks estivaux (une couche/an, resolution E-OBS
-    # native ~11 km - cf. sect.7 honnetete spatiale) : le 1er clic lit le .nc cache,
-    # les suivants sont instantanes. Cle = projet + buffer + variable.
-    summer_stacks <- new.env(parent = emptyenv())
-    .load_summer_stack <- function(units, project_path, var, buffer_m) {
-      key <- paste(project_path %||% "-", buffer_m, var, sep = "|")
-      if (!is.null(summer_stacks[[key]])) return(summer_stacks[[key]]$stk)
-      stk <- .regen_load_eobs_buffered(units, project_path, var, buffer_m)
-      summer_stacks[[key]] <- list(stk = stk)   # memoise meme NULL (evite de re-tenter)
-      stk
-    }
-
-    # Extrait la serie estivale au point + son ajustement de tendance pour une
-    # variable ; renvoie NULL si le stack est absent. `pt` = c(lng, lat) en 4326.
-    .ctx_series_entry <- function(units, project_path, var, pt, buffer_m) {
-      stk <- .load_summer_stack(units, project_path, var, buffer_m)
-      if (is.null(stk)) return(NULL)
+    # Serie estivale au point + son ajustement de tendance pour une variable ;
+    # NULL si la serie est absente. `pt` = c(lng, lat) en 4326 (le coeur
+    # reprojette pour SAFRAN, en Lambert-93).
+    .ctx_series_entry <- function(stk, var, pt) {
+      if (!inherits(stk, "SpatRaster")) return(NULL)
       ser <- tryCatch(nemeton::eobs_summer_series(stk, pt), error = function(e) NULL)
       if (is.null(ser)) return(NULL)
       fit <- tryCatch(nemeton::eobs_trend_fit(ser), error = function(e) NULL)
@@ -2875,14 +2503,13 @@ mod_regeneration_server <- function(id, app_state) {
         sense = if (var == "tx") "hot_red" else "dry_red")
     }
 
-    # Entree de distribution pour une variable : lit le raster de pente cache
-    # (`context_<var>.tif`) + extrait la pente au point clique. Renvoie NULL si le
-    # raster de pente n'a pas (encore) ete calcule pour cette variable.
-    .ctx_distrib_entry <- function(var, ev, project_path) {
-      cached <- regeneration_context_cached(project_path, var,
-                                            (input$buffer_km %||% 25) * 1000)
-      rast <- cached$raster
-      if (!inherits(rast, "SpatRaster")) return(NULL)
+    # Distribution des variations totales du cercle (`_tendances.tif` de la
+    # carte) + valeur de la maille cliquee ; NULL sans raster de tendances.
+    .ctx_distrib_entry <- function(tend, var, ev) {
+      if (!inherits(tend, "SpatRaster")) return(NULL)
+      couche <- if (var == "tx") "tendance_tmax" else "tendance_precip"
+      if (!couche %in% names(tend)) return(NULL)
+      rast <- tend[[couche]]
       vals <- tryCatch(as.numeric(terra::values(rast)), error = function(e) NULL)
       pv <- tryCatch({
         v <- terra::vect(cbind(ev$lng, ev$lat), crs = "EPSG:4326")
@@ -2898,9 +2525,8 @@ mod_regeneration_server <- function(id, app_state) {
     # que le graphique precedent n'a pas fini de se calculer.
     ctx_computing <- shiny::reactiveVal(FALSE)
 
-    shiny::observeEvent(input$context_map_click, {
+    .ouvrir_clic <- function(source, ev) {
       if (isTRUE(shiny::isolate(ctx_computing()))) return()
-      ev <- input$context_map_click
       shiny::req(ev$lng, ev$lat)
       units <- units_sf()
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
@@ -2908,9 +2534,9 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      pt   <- c(ev$lng, ev$lat)                 # EPSG:4326, accepte tel quel
-      buf  <- (input$buffer_km %||% 25) * 1000
-      view <- rv$context_loaded_view %||% input$context_view %||% "tx"
+      etat <- shiny::isolate(climat[[source]])
+      if (!identical(etat$status, "ok")) return()
+      pt <- c(ev$lng, ev$lat)                   # EPSG:4326, accepte tel quel
 
       notif_id <- session$ns("ctx_computing")
       ctx_computing(TRUE)
@@ -2927,18 +2553,15 @@ mod_regeneration_server <- function(id, app_state) {
           shiny::isolate(ctx_computing(FALSE))
         }, add = TRUE)
 
-        # Graphes 1-2 : serie(s) + tendance(s). Vue tx/rr -> variable de la vue ;
-        # bivariee -> les DEUX (le sens du croisement).
-        vars <- switch(view, tx = "tx", rr = "rr", bivariate = c("tx", "rr"), "tx")
+        # Graphes 1-2 : series + tendances des DEUX variables (carte bivariee).
+        stk <- .regen_climat_series_rasters(etat$series)
+        vars <- c("tx", "rr")
         entries <- Filter(Negate(is.null),
-          lapply(vars, function(v) .ctx_series_entry(units, project_path, v, pt, buf)))
+          lapply(vars, function(v) .ctx_series_entry(stk[[v]], v, pt)))
 
-        # Graphe 3 : distribution des pentes du buffer + pente de la maille. Une
-        # entree par variable de la vue (bivariee -> tx ET rr). Le raster de pente
-        # est relu depuis le cache `context_<var>.tif` (la bivariee porte des
-        # classes 1-25, donc on lit les rasters univaries sous-jacents).
+        # Graphe 3 : distribution des variations totales du cercle + maille.
         distrib_entries <- Filter(Negate(is.null),
-          lapply(vars, function(v) .ctx_distrib_entry(v, ev, project_path)))
+          lapply(vars, function(v) .ctx_distrib_entry(etat$tendances, v, ev)))
 
         # Graphe 4 : climatologie mensuelle. tg si acquise (honnete), sinon repli tx.
         nc_tg <- regen_eobs_cached_nc(project_path, "tg")
@@ -2950,7 +2573,7 @@ mod_regeneration_server <- function(id, app_state) {
         clim_rr <- if (!is.null(nc_rr)) tryCatch(nemeton::eobs_monthly_climatology(
           nc_rr, pt, var = "rr"), error = function(e) NULL)
 
-        shiny::isolate(rv$click_series <- list(view = view, entries = entries,
+        shiny::isolate(rv$click_series <- list(view = source, entries = entries,
           distrib = distrib_entries, clim_t = clim_t, clim_rr = clim_rr,
           temp_is_tg = temp_is_tg, has_temp = !is.null(nc_t)))
 
@@ -2985,6 +2608,10 @@ mod_regeneration_server <- function(id, app_state) {
               shiny::tabPanel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "100%")),
               shiny::tabPanel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "100%"))))))
       }, once = TRUE)
+    }
+    lapply(.REGEN_CLIMAT_SOURCES, function(s) {
+      shiny::observeEvent(input[[paste0("climat_carte_", s, "_click")]],
+        .ouvrir_clic(s, input[[paste0("climat_carte_", s, "_click")]]))
     })
 
     # Graphe 1 - serie(s) + tendance(s). Bivariee -> deux panneaux cote a cote.
