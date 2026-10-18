@@ -462,3 +462,87 @@ test_that("a click without a project, or on a map not computed, is a guarded no-
     expect_null(rv$click_series)
   })
 })
+
+# --- Etape " regen_climat " de " Tout calculer " ----------------------------------
+
+.climat_req <- function() list(run_id = "run_t", step_id = "regen_climat",
+                               profil = NULL, ts = Sys.time())
+
+test_that("the regen_climat step chains the three maps, skips the cached one, and reports per source", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("terra")
+  withr::local_options(nemetonshiny.analyse_inline = TRUE)
+  pp <- withr::local_tempdir()
+  as <- shiny::reactiveValues(current_project = list(id = "p1", path = pp,
+                                                     indicators_sf = .climat_units()))
+  .climat_ecrire_cache(pp, "eobs", 25, c(2006, 2020))
+  vu <- new.env(); vu$sources <- character(0)
+  .climat_mocks_app()
+  testthat::local_mocked_bindings(
+    run_regeneration_climat = function(units, project_path, source, rayon_km, periode) {
+      vu$sources <- c(vu$sources, source)
+      if (identical(source, "safran")) {
+        return(list(series = list(status = "hors_couverture"),
+                    carte = list(status = "hors_couverture")))
+      }
+      .climat_ecrire_cache(project_path, source, rayon_km, periode)
+      list(series = list(status = "ok"), carte = list(status = "ok"))
+    },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(climat_onglet = "eobs", climat_rayon_km = 25,
+                      climat_periode = "libre", climat_periode_libre = c(2006, 2020))
+    as$pipeline_request <- .climat_req()
+    session$flushReact()
+    .climat_attendre(session, 80L)
+    # E-OBS en cache : jamais relance ; CHELSA puis SAFRAN, dans l'ordre.
+    expect_identical(vu$sources, c("chelsa", "safran"))
+    rep <- as$pipeline_answer
+    expect_identical(rep$step_id, "regen_climat")
+    expect_identical(rep$run_id, "run_t")
+    expect_identical(rep$status, "ok")
+    expect_match(rep$message, "E-OBS : d\u00e9j\u00e0 en cache", fixed = TRUE)
+    expect_match(rep$message, "CHELSA : calcul\u00e9e", fixed = TRUE)
+    expect_match(rep$message, "SAFRAN : hors couverture", fixed = TRUE)
+    expect_identical(climat$chelsa$status, "ok")
+    expect_false(isTRUE(busy()))
+  })
+})
+
+test_that("the regen_climat step answers error when no map could be built", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  withr::local_options(nemetonshiny.analyse_inline = TRUE)
+  pp <- withr::local_tempdir()
+  as <- shiny::reactiveValues(current_project = list(id = "p1", path = pp,
+                                                     indicators_sf = .climat_units()))
+  vu <- new.env(); vu$n <- 0L
+  .climat_mocks_app()
+  testthat::local_mocked_bindings(
+    run_regeneration_climat = function(...) { vu$n <- vu$n + 1L; stop("CDS injoignable") },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(climat_onglet = "eobs", climat_rayon_km = 25, climat_periode = "complete")
+    as$pipeline_request <- .climat_req()
+    session$flushReact()
+    # L'echec de la tache est attendu (avertissement shiny, une fois par source).
+    suppressWarnings(.climat_attendre(session, 80L))
+    # Un echec n'arrete pas les sources suivantes.
+    expect_identical(vu$n, 3L)
+    rep <- as$pipeline_answer
+    expect_identical(rep$status, "error")
+    expect_match(rep$message, "E-OBS : \u00e9chec (CDS injoignable)", fixed = TRUE)
+    expect_match(rep$message, "SAFRAN : \u00e9chec", fixed = TRUE)
+  })
+})
+
+test_that("the regen_climat step is skipped without a project", {
+  skip_if_not_installed("shiny")
+  as <- shiny::reactiveValues(current_project = NULL)
+  .climat_mocks_app()
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(climat_onglet = "eobs")
+    as$pipeline_request <- .climat_req()
+    session$flushReact()
+    expect_identical(as$pipeline_answer$status, "skipped")
+    expect_identical(as$pipeline_answer$step_id, "regen_climat")
+  })
+})

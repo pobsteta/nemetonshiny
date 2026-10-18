@@ -4,8 +4,9 @@
 # Quatre sous-onglets : tendances E-OBS / CHELSA / SAFRAN (cartes bivariees
 # leaflet, a la resolution native de la source) et nuages annuels (plotly).
 # Sidebar commune : rayon du cercle, periode, opacite, Calculer / Recalculer.
-# Les calculs sont lances au CLIC seulement (E-OBS = 8 Go au premier usage) ;
-# sans clic, l'onglet ne fait que relire le cache du projet.
+# Les calculs sont lances au CLIC, ou par l'etape `regen_climat` de " Tout
+# calculer " (les trois cartes, E-OBS = 8 Go au premier usage) ; sinon
+# l'onglet ne fait que relire le cache du projet.
 #
 # Ces fonctions sont appelees depuis `mod_regeneration_ui()` /
 # `mod_regeneration_server()` : elles partagent leur `session` (memes ids,
@@ -253,11 +254,15 @@
 #' @param units_sf Reactive of the project units.
 #' @param deny_if_busy Lock guard of the module.
 #' @param dev_path Package path in dev mode (worker reload), or `NULL`.
+#' @param pipeline_req `reactiveVal` set by the caller with a `regen_climat`
+#'   pipeline request: the three maps of the displayed radius and period are
+#'   computed in turn (cached ones skipped), then the request is answered.
 #' @return The `reactiveValues` state (one entry per source + `nuages`), used
 #'   by the map click.
 #' @noRd
 .regen_climat_server <- function(input, output, session, i18n, app_state,
-                                 units_sf, task, deny_if_busy, dev_path) {
+                                 units_sf, task, deny_if_busy, dev_path,
+                                 pipeline_req = NULL) {
   cl <- shiny::reactiveValues(eobs = NULL, chelsa = NULL, safran = NULL,
                               nuages = NULL, running = FALSE, start = NULL,
                               pid = NULL, job = NULL, refresh = 0L)
@@ -274,6 +279,10 @@
   }
   source_nuages <- function() input$climat_nuages_source %||% "chelsa"
   mode_nuages <- function() input$climat_nuages_mode %||% "anomalie"
+  demande_carte <- function(s) {
+    list(type = "carte", source = s, choix = periode(),
+         cle = paste(projet(), s, rayon(), .regen_climat_periode(periode())$tag), etat = s)
+  }
   # Ce que le sous-onglet courant demande : type, source, choix, cle d'etat.
   demande <- function() {
     o <- onglet()
@@ -281,8 +290,7 @@
       list(type = "nuages", source = source_nuages(), choix = mode_nuages(),
            cle = paste(projet(), source_nuages(), rayon(), mode_nuages()), etat = "nuages")
     } else {
-      list(type = "carte", source = o, choix = periode(),
-           cle = paste(projet(), o, rayon(), .regen_climat_periode(periode())$tag), etat = o)
+      demande_carte(o)
     }
   }
 
@@ -309,7 +317,7 @@
     }, ignoreNULL = FALSE)
 
   # --- Calcul au clic -------------------------------------------------------------
-  lancer <- function() {
+  lancer <- function(d = demande()) {
     if (deny_if_busy()) return(invisible(FALSE))
     if (deny_if_readonly(app_state, i18n)) {
       bslib::update_task_button("climat_calculer", state = "ready")
@@ -321,7 +329,6 @@
       shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
       return(invisible(FALSE))
     }
-    d <- demande()
     unlink(file.path(.regen_climat_dir(pp), "climat_status.json"))
     cl$running <- TRUE; cl$start <- Sys.time(); cl$job <- d
     cl$pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
@@ -332,6 +339,65 @@
     invisible(TRUE)
   }
   shiny::observeEvent(input$climat_calculer, lancer())
+
+  # --- Etape " regen_climat " de " Tout calculer " -----------------------------
+  # Les trois cartes du rayon et de la periode affiches, l'une apres l'autre sur
+  # la tache unique. Une carte deja en cache n'est pas relancee : la chaine ne
+  # repaie ni les 8 Go E-OBS ni les minutes CHELSA. Une source hors couverture
+  # ou en echec n'arrete pas les suivantes ; le bilan par source part dans le
+  # message de la reponse.
+  pl <- shiny::reactiveVal(NULL)   # list(req, reste, bilan)
+
+  .pipeline_repondre <- function(p) {
+    pl(NULL)
+    lib <- c(eobs = "E-OBS", chelsa = "CHELSA", safran = "SAFRAN")
+    msg <- vapply(names(p$bilan), function(s) {
+      b <- p$bilan[[s]]
+      etat <- switch(b$statut,
+        ok = i18n$t("regen_climat_bilan_ok"),
+        cache = i18n$t("regen_climat_bilan_cache"),
+        hors_couverture = i18n$t("regen_climat_bilan_hors"),
+        donnees_insuffisantes = i18n$t("regen_climat_insuffisant"),
+        erreur = sprintf(i18n$t("regen_climat_bilan_echec"), b$message %||% ""),
+        i18n$t("regen_climat_indisponible"))
+      paste0(lib[[s]], " : ", etat)
+    }, character(1))
+    reussies <- vapply(p$bilan, function(b) b$statut %in% c("ok", "cache"), logical(1))
+    pipeline_answer(app_state, p$req, if (any(reussies)) "ok" else "error",
+                    paste(msg, collapse = " \u00b7 "))
+  }
+
+  .pipeline_suite <- function() {
+    p <- pl(); if (is.null(p)) return(invisible(NULL))
+    while (length(p$reste)) {
+      s <- p$reste[1]; p$reste <- p$reste[-1]
+      if (!is.null(regeneration_climat_cached(projet(), s, rayon(), periode()))) {
+        p$bilan[[s]] <- list(statut = "cache"); next
+      }
+      pl(p)
+      d <- demande_carte(s); d$pipeline <- TRUE
+      if (isTRUE(lancer(d))) return(invisible(NULL))
+      p$bilan[[s]] <- list(statut = "indisponible")
+    }
+    .pipeline_repondre(p)
+  }
+
+  # Bilan d'une carte lancee par la chaine, puis carte suivante.
+  .pipeline_note <- function(d, statut, message = NULL) {
+    if (!isTRUE(d$pipeline)) return(invisible(NULL))
+    p <- pl(); if (is.null(p)) return(invisible(NULL))
+    p$bilan[[d$source]] <- list(statut = statut, message = message)
+    pl(p)
+    .pipeline_suite()
+  }
+
+  if (!is.null(pipeline_req)) {
+    shiny::observeEvent(pipeline_req(), {
+      req <- pipeline_req()
+      pl(list(req = req, reste = .REGEN_CLIMAT_SOURCES, bilan = list()))
+      .pipeline_suite()
+    })
+  }
 
   # Recalcul : purge le cache PROJET du couple courant (jamais le cache machine
   # E-OBS ni les series du cercle), puis relance.
@@ -372,9 +438,14 @@
     d <- cl$job; cl$job <- NULL
     if (is.null(d)) return()
     if (!.est_projet_courant(app_state, cl$pid)) {
-      # Resultat d'un autre projet : relire le cache du projet ouvert.
+      # Resultat d'un autre projet : relire le cache du projet ouvert. La
+      # chaine, lancee sur l'ancien projet, s'arrete la.
       cl[[d$etat]] <- NULL
       cl$refresh <- (shiny::isolate(cl$refresh) %||% 0L) + 1L
+      if (isTRUE(d$pipeline) && !is.null(pl())) {
+        p <- pl(); pl(NULL)
+        pipeline_answer(app_state, p$req, "skipped", i18n$t("pipeline_no_project"))
+      }
       return()
     }
     if (identical(st, "error")) {
@@ -383,6 +454,7 @@
                               type = "error", duration = 10)
       cl[[d$etat]] <- list(cle = d$cle, status = "indisponible", message = msg,
                            source = d$source)
+      .pipeline_note(d, "erreur", msg)
       return()
     }
     res <- tryCatch(task$result(), error = function(e) NULL)
@@ -403,6 +475,7 @@
     if (identical(cl[[d$etat]]$status, "ok")) {
       shiny::showNotification(i18n$t("regen_climat_termine"), type = "message", duration = 4)
     }
+    .pipeline_note(d, cl[[d$etat]]$status %||% "indisponible")
   })
 
   # --- Bandeau de statut du sous-onglet courant ---------------------------------

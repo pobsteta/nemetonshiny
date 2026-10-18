@@ -6403,6 +6403,11 @@ TRANSLATIONS <- list(
     en = "Out of coverage: SAFRAN covers metropolitan France only, the E-OBS aggregate metropolitan France and Corsica."),
   regen_climat_indisponible = list(fr = "Donn\u00e9es indisponibles", en = "Data unavailable"),
   regen_climat_insuffisant = list(fr = "Donn\u00e9es insuffisantes", en = "Not enough data"),
+  # Bilan par source de l'etape " regen_climat " de " Tout calculer ".
+  regen_climat_bilan_ok = list(fr = "calcul\u00e9e", en = "computed"),
+  regen_climat_bilan_cache = list(fr = "d\u00e9j\u00e0 en cache", en = "already cached"),
+  regen_climat_bilan_hors = list(fr = "hors couverture", en = "out of coverage"),
+  regen_climat_bilan_echec = list(fr = "\u00e9chec (%s)", en = "failed (%s)"),
   regen_climat_axe_precip = list(fr = "\u0394 pr\u00e9cipitations (mm)", en = "\u0394 precipitation (mm)"),
   regen_climat_axe_tmax = list(fr = "\u0394 T\u00b0max (\u00b0C)", en = "\u0394 T\u00b0max (\u00b0C)"),
   regen_climat_legende_titre = list(fr = "Tendances estivales mai-sept.", en = "Summer trends May-Sept."),
@@ -6727,6 +6732,10 @@ TRANSLATIONS <- list(
   pipeline_step_regeneration = list(
     fr = "reG\u00e9n\u00e9ration",
     en = "Regeneration"
+  ),
+  pipeline_step_regen_climat = list(
+    fr = "reG\u00e9n\u00e9ration \u2014 contexte climatique (E-OBS, CHELSA, SAFRAN)",
+    en = "Regeneration \u2014 climate context (E-OBS, CHELSA, SAFRAN)"
   ),
   pipeline_step_sante_zone = list(
     fr = "Sant\u00e9 \u2014 cr\u00e9ation des zones de suivi",
