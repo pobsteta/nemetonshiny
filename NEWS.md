@@ -1,4 +1,4 @@
-# nemetonshiny 2026.10.13.9001 (cycle dev)
+# nemetonshiny 2026.10.14 (2026-10-18)
 
 Changements cassants : aucun (format de projet inchangé ; les anciens caches
 `cache/regeneration/eobs/context_*.tif` sont simplement ignorés).
