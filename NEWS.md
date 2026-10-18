@@ -10,6 +10,9 @@ Changements cassants : aucun.
   comme toute période choisie, et non plus les bornes fixes de la figure.
 - Retrait des clés i18n `regen_climat_periode_if49` et
   `regen_climat_bornes_if49`.
+- **Nuages annuels** : le graphe animé (bouton Play, curseur d'année) occupe
+  toute la hauteur utile de l'écran ; la grille de toutes les années, dessous,
+  est retirée (clé `regen_climat_nuages_grille` retirée).
 - Les dernières mentions d'`eobs_downscale*()` sont retirées (un commentaire de
   section i18n, un commentaire de test) : brief `nemeton` du 2026-10-18 sur la
   dépréciation de ces fonctions, que l'app n'appelle plus depuis 2026.10.14.

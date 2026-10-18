@@ -6422,7 +6422,6 @@ TRANSLATIONS <- list(
   regen_climat_nuages_legende = list(
     fr = "%s \u00b7 %d mailles dans le cercle, jusqu'\u00e0 4 000 tir\u00e9es par ann\u00e9e \u00b7 point blanc : moyenne du cercle",
     en = "%s \u00b7 %d cells in the circle, up to 4,000 sampled per year \u00b7 white dot: circle mean"),
-  regen_climat_nuages_grille = list(fr = "Toutes les ann\u00e9es", en = "All years"),
   regen_climat_unite_totale = list(fr = "variation totale sur la p\u00e9riode", en = "total change over the period"),
   # S\u00e9ries CDS du projet (diagramme ombrothermique du clic, onglet E-OBS).
   regen_eobs_rr_fetch = list(

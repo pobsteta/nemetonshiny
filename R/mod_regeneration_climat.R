@@ -86,9 +86,8 @@
         onglet_carte("chelsa"),
         onglet_carte("safran"),
         bslib::nav_panel(i18n$t("regen_climat_onglet_nuages"), value = "nuages",
-          plotly::plotlyOutput(ns("climat_nuages"), height = "60vh"),
-          htmltools::tags$h6(class = "mt-3", i18n$t("regen_climat_nuages_grille")),
-          shiny::plotOutput(ns("climat_nuages_grille"), height = "auto"))
+          # Le nuage anime occupe toute la hauteur utile de l'ecran.
+          plotly::plotlyOutput(ns("climat_nuages"), height = "calc(100vh - 190px)"))
       ),
       shiny::uiOutput(ns("climat_attribution"))
     ))
@@ -241,25 +240,6 @@
   # scattergl n'anime qu'avec redraw = TRUE (seul `scatter` s'en passe).
   p <- plotly::animation_opts(p, frame = 600, transition = 0, redraw = TRUE)
   plotly::animation_slider(p, currentvalue = list(prefix = ""))
-}
-
-#' Small multiples of the yearly clouds (one panel per year, shared axes)
-#' @noRd
-.regen_nuages_grille <- function(res, i18n) {
-  ax <- .regen_nuages_axes(res$meta, i18n)
-  moy <- res$moyennes[is.finite(res$moyennes$x) & is.finite(res$moyennes$y), , drop = FALSE]
-  ggplot2::ggplot(res$points, ggplot2::aes(x = .data$x, y = .data$y)) +
-    ggplot2::geom_hline(yintercept = 0, colour = "grey70", linewidth = 0.3) +
-    ggplot2::geom_vline(xintercept = 0, colour = "grey70", linewidth = 0.3) +
-    ggplot2::geom_point(size = 0.4, alpha = 0.3, stroke = 0, colour = "#A3195B") +
-    ggplot2::geom_point(data = moy, shape = 21, size = 2, fill = "white",
-                        colour = "black", stroke = 0.5) +
-    ggplot2::facet_wrap(~annee, ncol = 6) +
-    ggplot2::coord_cartesian(xlim = res$limites$x, ylim = res$limites$y) +
-    ggplot2::labs(x = ax$x, y = ax$y) +
-    ggplot2::theme_minimal(base_size = 9) +
-    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
-                   strip.text = ggplot2::element_text(face = "bold"))
 }
 
 # ---- Serveur ------------------------------------------------------------------
@@ -527,16 +507,6 @@
                      as.integer(m$n_cellules %||% 0L)),
       xref = "paper", yref = "paper", x = 0, y = 1.06, showarrow = FALSE,
       xanchor = "left", font = list(size = 10, color = "#555555"))))
-  })
-
-  output$climat_nuages_grille <- shiny::renderPlot({
-    e <- cl$nuages
-    shiny::req(e$res)
-    .regen_nuages_grille(e$res, i18n)
-  }, height = function() {
-    e <- cl$nuages
-    n <- length(unique(e$res$moyennes$annee %||% integer(0)))
-    max(200L, 150L * ceiling(max(n, 1L) / 6L) + 60L)
   })
 
   cl

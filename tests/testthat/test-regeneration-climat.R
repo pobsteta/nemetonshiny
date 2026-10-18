@@ -211,8 +211,8 @@ test_that(".regen_climat_legende flags relative colours when the France bounds a
   expect_true(grepl(i18n$t("regen_climat_bornes_relatives"), rel, fixed = TRUE))
 })
 
-test_that("the yearly clouds build an animated plotly and a small-multiples grid", {
-  skip_if_not_installed("plotly"); skip_if_not_installed("ggplot2")
+test_that("the yearly clouds build an animated plotly", {
+  skip_if_not_installed("plotly")
   i18n <- nemetonshiny:::get_i18n("fr")
   res <- list(points = data.frame(annee = rep(2001:2012, each = 5), x = rnorm(60), y = rnorm(60)),
               moyennes = data.frame(annee = 2001:2012, x = 0, y = 0),
@@ -226,7 +226,6 @@ test_that("the yearly clouds build an animated plotly and a small-multiples grid
   # Tendance cumulee : la 1re annee de la serie = 2001 - (10 - 1) = 1992.
   titre <- b$x$layout$xaxis$title
   expect_match(if (is.list(titre)) titre$text else titre, "1992")
-  expect_s3_class(nemetonshiny:::.regen_nuages_grille(res, i18n), "ggplot")
 })
 
 # --- Module (testServer) ---------------------------------------------------------
@@ -265,6 +264,9 @@ test_that("the period defaults to the chosen years 2006-2020, without an IF49 op
   expect_match(h, 'value="libre"\\s+checked', perl = TRUE)
   expect_match(h, 'data-from="2006"', fixed = TRUE)
   expect_match(h, 'data-to="2020"', fixed = TRUE)
+  # Nuages annuels : le seul graphe anime, en grand, sans grille des annees.
+  expect_false(grepl("climat_nuages_grille", h, fixed = TRUE))
+  expect_match(h, "height:calc(100vh - 190px)", fixed = TRUE)
 })
 
 test_that("without any period input, the server reads the 2006-2020 map", {
