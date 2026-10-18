@@ -4643,11 +4643,11 @@ Implémentation du brief
   : la vraie donnée est un NetCDF déposé par « Auto (E-OBS) » sous
   `cache/regeneration/eobs/`. Même famille que le bug `pc$eobs` corrigé
   en v0.101.0 — la clé lue n’est pas celle qui est écrite. Ensuite,
-  [`nemeton::tendances_estivales_eobs()`](https://pobsteta.github.io/nemeton/reference/tendances_estivales_eobs.html)
-  est **bivariée** : elle exige la série des températures maximales
-  (`tx`) **et** celle des précipitations (`rr`), or « Auto (E-OBS) » ne
-  rapatrie que `tx`. Le cœur levait, `tryCatch` renvoyait `NULL`, la
-  carte s’affichait nue, sans explication.
+  `nemeton::tendances_estivales_eobs()` est **bivariée** : elle exige la
+  série des températures maximales (`tx`) **et** celle des
+  précipitations (`rr`), or « Auto (E-OBS) » ne rapatrie que `tx`. Le
+  cœur levait, `tryCatch` renvoyait `NULL`, la carte s’affichait nue,
+  sans explication.
 - `regeneration_context_eobs()` lit désormais les NetCDF réellement
   cachés via `nemeton::load_eobs_source(nc = )` — lecture disque,
   **jamais** de requête CDS au rendu d’un onglet. Un bandeau indique ce

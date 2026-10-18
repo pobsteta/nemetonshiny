@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.17</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.17" id="nemetonshiny-20261017-2026-10-18">nemetonshiny 2026.10.17 (2026-10-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261017-2026-10-18"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="id_-tout-calculer---contexte-climatique-2026-10-17">« Tout calculer » : contexte climatique<a class="anchor" aria-label="anchor" href="#id_-tout-calculer---contexte-climatique-2026-10-17"></a></h3>
+<ul><li>Nouvelle étape <code>regen_climat</code> après le moteur reGénération : les cartes E-OBS, CHELSA et SAFRAN sont calculées l’une après l’autre, avec le rayon et la période affichés dans l’onglet. Une carte déjà en cache n’est pas relancée. Une source hors couverture ou en échec n’arrête pas les suivantes. Le rapport donne le bilan par source, par exemple « E-OBS : déjà en cache · CHELSA : calculée · SAFRAN : hors couverture ». L’étape échoue seulement si aucune des trois cartes n’a pu être produite. La première carte E-OBS d’un poste télécharge environ 8 Go. Les nuages annuels restent hors de la chaîne.</li>
+<li>Nouvelles clés i18n <code>pipeline_step_regen_climat</code>, <code>regen_climat_bilan_ok</code>, <code>regen_climat_bilan_cache</code>, <code>regen_climat_bilan_hors</code> et <code>regen_climat_bilan_echec</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.16" id="nemetonshiny-20261016-2026-10-18">nemetonshiny 2026.10.16 (2026-10-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261016-2026-10-18"></a></h2>
 <p>Changements cassants : aucun.</p>
