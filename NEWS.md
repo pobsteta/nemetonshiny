@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.16.9001 (cycle dev)
+# nemetonshiny 2026.10.17 (2026-10-18)
+
+Changements cassants : aucun.
 
 ## « Tout calculer » : contexte climatique
 
