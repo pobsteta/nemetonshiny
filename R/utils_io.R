@@ -142,3 +142,37 @@
     tryCatch(func(), shiny.destroyed.error = function(e) invisible(NULL))
   }, delay = delay, loop = loop)
 }
+
+#' Zip a QGIS project for delivery, as an openable folder when there is one
+#'
+#' Since core 2026.10.12 (inventaire video) and 2026.10.14
+#' (`create_qgis_project()`), an openable folder `<name>/` (`<name>.qgs`,
+#' GeoPackage, ...) is written next to `<name>.qgz`. QGIS resolves the
+#' `./<name>.gpkg` paths from the folder of the project file, not inside the
+#' archive: once downloaded, the `.qgz` alone opens with every layer missing.
+#' The folder is then zipped instead, at the root of the archive. Without it
+#' (older core), the files of `a_plat` go flat, side by side.
+#'
+#' @param qgz Path of the `.qgz`.
+#' @param file Destination `.zip`.
+#' @param a_plat Files zipped flat when the folder is absent (default: the
+#'   `.qgz` alone).
+#' @return `file`, invisibly.
+#' @noRd
+qgis_zip_livraison <- function(qgz, file, a_plat = qgz) {
+  if (is.null(qgz) || !length(qgz) || !file.exists(qgz[1])) {
+    stop("QGIS project not found")
+  }
+  dossier <- sub("\\.qgz$", "", qgz[1])
+  if (dir.exists(dossier)) {
+    # Chemins relatifs : le dossier `<name>/` a la racine du zip.
+    dest <- normalizePath(file, winslash = "/", mustWork = FALSE)
+    old <- setwd(dirname(dossier))
+    on.exit(setwd(old), add = TRUE)
+    utils::zip(zipfile = dest, files = basename(dossier), flags = "-r9Xq")
+    return(invisible(file))
+  }
+  # `-j` : a plat, les fichiers cote a cote.
+  utils::zip(zipfile = file, files = a_plat[file.exists(a_plat)], flags = "-j9Xq")
+  invisible(file)
+}

@@ -1,3 +1,21 @@
+# nemetonshiny 2026.10.14.9001 (cycle dev)
+
+Changements cassants : aucun.
+
+## Plans d'échantillonnage : le projet QGIS livré s'ouvre avec ses couches
+
+Brief `nemeton` du 2026-10-17 (`plan-echantillonnage-dossier-projet`). Depuis
+le cœur 2026.10.14, `create_qgis_project()` écrit à côté du `.qgz` un dossier
+ouvrable `<nom>/` (`<nom>.qgs` et `<nom>.gpkg`). Le `.qgz` téléchargé seul
+s'ouvrait sans aucune couche : QGIS cherche `./<nom>.gpkg` dans le dossier du
+projet, pas dans l'archive.
+
+- **Plan d'échantillonnage** (« Télécharger le projet QGIS ») et **Plan de
+  validation** (« Exporter pour QGIS ») livrent désormais un `.zip` contenant
+  ce dossier à la racine, comme l'inventaire vidéo depuis 2026.10.12.
+- Sans dossier (cœur plus ancien), le `.qgz` part seul dans le zip.
+- Helper commun `qgis_zip_livraison()`, que `video_zip_livraison()` réutilise.
+
 # nemetonshiny 2026.10.14 (2026-10-18)
 
 Changements cassants : aucun (format de projet inchangé ; les anciens caches
