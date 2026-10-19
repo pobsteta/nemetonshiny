@@ -1,5 +1,20 @@
 # Changelog
 
+## nemetonshiny 2026.10.18 (2026-10-19)
+
+Changements cassants : aucun.
+
+### Santé : zone de suivi invalide réparée à la lecture
+
+- `get_monitoring_zone_aoi()` répare désormais une géométrie de zone
+  invalide dès sa lecture, comme `.get_zone_aoi()` dans le cœur depuis
+  nemeton 2026.10.18 : les coordonnées sont arrondies à 1 cm en
+  Lambert-93, puis passées à `st_make_valid()`. Sur la forêt communale
+  de Couchey (zone 63, sommet dupliqué), la validation FORDEAD et les
+  cartes RECONFORT et FORDEAD affichaient l’avertissement «
+  check_fordead_validity failed: TopologyException: side location
+  conflict ».
+
 ## nemetonshiny 2026.10.17 (2026-10-18)
 
 Changements cassants : aucun.

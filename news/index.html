@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.17</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18" id="nemetonshiny-20261018-2026-10-19">nemetonshiny 2026.10.18 (2026-10-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261018-2026-10-19"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="santé--zone-de-suivi-invalide-réparée-à-la-lecture-2026-10-18">Santé : zone de suivi invalide réparée à la lecture<a class="anchor" aria-label="anchor" href="#sant%C3%A9--zone-de-suivi-invalide-r%C3%A9par%C3%A9e-%C3%A0-la-lecture-2026-10-18"></a></h3>
+<ul><li>
+<code>get_monitoring_zone_aoi()</code> répare désormais une géométrie de zone invalide dès sa lecture, comme <code>.get_zone_aoi()</code> dans le cœur depuis nemeton 2026.10.18 : les coordonnées sont arrondies à 1 cm en Lambert-93, puis passées à <code>st_make_valid()</code>. Sur la forêt communale de Couchey (zone 63, sommet dupliqué), la validation FORDEAD et les cartes RECONFORT et FORDEAD affichaient l’avertissement « check_fordead_validity failed: TopologyException: side location conflict ».</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.17" id="nemetonshiny-20261017-2026-10-18">nemetonshiny 2026.10.17 (2026-10-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261017-2026-10-18"></a></h2>
 <p>Changements cassants : aucun.</p>
