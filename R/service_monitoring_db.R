@@ -691,6 +691,10 @@ register_project_as_zone <- function(con, project) {
 #'
 #' @param con A DBIConnection or NULL.
 #' @param zone_id Integer.
+#' An invalid stored geometry is repaired at read time, as the core's
+#' `.get_zone_aoi()` does since nemeton 2026.10.18: coordinates snapped to
+#' 1 cm in Lambert-93, then `sf::st_make_valid()`.
+#'
 #' @return An sf POLYGON in EPSG:2154, or NULL on any failure (zone
 #'   absent, geometry malformed, DB down).
 #' @noRd
@@ -705,7 +709,16 @@ get_monitoring_zone_aoi <- function(con, zone_id) {
     aoi <- sf::st_sf(zone_id = as.integer(zone_id),
                      name    = rs$name[1],
                      geometry = geom)
-    sf::st_transform(aoi, 2154)
+    aoi <- sf::st_transform(aoi, 2154)
+    # Zone ecrite invalide (sommet duplique, Couchey zone 63) : sans reparation,
+    # `check_fordead_validity()` levait " TopologyException: side location
+    # conflict ". Arrondi a 1 cm puis st_make_valid(), comme le coeur a la
+    # lecture : un st_make_valid() seul laisse une geometrie que s2 rejette.
+    if (!all(sf::st_is_valid(aoi))) {
+      sf::st_geometry(aoi) <- sf::st_make_valid(
+        sf::st_set_precision(sf::st_geometry(aoi), 100))
+    }
+    aoi
   }, error = function(e) {
     cli::cli_warn("Failed to fetch zone AOI {.val {zone_id}}: {conditionMessage(e)}")
     NULL
