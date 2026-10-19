@@ -915,3 +915,24 @@ test_that("le bouton de l'onglet reenregistre TOUJOURS, la chaine seule consulte
   expect_length(branche, 1L)
   expect_true(garde > branche)
 })
+
+test_that("get_monitoring_zone_aoi repairs an invalid stored zone (Couchey zone 63)", {
+  skip_if_not_installed("RSQLite"); skip_if_not_installed("sf")
+  con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  DBI::dbExecute(con, "CREATE TABLE monitoring_zone (id INTEGER, name TEXT, zone_wkt TEXT)")
+  # Noeud papillon + sommet duplique, en 4326 comme en base.
+  g <- sf::st_sfc(sf::st_polygon(list(rbind(
+    c(843700, 6685600), c(844700, 6686600), c(844700, 6686600),
+    c(844700, 6685600), c(843700, 6686600), c(843700, 6685600)))), crs = 2154)
+  wkt <- sf::st_as_text(sf::st_transform(g, 4326)[[1]], digits = 15)
+  DBI::dbExecute(con, "INSERT INTO monitoring_zone VALUES (63, 'couchey_tot', ?)",
+                 params = list(wkt))
+  expect_false(sf::st_is_valid(sf::st_as_sfc(wkt, crs = 4326)))
+  aoi <- nemetonshiny:::get_monitoring_zone_aoi(con, 63L)
+  expect_s3_class(aoi, "sf")
+  expect_identical(sf::st_crs(aoi)$epsg, 2154L)
+  expect_true(all(sf::st_is_valid(aoi)))
+  # Aire conservee (les deux triangles du papillon, 50 ha).
+  expect_equal(as.numeric(sum(sf::st_area(aoi))), 5e5, tolerance = 1e-3)
+})
