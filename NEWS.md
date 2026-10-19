@@ -1,4 +1,6 @@
-# nemetonshiny 2026.10.17.9001 (cycle dev)
+# nemetonshiny 2026.10.18 (2026-10-19)
+
+Changements cassants : aucun.
 
 ## Santé : zone de suivi invalide réparée à la lecture
 
