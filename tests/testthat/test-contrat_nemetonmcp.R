@@ -131,8 +131,8 @@ test_that("nemetonmcp n'appelle aucun objet hors contrat (si son depot est la)",
       m <- regmatches(x, gregexpr('\\.ns\\("[^"]+"\\)', x))[[1]]
       sub('^\\.ns\\("([^"]+)"\\)$', "\\1", m)
     })))
-  # Tout ce que nemetonmcp appelle est au contrat. L'inverse peut etre
-  # transitoirement faux : .mcp_vers_outil est au contrat avant que
-  # nemetonmcp l'appelle (brief mission 013).
-  expect_length(setdiff(appelles, .contrat_noms()), 0L)
+  # Egalite stricte : nemetonmcp appelle exactement le contrat.
+  # Exception 2026-11-10 : .mcp_vers_outil est au contrat avant d'etre appele
+  # par nemetonmcp (brief mission 013). Retirer l'exception a sa livraison.
+  expect_setequal(appelles, setdiff(.contrat_noms(), ".mcp_vers_outil"))
 })
