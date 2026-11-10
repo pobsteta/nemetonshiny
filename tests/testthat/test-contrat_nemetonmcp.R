@@ -1,6 +1,6 @@
 # Contrat nemetonshiny -> nemetonmcp (pilotage/adr/0001, mission 001).
 #
-# `nemetonmcp` lit 31 objets internes par getFromNamespace(). CONTRAT.md,
+# `nemetonmcp` lit 32 objets internes par getFromNamespace(). CONTRAT.md,
 # section « API pour nemetonmcp », les declare ; ce test les verrouille : un
 # objet renomme, retire, ou dont les arguments changent fait echouer la CI
 # ici, pas VICTOR en production. Changer cette table = changer le contrat :
@@ -34,6 +34,7 @@
   mcp_etat_calcul         = c("projet"),
   mcp_exporter_gpkg       = c("projet"),
   .mcp_resolve_project    = c("projet"),
+  .mcp_vers_outil         = c("x"),
   # divers
   get_expert_profiles     = character(),
   marculus_export_bundle  = c("project_id", "file", "essences")
@@ -54,8 +55,8 @@
 
 .contrat_ns <- function() asNamespace("nemetonshiny")
 
-test_that("le contrat compte 31 objets, sans doublon", {
-  expect_length(.contrat_noms(), 31L)
+test_that("le contrat compte 32 objets, sans doublon", {
+  expect_length(.contrat_noms(), 32L)
   expect_false(anyDuplicated(.contrat_noms()) > 0L)
 })
 
@@ -130,5 +131,8 @@ test_that("nemetonmcp n'appelle aucun objet hors contrat (si son depot est la)",
       m <- regmatches(x, gregexpr('\\.ns\\("[^"]+"\\)', x))[[1]]
       sub('^\\.ns\\("([^"]+)"\\)$', "\\1", m)
     })))
-  expect_setequal(appelles, .contrat_noms())
+  # Tout ce que nemetonmcp appelle est au contrat. L'inverse peut etre
+  # transitoirement faux : .mcp_vers_outil est au contrat avant que
+  # nemetonmcp l'appelle (brief mission 013).
+  expect_length(setdiff(appelles, .contrat_noms()), 0L)
 })

@@ -44,7 +44,14 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
 - `action` : la suite à proposer (introuvable : `lister_projets` ;
   calcul en cours : `etat_calcul` ; projet verrouillé : attendre ou prévenir
   le détenteur nommé).
-- `candidats` : noms affichés des projets possibles (homonymes, introuvable proche).
+- `candidats` : rempli **seulement** pour `projet_ambigu`, au format
+  « nom (id) » ; absent pour toute autre erreur.
+- Une erreur non répertoriée a pour `classe` `nemetonshiny_erreur_inconnue`
+  (condition sans classe `nemetonshiny_*`) ou `nemetonshiny_erreur`
+  (classe `nemetonshiny_*` hors liste) ; `action` : le signaler.
+- Limite actuelle : servis par `nemetonmcp`, `etat_calcul` et
+  `exporter_gpkg` sont remplacés par ses propres outils et ne sont **pas
+  encore marqués** `isError` (brief en cours) ; les autres outils le sont.
 
 ## Calcul en tâche de fond
 
