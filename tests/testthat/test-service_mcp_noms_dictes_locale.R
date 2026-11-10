@@ -76,7 +76,9 @@ test_that("plancher côté dicté : la face à Laix, les face à Lens, introuvab
 test_that("vrai sous-processus LC_ALL=C : Couché (chaîne non marquée) résolu sans erreur", {
   skip_on_cran()
   racine <- normalizePath(test_path("..", ".."))
-  if (!file.exists(file.path(racine, "DESCRIPTION"))) skip("sources absentes")
+  if (length(list.files(file.path(racine, "R"), pattern = "\\.R$")) == 0L) {
+    skip("sources R absentes (paquet installe, covr)")
+  }
   script <- tempfile(fileext = ".R")
   writeLines(c(
     sprintf('pkgload::load_all("%s", quiet = TRUE)', racine),
