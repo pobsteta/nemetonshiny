@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9002" id="nemetonshiny-202610189002-2026-11-10">nemetonshiny 2026.10.18.9002 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189002-2026-11-10"></a></h2>
+<p>Changements cassants : aucun pour les fonctions <code>mcp_*</code> (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d’outil est désormais marquée <code>isError</code>.</p>
+<div class="section level3">
+<h3 id="serveur-mcp--erreurs-marquées-classées-bilingues-mission-2026-10-18-9002">Serveur MCP : erreurs marquées, classées, bilingues (mission 003)<a class="anchor" aria-label="anchor" href="#serveur-mcp--erreurs-marqu%C3%A9es-class%C3%A9es-bilingues-mission-2026-10-18-9002"></a></h3>
+<ul><li>Une erreur d’outil MCP n’est plus lue comme un succès : <code>mcp_tools()</code> la rend en <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentToolResult</a></code> en erreur (<code>isError: true</code> côté mcptools).</li>
+<li>Forme JSON : <code>{ok, classe, code, langue, erreur, action, candidats}</code> ; <code>classe</code> = nom R complet (<code>nemetonshiny_projet_introuvable</code>), <code>code</code> = nom court.</li>
+<li>Message et action suivante en FR (défaut) ou EN : 14 messages <code>mcp_err_*</code> et 9 actions <code>mcp_act_*</code> dans <code>TRANSLATIONS</code>. <code>langue</code> n’est lue que par <code>resume_projet</code> et <code>generer_rapport</code> (aucune signature d’outil changée).</li>
+<li>
+<code>confirmation_requise</code> et <code>jeton_invalide</code> restent à la mission 010.</li>
+<li>Dette connue : le détail technique (cause brute) reste en français dans une erreur rendue en anglais.</li>
+<li>Hygiène : retrait de <code>tests/testthat/_problems/</code> du suivi git (ignoré par <code>.gitignore</code> et <code>.Rbuildignore</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9001" id="nemetonshiny-202610189001-2026-11-10">nemetonshiny 2026.10.18.9001 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189001-2026-11-10"></a></h2>
 <p>Changements cassants : aucun.</p>

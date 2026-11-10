@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -250,7 +250,7 @@
 </div>
 <div class="section level2">
 <h2 id="id_6-bis-api-pour-nemetonmcp">6 bis. API pour nemetonmcp<a class="anchor" aria-label="anchor" href="#id_6-bis-api-pour-nemetonmcp"></a></h2>
-<p><code>nemetonmcp</code> (le serveur MCP de VICTOR et d’AIGORA) lit <strong>31 objets internes</strong> de nemetonshiny par <code>getFromNamespace(nom, "nemetonshiny")</code>. Ils ne sont pas exportés (ADR 0001, option B) mais <strong>font partie du contrat</strong> : les renommer, les retirer ou changer leurs arguments est un changement cassant (section « Changements cassants » de <code>NEWS.md</code>, et un brief à <code>nemetonmcp</code>). <code>tests/testthat/test-contrat_nemetonmcp.R</code> verrouille la présence et les arguments (<code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code>, dans l’ordre) de chaque objet ; il vérifie aussi que cette section et la liste lue dans le code de <code>nemetonmcp</code> sont identiques. Un objet absent de cette section n’est <strong>pas</strong> garanti.</p>
+<p><code>nemetonmcp</code> (le serveur MCP de VICTOR et d’AIGORA) lit <strong>32 objets internes</strong> de nemetonshiny par <code>getFromNamespace(nom, "nemetonshiny")</code>. Ils ne sont pas exportés (ADR 0001, option B) mais <strong>font partie du contrat</strong> : les renommer, les retirer ou changer leurs arguments est un changement cassant (section « Changements cassants » de <code>NEWS.md</code>, et un brief à <code>nemetonmcp</code>). <code>tests/testthat/test-contrat_nemetonmcp.R</code> verrouille la présence et les arguments (<code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code>, dans l’ordre) de chaque objet ; il vérifie aussi que cette section et la liste lue dans le code de <code>nemetonmcp</code> sont identiques. Un objet absent de cette section n’est <strong>pas</strong> garanti.</p>
 <p>Plan d’actions et commentaires :</p>
 <table class="table"><colgroup><col width="25%"><col width="75%"></colgroup><thead><tr><th>Objet</th>
 <th>Arguments / contenu</th>
@@ -335,6 +335,9 @@
 <td>
 <code>projet</code> ; id, ou erreur <code>nemetonshiny_projet_ambigu</code> avec <code>candidats</code>
 </td>
+</tr><tr><td><code>.mcp_vers_outil()</code></td>
+<td>
+<code>x</code> ; la chaîne rendue par un <code>mcp_*</code> : si c’est une erreur (attribut <code>mcp_erreur</code>), rend un <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentToolResult</a></code> en erreur (<code>isError</code>), sinon <code>x</code> tel quel. À appeler sur le résultat de tout outil que <code>nemetonmcp</code> substitue à ceux de <code>mcp_tools()</code> (aujourd’hui <code>etat_calcul</code>, <code>exporter_gpkg</code>)</td>
 </tr></tbody></table><p>Divers :</p>
 <table class="table"><thead><tr><th>Objet</th>
 <th>Arguments / contenu</th>
