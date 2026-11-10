@@ -131,10 +131,9 @@ test_that("get_all_indicator_codes returns all indicators", {
   codes <- nemetonshiny:::get_all_indicator_codes()
   expect_type(codes, "character")
   # 31 base + B4 + L3 (spec 028) + R5 + T3 (spec 030) + A3/A4/W4/R6 (microclimat,
-  # spec 027) + R7 gel tardif (spec 027 P4) + A5 (spec 032) = 41.
-  # A5 manquait tant qu'app_config.R portait sa copie de la table : il était
-  # calculé puis filtré à l'affichage. Le compte vient du cœur.
-  expect_length(codes, 41)
+  # spec 027) + R7 gel tardif (spec 027 P4) + A5 (spec 032) + N5/B5 (cœur 2026.11.14) = 43.
+  # Le compte vient du cœur : dérivé de `indicator_labels()`, pas figé.
+  expect_length(codes, nrow(nemeton::indicator_labels(lang = "fr")))
 
   # Check some known indicators
   expect_true("C1" %in% codes)
