@@ -2337,11 +2337,13 @@ TRANSLATIONS <- list(
   famille_biodiversite_desc = list(
     fr = paste0(
       "Protection r\u00e9glementaire, diversit\u00e9 structurale, ",
-      "connectivit\u00e9 \u00e9cologique et diversit\u00e9 spectrale"
+      "connectivit\u00e9 \u00e9cologique, diversit\u00e9 spectrale ",
+      "et stratification verticale"
     ),
     en = paste0(
       "Regulatory protection, structural diversity, ",
-      "ecological connectivity and spectral diversity"
+      "ecological connectivity, spectral diversity ",
+      "and vertical stratification"
     )
   ),
   famille_eau_desc = list(
