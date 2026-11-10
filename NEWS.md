@@ -1,3 +1,12 @@
+# nemetonshiny 2026.10.18.9006 (2026-11-10)
+
+Changements cassants : aucun (champs ajoutés ; `score` des familles de `resume_projet` passe à 2 décimales, comme la Synthèse).
+
+## MCP : `resume_projet` rend tout l'écran Synthèse (mission 008)
+
+- Nouveaux champs : `description`, `created_at`, `updated_at` et `calcule_le` (ISO 8601, fuseau Europe/Paris ; heures naïves lues dans le fuseau du process), `chm_suspect`, `chm_suspect_max`, et par famille `ndp` et `n_indicateurs` (présents, à défaut prévus).
+- `calcule_le` : `completed_at` > `fin_a` (job `termine`) > date de `indicators.parquet` > `null`.
+
 # nemetonshiny 2026.10.18.9003 (2026-11-10)
 
 Changements cassants : aucun.
