@@ -1,6 +1,6 @@
 # Contrat nemetonshiny -> nemetonmcp (pilotage/adr/0001, mission 001).
 #
-# `nemetonmcp` lit 32 objets internes par getFromNamespace(). CONTRAT.md,
+# `nemetonmcp` lit 35 objets internes par getFromNamespace(). CONTRAT.md,
 # section « API pour nemetonmcp », les declare ; ce test les verrouille : un
 # objet renomme, retire, ou dont les arguments changent fait echouer la CI
 # ici, pas VICTOR en production. Changer cette table = changer le contrat :
@@ -35,6 +35,9 @@
   mcp_exporter_gpkg       = c("projet"),
   .mcp_resolve_project    = c("projet"),
   .mcp_vers_outil         = c("x"),
+  .mcp_garde_ecriture     = c("id", "call"),
+  .mcp_jeton_emettre      = c("outil", "projet", "lien", "apercu"),
+  .mcp_jeton_consommer    = c("jeton", "outil", "projet", "lien", "garde"),
   # divers
   get_expert_profiles     = character(),
   marculus_export_bundle  = c("project_id", "file", "essences")
@@ -55,8 +58,8 @@
 
 .contrat_ns <- function() asNamespace("nemetonshiny")
 
-test_that("le contrat compte 32 objets, sans doublon", {
-  expect_length(.contrat_noms(), 32L)
+test_that("le contrat compte 35 objets, sans doublon", {
+  expect_length(.contrat_noms(), 35L)
   expect_false(anyDuplicated(.contrat_noms()) > 0L)
 })
 
@@ -132,7 +135,11 @@ test_that("nemetonmcp n'appelle aucun objet hors contrat (si son depot est la)",
       sub('^\\.ns\\("([^"]+)"\\)$', "\\1", m)
     })))
   # Egalite stricte : nemetonmcp appelle exactement le contrat.
-  # Exception 2026-11-10 : .mcp_vers_outil est au contrat avant d'etre appele
-  # par nemetonmcp (brief mission 013). Retirer l'exception a sa livraison.
-  expect_setequal(appelles, setdiff(.contrat_noms(), ".mcp_vers_outil"))
+  # Exception 2026-11-10 : .mcp_vers_outil (mission 003) et les trois objets
+  # de la confirmation par jeton (mission 010) sont au contrat avant d'etre
+  # appeles par nemetonmcp (brief mission 013). Retirer l'exception a sa
+  # livraison.
+  pas_encore <- c(".mcp_vers_outil", ".mcp_garde_ecriture",
+                  ".mcp_jeton_emettre", ".mcp_jeton_consommer")
+  expect_setequal(appelles, setdiff(.contrat_noms(), pas_encore))
 })

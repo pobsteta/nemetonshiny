@@ -1,3 +1,18 @@
+# nemetonshiny 2026.10.18.9005 (2026-11-10)
+
+## Changements cassants
+
+- Serveur MCP : `appliquer_ugf` et `croiser_onf` **n'écrivent plus au premier appel**. Sans `jeton`, ils font tous les contrôles, n'écrivent rien et rendent l'erreur `confirmation_requise` avec `apercu`, `jeton` et `expire_a` ; seul un second appel portant ce jeton écrit (ADR 0002). Un client qui enchaînait un seul appel ne modifie plus le projet. `mcp_appliquer_ugf()` et `mcp_croiser_onf()` gagnent un argument `jeton` (en dernier). La release qui embarquera ce changement demandera la confirmation de Pascal.
+
+## Serveur MCP : confirmation des écritures par jeton (mission 010)
+
+- Jeton à usage unique, 24 caractères `[0-9a-z]`, valable 10 minutes (une seule constante, `.MCP_JETON_DUREE`, provisoire jusqu'à l'essai VICTOR), gardé en mémoire du serveur : rien n'est écrit dans le dossier du projet à l'aperçu.
+- Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; `appliquer_ugf` : fichier (chemin normalisé et md5) et `remplacer` ; `croiser_onf` : tous les réglages ONF résolus (`purger` compris). Tout jeton connu présenté est consommé, même refusé.
+- Ordre : gardes (calcul en cours, verrou, projet ancien) puis jeton, puis fichier ou croisement (recalculé à la confirmation), puis écriture. Au premier appel, erreurs métier et gardes passent avant l'aperçu, sans jeton.
+- Aperçu : `appliquer_ugf` → `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` → `ecartees` (IDU), `n_ecartees`, `n_retenues` (rien d'écarté si `purger` résolu vaut `FALSE`).
+- Deux classes d'erreur : `confirmation_requise`, `jeton_invalide` (16 messages `mcp_err_*`, 11 actions `mcp_act_*`).
+- Contrat `nemetonmcp` (CONTRAT.md § 6 bis, 35 objets) : `.mcp_garde_ecriture()`, `.mcp_jeton_emettre()`, `.mcp_jeton_consommer()`, pour ses propres écritures (plan d'actions) ; pas encore appelés par `nemetonmcp` (brief de la mission 013).
+
 # nemetonshiny 2026.10.18.9002 (2026-11-10)
 
 Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d'outil est désormais marquée `isError`.

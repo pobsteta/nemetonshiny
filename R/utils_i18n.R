@@ -6651,6 +6651,15 @@ TRANSLATIONS <- list(
     fr = "Parcelles introuvables pour ce projet.",
     en = "Parcels not found for this project."
   ),
+  # Confirmation des ecritures par jeton (ADR 0002, mission 010)
+  mcp_err_confirmation_requise = list(
+    fr = "Confirmation requise : rien n'a encore \u00e9t\u00e9 \u00e9crit dans le projet. L'aper\u00e7u dit ce qui changera.",
+    en = "Confirmation required: nothing has been written to the project yet. The preview says what will change."
+  ),
+  mcp_err_jeton_invalide = list(
+    fr = "Jeton de confirmation refus\u00e9 (inconnu, p\u00e9rim\u00e9, d\u00e9j\u00e0 utilis\u00e9 ou d\u00e9livr\u00e9 pour d'autres param\u00e8tres) ; rien n'a \u00e9t\u00e9 \u00e9crit.",
+    en = "Confirmation token refused (unknown, expired, already used or issued for other parameters); nothing was written."
+  ),
   mcp_err_erreur = list(
     fr = "L'op\u00e9ration a \u00e9chou\u00e9.",
     en = "The operation failed."
@@ -6694,6 +6703,14 @@ TRANSLATIONS <- list(
   mcp_act_signaler = list(
     fr = "Dire l'erreur \u00e0 l'utilisateur telle quelle et lui demander comment poursuivre.",
     en = "Report the error to the user as is and ask how to proceed."
+  ),
+  mcp_act_confirmer = list(
+    fr = "Lire l'aper\u00e7u \u00e0 l'utilisateur et lui demander de confirmer ; seulement s'il confirme, rappeler le m\u00eame outil avec les m\u00eames param\u00e8tres et ce jeton, avant expire_a.",
+    en = "Read the preview to the user and ask them to confirm; only if they do, call the same tool again with the same parameters and this token, before expire_a."
+  ),
+  mcp_act_redemander = list(
+    fr = "Rappeler l'outil sans jeton pour un nouvel aper\u00e7u, le lire \u00e0 l'utilisateur, puis confirmer avec le nouveau jeton.",
+    en = "Call the tool again without a token for a new preview, read it to the user, then confirm with the new token."
   ),
 
   # --- Lancement encha\u00een\u00e9 (pipeline "Tout calculer") ------------------

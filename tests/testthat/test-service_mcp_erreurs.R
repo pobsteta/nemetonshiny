@@ -208,18 +208,28 @@ test_that("generer_rapport accepte la langue pour son erreur", {
   expect_identical(en$langue, "en")
 })
 
-# ----------------------------------------------- classes qui attendent la mission 010
+# ----------------------------------------------- classes livrees par la mission 010
 
-test_that("confirmation_requise : un outil qui ecrit, appele sans jeton, n'ecrit rien (attend 010)", {
-  skip("attend la mission 010 : confirmation_requise et jeton_invalide restent en skip (arbitrage de Pascal, 2026-11-10)")
+# Mission 010 : le cas d'origine passait un fichier ABSENT et attendait
+# confirmation_requise ; l'ordre retenu le 2026-11-10 (erreurs metier avant
+# l'apercu) en fait un fichier_invalide. Seule retouche : un fichier valide.
+test_that("confirmation_requise : un outil qui ecrit, appele sans jeton, n'ecrit rien", {
+  skip_if_not_installed("arrow")
   .er_env()
   .er_projet("Couchey")
-  r <- .er_appel("appliquer_ugf", projet = "Couchey", fichier = "absent.gpkg")
+  f <- tempfile(fileext = ".gpkg")
+  sf::st_write(sf::st_sf(idu = c("21001000AA0001", "21001000AA0002"),
+                         label_ugf = c("F1-1", "F1-2"),
+                         geometry = sf::st_sfc(.er_sq(800000), .er_sq(800100),
+                                               crs = 2154)),
+               f, quiet = TRUE)
+  r <- .er_appel("appliquer_ugf", projet = "Couchey", fichier = f)
   .er_attend(r, "confirmation_requise")
 })
 
-test_that("jeton_invalide : un jeton inconnu, perime ou reutilise est refuse (attend 010)", {
-  skip("attend la mission 010 : parametre `jeton` suppose, a confirmer par l'ADR 0002")
+# Ordre a la confirmation (mission 010) : gardes, puis jeton, puis fichier.
+# Un jeton inconnu est refuse avant que le fichier (ici absent) soit lu.
+test_that("jeton_invalide : un jeton inconnu, perime ou reutilise est refuse", {
   .er_env()
   .er_projet("Couchey")
   r <- .er_appel("appliquer_ugf", projet = "Couchey", fichier = "absent.gpkg",

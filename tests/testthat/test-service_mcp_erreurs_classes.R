@@ -17,8 +17,8 @@ test_that("chaque code a un message et une action FR et EN, distincts", {
   }
   cles <- grep("^mcp_(err|act)_", names(TRANSLATIONS), value = TRUE)
   expect_true(all(nchar(cles) <= 30L))
-  expect_length(grep("^mcp_err_", cles), 14L)
-  expect_length(grep("^mcp_act_", cles), 9L)
+  expect_length(grep("^mcp_err_", cles), 16L)  # 14 (003) + 2 (010)
+  expect_length(grep("^mcp_act_", cles), 11L)   # 9 (003) + 2 (010)
 })
 
 test_that("une classe connue garde son code ; la classe est le nom R complet", {
