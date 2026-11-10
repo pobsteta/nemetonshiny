@@ -7,7 +7,7 @@
 ## Serveur MCP : confirmation des écritures par jeton (mission 010)
 
 - Jeton à usage unique, 24 caractères `[0-9a-z]`, valable 10 minutes (une seule constante, `.MCP_JETON_DUREE`, provisoire jusqu'à l'essai VICTOR), gardé en mémoire du serveur : rien n'est écrit dans le dossier du projet à l'aperçu.
-- Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; `appliquer_ugf` : fichier (chemin normalisé et md5) et `remplacer` ; `croiser_onf` : tous les réglages ONF résolus (`purger` compris). Tout jeton connu présenté est consommé, même refusé.
+- Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; `appliquer_ugf` : fichier (chemin normalisé et md5) et `remplacer` ; `croiser_onf` : tous les réglages ONF résolus (`purger` compris). Tout jeton connu présenté est consommé, même refusé, **sauf** si le projet est introuvable ou ambigu, ou si les métadonnées ONF sont illisibles (erreurs levées avant la lecture du jeton : il reste valable). L'aperçu nomme le projet : le message cite le nom résolu et l'identifiant, le JSON porte `projet` et `projet_nom`.
 - Ordre : gardes (calcul en cours, verrou, projet ancien) puis jeton, puis fichier ou croisement (recalculé à la confirmation), puis écriture. Au premier appel, erreurs métier et gardes passent avant l'aperçu, sans jeton.
 - Aperçu : `appliquer_ugf` → `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` → `ecartees` (IDU), `n_ecartees`, `n_retenues` (rien d'écarté si `purger` résolu vaut `FALSE`).
 - Deux classes d'erreur : `confirmation_requise`, `jeton_invalide` (16 messages `mcp_err_*`, 11 actions `mcp_act_*`).

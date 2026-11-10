@@ -49,7 +49,7 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
 - Une erreur non répertoriée a pour `classe` `nemetonshiny_erreur_inconnue`
   (condition sans classe `nemetonshiny_*`) ou `nemetonshiny_erreur`
   (classe `nemetonshiny_*` hors liste) ; `action` : le signaler.
-- `jeton`, `apercu`, `expire_a` : remplis **seulement** pour
+- `projet`, `projet_nom`, `jeton`, `apercu`, `expire_a` : remplis **seulement** pour
   `confirmation_requise` (voir ci-dessous).
 - Limite actuelle : servis par `nemetonmcp`, `etat_calcul` et
   `exporter_gpkg` sont remplacés par ses propres outils et ne sont **pas
@@ -62,7 +62,8 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
 
 1. Appelés **sans** `jeton`, ils font tous les contrôles (gardes, fichier,
    croisement ONF) et **n'écrivent rien**. Ils rendent l'erreur
-   `confirmation_requise` avec un `apercu`, un `jeton` et `expire_a`
+   `confirmation_requise` avec `projet` (identifiant) et `projet_nom` (nom
+   résolu, cité aussi dans le message), un `apercu`, un `jeton` et `expire_a`
    (ISO 8601, UTC) :
    - `appliquer_ugf` : `n_ugf_remplacees` (UGF actuelles touchées),
      `n_ugf_nouvelles` (UGF du fichier) ;
@@ -74,8 +75,10 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
 Le jeton est à usage unique, valable 10 minutes (valeur provisoire), gardé en
 mémoire du serveur. Il est lié à l'outil, au projet, aux parcelles du projet
 et aux paramètres : fichier et son md5, `remplacer` ; tous les réglages ONF
-résolus du projet (dont `purger`). Tout jeton présenté est consommé, même
-refusé. Refus : `jeton_invalide` (inconnu, périmé, déjà utilisé, autres
+résolus du projet (dont `purger`). Tout jeton connu présenté est consommé,
+même refusé, **sauf** si le projet est introuvable ou ambigu, ou si les
+métadonnées ONF du projet sont illisibles : ces erreurs sont levées avant
+que le jeton soit lu, il reste donc valable. Refus : `jeton_invalide` (inconnu, périmé, déjà utilisé, autres
 paramètres) ; il faut redemander un aperçu. À la confirmation, les gardes
 (calcul en cours, verrou) sont rejouées avant le jeton, puis le fichier est
 relu ou le croisement recalculé.

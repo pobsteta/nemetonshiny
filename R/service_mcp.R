@@ -72,19 +72,27 @@
   def <- .MCP_ERREURS[[code]]
   projet <- as.character(e$projet %||% "")[1]
   detenteur <- as.character(e$detenteur %||% "?")[1]
-  texte <- i18n$t(paste0("mcp_err_", code), projet = projet,
+  # Un projet nomme (confirmation_requise) est cite par son nom ET son id.
+  projet_txt <- if (is.null(e$projet_nom)) projet else {
+    sprintf(if (langue == "fr") "\u00ab %s \u00bb (identifiant %s)" else
+              "\u201c%s\u201d (id %s)", as.character(e$projet_nom)[1], projet)
+  }
+  texte <- i18n$t(paste0("mcp_err_", code), projet = projet_txt,
                   detenteur = detenteur)
   if (isTRUE(def$detail)) {
     detail <- gsub("\\s*\n\\s*", " ", cli::ansi_strip(conditionMessage(e)))
     texte <- paste0(texte, " (", trimws(detail), ")")
   }
   action <- i18n$t(paste0("mcp_act_", def$action), detenteur = detenteur)
-  # `jeton`, `apercu`, `expire_a` : portes par confirmation_requise seule
+  # `projet`, `projet_nom`, `jeton`, `apercu`, `expire_a` : portes par
+  # confirmation_requise seule
   # (.mcp_jeton_emettre()).
   json <- .mcp_json(Filter(Negate(is.null), list(
     ok = FALSE, classe = paste0("nemetonshiny_", code), code = code,
     langue = langue, erreur = texte, action = action,
-    candidats = e$candidats, jeton = e$jeton, apercu = e$apercu,
+    candidats = e$candidats,
+    projet = if (!is.null(e$projet_nom)) projet, projet_nom = e$projet_nom,
+    jeton = e$jeton, apercu = e$apercu,
     expire_a = e$expire_a)))
   structure(json, mcp_erreur = TRUE)
 }
@@ -336,11 +344,18 @@ mcp_resume_projet <- function(projet, langue = "fr") {
     if (!exists(jeton, envir = .mcp_jetons, inherits = FALSE)) break
   }
   expire <- maintenant + .MCP_JETON_DUREE
+  # Nom du projet : cite dans le message, pour que l'utilisateur voie QUEL
+  # projet sera modifie (le jeton reste lie a l'id).
+  nom <- tryCatch({
+    l <- projets_lister()
+    as.character(l$nom[match(projet, l$id)])[1]
+  }, error = function(e) NA_character_)
+  if (is.na(nom) || !nzchar(nom)) nom <- projet
   assign(jeton, list(outil = outil, projet = projet, lien = lien,
                      expire = expire), envir = .mcp_jetons)
   .api_abort("Confirmation requise : rien n'a \u00e9t\u00e9 \u00e9crit.",
              "nemetonshiny_confirmation_requise", projet = projet,
-             jeton = jeton, apercu = apercu,
+             projet_nom = nom, jeton = jeton, apercu = apercu,
              expire_a = format(expire, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
 }
 
@@ -348,7 +363,9 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 #'
 #' Second step of a write (ADR 0002). A known token is removed from the
 #' registry as soon as it is presented, whatever follows: a refused guard or a
-#' refused binding kills it too. Then `garde(projet)` is replayed (its error
+#' refused binding kills it too. Exception: errors raised by the caller before
+#' this function runs (unknown or ambiguous project, unreadable ONF metadata)
+#' leave the token valid. Then `garde(projet)` is replayed (its error
 #' passes through), and the token is checked: unknown, expired, or issued for
 #' another tool, project or `lien` gives `nemetonshiny_jeton_invalide`.
 #' `lien` is only evaluated after the guard.

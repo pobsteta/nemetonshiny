@@ -6653,8 +6653,8 @@ TRANSLATIONS <- list(
   ),
   # Confirmation des ecritures par jeton (ADR 0002, mission 010)
   mcp_err_confirmation_requise = list(
-    fr = "Confirmation requise : rien n'a encore \u00e9t\u00e9 \u00e9crit dans le projet. L'aper\u00e7u dit ce qui changera.",
-    en = "Confirmation required: nothing has been written to the project yet. The preview says what will change."
+    fr = "Confirmation requise : rien n'a encore \u00e9t\u00e9 \u00e9crit dans le projet {projet}. L'aper\u00e7u dit ce qui changera.",
+    en = "Confirmation required: nothing has been written yet to the project {projet}. The preview says what will change."
   ),
   mcp_err_jeton_invalide = list(
     fr = "Jeton de confirmation refus\u00e9 (inconnu, p\u00e9rim\u00e9, d\u00e9j\u00e0 utilis\u00e9 ou d\u00e9livr\u00e9 pour d'autres param\u00e8tres) ; rien n'a \u00e9t\u00e9 \u00e9crit.",
