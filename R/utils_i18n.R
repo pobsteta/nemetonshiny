@@ -6602,6 +6602,100 @@ TRANSLATIONS <- list(
     en = "%d low-coverage units excluded by default."
   ),
 
+  # --- Serveur MCP : erreurs marqu\u00e9es, class\u00e9es, bilingues (mission 003) ---
+  mcp_err_projet_introuvable = list(
+    fr = "Aucun projet ne correspond \u00e0 '{projet}'.",
+    en = "No project matches '{projet}'."
+  ),
+  mcp_err_projet_ambigu = list(
+    fr = "Plusieurs projets correspondent \u00e0 '{projet}' ; aucun n'a \u00e9t\u00e9 choisi.",
+    en = "Several projects match '{projet}'; none was chosen."
+  ),
+  mcp_err_projet_verrouille = list(
+    fr = "Projet en cours d'\u00e9dition dans l'application par {detenteur}.",
+    en = "Project being edited in the application by {detenteur}."
+  ),
+  mcp_err_projet_ancien = list(
+    fr = "Projet cr\u00e9\u00e9 avant la version 1.0.0 : il n'est pas repris, rien n'a \u00e9t\u00e9 modifi\u00e9.",
+    en = "Project created before version 1.0.0: it is not taken over, nothing was modified."
+  ),
+  mcp_err_calcul_en_cours = list(
+    fr = "Un calcul est d\u00e9j\u00e0 en cours pour ce projet.",
+    en = "A computation is already running for this project."
+  ),
+  mcp_err_calcul_echec = list(
+    fr = "Le calcul a \u00e9chou\u00e9.",
+    en = "The computation failed."
+  ),
+  mcp_err_sans_indicateurs = list(
+    fr = "Ce projet n'a pas encore d'indicateurs calcul\u00e9s.",
+    en = "This project has no computed indicators yet."
+  ),
+  mcp_err_fichier_invalide = list(
+    fr = "Fichier d'unit\u00e9s de gestion introuvable ou invalide ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9.",
+    en = "Management units file missing or invalid; the project was not modified."
+  ),
+  mcp_err_idu_inconnu = list(
+    fr = "Des IDU du fichier sont absents du projet ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9.",
+    en = "Some IDUs of the file are not in the project; the project was not modified."
+  ),
+  mcp_err_pavage_invalide = list(
+    fr = "Le pavage des parcelles par les t\u00e8nements est inexact ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9.",
+    en = "The tiling of parcels by tenements is inexact; the project was not modified."
+  ),
+  mcp_err_onf_echec = list(
+    fr = "Le croisement avec le parcellaire ONF a \u00e9chou\u00e9 ; le projet n'a pas \u00e9t\u00e9 modifi\u00e9.",
+    en = "The crossing with the ONF parcels failed; the project was not modified."
+  ),
+  mcp_err_parcelles_introuvables = list(
+    fr = "Parcelles introuvables pour ce projet.",
+    en = "Parcels not found for this project."
+  ),
+  mcp_err_erreur = list(
+    fr = "L'op\u00e9ration a \u00e9chou\u00e9.",
+    en = "The operation failed."
+  ),
+  mcp_err_erreur_inconnue = list(
+    fr = "Erreur inattendue.",
+    en = "Unexpected error."
+  ),
+  mcp_act_lister = list(
+    fr = "Appeler lister_projets, puis proposer \u00e0 l'utilisateur les projets dont le nom ressemble.",
+    en = "Call lister_projets, then offer the user the projects whose name looks alike."
+  ),
+  mcp_act_choisir = list(
+    fr = "Demander \u00e0 l'utilisateur lequel des candidats il veut, sans choisir \u00e0 sa place.",
+    en = "Ask the user which candidate they mean; do not choose for them."
+  ),
+  mcp_act_verrou = list(
+    fr = "Attendre la fin de l'\u00e9dition de {detenteur}, ou le pr\u00e9venir ; ne pas r\u00e9essayer en boucle.",
+    en = "Wait for {detenteur} to finish editing, or warn them; do not retry in a loop."
+  ),
+  mcp_act_recreer = list(
+    fr = "Recr\u00e9er le projet dans l'application (m\u00eames parcelles) ; rien n'a \u00e9t\u00e9 modifi\u00e9.",
+    en = "Recreate the project in the application (same parcels); nothing was modified."
+  ),
+  mcp_act_suivre = list(
+    fr = "Appeler etat_calcul pour suivre le calcul (statut, progression, journal).",
+    en = "Call etat_calcul to follow the computation (status, progress, log)."
+  ),
+  mcp_act_calculer = list(
+    fr = "Proposer \u00e0 l'utilisateur de lancer le calcul (lancer_calcul) avant de r\u00e9essayer.",
+    en = "Offer the user to start the computation (lancer_calcul) before retrying."
+  ),
+  mcp_act_fichier = list(
+    fr = "Dire \u00e0 l'utilisateur ce qui cloche dans le fichier et lui demander un fichier corrig\u00e9.",
+    en = "Tell the user what is wrong with the file and ask for a corrected one."
+  ),
+  mcp_act_reessayer = list(
+    fr = "Proposer de r\u00e9essayer plus tard (service externe injoignable) ; le projet est intact.",
+    en = "Offer to retry later (external service unreachable); the project is intact."
+  ),
+  mcp_act_signaler = list(
+    fr = "Dire l'erreur \u00e0 l'utilisateur telle quelle et lui demander comment poursuivre.",
+    en = "Report the error to the user as is and ask how to proceed."
+  ),
+
   # --- Lancement encha\u00een\u00e9 (pipeline "Tout calculer") ------------------
   pipeline_button = list(
     fr = "Tout calculer",
