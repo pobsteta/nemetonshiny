@@ -61,3 +61,33 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 un « applique » mal compris ne modifie rien.
+
+## Contrat fixé le 2026-11-10 (Pascal, sur la relecture de 009)
+
+- Premier appel : erreur `confirmation_requise` + `jeton`, `apercu`, `expire_a` ; jeton lié à outil + projet + paramètres (fichier + md5, `remplacer`, `purger` résolu) ; registre en mémoire (ADR 0002), rien d'écrit dans le dossier projet à l'aperçu ; périmètre `appliquer_ugf` et `croiser_onf` (tout `purger`) ; erreurs métier et gardes avant l'aperçu, gardes rejouées à la confirmation ; horloge : `Sys.time()` (les tests la simulent par `local_mocked_bindings(.package = "base")`).
+- Les deux `skip` de `test-service_mcp_erreurs.R` (002) sont à activer par 010 ; le cas « fichier absent → confirmation_requise » y contredit l'ordre retenu : seule retouche autorisée de ce fichier, à montrer au relecteur.
+- Compléments du 2026-11-10 (Pascal) : **clés de l'aperçu fixées** — `appliquer_ugf` : `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` : `ecartees` (liste d'IDU), `n_ecartees`, `n_retenues` ; **tout jeton connu présenté est consommé**, que l'écriture réussisse ou non (refus de lien, garde rejouée) ; durée **10 min**, une seule constante, à confirmer après l'essai VICTOR. À la confirmation, 010 fixe l'ordre fichier ↔ jeton (second `skip` de 002) et le montre au relecteur.
+- Fusion : les tests de 009 entrent en tête de la branche 010 (pas de PR 009 seule) ; 010 part de `main` après fusion de 003 (#256).
+- Compléments du 2026-11-10 (Pascal, suite) : le jeton porte l'empreinte de **tous les réglages ONF résolus** du projet (pas seulement `purger`) ; aperçu `croiser_onf` avec purger résolu FALSE : `ecartees` vide, `n_ecartees` 0, `n_retenues` = toutes les parcelles.
+- Moyens (2026-11-10) : branche depuis `origin/main` (contient 003). **Premier commit** : `git fetch origin claude/mission-009-tests-confirmation && git checkout 93291ec8 -- tests/testthat/test-service_mcp_confirmation.R` (tests de 009, à ne pas retoucher). Main **tenue** : rendre d'abord un plan (forme du registre en mémoire, empreinte du lien — outil, projet, fichier + md5, `remplacer`, réglages ONF résolus —, consommation, ordre des contrôles fichier ↔ jeton à la confirmation, clés de l'aperçu, activation des 2 `skip` de `test-service_mcp_erreurs.R` et correction du cas « fichier absent »), soumis à Pascal avant toute exécution.
+
+## Plan accepté — 2026-11-10
+
+Plan rendu par le `dev` (main tenue), accepté par Pascal avec ces arbitrages :
+- **Empreinte** : outil, projet (id résolu), et en plus le **md5 du fichier de parcelles du projet** (Pascal) ; `appliquer_ugf` : fichier normalisé + md5 + `remplacer` ; `croiser_onf` : `purger` résolu + tous les réglages ONF résolus (`project_onf_params`). L'empreinte ONF n'est portée que par `croiser_onf` (orchestrateur).
+- **croiser_onf** : le croisement est **recalculé** à la confirmation (Pascal) ; rien de lourd gardé en mémoire.
+- **Aperçu `remplacer = FALSE`** : `n_ugf_remplacees` = UGF actuelles des parcelles du fichier ; `n_ugf_nouvelles` = libellés distincts du fichier (Pascal).
+- **Contrat** : `.mcp_jeton_emettre`, `.mcp_jeton_consommer`, `.mcp_garde_ecriture` au § 6 bis, avec l'exception datée étendue jusqu'au brief 013 ; `.mcp_empreinte` reste interne (Pascal).
+- **Jeton** : `sample()` sur `[0-9a-z]`, 24 car., pas de nouvelle dépendance (orchestrateur ; « barrière, pas preuve », ADR 0002).
+- **Ordre** : gardes → jeton (consommé dès la présentation) → fichier/métier → écriture (orchestrateur, conforme aux décisions du 2026-11-10).
+- **Changement cassant** : `appliquer_ugf`/`croiser_onf` n'écrivent plus au premier appel → section « Changements cassants » dans NEWS ; la release qui l'embarquera demandera la confirmation de Pascal (CLAUDE.md).
+- Cycle dev : 2026.10.18.9005 (007 prend 9004) + NEWS. Branche depuis `origin/main` ; tests de 009 en premier commit, jamais retouchés ; ajouter un test (dans `test-service_mcp_jeton.R`) pour « parcelles modifiées entre aperçu et confirmation → jeton_invalide » ; vérifier R4 (le vrai `onf_load_parcelles` n'écrit rien dans le dossier projet) et le dire au rendu.
+- Attention : 007 touche aussi `R/service_mcp.R` (`.mcp_resolve_project`) ; rester hors de cette fonction.
+
+## Remarques de relecture — complément (2026-11-10)
+
+Relu **prêt** (91 tests / 1759 vérifications, 7 mutations détectées). Point de départ : `origin/claude/mission-010-confirmation-jeton` (bade93a8) ; pousser en fast-forward. Arbitrages de Pascal :
+1. **Projet nommé** : le message `mcp_err_confirmation_requise` cite le nom résolu du projet, et le JSON de `confirmation_requise` porte `projet` (id) et `projet_nom` ; test : l'aperçu d'`appliquer_ugf` et de `croiser_onf` contient l'id et le nom exacts.
+2. **Exception écrite** : un jeton présenté avec un projet introuvable/ambigu, ou quand les métadonnées ONF sont illisibles (lues avant le jeton), n'est pas consommé ; le dire dans `inst/mcp/README.md`, `CONTRAT.md` et NEWS (au lieu de « tout jeton présenté est consommé, même refusé »).
+3. Le README modifié hors harnais est **gardé** (il devenait faux) ; l'annoncer dans la PR.
+4. Ne PAS fusionner main ici : ordre de fusion 004 → 007 → 010 ; l'orchestrateur fera fusionner main au moment voulu (NEWS à remettre en ordre 9005 > 9004 > 9003).

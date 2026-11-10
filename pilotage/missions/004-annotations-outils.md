@@ -61,3 +61,21 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 `tools/list` montre `readOnlyHint: true` sur `resume_projet`.
+
+## Moyens et arbitrages — 2026-11-10
+
+- **Premier commit de la branche** : `git fetch origin claude/mission-002-tests-acceptation && git checkout 37cbbf92 -- tests/testthat/test-service_mcp_annotations.R` (tests d'acceptation de 002, à ne pas retoucher ; ils doivent passer au vert sans retouche).
+- Annotations arbitrées par Pascal (journal du 2026-11-10) :
+  - `read_only_hint` TRUE : `lister_projets`, `resume_projet`, `etat_calcul`, `url_app` ; FALSE pour les 6 autres (dont `generer_rapport`, `exporter_gpkg`).
+  - `destructive_hint` TRUE : `appliquer_ugf`, `croiser_onf` seulement.
+  - `idempotent_hint` FALSE : `lancer_calcul` seul ; TRUE pour les 9 autres.
+- Branche à partir de `origin/main` (contient #253 : le contrat ; ne change aucune signature listée dans `CONTRAT.md` § 6 bis). Indépendante de 003 (#256) : attention aux conflits sur `R/service_mcp.R` (`mcp_tools()`), à signaler au rendu.
+- Cycle dev : 003 est en 2026.10.18.9002 ; prends 2026.10.18.9003 + entrée NEWS.
+
+## Mise à jour sur main — 2026-11-10
+
+#256 (003) est fusionnée sur `main` (86138435). Point de départ : `origin/claude/mission-004-annotations-outils` (1b6930c3). `git merge origin/main` (pas de rebase : push forcé refusé), puis résoudre :
+- `R/service_mcp.R`, `mcp_tools()` : chaque outil garde **à la fois** `.mcp_marquer(...)` (de 003) et ses `annotations = ellmer::tool_annotations(...)` (de 004) : `ellmer::tool(.mcp_marquer(mcp_x), name = "x", annotations = ..., description = ...)`.
+- `DESCRIPTION` : **une seule** ligne `Version: 2026.10.18.9003`.
+- `NEWS.md` : entrée 9003 au-dessus de 9002, une ligne vide entre elles.
+Puis `devtools::test(filter = "mcp|contrat")` vert (annotations ET erreurs ; 2 skips attendus de 010) ; `git diff 37cbbf92 -- tests/testthat/test-service_mcp_annotations.R` vide. Pousser en fast-forward sur la branche de #257.

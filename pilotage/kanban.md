@@ -20,7 +20,10 @@ _Modèle de carte :_
 
 ## Bac à sable
 
-_Vide : toutes les missions validées le 2026-11-10 (porte n° 2)._
+- [015-table-familles-partagee](missions/015-table-familles-partagee.md) · depuis le cycle 1
+  - Homme : `dev` (sonnet, main : appuyer) — à confirmer
+  - Mission : helper unique de la table des familles (écran, API, MCP) · après 010
+  - Moyens : oui/oui/oui
 
 ## Validé
 
