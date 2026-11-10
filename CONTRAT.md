@@ -226,7 +226,79 @@ Les profils des perspectives IA sont des fichiers YAML bilingues dans
 `inst/experts/_example.yml.template` et reste stable en 1.x ; ajouter un
 profil est une évolution mineure.
 
-## 6. Politique de compatibilité
+## 6 bis. API pour nemetonmcp
+
+`nemetonmcp` (le serveur MCP de VICTOR et d’AIGORA) lit **31 objets
+internes** de nemetonshiny par `getFromNamespace(nom, "nemetonshiny")`.
+Ils ne sont pas exportés (ADR 0001, option B) mais **font partie du
+contrat** : les renommer, les retirer ou changer leurs arguments est un
+changement cassant (section « Changements cassants » de `NEWS.md`, et un
+brief à `nemetonmcp`). `tests/testthat/test-contrat_nemetonmcp.R`
+verrouille la présence et les arguments
+([`formals()`](https://rdrr.io/r/base/formals.html), dans l’ordre) de
+chaque objet ; il vérifie aussi que cette section et la liste lue dans
+le code de `nemetonmcp` sont identiques. Un objet absent de cette
+section n’est **pas** garanti.
+
+Plan d’actions et commentaires :
+
+| Objet | Arguments / contenu |
+|----|----|
+| `load_action_plan()` | `project_id` |
+| `save_action_plan()` | `project_id`, `plan` ; rend `TRUE` si écrit |
+| `add_action_to_plan()` | `plan`, `action`, `ug_ids`, `user` |
+| `update_action_in_plan()` | `plan`, `action_id`, `updates`, `ug_ids`, `user` |
+| `delete_action_from_plan()` | `plan`, `action_id`, `user` |
+| `get_action_by_id()` | `plan`, `action_id` |
+| `find_action_index()` | `plan`, `action_id` ; `NA` si absente |
+| `action_plan_annee_base()` | `plan` |
+| `load_ug_comments()` | `project_id` |
+| `ACTION_PLAN_TYPES` | vecteur de types d’action |
+| `ACTION_PLAN_STATUTS` | vecteur de statuts |
+| `ACTION_PLAN_PRIORITES` | vecteur de priorités |
+| `ACTION_PLAN_FAMILY_CODES` | les 12 codes de famille |
+| `ACTION_PLAN_TRANSITIONS` | liste des transitions de statut permises |
+
+Projet :
+
+| Objet                 | Arguments / contenu                 |
+|-----------------------|-------------------------------------|
+| `load_project()`      | `project_id`, `build_indicators_sf` |
+| `load_parcels()`      | `project_id`                        |
+| `get_project_path()`  | `project_id`                        |
+| `get_projects_root()` | aucun                               |
+| `ug_build_sf()`       | `projet`                            |
+| `lock_status()`       | `pid` ; `NULL` si aucun verrou      |
+
+Communes :
+
+| Objet                     | Arguments / contenu          |
+|---------------------------|------------------------------|
+| `get_commune_geometry()`  | `code_insee`                 |
+| `save_commune_geometry()` | `project_id`, `commune_geom` |
+| `get_departments()`       | aucun                        |
+
+Serveur MCP (`inst/mcp/`, 10 outils : `lister_projets`, `resume_projet`,
+`lancer_calcul`, `etat_calcul`, `annuler_calcul`, `generer_rapport`,
+`exporter_gpkg`, `appliquer_ugf`, `croiser_onf`, `url_app`) :
+
+| Objet | Arguments / contenu |
+|----|----|
+| `mcp_tools()` | aucun ; liste des outils [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html) |
+| `mcp_etat_calcul()` | `projet` |
+| `mcp_exporter_gpkg()` | `projet` |
+| `.mcp_resolve_project()` | `projet` ; id, ou erreur `nemetonshiny_projet_ambigu` avec `candidats` |
+
+Divers :
+
+| Objet                           | Arguments / contenu                    |
+|---------------------------------|----------------------------------------|
+| `get_expert_profiles()`         | aucun                                  |
+| `marculus_export_bundle()`      | `project_id`, `file`, `essences`       |
+| `MARCULUS_CONTEXT_ACTION_TYPES` | vecteur de types d’action Marculus     |
+| `INDICATOR_FAMILIES`            | liste des 12 familles, nommée par code |
+
+## 7. Politique de compatibilité
 
 - **Majeure** (2.0.0) : rupture d’un élément de ce document (argument de
   [`run_app()`](https://pobsteta.github.io/nemetonshiny/reference/run_app.md)

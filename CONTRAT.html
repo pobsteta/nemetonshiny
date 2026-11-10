@@ -249,7 +249,108 @@
 <p>Les profils des perspectives IA sont des fichiers YAML bilingues dans <code>inst/experts/</code>. Leur format est décrit par <code>inst/experts/_example.yml.template</code> et reste stable en 1.x ; ajouter un profil est une évolution mineure.</p>
 </div>
 <div class="section level2">
-<h2 id="id_6-politique-de-compatibilité">6. Politique de compatibilité<a class="anchor" aria-label="anchor" href="#id_6-politique-de-compatibilit%C3%A9"></a></h2>
+<h2 id="id_6-bis-api-pour-nemetonmcp">6 bis. API pour nemetonmcp<a class="anchor" aria-label="anchor" href="#id_6-bis-api-pour-nemetonmcp"></a></h2>
+<p><code>nemetonmcp</code> (le serveur MCP de VICTOR et d’AIGORA) lit <strong>31 objets internes</strong> de nemetonshiny par <code>getFromNamespace(nom, "nemetonshiny")</code>. Ils ne sont pas exportés (ADR 0001, option B) mais <strong>font partie du contrat</strong> : les renommer, les retirer ou changer leurs arguments est un changement cassant (section « Changements cassants » de <code>NEWS.md</code>, et un brief à <code>nemetonmcp</code>). <code>tests/testthat/test-contrat_nemetonmcp.R</code> verrouille la présence et les arguments (<code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code>, dans l’ordre) de chaque objet ; il vérifie aussi que cette section et la liste lue dans le code de <code>nemetonmcp</code> sont identiques. Un objet absent de cette section n’est <strong>pas</strong> garanti.</p>
+<p>Plan d’actions et commentaires :</p>
+<table class="table"><colgroup><col width="25%"><col width="75%"></colgroup><thead><tr><th>Objet</th>
+<th>Arguments / contenu</th>
+</tr></thead><tbody><tr><td><code>load_action_plan()</code></td>
+<td><code>project_id</code></td>
+</tr><tr><td><code>save_action_plan()</code></td>
+<td>
+<code>project_id</code>, <code>plan</code> ; rend <code>TRUE</code> si écrit</td>
+</tr><tr><td><code>add_action_to_plan()</code></td>
+<td>
+<code>plan</code>, <code>action</code>, <code>ug_ids</code>, <code>user</code>
+</td>
+</tr><tr><td><code>update_action_in_plan()</code></td>
+<td>
+<code>plan</code>, <code>action_id</code>, <code>updates</code>, <code>ug_ids</code>, <code>user</code>
+</td>
+</tr><tr><td><code>delete_action_from_plan()</code></td>
+<td>
+<code>plan</code>, <code>action_id</code>, <code>user</code>
+</td>
+</tr><tr><td><code>get_action_by_id()</code></td>
+<td>
+<code>plan</code>, <code>action_id</code>
+</td>
+</tr><tr><td><code>find_action_index()</code></td>
+<td>
+<code>plan</code>, <code>action_id</code> ; <code>NA</code> si absente</td>
+</tr><tr><td><code>action_plan_annee_base()</code></td>
+<td><code>plan</code></td>
+</tr><tr><td><code>load_ug_comments()</code></td>
+<td><code>project_id</code></td>
+</tr><tr><td><code>ACTION_PLAN_TYPES</code></td>
+<td>vecteur de types d’action</td>
+</tr><tr><td><code>ACTION_PLAN_STATUTS</code></td>
+<td>vecteur de statuts</td>
+</tr><tr><td><code>ACTION_PLAN_PRIORITES</code></td>
+<td>vecteur de priorités</td>
+</tr><tr><td><code>ACTION_PLAN_FAMILY_CODES</code></td>
+<td>les 12 codes de famille</td>
+</tr><tr><td><code>ACTION_PLAN_TRANSITIONS</code></td>
+<td>liste des transitions de statut permises</td>
+</tr></tbody></table><p>Projet :</p>
+<table class="table"><thead><tr><th>Objet</th>
+<th>Arguments / contenu</th>
+</tr></thead><tbody><tr><td><code>load_project()</code></td>
+<td>
+<code>project_id</code>, <code>build_indicators_sf</code>
+</td>
+</tr><tr><td><code>load_parcels()</code></td>
+<td><code>project_id</code></td>
+</tr><tr><td><code>get_project_path()</code></td>
+<td><code>project_id</code></td>
+</tr><tr><td><code>get_projects_root()</code></td>
+<td>aucun</td>
+</tr><tr><td><code>ug_build_sf()</code></td>
+<td><code>projet</code></td>
+</tr><tr><td><code>lock_status()</code></td>
+<td>
+<code>pid</code> ; <code>NULL</code> si aucun verrou</td>
+</tr></tbody></table><p>Communes :</p>
+<table class="table"><thead><tr><th>Objet</th>
+<th>Arguments / contenu</th>
+</tr></thead><tbody><tr><td><code>get_commune_geometry()</code></td>
+<td><code>code_insee</code></td>
+</tr><tr><td><code>save_commune_geometry()</code></td>
+<td>
+<code>project_id</code>, <code>commune_geom</code>
+</td>
+</tr><tr><td><code>get_departments()</code></td>
+<td>aucun</td>
+</tr></tbody></table><p>Serveur MCP (<code>inst/mcp/</code>, 10 outils : <code>lister_projets</code>, <code>resume_projet</code>, <code>lancer_calcul</code>, <code>etat_calcul</code>, <code>annuler_calcul</code>, <code>generer_rapport</code>, <code>exporter_gpkg</code>, <code>appliquer_ugf</code>, <code>croiser_onf</code>, <code>url_app</code>) :</p>
+<table class="table"><colgroup><col width="25%"><col width="75%"></colgroup><thead><tr><th>Objet</th>
+<th>Arguments / contenu</th>
+</tr></thead><tbody><tr><td><code>mcp_tools()</code></td>
+<td>aucun ; liste des outils <code><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">ellmer::tool()</a></code>
+</td>
+</tr><tr><td><code>mcp_etat_calcul()</code></td>
+<td><code>projet</code></td>
+</tr><tr><td><code>mcp_exporter_gpkg()</code></td>
+<td><code>projet</code></td>
+</tr><tr><td><code>.mcp_resolve_project()</code></td>
+<td>
+<code>projet</code> ; id, ou erreur <code>nemetonshiny_projet_ambigu</code> avec <code>candidats</code>
+</td>
+</tr></tbody></table><p>Divers :</p>
+<table class="table"><thead><tr><th>Objet</th>
+<th>Arguments / contenu</th>
+</tr></thead><tbody><tr><td><code>get_expert_profiles()</code></td>
+<td>aucun</td>
+</tr><tr><td><code>marculus_export_bundle()</code></td>
+<td>
+<code>project_id</code>, <code>file</code>, <code>essences</code>
+</td>
+</tr><tr><td><code>MARCULUS_CONTEXT_ACTION_TYPES</code></td>
+<td>vecteur de types d’action Marculus</td>
+</tr><tr><td><code>INDICATOR_FAMILIES</code></td>
+<td>liste des 12 familles, nommée par code</td>
+</tr></tbody></table></div>
+<div class="section level2">
+<h2 id="id_7-politique-de-compatibilité">7. Politique de compatibilité<a class="anchor" aria-label="anchor" href="#id_7-politique-de-compatibilit%C3%A9"></a></h2>
 <ul><li>
 <strong>Majeure</strong> (2.0.0) : rupture d’un élément de ce document (argument de <code><a href="reference/run_app.html">run_app()</a></code> retiré ou changé, variable d’environnement renommée, format de projet non relisible, migration SQL non rétrocompatible).</li>
 <li>
