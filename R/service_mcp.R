@@ -110,10 +110,115 @@
   tolower(trimws(x))
 }
 
+# Table de correspondance (points de code) des lettres accentuees vers l'ASCII.
+# Minuscules U+00E0..U+00FF utiles ; majuscules = minuscule - 32, sauf U+00FF
+# (y trema : sa majuscule U+0178 est a part, sinon U+00DF donnerait "y").
+# Ligatures a deux lettres : oe (U+0153, U+0152), ae (U+00E6, U+00C6).
+.MCP_ACCENTS <- local({
+  bas <- c(224L, 225L, 226L, 227L, 228L, 229L,  # a
+           232L, 233L, 234L, 235L,              # e
+           236L, 237L, 238L, 239L,              # i
+           242L, 243L, 244L, 245L, 246L,        # o
+           249L, 250L, 251L, 252L,              # u
+           231L, 241L, 253L)                    # c n y
+  cible <- strsplit("aaaaaaeeeeiiiiooooouuuucny", "")[[1]]
+  cp <- c(bas, bas - 32L, 255L, 376L, 339L, 338L, 230L, 198L)
+  val <- c(cible, cible, "y", "y", "oe", "oe", "ae", "ae")
+  stats::setNames(val, as.character(cp))
+})
+
+# Normalisation d'un nom dicte : minuscules, sans accents, tout non-alphanumerique
+# devient une espace. Travaille par points de code (utf8ToInt/intToUtf8) : aucun
+# appel dependant de la locale (chartr et tolower echouent sous LC_ALL=C). Une
+# chaine non marquee et UTF-8 valide (locale C) est lue telle quelle ; enc2utf8
+# la reinterpreterait comme du natif ASCII.
+.mcp_norm_dicte <- function(x) {
+  un <- function(s) {
+    if (is.na(s)) return("")
+    cp <- if (Encoding(s) == "unknown" && validUTF8(s)) utf8ToInt(s) else utf8ToInt(enc2utf8(s))
+    if (!length(cp)) return("")
+    maj <- cp >= 65L & cp <= 90L
+    cp[maj] <- cp[maj] + 32L
+    acc <- match(as.character(cp), names(.MCP_ACCENTS))
+    lettres <- vapply(seq_along(cp), function(i) {
+      if (!is.na(acc[i])) return(unname(.MCP_ACCENTS[acc[i]]))
+      ok <- (cp[i] >= 97L && cp[i] <= 122L) || (cp[i] >= 48L && cp[i] <= 57L)
+      intToUtf8(if (ok) cp[i] else 32L)
+    }, character(1))
+    trimws(gsub(" +", " ", paste(lettres, collapse = "")))
+  }
+  vapply(as.character(x), un, character(1), USE.NAMES = FALSE)
+}
+
+# Retire l'introduction "Foret [communale] de/du/des/d'" d'un nom normalise
+# (l'apostrophe, droite ou typographique, est deja devenue une espace).
+.mcp_sans_foret <- function(m) {
+  trimws(sub("^foret (communale )?(de|du|des|d) ", "", m))
+}
+
+# Mot-cle (commune) d'un nom de projet : "Foret communale de X (ONF)" ou "Foret de X" -> "x" ;
+# sans commune dans le nom, le nom lui-meme.
+.mcp_motcle <- function(nom) {
+  m <- .mcp_sans_foret(.mcp_norm_dicte(nom))
+  trimws(sub(" onf$", "", m))
+}
+
+#' Indices of the projects matching a dictated name
+#'
+#' The keyword of a project is its commune, taken from its name ("Foret communale
+#' de Couchey (ONF)" -> "couchey"; no commune in the name: the name itself).
+#' Names are compared without accents or case. The introduction "Foret
+#' [communale] de/du/des/d'" (straight or typographic apostrophe) is removed on
+#' both sides, so "Foret de Dabot" finds "Foret de Dabo". A project matches
+#' when the dictated name is equal to its keyword, or is a run of whole words at
+#' the start of the keyword, or is within `seuil` edit distance of it. The distance applies only when both the dictated
+#' name and the keyword have at least 4 letters (floor on both sides); below
+#' that, only equality or a leading run of whole words counts ("de", "du" never
+#' match "Foret de Be"; "la" never matches "Laix").
+#' An exact keyword match wins over distance-only matches only when no other
+#' project is within edit distance 1 of the dictated name; otherwise every
+#' candidate is returned (ambiguity). "Ecouche" next to Couchey (distance 2)
+#' finds Ecouche; "Couchey" next to Couchay (distance 1) returns both.
+#' Never a bare substring ("de", "onf" match nothing). The threshold 2 is
+#' provisional (spec P1, criterion 1).
+#'
+#' @param dit Character. The dictated name.
+#' @param noms Character. Project names.
+#' @param seuil Integer. Maximum edit distance.
+#' @return Integer indices into `noms`.
+#' @noRd
+.mcp_rapprocher <- function(dit, noms, seuil = 2L) {
+  d <- .mcp_norm_dicte(dit)
+  variantes <- unique(c(d, .mcp_sans_foret(d)))
+  variantes <- variantes[nzchar(variantes)]
+  if (!length(variantes)) return(integer(0))
+  mc <- vapply(noms, .mcp_motcle, character(1), USE.NAMES = FALSE)
+  # Rang 0 : egalite ou suite de mots entiers en tete. Rang 1 : distance <= seuil
+  # (plancher de 4 lettres des deux cotes). Une egalite exacte l'emporte sur les
+  # voisins de rang 1 ("Ecouche" trouve Ecouche, pas Couchey) SAUF si un autre
+  # projet est a distance <= 1 du mot dicte ("Couchey" face a Couchay : les deux
+  # restent candidats) ; sans egalite exacte, tous les projets de rang 0 ou 1.
+  dist <- function(v, m) if (min(nchar(v), nchar(m)) >= 4L) drop(utils::adist(v, m)) else Inf
+  rang <- vapply(mc, function(m) {
+    if (any(vapply(variantes, function(v) identical(m, v) || startsWith(m, paste0(v, " ")),
+                   logical(1)))) return(0L)
+    proche <- any(vapply(variantes, function(v) dist(v, m) <= seuil, logical(1)))
+    if (proche) 1L else NA_integer_
+  }, integer(1), USE.NAMES = FALSE)
+  exact <- which(mc %in% variantes)
+  if (length(exact)) {
+    voisin <- vapply(seq_along(mc), function(i) {
+      !(mc[i] %in% variantes) && any(vapply(variantes, function(v) dist(v, mc[i]) <= 1, logical(1)))
+    }, logical(1))
+    if (!any(voisin)) return(unname(which(rang == 0L)))
+  }
+  unname(which(!is.na(rang)))
+}
+
 #' Resolve a project from an id or an approximate name
 #'
-#' Exact id first, then exact name (case and accents ignored), then a single
-#' partial name match. Several candidates: error of class
+#' Exact id first, then exact name (case and accents ignored), then the
+#' tolerant keyword match of `.mcp_rapprocher()`. Several candidates: error of class
 #' `nemetonshiny_projet_ambigu` carrying `candidats`, so the assistant can ask.
 #' Never a silent choice.
 #'
@@ -126,10 +231,8 @@
   }
   l <- projets_lister()
   if (projet %in% l$id) return(projet)
-  noms <- .mcp_norm(l$nom)
-  cible <- .mcp_norm(projet)
-  idx <- which(noms == cible)
-  if (!length(idx)) idx <- which(grepl(cible, noms, fixed = TRUE))
+  idx <- which(.mcp_norm(l$nom) == .mcp_norm(projet))
+  if (!length(idx)) idx <- .mcp_rapprocher(projet, l$nom)
   if (length(idx) == 1L) return(l$id[idx])
   if (!length(idx)) {
     .api_abort("Aucun projet ne correspond \u00e0 {.val {projet}}.",
