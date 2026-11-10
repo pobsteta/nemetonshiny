@@ -7,6 +7,17 @@ Changements cassants : aucun.
 - `.mcp_resolve_project` rapproche un nom approximatif du mot-clé de la commune du projet (« Forêt communale de Couchey (ONF) » -> « couchey »). Accents et casse ignorés (normalisation par points de code, indépendante de la locale, y compris `LC_ALL=C`). L'introduction « Forêt [communale] de/du/des/d' » (apostrophe droite ou typographique) est retirée des deux côtés (« Forêt de Dabot » trouve « Forêt de Dabo »). Un projet correspond si le nom dicté égale le mot-clé, ou en est une suite de mots entiers en tête, ou en est à une distance d'édition <= 2 (seuil provisoire) ; cette distance ne s'applique que si le nom dicté ET le mot-clé ont au moins 4 lettres (« de », « du » ne rapprochent jamais « Forêt de Bé » ; « la » ne rapproche pas « Laix »). Une égalité exacte avec un mot-clé l'emporte sur les rapprochements approchés, sauf si un autre projet est à distance <= 1 du nom dicté (alors `projet_ambigu` avec les candidats : « Écouché » face à Couchey trouve Écouché ; « Couchey » face à Couchay rend les deux). Ligatures œ/æ lues oe/ae. Le serveur MCP est forcé en locale UTF-8 au lancement.
 - Un seul projet : il est retenu ; plusieurs : `projet_ambigu` avec les candidats (« nom (id) ») ; aucun : `projet_introuvable`. Plus de simple sous-chaîne (« de », « onf » ne rapprochent rien).
 
+# nemetonshiny 2026.10.18.9003 (2026-11-10)
+
+Changements cassants : aucun.
+
+## MCP : annotations des dix outils
+
+- Chaque outil de `mcp_tools()` porte `read_only_hint`, `destructive_hint` et
+  `idempotent_hint` : lecture seule pour `lister_projets`, `resume_projet`,
+  `etat_calcul`, `url_app` ; destructifs `appliquer_ugf` et `croiser_onf` ;
+  non idempotent `lancer_calcul` seul.
+
 # nemetonshiny 2026.10.18.9002 (2026-11-10)
 
 Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d'outil est désormais marquée `isError`.

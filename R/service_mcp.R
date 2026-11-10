@@ -727,45 +727,68 @@ mcp_url_app <- function(projet, onglet = "synthesis") {
 #'
 #' @return A list of `ellmer::tool()` definitions, for
 #'   `mcptools::mcp_server(tools = )` (see `inst/mcp/server.R`).
+#' Annotations: read_only_hint TRUE for the 4 read tools; destructive_hint TRUE
+#' for appliquer_ugf and croiser_onf only; idempotent_hint FALSE for
+#' lancer_calcul only (arbitrated by Pascal, 2026-11-10).
 #' @noRd
 mcp_tools <- function() {
   t <- ellmer::type_string
   projet_arg <- t("Project id, or its name (case and accents ignored).")
   list(
     ellmer::tool(.mcp_marquer(mcp_lister_projets), name = "lister_projets",
+      annotations = ellmer::tool_annotations(read_only_hint = TRUE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "List the Nemeton forest projects (id, name, status, last update, computed indicators, up to date).",
       arguments = list(limite = ellmer::type_integer("Maximum number of projects (default 20).", required = FALSE))),
     ellmer::tool(.mcp_marquer(mcp_resume_projet), name = "resume_projet",
+      annotations = ellmer::tool_annotations(read_only_hint = TRUE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "Synthesis of a project: global score /100, NDP level, confidence and the 12 family scores. Reads only, never modifies the project.",
       arguments = list(projet = projet_arg,
                        langue = t("'fr' or 'en' (default 'fr').", required = FALSE))),
     ellmer::tool(.mcp_marquer(mcp_lancer_calcul), name = "lancer_calcul",
+      annotations = ellmer::tool_annotations(read_only_hint = FALSE,
+        destructive_hint = FALSE, idempotent_hint = FALSE),
       description = "Start the full indicator computation of a project in the background (minutes to more than an hour). Returns at once; follow with etat_calcul.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_etat_calcul), name = "etat_calcul",
+      annotations = ellmer::tool_annotations(read_only_hint = TRUE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "State of a project's background computation: status (en_cours, termine, echec, annule, aucun), progress, current task, error and log tail on failure.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_annuler_calcul), name = "annuler_calcul",
+      annotations = ellmer::tool_annotations(read_only_hint = FALSE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "Ask a project's running computation to stop.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_generer_rapport), name = "generer_rapport",
+      annotations = ellmer::tool_annotations(read_only_hint = FALSE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "Write the PDF report of a computed project into its exports folder and return the file path.",
       arguments = list(projet = projet_arg,
                        langue = t("'fr' or 'en' (default 'fr').", required = FALSE),
                        synthese = t("Optional synthesis comment (Markdown).", required = FALSE))),
     ellmer::tool(.mcp_marquer(mcp_exporter_gpkg), name = "exporter_gpkg",
+      annotations = ellmer::tool_annotations(read_only_hint = FALSE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "Write the GeoPackage of a computed project's results (one feature per management unit) and return the file path.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_appliquer_ugf), name = "appliquer_ugf",
+      annotations = ellmer::tool_annotations(read_only_hint = FALSE,
+        destructive_hint = TRUE, idempotent_hint = TRUE),
       description = "Replace the management units (UGF) of a project with those of a GeoPackage/GeoJSON file of tenements (columns idu and label_ugf, optional onf_foret_id, onf_parcelle...). Nothing is written if an IDU is unknown or a parcel is not exactly tiled. Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
                        fichier = t("Path of the GeoPackage or GeoJSON file."),
                        remplacer = ellmer::type_boolean("TRUE (default): the file covers every parcel of the project. FALSE: only the parcels in the file are re-tiled.", required = FALSE))),
     ellmer::tool(.mcp_marquer(mcp_croiser_onf), name = "croiser_onf",
+      annotations = ellmer::tool_annotations(read_only_hint = FALSE,
+        destructive_hint = TRUE, idempotent_hint = TRUE),
       description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. About 15 s per commune. Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
                        purger = ellmer::type_boolean("TRUE: drop the parcels outside the forest regime (private, or little covered by the ONF). FALSE: keep them all. Default: the project's setting.", required = FALSE))),
     ellmer::tool(.mcp_marquer(mcp_url_app), name = "url_app",
+      annotations = ellmer::tool_annotations(read_only_hint = TRUE,
+        destructive_hint = FALSE, idempotent_hint = TRUE),
       description = "URL opening the Nemeton application on a project and a tab (synthesis, selection, action_plan, terrain, monitoring, regeneration, famille_*).",
       arguments = list(projet = projet_arg,
                        onglet = t("Tab (default 'synthesis').", required = FALSE)))
