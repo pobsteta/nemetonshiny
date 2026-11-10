@@ -111,40 +111,49 @@
 }
 
 # Table de correspondance (points de code) des lettres accentuees vers l'ASCII.
-# Minuscules U+00E0..U+00FF utiles ; majuscules = minuscule - 32.
+# Minuscules U+00E0..U+00FF utiles ; majuscules = minuscule - 32, sauf U+00FF
+# (y trema : sa majuscule U+0178 est a part, sinon U+00DF donnerait "y").
+# Ligatures a deux lettres : oe (U+0153, U+0152), ae (U+00E6, U+00C6).
 .MCP_ACCENTS <- local({
   bas <- c(224L, 225L, 226L, 227L, 228L, 229L,  # a
            232L, 233L, 234L, 235L,              # e
            236L, 237L, 238L, 239L,              # i
            242L, 243L, 244L, 245L, 246L,        # o
            249L, 250L, 251L, 252L,              # u
-           231L, 241L, 253L, 255L)              # c n y y
-  cible <- utf8ToInt("aaaaaaeeeeiiiiooooouuuucnyy")
-  stats::setNames(c(cible, cible), as.character(c(bas, bas - 32L)))
+           231L, 241L, 253L)                    # c n y
+  cible <- strsplit("aaaaaaeeeeiiiiooooouuuucny", "")[[1]]
+  cp <- c(bas, bas - 32L, 255L, 376L, 339L, 338L, 230L, 198L)
+  val <- c(cible, cible, "y", "y", "oe", "oe", "ae", "ae")
+  stats::setNames(val, as.character(cp))
 })
 
 # Normalisation d'un nom dicte : minuscules, sans accents, tout non-alphanumerique
 # devient une espace. Travaille par points de code (utf8ToInt/intToUtf8) : aucun
-# appel dependant de la locale (chartr et tolower echouent sous LC_ALL=C).
+# appel dependant de la locale (chartr et tolower echouent sous LC_ALL=C). Une
+# chaine non marquee et UTF-8 valide (locale C) est lue telle quelle ; enc2utf8
+# la reinterpreterait comme du natif ASCII.
 .mcp_norm_dicte <- function(x) {
   un <- function(s) {
     if (is.na(s)) return("")
-    cp <- utf8ToInt(enc2utf8(s))
+    cp <- if (Encoding(s) == "unknown" && validUTF8(s)) utf8ToInt(s) else utf8ToInt(enc2utf8(s))
     if (!length(cp)) return("")
     maj <- cp >= 65L & cp <= 90L
     cp[maj] <- cp[maj] + 32L
     acc <- match(as.character(cp), names(.MCP_ACCENTS))
-    cp[!is.na(acc)] <- .MCP_ACCENTS[acc[!is.na(acc)]]
-    ok <- (cp >= 97L & cp <= 122L) | (cp >= 48L & cp <= 57L)
-    cp[!ok] <- 32L
-    trimws(gsub(" +", " ", intToUtf8(cp)))
+    lettres <- vapply(seq_along(cp), function(i) {
+      if (!is.na(acc[i])) return(unname(.MCP_ACCENTS[acc[i]]))
+      ok <- (cp[i] >= 97L && cp[i] <= 122L) || (cp[i] >= 48L && cp[i] <= 57L)
+      intToUtf8(if (ok) cp[i] else 32L)
+    }, character(1))
+    trimws(gsub(" +", " ", paste(lettres, collapse = "")))
   }
   vapply(as.character(x), un, character(1), USE.NAMES = FALSE)
 }
 
-# Retire l'introduction "Foret [communale] de/du/des" d'un nom normalise.
+# Retire l'introduction "Foret [communale] de/du/des/d'" d'un nom normalise
+# (l'apostrophe, droite ou typographique, est deja devenue une espace).
 .mcp_sans_foret <- function(m) {
-  trimws(sub("^foret (communale )?(de|du|des) ", "", m))
+  trimws(sub("^foret (communale )?(de|du|des|d) ", "", m))
 }
 
 # Mot-cle (commune) d'un nom de projet : "Foret communale de X (ONF)" ou "Foret de X" -> "x" ;
@@ -159,14 +168,15 @@
 #' The keyword of a project is its commune, taken from its name ("Foret communale
 #' de Couchey (ONF)" -> "couchey"; no commune in the name: the name itself).
 #' Names are compared without accents or case. The introduction "Foret
-#' [communale] de/du/des" is removed on both sides, so "Foret de Dabot" finds
-#' "Foret de Dabo". A project matches when the dictated name is equal to its
-#' keyword, or is a run of whole words at the start of the keyword, or is within
+#' [communale] de/du/des/d'" (straight or typographic apostrophe) is removed on
+#' both sides, so "Foret de Dabot" finds "Foret de Dabo". A project matches
+#' when the dictated name is equal to its keyword, or is a run of whole words at the start of the keyword, or is within
 #' `seuil` edit distance of it. The distance applies only when both the dictated
-#' name and the keyword have at least 4 letters; below that, only equality or a
-#' leading run of whole words counts ("de", "du" never match "Foret de Be").
-#' Never a bare substring ("de", "onf" match nothing). The threshold 2 is
-#' provisional (spec P1, criterion 1).
+#' name and the keyword have at least 4 letters (floor on both sides); below
+#' that, only equality or a leading run of whole words counts ("de", "du" never
+#' match "Foret de Be"; "la" never matches "Laix").
+#' An exact keyword match wins over distance-only matches. Never a bare
+#' substring ("de", "onf" match nothing). The threshold 2 is provisional (spec P1, criterion 1).
 #'
 #' @param dit Character. The dictated name.
 #' @param noms Character. Project names.
@@ -179,12 +189,21 @@
   variantes <- variantes[nzchar(variantes)]
   if (!length(variantes)) return(integer(0))
   mc <- vapply(noms, .mcp_motcle, character(1), USE.NAMES = FALSE)
-  unname(which(vapply(mc, function(m) {
-    any(vapply(variantes, function(v) {
-      identical(m, v) || startsWith(m, paste0(v, " ")) ||
-        (min(nchar(v), nchar(m)) >= 4L && drop(utils::adist(v, m)) <= seuil)
+  # Rang 0 : egalite ou suite de mots entiers en tete. Rang 1 : distance <= seuil
+  # (plancher de 4 lettres des deux cotes). Une egalite exacte l'emporte sur les
+  # voisins de rang 1 ("Ecouche" trouve Ecouche, pas Couchey) ; sans egalite exacte,
+  # tous les projets de rang 0 ou 1 restent candidats.
+  rang <- vapply(mc, function(m) {
+    if (any(vapply(variantes, function(v) identical(m, v) || startsWith(m, paste0(v, " ")),
+                   logical(1)))) return(0L)
+    proche <- any(vapply(variantes, function(v) {
+      min(nchar(v), nchar(m)) >= 4L && drop(utils::adist(v, m)) <= seuil
     }, logical(1)))
-  }, logical(1))))
+    if (proche) 1L else NA_integer_
+  }, integer(1), USE.NAMES = FALSE)
+  exact <- which(mc %in% variantes)
+  if (length(exact)) return(unname(which(rang == 0L)))
+  unname(which(!is.na(rang)))
 }
 
 #' Resolve a project from an id or an approximate name

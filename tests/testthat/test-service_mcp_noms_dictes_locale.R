@@ -1,4 +1,4 @@
-# Mission 007 (aller-retour 1/3) : locale C, symetrie du prefixe, plancher de 4 lettres.
+# Mission 007 (allers-retours 1/3 et 2/3) : locale C, symetrie du prefixe, plancher de 4 lettres.
 # Complete test-service_mcp_noms_dictes.R (006, non modifie).
 
 .nl_projets <- function(noms, env = parent.frame()) {
@@ -9,7 +9,7 @@
   )
 }
 
-# Les accents sont ecrits en \u (pas de caracteres non ASCII dans la source).
+# Accents en clair dans la source.
 .nl_couche <- "Couché"
 .nl_foret_couche <- "Forêt communale de Couché"
 .nl_projet_couchey <- "Forêt communale de Couchey (ONF)"
@@ -45,4 +45,47 @@ test_that("plancher : de et du ne rapprochent jamais Foret de Be", {
   # L'egalite exacte reste permise sous le plancher.
   expect_identical(.mcp_resolve_project("Be"), "p1")
   expect_identical(.mcp_resolve_project("Bé"), "p1")
+})
+
+test_that("ligatures et majuscules : Cœuvres / Coeuvres / Coeuvre, pas de ß -> y", {
+  expect_identical(.mcp_norm_dicte("Cœuvres"), "coeuvres")
+  expect_identical(.mcp_norm_dicte("ŒUVRE Æ"), "oeuvre ae")
+  expect_identical(.mcp_norm_dicte("Ÿ ÿ ß"), "y y")
+  .nl_projets(c("Forêt communale de Cœuvres", "Forêt communale de Sombernon"))
+  expect_identical(.mcp_resolve_project("Coeuvres"), "p1")
+  expect_identical(.mcp_resolve_project("Cœuvres"), "p1")
+  expect_identical(.mcp_resolve_project("Coeuvre"), "p1")
+})
+
+test_that("élision : Forêt communale d'Écouché ne se confond pas avec Couchey", {
+  .nl_projets(c("Forêt communale d'Écouché", .nl_projet_couchey))
+  expect_identical(.mcp_resolve_project("Écouché"), "p1")
+  expect_identical(.mcp_resolve_project("Ecouche"), "p1")
+  # Couchet est a distance <= 2 des deux mots-cles : candidats (regle 006, ligne 210).
+  expect_error(.mcp_resolve_project("Couchet"), class = "nemetonshiny_projet_ambigu")
+  expect_identical(.mcp_resolve_project("Forêt d’Écouché"), "p1")
+  expect_identical(.mcp_resolve_project("Forêt communale d'Écouché"), "p1")
+})
+
+test_that("plancher côté dicté : la face à Laix, les face à Lens, introuvables", {
+  .nl_projets(c("Laix", "Lens"))
+  expect_error(.mcp_resolve_project("la"), class = "nemetonshiny_projet_introuvable")
+  expect_error(.mcp_resolve_project("les"), class = "nemetonshiny_projet_introuvable")
+})
+
+test_that("vrai sous-processus LC_ALL=C : Couché (chaîne non marquée) résolu sans erreur", {
+  skip_on_cran()
+  racine <- normalizePath(test_path("..", ".."))
+  if (!file.exists(file.path(racine, "DESCRIPTION"))) skip("sources absentes")
+  script <- tempfile(fileext = ".R")
+  writeLines(c(
+    sprintf('pkgload::load_all("%s", quiet = TRUE)', racine),
+    'x <- rawToChar(as.raw(c(0x43, 0x6f, 0x75, 0x63, 0x68, 0xc3, 0xa9)))',
+    'r <- nemetonshiny:::.mcp_rapprocher(x, "Forêt communale de Couchey (ONF)")',
+    'cat("RES", nemetonshiny:::.mcp_norm_dicte(x), r, "\\n")'
+  ), script)
+  sortie <- suppressWarnings(system2("Rscript", script,
+    env = "LC_ALL=C", stdout = TRUE, stderr = TRUE))
+  expect_null(attr(sortie, "status"))
+  expect_true(any(grepl("^RES couche 1 *$", sortie)), info = paste(sortie, collapse = "\n"))
 })
