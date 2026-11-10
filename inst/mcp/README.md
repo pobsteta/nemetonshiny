@@ -32,8 +32,26 @@ Un projet se désigne par son id **ou** par son nom (casse et accents
 ignorés). Plusieurs correspondances : l'outil renvoie la liste des candidats
 au lieu de choisir.
 
-Chaque réponse est un objet JSON : `{"ok": true, ...}` ou
-`{"ok": false, "erreur": ..., "classe": ...}`.
+Chaque réponse est un objet JSON : `{"ok": true, ...}` ou, en cas d'erreur,
+`{"ok": false, "classe", "code", "langue", "erreur", "action", "candidats"}`.
+Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
+(`isError: true` côté MCP), qu'un agent ne peut pas lire comme un succès.
+
+- `classe` : nom R complet de la classe d'erreur (`nemetonshiny_projet_introuvable`) ;
+  `code` : son nom court (`projet_introuvable`).
+- `erreur` : le message, en français par défaut. `langue` (`fr` ou `en`) n'est
+  acceptée que par `resume_projet` et `generer_rapport`.
+- `action` : la suite à proposer (introuvable : `lister_projets` ;
+  calcul en cours : `etat_calcul` ; projet verrouillé : attendre ou prévenir
+  le détenteur nommé).
+- `candidats` : rempli **seulement** pour `projet_ambigu`, au format
+  « nom (id) » ; absent pour toute autre erreur.
+- Une erreur non répertoriée a pour `classe` `nemetonshiny_erreur_inconnue`
+  (condition sans classe `nemetonshiny_*`) ou `nemetonshiny_erreur`
+  (classe `nemetonshiny_*` hors liste) ; `action` : le signaler.
+- Limite actuelle : servis par `nemetonmcp`, `etat_calcul` et
+  `exporter_gpkg` sont remplacés par ses propres outils et ne sont **pas
+  encore marqués** `isError` (brief en cours) ; les autres outils le sont.
 
 ## Calcul en tâche de fond
 

@@ -54,3 +54,4 @@ rsconnect/
 .nemeton_shot.png
 .s2.out
 .env
+tests/testthat/_problems/
