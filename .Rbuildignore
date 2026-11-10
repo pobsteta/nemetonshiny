@@ -31,3 +31,4 @@
 ^\.env\.example$
 ^NEWS-archive\.md$
 ^CHANGELOG-archive\.md$
+^pilotage$
