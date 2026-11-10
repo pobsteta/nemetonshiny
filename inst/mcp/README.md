@@ -53,6 +53,10 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
   `exporter_gpkg` sont remplacés par ses propres outils et ne sont **pas
   encore marqués** `isError` (brief en cours) ; les autres outils le sont.
 
+## Fuseau horaire
+
+Au lancement, le serveur force `TZ = "Europe/Paris"` : les heures naïves des projets sont lues en heure de Paris et les dates rendues (`updated_at`, `calcule_le`, …) sont en ISO 8601 avec fuseau, quel que soit celui du poste.
+
 ## Calcul en tâche de fond
 
 `lancer_calcul` démarre un `Rscript` détaché (`setsid`) qui survit à la fin

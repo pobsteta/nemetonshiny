@@ -12,6 +12,10 @@ if (!requireNamespace("mcptools", quietly = TRUE)) {
   stop("Le paquet 'mcptools' est requis : install.packages(\"mcptools\").",
        call. = FALSE)
 }
+# Fuseau force a Europe/Paris : les heures naives des projets (updated_at,
+# created_at, completed_at) sont lues en heure de Paris, et les dates ISO 8601
+# rendues par les outils portent ce fuseau, quel que soit le poste.
+Sys.setenv(TZ = "Europe/Paris")
 suppressPackageStartupMessages(loadNamespace("nemetonshiny"))
 # `session_tools = FALSE` : sinon mcptools TRANSFERE chaque appel d'outil vers
 # une session R interactive ouverte (RStudio rendue visible par
