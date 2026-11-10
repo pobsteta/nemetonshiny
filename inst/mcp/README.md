@@ -49,9 +49,42 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
 - Une erreur non répertoriée a pour `classe` `nemetonshiny_erreur_inconnue`
   (condition sans classe `nemetonshiny_*`) ou `nemetonshiny_erreur`
   (classe `nemetonshiny_*` hors liste) ; `action` : le signaler.
+- `projet`, `projet_nom`, `jeton`, `apercu`, `expire_a` : remplis **seulement** pour
+  `confirmation_requise` (voir ci-dessous).
 - Limite actuelle : servis par `nemetonmcp`, `etat_calcul` et
   `exporter_gpkg` sont remplacés par ses propres outils et ne sont **pas
   encore marqués** `isError` (brief en cours) ; les autres outils le sont.
+
+## Confirmation des écritures (ADR 0002)
+
+`appliquer_ugf` et `croiser_onf` (quelle que soit la valeur de `purger`)
+écrivent en **deux temps** :
+
+1. Appelés **sans** `jeton`, ils font tous les contrôles (gardes, fichier,
+   croisement ONF) et **n'écrivent rien**. Ils rendent l'erreur
+   `confirmation_requise` avec `projet` (identifiant) et `projet_nom` (nom
+   résolu, cité aussi dans le message), un `apercu`, un `jeton` et `expire_a`
+   (ISO 8601, UTC) :
+   - `appliquer_ugf` : `n_ugf_remplacees` (UGF actuelles touchées),
+     `n_ugf_nouvelles` (UGF du fichier) ;
+   - `croiser_onf` : `ecartees` (IDU qui quittent le projet), `n_ecartees`,
+     `n_retenues` (rien d'écarté si `purger` résolu vaut `FALSE`).
+2. L'agent lit l'aperçu à l'utilisateur. **Seulement s'il confirme**, il
+   rappelle le même outil avec les mêmes paramètres et `jeton`.
+
+Le jeton est à usage unique, valable 10 minutes (valeur provisoire), gardé en
+mémoire du serveur. Il est lié à l'outil, au projet, aux parcelles du projet
+et aux paramètres : fichier et son md5, `remplacer` ; tous les réglages ONF
+résolus du projet (dont `purger`). Tout jeton connu présenté est consommé,
+même refusé, **sauf** si le projet est introuvable ou ambigu, ou si les
+métadonnées ONF du projet sont illisibles : ces erreurs sont levées avant
+que le jeton soit lu, il reste donc valable. Refus : `jeton_invalide` (inconnu, périmé, déjà utilisé, autres
+paramètres) ; il faut redemander un aperçu. À la confirmation, les gardes
+(calcul en cours, verrou) sont rejouées avant le jeton, puis le fichier est
+relu ou le croisement recalculé.
+
+C'est une barrière, pas une preuve : un agent qui enchaîne seul les deux
+appels contourne la garde.
 
 ## Fuseau horaire
 
@@ -82,11 +115,12 @@ Rscript -e 'nemetonshiny::run_app(tour = FALSE, options = list(port = 3838, laun
 ## Sécurité
 
 - Tout reste local (`127.0.0.1`) ; le serveur parle en stdio.
+- Le serveur force sa locale en UTF-8 au lancement (`C.UTF-8`, repli `en_US.UTF-8` ; un message sur stderr si aucune n'existe), même lancé sous `LC_ALL=C`.
 - Aucun outil ne supprime un projet, n'en crée ni n'exécute de code arbitraire.
   Deux outils modifient pourtant un projet existant : `appliquer_ugf` et
   `croiser_onf`. Avec `purger = TRUE`, ce dernier **retire du projet** les
-  parcelles hors régime forestier ; il n'y a pas encore de confirmation
-  préalable (ADR 0002, à venir).
+  parcelles hors régime forestier. Les deux n'écrivent qu'après confirmation
+  par jeton (ADR 0002, ci-dessus).
 - Un assistant lancé sans demande d'autorisation (VICTOR,
   `bypassPermissions`) doit tourner dans un espace dédié, jamais dans un
   dépôt de développement.

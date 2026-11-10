@@ -314,6 +314,13 @@ test_that("url_app builds a deep link and checks the tab", {
   sf::st_write(x, f, quiet = TRUE)
   f
 }
+# Mission 010 (ADR 0002) : une ecriture se fait en deux temps. Joue l'apercu
+# (qui ne doit rien ecrire), puis la confirmation avec le jeton rendu.
+.mcp_confirmer <- function(f, ...) {
+  j <- .lit(f(...))
+  expect_identical(j$code, "confirmation_requise")
+  f(..., jeton = j$jeton)
+}
 .mcp_ugf_etat <- function(id) {
   ug <- load_ug_data(id)
   sort(paste(ug$tenements$parent_parcelle_id, ug$ugs$label[match(ug$tenements$ug_id, ug$ugs$ug_id)]))
@@ -323,7 +330,7 @@ test_that("appliquer_ugf re-tiles the project and keeps the ONF columns", {
   skip_if_not_installed("arrow")
   .mcp_env()
   id <- .mcp_projet()
-  r <- .lit(mcp_appliquer_ugf(id, .mcp_ugf_fichier()))
+  r <- .lit(.mcp_confirmer(mcp_appliquer_ugf, id, .mcp_ugf_fichier()))
   expect_true(r$ok)
   expect_identical(r$n_ugf, 2L)
   expect_identical(r$n_tenements, 3L)
@@ -358,7 +365,7 @@ test_that("appliquer_ugf leaves the project untouched on a bad file", {
   expect_identical(.mcp_ugf_etat(id), avant)
 
   # ... accepte en remplacement partiel : AA0002 garde son decoupage.
-  r <- .lit(mcp_appliquer_ugf(id, f, remplacer = FALSE))
+  r <- .lit(.mcp_confirmer(mcp_appliquer_ugf, id, f, remplacer = FALSE))
   expect_true(r$ok)
   expect_true(any(grepl("21001000AA0002", .mcp_ugf_etat(id))))
 })
@@ -399,7 +406,7 @@ test_that("croiser_onf applies the core's crossing and lists the discarded parce
       x
     },
     onf_load_parcelles = function(...) list(status = "ok", parcelles = NULL))
-  r <- .lit(mcp_croiser_onf(id, purger = TRUE))
+  r <- .lit(.mcp_confirmer(mcp_croiser_onf, id, purger = TRUE))
   expect_identical(vu, "foret")
   expect_true(r$ok)
   expect_identical(r$n_ugf, 1L)
@@ -455,4 +462,13 @@ test_that("the MCP server answers tools/list over stdio", {
   skip_if(!length(rep), "pas de reponse du serveur dans le delai")
   noms <- jsonlite::fromJSON(rep[1])$result$tools$name
   expect_true(all(c("lister_projets", "lancer_calcul", "url_app") %in% noms))
+})
+
+test_that(".mcp_rapprocher: mot-cle tire de 'Foret de X', jamais une sous-chaine", {
+  noms <- c("Foret de Dabo", "Foret communale de Couchey (ONF)")
+  expect_identical(.mcp_rapprocher("dabo", noms), 1L)
+  expect_identical(.mcp_rapprocher("Couchet", noms), 2L)
+  expect_identical(.mcp_rapprocher("foret", noms), integer(0))
+  expect_identical(.mcp_rapprocher("onf", noms), integer(0))
+  expect_identical(.mcp_rapprocher("", noms), integer(0))
 })

@@ -8,6 +8,30 @@ Changements cassants : `updated_at` n'est pas un champ nouveau, seul son **forma
 - Le serveur MCP force `TZ = "Europe/Paris"` au lancement (`inst/mcp/server.R`), donc les heures naïves sont lues en heure de Paris quel que soit le fuseau du poste.
 - `calcule_le` : `completed_at` > `fin_a` (job `termine`) > date de `indicators.parquet` > `null`.
 
+# nemetonshiny 2026.10.18.9005 (2026-11-10)
+
+## Changements cassants
+
+- Serveur MCP : `appliquer_ugf` et `croiser_onf` **n'écrivent plus au premier appel**. Sans `jeton`, ils font tous les contrôles, n'écrivent rien et rendent l'erreur `confirmation_requise` avec `apercu`, `jeton` et `expire_a` ; seul un second appel portant ce jeton écrit (ADR 0002). Un client qui enchaînait un seul appel ne modifie plus le projet. `mcp_appliquer_ugf()` et `mcp_croiser_onf()` gagnent un argument `jeton` (en dernier). La release qui embarquera ce changement demandera la confirmation de Pascal.
+
+## Serveur MCP : confirmation des écritures par jeton (mission 010)
+
+- Jeton à usage unique, 24 caractères `[0-9a-z]`, valable 10 minutes (une seule constante, `.MCP_JETON_DUREE`, provisoire jusqu'à l'essai VICTOR), gardé en mémoire du serveur : rien n'est écrit dans le dossier du projet à l'aperçu.
+- Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; `appliquer_ugf` : fichier (chemin normalisé et md5) et `remplacer` ; `croiser_onf` : tous les réglages ONF résolus (`purger` compris). Tout jeton connu présenté est consommé, même refusé, **sauf** si le projet est introuvable ou ambigu, ou si les métadonnées ONF sont illisibles (erreurs levées avant la lecture du jeton : il reste valable). L'aperçu nomme le projet : le message cite le nom résolu et l'identifiant, le JSON porte `projet` et `projet_nom`.
+- Ordre : gardes (calcul en cours, verrou, projet ancien) puis jeton, puis fichier ou croisement (recalculé à la confirmation), puis écriture. Au premier appel, erreurs métier et gardes passent avant l'aperçu, sans jeton.
+- Aperçu : `appliquer_ugf` → `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` → `ecartees` (IDU), `n_ecartees`, `n_retenues` (rien d'écarté si `purger` résolu vaut `FALSE`).
+- Deux classes d'erreur : `confirmation_requise`, `jeton_invalide` (16 messages `mcp_err_*`, 11 actions `mcp_act_*`).
+- Contrat `nemetonmcp` (CONTRAT.md § 6 bis, 35 objets) : `.mcp_garde_ecriture()`, `.mcp_jeton_emettre()`, `.mcp_jeton_consommer()`, pour ses propres écritures (plan d'actions) ; pas encore appelés par `nemetonmcp` (brief de la mission 013).
+
+# nemetonshiny 2026.10.18.9004 (2026-11-10)
+
+Changements cassants : aucun.
+
+## Noms de projet dictés : résolution tolérante (mission 007)
+
+- `.mcp_resolve_project` rapproche un nom approximatif du mot-clé de la commune du projet (« Forêt communale de Couchey (ONF) » -> « couchey »). Accents et casse ignorés (normalisation par points de code, indépendante de la locale, y compris `LC_ALL=C`). L'introduction « Forêt [communale] de/du/des/d' » (apostrophe droite ou typographique) est retirée des deux côtés (« Forêt de Dabot » trouve « Forêt de Dabo »). Un projet correspond si le nom dicté égale le mot-clé, ou en est une suite de mots entiers en tête, ou en est à une distance d'édition <= 2 (seuil provisoire) ; cette distance ne s'applique que si le nom dicté ET le mot-clé ont au moins 4 lettres (« de », « du » ne rapprochent jamais « Forêt de Bé » ; « la » ne rapproche pas « Laix »). Une égalité exacte avec un mot-clé l'emporte sur les rapprochements approchés, sauf si un autre projet est à distance <= 1 du nom dicté (alors `projet_ambigu` avec les candidats : « Écouché » face à Couchey trouve Écouché ; « Couchey » face à Couchay rend les deux). Ligatures œ/æ lues oe/ae. Le serveur MCP est forcé en locale UTF-8 au lancement.
+- Un seul projet : il est retenu ; plusieurs : `projet_ambigu` avec les candidats (« nom (id) ») ; aucun : `projet_introuvable`. Plus de simple sous-chaîne (« de », « onf » ne rapprochent rien).
+
 # nemetonshiny 2026.10.18.9003 (2026-11-10)
 
 Changements cassants : aucun.

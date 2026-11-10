@@ -12,6 +12,16 @@ if (!requireNamespace("mcptools", quietly = TRUE)) {
   stop("Le paquet 'mcptools' est requis : install.packages(\"mcptools\").",
        call. = FALSE)
 }
+# Locale UTF-8 forcee : lancee depuis un client sans locale (LC_ALL=C), la
+# normalisation des noms et les messages accentues en dependent.
+.locale_ok <- FALSE
+for (.l in c("C.UTF-8", "en_US.UTF-8")) {
+  if (nzchar(Sys.setlocale("LC_CTYPE", .l))) { .locale_ok <- TRUE; break }
+}
+if (!.locale_ok) {
+  cli::cli_alert_warning("Aucune locale UTF-8 disponible (C.UTF-8, en_US.UTF-8) : les accents peuvent etre mal lus.")
+}
+
 # Fuseau force a Europe/Paris : les heures naives des projets (updated_at,
 # created_at, completed_at) sont lues en heure de Paris, et les dates ISO 8601
 # rendues par les outils portent ce fuseau, quel que soit le poste.
