@@ -110,10 +110,53 @@
   tolower(trimws(x))
 }
 
+# Normalisation d'un nom dicte : minuscules, sans accents (chartr, independant
+# de la locale), tout non-alphanumerique devient une espace.
+.mcp_norm_dicte <- function(x) {
+  x <- chartr("\u00e0\u00e2\u00e4\u00e9\u00e8\u00ea\u00eb\u00ee\u00ef\u00f4\u00f6\u00f9\u00fb\u00fc\u00e7",
+              "aaaeeeeiioouuuc", tolower(as.character(x)))
+  trimws(gsub("[^a-z0-9]+", " ", x))
+}
+
+# Mot-cle (commune) d'un nom de projet : "Foret communale de X (ONF)" ou "Foret de X" -> "x" ;
+# sans commune dans le nom, le nom lui-meme.
+.mcp_motcle <- function(nom) {
+  m <- .mcp_norm_dicte(nom)
+  m <- sub("^foret (communale )?(de|du|des) ", "", m)
+  trimws(sub(" onf$", "", m))
+}
+
+#' Indices of the projects matching a dictated name
+#'
+#' A project matches when the edit distance between the dictated name and its
+#' keyword is at most 2, or when the dictated name is a run of whole words at
+#' the start of the keyword. "Foret communale de" is tolerated before the
+#' dictated name. Never a bare substring ("de", "onf" match nothing).
+#' The threshold 2 is provisional (spec P1, criterion 1).
+#'
+#' @param dit Character. The dictated name.
+#' @param noms Character. Project names.
+#' @param seuil Integer. Maximum edit distance.
+#' @return Integer indices into `noms`.
+#' @noRd
+.mcp_rapprocher <- function(dit, noms, seuil = 2L) {
+  d <- .mcp_norm_dicte(dit)
+  variantes <- unique(c(d, trimws(sub("^foret communale de ", "", d))))
+  variantes <- variantes[nzchar(variantes)]
+  if (!length(variantes)) return(integer(0))
+  mc <- vapply(noms, .mcp_motcle, character(1), USE.NAMES = FALSE)
+  unname(which(vapply(mc, function(m) {
+    any(vapply(variantes, function(v) {
+      identical(m, v) || startsWith(m, paste0(v, " ")) ||
+        drop(utils::adist(v, m)) <= seuil
+    }, logical(1)))
+  }, logical(1))))
+}
+
 #' Resolve a project from an id or an approximate name
 #'
-#' Exact id first, then exact name (case and accents ignored), then a single
-#' partial name match. Several candidates: error of class
+#' Exact id first, then exact name (case and accents ignored), then the
+#' tolerant keyword match of `.mcp_rapprocher()`. Several candidates: error of class
 #' `nemetonshiny_projet_ambigu` carrying `candidats`, so the assistant can ask.
 #' Never a silent choice.
 #'
@@ -126,10 +169,8 @@
   }
   l <- projets_lister()
   if (projet %in% l$id) return(projet)
-  noms <- .mcp_norm(l$nom)
-  cible <- .mcp_norm(projet)
-  idx <- which(noms == cible)
-  if (!length(idx)) idx <- which(grepl(cible, noms, fixed = TRUE))
+  idx <- which(.mcp_norm(l$nom) == .mcp_norm(projet))
+  if (!length(idx)) idx <- .mcp_rapprocher(projet, l$nom)
   if (length(idx) == 1L) return(l$id[idx])
   if (!length(idx)) {
     .api_abort("Aucun projet ne correspond \u00e0 {.val {projet}}.",

@@ -456,3 +456,12 @@ test_that("the MCP server answers tools/list over stdio", {
   noms <- jsonlite::fromJSON(rep[1])$result$tools$name
   expect_true(all(c("lister_projets", "lancer_calcul", "url_app") %in% noms))
 })
+
+test_that(".mcp_rapprocher: mot-cle tire de 'Foret de X', jamais une sous-chaine", {
+  noms <- c("Foret de Dabo", "Foret communale de Couchey (ONF)")
+  expect_identical(.mcp_rapprocher("dabo", noms), 1L)
+  expect_identical(.mcp_rapprocher("Couchet", noms), 2L)
+  expect_identical(.mcp_rapprocher("foret", noms), integer(0))
+  expect_identical(.mcp_rapprocher("onf", noms), integer(0))
+  expect_identical(.mcp_rapprocher("", noms), integer(0))
+})

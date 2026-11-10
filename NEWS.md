@@ -1,3 +1,12 @@
+# nemetonshiny 2026.10.18.9004 (2026-11-10)
+
+Changements cassants : aucun.
+
+## Noms de projet dictés : résolution tolérante (mission 007)
+
+- `.mcp_resolve_project` rapproche un nom approximatif du mot-clé de la commune du projet (« Forêt communale de Couchey (ONF) » -> « couchey ») : distance d'édition <= 2 (seuil provisoire), ou suite de mots entiers en tête du mot-clé ; « Forêt communale de » toléré devant ; accents et casse ignorés.
+- Un seul projet : il est retenu ; plusieurs : `projet_ambigu` avec les candidats (« nom (id) ») ; aucun : `projet_introuvable`. Plus de simple sous-chaîne (« de », « onf » ne rapprochent rien).
+
 # nemetonshiny 2026.10.18.9002 (2026-11-10)
 
 Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d'outil est désormais marquée `isError`.
