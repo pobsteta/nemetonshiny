@@ -110,29 +110,63 @@
   tolower(trimws(x))
 }
 
-# Normalisation d'un nom dicte : minuscules, sans accents (chartr, independant
-# de la locale), tout non-alphanumerique devient une espace.
+# Table de correspondance (points de code) des lettres accentuees vers l'ASCII.
+# Minuscules U+00E0..U+00FF utiles ; majuscules = minuscule - 32.
+.MCP_ACCENTS <- local({
+  bas <- c(224L, 225L, 226L, 227L, 228L, 229L,  # a
+           232L, 233L, 234L, 235L,              # e
+           236L, 237L, 238L, 239L,              # i
+           242L, 243L, 244L, 245L, 246L,        # o
+           249L, 250L, 251L, 252L,              # u
+           231L, 241L, 253L, 255L)              # c n y y
+  cible <- utf8ToInt("aaaaaaeeeeiiiiooooouuuucnyy")
+  stats::setNames(c(cible, cible), as.character(c(bas, bas - 32L)))
+})
+
+# Normalisation d'un nom dicte : minuscules, sans accents, tout non-alphanumerique
+# devient une espace. Travaille par points de code (utf8ToInt/intToUtf8) : aucun
+# appel dependant de la locale (chartr et tolower echouent sous LC_ALL=C).
 .mcp_norm_dicte <- function(x) {
-  x <- chartr("\u00e0\u00e2\u00e4\u00e9\u00e8\u00ea\u00eb\u00ee\u00ef\u00f4\u00f6\u00f9\u00fb\u00fc\u00e7",
-              "aaaeeeeiioouuuc", tolower(as.character(x)))
-  trimws(gsub("[^a-z0-9]+", " ", x))
+  un <- function(s) {
+    if (is.na(s)) return("")
+    cp <- utf8ToInt(enc2utf8(s))
+    if (!length(cp)) return("")
+    maj <- cp >= 65L & cp <= 90L
+    cp[maj] <- cp[maj] + 32L
+    acc <- match(as.character(cp), names(.MCP_ACCENTS))
+    cp[!is.na(acc)] <- .MCP_ACCENTS[acc[!is.na(acc)]]
+    ok <- (cp >= 97L & cp <= 122L) | (cp >= 48L & cp <= 57L)
+    cp[!ok] <- 32L
+    trimws(gsub(" +", " ", intToUtf8(cp)))
+  }
+  vapply(as.character(x), un, character(1), USE.NAMES = FALSE)
+}
+
+# Retire l'introduction "Foret [communale] de/du/des" d'un nom normalise.
+.mcp_sans_foret <- function(m) {
+  trimws(sub("^foret (communale )?(de|du|des) ", "", m))
 }
 
 # Mot-cle (commune) d'un nom de projet : "Foret communale de X (ONF)" ou "Foret de X" -> "x" ;
 # sans commune dans le nom, le nom lui-meme.
 .mcp_motcle <- function(nom) {
-  m <- .mcp_norm_dicte(nom)
-  m <- sub("^foret (communale )?(de|du|des) ", "", m)
+  m <- .mcp_sans_foret(.mcp_norm_dicte(nom))
   trimws(sub(" onf$", "", m))
 }
 
 #' Indices of the projects matching a dictated name
 #'
-#' A project matches when the edit distance between the dictated name and its
-#' keyword is at most 2, or when the dictated name is a run of whole words at
-#' the start of the keyword. "Foret communale de" is tolerated before the
-#' dictated name. Never a bare substring ("de", "onf" match nothing).
-#' The threshold 2 is provisional (spec P1, criterion 1).
+#' The keyword of a project is its commune, taken from its name ("Foret communale
+#' de Couchey (ONF)" -> "couchey"; no commune in the name: the name itself).
+#' Names are compared without accents or case. The introduction "Foret
+#' [communale] de/du/des" is removed on both sides, so "Foret de Dabot" finds
+#' "Foret de Dabo". A project matches when the dictated name is equal to its
+#' keyword, or is a run of whole words at the start of the keyword, or is within
+#' `seuil` edit distance of it. The distance applies only when both the dictated
+#' name and the keyword have at least 4 letters; below that, only equality or a
+#' leading run of whole words counts ("de", "du" never match "Foret de Be").
+#' Never a bare substring ("de", "onf" match nothing). The threshold 2 is
+#' provisional (spec P1, criterion 1).
 #'
 #' @param dit Character. The dictated name.
 #' @param noms Character. Project names.
@@ -141,14 +175,14 @@
 #' @noRd
 .mcp_rapprocher <- function(dit, noms, seuil = 2L) {
   d <- .mcp_norm_dicte(dit)
-  variantes <- unique(c(d, trimws(sub("^foret communale de ", "", d))))
+  variantes <- unique(c(d, .mcp_sans_foret(d)))
   variantes <- variantes[nzchar(variantes)]
   if (!length(variantes)) return(integer(0))
   mc <- vapply(noms, .mcp_motcle, character(1), USE.NAMES = FALSE)
   unname(which(vapply(mc, function(m) {
     any(vapply(variantes, function(v) {
       identical(m, v) || startsWith(m, paste0(v, " ")) ||
-        drop(utils::adist(v, m)) <= seuil
+        (min(nchar(v), nchar(m)) >= 4L && drop(utils::adist(v, m)) <= seuil)
     }, logical(1)))
   }, logical(1))))
 }
