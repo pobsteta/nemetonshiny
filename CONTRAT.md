@@ -212,7 +212,7 @@ et reste stable en 1.x ; ajouter un profil est une évolution mineure.
 
 ## 6 bis. API pour nemetonmcp
 
-`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **32 objets internes**
+`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **35 objets internes**
 de nemetonshiny par `getFromNamespace(nom, "nemetonshiny")`. Ils ne sont pas
 exportés (ADR 0001, option B) mais **font partie du contrat** : les renommer,
 les retirer ou changer leurs arguments est un changement cassant (section
@@ -271,6 +271,9 @@ Serveur MCP (`inst/mcp/`, 10 outils : `lister_projets`, `resume_projet`,
 | `mcp_exporter_gpkg()` | `projet` |
 | `.mcp_resolve_project()` | `projet` ; id, ou erreur `nemetonshiny_projet_ambigu` avec `candidats` |
 | `.mcp_vers_outil()` | `x` ; la chaîne rendue par un `mcp_*` : si c'est une erreur (attribut `mcp_erreur`), rend un `ellmer::ContentToolResult` en erreur (`isError`), sinon `x` tel quel. À appeler sur le résultat de tout outil que `nemetonmcp` substitue à ceux de `mcp_tools()` (aujourd'hui `etat_calcul`, `exporter_gpkg`) |
+| `.mcp_garde_ecriture()` | `id`, `call` ; refuse d'écrire dans un projet occupé : `nemetonshiny_calcul_en_cours`, `nemetonshiny_projet_verrouille`, `nemetonshiny_projet_ancien` ; rend l'état du projet |
+| `.mcp_jeton_emettre()` | `outil`, `projet` (id résolu), `lien`, `apercu` ; premier temps d'une écriture (ADR 0002) : enregistre en mémoire un jeton à usage unique valable 10 min, lié à `outil` + `projet` + `lien` (comparé par `identical()`), puis lève `nemetonshiny_confirmation_requise` portant `projet`, `projet_nom` (nom résolu, cité dans le message), `jeton`, `apercu`, `expire_a` (ISO 8601 UTC). N'écrit rien. À appeler après les gardes et les contrôles métier |
+| `.mcp_jeton_consommer()` | `jeton`, `outil`, `projet`, `lien`, `garde` (défaut `.mcp_garde_ecriture`) ; second temps : retire le jeton du registre dès sa présentation (même refusé ; exception : les erreurs levées avant l'appel, projet introuvable ou ambigu, métadonnées ONF illisibles, ne le consomment pas), rejoue `garde(projet)`, puis lève `nemetonshiny_jeton_invalide` si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou `lien`. `lien` n'est évalué qu'après la garde. Rend `TRUE` (invisible) si l'écriture peut suivre |
 
 Divers :
 

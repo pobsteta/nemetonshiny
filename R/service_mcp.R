@@ -43,6 +43,8 @@
   pavage_invalide        = list(action = "fichier",   detail = TRUE),
   onf_echec              = list(action = "reessayer", detail = TRUE),
   parcelles_introuvables = list(action = "signaler",  detail = TRUE),
+  confirmation_requise   = list(action = "confirmer", detail = FALSE),
+  jeton_invalide         = list(action = "redemander", detail = TRUE),
   erreur                 = list(action = "signaler",  detail = TRUE),
   erreur_inconnue        = list(action = "signaler",  detail = TRUE)
 )
@@ -70,17 +72,28 @@
   def <- .MCP_ERREURS[[code]]
   projet <- as.character(e$projet %||% "")[1]
   detenteur <- as.character(e$detenteur %||% "?")[1]
-  texte <- i18n$t(paste0("mcp_err_", code), projet = projet,
+  # Un projet nomme (confirmation_requise) est cite par son nom ET son id.
+  projet_txt <- if (is.null(e$projet_nom)) projet else {
+    sprintf(if (langue == "fr") "\u00ab %s \u00bb (identifiant %s)" else
+              "\u201c%s\u201d (id %s)", as.character(e$projet_nom)[1], projet)
+  }
+  texte <- i18n$t(paste0("mcp_err_", code), projet = projet_txt,
                   detenteur = detenteur)
   if (isTRUE(def$detail)) {
     detail <- gsub("\\s*\n\\s*", " ", cli::ansi_strip(conditionMessage(e)))
     texte <- paste0(texte, " (", trimws(detail), ")")
   }
   action <- i18n$t(paste0("mcp_act_", def$action), detenteur = detenteur)
+  # `projet`, `projet_nom`, `jeton`, `apercu`, `expire_a` : portes par
+  # confirmation_requise seule
+  # (.mcp_jeton_emettre()).
   json <- .mcp_json(Filter(Negate(is.null), list(
     ok = FALSE, classe = paste0("nemetonshiny_", code), code = code,
     langue = langue, erreur = texte, action = action,
-    candidats = e$candidats)))
+    candidats = e$candidats,
+    projet = if (!is.null(e$projet_nom)) projet, projet_nom = e$projet_nom,
+    jeton = e$jeton, apercu = e$apercu,
+    expire_a = e$expire_a)))
   structure(json, mcp_erreur = TRUE)
 }
 
@@ -388,6 +401,119 @@ mcp_resume_projet <- function(projet, langue = "fr") {
   etat
 }
 
+# ---------------------------------------------------------------- confirmation
+
+# ADR 0002 : toute ecriture d'un projet existant se fait en deux temps. Le
+# premier appel n'ecrit rien et rend un apercu et un jeton ; seul un second
+# appel portant ce jeton ecrit. Barriere, pas preuve : un agent qui enchaine
+# seul les deux appels contourne la garde.
+
+# Duree de validite d'un jeton, en secondes. PROVISOIRE (fiche 009) : a
+# revoir apres l'essai VICTOR. Seule definition.
+.MCP_JETON_DUREE <- 10 * 60
+
+# Registre des jetons, en memoire du processus serveur (ADR 0002) : rien
+# n'est ecrit dans le dossier du projet a l'apercu. Cle : le jeton ; valeur :
+# list(outil, projet, lien, expire).
+.mcp_jetons <- new.env(parent = emptyenv())
+
+.mcp_jetons_purger <- function(maintenant) {
+  for (k in ls(.mcp_jetons, all.names = TRUE)) {
+    if (.mcp_jetons[[k]]$expire < maintenant) rm(list = k, envir = .mcp_jetons)
+  }
+  invisible()
+}
+
+#' Issue a confirmation token instead of writing
+#'
+#' First step of a write (ADR 0002): records a single-use token, valid
+#' `.MCP_JETON_DUREE` seconds, bound to `outil`, `projet` and `lien`, then
+#' signals `nemetonshiny_confirmation_requise` carrying `jeton`, `apercu` and
+#' `expire_a` (ISO 8601, UTC). Call it after the guards and every business
+#' check, and before any write. The registry lives in memory only.
+#'
+#' @param outil Character. Name of the tool.
+#' @param projet Character. Resolved project id.
+#' @param lien What the confirmation must present again unchanged (compared
+#'   with [identical()]): file and its md5, settings...
+#' @param apercu Named list read to the user: what the write will change.
+#' @return Never returns: always signals the condition.
+#' @noRd
+.mcp_jeton_emettre <- function(outil, projet, lien, apercu) {
+  maintenant <- Sys.time()
+  .mcp_jetons_purger(maintenant)
+  repeat {
+    jeton <- paste(sample(c(0:9, letters), 24L, replace = TRUE), collapse = "")
+    if (!exists(jeton, envir = .mcp_jetons, inherits = FALSE)) break
+  }
+  expire <- maintenant + .MCP_JETON_DUREE
+  # Nom du projet : cite dans le message, pour que l'utilisateur voie QUEL
+  # projet sera modifie (le jeton reste lie a l'id).
+  nom <- tryCatch({
+    l <- projets_lister()
+    as.character(l$nom[match(projet, l$id)])[1]
+  }, error = function(e) NA_character_)
+  if (is.na(nom) || !nzchar(nom)) nom <- projet
+  assign(jeton, list(outil = outil, projet = projet, lien = lien,
+                     expire = expire), envir = .mcp_jetons)
+  .api_abort("Confirmation requise : rien n'a \u00e9t\u00e9 \u00e9crit.",
+             "nemetonshiny_confirmation_requise", projet = projet,
+             projet_nom = nom, jeton = jeton, apercu = apercu,
+             expire_a = format(expire, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
+}
+
+#' Consume a confirmation token before writing
+#'
+#' Second step of a write (ADR 0002). A known token is removed from the
+#' registry as soon as it is presented, whatever follows: a refused guard or a
+#' refused binding kills it too. Exception: errors raised by the caller before
+#' this function runs (unknown or ambiguous project, unreadable ONF metadata)
+#' leave the token valid. Then `garde(projet)` is replayed (its error
+#' passes through), and the token is checked: unknown, expired, or issued for
+#' another tool, project or `lien` gives `nemetonshiny_jeton_invalide`.
+#' `lien` is only evaluated after the guard.
+#'
+#' @param jeton Character. Token returned by [.mcp_jeton_emettre()].
+#' @param outil,projet,lien As given to [.mcp_jeton_emettre()], recomputed now.
+#' @param garde Function of the project id replayed before the check, or
+#'   `NULL`. Default [.mcp_garde_ecriture()].
+#' @return `TRUE`, invisibly, when the write may go on.
+#' @noRd
+.mcp_jeton_consommer <- function(jeton, outil, projet, lien,
+                                 garde = .mcp_garde_ecriture) {
+  cle <- if (is.character(jeton) && length(jeton) == 1L && !is.na(jeton) &&
+               nzchar(jeton)) jeton
+  entree <- if (!is.null(cle)) get0(cle, envir = .mcp_jetons, inherits = FALSE)
+  if (!is.null(entree)) rm(list = cle, envir = .mcp_jetons)
+  if (is.function(garde)) garde(projet)
+  motif <- if (is.null(entree)) {
+    "Jeton inconnu ou d\u00e9j\u00e0 utilis\u00e9."
+  } else if (Sys.time() > entree$expire) {
+    "Jeton p\u00e9rim\u00e9."
+  } else if (!identical(entree$outil, outil) || !identical(entree$projet, projet)) {
+    "Jeton d\u00e9livr\u00e9 pour un autre outil ou un autre projet."
+  } else if (!identical(entree$lien, lien)) {
+    "Param\u00e8tres, fichier ou r\u00e9glages diff\u00e9rents de ceux de l'aper\u00e7u."
+  }
+  if (!is.null(motif)) {
+    .api_abort(motif, "nemetonshiny_jeton_invalide", projet = projet)
+  }
+  invisible(TRUE)
+}
+
+#' Fingerprint bound to a token
+#'
+#' md5 of the project's parcel files, plus what the tool adds in `...`: a
+#' parcel set changed between the preview and the confirmation breaks the
+#' binding.
+#' @noRd
+.mcp_empreinte <- function(id, ...) {
+  d <- file.path(get_project_path(id) %||% "", "data")
+  f <- file.path(d, c("parcels.gpkg", "parcels.parquet"))
+  f <- f[file.exists(f)]
+  list(parcelles = stats::setNames(unname(tools::md5sum(f)), basename(f)), ...)
+}
+
 #' @noRd
 mcp_lancer_calcul <- function(projet) {
   .mcp_call({
@@ -512,6 +638,16 @@ mcp_annuler_calcul <- function(projet) {
              ok = ecart <= pmax(1, 0.0005 * aires), stringsAsFactors = FALSE)
 }
 
+# Fichier d'un appel : chemin normalise et md5 (NA si absent), pour le lien
+# du jeton. Le meme chemin au contenu change ne confirme pas.
+.mcp_lien_fichier <- function(fichier) {
+  if (!is.character(fichier) || length(fichier) != 1L || is.na(fichier)) {
+    return(list(chemin = NA_character_, md5 = NA_character_))
+  }
+  list(chemin = normalizePath(fichier, mustWork = FALSE),
+       md5 = if (file.exists(fichier)) unname(tools::md5sum(fichier)) else NA_character_)
+}
+
 #' Persist a re-tiled project and say what it invalidated
 #' @noRd
 .mcp_sauver_ugf <- function(id, projet, avec_parcelles = FALSE) {
@@ -540,17 +676,34 @@ mcp_annuler_calcul <- function(projet) {
 #' `remplacer = TRUE` every parcel of the project must be in the file; with
 #' `FALSE` only the parcels in the file are re-tiled, the others keep theirs.
 #'
+#' Two steps (ADR 0002): without `jeton`, every check runs and nothing is
+#' written; the error `nemetonshiny_confirmation_requise` carries the preview
+#' (`n_ugf_remplacees`, `n_ugf_nouvelles`) and a token. With the token, the
+#' guards are replayed, the token is consumed, the file is read again and the
+#' layout is written. The token is bound to the project's parcels, the file
+#' (path and md5) and `remplacer`.
+#'
 #' @param projet Project id or name.
 #' @param fichier Path of the file.
 #' @param remplacer Logical. Replace the whole layout (default) or only the
 #'   parcels present in the file.
+#' @param jeton Character or `NULL`. Token of the first call.
 #' @return JSON: `ok`, `projet`, `n_ugf`, `n_tenements`, `ecart_pavage_m2`,
 #'   `indicateurs_perimes`, `avertissements`.
 #' @noRd
-mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE) {
+mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE, jeton = NULL) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
-    .mcp_garde_ecriture(id)
+    # Lien du jeton : evalue apres la garde (paresseux dans
+    # .mcp_jeton_consommer()), avant la lecture du fichier.
+    lien <- function() .mcp_empreinte(id, fichier = .mcp_lien_fichier(fichier),
+                                      remplacer = isTRUE(remplacer))
+    if (is.null(jeton)) {
+      .mcp_garde_ecriture(id)
+      lien_apercu <- lien()
+    } else {
+      .mcp_jeton_consommer(jeton, "appliquer_ugf", id, lien())
+    }
     if (!is.character(fichier) || length(fichier) != 1L || !file.exists(fichier)) {
       .api_abort("Fichier introuvable : {.file {fichier}}.",
                  "nemetonshiny_fichier_invalide")
@@ -590,6 +743,8 @@ mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE) {
                  "nemetonshiny_idu_inconnu", idu = inconnus)
     }
     avert <- character(0)
+    idu_fichier <- unique(imp$idu)
+    n_nouvelles <- length(unique(imp$label_ugf))
     if (isTRUE(remplacer)) {
       manquantes <- setdiff(parcels$idu, imp$idu)
       if (length(manquantes)) {
@@ -634,6 +789,17 @@ mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE) {
       k <- match(p2$ugs$label, names(grp))
       p2$ugs$groupe[!is.na(k)] <- grp[k[!is.na(k)]]
     }
+    if (is.null(jeton)) {
+      # Remplacement complet : toutes les UGF actuelles ; partiel : celles des
+      # parcelles du fichier (arbitrage de Pascal, 2026-11-10).
+      n_remplacees <- if (isTRUE(remplacer)) nrow(p$ugs) else {
+        ten <- p$tenements
+        length(unique(as.character(
+          ten$ug_id[as.character(ten$parent_parcelle_id) %in% idu_fichier])))
+      }
+      .mcp_jeton_emettre("appliquer_ugf", id, lien_apercu, list(
+        n_ugf_remplacees = n_remplacees, n_ugf_nouvelles = n_nouvelles))
+    }
     perimes <- .mcp_sauver_ugf(id, p2)
     list(projet = id, n_ugf = nrow(p2$ugs), n_tenements = nrow(p2$tenements),
          ecart_pavage_m2 = round(sum(pav$ecart_m2), 3),
@@ -648,20 +814,32 @@ mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE) {
 #' with the project's ONF settings), applied to the project. About 15 s per
 #' commune; the first call downloads the DGFiP file (376 MB, once).
 #'
+#' Two steps (ADR 0002): without `jeton`, the crossing runs and nothing is
+#' written; the error `nemetonshiny_confirmation_requise` carries the preview
+#' (`ecartees`, the IDU leaving the project, `n_ecartees`, `n_retenues`) and a
+#' token. With the token, the guards are replayed, the token is consumed and
+#' the crossing is computed again, then written. The token is bound to the
+#' project's parcels and to every resolved ONF setting (`purger` included).
+#'
 #' @param projet Project id or name.
 #' @param purger Logical or `NULL`. `TRUE` keeps only the parcels under the
 #'   forest regime (the others leave the project), `FALSE` keeps them all,
 #'   `NULL` follows the project's setting.
+#' @param jeton Character or `NULL`. Token of the first call.
 #' @return JSON: `ok`, `projet`, `n_ugf`, `n_tenements`, `n_parcelles`,
 #'   `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes`.
 #' @noRd
-mcp_croiser_onf <- function(projet, purger = NULL) {
+mcp_croiser_onf <- function(projet, purger = NULL, jeton = NULL) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
-    .mcp_garde_ecriture(id)
-    p <- .mcp_projet_ugf(id)
-    cfg <- project_onf_params(p$metadata)
+    if (is.null(jeton)) .mcp_garde_ecriture(id)
+    # Reglages ONF resolus : ceux du projet, `purger` explicite l'emportant.
+    cfg <- project_onf_params(load_project_metadata(id) %||% list())
     if (!is.null(purger)) cfg$purger <- isTRUE(purger)
+    if (!is.null(jeton)) {
+      .mcp_jeton_consommer(jeton, "croiser_onf", id, .mcp_empreinte(id, onf = cfg))
+    }
+    p <- .mcp_projet_ugf(id)
     out <- onf_croise_tache(p, cfg)
     if (!identical(out$status, "ok")) {
       msg <- switch(out$status,
@@ -673,6 +851,13 @@ mcp_croiser_onf <- function(projet, purger = NULL) {
                  "nemetonshiny_onf_echec", statut = out$status)
     }
     ecartees <- out$ecartees %||% .onf_ecartees_vide()
+    if (is.null(jeton)) {
+      # purger resolu FALSE : rien n'est ecarte (arbitrage du 2026-11-10).
+      idu <- if (isTRUE(cfg$purger)) as.character(ecartees$idu) else character(0)
+      .mcp_jeton_emettre("croiser_onf", id, .mcp_empreinte(id, onf = cfg), list(
+        ecartees = I(idu), n_ecartees = length(idu),
+        n_retenues = nrow(p$parcels) - length(idu)))
+    }
     perimes <- .mcp_sauver_ugf(id, out$projet, avec_parcelles = nrow(ecartees) > 0L)
     r <- onf_croise_resume(out$tenements)
     list(projet = id, n_ugf = r$n_ugf, n_tenements = nrow(out$projet$tenements),
@@ -734,6 +919,7 @@ mcp_url_app <- function(projet, onglet = "synthesis") {
 mcp_tools <- function() {
   t <- ellmer::type_string
   projet_arg <- t("Project id, or its name (case and accents ignored).")
+  jeton_arg <- t("Confirmation token. Omit it first: the call writes nothing and returns the error confirmation_requise with a preview and a token. Read the preview to the user; only if they confirm, call again with the same arguments and this token (single use, 10 minutes).", required = FALSE)
   list(
     ellmer::tool(.mcp_marquer(mcp_lister_projets), name = "lister_projets",
       annotations = ellmer::tool_annotations(read_only_hint = TRUE,
@@ -776,16 +962,18 @@ mcp_tools <- function() {
     ellmer::tool(.mcp_marquer(mcp_appliquer_ugf), name = "appliquer_ugf",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,
         destructive_hint = TRUE, idempotent_hint = TRUE),
-      description = "Replace the management units (UGF) of a project with those of a GeoPackage/GeoJSON file of tenements (columns idu and label_ugf, optional onf_foret_id, onf_parcelle...). Nothing is written if an IDU is unknown or a parcel is not exactly tiled. Computed indicators become outdated.",
+      description = "Replace the management units (UGF) of a project with those of a GeoPackage/GeoJSON file of tenements (columns idu and label_ugf, optional onf_foret_id, onf_parcelle...). Nothing is written if an IDU is unknown or a parcel is not exactly tiled. Two steps: the first call writes nothing and returns a preview and a token; the write needs the token. Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
                        fichier = t("Path of the GeoPackage or GeoJSON file."),
-                       remplacer = ellmer::type_boolean("TRUE (default): the file covers every parcel of the project. FALSE: only the parcels in the file are re-tiled.", required = FALSE))),
+                       remplacer = ellmer::type_boolean("TRUE (default): the file covers every parcel of the project. FALSE: only the parcels in the file are re-tiled.", required = FALSE),
+                       jeton = jeton_arg)),
     ellmer::tool(.mcp_marquer(mcp_croiser_onf), name = "croiser_onf",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,
         destructive_hint = TRUE, idempotent_hint = TRUE),
-      description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. About 15 s per commune. Computed indicators become outdated.",
+      description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. About 15 s per commune. Two steps: the first call writes nothing and returns a preview (parcels leaving the project) and a token; the write needs the token. Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
-                       purger = ellmer::type_boolean("TRUE: drop the parcels outside the forest regime (private, or little covered by the ONF). FALSE: keep them all. Default: the project's setting.", required = FALSE))),
+                       purger = ellmer::type_boolean("TRUE: drop the parcels outside the forest regime (private, or little covered by the ONF). FALSE: keep them all. Default: the project's setting.", required = FALSE),
+                       jeton = jeton_arg)),
     ellmer::tool(.mcp_marquer(mcp_url_app), name = "url_app",
       annotations = ellmer::tool_annotations(read_only_hint = TRUE,
         destructive_hint = FALSE, idempotent_hint = TRUE),
