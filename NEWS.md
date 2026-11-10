@@ -10,6 +10,16 @@ Changements cassants : aucun (contrat client inchangé : forme de `confirmation_
 - Jeton tiré de `/dev/urandom` (insensible à `set.seed()`, ne touche pas `.Random.seed`) ; repli sans `/dev/urandom` (Windows) : md5 d'aléa interne de R, de l'heure et du PID, plus faible. Aucune dépendance ajoutée. Seul un jeton de la forme émise (24 caractères `[0-9a-z]`) désigne un fichier.
 - Sur disque : jeton, outil, id du projet, empreinte (md5 des parcelles, chemin et md5 du fichier, réglages résolus), échéance. Ni géométrie ni aperçu.
 
+# nemetonshiny 2026.10.18.9006 (2026-11-10)
+
+Changements cassants : `updated_at` n'est pas un champ nouveau, seul son **format** change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ; `score` des familles de `resume_projet` passe à 2 décimales, comme la Synthèse. Autres champs : ajoutés.
+
+## MCP : `resume_projet` rend tout l'écran Synthèse (mission 008)
+
+- Nouveaux champs : `description`, `created_at`, `updated_at` et `calcule_le` (ISO 8601, fuseau Europe/Paris ; heures naïves lues dans le fuseau du process), `chm_suspect`, `chm_suspect_max`, et par famille `ndp` et `n_indicateurs` (présents, à défaut prévus).
+- Le serveur MCP force `TZ = "Europe/Paris"` au lancement (`inst/mcp/server.R`), donc les heures naïves sont lues en heure de Paris quel que soit le fuseau du poste.
+- `calcule_le` : `completed_at` > `fin_a` (job `termine`) > date de `indicators.parquet` > `null`.
+
 # nemetonshiny 2026.10.18.9005 (2026-11-10)
 
 ## Changements cassants
