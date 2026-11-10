@@ -1,3 +1,17 @@
+# nemetonshiny 2026.10.18.9001 (2026-11-10)
+
+Changements cassants : aucun.
+
+## Alignement sur nemeton 2026.11.14 (CI rouge)
+
+- Le cœur 2026.11.14 ajoute N5 et B5 (43 indicateurs) et complète la
+  description de la famille Biodiversité (« stratification verticale »).
+- `famille_biodiversite_desc` (repli statique FR/EN) suit la description du cœur.
+- Les tests de comptage (`get_all_indicator_codes`, `get_column_family_map`)
+  dérivent désormais le nombre attendu de `nemeton::indicator_labels()` au lieu
+  d'un chiffre figé.
+- Hors périmètre : N5/B5 ne sont pas encore intégrés à l'interface.
+
 # nemetonshiny 2026.10.18 (2026-10-19)
 
 Changements cassants : aucun.
