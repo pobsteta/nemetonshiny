@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9004" id="nemetonshiny-202610189004-2026-11-10">nemetonshiny 2026.10.18.9004 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189004-2026-11-10"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="noms-de-projet-dictés--résolution-tolérante-mission-2026-10-18-9004">Noms de projet dictés : résolution tolérante (mission 007)<a class="anchor" aria-label="anchor" href="#noms-de-projet-dict%C3%A9s--r%C3%A9solution-tol%C3%A9rante-mission-2026-10-18-9004"></a></h3>
+<ul><li>
+<code>.mcp_resolve_project</code> rapproche un nom approximatif du mot-clé de la commune du projet (« Forêt communale de Couchey (ONF) » -&gt; « couchey »). Accents et casse ignorés (normalisation par points de code, indépendante de la locale, y compris <code>LC_ALL=C</code>). L’introduction « Forêt [communale] de/du/des/d’ » (apostrophe droite ou typographique) est retirée des deux côtés (« Forêt de Dabot » trouve « Forêt de Dabo »). Un projet correspond si le nom dicté égale le mot-clé, ou en est une suite de mots entiers en tête, ou en est à une distance d’édition &lt;= 2 (seuil provisoire) ; cette distance ne s’applique que si le nom dicté ET le mot-clé ont au moins 4 lettres (« de », « du » ne rapprochent jamais « Forêt de Bé » ; « la » ne rapproche pas « Laix »). Une égalité exacte avec un mot-clé l’emporte sur les rapprochements approchés, sauf si un autre projet est à distance &lt;= 1 du nom dicté (alors <code>projet_ambigu</code> avec les candidats : « Écouché » face à Couchey trouve Écouché ; « Couchey » face à Couchay rend les deux). Ligatures œ/æ lues oe/ae. Le serveur MCP est forcé en locale UTF-8 au lancement.</li>
+<li>Un seul projet : il est retenu ; plusieurs : <code>projet_ambigu</code> avec les candidats (« nom (id) ») ; aucun : <code>projet_introuvable</code>. Plus de simple sous-chaîne (« de », « onf » ne rapprochent rien).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9003" id="nemetonshiny-202610189003-2026-11-10">nemetonshiny 2026.10.18.9003 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189003-2026-11-10"></a></h2>
 <p>Changements cassants : aucun.</p>
