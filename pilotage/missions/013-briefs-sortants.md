@@ -61,3 +61,7 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 les trois dépôts suivent sans que Pascal réexplique.
+
+## Ajout du 2026-11-10 (Pascal)
+
+- Brief supplémentaire vers le dépôt `victor` : journaliser le texte dicté (transcription STT) à côté des appels d'outils, pour que la fixture `noms_dictes.csv` (mission 005) puisse être alimentée par de vraies dictées. Rien n'est écrit dans `victor` depuis cette session.

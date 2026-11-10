@@ -61,3 +61,10 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 dans AIGORA, une erreur n'est plus lue comme un succès.
+
+## Plan accepté et moyens — 2026-11-10
+
+- Plan rendu par le `dev` (main tenue) et accepté par Pascal avec ses arbitrages (journal du 2026-11-10) : `classe` = nom R complet + `code` court ; forme JSON `{ok, classe, code, langue, erreur, action, candidats}` dans `ellmer::ContentToolResult(error=…)` ; langue FR par défaut, passée seulement par `resume_projet`/`generer_rapport` ; `confirmation_requise`/`jeton_invalide` reportées à 010 ; actions : introuvable → `lister_projets`, calcul_en_cours → `etat_calcul`, verrouillé → attendre ou prévenir le détenteur nommé.
+- **Premier commit de la branche** : `git checkout 37cbbf92 -- tests/testthat/test-service_mcp_erreurs.R` (tests d'acceptation de 002, à ne pas retoucher). Ils doivent passer au vert sans retouche.
+- `candidats` contient le **nom affiché** des projets (le test l'exige : « Dabo nord », « Dabo sud »), pas seulement leur identifiant.
+- Le `.lit` de `test-service_mcp.R` peut casser (critère 8) : remonter plutôt que modifier ces tests.

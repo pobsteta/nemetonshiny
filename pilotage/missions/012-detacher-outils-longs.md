@@ -61,3 +61,9 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 plus de tâche VICTOR coupée à 600 s.
+
+## Décision du 2026-11-10 (Pascal, sur la mesure 011)
+
+- Outils à détacher : `croiser_onf` (79-160 s, jamais sous 60 s) et `generer_rapport` (49 s en régime établi, 220 s au premier appel d'un process neuf — tuiles `maptiles` en cache dans `tempdir()`).
+- Modèle : `lancer_calcul` / `etat_calcul`. Moyens : oui/oui/**oui** (la mesure est faite).
+- Chiffres : journal du 2026-11-10 ; données brutes `/tmp/claude-1000/-home-pascal-dev-nemetonshiny/dd84f686-3feb-4ed0-97c1-7db1cc6e0c3d/scratchpad/bench/resultats.tsv` (scratchpad, non durable).

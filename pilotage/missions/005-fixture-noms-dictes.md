@@ -61,3 +61,18 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 006 peut écrire ses tests sur cette fixture.
+
+## Remarques de relecture — aller-retour 1/3 (2026-11-10)
+
+Point de départ : la version rendue, `/home/pascal/dev/nemetonshiny/.claude/worktrees/agent-afd406edea0e1ff08/tests/testthat/fixtures/noms_dictes.csv` (à recopier dans ton worktree, puis à corriger).
+
+Arbitrages de Pascal (2026-11-10) :
+- `attendu` = **nom affiché réel** du projet, lu dans `metadata.json` des projets de `/home/pascal/.local/share/nemeton/projects` (lecture seule) : « Dabo », « Forêt communale de Couchey (ONF) », « Forêt communale de Sombernon », « Forêt communale de Marsannay-la-côte (ONF) », « Reconfort », « Aumur », « Fordead », « ForetAccess ». Les tests 006 créeront des projets portant ces noms.
+- Les lignes « Mouthe » deviennent des **contrôles `introuvable`** (commune sans projet).
+
+À corriger (relecteur) :
+1. CSV mal formé : champ `source` de la ligne « Couchet » contient une virgule non quotée → quoter tous les champs texte (`write.csv` ou équivalent) et vérifier que `read.csv` relit exactement le nombre de lignes annoncé.
+2. Distances : recalculées par code (`adist()` après normalisation minuscules / accents retirés / tirets → espaces) — « Couché » et « Mouté » valent 1, pas 2. Préciser dans `source` contre quoi la distance est mesurée (nom complet ou mot-clé commune), puisque `attendu` est désormais le nom long.
+3. Ajouter des cas « mot-clé seul » pour les noms longs (« Couchey », « Sombernon », « Marsannay » dits seuls) et au moins un cas pour les projets absents de la v1 (Reconfort, Aumur, Fordead, ForetAccess).
+4. Doublons après normalisation (`Moute`/`Mouté`, `Marsannay la côte`/`Marsannay la cote`) : en garder un, ou dire ce que l'autre teste de plus.
+5. VICTOR ne journalise aucune transcription (`journalctl --user -u victor` vérifié par le relecteur) : 100 % simulé est justifié ; le dire dans le rendu. La demande de journalisation part par la mission 013.
