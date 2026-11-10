@@ -111,6 +111,7 @@ Rscript -e 'nemetonshiny::run_app(tour = FALSE, options = list(port = 3838, laun
 ## Sécurité
 
 - Tout reste local (`127.0.0.1`) ; le serveur parle en stdio.
+- Le serveur force sa locale en UTF-8 au lancement (`C.UTF-8`, repli `en_US.UTF-8` ; un message sur stderr si aucune n'existe), même lancé sous `LC_ALL=C`.
 - Aucun outil ne supprime un projet, n'en crée ni n'exécute de code arbitraire.
   Deux outils modifient pourtant un projet existant : `appliquer_ugf` et
   `croiser_onf`. Avec `purger = TRUE`, ce dernier **retire du projet** les
