@@ -1,3 +1,14 @@
+# nemetonshiny 2026.10.18.9003 (2026-11-10)
+
+Changements cassants : aucun.
+
+## MCP : annotations des dix outils
+
+- Chaque outil de `mcp_tools()` porte `read_only_hint`, `destructive_hint` et
+  `idempotent_hint` : lecture seule pour `lister_projets`, `resume_projet`,
+  `etat_calcul`, `url_app` ; destructifs `appliquer_ugf` et `croiser_onf` ;
+  non idempotent `lancer_calcul` seul.
+
 # nemetonshiny 2026.10.18.9002 (2026-11-10)
 
 Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d'outil est désormais marquée `isError`.
