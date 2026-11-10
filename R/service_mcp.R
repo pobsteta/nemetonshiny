@@ -170,13 +170,17 @@
 #' Names are compared without accents or case. The introduction "Foret
 #' [communale] de/du/des/d'" (straight or typographic apostrophe) is removed on
 #' both sides, so "Foret de Dabot" finds "Foret de Dabo". A project matches
-#' when the dictated name is equal to its keyword, or is a run of whole words at the start of the keyword, or is within
-#' `seuil` edit distance of it. The distance applies only when both the dictated
+#' when the dictated name is equal to its keyword, or is a run of whole words at
+#' the start of the keyword, or is within `seuil` edit distance of it. The distance applies only when both the dictated
 #' name and the keyword have at least 4 letters (floor on both sides); below
 #' that, only equality or a leading run of whole words counts ("de", "du" never
 #' match "Foret de Be"; "la" never matches "Laix").
-#' An exact keyword match wins over distance-only matches. Never a bare
-#' substring ("de", "onf" match nothing). The threshold 2 is provisional (spec P1, criterion 1).
+#' An exact keyword match wins over distance-only matches only when no other
+#' project is within edit distance 1 of the dictated name; otherwise every
+#' candidate is returned (ambiguity). "Ecouche" next to Couchey (distance 2)
+#' finds Ecouche; "Couchey" next to Couchay (distance 1) returns both.
+#' Never a bare substring ("de", "onf" match nothing). The threshold 2 is
+#' provisional (spec P1, criterion 1).
 #'
 #' @param dit Character. The dictated name.
 #' @param noms Character. Project names.
@@ -191,18 +195,23 @@
   mc <- vapply(noms, .mcp_motcle, character(1), USE.NAMES = FALSE)
   # Rang 0 : egalite ou suite de mots entiers en tete. Rang 1 : distance <= seuil
   # (plancher de 4 lettres des deux cotes). Une egalite exacte l'emporte sur les
-  # voisins de rang 1 ("Ecouche" trouve Ecouche, pas Couchey) ; sans egalite exacte,
-  # tous les projets de rang 0 ou 1 restent candidats.
+  # voisins de rang 1 ("Ecouche" trouve Ecouche, pas Couchey) SAUF si un autre
+  # projet est a distance <= 1 du mot dicte ("Couchey" face a Couchay : les deux
+  # restent candidats) ; sans egalite exacte, tous les projets de rang 0 ou 1.
+  dist <- function(v, m) if (min(nchar(v), nchar(m)) >= 4L) drop(utils::adist(v, m)) else Inf
   rang <- vapply(mc, function(m) {
     if (any(vapply(variantes, function(v) identical(m, v) || startsWith(m, paste0(v, " ")),
                    logical(1)))) return(0L)
-    proche <- any(vapply(variantes, function(v) {
-      min(nchar(v), nchar(m)) >= 4L && drop(utils::adist(v, m)) <= seuil
-    }, logical(1)))
+    proche <- any(vapply(variantes, function(v) dist(v, m) <= seuil, logical(1)))
     if (proche) 1L else NA_integer_
   }, integer(1), USE.NAMES = FALSE)
   exact <- which(mc %in% variantes)
-  if (length(exact)) return(unname(which(rang == 0L)))
+  if (length(exact)) {
+    voisin <- vapply(seq_along(mc), function(i) {
+      !(mc[i] %in% variantes) && any(vapply(variantes, function(v) dist(v, mc[i]) <= 1, logical(1)))
+    }, logical(1))
+    if (!any(voisin)) return(unname(which(rang == 0L)))
+  }
   unname(which(!is.na(rang)))
 }
 
