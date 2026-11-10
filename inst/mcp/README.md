@@ -30,8 +30,19 @@ Un projet se désigne par son id **ou** par son nom (casse et accents
 ignorés). Plusieurs correspondances : l'outil renvoie la liste des candidats
 au lieu de choisir.
 
-Chaque réponse est un objet JSON : `{"ok": true, ...}` ou
-`{"ok": false, "erreur": ..., "classe": ...}`.
+Chaque réponse est un objet JSON : `{"ok": true, ...}` ou, en cas d'erreur,
+`{"ok": false, "classe", "code", "langue", "erreur", "action", "candidats"}`.
+Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
+(`isError: true` côté MCP), qu'un agent ne peut pas lire comme un succès.
+
+- `classe` : nom R complet de la classe d'erreur (`nemetonshiny_projet_introuvable`) ;
+  `code` : son nom court (`projet_introuvable`).
+- `erreur` : le message, en français par défaut. `langue` (`fr` ou `en`) n'est
+  acceptée que par `resume_projet` et `generer_rapport`.
+- `action` : la suite à proposer (introuvable : `lister_projets` ;
+  calcul en cours : `etat_calcul` ; projet verrouillé : attendre ou prévenir
+  le détenteur nommé).
+- `candidats` : noms affichés des projets possibles (homonymes, introuvable proche).
 
 ## Calcul en tâche de fond
 

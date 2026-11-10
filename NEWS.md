@@ -8,6 +8,8 @@ Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent toujours 
 - Forme JSON : `{ok, classe, code, langue, erreur, action, candidats}` ; `classe` = nom R complet (`nemetonshiny_projet_introuvable`), `code` = nom court.
 - Message et action suivante en FR (défaut) ou EN : 14 messages `mcp_err_*` et 9 actions `mcp_act_*` dans `TRANSLATIONS`. `langue` n'est lue que par `resume_projet` et `generer_rapport` (aucune signature d'outil changée).
 - `confirmation_requise` et `jeton_invalide` restent à la mission 010.
+- Dette connue : le détail technique (cause brute) reste en français dans une erreur rendue en anglais.
+- Hygiène : retrait de `tests/testthat/_problems/` du suivi git (ignoré par `.gitignore` et `.Rbuildignore`).
 
 # nemetonshiny 2026.10.18.9001 (2026-11-10)
 
