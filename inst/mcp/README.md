@@ -86,6 +86,10 @@ relu ou le croisement recalculé.
 C'est une barrière, pas une preuve : un agent qui enchaîne seul les deux
 appels contourne la garde.
 
+## Fuseau horaire
+
+Au lancement, le serveur force `TZ = "Europe/Paris"` : les heures naïves des projets sont lues en heure de Paris et les dates rendues (`updated_at`, `calcule_le`, …) sont en ISO 8601 avec fuseau, quel que soit celui du poste.
+
 ## Calcul en tâche de fond
 
 `lancer_calcul` démarre un `Rscript` détaché (`setsid`) qui survit à la fin
