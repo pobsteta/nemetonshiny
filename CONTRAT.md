@@ -212,7 +212,7 @@ et reste stable en 1.x ; ajouter un profil est une évolution mineure.
 
 ## 6 bis. API pour nemetonmcp
 
-`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **31 objets internes**
+`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **32 objets internes**
 de nemetonshiny par `getFromNamespace(nom, "nemetonshiny")`. Ils ne sont pas
 exportés (ADR 0001, option B) mais **font partie du contrat** : les renommer,
 les retirer ou changer leurs arguments est un changement cassant (section
@@ -270,6 +270,7 @@ Serveur MCP (`inst/mcp/`, 10 outils : `lister_projets`, `resume_projet`,
 | `mcp_etat_calcul()` | `projet` |
 | `mcp_exporter_gpkg()` | `projet` |
 | `.mcp_resolve_project()` | `projet` ; id, ou erreur `nemetonshiny_projet_ambigu` avec `candidats` |
+| `.mcp_vers_outil()` | `x` ; la chaîne rendue par un `mcp_*` : si c'est une erreur (attribut `mcp_erreur`), rend un `ellmer::ContentToolResult` en erreur (`isError`), sinon `x` tel quel. À appeler sur le résultat de tout outil que `nemetonmcp` substitue à ceux de `mcp_tools()` (aujourd'hui `etat_calcul`, `exporter_gpkg`) |
 
 Divers :
 

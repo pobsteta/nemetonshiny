@@ -13,19 +13,96 @@
                                 na = "null", digits = 4))
 }
 
-# Evalue `expr` ; une erreur devient une reponse `ok = false` lisible par le
-# modele (message + classe), plutot qu'une exception de protocole.
-.mcp_call <- function(expr) {
-  res <- tryCatch(expr, error = function(e) {
-    cls <- grep("^nemetonshiny_", class(e), value = TRUE)
-    structure(list(ok = FALSE, erreur = conditionMessage(e),
-                   classe = if (length(cls)) cls[1] else NULL,
-                   candidats = e$candidats),
-              class = "mcp_erreur")
-  })
-  if (inherits(res, "mcp_erreur")) res <- unclass(res)
-  else res <- c(list(ok = TRUE), res)
-  .mcp_json(Filter(Negate(is.null), res))
+# Evalue `expr`. Succes : chaine JSON `{ok: true, ...}`. Echec : chaine JSON
+# `{ok, classe, code, langue, erreur, action, candidats}` portant l'attribut
+# `mcp_erreur` (voir .mcp_erreur()). C'est `mcp_tools()` qui la convertit en
+# `ellmer::ContentToolResult` en erreur, que mcptools marque `isError: true`
+# (le client lit "Tool calling failed with error <json>") : les fonctions
+# `mcp_*` gardent ainsi leur contrat de chaine JSON.
+# `langue` n'est evaluee qu'en cas d'erreur ; FR par defaut.
+.mcp_call <- function(expr, langue = "fr") {
+  res <- tryCatch(expr, error = function(e) e)
+  if (inherits(res, "error")) return(.mcp_erreur(res, langue))
+  .mcp_json(Filter(Negate(is.null), c(list(ok = TRUE), res)))
+}
+
+# Classe d'erreur (sans le prefixe `nemetonshiny_`) -> action (cle
+# `mcp_act_<action>`) ; le message est `mcp_err_<code>` (utils_i18n.R).
+# `detail` : le message technique de la condition est joint au texte (il porte
+# ce que le texte fixe ne dit pas : IDU, parcelles, statut).
+.MCP_ERREURS <- list(
+  projet_introuvable     = list(action = "lister",    detail = FALSE),
+  projet_ambigu          = list(action = "choisir",   detail = FALSE),
+  projet_verrouille      = list(action = "verrou",    detail = FALSE),
+  projet_ancien          = list(action = "recreer",   detail = FALSE),
+  calcul_en_cours        = list(action = "suivre",    detail = FALSE),
+  calcul_echec           = list(action = "suivre",    detail = TRUE),
+  sans_indicateurs       = list(action = "calculer",  detail = FALSE),
+  fichier_invalide       = list(action = "fichier",   detail = TRUE),
+  idu_inconnu            = list(action = "fichier",   detail = TRUE),
+  pavage_invalide        = list(action = "fichier",   detail = TRUE),
+  onf_echec              = list(action = "reessayer", detail = TRUE),
+  parcelles_introuvables = list(action = "signaler",  detail = TRUE),
+  erreur                 = list(action = "signaler",  detail = TRUE),
+  erreur_inconnue        = list(action = "signaler",  detail = TRUE)
+)
+
+.mcp_langue <- function(langue) {
+  l <- tryCatch(as.character(langue)[1], error = function(e) NA_character_)
+  if (!is.na(l) && l %in% c("fr", "en")) l else "fr"
+}
+
+# Construit l'erreur MCP d'une condition R : classee, bilingue, avec l'action
+# suivante. Aucun texte en dur : tout vient de i18n (cles mcp_err_*, mcp_act_*).
+.mcp_erreur <- function(e, langue = "fr") {
+  langue <- .mcp_langue(langue)
+  i18n <- get_i18n(langue)
+  cls <- sub("^nemetonshiny_", "",
+             grep("^nemetonshiny_", class(e), value = TRUE))
+  cls <- setdiff(cls, "erreur")
+  code <- if (length(cls) && cls[1] %in% names(.MCP_ERREURS)) {
+    cls[1]
+  } else if (length(cls) || inherits(e, "nemetonshiny_erreur")) {
+    "erreur"
+  } else {
+    "erreur_inconnue"
+  }
+  def <- .MCP_ERREURS[[code]]
+  projet <- as.character(e$projet %||% "")[1]
+  detenteur <- as.character(e$detenteur %||% "?")[1]
+  texte <- i18n$t(paste0("mcp_err_", code), projet = projet,
+                  detenteur = detenteur)
+  if (isTRUE(def$detail)) {
+    detail <- gsub("\\s*\n\\s*", " ", cli::ansi_strip(conditionMessage(e)))
+    texte <- paste0(texte, " (", trimws(detail), ")")
+  }
+  action <- i18n$t(paste0("mcp_act_", def$action), detenteur = detenteur)
+  json <- .mcp_json(Filter(Negate(is.null), list(
+    ok = FALSE, classe = paste0("nemetonshiny_", code), code = code,
+    langue = langue, erreur = texte, action = action,
+    candidats = e$candidats)))
+  structure(json, mcp_erreur = TRUE)
+}
+
+# Une chaine d'erreur de .mcp_call() devient un resultat d'outil en erreur
+# (`isError`) ; un succes passe tel quel.
+.mcp_vers_outil <- function(x) {
+  if (isTRUE(attr(x, "mcp_erreur"))) {
+    return(ellmer::ContentToolResult(error = as.character(x)))
+  }
+  x
+}
+
+# Enveloppe `f` (meme signature, pour ellmer::tool) : son resultat passe par
+# .mcp_vers_outil().
+.mcp_marquer <- function(f) {
+  noms <- names(formals(f))
+  appel <- as.call(c(list(quote(.f)),
+                     stats::setNames(lapply(noms, as.name), noms)))
+  g <- f
+  body(g) <- call(".mcp_vers_outil", appel)
+  environment(g) <- list2env(list(.f = f), parent = environment(f))
+  g
 }
 
 .mcp_norm <- function(x) {
@@ -45,7 +122,7 @@
 #' @noRd
 .mcp_resolve_project <- function(projet) {
   if (!is.character(projet) || length(projet) != 1L || !nzchar(trimws(projet))) {
-    .api_abort("Projet non pr\u00e9cis\u00e9.", "nemetonshiny_projet_introuvable")
+    .api_abort("Projet non pr\u00e9cis\u00e9.", "nemetonshiny_projet_introuvable", projet = projet)
   }
   l <- projets_lister()
   if (projet %in% l$id) return(projet)
@@ -56,12 +133,12 @@
   if (length(idx) == 1L) return(l$id[idx])
   if (!length(idx)) {
     .api_abort("Aucun projet ne correspond \u00e0 {.val {projet}}.",
-               "nemetonshiny_projet_introuvable")
+               "nemetonshiny_projet_introuvable", projet = projet)
   }
   candidats <- sprintf("%s (%s)", l$nom[idx], l$id[idx])
   .api_abort(c("Plusieurs projets correspondent \u00e0 {.val {projet}}.",
                i = "{candidats}"),
-             "nemetonshiny_projet_ambigu", candidats = candidats)
+             "nemetonshiny_projet_ambigu", projet = projet, candidats = candidats)
 }
 
 # ---------------------------------------------------------------- lecture
@@ -84,7 +161,7 @@ mcp_resume_projet <- function(projet, langue = "fr") {
     s$familles <- s$families
     s$families <- NULL
     s
-  })
+  }, langue = langue)
 }
 
 # ---------------------------------------------------------------- calcul detache
@@ -202,7 +279,8 @@ mcp_resume_projet <- function(projet, langue = "fr") {
   if (!is.null(verrou) && !isTRUE(verrou$stale)) {
     detenteur <- verrou$holder_label %||% verrou$holder_id %||% "?"
     .api_abort("Projet en cours d'\u00e9dition dans l'application ({detenteur}).",
-               "nemetonshiny_projet_verrouille", call = call)
+               "nemetonshiny_projet_verrouille", detenteur = detenteur,
+               call = call)
   }
   etat
 }
@@ -512,7 +590,7 @@ mcp_generer_rapport <- function(projet, langue = "fr", synthese = NULL) {
     f <- file.path(get_project_path(id), "exports",
                    sprintf("rapport_%s_%s.pdf", langue, format(Sys.time(), "%Y%m%d-%H%M%S")))
     list(projet = id, fichier = projet_rapport(id, f, langue = langue, synthese = synthese))
-  })
+  }, langue = langue)
 }
 
 #' @noRd
@@ -551,40 +629,40 @@ mcp_tools <- function() {
   t <- ellmer::type_string
   projet_arg <- t("Project id, or its name (case and accents ignored).")
   list(
-    ellmer::tool(mcp_lister_projets, name = "lister_projets",
+    ellmer::tool(.mcp_marquer(mcp_lister_projets), name = "lister_projets",
       description = "List the Nemeton forest projects (id, name, status, last update, computed indicators, up to date).",
       arguments = list(limite = ellmer::type_integer("Maximum number of projects (default 20).", required = FALSE))),
-    ellmer::tool(mcp_resume_projet, name = "resume_projet",
+    ellmer::tool(.mcp_marquer(mcp_resume_projet), name = "resume_projet",
       description = "Synthesis of a project: global score /100, NDP level, confidence and the 12 family scores. Reads only, never modifies the project.",
       arguments = list(projet = projet_arg,
                        langue = t("'fr' or 'en' (default 'fr').", required = FALSE))),
-    ellmer::tool(mcp_lancer_calcul, name = "lancer_calcul",
+    ellmer::tool(.mcp_marquer(mcp_lancer_calcul), name = "lancer_calcul",
       description = "Start the full indicator computation of a project in the background (minutes to more than an hour). Returns at once; follow with etat_calcul.",
       arguments = list(projet = projet_arg)),
-    ellmer::tool(mcp_etat_calcul, name = "etat_calcul",
+    ellmer::tool(.mcp_marquer(mcp_etat_calcul), name = "etat_calcul",
       description = "State of a project's background computation: status (en_cours, termine, echec, annule, aucun), progress, current task, error and log tail on failure.",
       arguments = list(projet = projet_arg)),
-    ellmer::tool(mcp_annuler_calcul, name = "annuler_calcul",
+    ellmer::tool(.mcp_marquer(mcp_annuler_calcul), name = "annuler_calcul",
       description = "Ask a project's running computation to stop.",
       arguments = list(projet = projet_arg)),
-    ellmer::tool(mcp_generer_rapport, name = "generer_rapport",
+    ellmer::tool(.mcp_marquer(mcp_generer_rapport), name = "generer_rapport",
       description = "Write the PDF report of a computed project into its exports folder and return the file path.",
       arguments = list(projet = projet_arg,
                        langue = t("'fr' or 'en' (default 'fr').", required = FALSE),
                        synthese = t("Optional synthesis comment (Markdown).", required = FALSE))),
-    ellmer::tool(mcp_exporter_gpkg, name = "exporter_gpkg",
+    ellmer::tool(.mcp_marquer(mcp_exporter_gpkg), name = "exporter_gpkg",
       description = "Write the GeoPackage of a computed project's results (one feature per management unit) and return the file path.",
       arguments = list(projet = projet_arg)),
-    ellmer::tool(mcp_appliquer_ugf, name = "appliquer_ugf",
+    ellmer::tool(.mcp_marquer(mcp_appliquer_ugf), name = "appliquer_ugf",
       description = "Replace the management units (UGF) of a project with those of a GeoPackage/GeoJSON file of tenements (columns idu and label_ugf, optional onf_foret_id, onf_parcelle...). Nothing is written if an IDU is unknown or a parcel is not exactly tiled. Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
                        fichier = t("Path of the GeoPackage or GeoJSON file."),
                        remplacer = ellmer::type_boolean("TRUE (default): the file covers every parcel of the project. FALSE: only the parcels in the file are re-tiled.", required = FALSE))),
-    ellmer::tool(mcp_croiser_onf, name = "croiser_onf",
+    ellmer::tool(.mcp_marquer(mcp_croiser_onf), name = "croiser_onf",
       description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. About 15 s per commune. Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
                        purger = ellmer::type_boolean("TRUE: drop the parcels outside the forest regime (private, or little covered by the ONF). FALSE: keep them all. Default: the project's setting.", required = FALSE))),
-    ellmer::tool(mcp_url_app, name = "url_app",
+    ellmer::tool(.mcp_marquer(mcp_url_app), name = "url_app",
       description = "URL opening the Nemeton application on a project and a tab (synthesis, selection, action_plan, terrain, monitoring, regeneration, famille_*).",
       arguments = list(projet = projet_arg,
                        onglet = t("Tab (default 'synthesis').", required = FALSE)))
