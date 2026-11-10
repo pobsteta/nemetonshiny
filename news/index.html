@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9003</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9003" id="nemetonshiny-202610189003-2026-11-10">nemetonshiny 2026.10.18.9003 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189003-2026-11-10"></a></h2>
+<p>Changements cassants : aucun.</p>
+<div class="section level3">
+<h3 id="mcp--annotations-des-dix-outils-2026-10-18-9003">MCP : annotations des dix outils<a class="anchor" aria-label="anchor" href="#mcp--annotations-des-dix-outils-2026-10-18-9003"></a></h3>
+<ul><li>Chaque outil de <code>mcp_tools()</code> porte <code>read_only_hint</code>, <code>destructive_hint</code> et <code>idempotent_hint</code> : lecture seule pour <code>lister_projets</code>, <code>resume_projet</code>, <code>etat_calcul</code>, <code>url_app</code> ; destructifs <code>appliquer_ugf</code> et <code>croiser_onf</code> ; non idempotent <code>lancer_calcul</code> seul.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9002" id="nemetonshiny-202610189002-2026-11-10">nemetonshiny 2026.10.18.9002 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189002-2026-11-10"></a></h2>
 <p>Changements cassants : aucun pour les fonctions <code>mcp_*</code> (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d’outil est désormais marquée <code>isError</code>.</p>
