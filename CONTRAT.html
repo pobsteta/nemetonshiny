@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -250,7 +250,7 @@
 </div>
 <div class="section level2">
 <h2 id="id_6-bis-api-pour-nemetonmcp">6 bis. API pour nemetonmcp<a class="anchor" aria-label="anchor" href="#id_6-bis-api-pour-nemetonmcp"></a></h2>
-<p><code>nemetonmcp</code> (le serveur MCP de VICTOR et d’AIGORA) lit <strong>32 objets internes</strong> de nemetonshiny par <code>getFromNamespace(nom, "nemetonshiny")</code>. Ils ne sont pas exportés (ADR 0001, option B) mais <strong>font partie du contrat</strong> : les renommer, les retirer ou changer leurs arguments est un changement cassant (section « Changements cassants » de <code>NEWS.md</code>, et un brief à <code>nemetonmcp</code>). <code>tests/testthat/test-contrat_nemetonmcp.R</code> verrouille la présence et les arguments (<code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code>, dans l’ordre) de chaque objet ; il vérifie aussi que cette section et la liste lue dans le code de <code>nemetonmcp</code> sont identiques. Un objet absent de cette section n’est <strong>pas</strong> garanti.</p>
+<p><code>nemetonmcp</code> (le serveur MCP de VICTOR et d’AIGORA) lit <strong>35 objets internes</strong> de nemetonshiny par <code>getFromNamespace(nom, "nemetonshiny")</code>. Ils ne sont pas exportés (ADR 0001, option B) mais <strong>font partie du contrat</strong> : les renommer, les retirer ou changer leurs arguments est un changement cassant (section « Changements cassants » de <code>NEWS.md</code>, et un brief à <code>nemetonmcp</code>). <code>tests/testthat/test-contrat_nemetonmcp.R</code> verrouille la présence et les arguments (<code><a href="https://rdrr.io/r/base/formals.html" class="external-link">formals()</a></code>, dans l’ordre) de chaque objet ; il vérifie aussi que cette section et la liste lue dans le code de <code>nemetonmcp</code> sont identiques. Un objet absent de cette section n’est <strong>pas</strong> garanti.</p>
 <p>Plan d’actions et commentaires :</p>
 <table class="table"><colgroup><col width="25%"><col width="75%"></colgroup><thead><tr><th>Objet</th>
 <th>Arguments / contenu</th>
@@ -338,6 +338,15 @@
 </tr><tr><td><code>.mcp_vers_outil()</code></td>
 <td>
 <code>x</code> ; la chaîne rendue par un <code>mcp_*</code> : si c’est une erreur (attribut <code>mcp_erreur</code>), rend un <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentToolResult</a></code> en erreur (<code>isError</code>), sinon <code>x</code> tel quel. À appeler sur le résultat de tout outil que <code>nemetonmcp</code> substitue à ceux de <code>mcp_tools()</code> (aujourd’hui <code>etat_calcul</code>, <code>exporter_gpkg</code>)</td>
+</tr><tr><td><code>.mcp_garde_ecriture()</code></td>
+<td>
+<code>id</code>, <code>call</code> ; refuse d’écrire dans un projet occupé : <code>nemetonshiny_calcul_en_cours</code>, <code>nemetonshiny_projet_verrouille</code>, <code>nemetonshiny_projet_ancien</code> ; rend l’état du projet</td>
+</tr><tr><td><code>.mcp_jeton_emettre()</code></td>
+<td>
+<code>outil</code>, <code>projet</code> (id résolu), <code>lien</code>, <code>apercu</code> ; premier temps d’une écriture (ADR 0002) : enregistre en mémoire un jeton à usage unique valable 10 min, lié à <code>outil</code> + <code>projet</code> + <code>lien</code> (comparé par <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>), puis lève <code>nemetonshiny_confirmation_requise</code> portant <code>projet</code>, <code>projet_nom</code> (nom résolu, cité dans le message), <code>jeton</code>, <code>apercu</code>, <code>expire_a</code> (ISO 8601 UTC). N’écrit rien. À appeler après les gardes et les contrôles métier</td>
+</tr><tr><td><code>.mcp_jeton_consommer()</code></td>
+<td>
+<code>jeton</code>, <code>outil</code>, <code>projet</code>, <code>lien</code>, <code>garde</code> (défaut <code>.mcp_garde_ecriture</code>) ; second temps : retire le jeton du registre dès sa présentation (même refusé ; exception : les erreurs levées avant l’appel, projet introuvable ou ambigu, métadonnées ONF illisibles, ne le consomment pas), rejoue <code>garde(projet)</code>, puis lève <code>nemetonshiny_jeton_invalide</code> si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou <code>lien</code>. <code>lien</code> n’est évalué qu’après la garde. Rend <code>TRUE</code> (invisible) si l’écriture peut suivre</td>
 </tr></tbody></table><p>Divers :</p>
 <table class="table"><thead><tr><th>Objet</th>
 <th>Arguments / contenu</th>

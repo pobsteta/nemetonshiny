@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9005" id="nemetonshiny-202610189005-2026-11-10">nemetonshiny 2026.10.18.9005 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189005-2026-11-10"></a></h2>
+<div class="section level3">
+<h3 id="changements-cassants-2026-10-18-9005">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-10-18-9005"></a></h3>
+<ul><li>Serveur MCP : <code>appliquer_ugf</code> et <code>croiser_onf</code> <strong>n’écrivent plus au premier appel</strong>. Sans <code>jeton</code>, ils font tous les contrôles, n’écrivent rien et rendent l’erreur <code>confirmation_requise</code> avec <code>apercu</code>, <code>jeton</code> et <code>expire_a</code> ; seul un second appel portant ce jeton écrit (ADR 0002). Un client qui enchaînait un seul appel ne modifie plus le projet. <code>mcp_appliquer_ugf()</code> et <code>mcp_croiser_onf()</code> gagnent un argument <code>jeton</code> (en dernier). La release qui embarquera ce changement demandera la confirmation de Pascal.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="serveur-mcp--confirmation-des-écritures-par-jeton-mission-2026-10-18-9005">Serveur MCP : confirmation des écritures par jeton (mission 010)<a class="anchor" aria-label="anchor" href="#serveur-mcp--confirmation-des-%C3%A9critures-par-jeton-mission-2026-10-18-9005"></a></h3>
+<ul><li>Jeton à usage unique, 24 caractères <code>[0-9a-z]</code>, valable 10 minutes (une seule constante, <code>.MCP_JETON_DUREE</code>, provisoire jusqu’à l’essai VICTOR), gardé en mémoire du serveur : rien n’est écrit dans le dossier du projet à l’aperçu.</li>
+<li>Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; <code>appliquer_ugf</code> : fichier (chemin normalisé et md5) et <code>remplacer</code> ; <code>croiser_onf</code> : tous les réglages ONF résolus (<code>purger</code> compris). Tout jeton connu présenté est consommé, même refusé, <strong>sauf</strong> si le projet est introuvable ou ambigu, ou si les métadonnées ONF sont illisibles (erreurs levées avant la lecture du jeton : il reste valable). L’aperçu nomme le projet : le message cite le nom résolu et l’identifiant, le JSON porte <code>projet</code> et <code>projet_nom</code>.</li>
+<li>Ordre : gardes (calcul en cours, verrou, projet ancien) puis jeton, puis fichier ou croisement (recalculé à la confirmation), puis écriture. Au premier appel, erreurs métier et gardes passent avant l’aperçu, sans jeton.</li>
+<li>Aperçu : <code>appliquer_ugf</code> → <code>n_ugf_remplacees</code>, <code>n_ugf_nouvelles</code> ; <code>croiser_onf</code> → <code>ecartees</code> (IDU), <code>n_ecartees</code>, <code>n_retenues</code> (rien d’écarté si <code>purger</code> résolu vaut <code>FALSE</code>).</li>
+<li>Deux classes d’erreur : <code>confirmation_requise</code>, <code>jeton_invalide</code> (16 messages <code>mcp_err_*</code>, 11 actions <code>mcp_act_*</code>).</li>
+<li>Contrat <code>nemetonmcp</code> (CONTRAT.md § 6 bis, 35 objets) : <code>.mcp_garde_ecriture()</code>, <code>.mcp_jeton_emettre()</code>, <code>.mcp_jeton_consommer()</code>, pour ses propres écritures (plan d’actions) ; pas encore appelés par <code>nemetonmcp</code> (brief de la mission 013).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9004" id="nemetonshiny-202610189004-2026-11-10">nemetonshiny 2026.10.18.9004 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189004-2026-11-10"></a></h2>
 <p>Changements cassants : aucun.</p>
