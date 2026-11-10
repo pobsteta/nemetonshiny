@@ -13979,8 +13979,7 @@ référencée nulle part.
 
 ### chore(deps) — bump épingle nemeton à v0.22.1
 
-L’installation de `nemetonshiny`
-([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
+L’installation de `nemetonshiny` (`remotes::install_github`,
 [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
 `devtools::install`) faisait **redescendre** `nemeton` à la version
 `0.22.0`, même quand une version plus récente était déjà installée
