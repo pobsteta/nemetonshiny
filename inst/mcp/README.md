@@ -24,6 +24,8 @@ par `NEMETON_PROJECT_DIR` (sinon le dossier par défaut de l'application).
 | `annuler_calcul` | demande l'arrêt du calcul en cours | signal d'arrêt |
 | `generer_rapport` | PDF dans `exports/` du projet | le fichier |
 | `exporter_gpkg` | GeoPackage des résultats dans `exports/` | le fichier |
+| `appliquer_ugf` | remplace les UGF par celles d'un fichier de tènements (GeoPackage/GeoJSON) ; les indicateurs calculés deviennent périmés | oui, **modifie le projet** |
+| `croiser_onf` | construit les UGF depuis les parcelles forestières ONF recalées sur le cadastre ; `purger` : `TRUE` retire les parcelles hors régime forestier, `FALSE` les garde toutes, défaut = réglage du projet ; les indicateurs calculés deviennent périmés | oui, **modifie le projet** |
 | `url_app` | URL `http://127.0.0.1:<port>/?project=…&tab=…` | non |
 
 Un projet se désigne par son id **ou** par son nom (casse et accents
@@ -69,7 +71,11 @@ Rscript -e 'nemetonshiny::run_app(tour = FALSE, options = list(port = 3838, laun
 ## Sécurité
 
 - Tout reste local (`127.0.0.1`) ; le serveur parle en stdio.
-- Aucun outil ne supprime, ne crée de projet ni n'exécute de code arbitraire.
+- Aucun outil ne supprime un projet, n'en crée ni n'exécute de code arbitraire.
+  Deux outils modifient pourtant un projet existant : `appliquer_ugf` et
+  `croiser_onf`. Avec `purger = TRUE`, ce dernier **retire du projet** les
+  parcelles hors régime forestier ; il n'y a pas encore de confirmation
+  préalable (ADR 0002, à venir).
 - Un assistant lancé sans demande d'autorisation (VICTOR,
   `bypassPermissions`) doit tourner dans un espace dédié, jamais dans un
   dépôt de développement.
