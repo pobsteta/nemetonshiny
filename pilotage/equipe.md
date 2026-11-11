@@ -42,3 +42,6 @@
 | [011-mesure-outils-longs](missions/011-mesure-outils-longs.md) | `analyste` | sonnet | appuyer | oui/oui/oui | 1 |
 | [012-detacher-outils-longs](missions/012-detacher-outils-longs.md) | `dev` | sonnet | appuyer | oui/oui/**non** (attend 011) | 4 (conditionnelle) |
 | [013-briefs-sortants](missions/013-briefs-sortants.md) | `archiviste` | sonnet | appuyer | oui/oui/oui après 010 | 4 |
+| [014-alignement-coeur-2026-11-14](missions/014-alignement-coeur-2026-11-14.md) | `dev` | sonnet | appuyer | oui/oui/oui | 1 |
+| [015-table-familles-partagee](missions/015-table-familles-partagee.md) | `dev` | sonnet | appuyer | oui/oui/oui (staffing confirmé par Pascal le 2026-11-11) | 2 |
+| [016-jeton-persiste](missions/016-jeton-persiste.md) | `dev` | opus | appuyer | oui/oui/oui (décidée par Pascal le 2026-11-10) | 2 |

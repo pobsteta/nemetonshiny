@@ -6,7 +6,7 @@
 > colonne ; on change ce numéro chaque fois qu'elle change de colonne.
 > **Une carte qui ne bouge pas est souvent la mauvaise nouvelle à dire tout de suite.**
 
-**Dernier cycle :** 1 _(augmenté de 1 à la fin de chaque `/boucle`, même quand elle n'a
+**Dernier cycle :** 2 _(augmenté de 1 à la fin de chaque `/boucle`, même quand elle n'a
 rien lancé. Une carte est immobile quand dernier cycle − N ≥ 2.)_
 
 _Modèle de carte :_
@@ -20,74 +20,80 @@ _Modèle de carte :_
 
 ## Bac à sable
 
-- [015-table-familles-partagee](missions/015-table-familles-partagee.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer) — à confirmer
-  - Mission : helper unique de la table des familles (écran, API, MCP) · après 010
-  - Moyens : oui/oui/oui
+_(vide)_
 
 ## Validé
 
-- [004-annotations-outils](missions/004-annotations-outils.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 2
-  - Moyens : oui/oui/oui (tests : fichier annotations de 37cbbf92)
-- [006-tests-noms-resume](missions/006-tests-noms-resume.md) · depuis le cycle 1
-  - Homme : `testeur` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 2
-  - Moyens : oui/oui/oui (fixture #254)
-- [007-noms-dictes](missions/007-noms-dictes.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 3
-  - Moyens : oui/oui/oui après 006
-- [008-resume-complet](missions/008-resume-complet.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 3
-  - Moyens : oui/oui/oui après 006
-- [009-tests-confirmation](missions/009-tests-confirmation.md) · depuis le cycle 1
-  - Homme : `testeur` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 2
-  - Moyens : oui/oui/oui
-- [010-confirmation-jeton](missions/010-confirmation-jeton.md) · depuis le cycle 1
-  - Homme : `dev` (opus, main : tenir)
-  - Mission : voir la fiche · cycle visé 3
-  - Moyens : oui/oui/oui après 009
-- [012-detacher-outils-longs](missions/012-detacher-outils-longs.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 4
-  - Moyens : oui/oui/**oui** (mesure 011 : croiser_onf + generer_rapport)
-- [013-briefs-sortants](missions/013-briefs-sortants.md) · depuis le cycle 1
-  - Homme : `archiviste` (sonnet, main : appuyer)
-  - Mission : voir la fiche · cycle visé 4
-  - Moyens : oui/oui/oui après 010 (+ brief victor)
+_(vide)_
 
 ## Planifié
 
-- [014-alignement-coeur-2026-11-14](missions/014-alignement-coeur-2026-11-14.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer)
-  - Mission : PR #255 prête, attend Pascal · **à fusionner en premier**
-  - Moyens : oui/oui/oui
-- [001-contrat-nemetonmcp](missions/001-contrat-nemetonmcp.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : appuyer)
-  - Mission : PR #253 prête, attend Pascal (CI rouge levée par #255)
-  - Moyens : oui/oui/oui
-- [005-fixture-noms-dictes](missions/005-fixture-noms-dictes.md) · depuis le cycle 1
-  - Homme : `acquereur` (sonnet, main : appuyer)
-  - Mission : PR #254 prête après 1 aller-retour, attend Pascal (même rouge)
-  - Moyens : oui/oui/oui
-- [003-erreurs-classees](missions/003-erreurs-classees.md) · depuis le cycle 1
-  - Homme : `dev` (sonnet, main : tenir)
-  - Mission : plan accepté ; exécution dès qu'une PR libère le plafond
-  - Moyens : oui/oui/oui (tests : fichier erreurs de 37cbbf92)
+- [012-detacher-outils-longs](missions/012-detacher-outils-longs.md) · depuis le cycle 2
+  - Homme : `testeur` puis `dev` (sonnet)
+  - Mission : PR #264 (e4513baf, cassante) relue « prêt », CI en cours, attend Pascal ; essai terrain « rapport de Couchey »
+  - Moyens : —
 
 ## Terminé
 
+- [001-contrat-nemetonmcp](missions/001-contrat-nemetonmcp.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #253 fusionnée (46eee94b)
+  - Moyens : —
 - [002-tests-erreurs-annotations](missions/002-tests-erreurs-annotations.md) · depuis le cycle 1
-  - Homme : `testeur` (sonnet)
-  - Mission : prêt après 2 allers-retours ; fichiers intégrés en tête de 003 et 004
+  - Homme : `testeur`
+  - Mission : tests intégrés à 003/004
+  - Moyens : —
+- [003-erreurs-classees](missions/003-erreurs-classees.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #256 fusionnée (86138435)
+  - Moyens : —
+- [004-annotations-outils](missions/004-annotations-outils.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #257 fusionnée (9cdd1f3c)
+  - Moyens : —
+- [005-fixture-noms-dictes](missions/005-fixture-noms-dictes.md) · depuis le cycle 2
+  - Homme : `acquereur`
+  - Mission : #254 fusionnée (54d65ec4)
+  - Moyens : —
+- [006-tests-noms-resume](missions/006-tests-noms-resume.md) · depuis le cycle 2
+  - Homme : `testeur`
+  - Mission : tests 35cbf2be intégrés à 007/008
+  - Moyens : —
+- [007-noms-dictes](missions/007-noms-dictes.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #258 fusionnée (63cda006)
+  - Moyens : —
+- [008-resume-complet](missions/008-resume-complet.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #260 fusionnée (1ea3289b)
+  - Moyens : —
+- [009-tests-confirmation](missions/009-tests-confirmation.md) · depuis le cycle 2
+  - Homme : `testeur`
+  - Mission : tests 93291ec8 intégrés à 010
+  - Moyens : —
+- [010-confirmation-jeton](missions/010-confirmation-jeton.md) · depuis le cycle 2
+  - Homme : `dev` (opus)
+  - Mission : #259 fusionnée (1af92486), cassante
   - Moyens : —
 - [011-mesure-outils-longs](missions/011-mesure-outils-longs.md) · depuis le cycle 1
-  - Homme : `analyste` (sonnet)
-  - Mission : prêt ; tranche 012 (croiser_onf + generer_rapport à détacher)
+  - Homme : `analyste`
+  - Mission : mesure faite, a tranché 012
+  - Moyens : —
+- [013-briefs-sortants](missions/013-briefs-sortants.md) · depuis le cycle 2
+  - Homme : `archiviste`
+  - Mission : #262 fusionnée (8de5e07c) après 3 allers-retours + décision de Pascal
+  - Moyens : —
+- [014-alignement-coeur-2026-11-14](missions/014-alignement-coeur-2026-11-14.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #255 fusionnée (95d36dcf)
+  - Moyens : —
+- [015-table-familles-partagee](missions/015-table-familles-partagee.md) · depuis le cycle 2
+  - Homme : `dev`
+  - Mission : #263 fusionnée (2e25e84c)
+  - Moyens : —
+- [016-jeton-persiste](missions/016-jeton-persiste.md) · depuis le cycle 2
+  - Homme : `dev` (opus)
+  - Mission : #261 fusionnée (348ff3df)
   - Moyens : —
 
 ## Abandonné
