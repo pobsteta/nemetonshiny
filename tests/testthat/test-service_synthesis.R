@@ -119,7 +119,7 @@ test_that("project_synthesis_summary matches the Synthesis tab figures", {
   expect_identical(s$families$code, names(INDICATOR_FAMILIES))
   for (code in s$families$code) {
     col <- get_famille_col(code)
-    want <- if (col %in% names(means)) round(unname(means[[col]]), 1) else NA_real_
+    want <- if (col %in% names(means)) round(unname(means[[col]]), 2) else NA_real_
     expect_identical(s$families$score[s$families$code == code], want,
                      label = paste("score famille", code))
   }
@@ -149,4 +149,60 @@ test_that("project_synthesis_summary handles a project without indicators", {
   expect_identical(s$n_parcels, 0L)
   expect_true(all(is.na(s$families$score)))
   expect_error(project_synthesis_summary(NULL), "NULL")
+})
+
+# --- project_family_table : table unique ecran / API / MCP (mission 015) ------
+
+test_that("project_family_table gives 12 rows, 2-decimal scores, NDP and counts", {
+  .identity_enrichers()
+  p <- .synth_project(ndp_level = 1L)
+  fsf <- suppressMessages(project_family_scores(p))
+  tab <- project_family_table(p, fsf, "fr")
+
+  expect_identical(names(tab), c("code", "famille", "score", "ndp", "n_indicateurs"))
+  expect_identical(tab$code, names(INDICATOR_FAMILIES))
+  expect_true(all(tab$ndp == 1L))
+  expect_type(tab$ndp, "integer")
+  expect_type(tab$n_indicateurs, "integer")
+
+  means <- project_family_means(fsf)
+  b <- tab[tab$code == "B", ]
+  expect_identical(b$score, round(unname(means[[get_famille_col("B")]]), 2))
+  expect_identical(b$famille, INDICATOR_FAMILIES[["B"]]$name_fr)
+  # B1 present dans le projet : au moins 1 indicateur detecte ; famille sans
+  # colonne presente : repli sur la config.
+  expect_gte(b$n_indicateurs, 1L)
+  expect_identical(tab$n_indicateurs[tab$code == "S"],
+                   as.integer(length(INDICATOR_FAMILIES[["S"]]$indicators)))
+  expect_true(is.na(tab$score[tab$code == "S"]))
+  expect_false(any(is.nan(tab$score)))
+})
+
+test_that("project_family_table follows the language and falls back to fr", {
+  .identity_enrichers()
+  p <- .synth_project()
+  fsf <- suppressMessages(project_family_scores(p))
+  expect_identical(project_family_table(p, fsf, "en")$famille[1],
+                   INDICATOR_FAMILIES[[1]]$name_en)
+  expect_identical(project_family_table(p, fsf, "de")$famille[1],
+                   INDICATOR_FAMILIES[[1]]$name_fr)
+})
+
+test_that("project_family_table tolerates a non-sf project and no family_sf", {
+  p <- .synth_project()
+  p$indicators_sf <- NULL
+  tab <- project_family_table(p, NULL, "fr")
+  expect_identical(nrow(tab), 12L)
+  expect_true(all(is.na(tab$score)))
+  expect_identical(tab$n_indicateurs,
+                   vapply(INDICATOR_FAMILIES, function(f) length(f$indicators), integer(1),
+                          USE.NAMES = FALSE))
+})
+
+test_that("project_synthesis_summary$families is the shared table", {
+  .identity_enrichers()
+  p <- .synth_project(ndp_level = 2L)
+  fsf <- suppressMessages(project_family_scores(p))
+  s <- suppressMessages(project_synthesis_summary(p, "fr", family_sf = fsf))
+  expect_identical(s$families, project_family_table(p, fsf, "fr"))
 })

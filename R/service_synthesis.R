@@ -94,6 +94,65 @@ project_global_index <- function(family_means, ndp_level = 0L) {
   nemeton::compute_general_index(family_means, ndp = ndp_level)
 }
 
+#' Table of the 12 families of a project (single source for screen, API, MCP)
+#'
+#' One row per family, in the canonical order, with the same figures wherever
+#' they are shown: the Synthesis tab summary table, [project_synthesis_summary()]
+#' (hence `projet_lire()$synthese`) and the MCP `resume_projet` tool. Scores
+#' come from the core ([project_family_means()]), rounded to 2 decimals; no
+#' business logic here.
+#'
+#' `n_indicateurs` counts the indicators actually available for this project
+#' (raw or `_norm` column present once R5 from monitoring and R6/R7 from
+#' reGeneration are injected), falling back on the configured count when none
+#' is detected (also when `project$indicators_sf` is not an sf).
+#'
+#' @param project A project list, as returned by [load_project()].
+#' @param family_sf Output of [project_family_scores()] (may be `NULL`).
+#' @param language `"fr"` or `"en"` (anything else gives `"fr"`).
+#' @param means Optional output of [project_family_means()] already computed
+#'   for `family_sf` (avoids aggregating twice).
+#' @return A data.frame: `code`, `famille`, `score` (`NA` without score),
+#'   `ndp` (integer, the project's NDP on every row), `n_indicateurs`.
+#' @noRd
+project_family_table <- function(project, family_sf, language = "fr", means = NULL) {
+  fr <- !identical(language, "en")
+  means <- means %||% project_family_means(family_sf)
+  ndp_level <- project_ndp_level(project)
+
+  enr_names <- tryCatch({
+    base_sf <- project$indicators_sf
+    if (inherits(base_sf, "sf")) {
+      e <- add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project)
+      names(sf::st_drop_geometry(e))
+    } else character(0)
+  }, error = function(e) character(0))
+
+  codes <- names(INDICATOR_FAMILIES)
+  out <- data.frame(
+    code = codes,
+    famille = vapply(codes, function(code) {
+      fam <- INDICATOR_FAMILIES[[code]]
+      if (fr) fam$name_fr else fam$name_en
+    }, character(1), USE.NAMES = FALSE),
+    score = vapply(codes, function(code) {
+      col <- get_famille_col(code)
+      if (col %in% names(means)) round(unname(means[[col]]), 2) else NA_real_
+    }, numeric(1), USE.NAMES = FALSE),
+    ndp = rep(ndp_level, length(codes)),
+    n_indicateurs = vapply(codes, function(code) {
+      fam <- INDICATOR_FAMILIES[[code]]
+      cn <- fam$column_names %||% fam$indicators
+      n <- sum(vapply(cn, function(k)
+        k %in% enr_names || paste0(k, "_norm") %in% enr_names, logical(1)))
+      as.integer(if (n > 0L) n else length(fam$indicators))
+    }, integer(1), USE.NAMES = FALSE),
+    stringsAsFactors = FALSE
+  )
+  out$score[is.nan(out$score)] <- NA_real_
+  out
+}
+
 #' Serialisable synthesis of a project
 #'
 #' Same figures as the Synthesis tab (global score, 12 family scores, NDP),
@@ -106,9 +165,9 @@ project_global_index <- function(family_means, ndp_level = 0L) {
 #'   computed for this project (avoids aggregating twice).
 #' @return A list: `project_id`, `name`, `status`, `ndp_level`, `ndp_name`,
 #'   `confidence`, `global_score` (`NA` when not computed), `n_ugf`,
-#'   `n_parcels`, `updated_at`, and `families`, a data.frame with `code`,
-#'   `famille` and `score` (`NA` for a family without score), in the
-#'   canonical family order.
+#'   `n_parcels`, `updated_at`, and `families`, the data.frame of
+#'   [project_family_table()] (`code`, `famille`, `score` to 2 decimals,
+#'   `ndp`, `n_indicateurs`), in the canonical family order.
 #' @noRd
 project_synthesis_summary <- function(project, language = "fr", family_sf = NULL) {
   if (is.null(project)) cli::cli_abort("{.arg project} is NULL.")
@@ -120,20 +179,7 @@ project_synthesis_summary <- function(project, language = "fr", family_sf = NULL
   index <- project_global_index(means, ndp_level)
   ndp_info <- tryCatch(nemeton::get_ndp_level(ndp_level), error = function(e) NULL)
 
-  codes <- names(INDICATOR_FAMILIES)
-  families <- data.frame(
-    code = codes,
-    famille = vapply(codes, function(code) {
-      fam <- INDICATOR_FAMILIES[[code]]
-      if (language == "fr") fam$name_fr else fam$name_en
-    }, character(1), USE.NAMES = FALSE),
-    score = vapply(codes, function(code) {
-      col <- get_famille_col(code)
-      if (col %in% names(means)) round(unname(means[[col]]), 1) else NA_real_
-    }, numeric(1), USE.NAMES = FALSE),
-    stringsAsFactors = FALSE
-  )
-  families$score[is.nan(families$score)] <- NA_real_
+  families <- project_family_table(project, family_sf, language, means = means)
 
   meta <- project$metadata %||% list()
   list(

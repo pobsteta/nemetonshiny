@@ -1,3 +1,12 @@
+# nemetonshiny 2026.10.18.9008 (2026-11-11)
+
+Changements cassants : `projet_lire()$synthese$families$score` passe de 1 à **2 décimales** (53,3 → 53,33), comme l'écran Synthèse et `resume_projet` ; `families` gagne les colonnes `ndp` et `n_indicateurs` (ajout).
+
+## Une seule table des familles pour l'écran, l'API et le MCP (mission 015)
+
+- Nouveau helper `project_family_table(project, family_sf, language)` (`R/service_synthesis.R`) : les 12 familles avec nom, score (2 décimales), NDP et nombre d'indicateurs présents (à défaut prévus). Utilisé par le tableau de l'onglet Synthèse, par `project_synthesis_summary()` (donc `projet_lire()$synthese`) et par `mcp_resume_projet()` : plus de comptage en double ni de repli divergent quand `indicators_sf` n'est pas un sf (repli sur la config partout).
+- Test corrigé : `test-service_synthesis.R` figeait l'arrondi à 1 décimale ; il attend désormais 2 décimales.
+
 # nemetonshiny 2026.10.18.9006 (2026-11-10)
 
 Changements cassants : `updated_at` n'est pas un champ nouveau, seul son **format** change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ; `score` des familles de `resume_projet` passe à 2 décimales, comme la Synthèse. Autres champs : ajoutés.
