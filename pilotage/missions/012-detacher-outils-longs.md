@@ -84,3 +84,9 @@ plus de tâche VICTOR coupée à 600 s.
 
 - Constat (relecture 013) : sur main, `.mcp_jeton_consommer` supprime le fichier du jeton (~l.681) **avant** d'appeler la garde (~l.685) : un refus `calcul_en_cours` ou `verrou` au 2e appel tue le jeton.
 - Décision : pour `appliquer_ugf` **et** `croiser_onf`, un refus de la garde ne consomme pas le jeton. Inverser l'ordre (garde, puis suppression qui fait foi), mettre à jour CONTRAT.md § 6 bis, NEWS, et ajouter un test pour `appliquer_ugf` (verrou/calcul en cours → refus, puis jeton encore accepté).
+
+## Décisions du 2026-11-11 (Pascal), sur la relecture
+
+- Aperçu de `croiser_onf` : reste **synchrone** (Couchey 38-53 s, Marsannay 70 s, 160 s à froid en 011 : sous les 600 s de VICTOR) ; à rouvrir si le terrain dépasse 300 s.
+- `generer_rapport` **refusé** en `calcul_en_cours` pendant tout calcul, y compris lancé depuis l'application (`progress_state` / verrou), comme les outils d'écriture.
+- `etat_calcul` à `echec` : **pas d'isError** (l'outil a réussi, c'est le job qui a échoué) ; `statut = "echec"` + champs d'erreur au premier niveau.
