@@ -127,10 +127,12 @@
   }
 }
 
-# Erreur MCP classee (mission 003) : soit au premier niveau, soit dans le
-# champ `erreur` d'un etat `echec`. Rend la liste {ok, classe, code, ...}.
+# Erreur d'un job (decision de Pascal, 2026-11-11) : AU PREMIER NIVEAU de la
+# reponse d'etat_calcul, a cote de `statut` ; la forme imbriquee n'est plus
+# acceptee.
 .dt_erreur_de <- function(e) {
-  if (is.list(e$erreur) && !is.null(e$erreur$classe)) return(e$erreur)
+  expect_false(is.list(e$erreur),
+               info = "l'erreur ne doit pas etre imbriquee dans `erreur`")
   e
 }
 .dt_attend_classee <- function(x, info = "") {
@@ -169,6 +171,7 @@ test_that("generer_rapport rend un job_id tout de suite, sans attendre le travai
   e <- .dt_etat(id)
   expect_true(e$statut %in% c("en_cours", "termine", "echec"))
   expect_identical(e$job_id, jid)
+  expect_identical(e$type, "rapport")
   .dt_attendre(id)   # ne laisse pas d'enfant derriere le test
 })
 
@@ -210,6 +213,7 @@ test_that("generer_rapport : l'erreur du job sort dans etat_calcul, erreur MCP c
     skip("travail detache hors processus : le rapport reel a reussi, l'echec simule n'a pas eu lieu")
   }
   expect_identical(e$statut, "echec")
+  expect_identical(e$type, "rapport")
   .dt_attend_classee(.dt_erreur_de(e), "etat echec generer_rapport")
 })
 
@@ -267,6 +271,7 @@ test_that("croiser_onf, 2e appel : jeton consomme puis job_id immediat", {
   e <- .dt_etat(id)
   expect_true(e$statut %in% c("en_cours", "termine", "echec"))
   expect_identical(e$job_id, jid)
+  expect_identical(e$type, "onf")
 
   # Jeton consomme : le rejouer est refuse, et ne lance aucun second job.
   r2 <- .dt_lit(mcp_croiser_onf(id, jeton = jeton))
@@ -353,6 +358,7 @@ test_that("croiser_onf : l'echec du croisement sort dans etat_calcul, erreur cla
   e <- .dt_attendre(id)
   expect_identical(e$job_id, jid)
   expect_identical(e$statut, "echec")
+  expect_identical(e$type, "onf")
   x <- .dt_erreur_de(e)
   .dt_attend_classee(x, "etat echec croiser_onf")
   expect_identical(x$code, "onf_echec")
@@ -380,6 +386,98 @@ test_that("croiser_onf : le job termine ecrit le projet, etat_calcul le dit", {
   expect_identical(e$statut, "termine")
   # purger resolu TRUE (reglage du projet) : AA0002 a quitte le projet.
   expect_identical(as.character(load_parcels(id)$id), "21001000AA0001")
+})
+
+# --------------------------------------------- un seul job a la fois par projet
+# Decision de Pascal (2026-11-11) : tant qu'un job tourne (calcul, rapport ou
+# onf), tout second lancement est refuse en `calcul_en_cours`, sans job lance ;
+# pour croiser_onf avec jeton, le jeton n'est PAS consomme.
+
+.dt_refus <- function(r, info) {
+  .dt_attend_classee(r, info)
+  expect_identical(r$code, "calcul_en_cours", info = info)
+  expect_identical(r$classe, "nemetonshiny_calcul_en_cours", info = info)
+  expect_null(r$job_id, info = info)
+}
+
+test_that("etat_calcul : type calcul pour un calcul lance par lancer_calcul", {
+  skip_if_not_installed("arrow")
+  .dt_env()
+  id <- .dt_projet(calcule = FALSE)
+  local_mocked_bindings(.mcp_spawn = function(...) invisible(TRUE))
+  jid <- .dt_job_id(.dt_lit(mcp_lancer_calcul(id)), "lancer_calcul")
+  e <- .dt_etat(id)
+  expect_identical(e$job_id, jid)
+  expect_identical(e$type, "calcul")
+})
+
+test_that("rapport en cours : lancer_calcul, nouveau rapport et croiser_onf refuses", {
+  skip_if_not_installed("arrow")
+  .dt_env()
+  id <- .dt_projet()
+  etat <- .dt_etat_mock()
+  .dt_mock_onf(etat)
+  jeton <- .dt_lit(mcp_croiser_onf(id))$jeton
+  local_mocked_bindings(projet_rapport = function(...) {
+    Sys.sleep(.dt_sleep)
+    "inutile.pdf"
+  })
+  jid <- .dt_job_id(.dt_lit(mcp_generer_rapport(id)), "generer_rapport")
+  spawn <- 0L
+  local_mocked_bindings(.mcp_spawn = function(...) {
+    spawn <<- spawn + 1L
+    invisible(TRUE)
+  })
+  .dt_refus(.dt_lit(mcp_lancer_calcul(id)), "lancer_calcul pendant un rapport")
+  .dt_refus(.dt_lit(mcp_generer_rapport(id)), "second rapport")
+  .dt_refus(.dt_lit(mcp_croiser_onf(id, jeton = jeton)), "croiser_onf+jeton")
+  expect_identical(spawn, 0L)
+  expect_identical(.dt_etat(id)$job_id, jid)
+  .dt_attendre(id)
+})
+
+test_that("calcul en cours : rapport refuse, croiser_onf+jeton refuse, puis jeton encore valable", {
+  skip_if_not_installed("arrow")
+  .dt_env()
+  id <- .dt_projet()
+  etat <- .dt_etat_mock()
+  .dt_mock_onf(etat)
+  jeton <- .dt_lit(mcp_croiser_onf(id))$jeton   # apercu avant le calcul
+  local_mocked_bindings(.mcp_spawn = function(...) invisible(TRUE))
+  jcalc <- .dt_job_id(.dt_lit(mcp_lancer_calcul(id)), "lancer_calcul")
+
+  .dt_refus(.dt_lit(mcp_generer_rapport(id)), "generer_rapport pendant un calcul")
+  .dt_refus(.dt_lit(mcp_croiser_onf(id, jeton = jeton)), "croiser_onf+jeton pendant un calcul")
+  expect_identical(.dt_etat(id)$job_id, jcalc)
+  expect_identical(.dt_etat(id)$type, "calcul")
+
+  # Le calcul finit : le MEME jeton est toujours accepte (non consomme).
+  path <- get_project_path(id)
+  job <- .mcp_job_read(path)
+  job$statut <- "termine"
+  job$fin_a <- .mcp_now()
+  .mcp_job_write(path, job)
+  r <- .dt_lit(mcp_croiser_onf(id, jeton = jeton))
+  jid <- .dt_job_id(r, "jeton intact apres refus calcul_en_cours")
+  expect_false(identical(jid, jcalc))
+  expect_identical(.dt_etat(id)$type, "onf")
+  .dt_attendre(id)
+})
+
+test_that("onf en cours : tout second lancement est refuse en calcul_en_cours", {
+  skip_if_not_installed("arrow")
+  .dt_env()
+  id <- .dt_projet()
+  etat <- .dt_etat_mock()
+  .dt_mock_onf(etat)
+  jeton <- .dt_lit(mcp_croiser_onf(id))$jeton
+  etat$lent <- TRUE
+  jid <- .dt_job_id(.dt_lit(mcp_croiser_onf(id, jeton = jeton)), "croiser_onf")
+  local_mocked_bindings(.mcp_spawn = function(...) stop("ne doit pas etre lance"))
+  .dt_refus(.dt_lit(mcp_lancer_calcul(id)), "lancer_calcul pendant onf")
+  .dt_refus(.dt_lit(mcp_generer_rapport(id)), "rapport pendant onf")
+  expect_identical(.dt_etat(id)$job_id, jid)
+  .dt_attendre(id)
 })
 
 # ------------------------------------------------------------------ declaration
