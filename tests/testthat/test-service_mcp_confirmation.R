@@ -23,8 +23,10 @@
 # mesuree par base::Sys.time() (horloge simulee ci-dessous). Cles de l'apercu
 # FIXEES par Pascal (2026-11-10) : appliquer_ugf -> n_ugf_remplacees,
 # n_ugf_nouvelles ; croiser_onf -> ecartees (liste d'IDU), n_ecartees,
-# n_retenues. Tout jeton CONNU presente est CONSOMME, meme refuse (refus de lien,
-# garde rejouee) : un second essai avec les bons parametres est jeton_invalide.
+# n_retenues. Tout jeton CONNU presente a une garde levee est CONSOMME, meme
+# refuse (refus de lien) : un second essai avec les bons parametres est
+# jeton_invalide. Un refus de la GARDE (verrou, calcul en cours) ne le consomme
+# pas (2026-11-11).
 # Langue (arbitrage de 003) : seuls resume_projet et generer_rapport acceptent
 # `langue` ; les erreurs de jeton sont en FR par defaut.
 # Rouge tant que la mission 010 n'est pas fusionnee.
@@ -78,6 +80,14 @@
 }
 # Coeur ONF simule : AA0001 retenue (F1-1), AA0002 ecartee (hors ONF).
 .cf_mock_onf <- function(env = parent.frame()) {
+  # Mission 012 : l'ecriture du 2e appel part en job detache ; ici le job
+  # tourne dans CE processus (les simulations ci-dessous y sont visibles).
+  local_mocked_bindings(
+    .mcp_spawn = function(project_id, project_dir, log_path) {
+      .mcp_child_job(project_id, project_dir)
+      invisible(TRUE)
+    },
+    .env = env)
   local_mocked_bindings(
     .onf_construire = function(cad, onf, selection, cfg) {
       x <- sf::st_sf(idu = "21001000AA0001", ugf_id = "F1-1",
@@ -721,8 +731,8 @@ test_that("calcul en cours au premier appel : calcul_en_cours, pas de jeton (les
 })
 
 # Les gardes sont rejouees a la confirmation : un jeton valide ne les contourne
-# pas, et la garde qui refuse CONSOMME le jeton (la garde levee, il ne revit pas).
-test_that("un jeton valide ne contourne pas le verrou pris entre-temps ; le jeton est consomme", {
+# pas, et la garde qui refuse LAISSE le jeton valable (garde avant consommation).
+test_that("un jeton valide ne contourne pas le verrou pris entre-temps ; le jeton reste valable (garde avant consommation, 2026-11-11)", {
   skip_if_not_installed("arrow")
   .cf_env()
   id <- .cf_projet()
@@ -738,12 +748,14 @@ test_that("un jeton valide ne contourne pas le verrou pris entre-temps ; le jeto
       expect_identical(.cf_empreinte(id), avant)
     },
     lock_status = function(pid) list(holder_label = "Pascal", stale = FALSE))
-  # verrou leve, memes parametres : le jeton est mort
+  # verrou leve, memes parametres : le MEME jeton est accepte
   r <- .cf_appel("appliquer_ugf", projet = id, fichier = f, jeton = jeton)
-  .cf_expect_consomme(r, id, avant, "verrou leve")
+  expect_false(r$is_error, info = "verrou leve : jeton intact")
+  expect_true(isTRUE(r$json$ok))
+  expect_false(identical(.cf_empreinte(id), avant))
 })
 
-test_that("un jeton valide ne contourne pas un calcul lance entre-temps (croiser_onf) ; consomme", {
+test_that("un jeton valide ne contourne pas un calcul lance entre-temps (croiser_onf) ; le jeton reste valable", {
   skip_if_not_installed("arrow")
   .cf_env()
   id <- .cf_projet()
@@ -759,10 +771,11 @@ test_that("un jeton valide ne contourne pas un calcul lance entre-temps (croiser
       expect_identical(.cf_empreinte(id), avant)
     },
     progress_state_age_sec = function(id) 5)
-  # calcul termine, memes parametres : le jeton est mort
-  r <- .cf_appel("croiser_onf", projet = id, purger = TRUE, jeton = jeton)
-  .cf_expect_consomme(r, id, avant, "calcul termine")
   expect_identical(.cf_idus(id), c("21001000AA0001", "21001000AA0002"))
+  # calcul termine, memes parametres : le MEME jeton est accepte (job lance)
+  r <- .cf_appel("croiser_onf", projet = id, purger = TRUE, jeton = jeton)
+  expect_false(r$is_error, info = "calcul termine : jeton intact")
+  expect_true(nzchar(r$json$job_id))
 })
 
 # Langue (arbitrage de 003) : seuls resume_projet et generer_rapport acceptent
@@ -801,7 +814,12 @@ test_that("lecture, calcul et exports n'exigent aucun jeton (ADR 0002, perimetre
     exporter_gpkg = suppressMessages(.cf_appel("exporter_gpkg", projet = id)),
     generer_rapport = .cf_appel("generer_rapport", projet = id, synthese = "Texte."),
     annuler_calcul = .cf_appel("annuler_calcul", projet = id),
-    lancer_calcul = .cf_appel("lancer_calcul", projet = id))
+    # un seul job a la fois (mission 012) : le job du rapport, dont le spawn est
+    # simule ici, n'a pas fini ; on l'efface pour lancer le calcul.
+    lancer_calcul = {
+      unlink(.mcp_job_path(get_project_path(id)))
+      .cf_appel("lancer_calcul", projet = id)
+    })
   for (nom in names(libres)) {
     r <- libres[[nom]]
     expect_false(r$is_error, info = nom)
@@ -811,4 +829,35 @@ test_that("lecture, calcul et exports n'exigent aucun jeton (ADR 0002, perimetre
   expect_true(isTRUE(libres$exporter_gpkg$json$ok))
   expect_true(isTRUE(libres$generer_rapport$json$ok))
   expect_true(isTRUE(libres$annuler_calcul$json$ok))
+})
+
+test_that("appliquer_ugf : un refus de la garde (verrou, calcul en cours) laisse le jeton valable (2026-11-11)", {
+  skip_if_not_installed("arrow")
+  .cf_env()
+  id <- .cf_projet()
+  f <- .cf_fichier_ugf()
+  jeton <- .cf_jeton(.cf_premier(.cf_appel("appliquer_ugf", projet = id, fichier = f)))
+  expect_false(is.null(jeton), info = "pas de jeton au premier appel")
+  if (is.null(jeton)) return(invisible())
+  avant <- .cf_empreinte(id)
+  with_mocked_bindings(
+    {
+      r <- .cf_appel("appliquer_ugf", projet = id, fichier = f, jeton = jeton)
+      .cf_attend_erreur(r, "projet_verrouille", "verrou")
+    },
+    lock_status = function(pid) list(holder_label = "Pascal", stale = FALSE))
+  with_mocked_bindings(
+    {
+      r <- .cf_appel("appliquer_ugf", projet = id, fichier = f, jeton = jeton)
+      .cf_attend_erreur(r, "calcul_en_cours", "calcul en cours")
+    },
+    progress_state_age_sec = function(id) 5)
+  expect_identical(.cf_empreinte(id), avant)
+  # gardes levees : le meme jeton ecrit, une seule fois
+  r <- .cf_appel("appliquer_ugf", projet = id, fichier = f, jeton = jeton)
+  expect_false(r$is_error)
+  expect_true(isTRUE(r$json$ok))
+  expect_false(identical(.cf_empreinte(id), avant))
+  r2 <- .cf_appel("appliquer_ugf", projet = id, fichier = f, jeton = jeton)
+  .cf_attend_erreur(r2, "jeton_invalide", "rejeu")
 })

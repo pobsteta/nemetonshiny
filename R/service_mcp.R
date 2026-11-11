@@ -86,14 +86,15 @@
   action <- i18n$t(paste0("mcp_act_", def$action), detenteur = detenteur)
   # `projet`, `projet_nom`, `jeton`, `apercu`, `expire_a` : portes par
   # confirmation_requise seule
-  # (.mcp_jeton_emettre()).
-  json <- .mcp_json(Filter(Negate(is.null), list(
+  # (.mcp_jeton_emettre()). `suite` : champs ajoutes apres l'erreur (etat d'un
+  # job en echec, mission 012).
+  json <- .mcp_json(c(Filter(Negate(is.null), list(
     ok = FALSE, classe = paste0("nemetonshiny_", code), code = code,
     langue = langue, erreur = texte, action = action,
     candidats = e$candidats,
     projet = if (!is.null(e$projet_nom)) projet, projet_nom = e$projet_nom,
     jeton = e$jeton, apercu = e$apercu,
-    expire_a = e$expire_a)))
+    expire_a = e$expire_a)), e$suite))
   structure(json, mcp_erreur = TRUE)
 }
 
@@ -360,14 +361,36 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 
 .mcp_now <- function() format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
 
-#' Start the detached computation process
+#' Directory of the package sources when it is loaded with pkgload
+#'
+#' The detached process loads the same code as the server: in development
+#' (`devtools::test()`, `load_all()`) the installed package may be older.
+#' @return Path, or `NULL` for an installed package.
+#' @noRd
+.mcp_source_dev <- function() {
+  if (!requireNamespace("pkgload", quietly = TRUE)) return(NULL)
+  dev <- tryCatch(pkgload::is_dev_package("nemetonshiny"),
+                  error = function(e) FALSE)
+  if (isTRUE(dev)) getNamespaceInfo("nemetonshiny", "path")
+}
+
+#' Start the detached process of a job
 #'
 #' A fresh `Rscript`, in its own session (`setsid` when available) so it
-#' survives the end of the MCP server - one `claude -p` task per request.
+#' survives the end of the MCP server - one `claude -p` task per request. It
+#' runs [.mcp_child_job()], which reads the kind of job (`type`: calcul,
+#' rapport, onf) and its arguments in `data/compute_job.json`.
 #' @noRd
 .mcp_spawn <- function(project_id, project_dir, log_path) {
-  expr <- sprintf("nemetonshiny:::.mcp_child_compute(%s, %s)",
-                  deparse(project_id), deparse(project_dir))
+  # job_id lu dans le fichier job ecrit juste avant : l'enfant ne fait rien
+  # si le fichier a change entre-temps (deux serveurs).
+  job_id <- .mcp_job_read(dirname(dirname(log_path)))$job_id
+  expr <- sprintf("nemetonshiny:::.mcp_child_job(%s, %s, %s)",
+                  deparse(project_id), deparse(project_dir), deparse(job_id))
+  src <- .mcp_source_dev()
+  if (!is.null(src)) {
+    expr <- sprintf("pkgload::load_all(%s, quiet = TRUE); %s", deparse(src), expr)
+  }
   rscript <- file.path(R.home("bin"), "Rscript")
   if (nzchar(Sys.which("setsid"))) {
     system2("setsid", c("-f", shQuote(rscript), "-e", shQuote(expr)),
@@ -379,13 +402,49 @@ mcp_resume_projet <- function(projet, langue = "fr") {
   invisible(TRUE)
 }
 
-#' Body of the detached computation (runs in the child process)
+#' Body of a detached computation (runs in the child process)
 #'
 #' Same path as the application: `.compute_run_capped()` (memory ceiling,
 #' child log, file progress). Records its pid then its outcome in
 #' `data/compute_job.json`.
 #' @noRd
 .mcp_child_compute <- function(project_id, project_dir) {
+  .mcp_child_executer(project_id, project_dir, function(id, args) {
+    res <- .compute_run_capped(id, get_app_options())
+    if (isTRUE(res$success)) return(list(statut = "termine"))
+    if (isTRUE(res$cancelled)) return(list(statut = "annule"))
+    err <- res$error %||% res$state$errors %||% "erreur inconnue"
+    list(statut = "echec", erreur = paste(unlist(err), collapse = " ; "))
+  })
+}
+
+#' Dispatch of a detached job (runs in the child process)
+#'
+#' Reads the `type` of `data/compute_job.json`: `calcul` (default, the
+#' indicator computation), `rapport` (PDF report) or `onf` (ONF crossing,
+#' written to the project). With `job_id`, exits doing nothing when it is not
+#' the one in the job file.
+#' @noRd
+.mcp_child_job <- function(project_id, project_dir, job_id = NULL) {
+  options(nemeton.app_options = list(project_dir = project_dir))
+  path <- get_project_path(project_id)
+  job <- if (!is.null(path)) .mcp_job_read(path)
+  # Un autre job a pris la place (course entre deux serveurs) : ne rien faire.
+  if (!is.null(job_id) && !identical(as.character(job$job_id %||% ""), job_id)) {
+    return(invisible(NULL))
+  }
+  type <- job$type %||% "calcul"
+  switch(type,
+    rapport = .mcp_child_executer(project_id, project_dir, .mcp_tache_rapport),
+    onf = .mcp_child_executer(project_id, project_dir, .mcp_tache_onf),
+    .mcp_child_compute(project_id, project_dir))
+}
+
+# Squelette commun des processus detaches : enregistre le pid, execute
+# `tache(id, args)` (rend list(statut, erreur?, resultat?)), enregistre l'issue.
+# Une erreur levee devient `echec` ; sa classe `nemetonshiny_*` est gardee
+# (`erreur_code`) pour que etat_calcul la rende classee.
+.mcp_child_executer <- function(project_id, project_dir, tache) {
   options(nemeton.app_options = list(project_dir = project_dir))
   path <- get_project_path(project_id)
   if (is.null(path)) stop("Projet introuvable : ", project_id)
@@ -395,18 +454,80 @@ mcp_resume_projet <- function(projet, langue = "fr") {
   job$demarre_a <- .mcp_now()
   .mcp_job_write(path, job)
 
-  res <- tryCatch(.compute_run_capped(project_id, get_app_options()),
-                  error = function(e) list(success = FALSE, error = conditionMessage(e)))
+  res <- tryCatch(tache(project_id, job$args %||% list()), error = function(e) {
+    cls <- sub("^nemetonshiny_", "",
+               grep("^nemetonshiny_", class(e), value = TRUE))
+    list(statut = "echec",
+         erreur = gsub("\\s*\n\\s*", " ", cli::ansi_strip(conditionMessage(e))),
+         erreur_code = setdiff(cls, "erreur")[1])
+  })
   job <- .mcp_job_read(path) %||% job
-  job$statut <- if (isTRUE(res$success)) "termine"
-                else if (isTRUE(res$cancelled)) "annule" else "echec"
-  if (!isTRUE(res$success) && !isTRUE(res$cancelled)) {
-    err <- res$error %||% res$state$errors %||% "erreur inconnue"
-    job$erreur <- paste(unlist(err), collapse = " ; ")
-  }
+  job$statut <- res$statut
+  job$erreur <- res$erreur
+  job$erreur_code <- if (!is.na(res$erreur_code %||% NA)) res$erreur_code
+  job$resultat <- res$resultat
   job$fin_a <- .mcp_now()
   .mcp_job_write(path, job)
   invisible(job)
+}
+
+.mcp_tache_rapport <- function(id, args) {
+  langue <- args$langue %||% "fr"
+  f <- file.path(get_project_path(id), "exports",
+                 sprintf("rapport_%s_%s.pdf", langue, format(Sys.time(), "%Y%m%d-%H%M%S")))
+  fichier <- projet_rapport(id, f, langue = langue, synthese = args$synthese)
+  list(statut = "termine", resultat = list(fichier = fichier))
+}
+
+.mcp_tache_onf <- function(id, args) {
+  cfg <- project_onf_params(load_project_metadata(id) %||% list())
+  if (!is.null(args$purger)) cfg$purger <- isTRUE(args$purger)
+  cr <- .mcp_onf_croiser(id, cfg)
+  perimes <- .mcp_sauver_ugf(id, cr$out$projet, avec_parcelles = nrow(cr$ecartees) > 0L)
+  r <- onf_croise_resume(cr$out$tenements)
+  list(statut = "termine", resultat = Filter(Negate(is.null), list(
+    n_ugf = r$n_ugf, n_tenements = nrow(cr$out$projet$tenements),
+    n_parcelles = r$n_parcelles, n_cad = r$n_cad,
+    ecartees = if (nrow(cr$ecartees)) cr$ecartees,
+    ecart_median_m = suppressWarnings(as.numeric(cr$out$calage[["ecart_median_m"]])),
+    indicateurs_perimes = perimes)))
+}
+
+#' Refuse a launch while a background job runs on the project
+#'
+#' One job at a time per project (`data/compute_job.json`): a computation, a
+#' report or an ONF crossing in progress gives `nemetonshiny_calcul_en_cours`.
+#' Looks at the job file only, so it can run before a confirmation token is
+#' consumed.
+#' @noRd
+.mcp_garde_job <- function(id, call = rlang::caller_env()) {
+  path <- get_project_path(id)
+  if (!is.null(path) && .mcp_job_running(.mcp_job_read(path))) {
+    .api_abort("Un calcul est d\u00e9j\u00e0 en cours pour ce projet.",
+               "nemetonshiny_calcul_en_cours", call = call)
+  }
+  invisible(TRUE)
+}
+
+#' Record a job and start its detached process
+#' @return The job (list).
+#' @noRd
+.mcp_job_lancer <- function(id, type, args = list()) {
+  path <- get_project_path(id)
+  log_path <- file.path(path, "data", "compute_mcp.log")
+  job <- list(job_id = paste0(format(Sys.time(), "%Y%m%d%H%M%S"), "-",
+                              paste0(sample(letters, 4), collapse = "")),
+              type = type, args = if (length(args)) args, statut = "lancement",
+              source = "mcp", lance_a = .mcp_now(), log = log_path)
+  .mcp_job_write(path, job)
+  tryCatch(.mcp_spawn(id, get_projects_root(), log_path), error = function(e) {
+    job$statut <- "echec"
+    job$erreur <- conditionMessage(e)
+    job$fin_a <- .mcp_now()
+    .mcp_job_write(path, job)
+    stop(e)
+  })
+  job
 }
 
 #' Refuse to write into a project that is busy
@@ -617,14 +738,15 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 
 #' Consume a confirmation token before writing
 #'
-#' Second step of a write (ADR 0002). A known token is removed from the
-#' registry as soon as it is presented, whatever follows: a refused guard or a
-#' refused binding kills it too. Exception: errors raised by the caller before
-#' this function runs (unknown or ambiguous project, unreadable ONF metadata)
-#' leave the token valid. Then `garde(projet)` is replayed (its error
-#' passes through), and the token is checked: unknown, expired, or issued for
-#' another tool, project or `lien` gives `nemetonshiny_jeton_invalide`.
-#' `lien` is only evaluated after the guard.
+#' Second step of a write (ADR 0002). `garde(projet)` is replayed FIRST: its
+#' error passes through and leaves the token valid (decision of 2026-11-11).
+#' Then a known token is removed from the registry as soon as it is presented
+#' to a lifted guard, whatever follows: a refused binding kills it. Errors
+#' raised by the caller before this function runs (unknown or ambiguous
+#' project, unreadable ONF metadata) leave it valid too. The token is then
+#' checked: unknown, expired, or issued for another tool, project or `lien`
+#' gives `nemetonshiny_jeton_invalide`. `lien` is only evaluated after the guard.
+#'
 #'
 #' @param jeton Character. Token returned by [.mcp_jeton_emettre()].
 #' @param outil,projet,lien As given to [.mcp_jeton_emettre()], recomputed now.
@@ -640,19 +762,22 @@ mcp_resume_projet <- function(projet, langue = "fr") {
   # partir d'une chaine arbitraire (\u00ab ../x \u00bb).
   if (!is.null(cle) && !grepl("^[0-9a-z]{24}$", cle)) cle <- NULL
   dir <- .mcp_jetons_dir()
+  # La garde passe AVANT la consommation (2026-11-11) : un refus (calcul en
+  # cours, verrou) laisse le jeton valable ; il ne meurt que presente a une
+  # garde levee. Un jeton inconnu ou deja utilise n'a rien a preserver : la
+  # garde ne le concerne pas, la reponse est jeton_invalide.
+  f <- if (!is.null(cle)) .mcp_jeton_fichier(cle, dir)
+  connu <- !is.null(f) && file.exists(f)
+  if (connu && is.function(garde)) garde(projet)
   entree <- NULL
-  if (!is.null(cle)) {
-    f <- .mcp_jeton_fichier(cle, dir)
-    if (file.exists(f)) {
-      entree <- .mcp_jeton_lire(f)
-      # Usage unique entre processus : la suppression fait foi. Si deux
-      # serveurs lisent le meme jeton, un seul file.remove() rend TRUE ;
-      # l'autre le voit comme deja utilise.
-      if (!isTRUE(suppressWarnings(file.remove(f)))) entree <- NULL
-    }
+  if (connu) {
+    entree <- .mcp_jeton_lire(f)
+    # Usage unique entre processus : la suppression fait foi. Si deux
+    # serveurs lisent le meme jeton, un seul file.remove() rend TRUE ;
+    # l'autre le voit comme deja utilise.
+    if (!isTRUE(suppressWarnings(file.remove(f)))) entree <- NULL
   }
   .mcp_jetons_purger(Sys.time(), dir)
-  if (is.function(garde)) garde(projet)
   motif <- if (is.null(entree)) {
     "Jeton inconnu ou d\u00e9j\u00e0 utilis\u00e9."
   } else if (as.numeric(Sys.time()) > entree$expire) {
@@ -685,16 +810,9 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 mcp_lancer_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
-    etat <- .mcp_garde_ecriture(id)
-    path <- etat$chemin
-    log_path <- file.path(path, "data", "compute_mcp.log")
-    job <- list(job_id = paste0(format(Sys.time(), "%Y%m%d%H%M%S"), "-",
-                                paste0(sample(letters, 4), collapse = "")),
-                statut = "lancement", source = "mcp", lance_a = .mcp_now(),
-                log = log_path)
-    .mcp_job_write(path, job)
-    .mcp_spawn(id, get_projects_root(), log_path)
-    list(projet = id, job_id = job$job_id, log = log_path,
+    .mcp_garde_ecriture(id)
+    job <- .mcp_job_lancer(id, "calcul")
+    list(projet = id, job_id = job$job_id, type = "calcul", log = job$log,
          message = "Calcul lanc\u00e9 en t\u00e2che de fond ; suivre avec etat_calcul.")
   })
 }
@@ -706,23 +824,38 @@ mcp_lancer_calcul <- function(projet) {
 
 #' @noRd
 mcp_etat_calcul <- function(projet) {
+  # L'outil a reussi, c'est le JOB qui a echoue : `ok = false` et les champs
+  # d'erreur au premier niveau, mais sans marquage isError.
+  r <- .mcp_etat_calcul(projet)
+  # Les vraies erreurs d'outil (projet introuvable ou ambigu...) restent
+  # marquees : seul l'etat `echec` d'un job perd le marquage.
+  statut <- tryCatch(jsonlite::fromJSON(as.character(r))$statut,
+                     error = function(e) NULL)
+  if (identical(statut, "echec")) attr(r, "mcp_erreur") <- NULL
+  r
+}
+
+.mcp_etat_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
     path <- get_project_path(id)
     job <- .mcp_job_read(path)
     statut <- job$statut %||% "aucun"
+    # Lance mais pas encore enregistre par l'enfant : c'est deja en cours.
+    if (identical(statut, "lancement") && .mcp_job_running(job)) statut <- "en_cours"
     if (statut %in% c("lancement", "en_cours") && !.mcp_job_running(job)) {
       statut <- "echec"
-      job$erreur <- "Le processus de calcul s'est arr\u00eat\u00e9 sans terminer."
+      job$erreur <- "Le processus s'est arr\u00eat\u00e9 sans terminer."
+      job$erreur_code <- NULL
     }
     prog <- read_progress_state(id)
-    list(
+    etat <- list(
       projet = id,
       statut = statut,
+      type = if (!is.null(job)) job$type %||% "calcul",
       job_id = job$job_id,
       lance_a = job$lance_a,
       fin_a = job$fin_a,
-      erreur = job$erreur,
       phase = prog$status,
       progression = prog$progress,
       progression_max = prog$progress_max,
@@ -731,6 +864,18 @@ mcp_etat_calcul <- function(projet) {
       tache = prog$current_task,
       log = if (identical(statut, "echec")) .mcp_log_tail(job$log)
     )
+    if (identical(statut, "echec")) {
+      # Erreur d'un job : champs MCP habituels au premier niveau, a cote de
+      # `statut` (decision du 2026-11-11). Meme forme que toute erreur d'outil.
+      code <- as.character(job$erreur_code %||% "")[1]
+      if (!code %in% names(.MCP_ERREURS)) code <- "calcul_echec"
+      stop(structure(class = c(paste0("nemetonshiny_", code), "nemetonshiny_erreur",
+                               "error", "condition"),
+                     list(message = as.character(job$erreur %||% "erreur inconnue")[1],
+                          call = NULL, suite = Filter(Negate(is.null), etat))))
+    }
+    if (identical(statut, "termine")) etat <- c(etat, job$resultat)
+    etat
   })
 }
 
@@ -738,8 +883,15 @@ mcp_etat_calcul <- function(projet) {
 mcp_annuler_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
-    cancel_computation(id)
-    list(projet = id, message = "Annulation demand\u00e9e ; le calcul s'arr\u00eate au prochain indicateur.")
+    job <- .mcp_job_read(get_project_path(id))
+    if (.mcp_job_running(job) && (job$type %||% "calcul") != "calcul") {
+      # Un rapport ou un croisement ONF n'a pas de point d'arret : le dire.
+      list(projet = id, annule = FALSE, type = job$type,
+        message = "Ce travail (rapport ou croisement ONF) ne peut pas \u00eatre annul\u00e9 ; attendre sa fin, suivre avec etat_calcul.")
+    } else {
+      cancel_computation(id)
+      list(projet = id, message = "Annulation demand\u00e9e ; le calcul s'arr\u00eate au prochain indicateur.")
+    }
   })
 }
 
@@ -975,6 +1127,27 @@ mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE, jeton = NULL) {
   })
 }
 
+#' Crossing of a project with the ONF parcels, without writing
+#'
+#' Shared by the preview (synchronous) and the detached job.
+#' @return `list(p, out, ecartees)`; aborts `nemetonshiny_onf_echec` when the
+#'   crossing is not `ok`.
+#' @noRd
+.mcp_onf_croiser <- function(id, cfg) {
+  p <- .mcp_projet_ugf(id)
+  out <- onf_croise_tache(p, cfg)
+  if (!identical(out$status, "ok")) {
+    msg <- switch(out$status,
+      unavailable = "Parcellaire ONF ou fichier DGFiP injoignable.",
+      empty       = "Aucune for\u00eat publique sur l'emprise du projet.",
+      no_overlap  = "Aucun recoupement entre le parcellaire ONF et les parcelles du projet.",
+      "Croisement ONF impossible.")
+    .api_abort(c(msg, i = "Le projet n'a pas \u00e9t\u00e9 modifi\u00e9."),
+               "nemetonshiny_onf_echec", statut = out$status)
+  }
+  list(p = p, out = out, ecartees = out$ecartees %||% .onf_ecartees_vide())
+}
+
 #' Cross a project with the ONF forest parcels
 #'
 #' Same crossing as the application's button (`nemeton::construire_ugf_onf()`,
@@ -984,17 +1157,21 @@ mcp_appliquer_ugf <- function(projet, fichier, remplacer = TRUE, jeton = NULL) {
 #' Two steps (ADR 0002): without `jeton`, the crossing runs and nothing is
 #' written; the error `nemetonshiny_confirmation_requise` carries the preview
 #' (`ecartees`, the IDU leaving the project, `n_ecartees`, `n_retenues`) and a
-#' token. With the token, the guards are replayed, the token is consumed and
-#' the crossing is computed again, then written. The token is bound to the
-#' project's parcels and to every resolved ONF setting (`purger` included).
+#' token. With the token, no job must be running on the project (else
+#' `calcul_en_cours`, the token is kept), the guards are replayed, the token is
+#' consumed and the crossing is written by a detached job (mission 012): the
+#' call returns a `job_id` at once, followed with `etat_calcul` (`type` onf).
+#' The token is bound to the project's parcels and to every resolved ONF
+#' setting (`purger` included).
 #'
 #' @param projet Project id or name.
 #' @param purger Logical or `NULL`. `TRUE` keeps only the parcels under the
 #'   forest regime (the others leave the project), `FALSE` keeps them all,
 #'   `NULL` follows the project's setting.
 #' @param jeton Character or `NULL`. Token of the first call.
-#' @return JSON: `ok`, `projet`, `n_ugf`, `n_tenements`, `n_parcelles`,
-#'   `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes`.
+#' @return JSON: with `jeton`, `ok`, `projet`, `job_id`, `type`; the result
+#'   (`n_ugf`, `n_tenements`, `n_parcelles`, `n_cad`, `ecartees`,
+#'   `ecart_median_m`, `indicateurs_perimes`) comes from `etat_calcul`.
 #' @noRd
 mcp_croiser_onf <- function(projet, purger = NULL, jeton = NULL) {
   .mcp_call({
@@ -1004,47 +1181,40 @@ mcp_croiser_onf <- function(projet, purger = NULL, jeton = NULL) {
     cfg <- project_onf_params(load_project_metadata(id) %||% list())
     if (!is.null(purger)) cfg$purger <- isTRUE(purger)
     if (!is.null(jeton)) {
+      # La garde (job en cours compris) passe avant la consommation du jeton.
       .mcp_jeton_consommer(jeton, "croiser_onf", id, .mcp_empreinte(id, onf = cfg))
-    }
-    p <- .mcp_projet_ugf(id)
-    out <- onf_croise_tache(p, cfg)
-    if (!identical(out$status, "ok")) {
-      msg <- switch(out$status,
-        unavailable = "Parcellaire ONF ou fichier DGFiP injoignable.",
-        empty       = "Aucune for\u00eat publique sur l'emprise du projet.",
-        no_overlap  = "Aucun recoupement entre le parcellaire ONF et les parcelles du projet.",
-        "Croisement ONF impossible.")
-      .api_abort(c(msg, i = "Le projet n'a pas \u00e9t\u00e9 modifi\u00e9."),
-                 "nemetonshiny_onf_echec", statut = out$status)
-    }
-    ecartees <- out$ecartees %||% .onf_ecartees_vide()
-    if (is.null(jeton)) {
+      job <- .mcp_job_lancer(id, "onf", args = list(purger = purger))
+      list(projet = id, job_id = job$job_id, type = "onf", log = job$log,
+                  message = "Croisement ONF lanc\u00e9 en t\u00e2che de fond ; suivre avec etat_calcul.")
+    } else {
+      cr <- .mcp_onf_croiser(id, cfg)
       # purger resolu FALSE : rien n'est ecarte (arbitrage du 2026-11-10).
-      idu <- if (isTRUE(cfg$purger)) as.character(ecartees$idu) else character(0)
+      idu <- if (isTRUE(cfg$purger)) as.character(cr$ecartees$idu) else character(0)
       .mcp_jeton_emettre("croiser_onf", id, .mcp_empreinte(id, onf = cfg), list(
         ecartees = I(idu), n_ecartees = length(idu),
-        n_retenues = nrow(p$parcels) - length(idu)))
+      n_retenues = nrow(cr$p$parcels) - length(idu)))
     }
-    perimes <- .mcp_sauver_ugf(id, out$projet, avec_parcelles = nrow(ecartees) > 0L)
-    r <- onf_croise_resume(out$tenements)
-    list(projet = id, n_ugf = r$n_ugf, n_tenements = nrow(out$projet$tenements),
-         n_parcelles = r$n_parcelles, n_cad = r$n_cad,
-         ecartees = if (nrow(ecartees)) ecartees,
-         ecart_median_m = suppressWarnings(as.numeric(out$calage[["ecart_median_m"]])),
-         indicateurs_perimes = perimes)
   })
 }
 
 # ---------------------------------------------------------------- exports
 
+#' Write a project's PDF report in a detached job
+#'
+#' Measured at 49 s once warm and 220 s on a fresh process (mission 011), so it
+#' runs like `lancer_calcul`: returns a `job_id` at once; follow with
+#' `etat_calcul` (`type` rapport); the file path comes back there.
 #' @noRd
 mcp_generer_rapport <- function(projet, langue = "fr", synthese = NULL) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
     langue <- langue %||% "fr"
-    f <- file.path(get_project_path(id), "exports",
-                   sprintf("rapport_%s_%s.pdf", langue, format(Sys.time(), "%Y%m%d-%H%M%S")))
-    list(projet = id, fichier = projet_rapport(id, f, langue = langue, synthese = synthese))
+    # Meme critere que les ecritures : job, calcul de l'application, verrou.
+    .mcp_garde_ecriture(id)
+    job <- .mcp_job_lancer(id, "rapport",
+                           args = list(langue = langue, synthese = synthese))
+    list(projet = id, job_id = job$job_id, type = "rapport", log = job$log,
+         message = "Rapport lanc\u00e9 en t\u00e2che de fond ; suivre avec etat_calcul.")
   }, langue = langue)
 }
 
@@ -1107,17 +1277,17 @@ mcp_tools <- function() {
     ellmer::tool(.mcp_marquer(mcp_etat_calcul), name = "etat_calcul",
       annotations = ellmer::tool_annotations(read_only_hint = TRUE,
         destructive_hint = FALSE, idempotent_hint = TRUE),
-      description = "State of a project's background computation: status (en_cours, termine, echec, annule, aucun), progress, current task, error and log tail on failure.",
+      description = "State of a project's background job (computation, report or ONF crossing, as lancer_calcul, generer_rapport and croiser_onf start them; one job at a time per project): type (calcul, rapport, onf), job_id, status (en_cours, termine, echec, annule, aucun), progress, current task; when finished the result (report file path, ONF crossing summary); on failure the classified error fields next to the status and the log tail.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_annuler_calcul), name = "annuler_calcul",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,
         destructive_hint = FALSE, idempotent_hint = TRUE),
-      description = "Ask a project's running computation to stop.",
+      description = "Ask a project's running indicator computation to stop. A report or an ONF crossing cannot be cancelled: the answer says so (annule false); wait and follow with etat_calcul.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_generer_rapport), name = "generer_rapport",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,
         destructive_hint = FALSE, idempotent_hint = TRUE),
-      description = "Write the PDF report of a computed project into its exports folder and return the file path.",
+      description = "Write the PDF report of a computed project into its exports folder. Runs in the background (about one to four minutes): returns a job_id at once; follow with etat_calcul, which gives the file path when the status is termine. Refused (calcul_en_cours) while another job runs on the project.",
       arguments = list(projet = projet_arg,
                        langue = t("'fr' or 'en' (default 'fr').", required = FALSE),
                        synthese = t("Optional synthesis comment (Markdown).", required = FALSE))),
@@ -1137,7 +1307,7 @@ mcp_tools <- function() {
     ellmer::tool(.mcp_marquer(mcp_croiser_onf), name = "croiser_onf",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,
         destructive_hint = TRUE, idempotent_hint = TRUE),
-      description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. About 15 s per commune. Two steps: the first call writes nothing and returns a preview (parcels leaving the project) and a token; the write needs the token. Computed indicators become outdated.",
+      description = "Build the UGF of a project from the ONF forest parcels warped onto the cadastre, each UGF carrying its ONF forest and parcel number. Two steps: the first call writes nothing and returns a preview (parcels leaving the project) and a token; the second call, with the token, starts the crossing in the background and returns a job_id at once (follow with etat_calcul, which gives the summary when termine; calcul_en_cours, token kept, if another job runs on the project). Computed indicators become outdated.",
       arguments = list(projet = projet_arg,
                        purger = ellmer::type_boolean("TRUE: drop the parcels outside the forest regime (private, or little covered by the ONF). FALSE: keep them all. Default: the project's setting.", required = FALSE),
                        jeton = jeton_arg)),

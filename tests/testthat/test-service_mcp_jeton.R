@@ -85,7 +85,7 @@ test_that("emettre purge les jetons perimes du registre", {
   .jt_retirer(neuf)
 })
 
-test_that("consommer : la garde est rejouee, son erreur passe, le jeton est consomme, le lien n'est pas evalue", {
+test_that("consommer : la garde est rejouee d'abord, son erreur passe, le jeton reste valable, le lien n'est pas evalue", {
   j <- .jt_emettre()$jeton
   vu <- NULL
   evalue <- FALSE
@@ -99,6 +99,8 @@ test_that("consommer : la garde est rejouee, son erreur passe, le jeton est cons
   expect_s3_class(e, "nemetonshiny_projet_verrouille")
   expect_identical(vu, "p1")
   expect_false(evalue)
+  # Garde avant consommation (2026-11-11) : le jeton n'est pas mort.
+  expect_true(.jt_sans_garde(j))
   expect_s3_class(.jt_sans_garde(j), "nemetonshiny_jeton_invalide")
 })
 

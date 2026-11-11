@@ -18,14 +18,14 @@ par `NEMETON_PROJECT_DIR` (sinon le dossier par défaut de l'application).
 | Outil | Rôle | Écrit |
 |-------|------|-------|
 | `lister_projets` | projets (id, nom, statut, indicateurs, à jour) | non |
-| `resume_projet` | score global, NDP, confiance, 12 familles | non |
+| `resume_projet` | tout l'écran Synthèse : score global, NDP, confiance, 12 familles (score, NDP, nombre d'indicateurs), `description`, dates (`created_at`, `updated_at`, `calcule_le`, ISO 8601, Europe/Paris), `chm_suspect`, `chm_suspect_max` | non |
 | `lancer_calcul` | calcul complet en tâche de fond ; rend la main aussitôt | oui |
-| `etat_calcul` | statut, progression, erreur et fin du journal en cas d'échec | non |
-| `annuler_calcul` | demande l'arrêt du calcul en cours | signal d'arrêt |
-| `generer_rapport` | PDF dans `exports/` du projet | le fichier |
+| `etat_calcul` | le **job de fond** du projet : `type` (`calcul`, `rapport`, `onf`), `job_id`, statut, progression ; à la fin le résultat (chemin du rapport, résumé du croisement ONF) ; en cas d'échec les champs d'erreur classée à côté de `statut`, et la fin du journal | non |
+| `annuler_calcul` | demande l'arrêt du calcul en cours ; un rapport ou un croisement ONF n'est pas annulable (réponse `annule = false`) | signal d'arrêt |
+| `generer_rapport` | PDF dans `exports/` du projet, **en tâche de fond** : rend un `job_id` aussitôt (49 s à chaud, 220 s sur un process neuf) ; le chemin du fichier arrive par `etat_calcul` | le fichier |
 | `exporter_gpkg` | GeoPackage des résultats dans `exports/` | le fichier |
 | `appliquer_ugf` | remplace les UGF par celles d'un fichier de tènements (GeoPackage/GeoJSON) ; les indicateurs calculés deviennent périmés | oui, **modifie le projet** |
-| `croiser_onf` | construit les UGF depuis les parcelles forestières ONF recalées sur le cadastre ; `purger` : `TRUE` retire les parcelles hors régime forestier, `FALSE` les garde toutes, défaut = réglage du projet ; les indicateurs calculés deviennent périmés | oui, **modifie le projet** |
+| `croiser_onf` | construit les UGF depuis les parcelles forestières ONF recalées sur le cadastre ; `purger` : `TRUE` retire les parcelles hors régime forestier, `FALSE` les garde toutes, défaut = réglage du projet ; les indicateurs calculés deviennent périmés ; l'aperçu (1er appel) reste synchrone (38 à 70 s mesurés, jusqu'à ~160 s à froid), l'écriture (2e appel avec `jeton`) part **en tâche de fond** et rend un `job_id` aussitôt, suivi par `etat_calcul` | oui, **modifie le projet** |
 | `url_app` | URL `http://127.0.0.1:<port>/?project=…&tab=…` | non |
 
 Un projet se désigne par son id **ou** par son nom (casse et accents
@@ -108,6 +108,18 @@ que l'application. Il écrit `data/compute_job.json` (statut, pid, erreur) et
 - le projet a été créé avant la version 1.0.0 (il n'est pas repris : le recréer).
 
 `etat_calcul` signale `echec` quand le processus a disparu sans terminer.
+
+## Un seul job à la fois par projet
+
+`lancer_calcul`, `generer_rapport` et `croiser_onf` (2e appel) partagent
+`data/compute_job.json` : tant qu'un job tourne (ou qu'un calcul de l'application
+est en cours, ou le projet verrouillé), un second lancement est refusé
+en `calcul_en_cours` (action : attendre, suivre avec `etat_calcul`). Pour
+`croiser_onf`, le jeton n'est **pas** consommé par ce refus, ni par un refus de
+verrou : la garde passe avant la consommation, le même jeton reste valable
+une fois la garde levée. L'échec d'un job sort dans `etat_calcul` :
+`statut = "echec"` et `classe`, `code`, `langue`, `erreur`, `action` au premier
+niveau, sans marquage `isError` (l'outil a réussi, c'est le job qui a échoué).
 
 ## Ouvrir l'application
 
