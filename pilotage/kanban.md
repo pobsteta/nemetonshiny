@@ -28,13 +28,14 @@ _(vide)_
 
 ## Planifié
 
-- [012-detacher-outils-longs](missions/012-detacher-outils-longs.md) · depuis le cycle 2
-  - Homme : `testeur` puis `dev` (sonnet)
-  - Mission : PR #264 (e4513baf, cassante) relue « prêt », CI en cours, attend Pascal ; essai terrain « rapport de Couchey »
-  - Moyens : —
+_(vide)_
 
 ## Terminé
 
+- [012-detacher-outils-longs](missions/012-detacher-outils-longs.md) · depuis le cycle 2
+  - Homme : `testeur` puis `dev` (sonnet)
+  - Mission : #264 fusionnée (5bbfb093), cassante
+  - Moyens : —
 - [001-contrat-nemetonmcp](missions/001-contrat-nemetonmcp.md) · depuis le cycle 2
   - Homme : `dev`
   - Mission : #253 fusionnée (46eee94b)
@@ -117,3 +118,4 @@ l'inscrit avec ce qu'elle nous apprend._
 ```
 
 - cycle 1 · contrat nemetonshiny → nemetonmcp (CONTRAT.md § 6 bis + test de présence/signature, README MCP à 10 outils, PR #253) · pour le mainteneur de nemetonmcp et les utilisateurs de VICTOR/AIGORA · première livraison : un renommage casse la CI de l'app au lieu de VICTOR en production ; mauvaise nouvelle associée : rien encore de sensible dans AIGORA (une erreur y passe toujours pour un succès, cycle 2) et CI rouge par dérive du cœur (levée par #255)
+- cycle 2 · pilotage vocal sûr : noms dictés de travers retrouvés, aucune écriture sans « oui » (jeton qui survit entre deux tâches VICTOR), resume_projet = écran Synthèse, outils longs en tâche de fond, 4 briefs vers nemetonmcp/aigora/victor (PR #256-#264) · pour Pascal et les utilisateurs de VICTOR/AIGORA · le cycle 1 livrait un contrat ; celui-ci livre des comportements essayables à la voix (essai terrain encore à faire)
