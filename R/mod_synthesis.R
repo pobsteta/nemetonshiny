@@ -539,48 +539,15 @@ mod_synthesis_server <- function(id, app_state) {
       if (is.null(sf_data)) return(NULL)
 
       lang <- app_state$language
-      families <- INDICATOR_FAMILIES
-      codes <- names(families)
 
-      # " Nb indicateurs " = indicateurs reellement ACCESSIBLES pour ce projet
-      # (coherent avec la vue Familles, qui n'affiche que le present), et non la
-      # taille theorique de la config. Pour la famille R, cela inclut R5
-      # (alertes de suivi) et R6/R7 (resultat reGeneration) des qu'ils existent.
-      project <- app_state$current_project
-      enr_names <- tryCatch({
-        base_sf <- project$indicators_sf
-        if (inherits(base_sf, "sf")) {
-          e <- add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project)
-          names(sf::st_drop_geometry(e))
-        } else names(project_indicators() %||% list())
-      }, error = function(e) character(0))
-      present_count <- function(fam) {
-        cn <- fam$column_names %||% fam$indicators
-        n <- sum(vapply(cn, function(c)
-          c %in% enr_names || paste0(c, "_norm") %in% enr_names, logical(1)))
-        if (n > 0L) n else length(fam$indicators)   # repli : config si rien detecte
-      }
-
-      # Build summary data.frame (scores du coeur, ponderes par la surface)
-      moyennes <- project_family_means(sf_data)
-      rows <- lapply(codes, function(code) {
-        col_name <- get_famille_col(code)
-        fam <- families[[code]]
-        fam_name <- if (lang == "fr") fam$name_fr else fam$name_en
-
-        score <- if (col_name %in% names(moyennes)) unname(moyennes[[col_name]]) else NA_real_
-
-        data.frame(
-          Family = fam_name,
-          Code = code,
-          Score = round(score, 2),
-          NDP = as.integer(app_state$current_project$metadata$ndp_level %||% 0L),
-          Indicators = present_count(fam),
-          stringsAsFactors = FALSE
-        )
-      })
-
-      result <- do.call(rbind, rows)
+      # Table partagee avec l'API et le MCP (service_synthesis.R) : memes
+      # scores (2 decimales), NDP et nombre d'indicateurs presents.
+      tab <- project_family_table(app_state$current_project, sf_data, lang)
+      result <- data.frame(
+        Family = tab$famille, Code = tab$code, Score = tab$score,
+        NDP = tab$ndp, Indicators = tab$n_indicateurs,
+        stringsAsFactors = FALSE
+      )
 
       # Rename columns for display
       names(result) <- c(
