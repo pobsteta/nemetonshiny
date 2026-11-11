@@ -67,3 +67,9 @@ plus de tâche VICTOR coupée à 600 s.
 - Outils à détacher : `croiser_onf` (79-160 s, jamais sous 60 s) et `generer_rapport` (49 s en régime établi, 220 s au premier appel d'un process neuf — tuiles `maptiles` en cache dans `tempdir()`).
 - Modèle : `lancer_calcul` / `etat_calcul`. Moyens : oui/oui/**oui** (la mesure est faite).
 - Chiffres : journal du 2026-11-10 ; données brutes `/tmp/claude-1000/-home-pascal-dev-nemetonshiny/dd84f686-3feb-4ed0-97c1-7db1cc6e0c3d/scratchpad/bench/resultats.tsv` (scratchpad, non durable).
+
+## Décision du 2026-11-11 (Pascal) : croiser_onf détaché et jeton
+
+- Le 2e appel (avec `jeton`) valide et consomme le jeton, lance le croisement en tâche de fond et rend **tout de suite un `job_id`** ; l'avancement se suit par `etat_calcul`. Le 1er appel (aperçu) reste synchrone.
+- À mesurer et rapporter : la durée de l'aperçu de `croiser_onf` (s'il refait le croisement complet, il dépasse 60 s et la décision remonte à Pascal).
+- Ordre : `testeur` d'abord (tests d'acceptation sans lire le code), puis `dev` après la fusion de 016 (#261, même fichier `R/service_mcp.R`). Version du dev : à fixer au lancement.
