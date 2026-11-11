@@ -206,3 +206,38 @@ test_that("project_synthesis_summary$families is the shared table", {
   s <- suppressMessages(project_synthesis_summary(p, "fr", family_sf = fsf))
   expect_identical(s$families, project_family_table(p, fsf, "fr"))
 })
+
+test_that("mod_synthesis summary_table shows the shared family table", {
+  skip_if_not_installed("xml2")
+  .identity_enrichers()
+  p <- .synth_project(ndp_level = 1L)
+  fsf <- suppressMessages(project_family_scores(p))
+  want <- project_family_table(p, fsf, "fr")
+
+  app_state <- shiny::reactiveValues(current_project = p, language = "fr",
+                                     family_comments = NULL)
+  res <- new.env()
+  suppressMessages(suppressWarnings(shiny::testServer(
+    mod_synthesis_server, args = list(app_state = app_state),
+    { res$html <- as.character(output$summary_table) }
+  )))
+  html <- res$html
+  expect_false(is.null(html))
+
+  doc <- xml2::read_html(html)
+  rows <- xml2::xml_find_all(doc, "//tbody/tr")
+  expect_length(rows, 12L)
+  cell <- function(r, i) trimws(xml2::xml_text(xml2::xml_find_all(r, "./td")[[i]]))
+  got <- data.frame(
+    code = vapply(rows, cell, "", i = 2L),
+    score = suppressWarnings(as.numeric(vapply(rows, cell, "", i = 3L))),
+    ndp = as.integer(vapply(rows, cell, "", i = 4L)),
+    n = as.integer(vapply(rows, cell, "", i = 5L)),
+    stringsAsFactors = FALSE
+  )
+  expect_identical(got$code, want$code)
+  expect_equal(got$score, want$score, tolerance = 1e-8)
+  expect_identical(got$ndp, want$ndp)
+  expect_identical(got$n, want$n_indicateurs)
+  expect_identical(vapply(rows, cell, "", i = 1L), want$famille)
+})

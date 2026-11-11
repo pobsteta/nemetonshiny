@@ -307,10 +307,10 @@ mcp_resume_projet <- function(projet, langue = "fr") {
     s <- p$synthese
     meta <- p$projet$metadata %||% list()
 
-    # Meme table que la Synthese et `projet_lire()$synthese` (helper unique).
-    fam <- project_family_table(p$projet, p$familles, langue %||% "fr")
+    # `s$families` est deja la table partagee (project_family_table, via
+    # project_synthesis_summary) : meme table que la Synthese, rien a recalculer.
+    s$familles <- s$families
     s$families <- NULL
-    s$familles <- fam
     s$description <- meta$description %||% NA_character_
     s$created_at <- .mcp_iso_paris(meta$created_at %||% NA_character_)
     s$updated_at <- .mcp_iso_paris(meta$updated_at %||% NA_character_)
