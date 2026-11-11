@@ -79,3 +79,8 @@ plus de tâche VICTOR coupée à 600 s.
 1. Suivi : `etat_calcul(projet)` inchangé ; la réponse dit quel travail tourne (`type` : calcul, rapport, onf) et son `job_id`.
 2. Erreur d'un job : au premier niveau, `statut = "echec"` + champs d'erreur MCP habituels (`classe`, `code`, `langue`, `erreur`, `action`) à côté de `statut`.
 3. Un seul job à la fois par projet (`data/compute_job.json`) : un second lancement (calcul, rapport ou ONF) est refusé en `calcul_en_cours` (action : attendre, suivre avec `etat_calcul`) ; pour `croiser_onf`, le jeton n'est alors **pas** consommé.
+
+## Décision du 2026-11-11 (Pascal) : la garde avant la consommation, partout
+
+- Constat (relecture 013) : sur main, `.mcp_jeton_consommer` supprime le fichier du jeton (~l.681) **avant** d'appeler la garde (~l.685) : un refus `calcul_en_cours` ou `verrou` au 2e appel tue le jeton.
+- Décision : pour `appliquer_ugf` **et** `croiser_onf`, un refus de la garde ne consomme pas le jeton. Inverser l'ordre (garde, puis suppression qui fait foi), mettre à jour CONTRAT.md § 6 bis, NEWS, et ajouter un test pour `appliquer_ugf` (verrou/calcul en cours → refus, puis jeton encore accepté).
