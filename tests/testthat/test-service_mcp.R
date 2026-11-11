@@ -267,11 +267,22 @@ test_that("generer_rapport and exporter_gpkg write into the project's exports", 
   skip_if_not_installed("arrow")
   .mcp_env()
   id <- .mcp_projet()
-  local_mocked_bindings(generate_report_pdf = function(project, family_scores, output_file, ...) {
-    writeLines("pdf", output_file); output_file
-  })
-  r <- .lit(mcp_generer_rapport("dabo", "fr", "Texte."))
-  expect_true(r$ok)
+  local_mocked_bindings(
+    generate_report_pdf = function(project, family_scores, output_file, ...) {
+      writeLines("pdf", output_file); output_file
+    },
+    # Mission 012 : le rapport est un job detache ; ici il tourne dans CE
+    # processus, puis etat_calcul rend le fichier.
+    .mcp_spawn = function(project_id, project_dir, log_path) {
+      .mcp_child_job(project_id, project_dir)
+      invisible(TRUE)
+    })
+  j <- .lit(mcp_generer_rapport("dabo", "fr", "Texte."))
+  expect_true(j$ok)
+  expect_identical(j$type, "rapport")
+  r <- .lit(mcp_etat_calcul(id))
+  expect_identical(r$statut, "termine")
+  expect_identical(r$job_id, j$job_id)
   expect_true(file.exists(r$fichier))
   expect_identical(dirname(r$fichier), normalizePath(file.path(get_project_path(id), "exports")))
   g <- .lit(suppressMessages(mcp_exporter_gpkg(id)))
@@ -405,8 +416,19 @@ test_that("croiser_onf applies the core's crossing and lists the discarded parce
         couverture_onf = c(1, 0))
       x
     },
-    onf_load_parcelles = function(...) list(status = "ok", parcelles = NULL))
-  r <- .lit(.mcp_confirmer(mcp_croiser_onf, id, purger = TRUE))
+    onf_load_parcelles = function(...) list(status = "ok", parcelles = NULL),
+    # Mission 012 : le 2e appel lance un job detache ; ici il tourne dans CE
+    # processus, puis etat_calcul rend le resume du croisement.
+    .mcp_spawn = function(project_id, project_dir, log_path) {
+      .mcp_child_job(project_id, project_dir)
+      invisible(TRUE)
+    })
+  j <- .lit(.mcp_confirmer(mcp_croiser_onf, id, purger = TRUE))
+  expect_true(j$ok)
+  expect_identical(j$type, "onf")
+  r <- .lit(mcp_etat_calcul(id))
+  expect_identical(r$statut, "termine")
+  expect_identical(r$job_id, j$job_id)
   expect_identical(vu, "foret")
   expect_true(r$ok)
   expect_identical(r$n_ugf, 1L)

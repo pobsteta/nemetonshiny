@@ -1,3 +1,18 @@
+# nemetonshiny 2026.10.18.9009 (2026-11-11)
+
+## Changements cassants
+
+- Serveur MCP : `generer_rapport` et le **2e appel** de `croiser_onf` (avec `jeton`) ne rendent plus leur résultat : ils lancent un job de fond et rendent `ok`, `projet`, `job_id`, `type` (`rapport` ou `onf`) aussitôt. Le résultat (`fichier` ; `n_ugf`, `n_tenements`, `n_parcelles`, `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes`) se lit dans `etat_calcul` quand `statut = "termine"`. Le 1er appel de `croiser_onf` (aperçu) reste synchrone.
+- `etat_calcul` : nouveau champ `type` (`calcul`, `rapport`, `onf`) ; un job en échec rend désormais `ok = false` et les champs d'erreur MCP (`classe`, `code`, `langue`, `erreur`, `action`) au premier niveau, à côté de `statut` ; la réponse est marquée `isError`. `erreur` est le texte classé (avant : le message brut) ; `statut` vaut `en_cours` dès le lancement (avant : `lancement`).
+- Un seul job à la fois par projet : un second lancement (calcul, rapport ou croisement ONF) est refusé en `calcul_en_cours`.
+- `.mcp_jeton_consommer()` rejoue la garde **avant** de consommer le jeton : un refus `calcul_en_cours` ou `projet_verrouille` au 2e appel (`appliquer_ugf` comme `croiser_onf`) laisse le jeton valable. Un jeton inconnu ou déjà utilisé reste `jeton_invalide`, sans passer par la garde.
+
+## Serveur MCP : les outils longs mesurés partent en tâche de fond (mission 012)
+
+- Mesures de la mission 011 : `croiser_onf` 79-160 s, `generer_rapport` 49 s (220 s sur un process neuf) ; ADR 0004, aucun appel ne doit dépasser 600 s.
+- Modèle de `lancer_calcul` : `data/compute_job.json` (champs `type`, `args`), `Rscript` détaché (`setsid`), `.mcp_child_job()` aiguille par `type`. En développement (`load_all`), l'enfant charge les sources du dépôt, pas le paquet installé.
+- Descriptions d'outils : `generer_rapport`, `croiser_onf` et `etat_calcul` renvoient les uns aux autres ; `inst/mcp/README.md` et `CONTRAT.md` § 6 bis à jour.
+
 # nemetonshiny 2026.10.18.9007 (2026-11-11)
 
 Changements cassants : aucun (contrat client inchangé : forme de `confirmation_requise`, usage unique, 10 minutes, empreinte).
