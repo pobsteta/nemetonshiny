@@ -180,7 +180,8 @@ test_that("deux consommateurs du meme fichier : un seul file.remove() gagne", {
   script <- tempfile(fileext = ".R")
   writeLines(c(sprintf('suppressMessages(pkgload::load_all("%s", quiet = TRUE))',
                        racine), lignes), script)
-  sortie <- suppressWarnings(system2("Rscript", script, stdout = TRUE,
+  rscript <- file.path(R.home("bin"), "Rscript")
+  sortie <- suppressWarnings(system2(rscript, script, stdout = TRUE,
     stderr = TRUE, env = paste0("NEMETON_MCP_JETONS_DIR=", shQuote(dir))))
   sortie
 }
