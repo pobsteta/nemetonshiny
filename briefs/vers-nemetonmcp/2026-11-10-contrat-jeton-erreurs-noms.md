@@ -31,7 +31,7 @@ nemetonshiny (section « Changements cassants » de `NEWS.md`, plus un brief pou
 égale la liste lue dans votre code.
 
 Les 4 objets **ajoutés** (au contrat avant d'être appelés par vous ; exception datée du 2026-11-10 dans ce
-test, variable `pas_encore`, à retirer à votre livraison) :
+test, variable `pas_encore`) :
 
 - `.mcp_vers_outil(x)` ;
 - `.mcp_garde_ecriture(id, call)` ;
@@ -40,7 +40,14 @@ test, variable `pas_encore`, à retirer à votre livraison) :
 
 Vos 31 appels `.ns("…")` actuels (`grep -ohP '\.ns\("[^"]*"\)' r/R/*.R | sort -u`, relevé du 2026-11-10)
 sont les 31 premiers objets du contrat. **À faire** : n'appeler rien d'autre ; quand vous appelez les 4
-nouveaux, prévenez-nous (on retire l'exception du test).
+nouveaux, prévenez-nous.
+
+**L'exception `pas_encore` est tout-ou-rien** : le test fait
+`expect_setequal(appelles, setdiff(contrat, pas_encore))`. Dès que vous appelez **un seul** des 4 objets, il
+échoue, puisque cet objet est alors dans `appelles` et dans `pas_encore`. Deux façons de ne pas casser la
+CI de nemetonshiny : soit **livrer les 4 appels ensemble** (une seule demande de retrait de l'exception),
+soit **prévenir nemetonshiny à chaque objet** pour qu'on le retire de `pas_encore` un par un, avant votre
+merge.
 
 **Contrôle sauté en CI** : le test « nemetonmcp n'appelle aucun objet hors contrat » lit
 `/home/pascal/dev/nemetonmcp/r/R` (chemin en dur, surchargeable par `NEMETONMCP_R_DIR`) et **est sauté**
@@ -58,8 +65,9 @@ Forme unique de la chaîne JSON d'erreur de nemetonshiny :
 
 - `classe` : classe R complète (`nemetonshiny_projet_introuvable`) ; `code` : nom court (`projet_introuvable`).
 - `erreur` : FR par défaut ; `langue` (`fr`/`en`) n'est acceptée que par `resume_projet` et `generer_rapport`.
-- `action` : la suite à proposer (`lister`, `choisir`, `verrou`, `recreer`, `suivre`, `calculer`, `fichier`,
-  `reessayer`, `signaler`, `confirmer`, `redemander`).
+- `action` : **une phrase traduite** (FR ou EN selon `langue`) donnant la suite à proposer, rendue par
+  `i18n$t("mcp_act_<clé>")` (`R/service_mcp.R:85`) ; ce n'est **pas** une clé. Les clients **décident sur
+  `code`** et lisent `action` seulement.
 - `candidats` : seulement pour `projet_ambigu`, au format `nom (id)`.
 - Classes non répertoriées : `nemetonshiny_erreur_inconnue` ou `nemetonshiny_erreur`.
 
@@ -83,8 +91,11 @@ remplacer par `etat_calcul_vue` et `exporter_gpkg_vue` (`r/R/outils.R`). Ces deu
    `{ok, erreur, classe, candidats}` : il manque `code`, `langue`, `action`, et il ne pose ni l'attribut
    `mcp_erreur` ni donc `isError` pour vos propres outils (`creer_projet`, `plan_actions`,
    `ajouter_action`, `vue_atlas`, …). Appliquez `.ns(".mcp_vers_outil")` aussi à ceux-là. Vos classes
-   `nemetonmcp_*` n'ont ni `code` ni `action` : à définir de votre côté. AIGORA et VICTOR liront `code` et
-   `action` de manière uniforme.
+   `nemetonmcp_*` n'ont ni `code` ni `action` : définissez un `code` court par classe. Pour `action`,
+   **réutilisez le catalogue de nemetonshiny** (les phrases `mcp_act_*` de son `TRANSLATIONS`, par
+   exemple celle de `projet_ambigu` ou de `calcul_en_cours`) quand le cas existe ; n'inventez pas de
+   clés d'action divergentes. Un cas absent du catalogue : le signaler à nemetonshiny. AIGORA et VICTOR
+   décident sur `code`.
 
 ## 3. Annotations (mission 004, #257)
 
@@ -124,8 +135,12 @@ Protocole exact :
 5. Un jeton connu présenté est consommé même refusé, **sauf** si le projet est introuvable ou ambigu (ou si
    les métadonnées ONF sont illisibles) : ces erreurs sont levées avant la lecture du jeton, **il reste
    valable**.
-6. Ordre à la confirmation : gardes (calcul en cours, verrou, projet ancien) rejouées, puis jeton, puis
-   fichier relu / croisement recalculé, puis écriture.
+6. Ordre à la confirmation, **état livré sur main** : `.mcp_jeton_consommer` retire le jeton, puis rejoue
+   la garde (`.mcp_garde_ecriture` : calcul en cours, verrou, projet ancien), puis compare ; donc un refus
+   `calcul_en_cours` ou `projet_verrouille` au 2e appel **détruit le jeton** : il faut redemander un aperçu.
+   Puis fichier relu / croisement recalculé, puis écriture. **À venir, non livré** (décision de Pascal,
+   2026-11-11, mission 012) : la garde passera **avant** la consommation, un refus de garde ne
+   consommera plus le jeton.
 
 **Barrière, pas preuve** : un agent qui enchaîne seul les deux appels contourne la garde. Seule
 l'*elicitation* MCP mettrait vraiment un humain dans la boucle ; mcptools 1.0.3 ne la fournit pas.
@@ -140,7 +155,11 @@ l'*elicitation* MCP mettrait vraiment un humain dans la boucle ; mcptools 1.0.3 
   confirmation doit retrouver inchangé (comparé par `identical()`) : pour une action, son identifiant et
   son contenu. Ajouter un argument `jeton` (optionnel) à chacun de ces outils.
 - Remplacer votre `.refuser_si_verrouille` (`plan.R`) par `.mcp_garde_ecriture()` : il couvre aussi « calcul
-  en cours » et « projet ancien », pas seulement le verrou.
+  en cours » et « projet ancien », pas seulement le verrou. **Au 2e appel, ne l'appelez PAS vous-même avant
+  `.mcp_jeton_consommer`** : celui-ci rejoue déjà la garde (paramètre `garde`, défaut
+  `.mcp_garde_ecriture`), comme `mcp_appliquer_ugf` ; une garde de plus avant lui diverge de l'ordre de
+  nemetonshiny, et encore plus quand la mission 012 inversera l'ordre. Au **1er appel**, appelez
+  `.mcp_garde_ecriture` puis `.mcp_jeton_emettre`.
 - `creer_projet` crée un projet neuf : hors périmètre du jeton.
 - Un 2e appel rejoué après succès renvoie `jeton_invalide` : c'est voulu.
 
@@ -155,11 +174,14 @@ objets du contrat gardent leurs arguments (`CONTRAT.md` mis à jour).
 
 Conséquences pour vous :
 
-- **Déploiement** : vous pouvez poser `NEMETON_MCP_JETONS_DIR` dans `deploiement/nemetonmcp.env.exemple`
-  (service systemd : `ReadWritePaths` doit couvrir ce répertoire, car l'unité est en `ProtectSystem=strict`
-  et `ProtectHome=read-only`, `deploiement/nemetonmcp.service`). **Tous les serveurs qui doivent se passer
-  un jeton (VICTOR, AIGORA, le connecteur distant) partagent le même répertoire, donc le même utilisateur
-  système** (modes 0700/0600). Un serveur lancé sous un autre utilisateur ne verra pas les jetons.
+- **Déploiement** : le connecteur distant tourne sous `User=nemeton` avec `ProtectSystem=strict`,
+  `ProtectHome=read-only` et `ReadWritePaths=/srv/nemeton` (`deploiement/nemetonmcp.service`). Le défaut
+  (`tools::R_user_dir("nemetonshiny", "data")`, sous le home) n'y est **pas inscriptible** : l'émission d'un
+  jeton échouerait (erreur de registre, rien d'écrit). **Posez `NEMETON_MCP_JETONS_DIR` sous `/srv/nemeton`**
+  (ex. `/srv/nemeton/mcp/jetons`) dans `deploiement/nemetonmcp.env.exemple`. Le connecteur distant n'a
+  **pas** à partager ses jetons avec VICTOR et AIGORA (qui tournent sous l'utilisateur de Pascal) : seuls
+  les clients qui se passent un jeton d'une tâche à la suivante partagent le répertoire, donc
+  l'utilisateur et la variable (modes 0700/0600 : un autre utilisateur ne voit pas les jetons).
 - **Chemins de fichier absolus** : pour `appliquer_ugf`, le chemin du fichier fait partie de l'empreinte.
   Un chemin **relatif** la rend dépendante du répertoire de travail : si la 2e tâche part d'un autre
   répertoire, le jeton est refusé (`jeton_invalide`). Vos outils et vos descriptions doivent demander des

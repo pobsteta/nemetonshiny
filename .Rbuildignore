@@ -32,3 +32,4 @@
 ^NEWS-archive\.md$
 ^CHANGELOG-archive\.md$
 ^tests/testthat/_problems$
+^briefs$

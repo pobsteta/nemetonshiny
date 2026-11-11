@@ -18,8 +18,10 @@ exactement le mauvais défaut : une phrase mal transcrite peut modifier le mauva
 `appliquer_ugf` et `croiser_onf` (et plus tard les outils d'écriture du plan d'actions de `nemetonmcp`) :
 
 1. **1er appel** (sans `jeton`) : rien n'est écrit. Réponse en erreur `confirmation_requise`
-   (`isError: true`), JSON `{ok: false, classe, code: "confirmation_requise", action: "confirmer",
-   erreur, projet, projet_nom, jeton, apercu, expire_a}`.
+   (`isError: true`), JSON `{ok: false, classe, code: "confirmation_requise", langue, erreur, action,
+   projet, projet_nom, jeton, apercu, expire_a}`. **`action` est une phrase traduite** (FR ou EN :
+   `R/service_mcp.R:85`, `i18n$t(paste0("mcp_act_", …))`), **pas une clé** : on décide sur `code`,
+   `action` se lit seulement.
    - `projet` : identifiant du projet ; `projet_nom` : son **nom résolu** (c'est celui que le serveur a
      retenu, pas celui que l'utilisateur a dicté) ;
    - `apercu` — `appliquer_ugf` : `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` : `ecartees`
@@ -54,12 +56,46 @@ une écriture qui peut y mener) :
    preuve »).
 5. Au-delà de `expire_a` (10 min), ou sur `jeton_invalide`, dis-le et redemande un aperçu : ne retente pas
    avec le même jeton.
-6. Lis `code` et `action` de la réponse (forme `{ok, classe, code, langue, erreur, action, candidats}`),
-   pas seulement le texte. `projet_ambigu` : lis les `candidats` (« nom (id) ») et demande lequel ; ne
+6. **Décide sur `code`** (`confirmation_requise`, `jeton_invalide`, `projet_ambigu`, …) ; `action` est une
+   phrase traduite, à lire seulement, jamais à comparer (forme `{ok, classe, code, langue, erreur,
+   action, candidats}`). `projet_ambigu` : lis les `candidats` (« nom (id) ») et demande lequel ; ne
    choisis jamais.
 
-La phrase d'attente actuelle (« Je m'en occupe, {TITLE}. », `server.py:166-167`) ne s'applique pas à
-l'aperçu : l'aperçu doit être lu en entier avant toute action.
+La phrase d'attente actuelle (consigne `server.py:162-163` ; constantes `ACCUSE`, l.457, dite quand un outil
+de `OUTILS_LENTS`, l.456, est appelé sans phrase du modèle) ne s'applique pas à l'aperçu : l'aperçu doit
+être lu en entier avant toute action.
+
+### Transit du jeton entre la tâche 1 et la tâche 2 (décision de Pascal, 2026-11-11)
+
+Format **identique** dans les briefs `vers-victor` et `vers-aigora`. La tâche 1 (celle qui a reçu
+`confirmation_requise`) :
+
+1. écrit d'abord, en texte ordinaire, l'aperçu pour l'utilisateur : nom du projet (`projet_nom`),
+   identifiant (`projet`), et ce que l'écriture change (`apercu` : `n_ugf_remplacees` / `n_ugf_nouvelles`,
+   ou `n_ecartees` / `n_retenues`) ;
+2. **termine sa sortie** par un bloc JSON balisé, seul, sur trois lignes, rien après :
+
+```
+<<<NEMETON_CONFIRMATION
+{"outil":"appliquer_ugf","projet":"20261104_101500_ab12","projet_nom":"Forêt de Dabo","jeton":"k3j9x0q2m8w7e1r5t6y4u0pz","expire_a":"2026-11-11T09:30:00Z","arguments":{"projet":"20261104_101500_ab12","fichier":"/home/pascal/dev/donnees/tenements_dabo.gpkg","remplacer":true}}
+NEMETON_CONFIRMATION>>>
+```
+
+- Clés, toutes obligatoires : `outil`, `projet` (identifiant résolu), `projet_nom`, `jeton`, `expire_a`
+  (ISO 8601 UTC, tel que rendu par le serveur), `arguments` (objet : **exactement** les arguments du 1er
+  appel, **sans** `jeton`, avec `projet` = identifiant résolu et tout chemin de fichier **absolu**).
+- Les valeurs de l'exemple sont fictives. Pour `croiser_onf`, `arguments` porte `projet` et `purger` s'il
+  avait été passé (omis sinon : le réglage du projet s'applique).
+- Un seul bloc par sortie. Si la tâche 1 n'a pas reçu `confirmation_requise`, aucun bloc.
+
+La tâche 2 ne démarre **qu'après un « oui » explicite** de l'utilisateur. Son prompt est : « Appelle l'outil
+`<outil>` avec exactement ces arguments et ce jeton, rien d'autre : `<arguments + "jeton">`. Ne relis pas
+d'aperçu, n'ajoute aucune écriture. » Le bloc est recopié **tel quel** par le client, jamais retapé ni
+corrigé ; le jeton n'est **jamais lu à voix haute**, ni affiché, ni journalisé.
+
+Côté VICTOR : garder le bloc de la tâche 1 **sans le lire à voix haute** (ne lire que l'aperçu en texte
+ordinaire, avec le nom ET l'identifiant du projet), attendre le « oui », puis le réinjecter tel quel dans le
+prompt de la tâche 2. Pas de « oui » (ou `expire_a` dépassé) : le bloc est jeté.
 
 ## Le jeton survit à `claude -p` (mission 016, PR #261, `348ff3df`)
 
@@ -80,7 +116,7 @@ avec le jeton. Ce chemin **tient** : le jeton n'est plus en mémoire du serveur 
 
 La durée de 10 minutes reste provisoire (`.MCP_JETON_DUREE`) : à éprouver à la voix.
 
-## Supprimer la copie `resoudre_projet` (décision de Pascal)
+## `resoudre_projet` : égalité exacte seulement (décision de Pascal)
 
 `resoudre_projet` (`server.py:996-1020`) et son `_norm` (ligne 989) réimplémentent la résolution d'un nom
 (« comme `.mcp_resolve_project` de nemetonshiny ») : égalité, puis sous-chaîne. Depuis la mission 007 (PR
@@ -89,16 +125,14 @@ La durée de 10 minutes reste provisoire (`.MCP_JETON_DUREE`) : à éprouver à 
 lettres) et rend `projet_ambigu` quand deux projets sont proches. Les deux voies donnent des réponses
 différentes pour la même phrase : c'est une copie, donc une fausse vérité en puissance.
 
-**Décision de Pascal : supprimer la copie.** À faire : le **nom part tel quel** (tel que transcrit ou tel
-que le modèle l'a compris) au serveur MCP, qui résout selon les règles de la mission 007 et rend
-`projet_ambigu` avec `candidats` (format `nom (id)`) ou `projet_introuvable`. VICTOR lit alors `code` et
-`candidats` et demande lequel, sans choisir. Concerne `nemeton_fiche` et `nemeton_etat` (qui lisent
-aujourd'hui `~/.local/share/nemeton/projects` directement) : ils doivent passer par le serveur MCP
-(`resume_projet`, `etat_calcul`, ou délégation) plutôt que par `resoudre_projet`. À vérifier côté VICTOR :
-la « voie rapide » (lecture directe, sans Claude Code, accusé vocal) ne doit pas disparaître avec la copie ;
-si elle exige de lire les fichiers sans serveur, il faut une autre solution (à voir avec Pascal), mais **pas
-une seconde résolution de noms**. Une **écriture** ne s'appuie jamais sur une résolution de VICTOR :
-l'aperçu (nom et identifiant du serveur) fait foi.
+**Décision de Pascal : pas de moteur tolérant dans VICTOR ; la voie rapide ne garde que l'exact.** La
+voie rapide (`nemeton_fiche`, `nemeton_etat` : lecture directe, sans Claude Code, accusé vocal) ne résout
+plus que l'**identifiant** ou le **nom exact après normalisation** (`_norm`, égalité stricte : plus de
+sous-chaîne). Tout autre nom (mal dicté, partiel, ambigu) **passe par le serveur MCP** (`resume_projet`,
+`etat_calcul`, ou délégation à l'espace `nemeton`), qui applique les règles de la mission 007 et rend
+`projet_ambigu` avec `candidats` (format `nom (id)`) ou `projet_introuvable`. VICTOR lit `code` et
+`candidats` et demande lequel, sans choisir. Une **écriture** ne s'appuie jamais sur une résolution de
+VICTOR : l'aperçu (nom et identifiant du serveur) fait foi.
 
 Depuis la mission 008 (PR #260, `1ea3289b`), `resume_projet` rend l'écran Synthèse complet : `description`,
 `created_at`, `updated_at`, `calcule_le` (ISO 8601, fuseau Europe/Paris), `chm_suspect`,

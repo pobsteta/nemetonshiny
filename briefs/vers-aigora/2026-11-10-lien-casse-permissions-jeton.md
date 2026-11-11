@@ -16,8 +16,9 @@ Le contenu existe à `/home/pascal/dev/nemetonmcp/clients/claude/skills/nemeton-
 À faire :
 - repointer le lien vers `~/dev/nemetonmcp/clients/claude/skills/nemeton-vues` ;
 - corriger `CLAUDE.md` (ligne du skill `nemeton-vues`, qui cite `~/dev/nemetonclaude/skills/nemeton-vues` et
-  ses chemins `vues/...`) et `.claude/skills/vues-victor/SKILL.md` (lignes 9-10, mêmes chemins). Je n'ai pas
-  vérifié que l'arborescence `vues/...` annoncée existe à l'identique sous `clients/claude/` : à contrôler.
+  ses chemins `vues/...`) et `.claude/skills/vues-victor/SKILL.md` (lignes 9-10, mêmes chemins). L'arborescence
+  `vues/...` existe sous `nemetonmcp/clients/claude/` (vérifié le 2026-11-11 : `vues/atlas`, `calcul`,
+  `plan`, `selection`, `moteur`, `exemples`) ; seul le préfixe de chemin change.
 
 ## 2. Renommage `nemetonclaude` → `nemetonmcp` incomplet
 
@@ -74,8 +75,39 @@ outils d'écriture du plan d'actions quand `nemetonmcp` les aura soumis au jeton
 
 **Consigne à ajouter à `CLAUDE.md` de l'espace**, quoi qu'on choisisse : devant une erreur
 `confirmation_requise`, ne **jamais** rappeler l'outil avec le jeton de sa propre initiative. Rendre la
-main avec l'aperçu (nom et identifiant du projet, chiffres de l'aperçu) ; ne rappeler avec `jeton` que si le
-message de la tâche contient la confirmation explicite de l'utilisateur.
+main : écrire l'aperçu (nom et identifiant du projet, chiffres de l'aperçu), puis **terminer la sortie par
+le bloc balisé ci-dessous**. Ne rappeler avec `jeton` que si le message de la tâche contient la
+confirmation explicite de l'utilisateur **et** le bloc recopié tel quel (2e tâche : l'espace n'appelle que
+l'outil, avec les arguments et le jeton du bloc).
+
+### Transit du jeton entre la tâche 1 et la tâche 2 (décision de Pascal, 2026-11-11)
+
+Format **identique** dans les briefs `vers-victor` et `vers-aigora`. La tâche 1 (celle qui a reçu
+`confirmation_requise`) :
+
+1. écrit d'abord, en texte ordinaire, l'aperçu pour l'utilisateur : nom du projet (`projet_nom`),
+   identifiant (`projet`), et ce que l'écriture change (`apercu` : `n_ugf_remplacees` / `n_ugf_nouvelles`,
+   ou `n_ecartees` / `n_retenues`) ;
+2. **termine sa sortie** par un bloc JSON balisé, seul, sur trois lignes, rien après :
+
+```
+<<<NEMETON_CONFIRMATION
+{"outil":"appliquer_ugf","projet":"20261104_101500_ab12","projet_nom":"Forêt de Dabo","jeton":"k3j9x0q2m8w7e1r5t6y4u0pz","expire_a":"2026-11-11T09:30:00Z","arguments":{"projet":"20261104_101500_ab12","fichier":"/home/pascal/dev/donnees/tenements_dabo.gpkg","remplacer":true}}
+NEMETON_CONFIRMATION>>>
+```
+
+- Clés, toutes obligatoires : `outil`, `projet` (identifiant résolu), `projet_nom`, `jeton`, `expire_a`
+  (ISO 8601 UTC, tel que rendu par le serveur), `arguments` (objet : **exactement** les arguments du 1er
+  appel, **sans** `jeton`, avec `projet` = identifiant résolu et tout chemin de fichier **absolu**).
+- Les valeurs de l'exemple sont fictives. Pour `croiser_onf`, `arguments` porte `projet` et `purger` s'il
+  avait été passé (omis sinon : le réglage du projet s'applique).
+- Un seul bloc par sortie. Si la tâche 1 n'a pas reçu `confirmation_requise`, aucun bloc.
+
+La tâche 2 ne démarre **qu'après un « oui » explicite** de l'utilisateur. Son prompt est : « Appelle l'outil
+`<outil>` avec exactement ces arguments et ce jeton, rien d'autre : `<arguments + "jeton">`. Ne relis pas
+d'aperçu, n'ajoute aucune écriture. » Le bloc est recopié **tel quel** par le client, jamais retapé ni
+corrigé ; le jeton n'est **jamais lu à voix haute**, ni affiché, ni journalisé.
+
 
 **Le jeton survit au redémarrage du serveur** (mission 016, PR #261, `348ff3df`, test
 `test-service_mcp_jeton_disque.R`). Chaque `claude -p` relance bien le serveur MCP (`CLAUDE.md:124-126`),
@@ -95,8 +127,9 @@ tient même entre deux serveurs simultanés (VICTOR et AIGORA). À faire pour l'
 - `CLAUDE.md:88` : « `croiser_onf` takes about 35 s » ; nemetonshiny annonce « ~15 s par commune »
   (description de l'outil) et **aucune durée n'a été mesurée sur un gros projet** (ADR 0004, mesure à
   faire, mission 011). Ne pas figer l'une ou l'autre valeur dans la doc.
-- Erreurs : lire `code` et `action` de la réponse JSON (forme
-  `{ok, classe, code, langue, erreur, action, candidats}`, `inst/mcp/README.md`), pas seulement le texte.
+- Erreurs : **décider sur `code`** ; `action` est une phrase traduite (`R/service_mcp.R:85`), à lire
+  seulement, pas une clé (forme `{ok, classe, code, langue, erreur, action, candidats}`,
+  `inst/mcp/README.md`).
   `candidats` (format `nom (id)`) n'est rempli que pour `projet_ambigu` : demander à l'utilisateur, ne
   jamais choisir.
 - Noms de projets dictés : `.mcp_resolve_project` tolère désormais « Dabot » pour « Forêt de Dabo »
@@ -104,7 +137,6 @@ tient même entre deux serveurs simultanés (VICTOR et AIGORA). À faire pour l'
 
 ## Ce que cette session n'a pas pu vérifier
 
-- Que l'arborescence `vues/...` existe sous `nemetonmcp/clients/claude/skills/nemeton-vues` à l'identique.
 - Le jeton entre deux `claude -p` réels de VICTOR (la mission 016 le teste en R seulement).
 - Si `ksuite-setup` transmet `TZ` et la locale au serveur.
 
