@@ -827,7 +827,11 @@ mcp_etat_calcul <- function(projet) {
   # L'outil a reussi, c'est le JOB qui a echoue : `ok = false` et les champs
   # d'erreur au premier niveau, mais sans marquage isError.
   r <- .mcp_etat_calcul(projet)
-  attr(r, "mcp_erreur") <- NULL
+  # Les vraies erreurs d'outil (projet introuvable ou ambigu...) restent
+  # marquees : seul l'etat `echec` d'un job perd le marquage.
+  statut <- tryCatch(jsonlite::fromJSON(as.character(r))$statut,
+                     error = function(e) NULL)
+  if (identical(statut, "echec")) attr(r, "mcp_erreur") <- NULL
   r
 }
 
