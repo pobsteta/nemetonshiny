@@ -1,7 +1,7 @@
 # Brief `victor` — relayer à la voix la confirmation d'une écriture (jeton)
 
 > **Déposé le 2026-11-10** par la session `nemetonshiny` (mission 013, `pilotage/spec.md` § 7).
-> **Décrit ce qui est livré sur `main` de nemetonshiny** (`1af92486`, PR #259, **changement cassant**).
+> **Décrit ce qui est livré sur `main` de nemetonshiny** (`348ff3df` ; PR #259, **changement cassant**, et #261, jeton sur disque).
 > Rien n'a été écrit dans `victor`. Constats relevés le 2026-11-10 dans `victor/victor/server.py`
 > (lecture seule).
 
@@ -26,13 +26,13 @@ exactement le mauvais défaut : une phrase mal transcrite peut modifier le mauva
      (IDU qui quittent le projet), `n_ecartees`, `n_retenues` ;
    - `expire_a` : ISO 8601 UTC.
 2. **2e appel** : les **mêmes arguments** + `jeton` → écriture.
-3. Jeton **à usage unique, 10 minutes** (provisoire), en mémoire du serveur. Refus : `jeton_invalide`
+3. Jeton **à usage unique, 10 minutes** (provisoire), **sur disque** (mission 016, ci-dessous). Refus : `jeton_invalide`
    (inconnu, déjà utilisé, périmé, autres paramètres) : redemander un aperçu. **Si le projet est introuvable
    ou ambigu au 2e appel, le jeton n'est pas consommé.**
 
 Sources : `R/service_mcp.R` (`.mcp_jeton_emettre`, `.mcp_jeton_consommer`, `mcp_appliquer_ugf`,
 `mcp_croiser_onf`), `inst/mcp/README.md` (« Confirmation des écritures »), commits `bade93a8`, `20c38ae2`,
-tests `test-service_mcp_jeton.R`, `test-service_mcp_confirmation.R`, `test-service_mcp_projet_nomme.R`.
+tests `test-service_mcp_jeton.R`, `test-service_mcp_confirmation.R`, `test-service_mcp_projet_nomme.R` ; jeton sur disque : PR #261 (`348ff3df`), `test-service_mcp_jeton_disque.R`.
 
 ## Consigne à donner à VICTOR (à mettre dans ses instructions, `server.py` ~ligne 210-275, bloc Néméton)
 
@@ -61,41 +61,67 @@ une écriture qui peut y mener) :
 La phrase d'attente actuelle (« Je m'en occupe, {TITLE}. », `server.py:166-167`) ne s'applique pas à
 l'aperçu : l'aperçu doit être lu en entier avant toute action.
 
-## Point non résolu, à trancher par Pascal : le jeton ne survit pas à `claude -p`
+## Le jeton survit à `claude -p` (mission 016, PR #261, `348ff3df`)
 
 VICTOR n'appelle pas lui-même les outils MCP d'écriture : il délègue (`delegate_to_claude` → `_run_task`,
-`server.py:526-545`) à un `claude -p` **neuf** (pas de `--resume`, `stdin` fermé), et chaque `claude -p`
-relance le serveur MCP (`aigora-nemeton/CLAUDE.md`, section MCP). Le jeton est **en mémoire du processus
-serveur**. Chemin prévu : tâche 1 → `confirmation_requise` + jeton → VICTOR lit l'aperçu → l'utilisateur
-dit oui → tâche 2 avec le jeton → **nouveau serveur, registre vide → `jeton_invalide`**. Tant que ce
-point n'est pas tranché, la consigne ci-dessus ne peut pas aboutir en stdio local. Pistes (aucune décidée,
-rien n'a été essayé) : serveur MCP **persistant** (`nemetonmcp::serveur_mcp_distant()`, service systemd)
-auquel les tâches se connectent ; ou registre persisté côté nemetonshiny (hors du dossier du projet) ; ou
-faire parler VICTOR au serveur lui-même plutôt que par `claude -p`. À arbitrer avant l'essai VICTOR de la
-durée de 10 minutes (valeur provisoire, `.MCP_JETON_DUREE`).
+`server.py:526-545`) à un `claude -p` neuf (pas de `--resume`, `stdin` fermé), qui relance le serveur MCP.
+Chemin : tâche 1 → `confirmation_requise` + jeton → VICTOR lit l'aperçu → l'utilisateur dit oui → tâche 2
+avec le jeton. Ce chemin **tient** : le jeton n'est plus en mémoire du serveur mais dans un fichier de
+`NEMETON_MCP_JETONS_DIR` (défaut `tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`, répertoire
+`0700`, fichiers `0600`), à usage unique même entre serveurs simultanés. Deux conditions côté VICTOR :
 
-## Autre écart : la résolution de projet de VICTOR est une copie non tolérante
+- **même utilisateur système, même répertoire** que les autres clients (AIGORA) : si VICTOR pose un
+  `NEMETON_MCP_JETONS_DIR` différent de celui de l'espace `aigora-nemeton`, ou lance le serveur sous un
+  autre utilisateur, la tâche 2 ne verra pas le jeton (`jeton_invalide`) ;
+- **chemins de fichier absolus** dans le prompt délégué (`appliquer_ugf` : le chemin fait partie de
+  l'empreinte du jeton). Un chemin relatif la rend dépendante du répertoire de travail ; si la tâche 2 part
+  d'ailleurs, `jeton_invalide`. Le prompt de la tâche 2 doit reprendre **exactement** les arguments de la
+  tâche 1, avec un chemin absolu dans les deux.
 
-`resoudre_projet` (`server.py:996-1020`) réimplémente la résolution d'un nom (« comme `.mcp_resolve_project`
-de nemetonshiny », `_norm`, ligne 989) : égalité, puis sous-chaîne. Depuis la mission 007 (PR #258, tests
-`test-service_mcp_noms_dictes*.R`), nemetonshiny rapproche aussi les noms **mal dictés** (« Dabot » →
-« Forêt de Dabo », mot-clé de la commune, distance d'édition ≤ 2 provisoire, planchers de 4 lettres) et
-rend `projet_ambigu` quand deux projets sont proches. VICTOR (`nemeton_fiche`, `nemeton_etat`, qui lisent
-`~/.local/share/nemeton/projects`) ne le fait pas : les deux voies donnent des réponses différentes pour la
-même phrase. C'est une **copie** : soit la supprimer et passer par l'outil, soit la réaligner à la main
-(deux vérités). Non tranché ; à décider avec Pascal. Une **écriture** ne doit jamais s'appuyer sur la
-résolution de VICTOR : l'aperçu (nom + identifiant du serveur) fait foi.
+La durée de 10 minutes reste provisoire (`.MCP_JETON_DUREE`) : à éprouver à la voix.
 
-## Lancement
+## Supprimer la copie `resoudre_projet` (décision de Pascal)
 
-Le serveur MCP doit être lancé avec `TZ=Europe/Paris` et une locale UTF-8 (décision de Pascal, 2026-11-10,
-comme `inst/mcp/server.R`). Les dates ISO 8601 Europe/Paris côté `resume_projet` (mission 008) ne sont **pas
-encore livrées**.
+`resoudre_projet` (`server.py:996-1020`) et son `_norm` (ligne 989) réimplémentent la résolution d'un nom
+(« comme `.mcp_resolve_project` de nemetonshiny ») : égalité, puis sous-chaîne. Depuis la mission 007 (PR
+#258, tests `test-service_mcp_noms_dictes*.R`), nemetonshiny rapproche aussi les noms **mal dictés**
+(« Dabot » → « Forêt de Dabo » : mot-clé de la commune, distance d'édition ≤ 2 provisoire, planchers de 4
+lettres) et rend `projet_ambigu` quand deux projets sont proches. Les deux voies donnent des réponses
+différentes pour la même phrase : c'est une copie, donc une fausse vérité en puissance.
+
+**Décision de Pascal : supprimer la copie.** À faire : le **nom part tel quel** (tel que transcrit ou tel
+que le modèle l'a compris) au serveur MCP, qui résout selon les règles de la mission 007 et rend
+`projet_ambigu` avec `candidats` (format `nom (id)`) ou `projet_introuvable`. VICTOR lit alors `code` et
+`candidats` et demande lequel, sans choisir. Concerne `nemeton_fiche` et `nemeton_etat` (qui lisent
+aujourd'hui `~/.local/share/nemeton/projects` directement) : ils doivent passer par le serveur MCP
+(`resume_projet`, `etat_calcul`, ou délégation) plutôt que par `resoudre_projet`. À vérifier côté VICTOR :
+la « voie rapide » (lecture directe, sans Claude Code, accusé vocal) ne doit pas disparaître avec la copie ;
+si elle exige de lire les fichiers sans serveur, il faut une autre solution (à voir avec Pascal), mais **pas
+une seconde résolution de noms**. Une **écriture** ne s'appuie jamais sur une résolution de VICTOR :
+l'aperçu (nom et identifiant du serveur) fait foi.
+
+Depuis la mission 008 (PR #260, `1ea3289b`), `resume_projet` rend l'écran Synthèse complet : `description`,
+`created_at`, `updated_at`, `calcule_le` (ISO 8601, fuseau Europe/Paris), `chm_suspect`,
+`chm_suspect_max`, `familles[].ndp`, `familles[].n_indicateurs`, scores de famille à 2 décimales
+(`updated_at` change de format : heure naïve → ISO 8601 avec fuseau). Ces champs peuvent remplacer ce que
+VICTOR relit dans `metadata.json` et `indicators.parquet`.
+
+## Lancement et à venir
+
+Le serveur MCP doit être lancé avec `TZ=Europe/Paris` et une locale UTF-8 (décision de Pascal,
+2026-11-10). `inst/mcp/server.R` de nemetonshiny les force ; l'espace lance `nemetonmcp::serveur_mcp()`
+(voir les briefs `vers-nemetonmcp` et `vers-aigora`). Les dates ISO 8601 Europe/Paris de `resume_projet`
+sont **livrées** (mission 008, ci-dessus).
+
+**Annonce, non livré** : la mission 012 (ADR 0004) détachera `croiser_onf` (2e appel avec jeton → `job_id`
+rendu aussitôt) et `generer_rapport`, suivis par `etat_calcul(projet)` ; un seul job par projet (un second
+lancement rend `calcul_en_cours`). VICTOR devra alors annoncer « c'est lancé » et suivre l'état, au lieu
+d'attendre le résultat. Ne rien coder dessus avant le brief de livraison.
 
 ## Ce que cette session n'a pas pu vérifier
 
 - Aucun essai vocal : la formulation de l'aperçu à voix haute n'a pas été éprouvée avec la synthèse vocale.
-- Le jeton de bout en bout à travers `claude -p` (voir ci-dessus).
+- Le jeton entre deux `claude -p` réels de VICTOR (la mission 016 le teste en R seulement).
 - Que `.MCP_JETON_DUREE` = 10 min convient à une conversation vocale (valeur provisoire).
 
 ## Retour attendu

@@ -1,7 +1,7 @@
 # Brief `aigora` (espace `aigora-nemeton`) — lien cassé, renommage incomplet, permissions et jeton de confirmation
 
 > **Déposé le 2026-11-10** par la session `nemetonshiny` (mission 013, `pilotage/spec.md` § 7).
-> **Décrit ce qui est livré sur `main` de nemetonshiny** (`1af92486`). Rien n'a été écrit dans `aigora`.
+> **Décrit ce qui est livré sur `main` de nemetonshiny** (`348ff3df`). Rien n'a été écrit dans `aigora`.
 > **Portée** : `aigora-nemeton/.claude/skills/nemeton-vues`, `CLAUDE.md`, `.claude/settings.json`,
 > `.claude/skills/ksuite-setup/scripts/register_mcp.py`, `.claude/skills/vues-victor/SKILL.md`.
 > Constats relevés le 2026-11-10 dans `/home/pascal/dev/aigora/aigora-nemeton` (lecture seule).
@@ -37,8 +37,13 @@ Les classes d'erreur `nemetonclaude_*` sont devenues `nemetonmcp_*`. Les briefs 
 `nemetonclaude` (`brief-dev/SKILL.md`) sont de l'historique : ne pas les réécrire.
 
 Variables à poser au lancement du serveur (décision de Pascal, 2026-11-10) : **`TZ=Europe/Paris`** et une
-**locale UTF-8** (`C.UTF-8`, repli `en_US.UTF-8`), comme `inst/mcp/server.R` de nemetonshiny. Le script
-`register_mcp.py` ne les pose pas aujourd'hui (non vérifié pour l'environnement transmis par `claude -p`).
+**locale UTF-8** (`C.UTF-8`, repli `en_US.UTF-8`). Le lanceur de nemetonshiny (`inst/mcp/server.R`) les
+force depuis la mission 008 ; mais l'espace lance `nemetonmcp::serveur_mcp()`, qui ne passe pas par ce
+fichier (voir le brief `vers-nemetonmcp`). Le script `register_mcp.py` ne les pose pas aujourd'hui : à
+ajouter dans l'environnement du serveur enregistré (non vérifié pour l'environnement transmis par
+`claude -p`). Sans `TZ`, les dates ISO 8601 de `resume_projet` (mission 008, PR #260, `1ea3289b` : champs
+`created_at`, `updated_at`, `calcule_le`, `chm_suspect`, `familles[].ndp`, `familles[].n_indicateurs`,
+scores à 2 décimales) seraient lues dans le fuseau du poste.
 
 ## 3. Permissions : `permissions.allow` et le jeton de confirmation
 
@@ -54,35 +59,36 @@ Ce qui change côté nemetonshiny (mission 010, **CASSANT**, PR #259, commit `ba
 1. 1er appel (sans `jeton`) : contrôles faits, **rien d'écrit**. Réponse en erreur `confirmation_requise`
    (`isError: true`) avec `jeton`, `apercu`, `expire_a`, `projet` (identifiant), `projet_nom` (nom résolu).
 2. 2e appel : **mêmes arguments** + `jeton` → écriture.
-3. Jeton à usage unique, **10 minutes** (provisoire), gardé en mémoire du serveur. Autres paramètres, autre
+3. Jeton à usage unique, **10 minutes** (provisoire), gardé **sur disque** (voir plus bas). Autres paramètres, autre
    projet, déjà utilisé, périmé : erreur `jeton_invalide`, il faut redemander un aperçu. Si le projet est
    introuvable ou ambigu, le jeton **n'est pas consommé**.
 4. Contenu de l'aperçu : `appliquer_ugf` → `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` →
    `ecartees` (IDU qui quittent le projet), `n_ecartees`, `n_retenues`.
 
-Deux options, **à trancher par Pascal** (spec § 7 : « retirer des `permissions.allow` les outils soumis à
-confirmation, ou s'en remettre au jeton ») :
-
-- **A — s'en remettre au jeton** (état actuel de l'ADR 0002) : laisser `permissions.allow` tel quel. La
-  garde est dans le serveur. C'est une barrière, pas une preuve : un agent qui enchaîne seul les deux appels
-  la contourne.
-- **B — retirer en plus de `permissions.allow`** `appliquer_ugf` et `croiser_onf` (et, quand `nemetonmcp`
-  aura livré, `ajouter_action`, `modifier_action`, `supprimer_action`). **Inopérant en `bypassPermissions`**
-  (ADR 0002, option C) : n'apporte rien pour les tâches VICTOR, seulement pour les sessions interactives.
-
-Recommandation de l'émetteur (Pascal tranche) : A pour VICTOR, B en plus pour les sessions interactives ;
-ne pas considérer B comme une garantie.
+**Décision de Pascal : option A** (spec § 7 : « retirer des `permissions.allow` les outils soumis à
+confirmation, ou s'en remettre au jeton »). `appliquer_ugf` et `croiser_onf` **restent dans
+`permissions.allow`** ; le jeton sert de garde, côté serveur. C'est une barrière, pas une preuve : un agent
+qui enchaîne seul les deux appels la contourne, d'où la consigne ci-dessous (jamais renvoyer le jeton
+d'initiative). Aucun retrait de `settings.json` n'est demandé, pour ces deux outils comme pour les trois
+outils d'écriture du plan d'actions quand `nemetonmcp` les aura soumis au jeton.
 
 **Consigne à ajouter à `CLAUDE.md` de l'espace**, quoi qu'on choisisse : devant une erreur
 `confirmation_requise`, ne **jamais** rappeler l'outil avec le jeton de sa propre initiative. Rendre la
 main avec l'aperçu (nom et identifiant du projet, chiffres de l'aperçu) ; ne rappeler avec `jeton` que si le
 message de la tâche contient la confirmation explicite de l'utilisateur.
 
-**Point non résolu, à trancher par Pascal** : le jeton vit en mémoire du serveur MCP ; or chaque
-`claude -p` lancé par VICTOR relance le serveur (`CLAUDE.md:124-126` : « Each `claude -p` restarts the
-server »). Un jeton émis dans une tâche est **inconnu** dans la tâche suivante. Tant que ce point n'est pas
-tranché (serveur persistant, ou registre persisté côté nemetonshiny), la confirmation en deux tâches
-échouera en `jeton_invalide`. Non essayé de bout en bout.
+**Le jeton survit au redémarrage du serveur** (mission 016, PR #261, `348ff3df`, test
+`test-service_mcp_jeton_disque.R`). Chaque `claude -p` relance bien le serveur MCP (`CLAUDE.md:124-126`),
+mais le jeton est désormais **un fichier** dans `NEMETON_MCP_JETONS_DIR` (défaut
+`tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`, répertoire `0700`, fichiers `0600`) : l'aperçu
+(tâche 1) et la confirmation (tâche 2) passent par deux serveurs sans perdre le jeton, et l'usage unique
+tient même entre deux serveurs simultanés (VICTOR et AIGORA). À faire pour l'espace :
+- **même utilisateur système et même répertoire** pour tous les serveurs qui doivent se passer un jeton
+  (ne pas poser un `NEMETON_MCP_JETONS_DIR` différent selon le lanceur) ;
+- **chemins absolus** pour `appliquer_ugf` : le chemin du fichier fait partie de l'empreinte du jeton ; un
+  chemin relatif la rend dépendante du répertoire de travail, et la 2e tâche, si elle part d'un autre
+  répertoire, reçoit `jeton_invalide`. Le dire dans les consignes de l'espace et des skills qui appellent
+  `appliquer_ugf`.
 
 ## 4. Autres écarts constatés
 
@@ -99,10 +105,10 @@ tranché (serveur persistant, ou registre persisté côté nemetonshiny), la con
 ## Ce que cette session n'a pas pu vérifier
 
 - Que l'arborescence `vues/...` existe sous `nemetonmcp/clients/claude/skills/nemeton-vues` à l'identique.
-- Le comportement de bout en bout du jeton à travers `claude -p`.
+- Le jeton entre deux `claude -p` réels de VICTOR (la mission 016 le teste en R seulement).
 - Si `ksuite-setup` transmet `TZ` et la locale au serveur.
 
 ## Retour attendu
 
-Un brief de réponse dans `vers-nemetonshiny/` indiquant le choix A ou B pris par Pascal et la date du
-réenregistrement du serveur.
+Un brief de réponse dans `vers-nemetonshiny/` indiquant la date du réenregistrement du serveur
+(`nemetonmcp::serveur_mcp()`, `TZ`, répertoire des jetons).

@@ -1,7 +1,7 @@
 # Brief `nemetonmcp` — contrat adopté, jeton de confirmation, erreurs `isError`, annotations, noms dictés
 
 > **Déposé le 2026-11-10** par la session `nemetonshiny` (mission 013, `pilotage/spec.md` § 7).
-> **Décrit ce qui est livré sur `main` de nemetonshiny** (`1af92486`), pas ce qui est prévu.
+> **Décrit ce qui est livré sur `main` de nemetonshiny** (`348ff3df`), pas ce qui est prévu.
 > Rien n'a été écrit dans `nemetonmcp` par l'émetteur (lecture seule).
 > **Portée** : `r/R/outils.R`, `r/R/utils.R`, `r/R/plan.R`, doc et déploiement. Tout est à faire de votre côté.
 
@@ -14,6 +14,8 @@ Sources livrées (PR fusionnées dans nemetonshiny) :
 | Annotations des 10 outils (004) | #257 | `1b6930c3` | `test-service_mcp_annotations.R` |
 | Noms dictés tolérants (007) | #258 | `b99be25e`, `0427664a`, `97bd8b6a`, `a848a9a9` | `test-service_mcp_noms_dictes.R`, `test-service_mcp_noms_dictes_locale.R`, `test-service_mcp_rapprocher_voisin.R` |
 | Jeton de confirmation (010, **CASSANT**) | #259 | `bade93a8`, `20c38ae2`, `f690888b` | `test-service_mcp_jeton.R`, `test-service_mcp_confirmation.R`, `test-service_mcp_projet_nomme.R` |
+| `resume_projet` complet (008) | #260 | `1ea3289b` | `test-service_mcp_resume.R` |
+| Jeton sur disque (016) | #261 | `348ff3df` | `test-service_mcp_jeton_disque.R` |
 
 Décisions : `pilotage/adr/0001` (contrat), `0002` (jeton), `0004` (outils longs, pas encore livré).
 Référence des réponses : `inst/mcp/README.md`. Référence du contrat : `CONTRAT.md` § 6 bis.
@@ -115,7 +117,7 @@ Protocole exact :
    - `croiser_onf` : `apercu` = `ecartees` (IDU), `n_ecartees`, `n_retenues`.
 2. **2e appel** : les **mêmes arguments** + `jeton` → l'écriture a lieu.
 3. Le jeton est **à usage unique, valable 10 minutes** (constante `.MCP_JETON_DUREE`, provisoire jusqu'à
-   l'essai VICTOR), **gardé en mémoire du processus serveur** (rien sur disque).
+   l'essai VICTOR), **gardé sur disque** hors du dossier du projet (mission 016, voir ci-dessous).
 4. Refus : `jeton_invalide` (inconnu, déjà utilisé, périmé, autre outil, autre projet, autres paramètres :
    fichier ou son md5, `remplacer`, réglages ONF résolus dont `purger`, parcelles du projet changées). Il
    faut redemander un aperçu.
@@ -142,13 +144,29 @@ l'*elicitation* MCP mettrait vraiment un humain dans la boucle ; mcptools 1.0.3 
 - `creer_projet` crée un projet neuf : hors périmètre du jeton.
 - Un 2e appel rejoué après succès renvoie `jeton_invalide` : c'est voulu.
 
-**Point d'architecture non résolu, à trancher par Pascal** : le registre est en mémoire du processus.
-En mode stdio local, VICTOR délègue chaque tâche à un `claude -p` neuf (pas de `--resume`, `stdin` fermé :
-`victor/server.py`, `_run_task`) et chaque `claude -p` relance le serveur MCP (`aigora-nemeton/CLAUDE.md`,
-section MCP). Un jeton émis dans une tâche **n'existe plus** dans la tâche suivante. Le protocole en deux
-appels ne tient que si les deux appels partent du même processus serveur : serveur distant persistant
-(`serveur_mcp_distant`, service systemd), ou registre persisté hors du dossier du projet (changement côté
-nemetonshiny à décider). Rien n'a été essayé de bout en bout. Ne pas contourner sans décision.
+**Le jeton survit au redémarrage du serveur** (mission 016, PR #261, `348ff3df`, tests
+`test-service_mcp_jeton_disque.R`, `setup-service_mcp_jetons.R`). Le registre n'est plus en mémoire : un
+fichier `<jeton>.rds` par jeton dans `NEMETON_MCP_JETONS_DIR` (défaut
+`tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`), hors du dossier du projet, répertoire `0700`,
+fichiers `0600`, écriture atomique. La suppression du fichier fait foi : l'usage unique tient **même entre
+deux serveurs simultanés**. Il ne contient que le jeton, l'outil, l'id du projet, l'empreinte et
+l'échéance. Le contrat client (forme de `confirmation_requise`, 10 min, empreinte) est inchangé ; les deux
+objets du contrat gardent leurs arguments (`CONTRAT.md` mis à jour).
+
+Conséquences pour vous :
+
+- **Déploiement** : vous pouvez poser `NEMETON_MCP_JETONS_DIR` dans `deploiement/nemetonmcp.env.exemple`
+  (service systemd : `ReadWritePaths` doit couvrir ce répertoire, car l'unité est en `ProtectSystem=strict`
+  et `ProtectHome=read-only`, `deploiement/nemetonmcp.service`). **Tous les serveurs qui doivent se passer
+  un jeton (VICTOR, AIGORA, le connecteur distant) partagent le même répertoire, donc le même utilisateur
+  système** (modes 0700/0600). Un serveur lancé sous un autre utilisateur ne verra pas les jetons.
+- **Chemins de fichier absolus** : pour `appliquer_ugf`, le chemin du fichier fait partie de l'empreinte.
+  Un chemin **relatif** la rend dépendante du répertoire de travail : si la 2e tâche part d'un autre
+  répertoire, le jeton est refusé (`jeton_invalide`). Vos outils et vos descriptions doivent demander des
+  chemins absolus aux clients.
+- Registre impossible à créer ou à écrire : erreur classée `erreur`, rien d'écrit.
+- Vos propres écritures de plan (`.mcp_jeton_emettre` / `.mcp_jeton_consommer`) en profitent sans rien
+  changer.
 
 ## 5. Noms de projets dictés (mission 007, #258)
 
@@ -164,13 +182,23 @@ Vous l'obtenez sans rien changer : `.resoudre_projet` (`r/R/projet.R`) appelle d
 `.ns(".mcp_resolve_project")`. **À faire** : vérifier qu'aucun outil ne résout un nom par une autre voie
 et ne pas dupliquer ce rapprochement (votre `.normaliser`, `utils.R`, sert aux communes, pas aux projets).
 
-**Lancement du serveur** (décision de Pascal, 2026-11-10, comme `inst/mcp/server.R`) : lancer
-`nemetonmcp::serveur_mcp()` et `serveur_mcp_distant()` avec **`TZ=Europe/Paris`** et une **locale UTF-8**
-(`C.UTF-8`, repli `en_US.UTF-8`). `inst/mcp/server.R` force la locale au lancement ; je n'ai trouvé aucun
-`Sys.setlocale` dans `nemetonmcp/r/R`, et `deploiement/nemetonmcp.env.exemple` pose `LANG=C.UTF-8` mais pas
-`TZ`. À faire : poser `TZ` dans ce fichier et dans la doc de lancement ; forcer la locale au démarrage de
-`serveur_mcp()`. Le serveur de nemetonshiny **n'émet pas encore** de dates ISO 8601 Europe/Paris
-(mission 008, non fusionnée) : ne pas coder dessus.
+**Lancement du serveur** (décision de Pascal, 2026-11-10) : lancer `nemetonmcp::serveur_mcp()` et
+`serveur_mcp_distant()` avec **`TZ=Europe/Paris`** et une **locale UTF-8** (`C.UTF-8`, repli
+`en_US.UTF-8`). `inst/mcp/server.R` de nemetonshiny force les deux au lancement (`TZ = "Europe/Paris"`
+depuis la mission 008) ; mais vous lancez le serveur par **votre** `serveur_mcp()`, qui ne passe pas par ce
+fichier : je n'ai trouvé aucun `Sys.setlocale` ni `TZ` dans `nemetonmcp/r/R`, et
+`deploiement/nemetonmcp.env.exemple` pose `LANG=C.UTF-8` mais pas `TZ`. À faire : poser `TZ` dans ce
+fichier et dans la doc de lancement ; forcer `TZ` et la locale au démarrage de `serveur_mcp()`. Sans
+`TZ`, les dates de `resume_projet` ci-dessous seraient lues dans le fuseau du poste.
+
+**`resume_projet` complet** (mission 008, PR #260, `1ea3289b`, `test-service_mcp_resume.R`) : l'outil rend
+tout l'écran Synthèse. Champs ajoutés : `description` ; `created_at`, `updated_at`, `calcule_le` en
+**ISO 8601 avec fuseau Europe/Paris** (`calcule_le` : `completed_at` > `fin_a` du job `termine` > date de
+`indicators.parquet` > `null`) ; `chm_suspect`, `chm_suspect_max` ; par famille `ndp` et `n_indicateurs`
+(présents, à défaut prévus). Changements de forme (notés « Changements cassants » dans `NEWS.md`) :
+`updated_at` change de **format** (heure naïve → ISO 8601 avec fuseau) et le `score` des familles passe à
+**2 décimales**. Vous n'avez rien à faire pour les servir (vous reprenez l'outil tel quel) ; à vérifier :
+que vos vues (`fiche_projet`, `vue_atlas`) ne relisent pas l'ancien format de `updated_at`.
 
 ## 6. Noms d'outils dédoublonnés
 
@@ -192,9 +220,16 @@ Le renommage est en revanche **incomplet chez vos clients** (voir le brief `vers
 `nemetonclaude::serveur_mcp()` dans `register_mcp.py` et `CLAUDE.md`, lien `nemeton-vues` cassé). Ne
 retirez pas un alias de compatibilité avant que ces clients aient suivi.
 
+## 8. À venir (annonce, **non livré**) : outils longs détachés (mission 012, ADR 0004)
+
+La mission 012 prévoit de détacher `croiser_onf` (le 2e appel, avec jeton, rendrait aussitôt un `job_id`)
+et `generer_rapport`, suivis par `etat_calcul(projet)` ; **un seul job par projet** (un second lancement
+rend `calcul_en_cours`). Rien de cela n'est sur `main` : ne rien coder dessus. Un brief de livraison suivra ;
+prévoyez seulement que `etat_calcul_vue` aura plus d'un type de job à décrire.
+
 ## Ce que cette session n'a pas pu vérifier
 
-- Le jeton de bout en bout à travers `claude -p` (§ 4).
+- Le jeton de bout en bout entre deux `claude -p` réels (la mission 016 le teste en R, pas via VICTOR) ; le droit d'écriture de `NEMETON_MCP_JETONS_DIR` sous l'unité systemd (§ 4).
 - Le rendu client d'une annotation partielle (§ 3).
 - Si votre CI exécute un contrôle du contrat (§ 1).
 
