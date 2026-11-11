@@ -306,41 +306,11 @@ mcp_resume_projet <- function(projet, langue = "fr") {
     p <- projet_lire(id, langue = langue %||% "fr")
     s <- p$synthese
     meta <- p$projet$metadata %||% list()
-    fr <- !identical(langue, "en")
 
-    # Memes chiffres que le tableau de la Synthese : scores a 2 decimales,
-    # NDP du projet sur chaque ligne, indicateurs presents (a defaut, prevus).
-    moy <- project_family_means(p$familles)
-    base_sf <- p$projet$indicators_sf
-    noms <- tryCatch({
-      if (inherits(base_sf, "sf")) {
-        e <- add_regen_r_indicators(add_r5_to_indicators(base_sf, p$projet), p$projet)
-        names(sf::st_drop_geometry(e))
-      } else character(0)
-    }, error = function(e) character(0))
-    codes <- names(INDICATOR_FAMILIES)
-    fam <- data.frame(
-      code = codes,
-      famille = vapply(codes, function(c) {
-        f <- INDICATOR_FAMILIES[[c]]
-        if (fr) f$name_fr else f$name_en
-      }, character(1), USE.NAMES = FALSE),
-      score = vapply(codes, function(c) {
-        col <- get_famille_col(c)
-        if (col %in% names(moy)) round(unname(moy[[col]]), 2) else NA_real_
-      }, numeric(1), USE.NAMES = FALSE),
-      ndp = as.integer(meta$ndp_level %||% 0L),
-      n_indicateurs = vapply(codes, function(c) {
-        cn <- INDICATOR_FAMILIES[[c]]$column_names %||% INDICATOR_FAMILIES[[c]]$indicators
-        n <- sum(vapply(cn, function(k)
-          k %in% noms || paste0(k, "_norm") %in% noms, logical(1)))
-        as.integer(if (n > 0L) n else length(INDICATOR_FAMILIES[[c]]$indicators))
-      }, integer(1), USE.NAMES = FALSE),
-      stringsAsFactors = FALSE
-    )
-    fam$score[is.nan(fam$score)] <- NA_real_
+    # `s$families` est deja la table partagee (project_family_table, via
+    # project_synthesis_summary) : meme table que la Synthese, rien a recalculer.
+    s$familles <- s$families
     s$families <- NULL
-    s$familles <- fam
     s$description <- meta$description %||% NA_character_
     s$created_at <- .mcp_iso_paris(meta$created_at %||% NA_character_)
     s$updated_at <- .mcp_iso_paris(meta$updated_at %||% NA_character_)

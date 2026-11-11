@@ -119,7 +119,7 @@ test_that("project_synthesis_summary matches the Synthesis tab figures", {
   expect_identical(s$families$code, names(INDICATOR_FAMILIES))
   for (code in s$families$code) {
     col <- get_famille_col(code)
-    want <- if (col %in% names(means)) round(unname(means[[col]]), 1) else NA_real_
+    want <- if (col %in% names(means)) round(unname(means[[col]]), 2) else NA_real_
     expect_identical(s$families$score[s$families$code == code], want,
                      label = paste("score famille", code))
   }
@@ -149,4 +149,95 @@ test_that("project_synthesis_summary handles a project without indicators", {
   expect_identical(s$n_parcels, 0L)
   expect_true(all(is.na(s$families$score)))
   expect_error(project_synthesis_summary(NULL), "NULL")
+})
+
+# --- project_family_table : table unique ecran / API / MCP (mission 015) ------
+
+test_that("project_family_table gives 12 rows, 2-decimal scores, NDP and counts", {
+  .identity_enrichers()
+  p <- .synth_project(ndp_level = 1L)
+  fsf <- suppressMessages(project_family_scores(p))
+  tab <- project_family_table(p, fsf, "fr")
+
+  expect_identical(names(tab), c("code", "famille", "score", "ndp", "n_indicateurs"))
+  expect_identical(tab$code, names(INDICATOR_FAMILIES))
+  expect_true(all(tab$ndp == 1L))
+  expect_type(tab$ndp, "integer")
+  expect_type(tab$n_indicateurs, "integer")
+
+  means <- project_family_means(fsf)
+  b <- tab[tab$code == "B", ]
+  expect_identical(b$score, round(unname(means[[get_famille_col("B")]]), 2))
+  expect_identical(b$famille, INDICATOR_FAMILIES[["B"]]$name_fr)
+  # B1 present dans le projet : au moins 1 indicateur detecte ; famille sans
+  # colonne presente : repli sur la config.
+  expect_gte(b$n_indicateurs, 1L)
+  expect_identical(tab$n_indicateurs[tab$code == "S"],
+                   as.integer(length(INDICATOR_FAMILIES[["S"]]$indicators)))
+  expect_true(is.na(tab$score[tab$code == "S"]))
+  expect_false(any(is.nan(tab$score)))
+})
+
+test_that("project_family_table follows the language and falls back to fr", {
+  .identity_enrichers()
+  p <- .synth_project()
+  fsf <- suppressMessages(project_family_scores(p))
+  expect_identical(project_family_table(p, fsf, "en")$famille[1],
+                   INDICATOR_FAMILIES[[1]]$name_en)
+  expect_identical(project_family_table(p, fsf, "de")$famille[1],
+                   INDICATOR_FAMILIES[[1]]$name_fr)
+})
+
+test_that("project_family_table tolerates a non-sf project and no family_sf", {
+  p <- .synth_project()
+  p$indicators_sf <- NULL
+  tab <- project_family_table(p, NULL, "fr")
+  expect_identical(nrow(tab), 12L)
+  expect_true(all(is.na(tab$score)))
+  expect_identical(tab$n_indicateurs,
+                   vapply(INDICATOR_FAMILIES, function(f) length(f$indicators), integer(1),
+                          USE.NAMES = FALSE))
+})
+
+test_that("project_synthesis_summary$families is the shared table", {
+  .identity_enrichers()
+  p <- .synth_project(ndp_level = 2L)
+  fsf <- suppressMessages(project_family_scores(p))
+  s <- suppressMessages(project_synthesis_summary(p, "fr", family_sf = fsf))
+  expect_identical(s$families, project_family_table(p, fsf, "fr"))
+})
+
+test_that("mod_synthesis summary_table shows the shared family table", {
+  skip_if_not_installed("xml2")
+  .identity_enrichers()
+  p <- .synth_project(ndp_level = 1L)
+  fsf <- suppressMessages(project_family_scores(p))
+  want <- project_family_table(p, fsf, "fr")
+
+  app_state <- shiny::reactiveValues(current_project = p, language = "fr",
+                                     family_comments = NULL)
+  res <- new.env()
+  suppressMessages(suppressWarnings(shiny::testServer(
+    mod_synthesis_server, args = list(app_state = app_state),
+    { res$html <- as.character(output$summary_table) }
+  )))
+  html <- res$html
+  expect_false(is.null(html))
+
+  doc <- xml2::read_html(html)
+  rows <- xml2::xml_find_all(doc, "//tbody/tr")
+  expect_length(rows, 12L)
+  cell <- function(r, i) trimws(xml2::xml_text(xml2::xml_find_all(r, "./td")[[i]]))
+  got <- data.frame(
+    code = vapply(rows, cell, "", i = 2L),
+    score = suppressWarnings(as.numeric(vapply(rows, cell, "", i = 3L))),
+    ndp = as.integer(vapply(rows, cell, "", i = 4L)),
+    n = as.integer(vapply(rows, cell, "", i = 5L)),
+    stringsAsFactors = FALSE
+  )
+  expect_identical(got$code, want$code)
+  expect_equal(got$score, want$score, tolerance = 1e-8)
+  expect_identical(got$ndp, want$ndp)
+  expect_identical(got$n, want$n_indicateurs)
+  expect_identical(vapply(rows, cell, "", i = 1L), want$famille)
 })
