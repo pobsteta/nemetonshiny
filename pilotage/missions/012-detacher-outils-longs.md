@@ -73,3 +73,9 @@ plus de tâche VICTOR coupée à 600 s.
 - Le 2e appel (avec `jeton`) valide et consomme le jeton, lance le croisement en tâche de fond et rend **tout de suite un `job_id`** ; l'avancement se suit par `etat_calcul`. Le 1er appel (aperçu) reste synchrone.
 - À mesurer et rapporter : la durée de l'aperçu de `croiser_onf` (s'il refait le croisement complet, il dépasse 60 s et la décision remonte à Pascal).
 - Ordre : `testeur` d'abord (tests d'acceptation sans lire le code), puis `dev` après la fusion de 016 (#261, même fichier `R/service_mcp.R`). Version du dev : à fixer au lancement.
+
+## Décisions du 2026-11-11 (Pascal), sur les questions du testeur
+
+1. Suivi : `etat_calcul(projet)` inchangé ; la réponse dit quel travail tourne (`type` : calcul, rapport, onf) et son `job_id`.
+2. Erreur d'un job : au premier niveau, `statut = "echec"` + champs d'erreur MCP habituels (`classe`, `code`, `langue`, `erreur`, `action`) à côté de `statut`.
+3. Un seul job à la fois par projet (`data/compute_job.json`) : un second lancement (calcul, rapport ou ONF) est refusé en `calcul_en_cours` (action : attendre, suivre avec `etat_calcul`) ; pour `croiser_onf`, le jeton n'est alors **pas** consommé.
