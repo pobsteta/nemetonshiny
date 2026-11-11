@@ -412,8 +412,11 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 #' rapport, onf) and its arguments in `data/compute_job.json`.
 #' @noRd
 .mcp_spawn <- function(project_id, project_dir, log_path) {
-  expr <- sprintf("nemetonshiny:::.mcp_child_job(%s, %s)",
-                  deparse(project_id), deparse(project_dir))
+  # job_id lu dans le fichier job ecrit juste avant : l'enfant ne fait rien
+  # si le fichier a change entre-temps (deux serveurs).
+  job_id <- .mcp_job_read(dirname(dirname(log_path)))$job_id
+  expr <- sprintf("nemetonshiny:::.mcp_child_job(%s, %s, %s)",
+                  deparse(project_id), deparse(project_dir), deparse(job_id))
   src <- .mcp_source_dev()
   if (!is.null(src)) {
     expr <- sprintf("pkgload::load_all(%s, quiet = TRUE); %s", deparse(src), expr)
@@ -449,12 +452,18 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 #'
 #' Reads the `type` of `data/compute_job.json`: `calcul` (default, the
 #' indicator computation), `rapport` (PDF report) or `onf` (ONF crossing,
-#' written to the project).
+#' written to the project). With `job_id`, exits doing nothing when it is not
+#' the one in the job file.
 #' @noRd
-.mcp_child_job <- function(project_id, project_dir) {
+.mcp_child_job <- function(project_id, project_dir, job_id = NULL) {
   options(nemeton.app_options = list(project_dir = project_dir))
   path <- get_project_path(project_id)
-  type <- if (!is.null(path)) .mcp_job_read(path)$type %||% "calcul" else "calcul"
+  job <- if (!is.null(path)) .mcp_job_read(path)
+  # Un autre job a pris la place (course entre deux serveurs) : ne rien faire.
+  if (!is.null(job_id) && !identical(as.character(job$job_id %||% ""), job_id)) {
+    return(invisible(NULL))
+  }
+  type <- job$type %||% "calcul"
   switch(type,
     rapport = .mcp_child_executer(project_id, project_dir, .mcp_tache_rapport),
     onf = .mcp_child_executer(project_id, project_dir, .mcp_tache_onf),
@@ -845,6 +854,14 @@ mcp_lancer_calcul <- function(projet) {
 
 #' @noRd
 mcp_etat_calcul <- function(projet) {
+  # L'outil a reussi, c'est le JOB qui a echoue : `ok = false` et les champs
+  # d'erreur au premier niveau, mais sans marquage isError.
+  r <- .mcp_etat_calcul(projet)
+  attr(r, "mcp_erreur") <- NULL
+  r
+}
+
+.mcp_etat_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
     path <- get_project_path(id)
@@ -892,8 +909,15 @@ mcp_etat_calcul <- function(projet) {
 mcp_annuler_calcul <- function(projet) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
-    cancel_computation(id)
-    list(projet = id, message = "Annulation demand\u00e9e ; le calcul s'arr\u00eate au prochain indicateur.")
+    job <- .mcp_job_read(get_project_path(id))
+    if (.mcp_job_running(job) && (job$type %||% "calcul") != "calcul") {
+      # Un rapport ou un croisement ONF n'a pas de point d'arret : le dire.
+      list(projet = id, annule = FALSE, type = job$type,
+        message = "Ce travail (rapport ou croisement ONF) ne peut pas \u00eatre annul\u00e9 ; attendre sa fin, suivre avec etat_calcul.")
+    } else {
+      cancel_computation(id)
+      list(projet = id, message = "Annulation demand\u00e9e ; le calcul s'arr\u00eate au prochain indicateur.")
+    }
   })
 }
 
@@ -1211,7 +1235,8 @@ mcp_generer_rapport <- function(projet, langue = "fr", synthese = NULL) {
   .mcp_call({
     id <- .mcp_resolve_project(projet)
     langue <- langue %||% "fr"
-    .mcp_garde_job(id)
+    # Meme critere que les ecritures : job, calcul de l'application, verrou.
+    .mcp_garde_ecriture(id)
     job <- .mcp_job_lancer(id, "rapport",
                            args = list(langue = langue, synthese = synthese))
     list(projet = id, job_id = job$job_id, type = "rapport", log = job$log,
@@ -1283,7 +1308,7 @@ mcp_tools <- function() {
     ellmer::tool(.mcp_marquer(mcp_annuler_calcul), name = "annuler_calcul",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,
         destructive_hint = FALSE, idempotent_hint = TRUE),
-      description = "Ask a project's running computation to stop.",
+      description = "Ask a project's running indicator computation to stop. A report or an ONF crossing cannot be cancelled: the answer says so (annule false); wait and follow with etat_calcul.",
       arguments = list(projet = projet_arg)),
     ellmer::tool(.mcp_marquer(mcp_generer_rapport), name = "generer_rapport",
       annotations = ellmer::tool_annotations(read_only_hint = FALSE,

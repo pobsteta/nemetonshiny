@@ -23,8 +23,10 @@
 # mesuree par base::Sys.time() (horloge simulee ci-dessous). Cles de l'apercu
 # FIXEES par Pascal (2026-11-10) : appliquer_ugf -> n_ugf_remplacees,
 # n_ugf_nouvelles ; croiser_onf -> ecartees (liste d'IDU), n_ecartees,
-# n_retenues. Tout jeton CONNU presente est CONSOMME, meme refuse (refus de lien,
-# garde rejouee) : un second essai avec les bons parametres est jeton_invalide.
+# n_retenues. Tout jeton CONNU presente a une garde levee est CONSOMME, meme
+# refuse (refus de lien) : un second essai avec les bons parametres est
+# jeton_invalide. Un refus de la GARDE (verrou, calcul en cours) ne le consomme
+# pas (2026-11-11).
 # Langue (arbitrage de 003) : seuls resume_projet et generer_rapport acceptent
 # `langue` ; les erreurs de jeton sont en FR par defaut.
 # Rouge tant que la mission 010 n'est pas fusionnee.
@@ -729,7 +731,7 @@ test_that("calcul en cours au premier appel : calcul_en_cours, pas de jeton (les
 })
 
 # Les gardes sont rejouees a la confirmation : un jeton valide ne les contourne
-# pas, et la garde qui refuse CONSOMME le jeton (la garde levee, il ne revit pas).
+# pas, et la garde qui refuse LAISSE le jeton valable (garde avant consommation).
 test_that("un jeton valide ne contourne pas le verrou pris entre-temps ; le jeton reste valable (garde avant consommation, 2026-11-11)", {
   skip_if_not_installed("arrow")
   .cf_env()
@@ -812,8 +814,8 @@ test_that("lecture, calcul et exports n'exigent aucun jeton (ADR 0002, perimetre
     exporter_gpkg = suppressMessages(.cf_appel("exporter_gpkg", projet = id)),
     generer_rapport = .cf_appel("generer_rapport", projet = id, synthese = "Texte."),
     annuler_calcul = .cf_appel("annuler_calcul", projet = id),
-    # un seul job a la fois (mission 012) : le rapport lance ci-dessus est
-    # termine pour la suite du test.
+    # un seul job a la fois (mission 012) : le job du rapport, dont le spawn est
+    # simule ici, n'a pas fini ; on l'efface pour lancer le calcul.
     lancer_calcul = {
       unlink(.mcp_job_path(get_project_path(id)))
       .cf_appel("lancer_calcul", projet = id)
