@@ -128,6 +128,30 @@ dans une structure à part (par `task_id`), **jamais** dans le dictionnaire `tas
 jamais au modèle vocal : le jeton ne doit sortir de VICTOR que dans le prompt de la tâche 2. Le modèle
 vocal ne reçoit que l'aperçu en texte et la mention « une confirmation est attendue ».
 
+**Lancement de la tâche 2 : outil vocal `confirmer_ecriture(task_id)`** (décision de Pascal, 2026-11-11).
+Le modèle vocal n'a **pas** à recopier le bloc : il appelle ce nouvel outil, avec le seul `task_id` de la
+tâche 1, sur un « oui » explicite de l'utilisateur (**jamais** sur silence, bruit ou ambiguïté). Le serveur
+VICTOR :
+1. retrouve le bloc gardé pour ce `task_id` (structure serveur du point d'accroche ci-dessus) ; aucun bloc :
+   erreur claire, rien n'est lancé ;
+2. vérifie qu'il n'est pas expiré (`expire_a` ; expiré : le jeter et le dire, redemander un aperçu) ;
+3. **construit lui-même** le prompt : « L'utilisateur a confirmé oralement. » + le bloc recopié tel quel
+   (gabarit ci-dessus) ;
+4. lance la tâche par le **même chemin que `start_task`** (`server.py:567`, qui crée l'entrée `TASKS` et le
+   fil `_run_task`), dans l'espace `nemeton`.
+
+`delegate_to_claude` n'est **pas** utilisé pour la confirmation. Le modèle vocal ne voit **jamais** le
+jeton. Le bloc est **supprimé côté serveur** une fois utilisé ou expiré ; sur un « non » de l'utilisateur,
+le bloc est jeté aussi.
+
+**Jeton masqué dans ce qui part à la page.** `start_task` range le prompt dans `TASKS[id]["prompt"]`
+(`server.py:573`), et l'entrée `TASKS` est envoyée telle quelle à la page : `task_started` (l.1933),
+`task_update` (l.2021, ainsi que l.1741 et l.1985 pour l'annulation). Pour la tâche 2, le bloc est donc
+**remplacé** dans `TASKS[id]["prompt"]` par « [confirmation de `<outil>` sur `<projet_nom>`] » ; **seul le
+`claude -p` lancé** (argument `prompt` de `_run_task`, l.526) reçoit le bloc entier. Même principe que le
+champ `delegation` du brief `2026-11-10-journal-des-dictees.md` : le jeton n'est jamais journalisé ni
+affiché.
+
 ## Le jeton survit à `claude -p` (mission 016, PR #261, `348ff3df`)
 
 VICTOR n'appelle pas lui-même les outils MCP d'écriture : il délègue (`delegate_to_claude` → `_run_task`,
