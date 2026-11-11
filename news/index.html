@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9008</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9009</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9009" id="nemetonshiny-202610189009-2026-11-11">nemetonshiny 2026.10.18.9009 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189009-2026-11-11"></a></h2>
+<div class="section level3">
+<h3 id="changements-cassants-2026-10-18-9009">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-10-18-9009"></a></h3>
+<ul><li>Serveur MCP : <code>generer_rapport</code> et le <strong>2e appel</strong> de <code>croiser_onf</code> (avec <code>jeton</code>) ne rendent plus leur résultat : ils lancent un job de fond et rendent <code>ok</code>, <code>projet</code>, <code>job_id</code>, <code>type</code> (<code>rapport</code> ou <code>onf</code>) aussitôt. Le résultat (<code>fichier</code> ; <code>n_ugf</code>, <code>n_tenements</code>, <code>n_parcelles</code>, <code>n_cad</code>, <code>ecartees</code>, <code>ecart_median_m</code>, <code>indicateurs_perimes</code>) se lit dans <code>etat_calcul</code> quand <code>statut = "termine"</code>. Le 1er appel de <code>croiser_onf</code> (aperçu) reste synchrone.</li>
+<li>
+<code>etat_calcul</code> : nouveau champ <code>type</code> (<code>calcul</code>, <code>rapport</code>, <code>onf</code>) ; un job en échec rend désormais <code>ok = false</code> et les champs d’erreur MCP (<code>classe</code>, <code>code</code>, <code>langue</code>, <code>erreur</code>, <code>action</code>) au premier niveau, à côté de <code>statut</code>, <strong>sans marquage <code>isError</code></strong> (l’outil a réussi, c’est le job qui a échoué). <code>erreur</code> est le texte classé (avant : le message brut) ; <code>statut</code> vaut <code>en_cours</code> dès le lancement (avant : <code>lancement</code>).</li>
+<li>Un seul job à la fois par projet : un second lancement (calcul, rapport ou croisement ONF) est refusé en <code>calcul_en_cours</code>. <code>generer_rapport</code> suit le même critère que les écritures : refusé aussi pendant un calcul lancé depuis l’application (<code>calcul_en_cours</code>) ou un verrou d’édition (<code>projet_verrouille</code>).</li>
+<li>
+<code>annuler_calcul</code> pendant un rapport ou un croisement ONF répond <code>annule = false</code> (non annulable) au lieu de « annulation demandée » sans effet.</li>
+<li>
+<code>.mcp_jeton_consommer()</code> rejoue la garde <strong>avant</strong> de consommer le jeton : un refus <code>calcul_en_cours</code> ou <code>projet_verrouille</code> au 2e appel (<code>appliquer_ugf</code> comme <code>croiser_onf</code>) laisse le jeton valable. Un jeton inconnu ou déjà utilisé reste <code>jeton_invalide</code>, sans passer par la garde.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="serveur-mcp--les-outils-longs-mesurés-partent-en-tâche-de-fond-mission-2026-10-18-9009">Serveur MCP : les outils longs mesurés partent en tâche de fond (mission 012)<a class="anchor" aria-label="anchor" href="#serveur-mcp--les-outils-longs-mesur%C3%A9s-partent-en-t%C3%A2che-de-fond-mission-2026-10-18-9009"></a></h3>
+<ul><li>Mesures de la mission 011 : <code>croiser_onf</code> 79-160 s, <code>generer_rapport</code> 49 s (220 s sur un process neuf) ; ADR 0004, aucun appel ne doit dépasser 600 s.</li>
+<li>Modèle de <code>lancer_calcul</code> : <code>data/compute_job.json</code> (champs <code>type</code>, <code>args</code>), <code>Rscript</code> détaché (<code>setsid</code>), <code>.mcp_child_job()</code> aiguille par <code>type</code>. En développement (<code>load_all</code>), l’enfant charge les sources du dépôt, pas le paquet installé.</li>
+<li>L’aperçu de <code>croiser_onf</code> (1er appel) reste <strong>synchrone</strong> : durée mesurée 38 à 70 s sur Couchey et Marsannay (DGFiP en cache), jusqu’à ~160 s à froid (mission 011).</li>
+<li>L’enfant détaché reçoit le <code>job_id</code> et sort sans rien faire s’il ne correspond pas à celui de <code>compute_job.json</code> (course entre deux serveurs).</li>
+<li>Descriptions d’outils : <code>generer_rapport</code>, <code>croiser_onf</code> et <code>etat_calcul</code> renvoient les uns aux autres ; <code>inst/mcp/README.md</code> et <code>CONTRAT.md</code> § 6 bis à jour.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9008" id="nemetonshiny-202610189008-2026-11-11">nemetonshiny 2026.10.18.9008 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189008-2026-11-11"></a></h2>
 <p>Changements cassants : <code>projet_lire()$synthese$families$score</code> passe de 1 à <strong>2 décimales</strong> (53,3 → 53,33), comme l’écran Synthèse et <code>resume_projet</code> ; <code>families</code> gagne les colonnes <code>ndp</code> et <code>n_indicateurs</code> (ajout).</p>

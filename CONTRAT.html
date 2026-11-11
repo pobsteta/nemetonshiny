@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9008</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9009</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -328,7 +328,8 @@
 <td>aucun ; liste des outils <code><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">ellmer::tool()</a></code>
 </td>
 </tr><tr><td><code>mcp_etat_calcul()</code></td>
-<td><code>projet</code></td>
+<td>
+<code>projet</code> ; état du <strong>job de fond</strong> du projet (un seul à la fois, <code>data/compute_job.json</code>) : <code>type</code> (<code>calcul</code>, <code>rapport</code>, <code>onf</code>), <code>job_id</code>, <code>statut</code> (<code>en_cours</code>, <code>termine</code>, <code>echec</code>, <code>annule</code>, <code>aucun</code>) ; <code>termine</code> : le résultat du job au premier niveau (<code>fichier</code> pour <code>rapport</code> ; <code>n_ugf</code>, <code>n_tenements</code>, <code>n_parcelles</code>, <code>n_cad</code>, <code>ecartees</code>, <code>ecart_median_m</code>, <code>indicateurs_perimes</code> pour <code>onf</code>) ; <code>echec</code> : <code>ok = false</code> et les champs d’erreur MCP (<code>classe</code>, <code>code</code>, <code>langue</code>, <code>erreur</code>, <code>action</code>) à côté de <code>statut</code>, <strong>sans</strong> attribut <code>mcp_erreur</code> (pas d’<code>isError</code> : l’outil a réussi, le job a échoué)</td>
 </tr><tr><td><code>mcp_exporter_gpkg()</code></td>
 <td><code>projet</code></td>
 </tr><tr><td><code>.mcp_resolve_project()</code></td>
@@ -346,7 +347,7 @@
 <code>outil</code>, <code>projet</code> (id résolu), <code>lien</code>, <code>apercu</code> ; premier temps d’une écriture (ADR 0002) : enregistre sur disque (un fichier <code>&lt;jeton&gt;.rds</code> par jeton dans <code>NEMETON_MCP_JETONS_DIR</code>, défaut <code>tools::R_user_dir("nemetonshiny", "data")/mcp/jetons</code>, hors du dossier projet ; écriture atomique) un jeton à usage unique valable 10 min, tiré hors du générateur de R (<code>/dev/urandom</code>, insensible à <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code>), lié à <code>outil</code> + <code>projet</code> + <code>lien</code> (comparé par <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>), puis lève <code>nemetonshiny_confirmation_requise</code> portant <code>projet</code>, <code>projet_nom</code> (nom résolu, cité dans le message), <code>jeton</code>, <code>apercu</code>, <code>expire_a</code> (ISO 8601 UTC). N’écrit rien. À appeler après les gardes et les contrôles métier</td>
 </tr><tr><td><code>.mcp_jeton_consommer()</code></td>
 <td>
-<code>jeton</code>, <code>outil</code>, <code>projet</code>, <code>lien</code>, <code>garde</code> (défaut <code>.mcp_garde_ecriture</code>) ; second temps : retire le jeton du registre dès sa présentation, même s’il a été émis par un autre processus serveur (la suppression du fichier fait foi : deux serveurs ne le consomment pas tous deux) (même refusé ; exception : les erreurs levées avant l’appel, projet introuvable ou ambigu, métadonnées ONF illisibles, ne le consomment pas), rejoue <code>garde(projet)</code>, puis lève <code>nemetonshiny_jeton_invalide</code> si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou <code>lien</code>. <code>lien</code> n’est évalué qu’après la garde. Rend <code>TRUE</code> (invisible) si l’écriture peut suivre</td>
+<code>jeton</code>, <code>outil</code>, <code>projet</code>, <code>lien</code>, <code>garde</code> (défaut <code>.mcp_garde_ecriture</code>) ; second temps : <strong>rejoue d’abord <code>garde(projet)</code></strong> (son erreur, calcul en cours ou verrou, passe et <strong>laisse le jeton valable</strong> ; décision du 2026-11-11), puis retire le jeton du registre (la suppression du fichier fait foi : deux serveurs ne le consomment pas tous deux, même s’il a été émis par un autre processus) ; un jeton inconnu ou déjà utilisé n’est pas soumis à la garde. Lève <code>nemetonshiny_jeton_invalide</code> si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou <code>lien</code> (consommé dans les deux derniers cas). Les erreurs levées avant l’appel (projet introuvable ou ambigu, métadonnées ONF illisibles) ne le consomment pas. <code>lien</code> n’est évalué qu’après la garde. Rend <code>TRUE</code> (invisible) si l’écriture peut suivre</td>
 </tr></tbody></table><p>Divers :</p>
 <table class="table"><thead><tr><th>Objet</th>
 <th>Arguments / contenu</th>
