@@ -76,9 +76,10 @@ outils d'écriture du plan d'actions quand `nemetonmcp` les aura soumis au jeton
 **Consigne à ajouter à `CLAUDE.md` de l'espace**, quoi qu'on choisisse : devant une erreur
 `confirmation_requise`, ne **jamais** rappeler l'outil avec le jeton de sa propre initiative. Rendre la
 main : écrire l'aperçu (nom et identifiant du projet, chiffres de l'aperçu), puis **terminer la sortie par
-le bloc balisé ci-dessous**. Ne rappeler avec `jeton` que si le message de la tâche contient la
-confirmation explicite de l'utilisateur **et** le bloc recopié tel quel (2e tâche : l'espace n'appelle que
-l'outil, avec les arguments et le jeton du bloc).
+le bloc balisé ci-dessous**. Ne rappeler avec `jeton` que dans la **2e tâche**, dont le prompt est le gabarit « L'utilisateur a confirmé
+oralement. » + bloc recopié tel quel (voir plus bas) : l'espace en déduit l'appel (outil `outil`,
+`arguments` + `jeton`, tirés du bloc) et ne fait rien d'autre. Si la sortie contient aussi le bloc
+`display_report` (`CLAUDE.md:89-90`), le bloc de confirmation vient **en dernier**.
 
 ### Transit du jeton entre la tâche 1 et la tâche 2 (décision de Pascal, 2026-11-11)
 
@@ -103,10 +104,26 @@ NEMETON_CONFIRMATION>>>
   avait été passé (omis sinon : le réglage du projet s'applique).
 - Un seul bloc par sortie. Si la tâche 1 n'a pas reçu `confirmation_requise`, aucun bloc.
 
-La tâche 2 ne démarre **qu'après un « oui » explicite** de l'utilisateur. Son prompt est : « Appelle l'outil
-`<outil>` avec exactement ces arguments et ce jeton, rien d'autre : `<arguments + "jeton">`. Ne relis pas
-d'aperçu, n'ajoute aucune écriture. » Le bloc est recopié **tel quel** par le client, jamais retapé ni
-corrigé ; le jeton n'est **jamais lu à voix haute**, ni affiché, ni journalisé.
+**Ordre dans la sortie de la tâche 1.** Si la sortie porte aussi le bloc `display_report` (skill
+`diagnostic`, `aigora-nemeton/CLAUDE.md:89-90`), le bloc de confirmation vient **en dernier**, après lui
+(décision de l'orchestrateur) : VICTOR l'extrait par ses balises.
+
+**Gabarit unique de la tâche 2** (identique mot pour mot chez VICTOR et dans l'espace aigora). La tâche 2
+ne démarre **qu'après un « oui » explicite** de l'utilisateur. Son prompt est exactement :
+
+```
+L'utilisateur a confirmé oralement.
+<<<NEMETON_CONFIRMATION
+{…le bloc de la tâche 1, recopié tel quel…}
+NEMETON_CONFIRMATION>>>
+```
+
+Rien d'autre : pas d'aperçu relu, pas de consigne reconstruite. Le bloc n'est ni retapé, ni corrigé, ni
+complété. **Comment la session de l'espace en déduit l'appel** : elle lit le JSON entre les balises et
+appelle l'outil `outil` avec les `arguments` du bloc **plus** `jeton` (valeur du bloc) ; aucun autre
+argument, aucun autre outil. Elle n'agit que si le prompt contient la phrase « L'utilisateur a confirmé
+oralement. » **et** un bloc valide ; sinon elle ne fait rien d'écrit. Le jeton n'est **jamais lu à voix
+haute**, ni affiché, ni journalisé.
 
 
 **Le jeton survit au redémarrage du serveur** (mission 016, PR #261, `348ff3df`, test

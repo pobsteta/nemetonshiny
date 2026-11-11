@@ -88,14 +88,45 @@ NEMETON_CONFIRMATION>>>
   avait été passé (omis sinon : le réglage du projet s'applique).
 - Un seul bloc par sortie. Si la tâche 1 n'a pas reçu `confirmation_requise`, aucun bloc.
 
-La tâche 2 ne démarre **qu'après un « oui » explicite** de l'utilisateur. Son prompt est : « Appelle l'outil
-`<outil>` avec exactement ces arguments et ce jeton, rien d'autre : `<arguments + "jeton">`. Ne relis pas
-d'aperçu, n'ajoute aucune écriture. » Le bloc est recopié **tel quel** par le client, jamais retapé ni
-corrigé ; le jeton n'est **jamais lu à voix haute**, ni affiché, ni journalisé.
+**Ordre dans la sortie de la tâche 1.** Si la sortie porte aussi le bloc `display_report` (skill
+`diagnostic`, `aigora-nemeton/CLAUDE.md:89-90`), le bloc de confirmation vient **en dernier**, après lui
+(décision de l'orchestrateur) : VICTOR l'extrait par ses balises.
+
+**Gabarit unique de la tâche 2** (identique mot pour mot chez VICTOR et dans l'espace aigora). La tâche 2
+ne démarre **qu'après un « oui » explicite** de l'utilisateur. Son prompt est exactement :
+
+```
+L'utilisateur a confirmé oralement.
+<<<NEMETON_CONFIRMATION
+{…le bloc de la tâche 1, recopié tel quel…}
+NEMETON_CONFIRMATION>>>
+```
+
+Rien d'autre : pas d'aperçu relu, pas de consigne reconstruite. Le bloc n'est ni retapé, ni corrigé, ni
+complété. **Comment la session de l'espace en déduit l'appel** : elle lit le JSON entre les balises et
+appelle l'outil `outil` avec les `arguments` du bloc **plus** `jeton` (valeur du bloc) ; aucun autre
+argument, aucun autre outil. Elle n'agit que si le prompt contient la phrase « L'utilisateur a confirmé
+oralement. » **et** un bloc valide ; sinon elle ne fait rien d'écrit. Le jeton n'est **jamais lu à voix
+haute**, ni affiché, ni journalisé.
 
 Côté VICTOR : garder le bloc de la tâche 1 **sans le lire à voix haute** (ne lire que l'aperçu en texte
 ordinaire, avec le nom ET l'identifiant du projet), attendre le « oui », puis le réinjecter tel quel dans le
-prompt de la tâche 2. Pas de « oui » (ou `expire_a` dépassé) : le bloc est jeté.
+gabarit ci-dessus. Pas de « oui » (ou `expire_a` dépassé) : le bloc est jeté.
+
+**Point d'accroche dans `server.py`** (lecture seule, numéros relevés le 2026-11-11) : le bloc doit être
+extrait **dans le code**, sur le modèle d'`extraire_vue` (l.849, qui cherche le dernier bloc JSON valide
+d'un résultat de tâche par `json.JSONDecoder.raw_decode`) : une fonction analogue qui cherche les balises
+`<<<NEMETON_CONFIRMATION` / `NEMETON_CONFIRMATION>>>`, valide les six clés, et **retire** le bloc du texte.
+Il faut le retirer de `task["output"]` **avant** :
+- l'`emit({"type": "task_update", "task": task})` de `watch_task` (l.2017-2021) : ce dictionnaire part
+  tel quel **à la page** ;
+- la troncature `summary = (task["output"] or "").strip()[:4000]` (l.2024), dont le résultat est donné au
+  modèle vocal.
+Le plus sûr est de le faire dans `_run_task` (l.526-565), au moment où `task["output"]` est posé et avant
+le changement de `task["status"]` (que `watch_task` surveille). Le bloc extrait est gardé **côté serveur**
+dans une structure à part (par `task_id`), **jamais** dans le dictionnaire `task`, jamais envoyé à la page,
+jamais au modèle vocal : le jeton ne doit sortir de VICTOR que dans le prompt de la tâche 2. Le modèle
+vocal ne reçoit que l'aperçu en texte et la mention « une confirmation est attendue ».
 
 ## Le jeton survit à `claude -p` (mission 016, PR #261, `348ff3df`)
 
@@ -111,7 +142,7 @@ avec le jeton. Ce chemin **tient** : le jeton n'est plus en mémoire du serveur 
   autre utilisateur, la tâche 2 ne verra pas le jeton (`jeton_invalide`) ;
 - **chemins de fichier absolus** dans le prompt délégué (`appliquer_ugf` : le chemin fait partie de
   l'empreinte du jeton). Un chemin relatif la rend dépendante du répertoire de travail ; si la tâche 2 part
-  d'ailleurs, `jeton_invalide`. Le prompt de la tâche 2 doit reprendre **exactement** les arguments de la
+  d'ailleurs, `jeton_invalide`. Le bloc de la tâche 2 reprend **exactement** les `arguments` de la
   tâche 1, avec un chemin absolu dans les deux.
 
 La durée de 10 minutes reste provisoire (`.MCP_JETON_DUREE`) : à éprouver à la voix.
@@ -132,7 +163,7 @@ sous-chaîne). Tout autre nom (mal dicté, partiel, ambigu) **passe par le serve
 `etat_calcul`, ou délégation à l'espace `nemeton`), qui applique les règles de la mission 007 et rend
 `projet_ambigu` avec `candidats` (format `nom (id)`) ou `projet_introuvable`. VICTOR lit `code` et
 `candidats` et demande lequel, sans choisir. Une **écriture** ne s'appuie jamais sur une résolution de
-VICTOR : l'aperçu (nom et identifiant du serveur) fait foi.
+VICTOR : l'aperçu (nom et identifiant du serveur) fait foi. À savoir : la voie rapide en nom exact peut retenir un projet là où la règle 007 rendrait `projet_ambigu` (un autre projet à distance ≤ 1) ; sans effet sur les écritures, couvertes par l'aperçu du serveur.
 
 Depuis la mission 008 (PR #260, `1ea3289b`), `resume_projet` rend l'écran Synthèse complet : `description`,
 `created_at`, `updated_at`, `calcule_le` (ISO 8601, fuseau Europe/Paris), `chm_suspect`,

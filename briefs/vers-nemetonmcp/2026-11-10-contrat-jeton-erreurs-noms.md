@@ -91,11 +91,12 @@ remplacer par `etat_calcul_vue` et `exporter_gpkg_vue` (`r/R/outils.R`). Ces deu
    `{ok, erreur, classe, candidats}` : il manque `code`, `langue`, `action`, et il ne pose ni l'attribut
    `mcp_erreur` ni donc `isError` pour vos propres outils (`creer_projet`, `plan_actions`,
    `ajouter_action`, `vue_atlas`, …). Appliquez `.ns(".mcp_vers_outil")` aussi à ceux-là. Vos classes
-   `nemetonmcp_*` n'ont ni `code` ni `action` : définissez un `code` court par classe. Pour `action`,
-   **réutilisez le catalogue de nemetonshiny** (les phrases `mcp_act_*` de son `TRANSLATIONS`, par
-   exemple celle de `projet_ambigu` ou de `calcul_en_cours`) quand le cas existe ; n'inventez pas de
-   clés d'action divergentes. Un cas absent du catalogue : le signaler à nemetonshiny. AIGORA et VICTOR
-   décident sur `code`.
+   `nemetonmcp_*` n'ont ni `code` ni `action` : définissez un `code` court par classe. Pour `action`
+   (**décision de Pascal**), nemetonmcp écrit **ses propres phrases** dans son propre i18n ; seuls les
+   **`code`** sont alignés sur la liste de nemetonshiny quand le cas existe déjà (`projet_introuvable`,
+   `projet_ambigu`, `projet_verrouille`, `calcul_en_cours`, …). **Ne lisez pas `TRANSLATIONS`** de
+   nemetonshiny : il est hors contrat (§ 6 bis) et peut changer sans préavis. AIGORA et VICTOR décident
+   sur `code`.
 
 ## 3. Annotations (mission 004, #257)
 
