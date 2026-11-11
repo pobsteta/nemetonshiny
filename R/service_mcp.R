@@ -483,16 +483,125 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 # revoir apres l'essai VICTOR. Seule definition.
 .MCP_JETON_DUREE <- 10 * 60
 
-# Registre des jetons, en memoire du processus serveur (ADR 0002) : rien
-# n'est ecrit dans le dossier du projet a l'apercu. Cle : le jeton ; valeur :
-# list(outil, projet, lien, expire).
-.mcp_jetons <- new.env(parent = emptyenv())
+# Registre des jetons, SUR DISQUE (mission 016) : VICTOR lance un `claude -p`
+# neuf par tache, donc un serveur MCP neuf ; un registre en memoire mourait
+# entre l'apercu (tache 1) et le "oui" (tache 2). Un fichier par jeton,
+# `<jeton>.rds`, dans .mcp_jetons_dir(), HORS du dossier projet (rien n'y est
+# ecrit a l'apercu). Contenu : list(jeton, outil, projet, lien, expire) ; lien
+# = l'empreinte (md5 des parcelles, chemin + md5 du fichier, reglages
+# resolus), ni geometrie ni apercu ; expire en secondes depuis l'epoque.
 
-.mcp_jetons_purger <- function(maintenant) {
-  for (k in ls(.mcp_jetons, all.names = TRUE)) {
-    if (.mcp_jetons[[k]]$expire < maintenant) rm(list = k, envir = .mcp_jetons)
+#' Directory of the confirmation token registry
+#'
+#' `NEMETON_MCP_JETONS_DIR` when set (tests, deployment), else
+#' `tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`. Created on demand,
+#' mode `0700` on Unix (an existing directory is left as it is: the variable
+#' may point to a directory set up by the deployment).
+#' @return Character path.
+#' @noRd
+.mcp_jetons_dir <- function() {
+  d <- Sys.getenv("NEMETON_MCP_JETONS_DIR", "")
+  if (!nzchar(d)) {
+    d <- file.path(tools::R_user_dir("nemetonshiny", "data"), "mcp", "jetons")
   }
+  if (!dir.exists(d)) {
+    suppressWarnings(dir.create(d, recursive = TRUE, mode = "0700"))
+    if (!dir.exists(d)) .mcp_jetons_inaccessible()
+    if (.Platform$OS.type == "unix") Sys.chmod(d, "0700", use_umask = FALSE)
+  }
+  d
+}
+
+# Registre illisible ou non inscriptible : erreur CLASSEE (code MCP `erreur`),
+# jamais une erreur R brute. Rien n'a ete ecrit dans le projet.
+.mcp_jetons_inaccessible <- function(call = rlang::caller_env()) {
+  .api_abort("Registre des jetons inaccessible : rien n'a \u00e9t\u00e9 \u00e9crit.",
+             "nemetonshiny_registre_jetons", call = call)
+}
+
+.mcp_jeton_fichier <- function(jeton, dir = .mcp_jetons_dir()) {
+  file.path(dir, paste0(jeton, ".rds"))
+}
+
+# Lecture tolerante : un fichier illisible, corrompu ou d'une autre forme vaut
+# NULL (jeton inconnu), jamais une erreur R non classee.
+.mcp_jeton_lire <- function(f) {
+  x <- tryCatch(suppressWarnings(readRDS(f)), error = function(e) NULL)
+  ok <- is.list(x) && is.numeric(x$expire) && length(x$expire) == 1L &&
+    !is.na(x$expire)
+  if (ok) x
+}
+
+# Ecriture atomique : fichier temporaire dans le MEME repertoire (meme systeme
+# de fichiers), droits 0600, puis file.rename(). Un lecteur ne voit jamais un
+# fichier a moitie ecrit.
+.mcp_jeton_ecrire <- function(entree, dir = .mcp_jetons_dir()) {
+  tmp <- tempfile(paste0(".", entree$jeton, "-"), tmpdir = dir, fileext = ".tmp")
+  ok <- tryCatch({
+    suppressWarnings(saveRDS(entree, tmp))
+    if (.Platform$OS.type == "unix") Sys.chmod(tmp, "0600", use_umask = FALSE)
+    suppressWarnings(file.rename(tmp, .mcp_jeton_fichier(entree$jeton, dir)))
+  }, error = function(e) FALSE)
+  if (!isTRUE(ok)) {
+    unlink(tmp)
+    .mcp_jetons_inaccessible()
+  }
+  invisible(TRUE)
+}
+
+# Purge : jetons perimes, fichiers illisibles, temporaires abandonnes (plus
+# vieux qu'une duree de jeton). Une course avec un autre serveur qui purge en
+# meme temps est sans effet (unlink d'un fichier deja absent).
+.mcp_jetons_purger <- function(maintenant, dir = .mcp_jetons_dir()) {
+  t <- as.numeric(maintenant)
+  for (f in list.files(dir, pattern = "\\.rds$", full.names = TRUE)) {
+    e <- .mcp_jeton_lire(f)
+    if (is.null(e) || e$expire < t) unlink(f)
+  }
+  tmp <- list.files(dir, pattern = "\\.tmp$", all.files = TRUE, full.names = TRUE)
+  mt <- as.numeric(file.mtime(tmp))
+  unlink(tmp[!is.na(mt) & mt < t - .MCP_JETON_DUREE])
   invisible()
+}
+
+# Octets aleatoires HORS du generateur de R : set.seed() du processus est sans
+# effet, et l'etat .Random.seed n'est pas touche. /dev/urandom (Linux, macOS) ;
+# sinon (Windows) repli plus faible mais toujours hors RNG de R : md5 d'un nom
+# de tempfile() (aleatoire interne de R, graine prise au demarrage), de
+# l'heure a la microseconde, du PID et de proc.time(). Le jeton est lisible
+# sur disque par l'utilisateur, pas par un autre (repertoire 0700).
+.mcp_octets_aleatoires <- function(n, source = "/dev/urandom") {
+  if (file.exists(source)) {
+    b <- tryCatch({
+      con <- file(source, "rb", raw = TRUE)
+      on.exit(close(con), add = TRUE)
+      readBin(con, "raw", n)
+    }, error = function(e) raw(0))
+    if (length(b) == n) return(b)
+  }
+  out <- raw(0)
+  while (length(out) < n) {
+    f <- tempfile()
+    writeLines(c(basename(tempfile()), format(Sys.time(), "%Y%m%d%H%M%OS6"),
+                 Sys.getpid(), paste(proc.time(), collapse = " "),
+                 length(out)), f)
+    h <- unname(tools::md5sum(f))
+    unlink(f)
+    out <- c(out, as.raw(strtoi(substring(h, seq(1, 31, 2), seq(2, 32, 2)), 16L)))
+  }
+  out[seq_len(n)]
+}
+
+# Jeton : 24 caracteres de [0-9a-z] (forme inchangee depuis 010), tirage par
+# rejet (octet < 252 = 7 x 36) pour une loi uniforme sur l'alphabet.
+.mcp_jeton_tirer <- function(n = 24L) {
+  alphabet <- c(0:9, letters)
+  out <- character(0)
+  while (length(out) < n) {
+    b <- as.integer(.mcp_octets_aleatoires(2L * n))
+    out <- c(out, alphabet[(b[b < 252L] %% 36L) + 1L])
+  }
+  paste(out[seq_len(n)], collapse = "")
 }
 
 #' Issue a confirmation token instead of writing
@@ -501,7 +610,9 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 #' `.MCP_JETON_DUREE` seconds, bound to `outil`, `projet` and `lien`, then
 #' signals `nemetonshiny_confirmation_requise` carrying `jeton`, `apercu` and
 #' `expire_a` (ISO 8601, UTC). Call it after the guards and every business
-#' check, and before any write. The registry lives in memory only.
+#' check, and before any write. The registry is one file per token in
+#' `.mcp_jetons_dir()`, outside the project folder: the confirmation may come
+#' from another server process (one `claude -p` per task).
 #'
 #' @param outil Character. Name of the tool.
 #' @param projet Character. Resolved project id.
@@ -512,10 +623,11 @@ mcp_resume_projet <- function(projet, langue = "fr") {
 #' @noRd
 .mcp_jeton_emettre <- function(outil, projet, lien, apercu) {
   maintenant <- Sys.time()
-  .mcp_jetons_purger(maintenant)
+  dir <- .mcp_jetons_dir()
+  .mcp_jetons_purger(maintenant, dir)
   repeat {
-    jeton <- paste(sample(c(0:9, letters), 24L, replace = TRUE), collapse = "")
-    if (!exists(jeton, envir = .mcp_jetons, inherits = FALSE)) break
+    jeton <- .mcp_jeton_tirer()
+    if (!file.exists(.mcp_jeton_fichier(jeton, dir))) break
   }
   expire <- maintenant + .MCP_JETON_DUREE
   # Nom du projet : cite dans le message, pour que l'utilisateur voie QUEL
@@ -525,8 +637,8 @@ mcp_resume_projet <- function(projet, langue = "fr") {
     as.character(l$nom[match(projet, l$id)])[1]
   }, error = function(e) NA_character_)
   if (is.na(nom) || !nzchar(nom)) nom <- projet
-  assign(jeton, list(outil = outil, projet = projet, lien = lien,
-                     expire = expire), envir = .mcp_jetons)
+  .mcp_jeton_ecrire(list(jeton = jeton, outil = outil, projet = projet,
+                          lien = lien, expire = as.numeric(expire)), dir)
   .api_abort("Confirmation requise : rien n'a \u00e9t\u00e9 \u00e9crit.",
              "nemetonshiny_confirmation_requise", projet = projet,
              projet_nom = nom, jeton = jeton, apercu = apercu,
@@ -554,12 +666,26 @@ mcp_resume_projet <- function(projet, langue = "fr") {
                                  garde = .mcp_garde_ecriture) {
   cle <- if (is.character(jeton) && length(jeton) == 1L && !is.na(jeton) &&
                nzchar(jeton)) jeton
-  entree <- if (!is.null(cle)) get0(cle, envir = .mcp_jetons, inherits = FALSE)
-  if (!is.null(entree)) rm(list = cle, envir = .mcp_jetons)
+  # Seule la forme emise designe un fichier : jamais de chemin fabrique a
+  # partir d'une chaine arbitraire (\u00ab ../x \u00bb).
+  if (!is.null(cle) && !grepl("^[0-9a-z]{24}$", cle)) cle <- NULL
+  dir <- .mcp_jetons_dir()
+  entree <- NULL
+  if (!is.null(cle)) {
+    f <- .mcp_jeton_fichier(cle, dir)
+    if (file.exists(f)) {
+      entree <- .mcp_jeton_lire(f)
+      # Usage unique entre processus : la suppression fait foi. Si deux
+      # serveurs lisent le meme jeton, un seul file.remove() rend TRUE ;
+      # l'autre le voit comme deja utilise.
+      if (!isTRUE(suppressWarnings(file.remove(f)))) entree <- NULL
+    }
+  }
+  .mcp_jetons_purger(Sys.time(), dir)
   if (is.function(garde)) garde(projet)
   motif <- if (is.null(entree)) {
     "Jeton inconnu ou d\u00e9j\u00e0 utilis\u00e9."
-  } else if (Sys.time() > entree$expire) {
+  } else if (as.numeric(Sys.time()) > entree$expire) {
     "Jeton p\u00e9rim\u00e9."
   } else if (!identical(entree$outil, outil) || !identical(entree$projet, projet)) {
     "Jeton d\u00e9livr\u00e9 pour un autre outil ou un autre projet."
