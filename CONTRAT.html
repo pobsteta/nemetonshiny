@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9006</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9007</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -343,10 +343,10 @@
 <code>id</code>, <code>call</code> ; refuse d’écrire dans un projet occupé : <code>nemetonshiny_calcul_en_cours</code>, <code>nemetonshiny_projet_verrouille</code>, <code>nemetonshiny_projet_ancien</code> ; rend l’état du projet</td>
 </tr><tr><td><code>.mcp_jeton_emettre()</code></td>
 <td>
-<code>outil</code>, <code>projet</code> (id résolu), <code>lien</code>, <code>apercu</code> ; premier temps d’une écriture (ADR 0002) : enregistre en mémoire un jeton à usage unique valable 10 min, lié à <code>outil</code> + <code>projet</code> + <code>lien</code> (comparé par <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>), puis lève <code>nemetonshiny_confirmation_requise</code> portant <code>projet</code>, <code>projet_nom</code> (nom résolu, cité dans le message), <code>jeton</code>, <code>apercu</code>, <code>expire_a</code> (ISO 8601 UTC). N’écrit rien. À appeler après les gardes et les contrôles métier</td>
+<code>outil</code>, <code>projet</code> (id résolu), <code>lien</code>, <code>apercu</code> ; premier temps d’une écriture (ADR 0002) : enregistre sur disque (un fichier <code>&lt;jeton&gt;.rds</code> par jeton dans <code>NEMETON_MCP_JETONS_DIR</code>, défaut <code>tools::R_user_dir("nemetonshiny", "data")/mcp/jetons</code>, hors du dossier projet ; écriture atomique) un jeton à usage unique valable 10 min, tiré hors du générateur de R (<code>/dev/urandom</code>, insensible à <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code>), lié à <code>outil</code> + <code>projet</code> + <code>lien</code> (comparé par <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>), puis lève <code>nemetonshiny_confirmation_requise</code> portant <code>projet</code>, <code>projet_nom</code> (nom résolu, cité dans le message), <code>jeton</code>, <code>apercu</code>, <code>expire_a</code> (ISO 8601 UTC). N’écrit rien. À appeler après les gardes et les contrôles métier</td>
 </tr><tr><td><code>.mcp_jeton_consommer()</code></td>
 <td>
-<code>jeton</code>, <code>outil</code>, <code>projet</code>, <code>lien</code>, <code>garde</code> (défaut <code>.mcp_garde_ecriture</code>) ; second temps : retire le jeton du registre dès sa présentation (même refusé ; exception : les erreurs levées avant l’appel, projet introuvable ou ambigu, métadonnées ONF illisibles, ne le consomment pas), rejoue <code>garde(projet)</code>, puis lève <code>nemetonshiny_jeton_invalide</code> si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou <code>lien</code>. <code>lien</code> n’est évalué qu’après la garde. Rend <code>TRUE</code> (invisible) si l’écriture peut suivre</td>
+<code>jeton</code>, <code>outil</code>, <code>projet</code>, <code>lien</code>, <code>garde</code> (défaut <code>.mcp_garde_ecriture</code>) ; second temps : retire le jeton du registre dès sa présentation, même s’il a été émis par un autre processus serveur (la suppression du fichier fait foi : deux serveurs ne le consomment pas tous deux) (même refusé ; exception : les erreurs levées avant l’appel, projet introuvable ou ambigu, métadonnées ONF illisibles, ne le consomment pas), rejoue <code>garde(projet)</code>, puis lève <code>nemetonshiny_jeton_invalide</code> si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou <code>lien</code>. <code>lien</code> n’est évalué qu’après la garde. Rend <code>TRUE</code> (invisible) si l’écriture peut suivre</td>
 </tr></tbody></table><p>Divers :</p>
 <table class="table"><thead><tr><th>Objet</th>
 <th>Arguments / contenu</th>

@@ -1,5 +1,37 @@
 # Changelog
 
+## nemetonshiny 2026.10.18.9007 (2026-11-11)
+
+Changements cassants : aucun (contrat client inchangé : forme de
+`confirmation_requise`, usage unique, 10 minutes, empreinte).
+
+### Serveur MCP : le jeton de confirmation survit au redémarrage du serveur (mission 016)
+
+- Le registre des jetons de la mission 010 n’est plus en mémoire mais
+  **sur disque**, un fichier `<jeton>.rds` par jeton dans
+  `NEMETON_MCP_JETONS_DIR` (défaut
+  `tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`), hors du
+  dossier projet. VICTOR lance un `claude -p` neuf par tâche, donc un
+  serveur MCP neuf : l’aperçu (tâche 1) et le « oui » (tâche 2)
+  passaient par deux processus et le second rendait `jeton_invalide`.
+- Écriture atomique (fichier temporaire dans le même répertoire puis
+  `file.rename`), répertoire `0700` et fichiers `0600` sous Unix.
+  Consommation : la suppression du fichier fait foi, deux serveurs
+  (VICTOR et AIGORA) ne consomment pas le même jeton.
+- Jetons périmés, fichiers illisibles et temporaires abandonnés purgés à
+  l’émission et à la consommation ; un fichier corrompu vaut un jeton
+  inconnu (`jeton_invalide`). Registre impossible à créer ou à écrire :
+  erreur classée (`erreur`), rien d’écrit.
+- Jeton tiré de `/dev/urandom` (insensible à
+  [`set.seed()`](https://rdrr.io/r/base/Random.html), ne touche pas
+  `.Random.seed`) ; repli sans `/dev/urandom` (Windows) : md5 d’aléa
+  interne de R, de l’heure et du PID, plus faible. Aucune dépendance
+  ajoutée. Seul un jeton de la forme émise (24 caractères `[0-9a-z]`)
+  désigne un fichier.
+- Sur disque : jeton, outil, id du projet, empreinte (md5 des parcelles,
+  chemin et md5 du fichier, réglages résolus), échéance. Ni géométrie ni
+  aperçu.
+
 ## nemetonshiny 2026.10.18.9006 (2026-11-10)
 
 Changements cassants : `updated_at` n’est pas un champ nouveau, seul son

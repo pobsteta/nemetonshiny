@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9006</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9007</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9007" id="nemetonshiny-202610189007-2026-11-11">nemetonshiny 2026.10.18.9007 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189007-2026-11-11"></a></h2>
+<p>Changements cassants : aucun (contrat client inchangé : forme de <code>confirmation_requise</code>, usage unique, 10 minutes, empreinte).</p>
+<div class="section level3">
+<h3 id="serveur-mcp--le-jeton-de-confirmation-survit-au-redémarrage-du-serveur-mission-2026-10-18-9007">Serveur MCP : le jeton de confirmation survit au redémarrage du serveur (mission 016)<a class="anchor" aria-label="anchor" href="#serveur-mcp--le-jeton-de-confirmation-survit-au-red%C3%A9marrage-du-serveur-mission-2026-10-18-9007"></a></h3>
+<ul><li>Le registre des jetons de la mission 010 n’est plus en mémoire mais <strong>sur disque</strong>, un fichier <code>&lt;jeton&gt;.rds</code> par jeton dans <code>NEMETON_MCP_JETONS_DIR</code> (défaut <code>tools::R_user_dir("nemetonshiny", "data")/mcp/jetons</code>), hors du dossier projet. VICTOR lance un <code>claude -p</code> neuf par tâche, donc un serveur MCP neuf : l’aperçu (tâche 1) et le « oui » (tâche 2) passaient par deux processus et le second rendait <code>jeton_invalide</code>.</li>
+<li>Écriture atomique (fichier temporaire dans le même répertoire puis <code>file.rename</code>), répertoire <code>0700</code> et fichiers <code>0600</code> sous Unix. Consommation : la suppression du fichier fait foi, deux serveurs (VICTOR et AIGORA) ne consomment pas le même jeton.</li>
+<li>Jetons périmés, fichiers illisibles et temporaires abandonnés purgés à l’émission et à la consommation ; un fichier corrompu vaut un jeton inconnu (<code>jeton_invalide</code>). Registre impossible à créer ou à écrire : erreur classée (<code>erreur</code>), rien d’écrit.</li>
+<li>Jeton tiré de <code>/dev/urandom</code> (insensible à <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code>, ne touche pas <code>.Random.seed</code>) ; repli sans <code>/dev/urandom</code> (Windows) : md5 d’aléa interne de R, de l’heure et du PID, plus faible. Aucune dépendance ajoutée. Seul un jeton de la forme émise (24 caractères <code>[0-9a-z]</code>) désigne un fichier.</li>
+<li>Sur disque : jeton, outil, id du projet, empreinte (md5 des parcelles, chemin et md5 du fichier, réglages résolus), échéance. Ni géométrie ni aperçu.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9006" id="nemetonshiny-202610189006-2026-11-10">nemetonshiny 2026.10.18.9006 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189006-2026-11-10"></a></h2>
 <p>Changements cassants : <code>updated_at</code> n’est pas un champ nouveau, seul son <strong>format</strong> change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ; <code>score</code> des familles de <code>resume_projet</code> passe à 2 décimales, comme la Synthèse. Autres champs : ajoutés.</p>
