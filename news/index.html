@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9007</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9008</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9008" id="nemetonshiny-202610189008-2026-11-11">nemetonshiny 2026.10.18.9008 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189008-2026-11-11"></a></h2>
+<p>Changements cassants : <code>projet_lire()$synthese$families$score</code> passe de 1 à <strong>2 décimales</strong> (53,3 → 53,33), comme l’écran Synthèse et <code>resume_projet</code> ; <code>families</code> gagne les colonnes <code>ndp</code> et <code>n_indicateurs</code> (ajout).</p>
+<div class="section level3">
+<h3 id="une-seule-table-des-familles-pour-lécran-lapi-et-le-mcp-mission-2026-10-18-9008">Une seule table des familles pour l’écran, l’API et le MCP (mission 015)<a class="anchor" aria-label="anchor" href="#une-seule-table-des-familles-pour-l%C3%A9cran-lapi-et-le-mcp-mission-2026-10-18-9008"></a></h3>
+<ul><li>Nouveau helper <code>project_family_table(project, family_sf, language)</code> (<code>R/service_synthesis.R</code>) : les 12 familles avec nom, score (2 décimales), NDP et nombre d’indicateurs présents (à défaut prévus). Utilisé par le tableau de l’onglet Synthèse, par <code>project_synthesis_summary()</code> (donc <code>projet_lire()$synthese</code>) et par <code>mcp_resume_projet()</code> : plus de comptage en double ni de repli divergent quand <code>indicators_sf</code> n’est pas un sf (repli sur la config partout).</li>
+<li>Test corrigé : <code>test-service_synthesis.R</code> figeait l’arrondi à 1 décimale ; il attend désormais 2 décimales.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9007" id="nemetonshiny-202610189007-2026-11-11">nemetonshiny 2026.10.18.9007 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189007-2026-11-11"></a></h2>
 <p>Changements cassants : aucun (contrat client inchangé : forme de <code>confirmation_requise</code>, usage unique, 10 minutes, empreinte).</p>
