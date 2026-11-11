@@ -72,8 +72,14 @@ Une erreur est aussi **marquée** : l'outil rend un résultat en erreur
 2. L'agent lit l'aperçu à l'utilisateur. **Seulement s'il confirme**, il
    rappelle le même outil avec les mêmes paramètres et `jeton`.
 
-Le jeton est à usage unique, valable 10 minutes (valeur provisoire), gardé en
-mémoire du serveur. Il est lié à l'outil, au projet, aux parcelles du projet
+Le jeton est à usage unique, valable 10 minutes (valeur provisoire). Il est
+gardé **sur disque**, hors du dossier projet, un fichier par jeton dans
+`NEMETON_MCP_JETONS_DIR` (défaut : `tools::R_user_dir("nemetonshiny", "data")`
+puis `mcp/jetons`, répertoire `0700`, fichiers `0600`) : il survit au
+redémarrage du serveur (un `claude -p` neuf par tâche, comme VICTOR, ou deux
+serveurs en même temps). Le fichier ne contient que le jeton, l'outil, l'id du
+projet, l'empreinte et l'échéance. Les jetons périmés et les fichiers
+illisibles sont purgés à chaque émission et consommation. Il est lié à l'outil, au projet, aux parcelles du projet
 et aux paramètres : fichier et son md5, `remplacer` ; tous les réglages ONF
 résolus du projet (dont `purger`). Tout jeton connu présenté est consommé,
 même refusé, **sauf** si le projet est introuvable ou ambigu, ou si les
