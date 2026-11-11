@@ -1,5 +1,24 @@
 # Changelog
 
+## nemetonshiny 2026.10.18.9006 (2026-11-10)
+
+Changements cassants : `updated_at` n’est pas un champ nouveau, seul son
+**format** change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ;
+`score` des familles de `resume_projet` passe à 2 décimales, comme la
+Synthèse. Autres champs : ajoutés.
+
+### MCP : `resume_projet` rend tout l’écran Synthèse (mission 008)
+
+- Nouveaux champs : `description`, `created_at`, `updated_at` et
+  `calcule_le` (ISO 8601, fuseau Europe/Paris ; heures naïves lues dans
+  le fuseau du process), `chm_suspect`, `chm_suspect_max`, et par
+  famille `ndp` et `n_indicateurs` (présents, à défaut prévus).
+- Le serveur MCP force `TZ = "Europe/Paris"` au lancement
+  (`inst/mcp/server.R`), donc les heures naïves sont lues en heure de
+  Paris quel que soit le fuseau du poste.
+- `calcule_le` : `completed_at` \> `fin_a` (job `termine`) \> date de
+  `indicators.parquet` \> `null`.
+
 ## nemetonshiny 2026.10.18.9005 (2026-11-10)
 
 ### Changements cassants
