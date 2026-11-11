@@ -5,6 +5,14 @@
 
 .jt_cond <- function(expr) tryCatch(expr, error = function(e) e)
 
+# Mission 016 : le registre est un fichier par jeton (NEMETON_MCP_JETONS_DIR,
+# pose par setup-service_mcp_jetons.R) ; ces deux aides remplacent
+# l'inspection de l'environnement en memoire, les attentes sont inchangees.
+.jt_au_registre <- function(jeton) {
+  file.exists(.mcp_jeton_fichier(jeton))
+}
+.jt_retirer <- function(jeton) unlink(.mcp_jeton_fichier(jeton))
+
 .jt_emettre <- function(outil = "outil_x", projet = "p1", lien = list(a = 1),
                         apercu = list(n = 1L)) {
   .jt_cond(.mcp_jeton_emettre(outil, projet, lien, apercu))
@@ -25,8 +33,8 @@ test_that("emettre : n'ecrit rien, leve confirmation_requise avec jeton, apercu,
   t <- as.POSIXct(e$expire_a, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   dt <- as.numeric(difftime(t, Sys.time(), units = "secs"))
   expect_true(dt > .MCP_JETON_DUREE - 5 && dt <= .MCP_JETON_DUREE)
-  expect_true(exists(e$jeton, envir = .mcp_jetons, inherits = FALSE))
-  rm(list = e$jeton, envir = .mcp_jetons)
+  expect_true(.jt_au_registre(e$jeton))
+  .jt_retirer(e$jeton)
 })
 
 test_that("la duree est de 10 minutes (provisoire, une seule constante)", {
@@ -36,7 +44,7 @@ test_that("la duree est de 10 minutes (provisoire, une seule constante)", {
 test_that("consommer : un jeton valide passe une fois, puis il est mort", {
   j <- .jt_emettre()$jeton
   expect_true(.mcp_jeton_consommer(j, "outil_x", "p1", list(a = 1), garde = NULL))
-  expect_false(exists(j, envir = .mcp_jetons, inherits = FALSE))
+  expect_false(.jt_au_registre(j))
   expect_s3_class(.jt_sans_garde(j), "nemetonshiny_jeton_invalide")
 })
 
@@ -63,7 +71,7 @@ test_that("consommer : jeton perime refuse (horloge simulee)", {
   local_mocked_bindings(Sys.time = function() reel() + .MCP_JETON_DUREE + 1,
                         .package = "base")
   expect_s3_class(.jt_sans_garde(j), "nemetonshiny_jeton_invalide")
-  expect_false(exists(j, envir = .mcp_jetons, inherits = FALSE))
+  expect_false(.jt_au_registre(j))
 })
 
 test_that("emettre purge les jetons perimes du registre", {
@@ -72,9 +80,9 @@ test_that("emettre purge les jetons perimes du registre", {
   local_mocked_bindings(Sys.time = function() reel() + .MCP_JETON_DUREE + 1,
                         .package = "base")
   neuf <- .jt_emettre()$jeton
-  expect_false(exists(vieux, envir = .mcp_jetons, inherits = FALSE))
-  expect_true(exists(neuf, envir = .mcp_jetons, inherits = FALSE))
-  rm(list = neuf, envir = .mcp_jetons)
+  expect_false(.jt_au_registre(vieux))
+  expect_true(.jt_au_registre(neuf))
+  .jt_retirer(neuf)
 })
 
 test_that("consommer : la garde est rejouee, son erreur passe, le jeton est consomme, le lien n'est pas evalue", {
@@ -101,7 +109,7 @@ test_that(".mcp_erreur porte jeton, apercu, expire_a pour confirmation_requise s
   expect_identical(j$jeton, e$jeton)
   expect_identical(j$apercu$ecartees, "21001000AA0002")
   expect_identical(j$expire_a, e$expire_a)
-  rm(list = e$jeton, envir = .mcp_jetons)
+  .jt_retirer(e$jeton)
   autre <- .jt_cond(.api_abort("x", "nemetonshiny_calcul_en_cours"))
   j <- jsonlite::fromJSON(as.character(.mcp_erreur(autre)), simplifyVector = TRUE)
   expect_false(any(c("jeton", "apercu", "expire_a") %in% names(j)))
