@@ -41,6 +41,10 @@
 #'   continuous severity raster - FORDEAD `anomaly_index` / RECONFORT `score`,
 #'   parity with the FAST trend plan). Only honoured for FORDEAD / RECONFORT;
 #'   degrades cleanly to `"uniform"` when the severity layer is unavailable.
+#' @param run_zone_id Optional integer. For `source == "FAST"` only: the zone
+#'   the FAST mask is computed and cached on (the `_tot` zone). `zone_id` (the
+#'   stratum) then only bounds the draw via the zone polygon. NULL = same as
+#'   `zone_id` (historical behaviour). Ignored for FORDEAD / RECONFORT.
 #' @param seed Optional integer. Forwarded to the coeur planner.
 #' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
 #'   FAST mask parameters. Required (non-NULL) when `source == "FAST"`
@@ -66,6 +70,7 @@ generate_validation_plan <- function(con, project,
                                      # (poids prop raster de severite continu, parite FAST).
                                      weighting    = c("uniform", "continuous"),
                                      seed         = NULL,
+                                     run_zone_id  = NULL,
                                      ndvi_threshold = NULL,
                                      nbr_threshold  = NULL,
                                      mode           = "count",
@@ -97,8 +102,12 @@ generate_validation_plan <- function(con, project,
                  class = "validation_no_zone_geom")
   }
 
+  # FAST : masque calcule sur `_tot` (mission 017) ; le polygone `zone` ci-dessus
+  # reste celui de la strate et borne le tirage (le coeur y restreint le raster).
+  mask_zone_id <- .fast_run_zone(source, run_zone_id, zone_id)
+
   alert_raster <- .resolve_alert_raster(
-    project, con, zone_id, source,
+    project, con, mask_zone_id, source,
     ndvi_threshold = ndvi_threshold,
     nbr_threshold  = nbr_threshold,
     mode           = mode,
@@ -156,9 +165,34 @@ generate_validation_plan <- function(con, project,
   )
 
   plan$zone_id       <- zone_id
-  plan$source_run_id <- .extract_mask_run_id(project, source, zone_id)
+  plan$source_run_id <- .extract_mask_run_id(project, source, mask_zone_id)
   plan$generated_at  <- Sys.time()
   plan
+}
+
+
+# Zone sur laquelle le masque FAST est calcule/lu : `run_zone_id` (`_tot`) pour
+# FAST quand il est valide, sinon la zone demandee (FORDEAD / RECONFORT ne
+# changent pas : leurs lecteurs gardent leur propre resolution).
+.fast_run_zone <- function(source, run_zone_id, zone_id) {
+  if (!identical(source, "FAST")) return(zone_id)
+  run <- suppressWarnings(as.integer(run_zone_id))
+  if (length(run) != 1L || is.na(run)) zone_id else run
+}
+
+
+# Lit le masque FAST 0-4 sur la zone du calcul (`_tot`) puis le decoupe a la
+# strate choisie (presentation pure : les classes sont celles de `_tot`, parite
+# FORDEAD). Sert l'histogramme et la surcouche du Plan de validation FAST.
+# NULL si le cache est absent ; si la strate = zone du calcul, pas de decoupe.
+.read_fast_mask_stratum <- function(con, zone_id, run_zone_id, cache_dir) {
+  run <- .fast_run_zone("FAST", run_zone_id, zone_id)
+  r <- tryCatch(
+    nemeton::read_fast_alert_mask(con, run, cache_dir = cache_dir),
+    error = function(e) NULL
+  )
+  if (is.null(r)) return(NULL)
+  .clip_fast_to_stratum(r, .fast_stratum_aoi(con, zone_id, run))
 }
 
 
@@ -182,7 +216,8 @@ generate_trend_sanitary_plan <- function(con, project,
                                          date_from = NULL, date_to = NULL,
                                          months = 6:9, min_years = 4L,
                                          min_obs_per_year = 2L, alpha = 0.05,
-                                         seed = NULL) {
+                                         seed = NULL,
+                                         run_zone_id = NULL) {
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
   }
@@ -202,10 +237,25 @@ generate_trend_sanitary_plan <- function(con, project,
                  class = "validation_no_mask")
   }
 
+  # Mission 017 : la pente est calculee pixel par pixel (sans quartiles), donc
+  # sur `_tot` les valeurs dans la strate ne changent pas ; la strate ne fait
+  # que BORNER le tirage via `mask_polygon`. `plan$zone_id` reste la strate.
+  calc_zone_id <- .fast_run_zone("FAST", run_zone_id, zone_id)
+  mask_polygon <- NULL
+  if (!identical(calc_zone_id, zone_id)) {
+    mask_polygon <- tryCatch(get_monitoring_zone_aoi(con, zone_id),
+                             error = function(e) NULL)
+    if (is.null(mask_polygon)) {
+      rlang::abort("Could not derive zone polygon for validation plan.",
+                   class = "validation_no_zone_geom")
+    }
+  }
+
   plan <- tryCatch(
     nemeton::create_trend_sanitary_plan(
       con              = con,
-      zone_id          = zone_id,
+      zone_id          = calc_zone_id,
+      mask_polygon     = mask_polygon,
       date_from        = date_from,
       date_to          = date_to,
       cache_dir        = cd,

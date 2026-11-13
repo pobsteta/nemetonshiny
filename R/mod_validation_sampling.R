@@ -214,6 +214,10 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
 #' @param app_state Parent reactiveValues with `language`,
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id.
+#' @param run_zone_id_r Reactive returning the zone the FAST mask is computed
+#'   and cached on (the `_tot` zone, parity FORDEAD / RECONFORT). `zone_id_r`
+#'   (the stratum) only bounds the draw and the display. FAST only; defaults to
+#'   `zone_id_r` for back-compat.
 #' @param mode_r Reactive returning the parent sidebar mode
 #'   (`"quick"` / `"health"`). When `source_fixed` is NULL, drives
 #'   the default of the inner `source` radio. Unused when the source
@@ -233,7 +237,8 @@ mod_validation_sampling_server <- function(id, app_state,
                                            thresholds_r,
                                            date_range_r,
                                            trend_params_r = shiny::reactive(NULL),
-                                           source_fixed = NULL) {
+                                           source_fixed = NULL,
+                                           run_zone_id_r = zone_id_r) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -381,13 +386,15 @@ mod_validation_sampling_server <- function(id, app_state,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
+      # FAST : masque lu sur `_tot` puis decoupe a la strate (mission 017).
+      if (!src %in% c("FORDEAD", "RECONFORT")) {
+        return(.read_fast_mask_stratum(con, zid, run_zone_id_r(), cd))
+      }
       tryCatch(
         if (identical(src, "FORDEAD"))
           nemeton::read_fordead_dieback_mask(con, zid, cache_dir = cd)
-        else if (identical(src, "RECONFORT"))
-          nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd)
         else
-          nemeton::read_fast_alert_mask(con, zid, cache_dir = cd),
+          nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
         error = function(e) NULL
       )
     })
@@ -501,7 +508,8 @@ mod_validation_sampling_server <- function(id, app_state,
             min_years        = min_years_v,
             min_obs_per_year = 2L,
             alpha            = alpha_v,
-            seed             = as.integer(input$seed %||% 42L)
+            seed             = as.integer(input$seed %||% 42L),
+            run_zone_id      = run_zone_id_r()
           ),
           error = function(e) e
         )
@@ -552,6 +560,7 @@ mod_validation_sampling_server <- function(id, app_state,
           # uniforme si la couche de severite est absente.
           weighting       = input$weighting %||% "uniform",
           seed            = as.integer(input$seed %||% 42L),
+          run_zone_id     = run_zone_id_r(),
           ndvi_threshold  = th$ndvi,
           nbr_threshold   = th$nbr,
           window_days     = th$window_days %||% 30L,
@@ -646,13 +655,14 @@ mod_validation_sampling_server <- function(id, app_state,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
+      if (!src %in% c("FORDEAD", "RECONFORT")) {
+        return(.read_fast_mask_stratum(con, zone_id, run_zone_id_r(), cd))
+      }
       tryCatch(
         if (identical(src, "FORDEAD")) {
           nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd)
-        } else if (identical(src, "RECONFORT")) {
-          nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd)
         } else {
-          nemeton::read_fast_alert_mask(con, zone_id, cache_dir = cd)
+          nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd)
         },
         error = function(e) NULL
       )
