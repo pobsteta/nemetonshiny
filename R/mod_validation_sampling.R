@@ -270,66 +270,10 @@ mod_validation_sampling_server <- function(id, app_state,
       })
     }
 
-    # v0.45.0 - label unification : pour FAST, charge best-effort le
-    # raster d'alerte continu et calcule les labels quartile via
-    # `.fast_class_labels()`, partage avec Alertes FAST. Pour FORDEAD,
-    # labels biologiques statiques. Le resultat alimente le checkbox
-    # `classes` via updateCheckboxGroupInput (preserve la selection
-    # courante).
-    preview_raster_r <- shiny::reactive({
-      if (!identical(current_source(), "FAST")) return(NULL)
-      proj <- app_state$current_project
-      if (is.null(proj) || is.null(proj$path)) return(NULL)
-      # Zone CHOISIE dans le menu (`zone_id_r`), comme la generation : la
-      # zone memorisee en metadata donnait un apercu d'une autre zone.
-      zone_id <- suppressWarnings(as.integer(zone_id_r()))
-      # v0.48.1 - guard longueur nulle : un projet sans zone
-      # enregistree a `monitoring_zone_id == NULL`, donc
-      # `as.integer(NULL)` retourne `integer(0)` et `is.na(integer(0))`
-      # vaut `logical(0)` -> `if` plantait " argument de longueur
-      # nulle ". On verifie length avant is.na.
-      if (length(zone_id) != 1L || is.na(zone_id)) return(NULL)
-      th <- thresholds_r()
-      dr <- date_range_r()
-      if (is.null(th$ndvi) || is.null(th$nbr) ||
-          length(dr) != 2L || any(is.na(dr))) return(NULL)
-      cd <- file.path(proj$path, "cache", "layers", "sentinel2")
-      if (!dir.exists(cd)) return(NULL)
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
-      if (is.null(con)) return(NULL)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
-      # v0.52.13 - API mono-index (nemeton@v0.55.0, spec 017).
-      # v0.52.15 - cache D6 (nemeton@v0.57.0) sur la previsualisation
-      # FAST : un clic sur l'apercu apres changement de seuil/index est
-      # desormais instantane si le COG resultat est deja sur disque.
-      idx <- th$index %||% "NDVI"
-      # NDMI / NDRE use their own thresholds (th$ndmi / th$ndre),
-      # falling back to NDVI's when absent.
-      thr <- switch(idx,
-                    NBR  = th$nbr,
-                    NDMI = th$ndmi %||% th$ndvi,
-                    NDRE = th$ndre %||% th$ndmi %||% th$ndvi,
-                    th$ndvi)
-      # v0.55.0 - helper unique partage (coherence hash D6).
-      result_cache <- .fast_alert_cache_dir(proj$path)
-      tryCatch(
-        nemeton::read_fast_alert_raster(
-          con,
-          zone_id          = zone_id,
-          index            = idx,
-          threshold        = as.numeric(thr),
-          date_from        = dr[1],
-          date_to          = dr[2],
-          mode             = "count",
-          window_days      = as.integer(th$window_days %||% 30L),
-          cache_dir        = cd,
-          cache_result     = TRUE,
-          result_cache_dir = result_cache
-        ),
-        error = function(e) NULL
-      )
-    })
-
+    # Libelles des classes FORDEAD (4 = sol nu ... 1 = faible), traduits dans
+    # la langue courante : l'UI les pose en dur en francais. Le resultat
+    # alimente le checkbox `classes` via updateCheckboxGroupInput (preserve la
+    # selection courante). FAST (trend) et RECONFORT n'ont pas ces cases.
     shiny::observe({
       i18n <- i18n_r()
       src  <- current_source()
@@ -340,8 +284,8 @@ mod_validation_sampling_server <- function(id, app_state,
       # observer pour RECONFORT. FAST utilise desormais le trend (spec 025)
       # sans cases " classes " -> on saute aussi.
       if (identical(src, "RECONFORT") || identical(src, "FAST")) return()
-      r    <- preview_raster_r()
-      labels <- .fast_class_labels(r, source = src,
+      # FORDEAD : libelles statiques, `.fast_class_labels()` ne lit pas `r`.
+      labels <- .fast_class_labels(NULL, source = src,
                                    mode = "count", i18n = i18n)
       # Ordre decroissant de severite : 4, 3, 2, 1.
       shiny::updateCheckboxGroupInput(
