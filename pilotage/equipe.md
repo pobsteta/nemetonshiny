@@ -10,7 +10,7 @@
 ## Plafond humain
 
 - **PR ouvertes en même temps, au plus :** 3
-- **Rythme de relecture de Pascal :** _…_
+- **Rythme de relecture de Pascal :** 5 PR par jour ouvré (Pascal, bilan du 2026-11-13)
 
 ## Le vivier (catalogue, pas une équipe)
 
@@ -45,3 +45,12 @@
 | [014-alignement-coeur-2026-11-14](missions/014-alignement-coeur-2026-11-14.md) | `dev` | sonnet | appuyer | oui/oui/oui | 1 |
 | [015-table-familles-partagee](missions/015-table-familles-partagee.md) | `dev` | sonnet | appuyer | oui/oui/oui (staffing confirmé par Pascal le 2026-11-11) | 2 |
 | [016-jeton-persiste](missions/016-jeton-persiste.md) | `dev` | opus | appuyer | oui/oui/oui (décidée par Pascal le 2026-11-10) | 2 |
+
+## Ajustements du bilan du 2026-11-13 (validés par Pascal)
+
+- `testeur` : reste ; chaque fiche de test porte la liste de contrôle « test discriminant » (code et classe d'erreur exacts, une mutation qui fait échouer le test, pas de test vacant). Cause n° 1 du Pareto.
+- `relecteur` : relit aussi la fiche de mission **avant** le dev (rubrique « décisions de Pascal applicables »), en plus de la PR. Cause n° 2.
+- `dev` sur opus : réservé au jeton et à la sécurité (comme 010, 016) ; le reste sur sonnet.
+- Temps de la main : 003 et 010 passent de « tenir » à « appuyer » (contrat d'erreurs et de jeton stable).
+- `afficheur` : non utilisé, sans objet tant que le chantier reste MCP ; reste au vivier.
+- Pas de cycle de code dans ce dépôt tant que la chaîne nemetonmcp → essai Couchey n'est pas bouclée (cartes « Planifié » du kanban).

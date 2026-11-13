@@ -28,7 +28,22 @@ _(vide)_
 
 ## Planifié
 
-_(vide)_
+- [bilan-chaine-nemetonmcp] Brief nemetonmcp appliqué (puis aigora, victor) · depuis le cycle 2
+  - Homme : Pascal (sessions nemetonmcp, aigora, victor)
+  - Mission : ouvrir `briefs/vers-nemetonmcp/2026-11-10-contrat-jeton-erreurs-noms.md` d'ici le 2026-11-17 ; relance si aucun commit nemetonmcp sous 7 jours
+  - Moyens : briefs de la mission 013 (`briefs/vers-*/2026-11-10-*.md`)
+- [bilan-essai-couchey] Essai VICTOR sur Couchey · depuis le cycle 2
+  - Homme : Pascal, à la voix
+  - Mission : « où en est Couchey », « applique les UGF ONF » + « oui », « fais le rapport » ; au plus tard le 2026-11-24, après nemetonmcp
+  - Moyens : VICTOR + nemetonmcp à jour ; vérifie aussi le bloc NEMETON_CONFIRMATION en vrai `claude -p` et la durée de l'aperçu croiser_onf (écart l. 45)
+- [bilan-adr-0003] ADR 0003 (souveraineté) tranchée · depuis le cycle 2
+  - Homme : Pascal
+  - Mission : accepter ou refuser `pilotage/adr/0003-acces-tous-souverainete.md` avant la release v2026.11.1, puis report dans platform_nemeton
+  - Moyens : l'ADR telle que proposée le 2026-10-24
+- [bilan-release-2026.11.1] Release v2026.11.1 · depuis le cycle 2
+  - Homme : orchestrateur, sur feu vert de Pascal
+  - Mission : publier les changements cassants de 2026.10.18.9009 après l'essai Couchey
+  - Moyens : `release.yml` (PR vers main)
 
 ## Terminé
 
@@ -119,3 +134,4 @@ l'inscrit avec ce qu'elle nous apprend._
 
 - cycle 1 · contrat nemetonshiny → nemetonmcp (CONTRAT.md § 6 bis + test de présence/signature, README MCP à 10 outils, PR #253) · pour le mainteneur de nemetonmcp et les utilisateurs de VICTOR/AIGORA · première livraison : un renommage casse la CI de l'app au lieu de VICTOR en production ; mauvaise nouvelle associée : rien encore de sensible dans AIGORA (une erreur y passe toujours pour un succès, cycle 2) et CI rouge par dérive du cœur (levée par #255)
 - cycle 2 · pilotage vocal sûr : noms dictés de travers retrouvés, aucune écriture sans « oui » (jeton qui survit entre deux tâches VICTOR), resume_projet = écran Synthèse, outils longs en tâche de fond, 4 briefs vers nemetonmcp/aigora/victor (PR #256-#264) · pour Pascal et les utilisateurs de VICTOR/AIGORA · le cycle 1 livrait un contrat ; celui-ci livre des comportements essayables à la voix (essai terrain encore à faire)
+- bilan du 2026-11-13 · mauvaise nouvelle : 16 missions et 12 PR fusionnées, rien de publié ni consommé par nemetonmcp, le critère « moins se répéter dans AIGORA » n'a pas bougé · pour Pascal et les utilisateurs de VICTOR/AIGORA · ce qu'elle nous apprend : un chantier qui traverse plusieurs dépôts ne livre qu'au bout de la chaîne ; le prochain cycle se mesure à l'essai de Couchey, pas au nombre de PR
