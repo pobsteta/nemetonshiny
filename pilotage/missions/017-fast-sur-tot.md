@@ -42,27 +42,41 @@ strate choisie dans le menu (`_res`, `_feu`, `_mix`) qu'une **découpe d'afficha
 
 1. `mod_monitoring_fast_alerts_server` gagne `run_zone_id_r` (zone du calcul et du cache), par
    défaut `zone_id_r` (rétro-compatibilité), comme `mod_monitoring_reconfort_map_server`.
-   `R/mod_monitoring.R` lui passe `shiny::reactive(as.character(fordead_zone_id()))`, avec repli
-   sur `input$zone_id` quand le projet n'a pas de `_tot` (même repli que FORDEAD,
-   `fallback_zone`).
-2. Le calcul du masque (`compute_fast_raster`, `:384-…`) et le préchauffage trend (`:599-624`)
-   utilisent `run_zone_id_r()`. La signature de cache (`.fast_raster_signature`) porte la zone du
+   `R/mod_monitoring.R` lui passe un réactif à **repli explicite** :
+   `{ id <- fordead_zone_id(); if (is.na(id)) input$zone_id else as.character(id) }`.
+   Attention : `fordead_zone_id()` (`:1092-1098`) rend `NA_integer_` sans `_tot`, et
+   `as.character(NA)` passe la garde `isTRUE(nzchar(zone))` (`fast_alerts.R:388`, `:542`, `:600`)
+   car `nzchar(NA)` vaut `TRUE` : le cœur s'arrêterait sur un NA. (Le `fallback_zone` de FORDEAD
+   est interne à son module, `fordead_map.R:215`, pas un réactif parent.)
+2. Passent à `run_zone_id_r()` dans `R/mod_monitoring_fast_alerts.R` : le calcul du masque
+   (`compute_fast_raster`, `:385-…`), les dépendances de l'observer (`:530`), la garde « zone
+   vide → `raster_rv(NULL)` » (`:541-547`), la signature (`:553-557`), le déclencheur du
+   préchauffage trend (`:592`) et le préchauffage lui-même (`:599-624`). La signature de cache (`.fast_raster_signature`) porte la zone du
    calcul, pas la strate : changer de strate **ne recalcule pas** et n'affiche pas le toast de
    calcul.
-3. Si la strate affichée diffère de la zone du calcul : découper le masque 0-4 avec
-   `terra::mask` sur `get_monitoring_zone_aoi(con, strate)` transformé au CRS du raster, en
-   réactif séparé (la découpe ne relance pas le calcul). Échec de découpe → avertissement
-   `cli` et raster non découpé, comme FORDEAD.
-4. Bandeau « zone saine » et décomptes d'alerte : calculés sur le raster **découpé** (ce qu'on
-   voit), pas sur `_tot`.
-5. Ingestion FAST (`.lancer_fast`, `R/mod_monitoring.R:~2500-2546`) sur la zone `_tot`, repli
-   sur la strate si pas de `_tot`.
+3. `raster_rv` garde le masque `_tot` non découpé. `raster_r` devient le raster **découpé** :
+   si la strate affichée (`zone_id_r()`) diffère de la zone du calcul, `terra::mask` sur
+   `get_monitoring_zone_aoi(con, strate)` transformé au CRS du raster. L'AOI vit dans un
+   réactif à connexion propre, comme `aoi_r` de RECONFORT (`reconfort_map.R:183-192`) ; la
+   découpe ne relance pas le calcul. Échec de découpe → avertissement `cli` et raster non
+   découpé, comme FORDEAD.
+4. Tous les lecteurs de `raster_r` voient donc la strate : bandeau « zone saine » (`:868-896`),
+   peinture de la carte (`:974-992`), sévérité au clic trend (`:795`), export `raster`
+   (`:1069`).
+5. Ingestion FAST : `.lancer_fast` (`R/mod_monitoring.R:2462-2547`). Seul l'appel manuel
+   `shiny::observeEvent(input$run, .lancer_fast())` (`:2549`) est à changer : il passe la zone
+   `_tot` (même repli explicite qu'au point 1). Hors changement : le pipeline passe déjà
+   `fordead_zone_id()` (`:2567-2577`), « Reprendre » rejoue la zone de la sentinelle (`:2617`).
 6. NEWS (cycle dev `.9010`) : le changement de comportement en une phrase (« choisir une strate
-   ne recalcule plus FAST ; les quartiles sont ceux de l'union des UGF »).
+   ne recalcule plus FAST ; les quartiles sont ceux de l'union des UGF »), en reprenant la
+   mention « Non publié… v2026.11.1 » que porte la tête `.9009`.
 
 **Hors périmètre** (à signaler dans le rendu, pas à modifier) : `mod_monitoring_pixel_map.R`
-(onglet pixel), `list_fast_alerts_for_zone()` (placettes), validation-sampling (déjà sur `_tot`),
-le cœur `nemeton`.
+(onglet pixel), `list_fast_alerts_for_zone()` (placettes), le cœur `nemeton`.
+**Plan de validation FAST** : il n'est **pas** sur `_tot` (`mod_monitoring.R:3947-3950` passe
+`input$zone_id` ; aperçu `mod_validation_sampling.R:280`, histogramme `:372`, `:477` ;
+génération `service_validation_sampling.R:~347`, `compute_fast_alert_mask(zone_id = zone_id)`).
+Périmètre à trancher par Pascal (relecture de fiche du 2026-11-13).
 
 ## L'Homme
 
@@ -74,10 +88,17 @@ le cœur `nemeton`.
 - **Ne doit pas :** toucher FORDEAD, RECONFORT, le pixel map, le MCP ; écrire dans `nemeton` ;
   passer `mask_polygon` au cœur pour la strate.
 
+## Dépend de / rouge attendu jusqu'à
+
+Aucun.
+
 ## Tests (liste « Test discriminant », `pilotage/listes-de-controle.md`)
 
-En `testServer` avec `nemeton::compute_fast_alert_mask` moqué
-(`local_mocked_bindings(..., .package = "nemeton")`) et une connexion/zone factices :
+Réutiliser le harnais `.fast_raster_tab_harness` (`tests/testthat/test-mod_monitoring_fast_alerts.R:307`),
+qui moque `.compute_fast_mask` (pas le cœur) : lui faire capturer `zone`. Moquer
+`get_monitoring_zone_aoi` dans l'app (raster du harnais : EPSG:2154, 2×2, valeurs 0/1/2/4).
+« Pas de toast » = `session$getReturned()$computing()` resté `FALSE`. Ingestion : avec
+`make_fake_fast_task` et `find_zones_by_project` moqué (`tests/testthat/test-mod_monitoring.R:230`, `:317`).
 
 - Strate `_res` sélectionnée, `_tot` existante → le cœur est appelé avec `zone_id = id_tot`
   (valeur exacte), jamais avec l'id de la strate. Mutation : repasser `zone_id_r()` → rouge.
@@ -104,6 +125,8 @@ En `testServer` avec `nemeton::compute_fast_alert_mask` moqué
 
 Essai par Pascal sur un projet avec strates (Couchey ou Dabo) : la carte FAST `_res` est la
 carte `_tot` découpée, mêmes couleurs aux mêmes pixels que `_tot`, sans toast de calcul au
-changement de strate.
+changement de strate. Contrôler aussi la couverture : un projet dont le cache S2 n'aurait été
+ingéré que sur une strate donnerait un calcul `_tot` partiel (cas probablement rare, FORDEAD et le
+pipeline ingérant déjà sur `_tot`).
 
 ## Redite par l'agent : _à compléter_
