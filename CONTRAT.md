@@ -210,7 +210,81 @@ Les profils des perspectives IA sont des fichiers YAML bilingues dans
 `inst/experts/`. Leur format est décrit par `inst/experts/_example.yml.template`
 et reste stable en 1.x ; ajouter un profil est une évolution mineure.
 
-## 6. Politique de compatibilité
+## 6 bis. API pour nemetonmcp
+
+`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **35 objets internes**
+de nemetonshiny par `getFromNamespace(nom, "nemetonshiny")`. Ils ne sont pas
+exportés (ADR 0001, option B) mais **font partie du contrat** : les renommer,
+les retirer ou changer leurs arguments est un changement cassant (section
+« Changements cassants » de `NEWS.md`, et un brief à `nemetonmcp`).
+`tests/testthat/test-contrat_nemetonmcp.R` verrouille la présence et les
+arguments (`formals()`, dans l'ordre) de chaque objet ; il vérifie aussi que
+cette section et la liste lue dans le code de `nemetonmcp` sont identiques.
+Un objet absent de cette section n'est **pas** garanti.
+
+Plan d'actions et commentaires :
+
+| Objet | Arguments / contenu |
+|-------|---------------------|
+| `load_action_plan()` | `project_id` |
+| `save_action_plan()` | `project_id`, `plan` ; rend `TRUE` si écrit |
+| `add_action_to_plan()` | `plan`, `action`, `ug_ids`, `user` |
+| `update_action_in_plan()` | `plan`, `action_id`, `updates`, `ug_ids`, `user` |
+| `delete_action_from_plan()` | `plan`, `action_id`, `user` |
+| `get_action_by_id()` | `plan`, `action_id` |
+| `find_action_index()` | `plan`, `action_id` ; `NA` si absente |
+| `action_plan_annee_base()` | `plan` |
+| `load_ug_comments()` | `project_id` |
+| `ACTION_PLAN_TYPES` | vecteur de types d'action |
+| `ACTION_PLAN_STATUTS` | vecteur de statuts |
+| `ACTION_PLAN_PRIORITES` | vecteur de priorités |
+| `ACTION_PLAN_FAMILY_CODES` | les 12 codes de famille |
+| `ACTION_PLAN_TRANSITIONS` | liste des transitions de statut permises |
+
+Projet :
+
+| Objet | Arguments / contenu |
+|-------|---------------------|
+| `load_project()` | `project_id`, `build_indicators_sf` |
+| `load_parcels()` | `project_id` |
+| `get_project_path()` | `project_id` |
+| `get_projects_root()` | aucun |
+| `ug_build_sf()` | `projet` |
+| `lock_status()` | `pid` ; `NULL` si aucun verrou |
+
+Communes :
+
+| Objet | Arguments / contenu |
+|-------|---------------------|
+| `get_commune_geometry()` | `code_insee` |
+| `save_commune_geometry()` | `project_id`, `commune_geom` |
+| `get_departments()` | aucun |
+
+Serveur MCP (`inst/mcp/`, 10 outils : `lister_projets`, `resume_projet`,
+`lancer_calcul`, `etat_calcul`, `annuler_calcul`, `generer_rapport`,
+`exporter_gpkg`, `appliquer_ugf`, `croiser_onf`, `url_app`) :
+
+| Objet | Arguments / contenu |
+|-------|---------------------|
+| `mcp_tools()` | aucun ; liste des outils `ellmer::tool()` |
+| `mcp_etat_calcul()` | `projet` ; état du **job de fond** du projet (un seul à la fois, `data/compute_job.json`) : `type` (`calcul`, `rapport`, `onf`), `job_id`, `statut` (`en_cours`, `termine`, `echec`, `annule`, `aucun`) ; `termine` : le résultat du job au premier niveau (`fichier` pour `rapport` ; `n_ugf`, `n_tenements`, `n_parcelles`, `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes` pour `onf`) ; `echec` : `ok = false` et les champs d'erreur MCP (`classe`, `code`, `langue`, `erreur`, `action`) à côté de `statut`, **sans** attribut `mcp_erreur` (pas d'`isError` : l'outil a réussi, le job a échoué) |
+| `mcp_exporter_gpkg()` | `projet` |
+| `.mcp_resolve_project()` | `projet` ; id, ou erreur `nemetonshiny_projet_ambigu` avec `candidats` |
+| `.mcp_vers_outil()` | `x` ; la chaîne rendue par un `mcp_*` : si c'est une erreur (attribut `mcp_erreur`), rend un `ellmer::ContentToolResult` en erreur (`isError`), sinon `x` tel quel. À appeler sur le résultat de tout outil que `nemetonmcp` substitue à ceux de `mcp_tools()` (aujourd'hui `etat_calcul`, `exporter_gpkg`) |
+| `.mcp_garde_ecriture()` | `id`, `call` ; refuse d'écrire dans un projet occupé : `nemetonshiny_calcul_en_cours`, `nemetonshiny_projet_verrouille`, `nemetonshiny_projet_ancien` ; rend l'état du projet |
+| `.mcp_jeton_emettre()` | `outil`, `projet` (id résolu), `lien`, `apercu` ; premier temps d'une écriture (ADR 0002) : enregistre sur disque (un fichier `<jeton>.rds` par jeton dans `NEMETON_MCP_JETONS_DIR`, défaut `tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`, hors du dossier projet ; écriture atomique) un jeton à usage unique valable 10 min, tiré hors du générateur de R (`/dev/urandom`, insensible à `set.seed()`), lié à `outil` + `projet` + `lien` (comparé par `identical()`), puis lève `nemetonshiny_confirmation_requise` portant `projet`, `projet_nom` (nom résolu, cité dans le message), `jeton`, `apercu`, `expire_a` (ISO 8601 UTC). N'écrit rien. À appeler après les gardes et les contrôles métier |
+| `.mcp_jeton_consommer()` | `jeton`, `outil`, `projet`, `lien`, `garde` (défaut `.mcp_garde_ecriture`) ; second temps : **rejoue d'abord `garde(projet)`** (son erreur, calcul en cours ou verrou, passe et **laisse le jeton valable** ; décision du 2026-11-11), puis retire le jeton du registre (la suppression du fichier fait foi : deux serveurs ne le consomment pas tous deux, même s'il a été émis par un autre processus) ; un jeton inconnu ou déjà utilisé n'est pas soumis à la garde. Lève `nemetonshiny_jeton_invalide` si le jeton est inconnu, périmé, ou délivré pour un autre outil, projet ou `lien` (consommé dans les deux derniers cas). Les erreurs levées avant l'appel (projet introuvable ou ambigu, métadonnées ONF illisibles) ne le consomment pas. `lien` n'est évalué qu'après la garde. Rend `TRUE` (invisible) si l'écriture peut suivre |
+
+Divers :
+
+| Objet | Arguments / contenu |
+|-------|---------------------|
+| `get_expert_profiles()` | aucun |
+| `marculus_export_bundle()` | `project_id`, `file`, `essences` |
+| `MARCULUS_CONTEXT_ACTION_TYPES` | vecteur de types d'action Marculus |
+| `INDICATOR_FAMILIES` | liste des 12 familles, nommée par code |
+
+## 7. Politique de compatibilité
 
 - **Majeure** (2.0.0) : rupture d'un élément de ce document (argument de
   `run_app()` retiré ou changé, variable d'environnement renommée, format de

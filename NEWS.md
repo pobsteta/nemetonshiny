@@ -1,6 +1,113 @@
-# nemetonshiny 2026.10.18.9000 (cycle dev)
+# nemetonshiny 2026.10.18.9009 (2026-11-11)
 
-- Ouverture du cycle dev.
+## Changements cassants
+
+- Serveur MCP : `generer_rapport` et le **2e appel** de `croiser_onf` (avec `jeton`) ne rendent plus leur résultat : ils lancent un job de fond et rendent `ok`, `projet`, `job_id`, `type` (`rapport` ou `onf`) aussitôt. Le résultat (`fichier` ; `n_ugf`, `n_tenements`, `n_parcelles`, `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes`) se lit dans `etat_calcul` quand `statut = "termine"`. Le 1er appel de `croiser_onf` (aperçu) reste synchrone.
+- `etat_calcul` : nouveau champ `type` (`calcul`, `rapport`, `onf`) ; un job en échec rend désormais `ok = false` et les champs d'erreur MCP (`classe`, `code`, `langue`, `erreur`, `action`) au premier niveau, à côté de `statut`, **sans marquage `isError`** (l'outil a réussi, c'est le job qui a échoué). `erreur` est le texte classé (avant : le message brut) ; `statut` vaut `en_cours` dès le lancement (avant : `lancement`).
+- Un seul job à la fois par projet : un second lancement (calcul, rapport ou croisement ONF) est refusé en `calcul_en_cours`. `generer_rapport` suit le même critère que les écritures : refusé aussi pendant un calcul lancé depuis l'application (`calcul_en_cours`) ou un verrou d'édition (`projet_verrouille`).
+- `annuler_calcul` pendant un rapport ou un croisement ONF répond `annule = false` (non annulable) au lieu de « annulation demandée » sans effet.
+- `.mcp_jeton_consommer()` rejoue la garde **avant** de consommer le jeton : un refus `calcul_en_cours` ou `projet_verrouille` au 2e appel (`appliquer_ugf` comme `croiser_onf`) laisse le jeton valable. Un jeton inconnu ou déjà utilisé reste `jeton_invalide`, sans passer par la garde.
+
+## Serveur MCP : les outils longs mesurés partent en tâche de fond (mission 012)
+
+- Mesures de la mission 011 : `croiser_onf` 79-160 s, `generer_rapport` 49 s (220 s sur un process neuf) ; ADR 0004, aucun appel ne doit dépasser 600 s.
+- Modèle de `lancer_calcul` : `data/compute_job.json` (champs `type`, `args`), `Rscript` détaché (`setsid`), `.mcp_child_job()` aiguille par `type`. En développement (`load_all`), l'enfant charge les sources du dépôt, pas le paquet installé.
+- L'aperçu de `croiser_onf` (1er appel) reste **synchrone** : durée mesurée 38 à 70 s sur Couchey et Marsannay (DGFiP en cache), jusqu'à ~160 s à froid (mission 011).
+- L'enfant détaché reçoit le `job_id` et sort sans rien faire s'il ne correspond pas à celui de `compute_job.json` (course entre deux serveurs).
+- Descriptions d'outils : `generer_rapport`, `croiser_onf` et `etat_calcul` renvoient les uns aux autres ; `inst/mcp/README.md` et `CONTRAT.md` § 6 bis à jour.
+
+# nemetonshiny 2026.10.18.9008 (2026-11-11)
+
+Changements cassants : `projet_lire()$synthese$families$score` passe de 1 à **2 décimales** (53,3 → 53,33), comme l'écran Synthèse et `resume_projet` ; `families` gagne les colonnes `ndp` et `n_indicateurs` (ajout).
+
+## Une seule table des familles pour l'écran, l'API et le MCP (mission 015)
+
+- Nouveau helper `project_family_table(project, family_sf, language)` (`R/service_synthesis.R`) : les 12 familles avec nom, score (2 décimales), NDP et nombre d'indicateurs présents (à défaut prévus). Utilisé par le tableau de l'onglet Synthèse, par `project_synthesis_summary()` (donc `projet_lire()$synthese`) et par `mcp_resume_projet()` : plus de comptage en double ni de repli divergent quand `indicators_sf` n'est pas un sf (repli sur la config partout).
+- Test corrigé : `test-service_synthesis.R` figeait l'arrondi à 1 décimale ; il attend désormais 2 décimales.
+
+# nemetonshiny 2026.10.18.9007 (2026-11-11)
+
+Changements cassants : aucun (contrat client inchangé : forme de `confirmation_requise`, usage unique, 10 minutes, empreinte).
+
+## Serveur MCP : le jeton de confirmation survit au redémarrage du serveur (mission 016)
+
+- Le registre des jetons de la mission 010 n'est plus en mémoire mais **sur disque**, un fichier `<jeton>.rds` par jeton dans `NEMETON_MCP_JETONS_DIR` (défaut `tools::R_user_dir("nemetonshiny", "data")/mcp/jetons`), hors du dossier projet. VICTOR lance un `claude -p` neuf par tâche, donc un serveur MCP neuf : l'aperçu (tâche 1) et le « oui » (tâche 2) passaient par deux processus et le second rendait `jeton_invalide`.
+- Écriture atomique (fichier temporaire dans le même répertoire puis `file.rename`), répertoire `0700` et fichiers `0600` sous Unix. Consommation : la suppression du fichier fait foi, deux serveurs (VICTOR et AIGORA) ne consomment pas le même jeton.
+- Jetons périmés, fichiers illisibles et temporaires abandonnés purgés à l'émission et à la consommation ; un fichier corrompu vaut un jeton inconnu (`jeton_invalide`). Registre impossible à créer ou à écrire : erreur classée (`erreur`), rien d'écrit.
+- Jeton tiré de `/dev/urandom` (insensible à `set.seed()`, ne touche pas `.Random.seed`) ; repli sans `/dev/urandom` (Windows) : md5 d'aléa interne de R, de l'heure et du PID, plus faible. Aucune dépendance ajoutée. Seul un jeton de la forme émise (24 caractères `[0-9a-z]`) désigne un fichier.
+- Sur disque : jeton, outil, id du projet, empreinte (md5 des parcelles, chemin et md5 du fichier, réglages résolus), échéance. Ni géométrie ni aperçu.
+
+# nemetonshiny 2026.10.18.9006 (2026-11-10)
+
+Changements cassants : `updated_at` n'est pas un champ nouveau, seul son **format** change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ; `score` des familles de `resume_projet` passe à 2 décimales, comme la Synthèse. Autres champs : ajoutés.
+
+## MCP : `resume_projet` rend tout l'écran Synthèse (mission 008)
+
+- Nouveaux champs : `description`, `created_at`, `updated_at` et `calcule_le` (ISO 8601, fuseau Europe/Paris ; heures naïves lues dans le fuseau du process), `chm_suspect`, `chm_suspect_max`, et par famille `ndp` et `n_indicateurs` (présents, à défaut prévus).
+- Le serveur MCP force `TZ = "Europe/Paris"` au lancement (`inst/mcp/server.R`), donc les heures naïves sont lues en heure de Paris quel que soit le fuseau du poste.
+- `calcule_le` : `completed_at` > `fin_a` (job `termine`) > date de `indicators.parquet` > `null`.
+
+# nemetonshiny 2026.10.18.9005 (2026-11-10)
+
+## Changements cassants
+
+- Serveur MCP : `appliquer_ugf` et `croiser_onf` **n'écrivent plus au premier appel**. Sans `jeton`, ils font tous les contrôles, n'écrivent rien et rendent l'erreur `confirmation_requise` avec `apercu`, `jeton` et `expire_a` ; seul un second appel portant ce jeton écrit (ADR 0002). Un client qui enchaînait un seul appel ne modifie plus le projet. `mcp_appliquer_ugf()` et `mcp_croiser_onf()` gagnent un argument `jeton` (en dernier). La release qui embarquera ce changement demandera la confirmation de Pascal.
+
+## Serveur MCP : confirmation des écritures par jeton (mission 010)
+
+- Jeton à usage unique, 24 caractères `[0-9a-z]`, valable 10 minutes (une seule constante, `.MCP_JETON_DUREE`, provisoire jusqu'à l'essai VICTOR), gardé en mémoire du serveur : rien n'est écrit dans le dossier du projet à l'aperçu.
+- Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; `appliquer_ugf` : fichier (chemin normalisé et md5) et `remplacer` ; `croiser_onf` : tous les réglages ONF résolus (`purger` compris). Tout jeton connu présenté est consommé, même refusé, **sauf** si le projet est introuvable ou ambigu, ou si les métadonnées ONF sont illisibles (erreurs levées avant la lecture du jeton : il reste valable). L'aperçu nomme le projet : le message cite le nom résolu et l'identifiant, le JSON porte `projet` et `projet_nom`.
+- Ordre : gardes (calcul en cours, verrou, projet ancien) puis jeton, puis fichier ou croisement (recalculé à la confirmation), puis écriture. Au premier appel, erreurs métier et gardes passent avant l'aperçu, sans jeton.
+- Aperçu : `appliquer_ugf` → `n_ugf_remplacees`, `n_ugf_nouvelles` ; `croiser_onf` → `ecartees` (IDU), `n_ecartees`, `n_retenues` (rien d'écarté si `purger` résolu vaut `FALSE`).
+- Deux classes d'erreur : `confirmation_requise`, `jeton_invalide` (16 messages `mcp_err_*`, 11 actions `mcp_act_*`).
+- Contrat `nemetonmcp` (CONTRAT.md § 6 bis, 35 objets) : `.mcp_garde_ecriture()`, `.mcp_jeton_emettre()`, `.mcp_jeton_consommer()`, pour ses propres écritures (plan d'actions) ; pas encore appelés par `nemetonmcp` (brief de la mission 013).
+
+# nemetonshiny 2026.10.18.9004 (2026-11-10)
+
+Changements cassants : aucun.
+
+## Noms de projet dictés : résolution tolérante (mission 007)
+
+- `.mcp_resolve_project` rapproche un nom approximatif du mot-clé de la commune du projet (« Forêt communale de Couchey (ONF) » -> « couchey »). Accents et casse ignorés (normalisation par points de code, indépendante de la locale, y compris `LC_ALL=C`). L'introduction « Forêt [communale] de/du/des/d' » (apostrophe droite ou typographique) est retirée des deux côtés (« Forêt de Dabot » trouve « Forêt de Dabo »). Un projet correspond si le nom dicté égale le mot-clé, ou en est une suite de mots entiers en tête, ou en est à une distance d'édition <= 2 (seuil provisoire) ; cette distance ne s'applique que si le nom dicté ET le mot-clé ont au moins 4 lettres (« de », « du » ne rapprochent jamais « Forêt de Bé » ; « la » ne rapproche pas « Laix »). Une égalité exacte avec un mot-clé l'emporte sur les rapprochements approchés, sauf si un autre projet est à distance <= 1 du nom dicté (alors `projet_ambigu` avec les candidats : « Écouché » face à Couchey trouve Écouché ; « Couchey » face à Couchay rend les deux). Ligatures œ/æ lues oe/ae. Le serveur MCP est forcé en locale UTF-8 au lancement.
+- Un seul projet : il est retenu ; plusieurs : `projet_ambigu` avec les candidats (« nom (id) ») ; aucun : `projet_introuvable`. Plus de simple sous-chaîne (« de », « onf » ne rapprochent rien).
+
+# nemetonshiny 2026.10.18.9003 (2026-11-10)
+
+Changements cassants : aucun.
+
+## MCP : annotations des dix outils
+
+- Chaque outil de `mcp_tools()` porte `read_only_hint`, `destructive_hint` et
+  `idempotent_hint` : lecture seule pour `lister_projets`, `resume_projet`,
+  `etat_calcul`, `url_app` ; destructifs `appliquer_ugf` et `croiser_onf` ;
+  non idempotent `lancer_calcul` seul.
+
+# nemetonshiny 2026.10.18.9002 (2026-11-10)
+
+Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d'outil est désormais marquée `isError`.
+
+## Serveur MCP : erreurs marquées, classées, bilingues (mission 003)
+
+- Une erreur d'outil MCP n'est plus lue comme un succès : `mcp_tools()` la rend en `ellmer::ContentToolResult` en erreur (`isError: true` côté mcptools).
+- Forme JSON : `{ok, classe, code, langue, erreur, action, candidats}` ; `classe` = nom R complet (`nemetonshiny_projet_introuvable`), `code` = nom court.
+- Message et action suivante en FR (défaut) ou EN : 14 messages `mcp_err_*` et 9 actions `mcp_act_*` dans `TRANSLATIONS`. `langue` n'est lue que par `resume_projet` et `generer_rapport` (aucune signature d'outil changée).
+- `confirmation_requise` et `jeton_invalide` restent à la mission 010.
+- Dette connue : le détail technique (cause brute) reste en français dans une erreur rendue en anglais.
+- Hygiène : retrait de `tests/testthat/_problems/` du suivi git (ignoré par `.gitignore` et `.Rbuildignore`).
+
+# nemetonshiny 2026.10.18.9001 (2026-11-10)
+
+Changements cassants : aucun.
+
+## Alignement sur nemeton 2026.11.14 (CI rouge)
+
+- Le cœur 2026.11.14 ajoute N5 et B5 (43 indicateurs) et complète la
+  description de la famille Biodiversité (« stratification verticale »).
+- `famille_biodiversite_desc` (repli statique FR/EN) suit la description du cœur.
+- Les tests de comptage (`get_all_indicator_codes`, `get_column_family_map`)
+  dérivent désormais le nombre attendu de `nemeton::indicator_labels()` au lieu
+  d'un chiffre figé.
+- Hors périmètre : N5/B5 ne sont pas encore intégrés à l'interface.
 
 # nemetonshiny 2026.10.18 (2026-10-19)
 
