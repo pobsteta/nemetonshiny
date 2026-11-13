@@ -162,3 +162,9 @@ ingéré que sur une strate donnerait un calcul `_tot` partiel (cas probablement
 pipeline ingérant déjà sur `_tot`).
 
 ## Redite par l'agent : _à compléter_
+
+## Statut
+
+Terminée le 2026-11-13 : PR #266 fusionnée sur `main` (`61a682c4`, commit de mission `7267c4d2`),
+cycle dev `2026.10.18.9010`, non publié. Relecture : prêt. Suites à trancher par Pascal : aperçu
+`preview_raster_r`, FORDEAD du Plan de validation sur strate, bandeau « zone saine » sur strate.

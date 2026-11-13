@@ -24,10 +24,7 @@ _(vide)_
 
 ## Validé
 
-- [017-fast-sur-tot](missions/017-fast-sur-tot.md) · depuis le cycle 2
-  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
-  - Mission : FAST calculé sur `_tot`, découpé par strate à l'affichage ; cycle dev 2026.10.18.9010
-  - Moyens : worktree depuis main, `testServer` + mocks cœur
+_(vide)_
 
 ## Planifié
 
@@ -50,6 +47,10 @@ _(vide)_
 
 ## Terminé
 
+- [017-fast-sur-tot](missions/017-fast-sur-tot.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #266 fusionnée (61a682c4), cycle dev 2026.10.18.9010, non publié
+  - Moyens : —
 - [012-detacher-outils-longs](missions/012-detacher-outils-longs.md) · depuis le cycle 2
   - Homme : `testeur` puis `dev` (sonnet)
   - Mission : #264 fusionnée (5bbfb093), cassante
