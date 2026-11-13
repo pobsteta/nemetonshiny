@@ -554,3 +554,50 @@ merge) demande une nouvelle confirmation.
     **Autorisé, en lecture seule** : `Read` / `cat` / `grep` / `ls` sur `/home/pascal/dev/nemeton/**`, et la **copie SORTANTE** d'un fichier cœur vers ce repo ou vers le scratchpad (`cp /home/pascal/dev/nemeton/... → ici`). C'est ce qui permet de lire les briefs d'intégration (cf. *Briefs d'intégration*) et de rapatrier une spec pour la consulter. La copie ENTRANTE (vers l'arbre cœur) reste interdite : elle écrit côté cœur.
 
     Raison de la restriction : **modifier** deux repos en parallèle dans la même session brouille l'état du shell, désynchronise le suivi des branches, et rend les récap de push ambigus pour l'utilisateur. Lire n'a aucun de ces effets — et l'interdire contredisait la section *Briefs d'intégration*, qui demande justement de lire `nemeton/specs/**/brief-nemetonshiny*.md`. Garder une session = un repo **qu'on écrit**.
+
+## Pilotage (méthode de l'Impératrice)
+
+Le projet est piloté selon **la méthode de l'Impératrice** de Pascal Obstétar (plugin
+`imperatrice`, méthode : skill `imperatrice:methode`), installée le 2026-10-24.
+
+### Rôle de l'orchestrateur
+
+La session principale est **l'orchestrateur** : elle tient l'étape d'**Accompagnement**
+(confier, suivre, dire). **Pascal garde les rênes, la décision et l'effort.**
+
+- L'orchestrateur ne code pas lui-même les missions qu'il confie : il les prépare, les
+  confie aux agents du plugin, suit et intègre.
+- Les sous-agents ne lancent pas d'autres sous-agents : **toute délégation passe par
+  l'orchestrateur.**
+- Une question de sens, de périmètre ou de valeur n'est jamais tranchée par l'IA : elle est
+  préparée et posée à Pascal. **L'IA propose, Pascal tranche et assume.**
+
+### Sources de vérité du pilotage
+
+`docs/` est la sortie pkgdown (ignorée par git) : les fichiers que la méthode place dans
+`docs/` vivent ici dans **`pilotage/`**.
+
+| Information | Source unique |
+|---|---|
+| La méthode, les agents, les commandes, les gabarits | plugin `imperatrice` |
+| Ce qu'on construit, pour qui | `pilotage/brief.md` puis `pilotage/spec.md` |
+| Les décisions d'architecture de l'app | `pilotage/adr/NNNN-titre.md` (plateforme : `platform_nemeton/docs/`) |
+| L'équipe validée, le plafond humain | `pilotage/equipe.md` |
+| Les missions | `pilotage/missions/NNN-titre.md` |
+| L'avancement | `pilotage/kanban.md` |
+| La mémoire du projet | `pilotage/journal.md` — **ajout seul, on n'efface jamais** |
+
+Un lien plutôt qu'une copie. Si une information existe à deux endroits, l'un des deux est faux.
+
+### Déroulé
+
+`/imperatrice:brief` (porte n° 1 : Pascal valide brief et spec) → `/imperatrice:mission`
+(porte n° 2 : Pascal valide l'équipe) → `/imperatrice:boucle` (porte n° 3 : Pascal valide
+chaque PR vers `main`) → `/imperatrice:bilan`.
+
+### Règles techniques de la méthode
+
+- **Pas de code sans tests.** Commande de tests : `.claude/test-command` (écrite au `/brief`).
+- **Formats ouverts, logiciels libres** de préférence (test du successeur).
+- **Jamais de push direct sur `main`** : tout passe par une PR (déjà imposé par la
+  protection de branche, cf. *Consignes de release*).

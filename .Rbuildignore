@@ -33,3 +33,4 @@
 ^CHANGELOG-archive\.md$
 ^tests/testthat/_problems$
 ^briefs$
+^pilotage$
