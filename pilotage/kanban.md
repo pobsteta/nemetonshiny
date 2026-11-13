@@ -24,7 +24,10 @@ _(vide)_
 
 ## Validé
 
-_(vide)_
+- [017-fast-sur-tot](missions/017-fast-sur-tot.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : FAST calculé sur `_tot`, découpé par strate à l'affichage ; cycle dev 2026.10.18.9010
+  - Moyens : worktree depuis main, `testServer` + mocks cœur
 
 ## Planifié
 
