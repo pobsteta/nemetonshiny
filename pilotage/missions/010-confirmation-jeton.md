@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Faire que `appliquer_ugf`, `croiser_onf` (et toute écriture d'un projet existant) n'écrivent rien au premier appel, rendent un aperçu et un jeton à usage unique, et n'écrivent qu'au second appel portant ce jeton, avec un helper réutilisable par `nemetonmcp` pour ses propres écritures (plan d'actions), pour qu'aucune phrase mal transcrite ne modifie un projet (ADR 0002, P4).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -91,3 +91,7 @@ Relu **prêt** (91 tests / 1759 vérifications, 7 mutations détectées). Point 
 2. **Exception écrite** : un jeton présenté avec un projet introuvable/ambigu, ou quand les métadonnées ONF sont illisibles (lues avant le jeton), n'est pas consommé ; le dire dans `inst/mcp/README.md`, `CONTRAT.md` et NEWS (au lieu de « tout jeton présenté est consommé, même refusé »).
 3. Le README modifié hors harnais est **gardé** (il devenait faux) ; l'annoncer dans la PR.
 4. Ne PAS fusionner main ici : ordre de fusion 004 → 007 → 010 ; l'orchestrateur fera fusionner main au moment voulu (NEWS à remettre en ordre 9005 > 9004 > 9003).
+
+## Statut
+
+fusionnée #259 (1af92486), 2026-11-10.

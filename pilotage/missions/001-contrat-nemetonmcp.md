@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Déclarer dans `CONTRAT.md` (section « API pour nemetonmcp ») les objets internes que `nemetonmcp` lit par `getFromNamespace`, et les verrouiller par un test de présence et de signature, pour qu'un renommage casse la CI d'ici et pas VICTOR en production (ADR 0001).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -61,3 +61,7 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 la CI rouge le jour où un objet du contrat est renommé.
+
+## Statut
+
+fusionnée #253 (46eee94b), 2026-11-10.

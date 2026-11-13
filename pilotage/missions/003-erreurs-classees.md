@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Faire rendre par `.mcp_call` un `ellmer::ContentToolResult` en erreur (donc `isError: true` côté mcptools) portant la classe, le message FR/EN et l'action suivante, pour qu'un agent reconnaisse une erreur comme telle et sache quoi proposer sans faire répéter l'utilisateur (critère 3, P6).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -104,3 +104,7 @@ Point de départ : `origin/claude/mission-003-erreurs-classees` (7ff648aa) ; pou
   expect_setequal(appelles, setdiff(<noms du contrat>, ".mcp_vers_outil"))
   ```
 - `devtools::test(filter = "mcp|contrat")` vert (le test contrat tourne sur ce poste : nemetonmcp local présent).
+
+## Statut
+
+fusionnée #256 (86138435), 2026-11-10.

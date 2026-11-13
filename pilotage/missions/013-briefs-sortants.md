@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Rédiger les briefs que la spec § 7 prévoit (nemetonmcp : contrat, jeton, isError, noms dédoublonnés, renommage incomplet ; aigora : lien `nemeton-vues` cassé, permissions ; victor : relais vocal de la confirmation), pour que les trois clients suivent ce qui change ici.
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -73,3 +73,7 @@ les trois dépôts suivent sans que Pascal réexplique.
 - Voie rapide de VICTOR : ne résout que l'id ou le nom exact (normalisé) ; tout autre nom passe par le MCP (règles 007, `candidats`). Pas de second moteur tolérant.
 - La garde passe avant la consommation du jeton (mission 012) : un refus `calcul_en_cours`/`verrou` ne consomme plus le jeton — à annoncer comme à venir (non livré).
 - Autorisé hors harnais : ajouter `^briefs$` à `.Rbuildignore` (sinon NOTE R CMD check).
+
+## Statut
+
+fusionnée #262 (8de5e07c), 2026-11-11.

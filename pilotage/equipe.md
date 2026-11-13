@@ -54,3 +54,4 @@
 - Temps de la main : 003 et 010 passent de « tenir » à « appuyer » (contrat d'erreurs et de jeton stable).
 - `afficheur` : non utilisé, sans objet tant que le chantier reste MCP ; reste au vivier.
 - Pas de cycle de code dans ce dépôt tant que la chaîne nemetonmcp → essai Couchey n'est pas bouclée (cartes « Planifié » du kanban).
+- Listes de contrôle (test discriminant ; fiche prête pour le dev) : [listes-de-controle.md](listes-de-controle.md).

@@ -8,7 +8,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Faire survivre le jeton de confirmation de la mission 010 au redémarrage du serveur MCP en persistant son registre dans un fichier local de nemetonshiny, pour que la confirmation vocale de VICTOR (un `claude -p` neuf, donc un serveur MCP neuf, par tâche) fonctionne : l'aperçu dans la tâche 1, le « oui » et l'écriture dans la tâche 2.
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Constat (vérifié par l'orchestrateur, 2026-11-10)
 
@@ -79,3 +79,7 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 La confirmation vocale aboutit en deux tâches VICTOR sans `jeton_invalide`.
+
+## Statut
+
+fusionnée #261 (348ff3df), 2026-11-11.

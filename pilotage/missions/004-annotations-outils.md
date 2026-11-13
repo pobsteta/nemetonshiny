@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Poser sur chaque outil de `mcp_tools()` les annotations `read_only_hint`, `destructive_hint` et `idempotent_hint` justes, pour que les clients sachent ce qui lit et ce qui écrit (critère 5).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -79,3 +79,7 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 - `DESCRIPTION` : **une seule** ligne `Version: 2026.10.18.9003`.
 - `NEWS.md` : entrée 9003 au-dessus de 9002, une ligne vide entre elles.
 Puis `devtools::test(filter = "mcp|contrat")` vert (annotations ET erreurs ; 2 skips attendus de 010) ; `git diff 37cbbf92 -- tests/testthat/test-service_mcp_annotations.R` vide. Pousser en fast-forward sur la branche de #257.
+
+## Statut
+
+fusionnée #257 (9cdd1f3c), 2026-11-10.

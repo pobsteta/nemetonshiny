@@ -24,3 +24,7 @@
 - `dev`, sonnet, main « appuyer ». Lancé le 2026-11-11 depuis main (1ea3289b, 008 fusionnée). Version 2026.10.18.9008.
 - **Peut :** modifier `R/service_synthesis.R`, `R/mod_synthesis.R`, `R/service_mcp.R` (seulement `mcp_resume_projet` et le comptage `present_count`), `tests/testthat/test-service_synthesis.R` (correction annoncée de la ligne 122), nouveaux tests, NEWS, DESCRIPTION.
 - **Ne doit pas :** toucher aux fonctions du jeton (`.mcp_jeton_*`, mission 016 en PR), ajouter de logique métier (scores, NDP lus via `nemeton`), écrire dans `nemeton`.
+
+## Statut
+
+fusionnée #263 (2e25e84c), 2026-11-11.

@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Détacher sur le modèle `lancer_calcul`/`etat_calcul` les outils que la mission 011 a mesurés au-delà de 60 s, pour qu'aucun appel ne dépasse 600 s (ADR 0004, P3).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -90,3 +90,7 @@ plus de tâche VICTOR coupée à 600 s.
 - Aperçu de `croiser_onf` : reste **synchrone** (Couchey 38-53 s, Marsannay 70 s, 160 s à froid en 011 : sous les 600 s de VICTOR) ; à rouvrir si le terrain dépasse 300 s.
 - `generer_rapport` **refusé** en `calcul_en_cours` pendant tout calcul, y compris lancé depuis l'application (`progress_state` / verrou), comme les outils d'écriture.
 - `etat_calcul` à `echec` : **pas d'isError** (l'outil a réussi, c'est le job qui a échoué) ; `statut = "echec"` + champs d'erreur au premier niveau.
+
+## Statut
+
+fusionnée #264 (5bbfb093), 2026-11-11.

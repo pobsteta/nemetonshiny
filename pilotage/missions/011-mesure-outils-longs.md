@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Mesurer la durée de `generer_rapport` et de `croiser_onf` (premier appel, cache DGFiP vide, puis plein) sur le plus gros projet disponible, pour décider sur pièces ce qui doit être détaché (ADR 0004, critère 6).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -61,3 +61,7 @@ _Rempli par Pascal seul, avant de lire le travail de l'agent._
 ## Comment saura-t-on que ça marche ?
 
 un tableau de durées qui tranche 012.
+
+## Statut
+
+mesure faite, a tranché 012 (pas de PR propre).

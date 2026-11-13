@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Compléter `mcp_resume_projet` (UGF, date de calcul, heures ISO 8601 avec fuseau) pour qu'il rende tout ce qu'affiche l'onglet Synthèse, à écart 0, et qu'un seul appel suffise à « où en est Dabo ? » (P1, critère 2).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -83,3 +83,7 @@ Relu **prêt** (3d87cca0 : écart 0 sur Dabo, Couchey, Marsannay). Point de dép
 1. **Fuseau du serveur MCP** forcé à Europe/Paris au lancement : dans `inst/mcp/server.R`, `Sys.setenv(TZ = "Europe/Paris")` au démarrage (à côté de la locale UTF-8 posée par 007 — si `inst/mcp/server.R` de ta base n'a pas encore ce bloc, ajoute le tien en tête, après la vérification de mcptools) ; README MCP : le dire.
 2. NEWS : `updated_at` n'est pas nouveau, seul son **format** change (heure naïve → ISO 8601 avec fuseau) : le dire dans « Changements cassants ».
 3. `devtools::test(filter = "mcp|contrat")` vert ; `git diff 35cbf2be -- tests/testthat/test-service_mcp_resume.R` vide.
+
+## Statut
+
+fusionnée #260 (1ea3289b), 2026-11-10.

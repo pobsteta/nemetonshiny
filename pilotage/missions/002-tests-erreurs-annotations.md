@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Écrire, sans lire l'implémentation à venir, les tests d'acceptation des critères 3 (chaque outil mis en échec rend une erreur MCP `isError`, classée, FR/EN, avec action proposée) et 5 (annotations `read_only_hint`/`destructive_hint`/`idempotent_hint` justes dans `tools/list`), pour que les missions 003 et 004 ne s'auto-évaluent pas.
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -95,3 +95,7 @@ Facultatif : vérifier les candidats de `projet_ambigu` dans le champ `candidats
 - Relu **prêt** à l'aller-retour 2/3. Livrable de référence : commit `37cbbf92` (branche `worktree-agent-a823d18c1a278977d`), fichiers `tests/testthat/test-service_mcp_erreurs.R` et `test-service_mcp_annotations.R` (la rubrique Harnais disait `test-mcp_*.R` : renommés à l'aller-retour 1/3, convention CLAUDE.md).
 - **Rouge attendu jusqu'à** 003 (fichier erreurs) et 004 (fichier annotations) — corrige la rubrique « Dépend de / rouge attendu » qui disait « aucune ».
 - **Pas de PR 002 seule.** Chaque fichier entre en tête de la branche de sa mission : `git checkout 37cbbf92 -- tests/testthat/test-service_mcp_erreurs.R` en premier commit de 003, `… test-service_mcp_annotations.R` en premier commit de 004. Le relecteur de 003/004 vérifie `git diff 37cbbf92 -- <fichier>` vide.
+
+## Statut
+
+tests intégrés à 003/004 (pas de PR propre), 2026-11-10.

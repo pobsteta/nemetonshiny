@@ -1,5 +1,7 @@
 # nemetonshiny 2026.10.18.9009 (2026-11-11)
 
+> **Non publié.** Ces changements cassants sortiront dans la release v2026.11.1, après application du brief nemetonmcp et l'essai VICTOR sur Couchey (bilan du 2026-11-13).
+
 ## Changements cassants
 
 - Serveur MCP : `generer_rapport` et le **2e appel** de `croiser_onf` (avec `jeton`) ne rendent plus leur résultat : ils lancent un job de fond et rendent `ok`, `projet`, `job_id`, `type` (`rapport` ou `onf`) aussitôt. Le résultat (`fichier` ; `n_ugf`, `n_tenements`, `n_parcelles`, `n_cad`, `ecartees`, `ecart_median_m`, `indicateurs_perimes`) se lit dans `etat_calcul` quand `statut = "termine"`. Le 1er appel de `croiser_onf` (aperçu) reste synchrone.

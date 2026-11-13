@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Étendre `.mcp_resolve_project` pour qu'un nom approximatif (accents, homophones, distance d'édition ≤ 2) donne le projet ou une seule liste de candidats, jamais un « introuvable » sec, pour que l'utilisateur ne redise pas le nom (P1, critère 1).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -115,3 +115,7 @@ Arbitrage de Pascal (2026-11-10) : **l'égalité exacte au mot-clé ne l'emporte
 2. Corriger « au lancement.. » dans NEWS ; replier les deux lignes trop longues du roxygen de `.mcp_rapprocher`.
 3. **Fusionner `origin/main`** (contient 004, #257) dans la branche (`git merge`, pas de rebase) ; DESCRIPTION : une seule ligne `Version: 2026.10.18.9004` ; NEWS : 9004 au-dessus de 9003, puis 9002.
 4. `devtools::test(filter = "mcp|contrat")` vert ; `git diff 35cbf2be -- tests/testthat/test-service_mcp_noms_dictes.R` vide ; aucun marqueur de conflit ; non-ASCII.
+
+## Statut
+
+fusionnée #258 (63cda006), 2026-11-10.

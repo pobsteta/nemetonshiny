@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Constituer une fixture de transcriptions approximatives (vocales réelles de VICTOR si on en trouve, sinon simulées et marquées comme telles) des noms de projets et de communes, avec le projet attendu, pour donner au critère 1 un moyen de mesure.
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -76,3 +76,7 @@ Arbitrages de Pascal (2026-11-10) :
 3. Ajouter des cas « mot-clé seul » pour les noms longs (« Couchey », « Sombernon », « Marsannay » dits seuls) et au moins un cas pour les projets absents de la v1 (Reconfort, Aumur, Fordead, ForetAccess).
 4. Doublons après normalisation (`Moute`/`Mouté`, `Marsannay la côte`/`Marsannay la cote`) : en garder un, ou dire ce que l'autre teste de plus.
 5. VICTOR ne journalise aucune transcription (`journalctl --user -u victor` vérifié par le relecteur) : 100 % simulé est justifié ; le dire dans le rendu. La demande de journalisation part par la mission 013.
+
+## Statut
+
+fusionnée #254 (54d65ec4), 2026-11-10.

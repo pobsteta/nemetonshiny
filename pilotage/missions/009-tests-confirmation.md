@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Écrire, sans lire l'implémentation, les tests du critère 4 : chaque outil qui modifie un projet existant, appelé sans jeton, n'écrit rien (disque et base de test) et rend l'aperçu ; avec un jeton valide il écrit ; un jeton périmé, rejoué ou d'un autre projet est refusé.
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -119,3 +119,7 @@ Arbitrages de Pascal (2026-11-10) :
 
 - Relu **prêt** à l'aller-retour 3/3. Livrable de référence : commit `93291ec8` (`origin/claude/mission-009-tests-confirmation`), `tests/testthat/test-service_mcp_confirmation.R` (36 tests). Rouge réel : main 35/36, 003 30/36 (6 garde-fous verts) ; 36/36 face à un prototype 010 conforme.
 - Fusion : règle de 002 — pas de PR seule ; le fichier entre en tête de la branche 010 (`git checkout 93291ec8 -- tests/testthat/test-service_mcp_confirmation.R`), contrôle `git diff 93291ec8` vide par le relecteur.
+
+## Statut
+
+tests 93291ec8 intégrés à 010 (pas de PR propre), 2026-11-10.

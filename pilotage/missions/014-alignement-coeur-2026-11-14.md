@@ -6,7 +6,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Rendre les 5 tests qui figent l'ancien état du cœur (41 indicateurs, description statique de `famille_biodiversite`) cohérents avec `nemeton` 2026.11.14 (N5 et B5 ajoutés, 43 indicateurs, « stratification verticale » dans la famille B), pour que `R-CMD-check` redevienne vert et que les PR du cycle MCP puissent arriver sur `main`.
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -57,3 +57,7 @@ Préférer, quand c'est possible, des tests qui **dérivent** le nombre attendu 
 ## Comment saura-t-on que ça marche ?
 
 `R-CMD-check` vert sur la PR 014, puis sur #253 et #254 après rebase.
+
+## Statut
+
+fusionnée #255 (95d36dcf), 2026-11-10.

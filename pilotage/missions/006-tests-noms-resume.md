@@ -7,7 +7,7 @@
 
 **En une phrase (quoi, et pourquoi) :** Écrire, sans lire l'implémentation, les tests des critères 1 (la fixture 005 donne le bon projet ou une liste de candidats à 100 %, aucun « introuvable » à distance ≤ 2) et 2 (`resume_projet` rend tout ce qu'affiche la Synthèse, plus les heures ISO 8601 avec fuseau).
 
-**Redite par l'agent :** _à compléter par l'agent avant d'agir — s'il n'y arrive pas, il s'arrête._
+**Redite par l'agent :** non rédigée (fiche close au bilan du 2026-11-13)
 
 ## Les trois questions (règle de staffing)
 
@@ -107,3 +107,7 @@ Arbitrages de Pascal (2026-11-10, suite) :
 - Relu **prêt** à l'aller-retour 2/3. Livrable de référence : commit `35cbf2be` (`origin/claude/mission-006-tests-noms-resume`). Rouge réel sur main : 16 tests rouges, 4 verts (garde-fous), selon le relecteur.
 - Fusion : règle de 002 — pas de PR seule ; `test-service_mcp_noms_dictes.R` en tête de la branche 007, `test-service_mcp_resume.R` en tête de 008 (`git checkout 35cbf2be -- <fichier>`), contrôle `git diff 35cbf2be` vide par le relecteur.
 - `familles$ndp` validé par Pascal (2026-11-10).
+
+## Statut
+
+tests 35cbf2be intégrés à 007/008 (pas de PR propre), 2026-11-10.
