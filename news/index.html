@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9009</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9010</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9010" id="nemetonshiny-202610189010-2026-11-13">nemetonshiny 2026.10.18.9010 (2026-11-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189010-2026-11-13"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="fast-calculé-sur-_tot-découpé-par-strate-à-laffichage-mission-2026-10-18-9010">FAST calculé sur <code>_tot</code>, découpé par strate à l’affichage (mission 017)<a class="anchor" aria-label="anchor" href="#fast-calcul%C3%A9-sur-_tot-d%C3%A9coup%C3%A9-par-strate-%C3%A0-laffichage-mission-2026-10-18-9010"></a></h3>
+<ul><li>
+<strong>Changement de comportement : choisir une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>) ne recalcule plus FAST ; les quartiles du masque 0-4 sont ceux de l’union des UGF (<code>_tot</code>), donc les cartes <code>_tot</code> et strate sont comparables.</strong> La strate ne fait que découper l’affichage (<code><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">terra::mask</a></code> après calcul, comme FORDEAD et RECONFORT). Sans zone <code>_tot</code>, repli sur la zone du menu.</li>
+<li>Alertes FAST : le masque, son cache, la signature (pas de toast au changement de strate) et le préchauffage trend portent la zone <code>_tot</code> (<code>run_zone_id_r</code>). Bandeau, carte, sévérité au clic et export lisent le raster découpé.</li>
+<li>Ingestion FAST manuelle (bouton Lancer) : part sur <code>_tot</code>, comme le pipeline.</li>
+<li>Plan de validation FAST : chemin trend, <code>create_trend_sanitary_plan(zone_id = _tot, mask_polygon = strate)</code> (le tirage reste dans la strate, <code>plan$zone_id</code> reste la strate) ; chemin classes, masque lu/calculé sur <code>_tot</code> ; histogramme et surcouche du masque lus sur <code>_tot</code> puis découpés à la strate.</li>
+<li>Hors périmètre, constaté : le Plan de validation FORDEAD lit <code>read_fordead_dieback_mask()</code> sur la strate alors que son cache est sous <code>zone_&lt;id_tot&gt;</code> (voir la PR).</li>
+<li>Tests : <code>test-mod_monitoring_fast_alerts_strate.R</code>, <code>test-mod_monitoring_fast_ingest_tot.R</code>, <code>test-service_validation_sampling_tot.R</code> ; <code>test-mod_validation_sampling.R</code> : le mock de <code>generate_trend_sanitary_plan</code> accepte le nouvel argument <code>run_zone_id</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9009" id="nemetonshiny-202610189009-2026-11-11">nemetonshiny 2026.10.18.9009 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189009-2026-11-11"></a></h2>
 <blockquote>

@@ -1,5 +1,41 @@
 # Changelog
 
+## nemetonshiny 2026.10.18.9010 (2026-11-13)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
+> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
+> VICTOR sur Couchey, bilan du 2026-11-13).
+
+### FAST calculé sur `_tot`, découpé par strate à l’affichage (mission 017)
+
+- **Changement de comportement : choisir une strate (`_res`, `_feu`,
+  `_mix`) ne recalcule plus FAST ; les quartiles du masque 0-4 sont ceux
+  de l’union des UGF (`_tot`), donc les cartes `_tot` et strate sont
+  comparables.** La strate ne fait que découper l’affichage
+  ([`terra::mask`](https://rspatial.github.io/terra/reference/mask.html)
+  après calcul, comme FORDEAD et RECONFORT). Sans zone `_tot`, repli sur
+  la zone du menu.
+- Alertes FAST : le masque, son cache, la signature (pas de toast au
+  changement de strate) et le préchauffage trend portent la zone `_tot`
+  (`run_zone_id_r`). Bandeau, carte, sévérité au clic et export lisent
+  le raster découpé.
+- Ingestion FAST manuelle (bouton Lancer) : part sur `_tot`, comme le
+  pipeline.
+- Plan de validation FAST : chemin trend,
+  `create_trend_sanitary_plan(zone_id = _tot, mask_polygon = strate)`
+  (le tirage reste dans la strate, `plan$zone_id` reste la strate) ;
+  chemin classes, masque lu/calculé sur `_tot` ; histogramme et
+  surcouche du masque lus sur `_tot` puis découpés à la strate.
+- Hors périmètre, constaté : le Plan de validation FORDEAD lit
+  `read_fordead_dieback_mask()` sur la strate alors que son cache est
+  sous `zone_<id_tot>` (voir la PR).
+- Tests : `test-mod_monitoring_fast_alerts_strate.R`,
+  `test-mod_monitoring_fast_ingest_tot.R`,
+  `test-service_validation_sampling_tot.R` ;
+  `test-mod_validation_sampling.R` : le mock de
+  `generate_trend_sanitary_plan` accepte le nouvel argument
+  `run_zone_id`.
+
 ## nemetonshiny 2026.10.18.9009 (2026-11-11)
 
 > **Non publié.** Ces changements cassants sortiront dans la release
