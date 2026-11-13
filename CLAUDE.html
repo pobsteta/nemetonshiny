@@ -598,6 +598,59 @@ keycloak/                     → Compose dev + realms pour auth locale
 <p>Raison de la restriction : <strong>modifier</strong> deux repos en parallèle dans la même session brouille l’état du shell, désynchronise le suivi des branches, et rend les récap de push ambigus pour l’utilisateur. Lire n’a aucun de ces effets — et l’interdire contredisait la section <em>Briefs d’intégration</em>, qui demande justement de lire <code>nemeton/specs/**/brief-nemetonshiny*.md</code>. Garder une session = un repo <strong>qu’on écrit</strong>.</p>
 </li>
 </ol></div>
+<div class="section level2">
+<h2 id="pilotage-méthode-de-limpératrice">Pilotage (méthode de l’Impératrice)<a class="anchor" aria-label="anchor" href="#pilotage-m%C3%A9thode-de-limp%C3%A9ratrice"></a></h2>
+<p>Le projet est piloté selon <strong>la méthode de l’Impératrice</strong> de Pascal Obstétar (plugin <code>imperatrice</code>, méthode : skill <code>imperatrice:methode</code>), installée le 2026-10-24.</p>
+<div class="section level3">
+<h3 id="rôle-de-lorchestrateur">Rôle de l’orchestrateur<a class="anchor" aria-label="anchor" href="#r%C3%B4le-de-lorchestrateur"></a></h3>
+<p>La session principale est <strong>l’orchestrateur</strong> : elle tient l’étape d’<strong>Accompagnement</strong> (confier, suivre, dire). <strong>Pascal garde les rênes, la décision et l’effort.</strong></p>
+<ul><li>L’orchestrateur ne code pas lui-même les missions qu’il confie : il les prépare, les confie aux agents du plugin, suit et intègre.</li>
+<li>Les sous-agents ne lancent pas d’autres sous-agents : <strong>toute délégation passe par l’orchestrateur.</strong>
+</li>
+<li>Une question de sens, de périmètre ou de valeur n’est jamais tranchée par l’IA : elle est préparée et posée à Pascal. <strong>L’IA propose, Pascal tranche et assume.</strong>
+</li>
+</ul></div>
+<div class="section level3">
+<h3 id="sources-de-vérité-du-pilotage">Sources de vérité du pilotage<a class="anchor" aria-label="anchor" href="#sources-de-v%C3%A9rit%C3%A9-du-pilotage"></a></h3>
+<p><code>docs/</code> est la sortie pkgdown (ignorée par git) : les fichiers que la méthode place dans <code>docs/</code> vivent ici dans <strong><code>pilotage/</code></strong>.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Information</th>
+<th>Source unique</th>
+</tr></thead><tbody><tr><td>La méthode, les agents, les commandes, les gabarits</td>
+<td>plugin <code>imperatrice</code>
+</td>
+</tr><tr><td>Ce qu’on construit, pour qui</td>
+<td>
+<code>pilotage/brief.md</code> puis <code>pilotage/spec.md</code>
+</td>
+</tr><tr><td>Les décisions d’architecture de l’app</td>
+<td>
+<code>pilotage/adr/NNNN-titre.md</code> (plateforme : <code>platform_nemeton/docs/</code>)</td>
+</tr><tr><td>L’équipe validée, le plafond humain</td>
+<td><code>pilotage/equipe.md</code></td>
+</tr><tr><td>Les missions</td>
+<td><code>pilotage/missions/NNN-titre.md</code></td>
+</tr><tr><td>L’avancement</td>
+<td><code>pilotage/kanban.md</code></td>
+</tr><tr><td>La mémoire du projet</td>
+<td>
+<code>pilotage/journal.md</code> — <strong>ajout seul, on n’efface jamais</strong>
+</td>
+</tr></tbody></table><p>Un lien plutôt qu’une copie. Si une information existe à deux endroits, l’un des deux est faux.</p>
+</div>
+<div class="section level3">
+<h3 id="déroulé">Déroulé<a class="anchor" aria-label="anchor" href="#d%C3%A9roul%C3%A9"></a></h3>
+<p><code>/imperatrice:brief</code> (porte n° 1 : Pascal valide brief et spec) → <code>/imperatrice:mission</code> (porte n° 2 : Pascal valide l’équipe) → <code>/imperatrice:boucle</code> (porte n° 3 : Pascal valide chaque PR vers <code>main</code>) → <code>/imperatrice:bilan</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="règles-techniques-de-la-méthode">Règles techniques de la méthode<a class="anchor" aria-label="anchor" href="#r%C3%A8gles-techniques-de-la-m%C3%A9thode"></a></h3>
+<ul><li>
+<strong>Pas de code sans tests.</strong> Commande de tests : <code>.claude/test-command</code> (écrite au <code>/brief</code>).</li>
+<li>
+<strong>Formats ouverts, logiciels libres</strong> de préférence (test du successeur).</li>
+<li>
+<strong>Jamais de push direct sur <code>main</code></strong> : tout passe par une PR (déjà imposé par la protection de branche, cf. <em>Consignes de release</em>).</li>
+</ul></div>
+</div>
 </div>
 
 

@@ -2,6 +2,10 @@
 
 ## nemetonshiny 2026.10.18.9009 (2026-11-11)
 
+> **Non publié.** Ces changements cassants sortiront dans la release
+> v2026.11.1, après application du brief nemetonmcp et l’essai VICTOR
+> sur Couchey (bilan du 2026-11-13).
+
 ### Changements cassants
 
 - Serveur MCP : `generer_rapport` et le **2e appel** de `croiser_onf`

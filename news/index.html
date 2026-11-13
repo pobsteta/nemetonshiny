@@ -35,6 +35,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9009" id="nemetonshiny-202610189009-2026-11-11">nemetonshiny 2026.10.18.9009 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189009-2026-11-11"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ces changements cassants sortiront dans la release v2026.11.1, après application du brief nemetonmcp et l’essai VICTOR sur Couchey (bilan du 2026-11-13).</p>
+</blockquote>
 <div class="section level3">
 <h3 id="changements-cassants-2026-10-18-9009">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-10-18-9009"></a></h3>
 <ul><li>Serveur MCP : <code>generer_rapport</code> et le <strong>2e appel</strong> de <code>croiser_onf</code> (avec <code>jeton</code>) ne rendent plus leur résultat : ils lancent un job de fond et rendent <code>ok</code>, <code>projet</code>, <code>job_id</code>, <code>type</code> (<code>rapport</code> ou <code>onf</code>) aussitôt. Le résultat (<code>fichier</code> ; <code>n_ugf</code>, <code>n_tenements</code>, <code>n_parcelles</code>, <code>n_cad</code>, <code>ecartees</code>, <code>ecart_median_m</code>, <code>indicateurs_perimes</code>) se lit dans <code>etat_calcul</code> quand <code>statut = "termine"</code>. Le 1er appel de <code>croiser_onf</code> (aperçu) reste synchrone.</li>
