@@ -93,7 +93,8 @@ test_that("FAST validation sub-tab calls the trend plan with right params", {
                                             index, n_plots, n_control,
                                             date_from, date_to, months,
                                             min_years, min_obs_per_year,
-                                            alpha, seed) {
+                                            alpha, seed,
+                                            run_zone_id = NULL) {
       seen$zone_id <- zone_id
       seen$index <- index; seen$n_plots <- n_plots
       seen$n_control <- n_control; seen$seed <- seed

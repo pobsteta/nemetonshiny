@@ -1097,6 +1097,16 @@ mod_monitoring_server <- function(id, app_state) {
       suppressWarnings(as.integer(z$id[idx[1]]))
     })
 
+    # Zone sur laquelle FAST est CALCULE et mis en cache (mission 017, parite
+    # FORDEAD / RECONFORT) : la zone `_tot`, la strate du menu ne fait que
+    # decouper l'affichage. REPLI EXPLICITE sur le menu quand le projet n'a pas
+    # de `_tot` : `as.character(NA)` passerait la garde `nzchar()` des modules
+    # (nzchar(NA) vaut TRUE) et le coeur s'arreterait sur un NA.
+    fast_run_zone_id <- shiny::reactive({
+      id <- fordead_zone_id()
+      if (is.na(id)) input$zone_id else as.character(id)
+    })
+
     # Push zones into the selectInput. Empty list -> empty choices, the
     # status card explains why. If the loaded project was previously
     # registered as a zone (`metadata$monitoring_zone_id`), pre-select
@@ -2541,7 +2551,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
       }
 
-      start_fast_ingest(as.integer(zone_id %||% input$zone_id),
+      start_fast_ingest(as.integer(zone_id %||% fast_run_zone_id()),
                         as.Date(dr[1]), as.Date(dr[2]))
       invisible(TRUE)
     }
@@ -3401,7 +3411,9 @@ mod_monitoring_server <- function(id, app_state) {
       # son sidebar droit) ; le `thresholds_r` parent ne porte plus
       # `index`.
       thresholds_r = fast_params_r,
-      refresh_r    = shiny::reactive(fast_reload())
+      refresh_r    = shiny::reactive(fast_reload()),
+      # Calcul et cache sur `_tot` ; la strate du menu decoupe l'affichage.
+      run_zone_id_r = fast_run_zone_id
     )
 
     # v0.91.x - indicateur UNIQUE " calcul en cours " a l'arrivee sur
@@ -3949,6 +3961,8 @@ mod_monitoring_server <- function(id, app_state) {
       "validation_sampling_fast",
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
+      # Zone du calcul FAST (`_tot`) ; `zone_id_r` reste la strate qui borne le tirage.
+      run_zone_id_r = fast_run_zone_id,
       mode_r       = shiny::reactive(input$mode),
       # v0.52.14 - `index` suit le choix utilisateur cote Alertes FAST
       # (via le reactive exporte `fast_alerts_ret$index_r`), pour que la
