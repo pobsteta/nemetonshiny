@@ -107,7 +107,4 @@ Arbitrages de Pascal (2026-11-10, suite) :
 - Relu **prêt** à l'aller-retour 2/3. Livrable de référence : commit `35cbf2be` (`origin/claude/mission-006-tests-noms-resume`). Rouge réel sur main : 16 tests rouges, 4 verts (garde-fous), selon le relecteur.
 - Fusion : règle de 002 — pas de PR seule ; `test-service_mcp_noms_dictes.R` en tête de la branche 007, `test-service_mcp_resume.R` en tête de 008 (`git checkout 35cbf2be -- <fichier>`), contrôle `git diff 35cbf2be` vide par le relecteur.
 - `familles$ndp` validé par Pascal (2026-11-10).
-
-## Statut
-
-tests 35cbf2be intégrés à 007/008 (pas de PR propre), 2026-11-10.
+- **Statut** (bilan du 2026-11-13) : tests 35cbf2be intégrés à 007/008 (pas de PR propre), 2026-11-10.

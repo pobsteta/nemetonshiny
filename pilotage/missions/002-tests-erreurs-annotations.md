@@ -95,7 +95,4 @@ Facultatif : vérifier les candidats de `projet_ambigu` dans le champ `candidats
 - Relu **prêt** à l'aller-retour 2/3. Livrable de référence : commit `37cbbf92` (branche `worktree-agent-a823d18c1a278977d`), fichiers `tests/testthat/test-service_mcp_erreurs.R` et `test-service_mcp_annotations.R` (la rubrique Harnais disait `test-mcp_*.R` : renommés à l'aller-retour 1/3, convention CLAUDE.md).
 - **Rouge attendu jusqu'à** 003 (fichier erreurs) et 004 (fichier annotations) — corrige la rubrique « Dépend de / rouge attendu » qui disait « aucune ».
 - **Pas de PR 002 seule.** Chaque fichier entre en tête de la branche de sa mission : `git checkout 37cbbf92 -- tests/testthat/test-service_mcp_erreurs.R` en premier commit de 003, `… test-service_mcp_annotations.R` en premier commit de 004. Le relecteur de 003/004 vérifie `git diff 37cbbf92 -- <fichier>` vide.
-
-## Statut
-
-tests intégrés à 003/004 (pas de PR propre), 2026-11-10.
+- **Statut** (bilan du 2026-11-13) : tests intégrés à 003/004 (pas de PR propre), 2026-11-10.
