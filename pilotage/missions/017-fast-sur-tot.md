@@ -32,6 +32,7 @@ strate choisie dans le menu (`_res`, `_feu`, `_mix`) qu'une **découpe d'afficha
 ## Décisions de Pascal applicables
 
 - 2026-11-13 : « oui, aligne FAST sur _tot » (journal, ligne `cap` du 2026-11-13).
+- 2026-11-13 : « oui, inclus le Plan de validation FAST » (journal, même date).
 - Règles strictes CLAUDE.md n° 1-3 : aucune logique métier ; la découpe d'affichage par
   `terra::mask` est déjà admise comme présentation pure pour FORDEAD
   (`R/mod_monitoring_fordead_map.R:283-287`).
@@ -67,23 +68,48 @@ strate choisie dans le menu (`_res`, `_feu`, `_mix`) qu'une **découpe d'afficha
    `shiny::observeEvent(input$run, .lancer_fast())` (`:2549`) est à changer : il passe la zone
    `_tot` (même repli explicite qu'au point 1). Hors changement : le pipeline passe déjà
    `fordead_zone_id()` (`:2567-2577`), « Reprendre » rejoue la zone de la sentinelle (`:2617`).
-6. NEWS (cycle dev `.9010`) : le changement de comportement en une phrase (« choisir une strate
+6. **Plan de validation FAST** (même principe : calcul sur `_tot`, la strate ne fait que
+   borner) :
+   - `R/mod_monitoring.R:3947-3950` passe en plus à `mod_validation_sampling_server` la zone du
+     calcul (même réactif à repli explicite qu'au point 1) ; `zone_id_r` reste la strate.
+   - **Chemin trend** (celui de l'interface pour FAST, `mod_validation_sampling.R:481-523` →
+     `generate_trend_sanitary_plan`, `service_validation_sampling.R:178-…`) : appeler
+     `nemeton::create_trend_sanitary_plan(zone_id = id_tot, mask_polygon = AOI de la strate)`.
+     Le paramètre existe (cœur `R/validation_sampling.R`, lecture seule) : la pente est calculée
+     pixel par pixel, sans quartiles, donc les valeurs dans la strate ne changent pas ; on
+     partage le cache avec Alertes FAST et le tirage reste dans la strate. `plan$zone_id` reste la
+     strate.
+   - **Chemin classes** (`generate_validation_plan(source = "FAST")` →
+     `.resolve_alert_raster`, `service_validation_sampling.R:267-…`, `:~347`) :
+     `compute_fast_alert_mask` et `read_fast_alert_mask` sur l'id `_tot`
+     (`.fordead_tot_zone_id()`, `:379`, déjà là) ; le polygone `zone` passé à
+     `create_validation_sampling_plan` reste celui de la strate (il borne le tirage).
+     `.extract_mask_run_id` (`:451`) lit le dossier `zone_<id_tot>` pour FAST. Le dev dit si ce
+     chemin est encore atteignable depuis l'interface.
+   - Lectures du masque FAST côté module : histogramme `alert_mask_r` (`:372-392`), surcouche du
+     plan `alert_raster_r` (`:634-657`) et aperçu `preview_raster_r` (`:276-311`) lisent `_tot`
+     puis découpent à l'AOI de la strate (`terra::mask`, comme au point 3). Si l'aperçu n'a plus
+     de lecteur (l'observer `:313-318` sort pour FAST), le dire plutôt que le câbler.
+7. NEWS (cycle dev `.9010`) : le changement de comportement en une phrase (« choisir une strate
    ne recalcule plus FAST ; les quartiles sont ceux de l'union des UGF »), en reprenant la
    mention « Non publié… v2026.11.1 » que porte la tête `.9009`.
 
 **Hors périmètre** (à signaler dans le rendu, pas à modifier) : `mod_monitoring_pixel_map.R`
 (onglet pixel), `list_fast_alerts_for_zone()` (placettes), le cœur `nemeton`.
-**Plan de validation FAST** : il n'est **pas** sur `_tot` (`mod_monitoring.R:3947-3950` passe
-`input$zone_id` ; aperçu `mod_validation_sampling.R:280`, histogramme `:372`, `:477` ;
-génération `service_validation_sampling.R:~347`, `compute_fast_alert_mask(zone_id = zone_id)`).
-Périmètre à trancher par Pascal (relecture de fiche du 2026-11-13).
+**Plan de validation FAST** : **inclus** (décision de Pascal, 2026-11-13), voir point 7.
+Constat hors périmètre à signaler seulement : FORDEAD dans le Plan de validation lit
+`read_fordead_dieback_mask(con, zone_id)` sur la strate (`service_validation_sampling.R:~277`,
+`mod_validation_sampling.R:~390`, `~651`) alors que son cache est sous `zone_<id_tot>` ;
+le dev vérifie si une strate ≠ `_tot` y trouve son masque et le dit dans son rendu, sans corriger.
 
 ## L'Homme
 
 - **Agent :** `dev` (sonnet, main : appuyer), tests compris selon la liste « Test discriminant ».
 - **Relecteur :** relit cette fiche avant le dev (liste « Fiche prête pour le dev »), puis la PR.
-- **Peut :** modifier `R/mod_monitoring_fast_alerts.R`, `R/mod_monitoring.R` (câblage FAST et
-  `.lancer_fast` seulement), tests `tests/testthat/test-mod_monitoring_fast_alerts*.R` et
+- **Peut :** modifier `R/mod_monitoring_fast_alerts.R`, `R/mod_monitoring.R` (câblage FAST, du
+  Plan de validation FAST et `.lancer_fast` seulement), `R/mod_validation_sampling.R` et
+  `R/service_validation_sampling.R` (chemins FAST seulement), tests
+  `tests/testthat/test-mod_monitoring_fast_alerts*.R`, `test-*validation_sampling*.R` et
   nouveaux tests, NEWS, DESCRIPTION.
 - **Ne doit pas :** toucher FORDEAD, RECONFORT, le pixel map, le MCP ; écrire dans `nemeton` ;
   passer `mask_polygon` au cœur pour la strate.
@@ -109,6 +135,12 @@ qui moque `.compute_fast_mask` (pas le cœur) : lui faire capturer `zone`. Moque
 - `_tot` sélectionnée → raster non découpé (identique au masque calculé).
 - Projet sans `_tot` → calcul sur la strate (repli), pas d'erreur.
 - Ingestion : `start_fast_ingest` reçoit l'id `_tot`.
+- Plan trend : `create_trend_sanitary_plan` moqué reçoit `zone_id = id_tot` et un `mask_polygon`
+  égal à l'AOI de la strate ; `plan$zone_id` vaut la strate. Mutation : repasser la strate → rouge.
+- Plan classes : `compute_fast_alert_mask` / `read_fast_alert_mask` moqués reçoivent l'id `_tot`,
+  `create_validation_sampling_plan` reçoit le polygone de la strate.
+- Histogramme FAST : la distribution ne compte que les pixels de la strate (raster 2×2, un pixel
+  hors AOI exclu). Mutation : supprimer la découpe → rouge.
 - Pas de test vacant : l'`observeEvent` est déclenché (`session$setInputs()` d'abord, mémoire
   `reference_testserver_external_reactivevalues`) ; aucun `tryCatch` autour des `expect_*`.
 - Rendu : décompte pass/fail/skip de `devtools::test(filter = "monitoring")`, mutations citées.
