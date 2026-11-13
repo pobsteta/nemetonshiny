@@ -92,6 +92,46 @@
   )
 }
 
+#' Clip a `_tot` FAST mask to the stratum picked in the zone menu
+#'
+#' Presentation only (CLAUDE.md rule 3): the 0-4 classes were computed on the
+#' `_tot` zone (quartiles of the union of the UGF), the stratum (`_res`,
+#' `_feu`, `_mix`) merely bounds the display, exactly like FORDEAD and
+#' RECONFORT. Pixels outside the stratum become `NA`. The clip happens AFTER
+#' the quartiles, hence `mask_polygon` of the core is deliberately not used.
+#' A failed clip warns and returns the raster unclipped (FORDEAD parity).
+#' @param r SpatRaster (EPSG:2154) or NULL.
+#' @param aoi sf polygon of the stratum, or NULL (no clip).
+#' @return The clipped SpatRaster, or `r` unchanged.
+#' @noRd
+.clip_fast_to_stratum <- function(r, aoi) {
+  if (is.null(r) || is.null(aoi)) return(r)
+  tryCatch(
+    terra::mask(r, terra::vect(sf::st_transform(aoi, terra::crs(r)))),
+    error = function(e) {
+      cli::cli_alert_warning(
+        "FAST strata mask failed: {conditionMessage(e)}")
+      r
+    }
+  )
+}
+
+#' Stratum polygon, or NULL when the stratum is the calculation zone
+#'
+#' @param con DBI connection.
+#' @param zone Displayed stratum id (chr/int).
+#' @param run_zone Id of the zone the mask was computed on (`_tot`).
+#' @noRd
+.fast_stratum_aoi <- function(con, zone, run_zone) {
+  sel <- suppressWarnings(as.integer(zone))
+  run <- suppressWarnings(as.integer(run_zone))
+  if (length(sel) != 1L || is.na(sel) || length(run) != 1L || is.na(run) ||
+      identical(sel, run)) {
+    return(NULL)
+  }
+  tryCatch(get_monitoring_zone_aoi(con, sel), error = function(e) NULL)
+}
+
 #' Signature of the inputs of one displayed FAST alert raster
 #'
 #' Two calls with the same signature produce the same mask, so the module
@@ -233,12 +273,17 @@ mod_monitoring_fast_alerts_ui <- function(id) {
 #'   ingestion success). Taken as an explicit dep by the raster reactive
 #'   and the cache resolver so they re-evaluate without forcing the user
 #'   to wiggle a slider. v0.42.0.
+#' @param run_zone_id_r Reactive returning the zone the mask is computed and
+#'   cached on (the `_tot` zone, parity FORDEAD / RECONFORT). `zone_id_r` (the
+#'   stratum picked in the dropdown) only clips the display. Defaults to
+#'   `zone_id_r` for back-compat.
 #' @return invisible list with `raster` reactive (the SpatRaster
 #'   currently displayed, NULL when no data).
 #' @noRd
 mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
                                               date_range_r, thresholds_r,
-                                              refresh_r = shiny::reactive(0L)) {
+                                              refresh_r = shiny::reactive(0L),
+                                              run_zone_id_r = zone_id_r) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -384,7 +429,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # reactifs directement -> l'appelant l'enveloppe dans isolate/domaine.
     compute_fast_raster <- function() {
       refresh_r()
-      zone <- zone_id_r()
+      zone <- run_zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       dr <- date_range_r()
       if (length(dr) != 2L || any(is.na(dr))) return(NULL)
@@ -503,8 +548,32 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # Resultat du mask, alimente par le trigger defere ci-dessous. Les
     # consommateurs (bandeau, peinture carte, clic trend) lisent `raster_r()`
     # qui retourne cette valeur - sans declencher le calcul lourd.
+    #
+    # `raster_rv` garde le masque `_tot` NON decoupe (calcule une fois, cache
+    # par la signature). `raster_r` en est la vue DECOUPEE a la strate du menu
+    # (presentation pure, parite FORDEAD) : changer de strate ne recalcule rien.
     raster_rv <- shiny::reactiveVal(NULL)
-    raster_r  <- shiny::reactive(raster_rv())
+
+    # Polygone de la strate affichee (NULL si c'est la zone du calcul). Connexion
+    # propre, comme `aoi_r` de RECONFORT ; ne relance pas le calcul.
+    aoi_r <- shiny::reactive({
+      zone <- zone_id_r(); run <- run_zone_id_r()
+      if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      sel <- suppressWarnings(as.integer(zone))
+      if (is.na(sel) || identical(sel, suppressWarnings(as.integer(run)))) {
+        return(NULL)
+      }
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      if (is.null(con)) return(NULL)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      .fast_stratum_aoi(con, zone, run)
+    })
+
+    raster_r <- shiny::reactive({
+      .clip_fast_to_stratum(raster_rv(), aoi_r())
+    })
     # TRUE pendant qu'un raster d'alerte se calcule (entre l'affichage de
     # la notif " calcul en cours " et la fin du `onFlushed`). Le bandeau
     # s'en sert pour afficher " calcul en cours " au lieu d'un faux
@@ -527,7 +596,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # Dependances : recalcul quand l'un de ces reactifs change. Les seuils
       # sont pris DEBOUNCES (thresholds_deb) : glisser le slider ne relance
       # plus un calcul lourd a chaque cran, seulement apres 400 ms de repos.
-      refresh_r(); zone_id_r(); date_range_r(); thresholds_deb()
+      refresh_r(); run_zone_id_r(); date_range_r(); thresholds_deb()
       input$index; input$mode
       input$trend_months; input$trend_min_years; input$trend_alpha
       # Dependance sur l'onglet principal actif : on ne calcule (et ne
@@ -538,7 +607,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # s'affichait a tort. Quand l'utilisateur bascule sur l'onglet, ce
       # reactif change et l'observer recalcule.
       active_tab <- app_state$active_main_tab
-      zone <- shiny::isolate(zone_id_r())
+      zone <- shiny::isolate(run_zone_id_r())
       if (is.null(zone) || !isTRUE(nzchar(zone))) {
         computed_sig <<- NULL
         computing_rv(FALSE)
@@ -589,14 +658,14 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # mono-index a la demande. Le trigger est debounce pour ne pas
     # empiler des calculs lourds pendant le reglage des sliders trend.
     trend_prewarm_trigger <- shiny::reactive({
-      list(input$mode, zone_id_r(), date_range_r(),
+      list(input$mode, run_zone_id_r(), date_range_r(),
            input$trend_months, input$trend_min_years, input$trend_alpha,
            refresh_r())
     }) |> shiny::debounce(800)
 
     shiny::observe({
       if (!identical(input$mode %||% "count", "trend")) return()
-      zone <- zone_id_r()
+      zone <- run_zone_id_r()
       dr   <- date_range_r()
       th   <- thresholds_deb()
       proj <- app_state$current_project
