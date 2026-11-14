@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9011</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9012</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9012" id="nemetonshiny-202610189012-2026-11-14">nemetonshiny 2026.10.18.9012 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189012-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs--plan-de-validation-fordead-lu-sur-_tot-découpé-à-la-strate-mission-2026-10-18-9012">Correctifs : Plan de validation FORDEAD lu sur <code>_tot</code>, découpé à la strate (mission 019)<a class="anchor" aria-label="anchor" href="#correctifs--plan-de-validation-fordead-lu-sur-_tot-d%C3%A9coup%C3%A9-%C3%A0-la-strate-mission-2026-10-18-9012"></a></h3>
+<ul><li>Sur une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>), le Plan de validation FORDEAD cherchait le masque de dépérissement dans <code>zone_&lt;id de la strate&gt;</code>, alors que FORDEAD le calcule et le met en cache sur <code>_tot</code> : le masque était introuvable (« pas de masque ») ou ancien. Il est maintenant lu sur <code>_tot</code>, comme la carte FORDEAD et la pondération continue.</li>
+<li>Génération : le tirage reste borné par le polygone de la strate (le cœur y restreint déjà le raster) ; <code>source_run_id</code> suit la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque <code>_tot</code> découpé à la strate (<code>.read_fordead_mask_stratum</code>).</li>
+<li>Repli double, jamais pire qu’avant : sans zone <code>_tot</code> en base, ou si <code>_tot</code> n’a pas de masque sur disque (ancien run fait sur la strate), relecture sur la strate sans découpe. Strate = <code>_tot</code> : aucun changement.</li>
+<li>Constaté, non corrigé (périmètre à décider) : le Plan de validation RECONFORT lit encore sa classification et son score sur la strate, alors que RECONFORT tourne sur <code>_tot</code>.</li>
+<li>Test : <code>test-service_validation_sampling_fordead_tot.R</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9011" id="nemetonshiny-202610189011-2026-11-14">nemetonshiny 2026.10.18.9011 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189011-2026-11-14"></a></h2>
 <blockquote>
