@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9016</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9017</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9017" id="nemetonshiny-202610189017-2026-11-14">nemetonshiny 2026.10.18.9017 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189017-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nouveautés--fiche-pdf-par-ugf-du-plan-dactions-mission-issue-2026-10-18-9017">Nouveautés : fiche PDF par UGF du Plan d’actions (mission 024, issue <a href="https://github.com/pobsteta/nemetonshiny/issues/20" class="external-link">#20</a>)<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s--fiche-pdf-par-ugf-du-plan-dactions-mission-issue-2026-10-18-9017"></a></h3>
+<ul><li>Nouveau bouton « Fiches PDF par UGF » dans l’onglet Plan d’actions. Une seule UGF sélectionnée : un PDF. Plusieurs sélectionnées : un ZIP des seules UGF sélectionnées. Aucune sélection : un ZIP de toutes les UGF ayant des actions visibles. Une UGF sélectionnée sans action visible est ignorée ; s’il n’en reste aucune, erreur explicite (jamais de ZIP vide).</li>
+<li>Une UGF dont le rendu échoue est ignorée et listée dans <code>erreurs.txt</code> à l’intérieur du ZIP ; si toutes échouent, erreur. Plafond de 30 UGF par export. Noms de fichiers sans collision (<code>&lt;projet&gt;_fiche_&lt;UGF&gt;.pdf</code>, suffixe <code>ug_id</code> quand deux libellés s’aplatissent pareil).</li>
+<li>Copie archivée dans <code>exports/</code> (<code>&lt;projet&gt;_fiche_&lt;UGF&gt;.pdf</code> ou <code>&lt;projet&gt;_fiches_ugf.zip</code>), sans jamais écraser <code>&lt;projet&gt;_action_plan.pdf</code>.</li>
+<li>Gabarit PDF : paramètre <code>mode</code> (page de titre au nom et à la surface de l’UGF en mode fiche), nouvelle section « Sources » par action (seulement si l’extrait est renseigné ; origine <code>family_X</code> traduite avec les familles du cœur, autre code affiché tel quel), actions triées par année (PDF du projet compris), en-tête YAML traduit FR/EN.</li>
+<li>Préparation en tâche de fond (modèle Marculus, décision de Pascal) : le bouton visible fige la cible au clic, lance le rendu dans un worker (<code>ExtendedTask</code>), se désactive pendant le travail et refuse un 2e lancement ; un lien masqué, cliqué par le serveur à la fin, ne fait que copier le fichier prêt (+ archive <code>exports/</code>). Progression « Fiche i sur N » : le worker l’écrit dans un petit fichier lu par un <code>reactivePoll</code> (500 ms). Helpers <code>.action_plan_sheet_job()</code>, <code>.action_plan_progress_write/read()</code>, <code>.action_plan_sheets_run()</code>.</li>
+<li>Code : constructeur pur <code>.build_action_plan_pdf_data()</code> (testable sans Quarto), <code>generate_action_plan_ug_sheets()</code>, helper <code>.action_plan_sheet_targets()</code> appelé par <code>filename</code> et <code>content</code>. Clés i18n <code>action_plan_sheets_*</code>. Tests : <code>test-action_plan_sheets.R</code>.</li>
+<li>Hors périmètre : totaux de quantité (volume, surface) de l’issue <a href="https://github.com/pobsteta/nemetonshiny/issues/20" class="external-link">#20</a>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9016" id="nemetonshiny-202610189016-2026-11-14">nemetonshiny 2026.10.18.9016 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189016-2026-11-14"></a></h2>
 <blockquote>
