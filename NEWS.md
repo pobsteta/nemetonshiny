@@ -1,3 +1,15 @@
+# nemetonshiny 2026.10.18.9016 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Changements visibles : surcouche du Plan de validation, classe saine transparente et couleurs de chaque moteur (mission 023)
+
+- Sur la carte du Plan de validation, la classe saine est transparente pour FAST, FORDEAD et RECONFORT (fond de carte visible sous la forêt saine). RECONFORT : sa classe saine (1) n'est plus peinte en jaune pâle, et 0 / sans donnée restent transparents.
+- Les classes d'alerte ont la couleur de la carte de santé du même moteur : FAST prend sa palette (classe 4 « sévère » en rouge foncé, plus en quasi-noir « sol nu » de FORDEAD), RECONFORT prend orange / rouge, FORDEAD est inchangé.
+- Nouvelle légende de la surcouche, limitée aux classes peintes (libellés existants de chaque moteur).
+- Une seule source de vérité des couleurs par moteur : `.FAST_ALERT_CLASS_COLORS` et `.FORDEAD_SEVERITY_COLORS` (cartes de santé et surcouche), `.RECONFORT_CLASSIF_COLORS` existante. Helper `.validation_overlay_style()`.
+- Inchangés : opacité de la surcouche, marqueurs, plan trend. Tests : `test-mod_validation_sampling_overlay.R`.
+
 # nemetonshiny 2026.10.18.9015 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).

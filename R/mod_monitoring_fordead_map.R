@@ -26,6 +26,17 @@
 # FROM THE RASTER rather than from a DB alert count :
 #   max >= 1  -> au moins un pixel classe >= 1 -> zone affectee ;
 #   max < 1 ou NA -> tout sain (classe 0) ou tout NA -> zone saine.
+#' Couleurs des classes de severite FORDEAD (codes 0-4), source unique : carte
+#' FORDEAD et surcouche du Plan de validation. 0 = sain (jamais peint), 4 = sol nu.
+#' @noRd
+.FORDEAD_SEVERITY_COLORS <- c(
+  "0" = "#2CA02C",
+  "1" = "#FFD27F",
+  "2" = "#FF9933",
+  "3" = "#D62728",
+  "4" = "#222222"
+)
+
 .fordead_raster_max <- function(r) {
   if (is.null(r) || !inherits(r, "SpatRaster")) return(NA_real_)
   if (terra::ncell(r) == 0L) return(NA_real_)
@@ -108,7 +119,7 @@
                     title = i18n$t("monitoring_fordead_layer_confidence"))))
   }
   # severity (defaut) - classe 0 transparente.
-  cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+  cols <- unname(.FORDEAD_SEVERITY_COLORS)
   list(
     r_show = terra::ifel(is.na(r) | r <= 0, NA, r),
     pal    = leaflet::colorFactor(cols, levels = 0:4, na.color = "transparent"),

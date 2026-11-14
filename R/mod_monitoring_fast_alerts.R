@@ -31,6 +31,16 @@
 # Pas de popup au clic - l'exploration pixel-par-pixel se fait sur
 # l'onglet " Carte FAST " (mod_monitoring_pixel_map).
 
+#' Couleurs des classes d'alerte FAST (codes 1-4), source unique : carte
+#' Alertes FAST et surcouche du Plan de validation. 4 = severe (rouge fonce).
+#' @noRd
+.FAST_ALERT_CLASS_COLORS <- c(
+  "1" = "#fee08b",
+  "2" = "#fdae61",
+  "3" = "#f46d43",
+  "4" = "#d73027"
+)
+
 #' FAST index choices for a given mode (mode-dependent vocabulary)
 #'
 #' count / rolling expose the short-term shock indices NDMI / NDVI / NBR ;
@@ -1098,7 +1108,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # le relais visuel quand le raster entier est en classe 0.
       r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
 
-      cols <- c("#fee08b", "#fdae61", "#f46d43", "#d73027")
+      cols <- unname(.FAST_ALERT_CLASS_COLORS)
       labels <- c(
         i18n$t("fast_alert_class_1"),
         i18n$t("fast_alert_class_2"),
