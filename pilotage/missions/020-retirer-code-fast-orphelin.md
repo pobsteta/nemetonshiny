@@ -23,7 +23,7 @@
 - Clés i18n : `R/utils_i18n.R:5565-5595` ; commentaire d'en-tête `:5560-5564` (déjà réécrit par
   018 pour dire qu'elles n'ont plus de lecteur).
 - Tests qui les visent seuls : `tests/testthat/test-mod_monitoring_fast_alerts.R:60-70`
-  (trend), `:72-123` (`.classify_alert_count`), `:133-151` (FAST nul / quartiles), `:153-156`
+  (trend), `:72-123` (`.classify_alert_count`), `:133-151` (FAST nul / quartiles), `:153-157`
   (`.alert_count_palette`). `:125-131` teste la branche FORDEAD, qui reste.
 - Le test du module ajouté par 018 (`tests/testthat/test-mod_validation_sampling.R`, libellés
   FORDEAD en anglais, ordre 4-3-2-1) doit rester vert : c'est le garde-fou « rien ne change ».
@@ -32,11 +32,17 @@
 
 1. Remplacer `.fast_class_labels(r, source, mode, i18n)` par une fonction FORDEAD seule au nom
    juste (proposé : `.fordead_class_labels(i18n)`), qui rend les mêmes libellés ; mettre à jour
-   l'appel `R/mod_validation_sampling.R:288` et ses commentaires (`:282`, `:287`).
+   l'appel `R/mod_validation_sampling.R:288` et réécrire tout le commentaire `:280-287` (le motif
+   « match.arg … reecrirait les choix » devient faux : la raison de sauter FAST et RECONFORT est
+   simplement que la fonction ne rend que des libellés FORDEAD). La fonction peut rester dans
+   `R/mod_monitoring_fast_alerts.R` (pour ne pas toucher le fichier de 019), si son commentaire le
+   dit.
 2. Supprimer `.classify_alert_count`, `.alert_count_palette` et leurs commentaires.
 3. Supprimer les 7 clés i18n et réécrire le commentaire `R/utils_i18n.R:5560-5564`.
-4. Supprimer les tests qui ne visent que le code retiré ; adapter `:125-131` au nouveau nom.
-   Lister dans le rendu chaque test supprimé.
+4. Supprimer les tests qui ne visent que le code retiré ; adapter `:125-131` au nouveau nom **et
+   le renforcer** : comparer les 4 libellés, en `fr` **et** en `en`, par `expect_identical` à
+   `i18n$t("validation_class_fordead_k")`, plus au moins un littéral (`"4 — sol nu"`, en
+   `\uXXXX`). Lister dans le rendu chaque test supprimé.
 5. Avant de supprimer, vérifier par `grep` sur `R/`, `tests/`, `inst/` (y compris quarto, js,
    yml) qu'aucune autre référence n'existe, y compris les helpers appelés seulement par le code
    retiré (ex. `.fast_raster_is_empty` : le garder s'il a un autre lecteur, sinon le signaler et
@@ -56,13 +62,15 @@ merge, l'orchestrateur rebase la PR arrivée en second.
 ## Versionnage
 
 Cycle dev : prochain numéro libre après 019 (`2026.10.18.9013` si 019 fusionne avant, sinon
-`.9012` et l'orchestrateur renumérote). Entrée NEWS « Non publié », section nettoyage.
+`.9012` et l'orchestrateur renumérote). Entrée NEWS « Non publié », section nettoyage, qui dit que ce code est désormais retiré. Ne
+**pas** modifier l'entrée `.9011` (sa ligne « signalé et non retiré » est de l'historique).
 
 ## Tests
 
 Commande : `Rscript -e 'devtools::test(filter = "validation|monitoring|i18n")'` ; rendre pass /
-fail / skip. Mutation : changer une clé FORDEAD dans la nouvelle fonction doit faire rougir le
-test du module de 018.
+fail / skip. Deux mutations au moins : changer une clé FORDEAD dans la nouvelle fonction (doit
+rougir le test unitaire et celui du module de 018), échanger l'ordre des clés. « Rien ne change à
+l'écran » se prouve par le `grep` (aucun autre lecteur) plus l'identité des libellés fr/en.
 
 ## Moyens
 
