@@ -231,3 +231,4 @@
 2026-11-14 · orchestrateur · 021 · fusion (accord « merge ce que tu peux ») : #273 fusionnée après CI verte ; 2026.10.18.9014 non publié ; branche et worktree supprimés. 022 sera renumérotée .9015.
 2026-11-14 · dev (inscrit par l'orchestrateur) · 022 · reprise (3a0bf1c7) : garde is_strate_r retirée du cache _tot RECONFORT, test strates 7 → 8 → 7 → 8 + opacité, faux AOI NULL pour NA ; 130 pass ; 2 mutations rouges. Orchestrateur : fusion de main (021), renumérotée 2026.10.18.9015 (543a25a6).
 2026-11-14 · relecteur (inscrit par l'orchestrateur) · 022 · prêt (543a25a6) : une seule lecture _tot RECONFORT (sonde 1/1/1/1), mutation du piège NA rouge, monitoring et validation verts après fusion de 021 (1 E2E sauté, Chromote), NEWS .9014 intacte. PR ouverte.
+2026-11-14 · orchestrateur · 022 · fusion (accord « merge ce que tu peux ») : #274 fusionnée (7d11cdc4) après CI verte ; 2026.10.18.9015 non publié. Mission 023 confiée au dev depuis ce main (version .9016).

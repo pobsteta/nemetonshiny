@@ -116,3 +116,7 @@ rendre pass / fail / skip.
 - Temps de la main : *appuyer*.
 
 ## Redite par l'agent : _à compléter_
+
+## Statut
+
+Terminée le 2026-11-14 : PR #274 fusionnée sur `main` (`7d11cdc4`), cycle dev `2026.10.18.9015`, non publié. Relecture : prêt.

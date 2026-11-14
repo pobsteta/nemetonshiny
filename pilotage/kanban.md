@@ -24,14 +24,6 @@ _(vide)_
 
 ## Validé
 
-- [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) · depuis le cycle 2
-  - Homme : `dev` (sonnet), relecteur sur la fiche (faite) puis la PR
-  - Mission : Plan de validation RECONFORT lu sur `_tot`, découpé à la strate ; garde-fou commun aux 3 moteurs
-  - Moyens : worktree depuis main, chaîne de 019 généralisée
-- [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 2
-  - Homme : `dev` (sonnet), relecteur sur la fiche (faite) puis la PR
-  - Mission : « Aucune alerte dans cette strate » + rappel `_tot` (FAST, FORDEAD, RECONFORT) ; après 021
-  - Moyens : helper `R/utils_sante_strate.R`
 - [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : surcouche du Plan de validation, classe saine transparente, couleurs par moteur ; après 021
@@ -58,6 +50,14 @@ _(vide)_
 
 ## Terminé
 
+- [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR (une reprise)
+  - Mission : #274 fusionnée (7d11cdc4), cycle dev 2026.10.18.9015, non publié
+  - Moyens : —
+- [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #273 fusionnée (176c4837), cycle dev 2026.10.18.9014, non publié
+  - Moyens : —
 - [020-retirer-code-fast-orphelin](missions/020-retirer-code-fast-orphelin.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #271 fusionnée (6a9326d4), cycle dev 2026.10.18.9013, non publié
