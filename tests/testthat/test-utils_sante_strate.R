@@ -310,6 +310,8 @@ test_that("FORDEAD: strate vide ET _tot sain -> « zone saine » inchangee", {
     n_features = NA_integer_, stringsAsFactors = FALSE)
   log <- new.env(); log$reads <- list()
   aoi_for <- function(con, zone_id) {
+    # Comme la base : pas de zone "NA" -> aucun polygone.
+    if (is.na(suppressWarnings(as.integer(zone_id)))) return(NULL)
     box <- if (identical(as.integer(zone_id), 5L))
       rbind(c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0))
     else rbind(c(0, 0), c(40, 0), c(40, 20), c(0, 20), c(0, 0))
@@ -337,18 +339,20 @@ test_that("FORDEAD: strate vide ET _tot sain -> « zone saine » inchangee", {
     },
     .package = "nemeton", .env = env
   )
+  zone_rv <- shiny::reactiveVal(zone)
   shiny::testServer(
     nemetonshiny:::mod_monitoring_reconfort_map_server,
     args = list(id = "rc",
                 app_state = shiny::reactiveValues(
                   language = "fr", current_project = list(id = "p", path = pp)),
-                zone_id_r = shiny::reactive(zone),
+                zone_id_r = zone_rv,
                 result_r = shiny::reactive(NULL),
                 run_zone_id_r = shiny::reactive(run_zone)),
     {
       session$setInputs(layers = layer, opacity = 0.8)
       session$flushReact()
-      code(.s022_html(output$overlay), log)
+      code(.s022_html(output$overlay), log,
+           list(zone = zone_rv, session = session, output = output))
     }
   )
 }
@@ -358,7 +362,7 @@ test_that("RECONFORT: strate sans pixel 2/3, _tot en alerte -> carte info + rapp
   skip_if_not(exists("reconfort_cache_manifest",
                      where = asNamespace("nemeton"), inherits = FALSE))
   .s022_rc_run("7", "5", tot_alert = TRUE, layer = "classification",
-               function(html, log) {
+               function(html, log, h) {
     expect_match(html, "border-info", fixed = TRUE)
     expect_match(html, "text-info", fixed = TRUE)
     expect_match(html, get_i18n("fr")$t("sante_strate_sans_alerte_titre"),
@@ -372,14 +376,22 @@ test_that("RECONFORT: strate sans pixel 2/3, _tot en alerte -> carte info + rapp
   })
 })
 
-test_that("RECONFORT: _tot relu une seule fois, pas a chaque rendu", {
+test_that("RECONFORT: _tot relu une seule fois par run (strates, opacite)", {
   skip_if_not_installed("shiny"); skip_if_not_installed("terra")
   skip_if_not(exists("reconfort_cache_manifest",
                      where = asNamespace("nemeton"), inherits = FALSE))
   .s022_rc_run("7", "5", tot_alert = TRUE, layer = "classification",
-               function(html, log) {
-    n0 <- length(Filter(function(x) identical(x$box, 40), log$reads))
-    expect_identical(n0, 1L)
+               function(html, log, h) {
+    n_tot <- function() length(Filter(function(x) identical(x$box, 40), log$reads))
+    expect_identical(n_tot(), 1L)
+    expect_match(html, "border-info", fixed = TRUE)
+    for (z in c("8", "7", "8")) {
+      h$zone(z); h$session$flushReact()
+      expect_match(.s022_html(h$output$overlay), "border-info", fixed = TRUE)
+    }
+    h$session$setInputs(opacity = 0.3); h$session$flushReact()
+    .s022_html(h$output$overlay)
+    expect_identical(n_tot(), 1L)
   })
 })
 
@@ -388,14 +400,18 @@ test_that("RECONFORT: strate = _tot, ou sans _tot (\"NA\") -> aucun message nouv
   skip_if_not(exists("reconfort_cache_manifest",
                      where = asNamespace("nemeton"), inherits = FALSE))
   .s022_rc_run("5", "5", tot_alert = FALSE, layer = "classification",
-               function(html, log) {
+               function(html, log, h) {
     expect_false(grepl("border-info", html, fixed = TRUE))
     expect_length(Filter(function(x) identical(x$box, 40), log$reads), 1L)
   })
   # Sans _tot : run_zone_id_r() vaut la chaine "NA".
   .s022_rc_run("7", "NA", tot_alert = TRUE, layer = "classification",
-               function(html, log) {
+               function(html, log, h) {
     expect_false(grepl("border-info", html, fixed = TRUE))
+    # Aucune relecture _tot : les seules lectures sont celles de la strate "7"
+    # (AOI ymax 20) ; une lecture sans polygone (zone NA) serait un echec.
+    expect_length(Filter(function(x) identical(x$box, 40), log$reads), 0L)
+    expect_false(any(vapply(log$reads, function(x) is.null(x$box), logical(1))))
   })
 })
 
@@ -404,7 +420,7 @@ test_that("RECONFORT: couche score -> rien ne change", {
   skip_if_not(exists("reconfort_cache_manifest",
                      where = asNamespace("nemeton"), inherits = FALSE))
   .s022_rc_run("7", "5", tot_alert = TRUE, layer = "score",
-               function(html, log) {
+               function(html, log, h) {
     expect_false(grepl("border-info", html, fixed = TRUE))
   })
 })
@@ -414,7 +430,7 @@ test_that("RECONFORT: strate ET _tot sans alerte -> aucun message (pas de vert)"
   skip_if_not(exists("reconfort_cache_manifest",
                      where = asNamespace("nemeton"), inherits = FALSE))
   .s022_rc_run("7", "5", tot_alert = FALSE, layer = "classification",
-               function(html, log) {
+               function(html, log, h) {
     # _tot sans alerte non plus : aucun message (pas d'etat vert RECONFORT).
     expect_false(grepl("border-info", html, fixed = TRUE))
   })

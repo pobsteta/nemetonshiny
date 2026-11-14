@@ -506,13 +506,16 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         !is.na(sel) && !is.na(run) && !identical(sel, run)
     })
 
-    # Couche `classification` de la zone `_tot` : UNE relecture (cle = manifeste
-    # + zone du run, jamais strate ni opacite), seulement si une strate distincte
-    # est affichee ET paresseuse (evaluee quand l'overlay en a besoin). Lecture
+    # Couche `classification` de la zone `_tot` : UNE relecture par run (cle =
+    # manifeste + zone du run ; surtout PAS la strate ni l'opacite, sinon chaque
+    # changement de strate relirait `_tot`). Paresseuse : seul l'overlay
+    # l'appelle, et uniquement sur une strate distincte. Lecture
     # par le coeur avec `mask_polygon` = AOI de `_tot` - jamais
     # `apply_zone_mask = FALSE`, qui ne rend pas `_tot`.
     classification_tot_r <- shiny::reactive({
-      if (!isTRUE(is_strate_r())) return(NULL)
+      # Appelee par l'overlay seulement quand `is_strate_r()` (donc `_tot`
+      # existe) ; PAS de garde sur la strate ici (cf. ci-dessus).
+      run <- suppressWarnings(as.integer(run_zone_id_r()))
       rm <- raster_manifest_r()
       if (is.null(rm)) return(NULL)
       row <- rm[as.character(rm$id) == "classification", , drop = FALSE]
@@ -523,7 +526,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       aoi_tot <- tryCatch(
-        get_monitoring_zone_aoi(con, as.integer(run_zone_id_r())),
+        get_monitoring_zone_aoi(con, run),
         error = function(e) NULL)
       tryCatch(
         nemeton::read_reconfort_layer(
