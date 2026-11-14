@@ -134,3 +134,7 @@ plafond de 30. Pascal retient **A — préparation en tâche de fond + lien masq
 `R/mod_action_plan.R` env. 2440 ; lien `d-none` cliqué par le serveur avec
 `suspendWhenHidden = FALSE`) : l'appli reste utilisable, la progression « i / N » est réelle,
 le téléchargement part à la fin. Plafond de 30 UGF conservé. Complément sur la même branche.
+
+## Statut
+
+Terminée le 2026-11-14 : PR #277 fusionnée sur `main` (`ca89adf9`, commits `2696c9ac`, `f7b7a257`, `6a1a02f1`, `820d5d9b`), cycle dev `2026.10.18.9017`, non publié. Issue #20 fermée (totaux quantité signalés hors périmètre). Relecture : prêt. Reste : essai terrain de Pascal (Quarto dans un worker `future`).

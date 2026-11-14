@@ -24,7 +24,7 @@ _(vide)_
 
 ## Validé
 
-- [024] Fiche PDF par UGF du Plan d'actions (issue #20) · dev (sonnet), worktree · *appuyer* · fiche relue, décision de Pascal sur le ZIP reportée
+_(vide)_
 
 ## Planifié
 
@@ -47,6 +47,8 @@ _(vide)_
 
 ## Terminé
 
+- [024-fiche-pdf-par-ugf](missions/024-fiche-pdf-par-ugf.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR ; PR #277 (`ca89adf9`), 2026.10.18.9017, issue #20 fermée ; reste l'essai terrain de Pascal (Quarto en tâche de fond)
 - [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #275 fusionnée, cycle dev 2026.10.18.9016, non publié
