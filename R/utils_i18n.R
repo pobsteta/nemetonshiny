@@ -1080,6 +1080,10 @@ TRANSLATIONS <- list(
     fr = "Fiches PDF par UGF",
     en = "PDF sheets per UGF"
   ),
+  action_plan_sheets_busy = list(
+    fr = "Une g\u00e9n\u00e9ration de fiches est d\u00e9j\u00e0 en cours.",
+    en = "A sheets generation is already running."
+  ),
   action_plan_sheets_running = list(
     fr = "G\u00e9n\u00e9ration des fiches PDF\u2026",
     en = "Generating PDF sheets\u2026"

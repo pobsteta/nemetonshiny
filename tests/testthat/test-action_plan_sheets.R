@@ -314,3 +314,66 @@ test_that("rendu reel d'une fiche d'UGF (si Quarto + LaTeX disponibles)", {
   skip_if(is.null(res), "rendu PDF impossible dans cet environnement")
   expect_gt(file.size(out), 1000)
 })
+
+# ---- tache de fond : job fige, progression, corps du worker ------------------------
+
+test_that("job : cible, nom et ext figes au clic ; refus none et plafond", {
+  vis <- data.frame(id = c("a1", "b1", "c1"), ug_id = c("U1", "U2", "U3"),
+                    stringsAsFactors = FALSE)
+  j <- nemetonshiny:::.action_plan_sheet_job(
+    .fx_project(), .fx_plan(), .fx_ugs(), c("U1", "U2"), vis, "en")
+  expect_null(j$error)
+  expect_identical(j$mode, "zip"); expect_identical(j$ext, "zip")
+  expect_identical(j$filename, "For_t_Test_fiches_ugf.zip")
+  expect_setequal(j$ug_ids, c("U1", "U2"))
+  expect_setequal(j$filter_action_ids, c("a1", "b1", "c1"))
+  expect_identical(j$language, "en")
+  # une seule UGF -> pdf
+  j1 <- nemetonshiny:::.action_plan_sheet_job(
+    .fx_project(), .fx_plan(), .fx_ugs(), "U3", vis)
+  expect_identical(j1$ext, "pdf"); expect_match(j1$filename, "fiche_U3\\.pdf$")
+  # rien a exporter
+  jn <- nemetonshiny:::.action_plan_sheet_job(
+    .fx_project(), .fx_plan(), .fx_ugs(), "U9", vis)
+  expect_identical(jn$error, "action_plan_sheets_none")
+  # plafond
+  big <- data.frame(id = sprintf("a%02d", 1:31), ug_id = sprintf("U%02d", 1:31),
+                    stringsAsFactors = FALSE)
+  jb <- nemetonshiny:::.action_plan_sheet_job(
+    .fx_project(), .fx_plan(), .fx_ugs(), character(), big)
+  expect_identical(jb$error, "action_plan_sheets_toomany")
+  expect_equal(jb$n, 31L)
+})
+
+test_that("progression : ecriture/lecture i/N, absence et fichier corrompu -> NULL", {
+  f <- tempfile()
+  expect_null(nemetonshiny:::.action_plan_progress_read(f))
+  expect_null(nemetonshiny:::.action_plan_progress_read(NULL))
+  nemetonshiny:::.action_plan_progress_write(f, 2, 7)
+  expect_identical(nemetonshiny:::.action_plan_progress_read(f), c(2L, 7L))
+  writeLines("garbage", f)
+  expect_null(nemetonshiny:::.action_plan_progress_read(f))
+})
+
+test_that("corps du worker : rend le job gele et ecrit la progression", {
+  m <- .mock_render()
+  testthat::local_mocked_bindings(
+    ensure_quarto_installed = function() TRUE,
+    generate_action_plan_pdf = m$fn, .package = "nemetonshiny")
+  vis <- data.frame(id = c("a1", "b1"), ug_id = c("U1", "U2"),
+                    stringsAsFactors = FALSE)
+  job <- nemetonshiny:::.action_plan_sheet_job(
+    .fx_project(), .fx_plan(), .fx_ugs(), character(), vis)
+  out <- tempfile(fileext = ".zip"); pf <- tempfile()
+  r <- nemetonshiny:::.action_plan_sheets_run(job, out, pf)
+  expect_identical(r$type, "zip")
+  expect_true(file.exists(out))
+  expect_identical(nemetonshiny:::.action_plan_progress_read(pf), c(2L, 2L))
+  expect_setequal(m$calls$ids, c("U1", "U2"))
+})
+
+test_that("UI : bouton visible + lien masque d-none", {
+  ui <- as.character(nemetonshiny:::mod_action_plan_ui("ap"))
+  expect_match(ui, "ap-prepare_sheets", fixed = TRUE)
+  expect_match(ui, 'id="ap-download_sheets"[^>]*d-none|d-none[^>]*id="ap-download_sheets"')
+})

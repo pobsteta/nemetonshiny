@@ -2815,6 +2815,77 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
          if (identical(targets$mode, "zip")) "zip" else "txt")
 }
 
+#' Freeze the UGF sheets export at click time
+#'
+#' Pure. Computes the targets, the final file name and the data the background
+#' worker needs, from the selection and the visible actions *at the moment of
+#' the click* (later changes of selection or filters do not alter the job).
+#'
+#' @param project,plan,ug_sf Project, action plan, UGF sf layer.
+#' @param selected Character. Selected UGF ids.
+#' @param visible_df data.frame of visible actions (`ug_id`, `id`).
+#' @param language "fr" or "en".
+#' @return List. On refusal: `error` = i18n key (`n` = number of UGFs for the
+#'   cap). Otherwise `error = NULL`, `ug_ids`, `mode`, `filename`, `ext`,
+#'   `filter_action_ids`, `language`, `project`, `plan`, `ug_sf`.
+#' @noRd
+.action_plan_sheet_job <- function(project, plan, ug_sf, selected, visible_df,
+                                   language = "fr") {
+  tg <- .action_plan_sheet_targets(selected, visible_df)
+  if (identical(tg$mode, "none")) {
+    return(list(error = "action_plan_sheets_none"))
+  }
+  if (length(tg$ug_ids) > .ACTION_PLAN_SHEETS_MAX) {
+    return(list(error = "action_plan_sheets_toomany", n = length(tg$ug_ids)))
+  }
+  fname <- .action_plan_sheet_filename(project, tg, ug_sf)
+  list(
+    error = NULL, ug_ids = tg$ug_ids, mode = tg$mode, filename = fname,
+    ext = tools::file_ext(fname),
+    filter_action_ids = unique(as.character(visible_df$id)),
+    language = language, project = project, plan = plan, ug_sf = ug_sf
+  )
+}
+
+#' Write / read the progress file shared with the background worker
+#'
+#' The worker cannot call `showNotification`; it writes `i/N` in a small file
+#' that the session polls.
+#' @noRd
+.action_plan_progress_write <- function(path, i, n) {
+  tryCatch(writeLines(sprintf("%d/%d", as.integer(i), as.integer(n)), path),
+           error = function(e) NULL)
+  invisible(NULL)
+}
+
+#' @return Integer c(i, n), or NULL when absent / unreadable.
+#' @noRd
+.action_plan_progress_read <- function(path) {
+  if (is.null(path) || !length(path) || is.na(path) || !file.exists(path)) {
+    return(NULL)
+  }
+  x <- tryCatch(readLines(path, n = 1L, warn = FALSE), error = function(e) "")
+  m <- regmatches(x, regexec("^([0-9]+)/([0-9]+)$", x))[[1]]
+  if (length(m) != 3L) return(NULL)
+  as.integer(m[2:3])
+}
+
+#' Body of the background task: render the sheets for a frozen job
+#'
+#' @param job Output of `.action_plan_sheet_job()`.
+#' @param out_file Destination (.pdf or .zip) written by the worker.
+#' @param progress_file Path of the progress file.
+#' @return The result of `generate_action_plan_ug_sheets()`.
+#' @noRd
+.action_plan_sheets_run <- function(job, out_file, progress_file) {
+  generate_action_plan_ug_sheets(
+    project = job$project, plan = job$plan, ug_sf = job$ug_sf,
+    output_file = out_file, language = job$language, ug_ids = job$ug_ids,
+    filter_action_ids = job$filter_action_ids,
+    progress = function(i, n) .action_plan_progress_write(progress_file, i, n)
+  )
+}
+
 #' Generate the per-UGF action plan sheets (one PDF, or a ZIP of PDFs)
 #'
 #' One UGF -> `output_file` is a PDF. Several -> `output_file` is a ZIP with one
