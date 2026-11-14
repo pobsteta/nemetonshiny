@@ -1,5 +1,28 @@
 # Changelog
 
+## nemetonshiny 2026.10.18.9011 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
+> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
+> VICTOR sur Couchey, bilan du 2026-11-13).
+
+### Nettoyage : retrait de l’aperçu FAST mort du Plan de validation (mission 018)
+
+- Aucun changement visible. `preview_raster_r`
+  (`R/mod_validation_sampling.R`) est supprimée : son seul lecteur,
+  l’observateur des libellés de classes, sort avant de l’appeler pour
+  FAST et RECONFORT, et pour FORDEAD elle valait toujours `NULL`.
+  L’observateur passe maintenant `NULL` à `.fast_class_labels()`
+  (libellés FORDEAD statiques, traduits dans la langue courante).
+- Commentaires devenus faux corrigés (`mod_monitoring_fast_alerts.R`,
+  `mod_monitoring.R`, `utils_i18n.R`), aucun code touché.
+- Resté sans lecteur dans l’app, signalé et non retiré : branche FAST de
+  `.fast_class_labels`, `.classify_alert_count`, `.alert_count_palette`,
+  clés i18n `validation_class_fast_1..4` et
+  `validation_class_unit_days|deficit|trend`.
+- Test : `test-mod_validation_sampling.R` (libellés FORDEAD anglais,
+  ordre 4, 3, 2, 1).
+
 ## nemetonshiny 2026.10.18.9010 (2026-11-13)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec

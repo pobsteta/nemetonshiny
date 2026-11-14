@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9010</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9011</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9011" id="nemetonshiny-202610189011-2026-11-14">nemetonshiny 2026.10.18.9011 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189011-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nettoyage--retrait-de-laperçu-fast-mort-du-plan-de-validation-mission-2026-10-18-9011">Nettoyage : retrait de l’aperçu FAST mort du Plan de validation (mission 018)<a class="anchor" aria-label="anchor" href="#nettoyage--retrait-de-laper%C3%A7u-fast-mort-du-plan-de-validation-mission-2026-10-18-9011"></a></h3>
+<ul><li>Aucun changement visible. <code>preview_raster_r</code> (<code>R/mod_validation_sampling.R</code>) est supprimée : son seul lecteur, l’observateur des libellés de classes, sort avant de l’appeler pour FAST et RECONFORT, et pour FORDEAD elle valait toujours <code>NULL</code>. L’observateur passe maintenant <code>NULL</code> à <code>.fast_class_labels()</code> (libellés FORDEAD statiques, traduits dans la langue courante).</li>
+<li>Commentaires devenus faux corrigés (<code>mod_monitoring_fast_alerts.R</code>, <code>mod_monitoring.R</code>, <code>utils_i18n.R</code>), aucun code touché.</li>
+<li>Resté sans lecteur dans l’app, signalé et non retiré : branche FAST de <code>.fast_class_labels</code>, <code>.classify_alert_count</code>, <code>.alert_count_palette</code>, clés i18n <code>validation_class_fast_1..4</code> et <code>validation_class_unit_days|deficit|trend</code>.</li>
+<li>Test : <code>test-mod_validation_sampling.R</code> (libellés FORDEAD anglais, ordre 4, 3, 2, 1).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9010" id="nemetonshiny-202610189010-2026-11-13">nemetonshiny 2026.10.18.9010 (2026-11-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189010-2026-11-13"></a></h2>
 <blockquote>
