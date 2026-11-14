@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9013</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9014</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9014" id="nemetonshiny-202610189014-2026-11-14">nemetonshiny 2026.10.18.9014 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189014-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs--plan-de-validation-reconfort-lu-sur-_tot-découpé-à-la-strate-mission-2026-10-18-9014">Correctifs : Plan de validation RECONFORT lu sur <code>_tot</code>, découpé à la strate (mission 021)<a class="anchor" aria-label="anchor" href="#correctifs--plan-de-validation-reconfort-lu-sur-_tot-d%C3%A9coup%C3%A9-%C3%A0-la-strate-mission-2026-10-18-9014"></a></h3>
+<ul><li>Sur une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>), le Plan de validation RECONFORT cherchait sa classification 1/2/3 et son <code>score</code> dans <code>zone_&lt;id de la strate&gt;</code>, alors que RECONFORT calcule et met en cache sur <code>_tot</code>. Ils sont maintenant lus sur <code>_tot</code>, comme la carte RECONFORT et comme FAST (mission 017) et FORDEAD (mission 019).</li>
+<li>La chaîne de la mission 019 est généralisée aux deux moteurs catégoriels (<code>.read_categorical_mask_chain</code>, <code>.read_categorical_mask_stratum</code>) : même repli double (pas de zone <code>_tot</code> en base, ou pas de masque <code>_tot</code> sur disque : relecture sur la strate). <code>.fordead_tot_zone_id</code> devient <code>.monitoring_tot_zone_id</code>. FORDEAD est inchangé.</li>
+<li>Génération : tirage borné par le polygone de la strate ; <code>source_run_id</code> et la pondération continue <code>score</code> suivent la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque <code>_tot</code> découpé à la strate. Strate = <code>_tot</code> : aucun changement.</li>
+<li>Test commun FAST / FORDEAD / RECONFORT : pour une strate différente de <code>_tot</code>, le lecteur de masque de chaque source est appelé sur <code>_tot</code> et le raster est découpé à la strate.</li>
+<li>Pondération continue FORDEAD (<code>anomaly_index</code>) alignée sur RECONFORT : lue sur la zone réellement lue par la chaîne (en repli sur la strate, poids et masque viennent de la même zone) ; la surcouche carte est couverte par le test commun.</li>
+<li>Constaté, non corrigé : la surcouche carte RECONFORT affiche la classe saine (1) en jaune pâle, comme une alerte faible (palette 0:4 de FAST / FORDEAD).</li>
+<li>Tests : <code>test-service_validation_sampling_reconfort_tot.R</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9013" id="nemetonshiny-202610189013-2026-11-14">nemetonshiny 2026.10.18.9013 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189013-2026-11-14"></a></h2>
 <blockquote>
