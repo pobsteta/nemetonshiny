@@ -13,8 +13,8 @@ sources suivent la même règle.
 
 ## Constat (orchestrateur, 2026-11-14, lu sur `main` 33a0fc42)
 
-- RECONFORT tourne sur `_tot` (`R/mod_monitoring.R:3527` `run_zone_id_r = fordead_zone_id()`,
-  `:3809`, `:3878`) ; le lecteur cœur cherche `zone_<id>` sous le cache
+- RECONFORT tourne sur `_tot` (runs : `R/mod_monitoring.R:3809` lancement manuel, refusé sans
+  `_tot`, et `:3878` chaîne ; `:3527` est le câblage de la carte) ; le lecteur cœur cherche `zone_<id>` sous le cache
   (`nemeton/R/reconfort_pixel_series.R:208-209`, constat du relecteur de 019).
 - Le Plan de validation RECONFORT lit sur la **strate** à cinq endroits :
   1. génération, masque : `.resolve_alert_raster()` branche RECONFORT
@@ -45,30 +45,56 @@ sources suivent la même règle.
    **repli double** : (a) pas de zone `_tot` en base → strate ; (b) masque `_tot` absent sur
    disque → strate. FORDEAD doit rester strictement identique (ses 16 tests de
    `test-service_validation_sampling_fordead_tot.R` restent verts sans retouche ; toute retouche
-   est signalée).
+   est signalée). Précisions de relecture :
+   - garder `.read_fordead_mask_stratum(con, project, zone_id)` avec ce nom et cette signature
+     (appelée par nom dans `test-service_validation_sampling_fordead_tot.R:132,149,165,173`), au
+     besoin comme simple enveloppe de la fonction généralisée ;
+   - appeler les lecteurs cœur uniquement en `(con, id, cache_dir = cd)` : les mocks ont la
+     signature `function(con, zone_id, run_id = NULL, cache_dir)` (`:47-52`) ;
+   - « 16 tests » = 16 `expect_*` dans 8 `test_that` ;
+   - les tests RECONFORT existants (`test-service_validation_sampling.R:302`, `:356`, `:517`,
+     `test-mod_validation_sampling.R:19`) ne simulent pas `find_zones_by_project` et passent
+     `con = "fake-con"` : ils doivent rester verts sans retouche (le `tryCatch` de la résolution
+     `_tot` retombe sur la strate) ; tout mock ajouté est une retouche à signaler.
 2. Génération RECONFORT : masque lu par la chaîne ; `source_run_id` suit la zone réellement lue ;
    polygone de tirage = strate ; ne pas passer `mask_polygon` au lecteur de masque.
-3. Pondération continue RECONFORT : manifeste lu sur la même zone que le masque (`_tot`, repli
-   strate) ; `aoi` reste la strate (le cœur découpe déjà).
+3. Pondération continue RECONFORT : manifeste lu sur le `zone_id` **rendu par la chaîne** (celui
+   que le masque a réellement lu), jamais sur une zone `_tot` résolue à nouveau — sinon, en repli
+   (b), le poids viendrait de `_tot` et le masque de la strate. `aoi` reste la strate (le cœur
+   découpe déjà, `read_reconfort_layer` → `.apply_zone_mask` → `terra::mask`).
 4. Histogramme et surcouche RECONFORT : helper `..._stratum` partagé.
 5. Strate = `_tot` : aucun changement de comportement.
 6. **Garde-fou commun aux trois sources** : un test paramétré (FAST, FORDEAD, RECONFORT) qui, pour
    une strate ≠ `_tot`, vérifie que le lecteur de masque est appelé avec l'id `_tot` et que le
-   raster rendu à l'histogramme est découpé à la strate (NA hors strate). Il doit rougir si l'une
-   des trois sources revient à lire la strate.
+   raster rendu est découpé à la strate (NA hors strate). Il doit rougir si l'une des trois
+   sources revient à lire la strate. Conditions pour qu'il ne soit pas vacant :
+   - **câblage réel** de `R/mod_monitoring.R:3960-4017` : `run_zone_id_r` est passé à FAST
+     **seulement** ; FORDEAD et RECONFORT ne le reçoivent pas → simuler `find_zones_by_project`
+     pour les trois, ne jamais passer `run_zone_id_r` à FORDEAD / RECONFORT ;
+   - nommer le « lecteur de masque » de chaque source : `read_fast_alert_mask`,
+     `read_fordead_dieback_mask`, `read_reconfort_alert_mask` ;
+   - FAST : créer le dossier `cache/layers/fast_sampling` (sinon `alert_mask_r` rend NULL et le
+     test est vacant) ; le chemin FAST qui compte en production (génération trend) reste couvert
+     par `test-service_validation_sampling_tot.R:36` et `:177`, le citer ;
+   - au moins **une mutation rouge par source**.
 7. Tests RECONFORT dédiés (modèle `test-service_validation_sampling_fordead_tot.R`) : génération
    sur strate, repli (a), repli (b), provenance, pondération `score` lue sur `_tot`, découpe
    réelle par `terra::mask`, strate = `_tot`. Pièges : `tryCatch(error=)` autour des lecteurs →
    capturer les ids dans un environnement, aucun `expect_*` dans un mock ; `alert_mask_r` exige
    `app_state$active_main_tab = "monitoring"`. Au moins 4 mutations rouges, rendues.
 8. Commentaires devenus faux corrigés (`.fast_run_zone` `:184-186` « seul RECONFORT garde la
-   strate », en-tête `:360-385`, doc `@param run_zone_id` `:44-48`).
+   strate », en-tête `:360-385`, doc `@param run_zone_id` `:44-48`, en-tête de
+   `.fordead_tot_zone_id` `:463-468` s'il sert aussi à RECONFORT, doc `run_zone_id_r`
+   `R/mod_validation_sampling.R:217-220` si son sens change).
 9. `grep -nP "[^\x00-\x7F]"` vide sur chaque fichier R touché.
 
 ## Hors périmètre
 
 - La carte RECONFORT (déjà sur `_tot` + découpe), FAST et FORDEAD hors du garde-fou commun.
 - Le bandeau « zone saine » sur strate (question encore ouverte à Pascal).
+- Palette de la surcouche (`R/mod_validation_sampling.R:736-740`, 0:4 FAST/FORDEAD) : pour
+  RECONFORT la classe saine 1 s'affiche en jaune pâle comme une alerte faible. Défaut existant,
+  signalé à Pascal, non corrigé ici.
 
 ## Versionnage
 
