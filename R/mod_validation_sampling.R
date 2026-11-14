@@ -215,9 +215,10 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id.
 #' @param run_zone_id_r Reactive returning the zone the FAST mask is computed
-#'   and cached on (the `_tot` zone, parity FORDEAD / RECONFORT). `zone_id_r`
-#'   (the stratum) only bounds the draw and the display. FAST only; defaults to
-#'   `zone_id_r` for back-compat.
+#'   and cached on (the `_tot` zone). `zone_id_r` (the stratum) only bounds the
+#'   draw and the display. FAST only: FORDEAD and RECONFORT resolve `_tot`
+#'   themselves from the project (missions 019 and 021). Defaults to `zone_id_r`
+#'   for back-compat.
 #' @param mode_r Reactive returning the parent sidebar mode
 #'   (`"quick"` / `"health"`). When `source_fixed` is NULL, drives
 #'   the default of the inner `source` radio. Unused when the source
@@ -328,14 +329,9 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zid, run_zone_id_r(), cd))
       }
-      # FORDEAD : masque lu sur `_tot` puis decoupe a la strate (mission 019).
-      if (identical(src, "FORDEAD")) {
-        return(.read_fordead_mask_stratum(con, proj, zid))
-      }
-      tryCatch(
-        nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
-        error = function(e) NULL
-      )
+      # FORDEAD (mission 019) / RECONFORT (mission 021) : masque lu sur `_tot`
+      # puis decoupe a la strate.
+      .read_categorical_mask_stratum(con, proj, zid, src)
     })
 
     class_distribution_r <- shiny::reactive({
@@ -597,13 +593,7 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zone_id, run_zone_id_r(), cd))
       }
-      if (identical(src, "FORDEAD")) {
-        return(.read_fordead_mask_stratum(con, proj, zone_id))
-      }
-      tryCatch(
-        nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd),
-        error = function(e) NULL
-      )
+      .read_categorical_mask_stratum(con, proj, zone_id, src)
     })
 
     # Panel : empty state, error state, generating state, or the map.
