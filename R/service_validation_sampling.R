@@ -44,7 +44,8 @@
 #' @param run_zone_id Optional integer. For `source == "FAST"` only: the zone
 #'   the FAST mask is computed and cached on (the `_tot` zone). `zone_id` (the
 #'   stratum) then only bounds the draw via the zone polygon. NULL = same as
-#'   `zone_id` (historical behaviour). Ignored for FORDEAD / RECONFORT.
+#'   `zone_id` (historical behaviour). Ignored for FORDEAD (its `_tot` zone is
+#'   resolved from the project, mission 019) and RECONFORT.
 #' @param seed Optional integer. Forwarded to the coeur planner.
 #' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
 #'   FAST mask parameters. Required (non-NULL) when `source == "FAST"`
@@ -106,16 +107,25 @@ generate_validation_plan <- function(con, project,
   # reste celui de la strate et borne le tirage (le coeur y restreint le raster).
   mask_zone_id <- .fast_run_zone(source, run_zone_id, zone_id)
 
-  alert_raster <- .resolve_alert_raster(
-    project, con, mask_zone_id, source,
-    ndvi_threshold = ndvi_threshold,
-    nbr_threshold  = nbr_threshold,
-    mode           = mode,
-    window_days    = window_days,
-    date_from      = date_from,
-    date_to        = date_to,
-    index          = index
-  )
+  # FORDEAD : le masque est calcule et mis en cache sur `_tot` (mission 019) ;
+  # repli sur la strate si `_tot` n'a pas de masque. Le coeur restreint deja le
+  # raster au polygone `zone` avant le tirage : aucune decoupe ici.
+  if (identical(source, "FORDEAD")) {
+    fd <- .read_fordead_mask_chain(con, project, zone_id)
+    alert_raster <- fd$raster
+    if (!is.null(fd$zone_id)) mask_zone_id <- fd$zone_id
+  } else {
+    alert_raster <- .resolve_alert_raster(
+      project, con, mask_zone_id, source,
+      ndvi_threshold = ndvi_threshold,
+      nbr_threshold  = nbr_threshold,
+      mode           = mode,
+      window_days    = window_days,
+      date_from      = date_from,
+      date_to        = date_to,
+      index          = index
+    )
+  }
   if (is.null(alert_raster)) {
     rlang::abort("No alert mask available for this zone.",
                  class = "validation_no_mask")
@@ -172,12 +182,53 @@ generate_validation_plan <- function(con, project,
 
 
 # Zone sur laquelle le masque FAST est calcule/lu : `run_zone_id` (`_tot`) pour
-# FAST quand il est valide, sinon la zone demandee (FORDEAD / RECONFORT ne
-# changent pas : leurs lecteurs gardent leur propre resolution).
+# FAST quand il est valide, sinon la zone demandee. FORDEAD ne passe plus par
+# ici (`.read_fordead_mask_chain()` resout `_tot` lui-meme) ; seul RECONFORT
+# garde sa resolution sur la strate.
 .fast_run_zone <- function(source, run_zone_id, zone_id) {
   if (!identical(source, "FAST")) return(zone_id)
   run <- suppressWarnings(as.integer(run_zone_id))
   if (length(run) != 1L || is.na(run)) zone_id else run
+}
+
+
+# Lit le masque de deperissement FORDEAD sur `_tot` (la ou FORDEAD le calcule
+# et le met en cache), avec repli sur la strate : (a) aucune zone `_tot` en
+# base -> `.fordead_tot_zone_id()` rend deja la strate ; (b) `_tot` sans masque
+# sur disque (ancien run fait sur la strate) -> relecture sur la strate.
+# Rend list(raster, zone_id) ; `zone_id` = zone reellement lue (provenance),
+# NULL si rien n'a pu etre lu.
+.read_fordead_mask_chain <- function(con, project, zone_id) {
+  none <- list(raster = NULL, zone_id = NULL)
+  if (is.null(project$path) || !nzchar(project$path)) return(none)
+  cd <- file.path(project$path, "cache", "layers", "fordead")
+  if (!dir.exists(cd)) return(none)
+  strate <- suppressWarnings(as.integer(zone_id))
+  ids <- unique(c(.fordead_tot_zone_id(con, project, strate), strate))
+  for (id in ids[!is.na(ids)]) {
+    r <- tryCatch(
+      nemeton::read_fordead_dieback_mask(con, id, cache_dir = cd),
+      error = function(e) {
+        cli::cli_alert_warning(
+          "read_fordead_dieback_mask failed: {conditionMessage(e)}")
+        NULL
+      }
+    )
+    if (!is.null(r)) return(list(raster = r, zone_id = id))
+  }
+  none
+}
+
+
+# Masque FORDEAD 0-4 lu sur `_tot` puis decoupe a la strate choisie
+# (presentation pure, parite FAST). Sert l'histogramme, l'auto-relachement des
+# temoins et la surcouche du Plan de validation FORDEAD. Repli double : voir
+# `.read_fordead_mask_chain()` ; si la zone lue est la strate, pas de decoupe.
+.read_fordead_mask_stratum <- function(con, project, zone_id) {
+  fd <- .read_fordead_mask_chain(con, project, zone_id)
+  if (is.null(fd$raster)) return(NULL)
+  .clip_fast_to_stratum(fd$raster,
+                        .fast_stratum_aoi(con, zone_id, fd$zone_id))
 }
 
 
@@ -308,7 +359,9 @@ generate_trend_sanitary_plan <- function(con, project,
 
 
 # Resolve the SpatRaster used to feed create_validation_sampling_plan().
-# - FORDEAD : read the dieback mask from <project>/cache/layers/fordead.
+# - FORDEAD : not handled here, see `.read_fordead_mask_chain()` (read on `_tot`).
+# - RECONFORT : categorical mask read from <project>/cache/layers/reconfort
+#             (on the stratum zone_id).
 # - FAST    : try the FAST alert mask cache first (cache/layers/fast).
 #             If absent and the FAST compute parameters are complete,
 #             call compute_fast_alert_mask() then re-read. Returns NULL
@@ -325,19 +378,6 @@ generate_trend_sanitary_plan <- function(con, project,
                                   # NULL -> fallback "NDVI" (defaut coeur).
                                   index          = NULL) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
-  if (identical(source, "FORDEAD")) {
-    cd <- file.path(project$path, "cache", "layers", "fordead")
-    if (!dir.exists(cd)) return(NULL)
-    return(tryCatch(
-      nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd),
-      error = function(e) {
-        cli::cli_alert_warning(
-          "read_fordead_dieback_mask failed: {e$message}"
-        )
-        NULL
-      }
-    ))
-  }
   # RECONFORT path (spec 021 G4). Mirror of FORDEAD : the categorical
   # 1-sain / 2-deperissant / 3-tres-deperissant mask is read from the
   # RECONFORT cache. Unlike FAST there is NO on-the-fly compute - the

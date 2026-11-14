@@ -273,20 +273,14 @@ mod_validation_sampling_server <- function(id, app_state,
     # Libelles des classes FORDEAD (4 = sol nu ... 1 = faible), traduits dans
     # la langue courante : l'UI les pose en dur en francais. Le resultat
     # alimente le checkbox `classes` via updateCheckboxGroupInput (preserve la
-    # selection courante). FAST (trend) et RECONFORT n'ont pas ces cases.
+    # selection courante). FAST (trend) et RECONFORT n'ont pas ces cases, et
+    # `.fordead_class_labels()` ne rend que des libelles FORDEAD : on saute
+    # donc l'observateur pour ces deux sources.
     shiny::observe({
       i18n <- i18n_r()
       src  <- current_source()
-      # spec 021 - RECONFORT a une echelle categorielle 1/2/3 (!= 0-4
-      # FORDEAD/FAST) et ses libelles sont fixes statiquement a l'UI.
-      # `.fast_class_labels()` ne connait que FAST/FORDEAD (match.arg) et
-      # reecrirait les choix sur c("3","4","1","2") - on saute donc cet
-      # observer pour RECONFORT. FAST utilise desormais le trend (spec 025)
-      # sans cases " classes " -> on saute aussi.
       if (identical(src, "RECONFORT") || identical(src, "FAST")) return()
-      # FORDEAD : libelles statiques, `.fast_class_labels()` ne lit pas `r`.
-      labels <- .fast_class_labels(NULL, source = src,
-                                   mode = "count", i18n = i18n)
+      labels <- .fordead_class_labels(i18n)
       # Ordre decroissant de severite : 4, 3, 2, 1.
       shiny::updateCheckboxGroupInput(
         session, "classes",
@@ -334,11 +328,12 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zid, run_zone_id_r(), cd))
       }
+      # FORDEAD : masque lu sur `_tot` puis decoupe a la strate (mission 019).
+      if (identical(src, "FORDEAD")) {
+        return(.read_fordead_mask_stratum(con, proj, zid))
+      }
       tryCatch(
-        if (identical(src, "FORDEAD"))
-          nemeton::read_fordead_dieback_mask(con, zid, cache_dir = cd)
-        else
-          nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
+        nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
         error = function(e) NULL
       )
     })
@@ -602,12 +597,11 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zone_id, run_zone_id_r(), cd))
       }
+      if (identical(src, "FORDEAD")) {
+        return(.read_fordead_mask_stratum(con, proj, zone_id))
+      }
       tryCatch(
-        if (identical(src, "FORDEAD")) {
-          nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd)
-        } else {
-          nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd)
-        },
+        nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd),
         error = function(e) NULL
       )
     })

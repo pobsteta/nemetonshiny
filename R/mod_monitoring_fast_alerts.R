@@ -1167,134 +1167,22 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 }
 
 
-# v0.45.0 - adaptive quartile classification for the count-mode
-# alert raster.
+# Libelles des 4 classes du masque FORDEAD (1=faible, 2=moyenne, 3=forte,
+# 4=sol nu), traduits dans la langue de `i18n`. Libelles statiques : seul
+# lecteur, l'observateur des classes du Plan de validation
+# (`mod_validation_sampling`), qui ne l'appelle que pour FORDEAD. FAST (trend)
+# et RECONFORT ont leurs propres libelles. La fonction reste dans ce fichier
+# par historique ; son nom ne dit plus "fast".
 #
-# v0.45.0 (suite, label unification) - produit 4 classes alignees
-# avec les classes 1-4 du masque categoriel utilise par
-# `nemeton::compute_fast_alert_mask()` (qui decoupe sur les
-# quartiles par defaut). Coherence avec Plan de validation FAST :
-# les checkbox classes 1-4 du formulaire affichent EXACTEMENT les
-# memes intervalles que la legende Alertes FAST.
-#
-# Labels prefixes par le numero de classe + unite optionnelle. Ex :
-#   "1 - 1-12 j" / "2 - 13-25 j" / "3 - 26-37 j" / "4 - >37 j"
-#
-# Distribution degeneree (constant value, < 4 valeurs distinctes)
-# collapse a moins de 4 classes - l'appelant adapte la palette via
-# `.alert_count_palette(length(labels))`.
-#
-# @param r SpatRaster avec NA hors AOI et zeros masques upstream.
-# @param unit Suffixe optionnel pour chaque label (ex. "j" / "d").
-#   Pas d'espace ajoute ; passer `" j"` pour avoir " 1-12 j ".
-# @return list(breaks, labels). Breaks : 5 points pour 4 classes
-#   (ou moins si la distribution est degeneree).
-.classify_alert_count <- function(r, unit = "") {
-  vals <- tryCatch(terra::values(r), error = function(e) NULL)
-  if (is.null(vals)) return(list(breaks = c(0, 1),
-                                 labels = sprintf("1+%s", unit)))
-  vals <- vals[!is.na(vals) & vals > 0]
-  if (!length(vals)) return(list(breaks = c(0, Inf),
-                                 labels = character(0)))
-  q <- as.numeric(stats::quantile(vals, probs = c(0, .25, .50, .75, 1.0),
-                                  na.rm = TRUE))
-  q <- unique(as.integer(round(q)))
-  q <- q[q > 0]
-  if (!length(q)) return(list(breaks = c(0, 1),
-                              labels = sprintf("1+%s", unit)))
-  if (length(q) == 1L) {
-    return(list(breaks = c(0, q[1] + 0.5),
-                labels = sprintf("1 \u2014 %d%s", q[1], unit)))
-  }
-  # 4 quartiles produce up to 4 bins. Labels carry the class
-  # number prefix (1..n) + interval + optional unit.
-  n_bins <- length(q) - 1L
-  labels <- character(n_bins)
-  for (i in seq_len(n_bins)) {
-    lo <- q[i]
-    hi <- q[i + 1L] - 1L
-    rng <- if (i == n_bins) sprintf(">%d%s", q[i], unit)
-           else if (lo > hi) sprintf("%d%s", lo, unit)
-           else if (lo == hi) sprintf("%d%s", lo, unit)
-           else sprintf("%d-%d%s", lo, hi, unit)
-    labels[i] <- sprintf("%d \u2014 %s", i, rng)
-  }
-  # Bins for colorBin : 5 points for 4 classes. Lower edges of
-  # bins 2..n on `q[i] - 0.5`, upper edge of the top bin on
-  # `q_last + 0.5` to include the max value.
-  bins <- c(0.5, q[-1] - 0.5)
-  bins[length(bins)] <- q[length(q)] + 0.5
-  list(breaks = bins, labels = labels)
-}
-
-
-# v0.45.0 - wrapper produisant des labels par classe FAST/FORDEAD.
-# Pour FORDEAD, retourne les libelles biologiques fixes (1=faible,
-# 2=moyenne, 3=forte, 4=sol nu), sans lire `r`. Pour FAST, derive les
-# labels des quartiles du raster fourni ; fallback statique generique
-# quand le raster est NULL. Aujourd'hui, mod_validation_sampling ne
-# l'appelle que pour FORDEAD (avec `r = NULL`).
-#
-# @param r SpatRaster mono-couche (count) ou NULL.
-# @param source "FAST" ou "FORDEAD".
-# @param mode "count" ou "rolling" - drive l'unite affichee.
 # @param i18n L'objet `get_i18n(lang)`.
 # @return named list "1".."4" -> label string.
-.fast_class_labels <- function(r, source = c("FAST", "FORDEAD"),
-                                mode   = c("count", "rolling", "trend"),
-                                i18n) {
-  source <- match.arg(source)
-  mode   <- match.arg(mode)
-  if (identical(source, "FORDEAD")) {
-    return(list(
-      "1" = i18n$t("validation_class_fordead_1"),
-      "2" = i18n$t("validation_class_fordead_2"),
-      "3" = i18n$t("validation_class_fordead_3"),
-      "4" = i18n$t("validation_class_fordead_4")
-    ))
-  }
-  if (is.null(r) || .fast_raster_is_empty(r)) {
-    return(list(
-      "1" = i18n$t("validation_class_fast_1"),
-      "2" = i18n$t("validation_class_fast_2"),
-      "3" = i18n$t("validation_class_fast_3"),
-      "4" = i18n$t("validation_class_fast_4")
-    ))
-  }
-  unit_key <- if (identical(mode, "count")) "validation_class_unit_days"
-              else if (identical(mode, "trend")) "validation_class_unit_trend"
-              else                          "validation_class_unit_deficit"
-  unit <- i18n$t(unit_key)
-  unit_sfx <- if (nzchar(unit)) paste0(" ", unit) else ""
-  cls <- .classify_alert_count(r, unit = unit_sfx)
-  # Pad to exactly 4 entries with NA-safe fallbacks when the
-  # distribution is degenerate.
-  out <- list("1" = NA_character_, "2" = NA_character_,
-              "3" = NA_character_, "4" = NA_character_)
-  for (i in seq_along(cls$labels)) {
-    if (i <= 4L) out[[as.character(i)]] <- cls$labels[i]
-  }
-  # Substitute NA with the static fallback for the missing classes.
-  for (i in 1:4) {
-    k <- as.character(i)
-    if (is.na(out[[k]])) {
-      out[[k]] <- i18n$t(sprintf("validation_class_fast_%d", i))
-    }
-  }
-  out
-}
-
-
-# Color ramp for the count-mode legend. `n` is the number of bins
-# (length of `.classify_alert_count$labels`). Ramps from pale-orange
-# to deep red ; gracefully degrades to fewer colors when the
-# distribution collapses.
-.alert_count_palette <- function(n) {
-  full <- c("#FFEDA0", "#FED976", "#FEB24C", "#FC4E2A", "#B10026")
-  if (n <= 1L) return(full[length(full)])  # single bucket -> deepest red
-  if (n >= length(full)) return(full)
-  # Pick `n` evenly-spaced shades from the 5-color ramp.
-  full[round(seq.int(1L, length(full), length.out = n))]
+.fordead_class_labels <- function(i18n) {
+  list(
+    "1" = i18n$t("validation_class_fordead_1"),
+    "2" = i18n$t("validation_class_fordead_2"),
+    "3" = i18n$t("validation_class_fordead_3"),
+    "4" = i18n$t("validation_class_fordead_4")
+  )
 }
 
 

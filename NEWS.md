@@ -1,3 +1,25 @@
+# nemetonshiny 2026.10.18.9013 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Nettoyage : retrait du code FAST sans lecteur des libellés de classes (mission 020)
+
+- Aucun changement visible. Retirés : la branche FAST de `.fast_class_labels` (la fonction devient `.fordead_class_labels(i18n)`, mêmes libellés FORDEAD), `.classify_alert_count`, `.alert_count_palette` et les sept clés i18n `validation_class_fast_1..4` et `validation_class_unit_days|deficit|trend`, que l'application n'appelait plus depuis la mission 018.
+- `.fast_raster_is_empty` est conservé (autres lecteurs dans l'onglet Alertes FAST).
+- Tests : neuf tests du code retiré supprimés ; le test FORDEAD compare les quatre libellés en fr et en en aux clés i18n, plus un littéral.
+
+# nemetonshiny 2026.10.18.9012 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Correctifs : Plan de validation FORDEAD lu sur `_tot`, découpé à la strate (mission 019)
+
+- Sur une strate (`_res`, `_feu`, `_mix`), le Plan de validation FORDEAD cherchait le masque de dépérissement dans `zone_<id de la strate>`, alors que FORDEAD le calcule et le met en cache sur `_tot` : le masque était introuvable (« pas de masque ») ou ancien. Il est maintenant lu sur `_tot`, comme la carte FORDEAD et la pondération continue.
+- Génération : le tirage reste borné par le polygone de la strate (le cœur y restreint déjà le raster) ; `source_run_id` suit la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque `_tot` découpé à la strate (`.read_fordead_mask_stratum`).
+- Repli double, jamais pire qu'avant : sans zone `_tot` en base, ou si `_tot` n'a pas de masque sur disque (ancien run fait sur la strate), relecture sur la strate sans découpe. Strate = `_tot` : aucun changement.
+- Constaté, non corrigé (périmètre à décider) : le Plan de validation RECONFORT lit encore sa classification et son score sur la strate, alors que RECONFORT tourne sur `_tot`.
+- Test : `test-service_validation_sampling_fordead_tot.R`.
+
 # nemetonshiny 2026.10.18.9011 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
