@@ -963,6 +963,22 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         return(NULL)
       }
       if (.fast_raster_is_empty(r)) {
+        # Mission 022 - strate (!= `_tot`) sans alerte alors que `_tot` en
+        # compte : message informatif, pas de vert " zone saine " trompeur.
+        # `aoi_r()` n'est non NULL que pour une strate distincte de `_tot`.
+        etat <- .etat_strate_sante(
+          r, if (!is.null(aoi_r())) raster_rv() else NULL, "fast")
+        if (identical(etat$etat, "strate_vide_tot_alerte")) {
+          return(htmltools::div(
+            class = "alert alert-info d-flex align-items-center gap-3 m-2 py-2 small",
+            bsicons::bs_icon("info-circle", class = "fs-3 flex-shrink-0"),
+            htmltools::div(
+              htmltools::tags$strong(i18n$t("sante_strate_sans_alerte_titre")),
+              htmltools::tags$br(),
+              htmltools::tags$span(.sante_rappel_tot(i18n, etat))
+            )
+          ))
+        }
         return(htmltools::div(
           class = "alert alert-success d-flex align-items-center gap-3 m-2 py-2 small",
           bsicons::bs_icon("check-circle", class = "fs-3 flex-shrink-0"),

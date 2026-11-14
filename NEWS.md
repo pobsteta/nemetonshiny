@@ -1,3 +1,14 @@
+# nemetonshiny 2026.10.18.9015 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Changements visibles : « Aucune alerte dans cette strate » au lieu de « zone saine » (mission 022)
+
+- Sur une strate (`_res`, `_feu`, `_mix`) sans aucune alerte alors que la zone entière (`_tot`) en compte, les Alertes FAST, la Carte FORDEAD (couche sévérité) et la Carte RECONFORT (couche classification) affichent « Aucune alerte dans cette strate » avec le rappel « La zone entière (_tot) compte N pixels en alerte (≈ H ha) », en bleu informatif (bandeau `alert-info`, carte `border-info`), au lieu d'un « zone saine » vert qui laissait croire que toute la forêt était saine.
+- Inchangé : strate = `_tot`, projet sans `_tot`, strate sans aucune donnée (hors emprise), `_tot` sans alerte non plus (vert actuel pour FAST et FORDEAD, rien pour RECONFORT), couches score et probabilité de RECONFORT. Le sol nu FORDEAD (classe 4) compte comme alerte, comme avant.
+- Nouveau `R/utils_sante_strate.R` (comptage de pixels déjà classés par le cœur, aucune règle métier). RECONFORT relit la seule couche `classification` de `_tot` (bornée à l'AOI de `_tot`), une fois par run ; FORDEAD conserve le masque `_tot` complet de sa lecture.
+- Clés i18n : `sante_strate_sans_alerte_titre`, `sante_strate_rappel_tot`. Tests : `test-utils_sante_strate.R`.
+
 # nemetonshiny 2026.10.18.9014 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
