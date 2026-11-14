@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9014</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9015</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9015" id="nemetonshiny-202610189015-2026-11-14">nemetonshiny 2026.10.18.9015 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189015-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="changements-visibles---aucune-alerte-dans-cette-strate--au-lieu-de--zone-saine--mission-2026-10-18-9015">Changements visibles : « Aucune alerte dans cette strate » au lieu de « zone saine » (mission 022)<a class="anchor" aria-label="anchor" href="#changements-visibles---aucune-alerte-dans-cette-strate--au-lieu-de--zone-saine--mission-2026-10-18-9015"></a></h3>
+<ul><li>Sur une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>) sans aucune alerte alors que la zone entière (<code>_tot</code>) en compte, les Alertes FAST, la Carte FORDEAD (couche sévérité) et la Carte RECONFORT (couche classification) affichent « Aucune alerte dans cette strate » avec le rappel « La zone entière (_tot) compte N pixels en alerte (≈ H ha) », en bleu informatif (bandeau <code>alert-info</code>, carte <code>border-info</code>), au lieu d’un « zone saine » vert qui laissait croire que toute la forêt était saine.</li>
+<li>Inchangé : strate = <code>_tot</code>, projet sans <code>_tot</code>, strate sans aucune donnée (hors emprise), <code>_tot</code> sans alerte non plus (vert actuel pour FAST et FORDEAD, rien pour RECONFORT), couches score et probabilité de RECONFORT. Le sol nu FORDEAD (classe 4) compte comme alerte, comme avant.</li>
+<li>Nouveau <code>R/utils_sante_strate.R</code> (comptage de pixels déjà classés par le cœur, aucune règle métier). RECONFORT relit la seule couche <code>classification</code> de <code>_tot</code> (bornée à l’AOI de <code>_tot</code>), une fois par run ; FORDEAD conserve le masque <code>_tot</code> complet de sa lecture.</li>
+<li>Clés i18n : <code>sante_strate_sans_alerte_titre</code>, <code>sante_strate_rappel_tot</code>. Tests : <code>test-utils_sante_strate.R</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9014" id="nemetonshiny-202610189014-2026-11-14">nemetonshiny 2026.10.18.9014 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189014-2026-11-14"></a></h2>
 <blockquote>
