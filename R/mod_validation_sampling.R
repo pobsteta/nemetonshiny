@@ -334,11 +334,12 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zid, run_zone_id_r(), cd))
       }
+      # FORDEAD : masque lu sur `_tot` puis decoupe a la strate (mission 019).
+      if (identical(src, "FORDEAD")) {
+        return(.read_fordead_mask_stratum(con, proj, zid))
+      }
       tryCatch(
-        if (identical(src, "FORDEAD"))
-          nemeton::read_fordead_dieback_mask(con, zid, cache_dir = cd)
-        else
-          nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
+        nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
         error = function(e) NULL
       )
     })
@@ -602,12 +603,11 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zone_id, run_zone_id_r(), cd))
       }
+      if (identical(src, "FORDEAD")) {
+        return(.read_fordead_mask_stratum(con, proj, zone_id))
+      }
       tryCatch(
-        if (identical(src, "FORDEAD")) {
-          nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd)
-        } else {
-          nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd)
-        },
+        nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd),
         error = function(e) NULL
       )
     })
