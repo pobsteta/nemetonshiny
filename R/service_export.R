@@ -2458,6 +2458,180 @@ generate_report_pdf <- function(project,
 
 
 
+#' Translate an action `source$origine` code for the PDF
+#'
+#' `origine` is a code emitted by the LLM prompt (`synthesis`, `family_C`, ...).
+#' A `family_<X>` code is translated with the family names read from the core
+#' (`INDICATOR_FAMILIES`); any other code (or an unknown family) is shown as is,
+#' so no label is invented.
+#'
+#' @param origine Character. Source origin code.
+#' @param language "fr" or "en".
+#' @return Character scalar ("" when `origine` is empty).
+#' @noRd
+.action_plan_source_label <- function(origine, language = "fr") {
+  origine <- as.character(origine %||% "")[1]
+  if (is.na(origine) || !nzchar(trimws(origine))) return("")
+  origine <- trimws(origine)
+  m <- regmatches(origine, regexec("^family_([A-Za-z]+)$", origine))[[1]]
+  if (length(m) == 2L) {
+    code <- toupper(m[2])
+    fam <- tryCatch(INDICATOR_FAMILIES[[code]], error = function(e) NULL)
+    nm <- if (is.null(fam)) NULL else
+      (if (identical(language, "fr")) fam$name_fr else fam$name_en)
+    if (!is.null(nm) && length(nm) == 1L && !is.na(nm) && nzchar(nm)) {
+      return(paste0(nm, " (", code, ")"))
+    }
+  }
+  origine
+}
+
+#' Build the data list handed to the action plan PDF template
+#'
+#' Pure (no Quarto, no network): turns the plan + UGF layer into the structure
+#' read by `inst/quarto/action_plan_template.qmd`. Per-UGF actions are sorted
+#' chronologically (undated last), carry their source (`source_origine`,
+#' `source_extrait`, translated `source_label`) and, in `"fiche"` mode, the
+#' name and area of the single UGF. Totals, `n_actions` and `n_ugfs` are those
+#' of the filtered subset.
+#'
+#' @param project List. Project (metadata$name, id).
+#' @param plan List. Action plan (NULL = empty).
+#' @param ug_sf sf/data.frame. UGF layer (`ug_id`, `label`, surface columns).
+#' @param filter_ug_ids,filter_action_ids Optional character filters.
+#' @param mode "plan" (whole project) or "fiche" (one UGF sheet).
+#' @param maps Named list `ug_id -> PNG path` (pre-rendered by the caller).
+#' @param language "fr" or "en" (translates the source origin).
+#' @return List: project_name, horizon, mode, n_actions, n_ugfs, totals, ugfs,
+#'   plus `ug_name` / `ug_surface_ha` in fiche mode.
+#' @noRd
+.build_action_plan_pdf_data <- function(project, plan, ug_sf,
+                                        filter_ug_ids = NULL,
+                                        filter_action_ids = NULL,
+                                        mode = c("plan", "fiche"),
+                                        maps = list(),
+                                        language = "fr") {
+  mode <- match.arg(mode)
+  if (is.null(plan)) plan <- init_empty_action_plan(project$id %||% "p")
+
+  actions <- plan$actions
+  if (!is.null(filter_action_ids)) {
+    actions <- Filter(function(a) a$id %in% filter_action_ids, actions)
+  }
+  if (!is.null(filter_ug_ids)) {
+    actions <- Filter(function(a) a$ug_id %in% filter_ug_ids, actions)
+  }
+
+  ug_sf_df <- if (inherits(ug_sf, "sf")) sf::st_drop_geometry(ug_sf) else ug_sf
+  surfaces <- if (!is.null(ug_sf_df$surface_sig_m2)) {
+    ug_sf_df$surface_sig_m2 / 10000
+  } else if (!is.null(ug_sf_df$surface_m2)) {
+    ug_sf_df$surface_m2 / 10000
+  } else {
+    rep(NA_real_, nrow(ug_sf_df))
+  }
+
+  one_chr <- function(x) {
+    x <- as.character(x %||% "")[1]
+    if (is.na(x)) "" else x
+  }
+
+  ug_list <- lapply(seq_len(nrow(ug_sf_df)), function(i) {
+    uid <- as.character(ug_sf_df$ug_id[i])
+    if (!is.null(filter_ug_ids) && !(uid %in% filter_ug_ids)) return(NULL)
+    label <- if (!is.null(ug_sf_df$label) && !is.na(ug_sf_df$label[i]) &&
+                 nzchar(ug_sf_df$label[i])) {
+      as.character(ug_sf_df$label[i])
+    } else uid
+    ug_actions <- Filter(function(a) identical(a$ug_id, uid), actions)
+    enriched <- lapply(ug_actions, function(a) {
+      cout   <- as.numeric(a$quantite$cout_eur   %||% NA_real_)
+      revenu <- as.numeric(a$quantite$revenu_eur %||% NA_real_)
+      bilan  <- if (is.na(cout) && is.na(revenu)) NA_real_ else
+        (if (is.na(revenu)) 0 else revenu) - (if (is.na(cout)) 0 else cout)
+      origine <- one_chr(a$source$origine)
+      list(
+        id = a$id %||% "",
+        type = a$type %||% "",
+        priorite = a$priorite %||% "",
+        statut = a$statut %||% "",
+        annee_realisation = action_plan_annee_civile(plan, a$annee_cible %||% NA_integer_),
+        objectifs_lies = unlist(a$objectifs_lies %||% character()),
+        cout_eur = cout, revenu_eur = revenu, bilan_eur = bilan,
+        commentaire = as.character(a$commentaire %||% ""),
+        source_origine = origine,
+        source_label = .action_plan_source_label(origine, language),
+        source_extrait = one_chr(a$source$extrait_texte)
+      )
+    })
+    # Tri chronologique (annee civile), sans annee en dernier, stable.
+    if (length(enriched) > 1L) {
+      yrs <- vapply(enriched, function(x) {
+        y <- suppressWarnings(as.numeric(x$annee_realisation)[1])
+        if (is.na(y)) Inf else y
+      }, numeric(1))
+      enriched <- enriched[order(yrs)]
+    }
+    cout_sum   <- sum(vapply(enriched, function(x) x$cout_eur,   numeric(1)),
+                      na.rm = TRUE)
+    revenu_sum <- sum(vapply(enriched, function(x) x$revenu_eur, numeric(1)),
+                      na.rm = TRUE)
+    list(
+      ug_id = uid,
+      label = label,
+      surface_ha = surfaces[i],
+      actions = enriched,
+      cout = cout_sum,
+      revenu = revenu_sum,
+      bilan = revenu_sum - cout_sum,
+      map_png = (maps[[uid]] %||% NA_character_)
+    )
+  })
+  ug_list <- Filter(Negate(is.null), ug_list)
+
+  total_cout   <- sum(vapply(ug_list, function(u) u$cout,   numeric(1)),
+                      na.rm = TRUE)
+  total_revenu <- sum(vapply(ug_list, function(u) u$revenu, numeric(1)),
+                      na.rm = TRUE)
+
+  data <- list(
+    project_name = project$metadata$name %||% (project$id %||% "Plan"),
+    horizon = plan$horizon_annees %||% 20L,
+    mode = mode,
+    n_actions = length(actions),
+    n_ugfs = length(ug_list),
+    totals = list(cout = total_cout, revenu = total_revenu,
+                  bilan = total_revenu - total_cout),
+    ugfs = ug_list
+  )
+  if (identical(mode, "fiche") && length(ug_list) >= 1L) {
+    data$ug_name <- ug_list[[1]]$label
+    data$ug_surface_ha <- ug_list[[1]]$surface_ha
+  }
+  data
+}
+
+#' Localise the YAML header of the action plan template
+#'
+#' The YAML header (`title`, `subtitle`, `lang`, `fancyhead`) cannot read
+#' `params`, so the template carries `@@TOKEN@@` placeholders replaced here.
+#'
+#' @param text Character vector. Template lines.
+#' @param language "fr" or "en".
+#' @return Character vector.
+#' @noRd
+.action_plan_qmd_localise <- function(text, language = "fr") {
+  fr <- identical(language, "fr")
+  rep <- list(
+    "@@TITLE@@"    = if (fr) "Plan d'actions Nemeton" else "Nemeton action plan",
+    "@@SUBTITLE@@" = if (fr) "Fiche par UGF" else "Sheet per management unit (UGF)",
+    "@@HEAD@@"     = if (fr) "Plan d'actions Nemeton" else "Nemeton action plan",
+    "@@LANG@@"     = if (fr) "fr" else "en"
+  )
+  for (tok in names(rep)) text <- gsub(tok, rep[[tok]], text, fixed = TRUE)
+  text
+}
+
 #' Generate the per-UGF Action Plan PDF
 #'
 #' @description
@@ -2473,113 +2647,42 @@ generate_report_pdf <- function(project,
 #' @param language Character. "fr" or "en".
 #' @param filter_ug_ids Character. Optional: only include these UGFs.
 #' @param filter_action_ids Character. Optional: only include these actions.
+#' @param mode "plan" (default) or "fiche" (single-UGF sheet cover).
 #' @return Character. The output_file on success, NULL on failure.
 #' @noRd
 generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
                                      language = "fr",
                                      filter_ug_ids = NULL,
-                                     filter_action_ids = NULL) {
+                                     filter_action_ids = NULL,
+                                     mode = "plan") {
   if (!ensure_quarto_installed()) {
     stop("Quarto is required for the action plan PDF report.", call. = FALSE)
   }
-  if (is.null(plan)) plan <- init_empty_action_plan(project$id %||% "p")
 
-  # Filter actions ---------------------------------------------------------
-  actions <- plan$actions
-  if (!is.null(filter_action_ids)) {
-    actions <- Filter(function(a) a$id %in% filter_action_ids, actions)
-  }
-  if (!is.null(filter_ug_ids)) {
-    actions <- Filter(function(a) a$ug_id %in% filter_ug_ids, actions)
-  }
-
-  # Aggregate per UGF ------------------------------------------------------
-  ug_sf_df <- if (inherits(ug_sf, "sf")) sf::st_drop_geometry(ug_sf) else ug_sf
-
-  # Per-UGF static PNG maps with OSM background. Pre-rendered in R so the
-  # qmd stays simple and any network/maptiles error degrades gracefully
-  # (NA path -> the template skips the figure).
+  # Per-UGF static PNG maps (satellite). Pre-rendered in R so the qmd stays
+  # simple and any network/maptiles error degrades to NA (figure skipped).
   temp_dir <- tempfile("nemeton_actions_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
-  # Carte satellite (Esri.WorldImagery) par UGF, pre-rendue en R : le qmd reste
-  # simple et toute erreur reseau/maptiles degrade en NA (figure ignoree).
-  # Helper partage avec l'export reGeneration pour une parite stricte.
-  render_ug_map <- .render_ug_satellite_png
 
-  # Surfaces in hectares (best-effort)
-  surfaces <- if (!is.null(ug_sf$surface_sig_m2)) {
-    ug_sf$surface_sig_m2 / 10000
-  } else if (!is.null(ug_sf$surface_m2)) {
-    ug_sf$surface_m2 / 10000
-  } else {
-    rep(NA_real_, nrow(ug_sf_df))
-  }
-
-  ug_list <- lapply(seq_len(nrow(ug_sf_df)), function(i) {
-    uid <- as.character(ug_sf_df$ug_id[i])
-    if (!is.null(filter_ug_ids) && !(uid %in% filter_ug_ids)) return(NULL)
-    label <- if (!is.null(ug_sf_df$label) && nzchar(ug_sf_df$label[i])) {
-      as.character(ug_sf_df$label[i])
-    } else uid
-    ug_actions <- Filter(function(a) identical(a$ug_id, uid), actions)
-    enriched <- lapply(ug_actions, function(a) {
-      cout   <- as.numeric(a$quantite$cout_eur   %||% NA_real_)
-      revenu <- as.numeric(a$quantite$revenu_eur %||% NA_real_)
-      bilan  <- if (is.na(cout) && is.na(revenu)) NA_real_ else
-        (if (is.na(revenu)) 0 else revenu) - (if (is.na(cout)) 0 else cout)
-      list(
-        id = a$id %||% "",
-        type = a$type %||% "",
-        priorite = a$priorite %||% "",
-        statut = a$statut %||% "",
-        annee_realisation = action_plan_annee_civile(plan, a$annee_cible %||% NA_integer_),
-        objectifs_lies = unlist(a$objectifs_lies %||% character()),
-        cout_eur = cout, revenu_eur = revenu, bilan_eur = bilan,
-        commentaire = as.character(a$commentaire %||% "")
-      )
-    })
-    cout_sum   <- sum(vapply(enriched, function(x) x$cout_eur,   numeric(1)),
-                      na.rm = TRUE)
-    revenu_sum <- sum(vapply(enriched, function(x) x$revenu_eur, numeric(1)),
-                      na.rm = TRUE)
-    # Pre-render the per-UGF OSM map. Path is NA when maptiles is
-    # unavailable, the network fails, or the geometry is empty.
-    map_png <- NA_character_
-    if (inherits(ug_sf, "sf") &&
-        !is.null(sf::st_geometry(ug_sf)) &&
-        !sf::st_is_empty(sf::st_geometry(ug_sf)[i])) {
-      map_png <- render_ug_map(
+  maps <- list()
+  if (inherits(ug_sf, "sf")) {
+    ids <- as.character(ug_sf$ug_id)
+    geom <- sf::st_geometry(ug_sf)
+    for (i in seq_along(ids)) {
+      if (!is.null(filter_ug_ids) && !(ids[i] %in% filter_ug_ids)) next
+      if (sf::st_is_empty(geom[i])) next
+      maps[[ids[i]]] <- .render_ug_satellite_png(
         ug_sf[i, ],
-        file.path(temp_dir, paste0("ug_", uid, "_map.png"))
+        file.path(temp_dir, paste0("ug_", ids[i], "_map.png"))
       )
     }
-    list(
-      ug_id = uid,
-      label = label,
-      surface_ha = surfaces[i],
-      actions = enriched,
-      cout = cout_sum,
-      revenu = revenu_sum,
-      bilan = revenu_sum - cout_sum,
-      map_png = map_png
-    )
-  })
-  ug_list <- Filter(Negate(is.null), ug_list)
+  }
 
-  total_cout   <- sum(vapply(ug_list, function(u) u$cout,   numeric(1)),
-                      na.rm = TRUE)
-  total_revenu <- sum(vapply(ug_list, function(u) u$revenu, numeric(1)),
-                      na.rm = TRUE)
-
-  data <- list(
-    project_name = project$metadata$name %||% (project$id %||% "Plan"),
-    horizon = plan$horizon_annees %||% 20L,
-    n_actions = length(actions),
-    n_ugfs = length(ug_list),
-    totals = list(cout = total_cout, revenu = total_revenu,
-                  bilan = total_revenu - total_cout),
-    ugfs = ug_list
+  data <- .build_action_plan_pdf_data(
+    project = project, plan = plan, ug_sf = ug_sf,
+    filter_ug_ids = filter_ug_ids, filter_action_ids = filter_action_ids,
+    mode = mode, maps = maps, language = language
   )
 
   # Render -----------------------------------------------------------------
@@ -2589,27 +2692,25 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
     stop("Action plan template not found.", call. = FALSE)
   }
 
-  # temp_dir was created earlier (above) so the per-UGF PNG maps share
-  # the same scratch directory as the rendered qmd.
   qmd <- file.path(temp_dir, "action_plan.qmd")
-  file.copy(template_path, qmd)
+  writeLines(
+    .action_plan_qmd_localise(readLines(template_path, warn = FALSE,
+                                        encoding = "UTF-8"), language),
+    qmd, useBytes = TRUE
+  )
   data_file <- file.path(temp_dir, "action_plan_data.rds")
   saveRDS(data, data_file)
 
   # quiet = FALSE so the underlying quarto / xelatex output is
-  # streamed to the R console. "Error running quarto CLI from R"
-  # is otherwise the only thing a user / dev sees, which makes
-  # diagnosing LaTeX errors (missing package, malformed
-  # \includegraphics, longtable issues) effectively impossible.
-  # The synthesis report (generate_pdf_report) already runs with
-  # quiet = FALSE for the same reason.
+  # streamed to the R console (diagnosing LaTeX errors otherwise impossible).
   tryCatch({
     quarto::quarto_render(
       input = qmd,
       output_format = "pdf",
       execute_params = list(
         data_file = normalizePath(data_file, winslash = "/", mustWork = FALSE),
-        language = language
+        language = language,
+        mode = mode
       ),
       quiet = FALSE
     )
@@ -2623,6 +2724,200 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
     cli::cli_warn("Action plan PDF render failed: {e$message}")
     NULL
   })
+}
+
+#' Maximum number of UGF sheets per export
+#' @noRd
+.ACTION_PLAN_SHEETS_MAX <- 30L
+
+#' Unique, file-system-safe stems `fiche_<label>` for UGF sheets
+#'
+#' `.project_export_slug`-style flattening maps every accented character to
+#' `_`, so two distinct labels can collapse to the same name. Colliding stems
+#' get the `ug_id` appended, then `make.unique` as a last resort. An empty
+#' label falls back to the `ug_id`.
+#'
+#' @param ug_ids Character. UGF ids.
+#' @param labels Character. Labels, same length (NA / "" allowed).
+#' @return Character vector of unique stems, same length as `ug_ids`.
+#' @noRd
+.action_plan_sheet_stems <- function(ug_ids, labels = ug_ids) {
+  ug_ids <- as.character(ug_ids)
+  labels <- as.character(labels)
+  if (length(labels) != length(ug_ids)) labels <- ug_ids
+  clean <- function(x) gsub("[^A-Za-z0-9_-]", "_", x)
+  base <- ifelse(is.na(labels) | !nzchar(trimws(labels)), ug_ids,
+                 trimws(labels))
+  stem <- paste0("fiche_", clean(base))
+  dup <- stem %in% stem[duplicated(stem)]
+  stem[dup] <- paste0(stem[dup], "_", clean(ug_ids[dup]))
+  make.unique(stem, sep = "_")
+}
+
+#' UGFs targeted by the "UGF sheets" export button
+#'
+#' Pure. One selected UGF (with visible actions) -> one PDF; several -> a ZIP of
+#' the selected ones only; no selection -> a ZIP of every UGF having visible
+#' actions. A selected UGF without visible action is ignored. Called by both
+#' `filename` and `content` of the download handler so they cannot disagree.
+#'
+#' @param selected Character. Selected UGF ids (may be empty).
+#' @param visible_df data.frame of visible actions (column `ug_id`).
+#' @return List: `ug_ids`, `mode` ("pdf", "zip" or "none"), `ignored`.
+#' @noRd
+.action_plan_sheet_targets <- function(selected, visible_df) {
+  with_actions <- character()
+  if (!is.null(visible_df) && NROW(visible_df) > 0L &&
+      "ug_id" %in% names(visible_df)) {
+    with_actions <- unique(as.character(visible_df$ug_id))
+    with_actions <- with_actions[!is.na(with_actions) & nzchar(with_actions)]
+  }
+  selected <- unique(as.character(selected %||% character()))
+  selected <- selected[!is.na(selected)]
+  if (length(selected) > 0L) {
+    ids <- with_actions[with_actions %in% selected]
+    ignored <- setdiff(selected, ids)
+  } else {
+    ids <- with_actions
+    ignored <- character()
+  }
+  mode <- if (length(ids) == 0L) "none" else if (length(ids) == 1L) "pdf" else "zip"
+  list(ug_ids = ids, mode = mode, ignored = ignored)
+}
+
+#' Labels of UGFs, in the order of `ug_ids` (id when unknown)
+#' @noRd
+.action_plan_ug_labels <- function(ug_sf, ug_ids) {
+  df <- if (inherits(ug_sf, "sf")) sf::st_drop_geometry(ug_sf) else ug_sf
+  if (is.null(df) || is.null(df$ug_id) || is.null(df$label)) {
+    return(as.character(ug_ids))
+  }
+  lab <- as.character(df$label[match(as.character(ug_ids), as.character(df$ug_id))])
+  ifelse(is.na(lab) | !nzchar(trimws(lab)), as.character(ug_ids), lab)
+}
+
+#' Download file name for the UGF sheets export
+#'
+#' @param project Project (for the slug).
+#' @param targets Output of `.action_plan_sheet_targets()`.
+#' @param ug_sf sf/data.frame with `ug_id` and `label` (may be NULL).
+#' @return Character file name (`.pdf`, `.zip`, or `.txt` when nothing to do).
+#' @noRd
+.action_plan_sheet_filename <- function(project, targets, ug_sf = NULL) {
+  slug <- .project_export_slug(project, "nemeton")
+  if (identical(targets$mode, "pdf")) {
+    stem <- .action_plan_sheet_stems(
+      targets$ug_ids, .action_plan_ug_labels(ug_sf, targets$ug_ids)
+    )
+    return(paste0(slug, "_", stem, ".pdf"))
+  }
+  paste0(slug, "_fiches_ugf.",
+         if (identical(targets$mode, "zip")) "zip" else "txt")
+}
+
+#' Generate the per-UGF action plan sheets (one PDF, or a ZIP of PDFs)
+#'
+#' One UGF -> `output_file` is a PDF. Several -> `output_file` is a ZIP with one
+#' PDF per UGF (+ `erreurs.txt` listing the UGFs that failed). Each sheet is a
+#' `generate_action_plan_pdf(filter_ug_ids = uid, mode = "fiche")` call. A UGF
+#' fails when the render returns NULL or raises. Never produces an empty ZIP:
+#' no UGF, or all failing, is an error.
+#'
+#' @param project,plan,ug_sf,language,filter_action_ids See
+#'   `generate_action_plan_pdf()`.
+#' @param output_file Destination (.pdf for one UGF, .zip otherwise).
+#' @param ug_ids Character. UGFs to export (cap: `.ACTION_PLAN_SHEETS_MAX`).
+#' @param progress Optional function(i, n) called before each sheet.
+#' @return List: `file`, `type` ("pdf"/"zip"), `n_ok`, `failed` (named
+#'   character: ug_id -> message).
+#' @noRd
+generate_action_plan_ug_sheets <- function(project, plan, ug_sf, output_file,
+                                           language = "fr", ug_ids,
+                                           filter_action_ids = NULL,
+                                           progress = NULL) {
+  i18n <- get_i18n(language)
+  ug_ids <- unique(as.character(ug_ids %||% character()))
+  ug_ids <- ug_ids[!is.na(ug_ids) & nzchar(ug_ids)]
+  if (length(ug_ids) == 0L) {
+    stop(i18n$t("action_plan_sheets_none"), call. = FALSE)
+  }
+  if (length(ug_ids) > .ACTION_PLAN_SHEETS_MAX) {
+    stop(sprintf(i18n$t("action_plan_sheets_toomany"),
+                 length(ug_ids), .ACTION_PLAN_SHEETS_MAX), call. = FALSE)
+  }
+  # Quarto verifie UNE fois : echec net plutot que N erreurs identiques.
+  if (!ensure_quarto_installed()) {
+    stop(i18n$t("action_plan_sheets_noquarto"), call. = FALSE)
+  }
+
+  labels <- .action_plan_ug_labels(ug_sf, ug_ids)
+  stems <- .action_plan_sheet_stems(ug_ids, labels)
+  slug <- .project_export_slug(project, "nemeton")
+  n <- length(ug_ids)
+
+  render_one <- function(uid, dest) {
+    res <- tryCatch(
+      generate_action_plan_pdf(
+        project = project, plan = plan, ug_sf = ug_sf, output_file = dest,
+        language = language, filter_ug_ids = uid,
+        filter_action_ids = filter_action_ids, mode = "fiche"
+      ),
+      error = function(e) structure(conditionMessage(e), class = "sheet_error")
+    )
+    if (inherits(res, "sheet_error")) return(as.character(res))
+    if (is.null(res) || !file.exists(dest)) return("render returned NULL")
+    NULL
+  }
+
+  if (n == 1L) {
+    if (!is.null(progress)) progress(1L, 1L)
+    err <- render_one(ug_ids, output_file)
+    if (!is.null(err)) {
+      stop(paste0(i18n$t("action_plan_sheets_allfail"), ": ", err),
+           call. = FALSE)
+    }
+    return(list(file = output_file, type = "pdf", n_ok = 1L,
+                failed = stats::setNames(character(), character())))
+  }
+
+  tmp <- tempfile("nemeton_fiches_")
+  dir.create(tmp, recursive = TRUE)
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+
+  failed <- stats::setNames(character(), character())
+  n_ok <- 0L
+  for (i in seq_len(n)) {
+    if (!is.null(progress)) progress(i, n)
+    dest <- file.path(tmp, paste0(slug, "_", stems[i], ".pdf"))
+    err <- render_one(ug_ids[i], dest)
+    if (is.null(err)) {
+      n_ok <- n_ok + 1L
+    } else {
+      failed[[ug_ids[i]]] <- err
+      unlink(dest)
+    }
+  }
+  if (n_ok == 0L) {
+    stop(paste0(i18n$t("action_plan_sheets_allfail"), ": ",
+                paste(unique(unname(failed)), collapse = " | ")), call. = FALSE)
+  }
+  if (length(failed) > 0L) {
+    lab_of <- stats::setNames(labels, ug_ids)
+    writeLines(
+      c(i18n$t("action_plan_sheets_errors_hdr"),
+        paste0(names(failed), " (", lab_of[names(failed)], ") : ",
+               gsub("[\r\n]+", " ", unname(failed)))),
+      file.path(tmp, "erreurs.txt"), useBytes = TRUE
+    )
+  }
+  unlink(output_file)
+  status <- utils::zip(zipfile = output_file,
+                       files = list.files(tmp, full.names = TRUE),
+                       flags = "-j6Xq")
+  if (!identical(as.integer(status), 0L) || !file.exists(output_file)) {
+    stop(i18n$t("action_plan_sheets_failed"), call. = FALSE)
+  }
+  list(file = output_file, type = "zip", n_ok = n_ok, failed = failed)
 }
 
 

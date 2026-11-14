@@ -1076,6 +1076,46 @@ TRANSLATIONS <- list(
     fr = "Aucune action ne d\u00e9signe de tiges (\u00e9claircie, coupe rase, d\u00e9pressage, observation) : rien \u00e0 envoyer.",
     en = "No action designates stems (thinning, clear-cut, respacing, observation): nothing to send."
   ),
+  action_plan_sheets_download = list(
+    fr = "Fiches PDF par UGF",
+    en = "PDF sheets per UGF"
+  ),
+  action_plan_sheets_running = list(
+    fr = "G\u00e9n\u00e9ration des fiches PDF\u2026",
+    en = "Generating PDF sheets\u2026"
+  ),
+  action_plan_sheets_none = list(
+    fr = "Aucune UGF avec des actions visibles : rien \u00e0 exporter.",
+    en = "No UGF with visible actions: nothing to export."
+  ),
+  action_plan_sheets_toomany = list(
+    fr = "Trop d'UGF (%d) : l'export est limit\u00e9 \u00e0 %d fiches. S\u00e9lectionnez-en moins.",
+    en = "Too many UGFs (%d): export is limited to %d sheets. Select fewer."
+  ),
+  action_plan_sheets_noquarto = list(
+    fr = "Quarto est requis pour g\u00e9n\u00e9rer les fiches PDF.",
+    en = "Quarto is required to generate the PDF sheets."
+  ),
+  action_plan_sheets_failed = list(
+    fr = "\u00c9chec de la g\u00e9n\u00e9ration des fiches PDF",
+    en = "PDF sheets generation failed"
+  ),
+  action_plan_sheets_allfail = list(
+    fr = "Aucune fiche n'a pu \u00eatre g\u00e9n\u00e9r\u00e9e",
+    en = "No sheet could be generated"
+  ),
+  action_plan_sheets_partial = list(
+    fr = "%d fiche(s) en \u00e9chec, list\u00e9e(s) dans erreurs.txt.",
+    en = "%d sheet(s) failed, listed in erreurs.txt."
+  ),
+  action_plan_sheets_progress = list(
+    fr = "Fiche %d sur %d\u2026",
+    en = "Sheet %d of %d\u2026"
+  ),
+  action_plan_sheets_errors_hdr = list(
+    fr = "UGF non g\u00e9n\u00e9r\u00e9es :",
+    en = "UGFs not generated:"
+  ),
   action_plan_pdf_failed = list(
     fr = "\u00c9chec de la g\u00e9n\u00e9ration du PDF",
     en = "PDF generation failed"

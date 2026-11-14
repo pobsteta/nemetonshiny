@@ -193,6 +193,19 @@ mod_action_plan_ui <- function(id) {
                              auto_unbox = TRUE)
           )
         ),
+        htmltools::tagAppendAttributes(
+          shiny::downloadButton(
+            ns("download_sheets"),
+            label = i18n$t("action_plan_sheets_download"),
+            icon = shiny::icon("file-pdf"),
+            class = "btn-sm btn-outline-success w-100 mt-2"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("action_plan_sheets_running"),
+                             auto_unbox = TRUE)
+          )
+        ),
         # Persistance versionnee en base (multi-utilisateurs) : distincte des
         # exports locaux ci-dessus, miroir du bouton reGeneration.
         htmltools::tags$hr(class = "my-2"),
@@ -489,9 +502,12 @@ mod_action_plan_ui <- function(id) {
 #'
 #' @param rendered_file Path to the freshly rendered PDF handed to the browser.
 #' @param project The current project (list with `path` and `metadata$name`).
+#' @param file_name Archive file name. `NULL` (default) keeps
+#'   `<slug>_action_plan.pdf`; the UGF sheets export passes its own name so it
+#'   never overwrites the project plan.
 #' @return Invisibly `TRUE` when a copy was made, `FALSE` otherwise.
 #' @noRd
-.archive_action_plan_pdf <- function(rendered_file, project) {
+.archive_action_plan_pdf <- function(rendered_file, project, file_name = NULL) {
   project_path <- tryCatch(project$path, error = function(e) NULL)
   if (is.null(project_path) || !dir.exists(project_path)) return(invisible(FALSE))
   exports_dir <- file.path(project_path, "exports")
@@ -499,7 +515,11 @@ mod_action_plan_ui <- function(id) {
     dir.create(exports_dir, recursive = TRUE, showWarnings = FALSE)
   }
   export_name <- .project_export_slug(project, "nemeton")
-  export_file <- file.path(exports_dir, paste0(export_name, "_action_plan.pdf"))
+  export_file <- file.path(
+    exports_dir,
+    if (is.null(file_name)) paste0(export_name, "_action_plan.pdf") else
+      basename(file_name)
+  )
   tryCatch(
     {
       ok <- file.copy(rendered_file, export_file, overwrite = TRUE)
@@ -2508,6 +2528,90 @@ mod_action_plan_server <- function(id, app_state) {
           # exports/ du projet, parite avec le rapport de synthese. Best-effort,
           # ne casse jamais le download navigateur (cf. .archive_action_plan_pdf).
           .archive_action_plan_pdf(file, project)
+        }
+      }
+    )
+
+    # Fiches PDF par UGF : 1 UGF -> PDF ; plusieurs -> ZIP des seules UGF
+    # selectionnees ; aucune selection -> ZIP de toutes les UGF ayant des
+    # actions visibles. La cible est calculee par un helper pur appele par
+    # `filename` ET `content` (ils ne peuvent pas diverger).
+    output$download_sheets <- shiny::downloadHandler(
+      filename = function() {
+        .action_plan_sheet_filename(
+          app_state$current_project,
+          .action_plan_sheet_targets(selected_ug_rv(), actions_df()),
+          ug_sf_4326()
+        )
+      },
+      content = function(file) {
+        i18n <- get_i18n(app_state$language)
+        on.exit(
+          session$sendCustomMessage("nemetonHideDownloadToast", list()),
+          add = TRUE
+        )
+        notif_id <- "action_plan_sheets_progress"
+        on.exit(shiny::removeNotification(notif_id), add = TRUE)
+
+        plan <- plan_rv()
+        project <- app_state$current_project
+        sf_ug <- ug_sf_4326()
+        if (is.null(plan) || is.null(project) || is.null(sf_ug)) {
+          writeLines("No data available", file)
+          return()
+        }
+        visible <- actions_df()
+        targets <- .action_plan_sheet_targets(selected_ug_rv(), visible)
+        fail_marker <- function() {
+          writeLines(
+            c("PDF generation failed.",
+              "See the in-app error toast for the underlying cause."),
+            file
+          )
+        }
+        if (identical(targets$mode, "none")) {
+          shiny::showNotification(i18n$t("action_plan_sheets_none"),
+                                  type = "error", duration = NULL)
+          fail_marker()
+          return()
+        }
+        result <- tryCatch(
+          generate_action_plan_ug_sheets(
+            project = project, plan = plan, ug_sf = sf_ug,
+            output_file = file,
+            language = app_state$language %||% "fr",
+            ug_ids = targets$ug_ids,
+            filter_action_ids = visible$id,
+            progress = function(i, n) {
+              shiny::showNotification(
+                sprintf(i18n$t("action_plan_sheets_progress"), i, n),
+                id = notif_id, type = "message", duration = NULL
+              )
+            }
+          ),
+          error = function(e) {
+            err_msg <- conditionMessage(e)
+            cli::cli_warn("Action plan sheets export failed: {err_msg}")
+            shiny::showNotification(
+              paste(i18n$t("action_plan_sheets_failed"), ":", err_msg),
+              type = "error", duration = NULL
+            )
+            NULL
+          }
+        )
+        if (is.null(result)) {
+          fail_marker()
+        } else {
+          if (length(result$failed) > 0L) {
+            shiny::showNotification(
+              sprintf(i18n$t("action_plan_sheets_partial"), length(result$failed)),
+              type = "warning", duration = NULL
+            )
+          }
+          .archive_action_plan_pdf(
+            file, project,
+            file_name = .action_plan_sheet_filename(project, targets, sf_ug)
+          )
         }
       }
     )
