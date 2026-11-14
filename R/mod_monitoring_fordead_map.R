@@ -20,6 +20,17 @@
 # empty state. The wiring is in place so the panel activates automatically
 # the day the coeur writer ships.
 
+#' Couleurs des classes de severite FORDEAD (codes 0-4), source unique : carte
+#' FORDEAD et surcouche du Plan de validation. 0 = sain (jamais peint), 4 = sol nu.
+#' @noRd
+.FORDEAD_SEVERITY_COLORS <- c(
+  "0" = "#2CA02C",
+  "1" = "#FFD27F",
+  "2" = "#FF9933",
+  "3" = "#D62728",
+  "4" = "#222222"
+)
+
 # Max class value of a categorical FORDEAD dieback mask, NA-safe.
 # Returns NA_real_ when the raster is NULL / not a SpatRaster / empty /
 # all-NA. Used (Phase A, decision D2) to decide healthy-vs-affected
@@ -108,7 +119,7 @@
                     title = i18n$t("monitoring_fordead_layer_confidence"))))
   }
   # severity (defaut) - classe 0 transparente.
-  cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+  cols <- unname(.FORDEAD_SEVERITY_COLORS)
   list(
     r_show = terra::ifel(is.na(r) | r <= 0, NA, r),
     pal    = leaflet::colorFactor(cols, levels = 0:4, na.color = "transparent"),
