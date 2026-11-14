@@ -5557,42 +5557,8 @@ TRANSLATIONS <- list(
     fr = "Aucune placette t\u00e9moin g\u00e9n\u00e9r\u00e9e : aucune cellule dans les classes t\u00e9moins choisies.",
     en = "No control plot generated: no cell in the chosen control classes."
   ),
-  # v0.45.0 - labels de classes de .fast_class_labels(). Seuls les
-  # validation_class_fordead_* sont lus depuis le Plan de validation
-  # (FAST n'a plus de cases `classes` depuis le trend, spec 025) ;
-  # validation_class_fast_* et validation_class_unit_* n'ont plus de
-  # lecteur dans l'app. FORDEAD = labels biologiques statiques.
-  validation_class_unit_days = list(
-    fr = "j",
-    en = "d"
-  ),
-  validation_class_unit_deficit = list(
-    fr = "",
-    en = ""
-  ),
-  validation_class_unit_trend = list(
-    fr = "pente/an",
-    en = "slope/yr"
-  ),
-  # Fallback FAST quand le raster d'alerte n'est pas encore calcule
-  # (cache absent, ingestion pas encore lancee, etc.) - labels
-  # generiques par classe.
-  validation_class_fast_1 = list(
-    fr = "1 \u2014 faible (moins fiable)",
-    en = "1 \u2014 low (less reliable)"
-  ),
-  validation_class_fast_2 = list(
-    fr = "2 \u2014 moyenne (moins fiable)",
-    en = "2 \u2014 medium (less reliable)"
-  ),
-  validation_class_fast_3 = list(
-    fr = "3 \u2014 forte",
-    en = "3 \u2014 high"
-  ),
-  validation_class_fast_4 = list(
-    fr = "4 \u2014 tr\u00e8s forte",
-    en = "4 \u2014 very high"
-  ),
+  # Libelles de classes du Plan de validation FORDEAD, lus par
+  # .fordead_class_labels(). FAST (trend) n'a pas de cases `classes`.
   # FORDEAD : libelles biologiques fixes (mapping coeur du masque
   # categoriel produit par run_fordead_dieback()).
   validation_class_fordead_1 = list(
