@@ -103,3 +103,7 @@ Machine chargée : premier plan, `timeout 540`, filtre `validation_sampling` ; r
 - Temps de la main : *appuyer*.
 
 ## Redite par l'agent : _à compléter_
+
+## Statut
+
+Terminée le 2026-11-14 : PR #275 fusionnée sur `main` (`7a6b6ab8`, commits `98454d46` et `4f3428cd`), cycle dev `2026.10.18.9016`, non publié. Relecture : prêt.

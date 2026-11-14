@@ -24,10 +24,7 @@ _(vide)_
 
 ## Validé
 
-- [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
-  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
-  - Mission : surcouche du Plan de validation, classe saine transparente, couleurs par moteur ; après 021
-  - Moyens : helper de style testable
+_(vide)_
 
 ## Planifié
 
@@ -50,6 +47,10 @@ _(vide)_
 
 ## Terminé
 
+- [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #275 fusionnée, cycle dev 2026.10.18.9016, non publié
+  - Moyens : —
 - [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR (une reprise)
   - Mission : #274 fusionnée (7d11cdc4), cycle dev 2026.10.18.9015, non publié
