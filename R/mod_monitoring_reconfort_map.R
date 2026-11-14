@@ -302,7 +302,35 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # ----- Empty-state overlay (no raster layer at all) -----------------
     output$overlay <- shiny::renderUI({
       i18n <- i18n_r()
-      if (!is.null(available_layers_r())) return(NULL)
+      if (!is.null(available_layers_r())) {
+        # Mission 022 - strate (!= `_tot`) sans pixel 2/3 alors que `_tot` en
+        # compte : carte informative. Couche `classification` seulement ; sur
+        # score / probabilite, rien ne change.
+        if (!identical(selected_ids_r(), "classification") ||
+            !isTRUE(is_strate_r())) return(NULL)
+        r <- masked_rasters_r()[["classification"]]
+        if (is.null(r)) return(NULL)
+        etat <- .etat_strate_sante(r, classification_tot_r(), "reconfort")
+        if (!identical(etat$etat, "strate_vide_tot_alerte")) return(NULL)
+        return(htmltools::div(
+          style = paste(
+            "position: absolute; inset: 0; z-index: 500;",
+            "background: #fff; display: flex; align-items: center;",
+            "justify-content: center;"),
+          htmltools::div(
+            bslib::card(
+              class = "border-info",
+              bslib::card_header(htmltools::div(
+                class = "d-flex align-items-center",
+                bsicons::bs_icon("info-circle-fill",
+                                 class = "me-2 text-info fs-4"),
+                htmltools::tags$strong(
+                  i18n$t("sante_strate_sans_alerte_titre")))),
+              bslib::card_body(htmltools::tags$p(
+                .sante_rappel_tot(i18n, etat))))
+          )
+        ))
+      }
       htmltools::div(
         style = paste(
           "position: absolute; inset: 0; z-index: 500;",
@@ -465,6 +493,47 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       }
       if (!length(out)) return(NULL)
       out
+    })
+
+    # ----- Mission 022 : classification `_tot` (rappel " aucune alerte ") --
+    # TRUE quand la strate du menu differe de la zone du run (`_tot`).
+    # `run_zone_id_r()` vaut la chaine "NA" sans `_tot` (as.character(NA)) :
+    # on passe par as.integer() puis is.na(), jamais par nzchar().
+    is_strate_r <- shiny::reactive({
+      sel <- suppressWarnings(as.integer(zone_id_r()))
+      run <- suppressWarnings(as.integer(run_zone_id_r()))
+      length(sel) == 1L && length(run) == 1L &&
+        !is.na(sel) && !is.na(run) && !identical(sel, run)
+    })
+
+    # Couche `classification` de la zone `_tot` : UNE relecture (cle = manifeste
+    # + zone du run, jamais strate ni opacite), seulement si une strate distincte
+    # est affichee ET paresseuse (evaluee quand l'overlay en a besoin). Lecture
+    # par le coeur avec `mask_polygon` = AOI de `_tot` - jamais
+    # `apply_zone_mask = FALSE`, qui ne rend pas `_tot`.
+    classification_tot_r <- shiny::reactive({
+      if (!isTRUE(is_strate_r())) return(NULL)
+      rm <- raster_manifest_r()
+      if (is.null(rm)) return(NULL)
+      row <- rm[as.character(rm$id) == "classification", , drop = FALSE]
+      if (!nrow(row)) return(NULL)
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      if (is.null(con)) return(NULL)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      aoi_tot <- tryCatch(
+        get_monitoring_zone_aoi(con, as.integer(run_zone_id_r())),
+        error = function(e) NULL)
+      tryCatch(
+        nemeton::read_reconfort_layer(
+          layer = row[1L, ], mask_polygon = aoi_tot, apply_zone_mask = TRUE),
+        error = function(e) {
+          cli::cli_alert_warning(
+            "read_reconfort_layer (classification _tot) failed: {conditionMessage(e)}")
+          NULL
+        }
+      )
     })
 
     # ----- Base map (stable widget - parity FORDEAD) --------------------

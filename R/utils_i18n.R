@@ -4511,6 +4511,15 @@ TRANSLATIONS <- list(
     fr = "Total placettes",
     en = "Total plots"
   ),
+  # Mission 022 - strate sans alerte alors que la zone entiere (_tot) en compte.
+  sante_strate_sans_alerte_titre = list(
+    fr = "Aucune alerte dans cette strate",
+    en = "No alert in this stratum"
+  ),
+  sante_strate_rappel_tot = list(
+    fr = "La zone enti\u00e8re (_tot) compte %s pixels en alerte (\u2248 %s ha).",
+    en = "The whole zone (_tot) has %s alert pixels (\u2248 %s ha)."
+  ),
   monitoring_fast_alerts_empty_title = list(
     fr = "Aucune alerte FAST sur la fen\u00eatre",
     en = "No FAST alerts in window"
