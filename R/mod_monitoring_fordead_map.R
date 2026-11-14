@@ -20,12 +20,6 @@
 # empty state. The wiring is in place so the panel activates automatically
 # the day the coeur writer ships.
 
-# Max class value of a categorical FORDEAD dieback mask, NA-safe.
-# Returns NA_real_ when the raster is NULL / not a SpatRaster / empty /
-# all-NA. Used (Phase A, decision D2) to decide healthy-vs-affected
-# FROM THE RASTER rather than from a DB alert count :
-#   max >= 1  -> au moins un pixel classe >= 1 -> zone affectee ;
-#   max < 1 ou NA -> tout sain (classe 0) ou tout NA -> zone saine.
 #' Couleurs des classes de severite FORDEAD (codes 0-4), source unique : carte
 #' FORDEAD et surcouche du Plan de validation. 0 = sain (jamais peint), 4 = sol nu.
 #' @noRd
@@ -37,6 +31,12 @@
   "4" = "#222222"
 )
 
+# Max class value of a categorical FORDEAD dieback mask, NA-safe.
+# Returns NA_real_ when the raster is NULL / not a SpatRaster / empty /
+# all-NA. Used (Phase A, decision D2) to decide healthy-vs-affected
+# FROM THE RASTER rather than from a DB alert count :
+#   max >= 1  -> au moins un pixel classe >= 1 -> zone affectee ;
+#   max < 1 ou NA -> tout sain (classe 0) ou tout NA -> zone saine.
 .fordead_raster_max <- function(r) {
   if (is.null(r) || !inherits(r, "SpatRaster")) return(NA_real_)
   if (terra::ncell(r) == 0L) return(NA_real_)
