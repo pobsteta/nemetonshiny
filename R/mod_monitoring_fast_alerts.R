@@ -1130,10 +1130,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     shiny::outputOptions(output, "map",    suspendWhenHidden = FALSE)
 
     # v0.52.14 - `index_r` exporte pour que le module
-    # validation_sampling (qui consomme aussi `read_fast_alert_raster`
-    # pour la previsualisation) suive l'indice choisi par
-    # l'utilisateur cote Alertes FAST. Sans ce wiring,
-    # validation_sampling serait coince sur NDVI ou NBR en dur.
+    # validation_sampling suive l'indice choisi par l'utilisateur cote
+    # Alertes FAST. Sans ce wiring, validation_sampling serait coince sur
+    # NDVI ou NBR en dur.
     invisible(list(
       raster  = raster_r,
       # v0.91.x - etat " calcul du raster d'alerte en cours " expose pour
@@ -1229,12 +1228,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 }
 
 
-# v0.45.0 - wrapper produisant des labels par classe FAST/FORDEAD
-# pour les consommateurs externes (mod_validation_sampling au moins).
+# v0.45.0 - wrapper produisant des labels par classe FAST/FORDEAD.
 # Pour FORDEAD, retourne les libelles biologiques fixes (1=faible,
-# 2=moyenne, 3=forte, 4=sol nu). Pour FAST, derive les labels des
-# quartiles du raster fourni ; fallback statique generique quand le
-# raster est NULL.
+# 2=moyenne, 3=forte, 4=sol nu), sans lire `r`. Pour FAST, derive les
+# labels des quartiles du raster fourni ; fallback statique generique
+# quand le raster est NULL. Aujourd'hui, mod_validation_sampling ne
+# l'appelle que pour FORDEAD (avec `r = NULL`).
 #
 # @param r SpatRaster mono-couche (count) ou NULL.
 # @param source "FAST" ou "FORDEAD".

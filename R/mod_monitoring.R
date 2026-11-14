@@ -3965,9 +3965,9 @@ mod_monitoring_server <- function(id, app_state) {
       run_zone_id_r = fast_run_zone_id,
       mode_r       = shiny::reactive(input$mode),
       # v0.52.14 - `index` suit le choix utilisateur cote Alertes FAST
-      # (via le reactive exporte `fast_alerts_ret$index_r`), pour que la
-      # previsualisation validation_sampling FAST utilise le meme
-      # indice que ce que l'utilisateur voit dans l'onglet Alertes FAST.
+      # (via le reactive exporte `fast_alerts_ret$index_r`), pour que le
+      # plan de validation FAST utilise le meme indice que ce que
+      # l'utilisateur voit dans l'onglet Alertes FAST.
       thresholds_r = shiny::reactive(c(
         list(index = fast_alerts_ret$index_r() %||% "NDVI"),
         fast_params_r()
