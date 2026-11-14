@@ -56,7 +56,13 @@ f_ha <- function(x) {
   formatC(round(x, 2), format = "f", digits = 2)
 }
 
-tr <- function(fr, en) if (identical(lang, "fr")) fr else en
+# Annee suivie de " - ", ou rien quand l'action n'a pas d'annee.
+year_prefix <- function(a) {
+  y <- a$annee_realisation
+  if (length(y) == 0L || is.na(y[1])) "" else paste0(y[1], " - ")
+}
+
+tr <- function(fr, en)if (identical(lang, "fr")) fr else en
 
 # Defini ici, avant la page de titre qui l'utilise.
 latex_escape <- function(x) {
@@ -227,7 +233,7 @@ for (ug in data$ugfs) {
         "title={", tr("Commentaires", "Comments"), "},",
         "arc=2mm,boxrule=0.3pt,breakable]\n", sep = "")
     for (a in comments) {
-      cat("\\textbf{", a$annee_realisation, " - ",
+      cat("\\textbf{", year_prefix(a),
           latex_escape(a$type), "} ",
           "\\textcolor{", statut_color(a$statut), "}{\\textit{(",
           latex_escape(a$statut), ")}}",
@@ -248,7 +254,7 @@ for (ug in data$ugfs) {
       origin <- if (nzchar(a$source_label)) {
         paste0(" \\textit{(", latex_escape(a$source_label), ")}")
       } else ""
-      cat("\\textbf{", a$annee_realisation, " - ",
+      cat("\\textbf{", year_prefix(a),
           latex_escape(a$type), "}", origin, " \\\\\n", sep = "")
       cat(latex_escape(a$source_extrait), "\n\n\\medskip\n", sep = "")
     }

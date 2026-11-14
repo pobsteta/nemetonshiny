@@ -377,3 +377,28 @@ test_that("UI : bouton visible + lien masque d-none", {
   expect_match(ui, "ap-prepare_sheets", fixed = TRUE)
   expect_match(ui, 'id="ap-download_sheets"[^>]*d-none|d-none[^>]*id="ap-download_sheets"')
 })
+
+test_that("gabarit : action sans annee -> pas de 'NA - ' dans Sources/Commentaires", {
+  plan <- .fx_plan()
+  plan$actions[[length(plan$actions) + 1L]] <- list(
+    id = "n1", ug_id = "U1", type = "coupe", priorite = "basse",
+    statut = "proposee", annee_cible = NULL, quantite = list(),
+    source = list(origine = "synthesis", extrait_texte = "Extrait"))
+  d <- nemetonshiny:::.build_action_plan_pdf_data(
+    .fx_project(), plan, .fx_ugs(), filter_ug_ids = "U1")
+  a <- Filter(function(x) x$id == "n1", d$ugfs[[1]]$actions)[[1]]
+  expect_true(is.na(a$annee_realisation))
+  # Les actions sans annee passent en dernier.
+  expect_identical(d$ugfs[[1]]$actions[[4]]$id, "n1")
+  # Le helper du gabarit, evalue hors Quarto.
+  tpl <- paste(readLines(system.file("quarto", "action_plan_template.qmd",
+                                     package = "nemetonshiny"), warn = FALSE),
+               collapse = "\n")
+  m <- regmatches(tpl, regexpr("(?s)year_prefix <- function\\(a\\) \\{.*?\\n\\}", tpl,
+                               perl = TRUE))
+  expect_length(m, 1L)
+  env <- new.env(); eval(parse(text = m), env)
+  expect_identical(env$year_prefix(a), "")
+  expect_identical(env$year_prefix(list(annee_realisation = 2031L)), "2031 - ")
+  expect_false(grepl('a$annee_realisation, " - "', tpl, fixed = TRUE))
+})

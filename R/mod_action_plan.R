@@ -2608,21 +2608,16 @@ mod_action_plan_server <- function(id, app_state) {
         })
     })
 
-    # Progression i/N : lecture du fichier ecrit par le worker (500 ms).
-    sheets_progress <- shiny::reactivePoll(
-      500, session,
-      checkFunc = function() {
-        job <- sheets_job()
-        if (is.null(job) || !identical(sheets_task$status(), "running")) {
-          return(NULL)
-        }
-        p <- job$progress_file
-        if (file.exists(p)) file.info(p)$mtime else NA
-      },
-      valueFunc = function() {
-        job <- sheets_job()
-        if (is.null(job)) NULL else .action_plan_progress_read(job$progress_file)
-      })
+    # Progression i/N : lecture du fichier ecrit par le worker. Minuteur actif
+    # SEULEMENT pendant la tache (aucun reveil de session sinon).
+    sheets_progress <- shiny::reactive({
+      job <- sheets_job()
+      if (is.null(job) || !identical(sheets_task$status(), "running")) {
+        return(NULL)
+      }
+      shiny::invalidateLater(500, session)
+      .action_plan_progress_read(job$progress_file)
+    })
     shiny::observeEvent(sheets_progress(), {
       pr <- sheets_progress()
       if (is.null(pr) || !identical(sheets_task$status(), "running")) return()
@@ -2645,6 +2640,8 @@ mod_action_plan_server <- function(id, app_state) {
           !file.exists(job$out_file %||% "")) {
         err_msg <- if (inherits(res, "error")) conditionMessage(res) else ""
         cli::cli_warn("Action plan sheets export failed: {err_msg}")
+        # Fichier partiel eventuel : jamais conserve.
+        if (!is.null(job$out_file)) unlink(job$out_file)
         shiny::showNotification(
           paste(i18n$t("action_plan_sheets_failed"), ":", err_msg),
           type = "error", duration = NULL)
