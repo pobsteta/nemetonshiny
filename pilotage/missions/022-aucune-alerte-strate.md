@@ -95,7 +95,8 @@ Arbitrages de l'orchestrateur (questions soulevées par la relecture, tranchées
 
 - Le Plan de validation (mission 021 en cours, fichiers `service_validation_sampling.R` et
   `mod_validation_sampling.R` : ne pas les toucher).
-- La palette de la surcouche RECONFORT du Plan de validation (question à Pascal).
+- La palette de la surcouche du Plan de validation : tranchée par Pascal le 2026-11-14, traitée
+  par la mission 023 (lancée après 022).
 
 ## Versionnage
 
