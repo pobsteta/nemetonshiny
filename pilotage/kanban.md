@@ -24,7 +24,7 @@ _(vide)_
 
 ## Validé
 
-_(vide)_
+- [024] Fiche PDF par UGF du Plan d'actions (issue #20) · dev (sonnet), worktree · *appuyer* · fiche relue, décision de Pascal sur le ZIP reportée
 
 ## Planifié
 

@@ -6,8 +6,9 @@
 ## Mission
 
 **En une phrase :** Depuis l'onglet Plan d'actions, exporter une **fiche PDF par UGF** : la fiche
-de l'UGF sélectionnée, ou, si plusieurs (ou aucune) sont sélectionnées, une **archive ZIP** avec
-une fiche par UGF visible, au style du PDF du plan existant.
+de l'UGF sélectionnée, ou, si plusieurs sont sélectionnées, une **archive ZIP** d'une fiche par
+UGF sélectionnée (aucune sélection : toutes les UGF ayant des actions visibles), au style du PDF
+du plan existant.
 
 ## Constat (orchestrateur, 2026-11-14, lu sur `main` 7a6b6ab8)
 
@@ -70,15 +71,18 @@ une fiche par UGF visible, au style du PDF du plan existant.
    `fancyhead`, `lang`) traduit selon la langue.
 3. **UI** : un bouton « Fiches PDF par UGF » (`downloadButton`, `btn-outline-success` comme le
    PDF existant, même toast `nemetonShowDownloadToast` / `nemetonHideDownloadToast`), qui exporte
-   l'UGF sélectionnée si une seule l'est, sinon toutes les UGF ayant des actions visibles. Nom de
+   l'UGF sélectionnée si une seule l'est, les UGF sélectionnées si plusieurs le sont, sinon
+   toutes les UGF ayant des actions visibles (voir la décision ci-dessous). Nom de
    fichier `.pdf` ou `.zip` selon le cas (le `filename` du `downloadHandler` doit le savoir).
    Copie archivée dans `exports/` sous `<slug>_fiche_<ugf>.pdf` / `<slug>_fiches_ugf.zip` :
    ajouter un paramètre de nom à `.archive_action_plan_pdf` pour **ne jamais écraser**
    `<slug>_action_plan.pdf` (test de non-écrasement ajouté à `test-mod_action_plan.R:43-107`).
    Cible commune : helper pur `.action_plan_sheet_targets(selected, visible_df)` (UGF + mode
    pdf/zip), appelé **à la fois** par `filename` et `content`, testé directement.
-   **Contenu du ZIP quand plusieurs UGF sont sélectionnées : _décision de Pascal à reporter
-   ici_.
+   **Contenu du ZIP (décision de Pascal, 2026-11-14)** : plusieurs UGF sélectionnées → le ZIP
+   ne contient **que les UGF sélectionnées** ; aucune UGF sélectionnée → toutes les UGF ayant
+   des actions visibles ; une seule sélectionnée → un PDF. Une UGF sélectionnée sans action
+   visible est ignorée (et si toutes le sont, erreur explicite, pas de ZIP vide).
 4. **i18n** : nouvelles clés FR/EN (NMT, ≤ 30 caractères, `\uXXXX`) pour le bouton, le toast et
    les erreurs ; textes du gabarit via son mécanisme `tr()` existant.
 5. **Tests** (hors Quarto quand c'est possible) : choix PDF / ZIP selon le nombre d'UGF ; noms de
