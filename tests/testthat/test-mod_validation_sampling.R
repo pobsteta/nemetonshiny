@@ -185,3 +185,54 @@ test_that("FAST validation : no significant decline → empty, no plan", {
     }
   )
 })
+
+# ---------------------------------------------------------------------------
+# Libelles de classes FORDEAD traduits par l'observateur (mission 018)
+# ---------------------------------------------------------------------------
+
+test_that("l'observateur pose les libelles FORDEAD anglais, ordre 4, 3, 2, 1", {
+  # `MockShinySession` n'expose pas `sendInputMessage` : on intercepte
+  # l'appel a la source.
+  appels <- list()
+  testthat::local_mocked_bindings(
+    updateCheckboxGroupInput = function(session, inputId, label = NULL,
+                                        choices = NULL, selected = NULL, ...) {
+      appels[[length(appels) + 1L]] <<-
+        list(id = inputId, choices = choices, selected = selected)
+      invisible(NULL)
+    },
+    .package = "shiny"
+  )
+
+  app_state <- shiny::reactiveValues(
+    language = "en", active_main_tab = "monitoring",
+    current_project = list(id = "p", path = withr::local_tempdir(),
+                           metadata = list(monitoring_zone_id = 7L))
+  )
+  attendu <- nemetonshiny:::get_i18n("en")
+
+  shiny::testServer(
+    nemetonshiny:::mod_validation_sampling_server,
+    args = list(id = "lab", app_state = app_state,
+                zone_id_r    = shiny::reactive("7"),
+                mode_r       = shiny::reactive("fordead"),
+                thresholds_r = shiny::reactive(list(index = "NDVI")),
+                date_range_r = shiny::reactive(NULL),
+                source_fixed = "FORDEAD"),
+    {
+      session$setInputs(classes = c("3", "4"))
+      session$flushReact()
+      classes <- Filter(function(a) identical(a$id, "classes"), appels)
+      expect_gte(length(classes), 1L)
+      choix <- classes[[length(classes)]]$choices
+      expect_identical(names(choix), c(
+        attendu$t("validation_class_fordead_4"),
+        attendu$t("validation_class_fordead_3"),
+        attendu$t("validation_class_fordead_2"),
+        attendu$t("validation_class_fordead_1")
+      ))
+      expect_identical(unname(choix), c("4", "3", "2", "1"))
+      expect_identical(names(choix)[1], "4 \u2014 bare soil")
+    }
+  )
+})
