@@ -182,8 +182,9 @@ generate_validation_plan <- function(con, project,
 
 
 # Zone sur laquelle le masque FAST est calcule/lu : `run_zone_id` (`_tot`) pour
-# FAST quand il est valide, sinon la zone demandee (FORDEAD / RECONFORT ne
-# changent pas : leurs lecteurs gardent leur propre resolution).
+# FAST quand il est valide, sinon la zone demandee. FORDEAD ne passe plus par
+# ici (`.read_fordead_mask_chain()` resout `_tot` lui-meme) ; seul RECONFORT
+# garde sa resolution sur la strate.
 .fast_run_zone <- function(source, run_zone_id, zone_id) {
   if (!identical(source, "FAST")) return(zone_id)
   run <- suppressWarnings(as.integer(run_zone_id))
@@ -358,7 +359,9 @@ generate_trend_sanitary_plan <- function(con, project,
 
 
 # Resolve the SpatRaster used to feed create_validation_sampling_plan().
-# - FORDEAD : read the dieback mask from <project>/cache/layers/fordead.
+# - FORDEAD : not handled here, see `.read_fordead_mask_chain()` (read on `_tot`).
+# - RECONFORT : categorical mask read from <project>/cache/layers/reconfort
+#             (on the stratum zone_id).
 # - FAST    : try the FAST alert mask cache first (cache/layers/fast).
 #             If absent and the FAST compute parameters are complete,
 #             call compute_fast_alert_mask() then re-read. Returns NULL
@@ -375,19 +378,6 @@ generate_trend_sanitary_plan <- function(con, project,
                                   # NULL -> fallback "NDVI" (defaut coeur).
                                   index          = NULL) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
-  if (identical(source, "FORDEAD")) {
-    cd <- file.path(project$path, "cache", "layers", "fordead")
-    if (!dir.exists(cd)) return(NULL)
-    return(tryCatch(
-      nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd),
-      error = function(e) {
-        cli::cli_alert_warning(
-          "read_fordead_dieback_mask failed: {e$message}"
-        )
-        NULL
-      }
-    ))
-  }
   # RECONFORT path (spec 021 G4). Mirror of FORDEAD : the categorical
   # 1-sain / 2-deperissant / 3-tres-deperissant mask is read from the
   # RECONFORT cache. Unlike FAST there is NO on-the-fly compute - the
