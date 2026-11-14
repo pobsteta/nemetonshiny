@@ -47,6 +47,18 @@ _(vide)_
 
 ## Terminé
 
+- [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #275 fusionnée, cycle dev 2026.10.18.9016, non publié
+  - Moyens : —
+- [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR (une reprise)
+  - Mission : #274 fusionnée (7d11cdc4), cycle dev 2026.10.18.9015, non publié
+  - Moyens : —
+- [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #273 fusionnée (176c4837), cycle dev 2026.10.18.9014, non publié
+  - Moyens : —
 - [020-retirer-code-fast-orphelin](missions/020-retirer-code-fast-orphelin.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #271 fusionnée (6a9326d4), cycle dev 2026.10.18.9013, non publié
