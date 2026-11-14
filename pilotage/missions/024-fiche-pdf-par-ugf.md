@@ -126,3 +126,11 @@ pass / fail / skip.
 - Temps de la main : *appuyer*.
 
 ## Redite par l'agent : _à compléter_
+
+## Décision de Pascal sur le rendu (2026-11-14)
+
+Durée mesurée par le dev : 39 s pour 1 UGF, 321 s pour 3 UGF (~107 s/UGF), soit 20 à 50 min au
+plafond de 30. Pascal retient **A — préparation en tâche de fond + lien masqué** (modèle Marculus,
+`R/mod_action_plan.R` env. 2440 ; lien `d-none` cliqué par le serveur avec
+`suspendWhenHidden = FALSE`) : l'appli reste utilisable, la progression « i / N » est réelle,
+le téléchargement part à la fin. Plafond de 30 UGF conservé. Complément sur la même branche.
