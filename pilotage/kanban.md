@@ -24,7 +24,18 @@ _(vide)_
 
 ## Validé
 
-_(vide)_
+- [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche (faite) puis la PR
+  - Mission : Plan de validation RECONFORT lu sur `_tot`, découpé à la strate ; garde-fou commun aux 3 moteurs
+  - Moyens : worktree depuis main, chaîne de 019 généralisée
+- [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche (faite) puis la PR
+  - Mission : « Aucune alerte dans cette strate » + rappel `_tot` (FAST, FORDEAD, RECONFORT) ; après 021
+  - Moyens : helper `R/utils_sante_strate.R`
+- [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : surcouche du Plan de validation, classe saine transparente, couleurs par moteur ; après 021
+  - Moyens : helper de style testable
 
 ## Planifié
 
