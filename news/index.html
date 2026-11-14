@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9012</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9013</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9013" id="nemetonshiny-202610189013-2026-11-14">nemetonshiny 2026.10.18.9013 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189013-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nettoyage--retrait-du-code-fast-sans-lecteur-des-libellés-de-classes-mission-2026-10-18-9013">Nettoyage : retrait du code FAST sans lecteur des libellés de classes (mission 020)<a class="anchor" aria-label="anchor" href="#nettoyage--retrait-du-code-fast-sans-lecteur-des-libell%C3%A9s-de-classes-mission-2026-10-18-9013"></a></h3>
+<ul><li>Aucun changement visible. Retirés : la branche FAST de <code>.fast_class_labels</code> (la fonction devient <code>.fordead_class_labels(i18n)</code>, mêmes libellés FORDEAD), <code>.classify_alert_count</code>, <code>.alert_count_palette</code> et les sept clés i18n <code>validation_class_fast_1..4</code> et <code>validation_class_unit_days|deficit|trend</code>, que l’application n’appelait plus depuis la mission 018.</li>
+<li>
+<code>.fast_raster_is_empty</code> est conservé (autres lecteurs dans l’onglet Alertes FAST).</li>
+<li>Tests : neuf tests du code retiré supprimés ; le test FORDEAD compare les quatre libellés en fr et en en aux clés i18n, plus un littéral.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9012" id="nemetonshiny-202610189012-2026-11-14">nemetonshiny 2026.10.18.9012 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189012-2026-11-14"></a></h2>
 <blockquote>

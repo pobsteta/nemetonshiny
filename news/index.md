@@ -1,5 +1,25 @@
 # Changelog
 
+## nemetonshiny 2026.10.18.9013 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
+> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
+> VICTOR sur Couchey, bilan du 2026-11-13).
+
+### Nettoyage : retrait du code FAST sans lecteur des libellés de classes (mission 020)
+
+- Aucun changement visible. Retirés : la branche FAST de
+  `.fast_class_labels` (la fonction devient
+  `.fordead_class_labels(i18n)`, mêmes libellés FORDEAD),
+  `.classify_alert_count`, `.alert_count_palette` et les sept clés i18n
+  `validation_class_fast_1..4` et
+  `validation_class_unit_days|deficit|trend`, que l’application
+  n’appelait plus depuis la mission 018.
+- `.fast_raster_is_empty` est conservé (autres lecteurs dans l’onglet
+  Alertes FAST).
+- Tests : neuf tests du code retiré supprimés ; le test FORDEAD compare
+  les quatre libellés en fr et en en aux clés i18n, plus un littéral.
+
 ## nemetonshiny 2026.10.18.9012 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
