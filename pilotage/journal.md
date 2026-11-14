@@ -216,3 +216,5 @@
 2026-11-14 · orchestrateur · 019 · écart : CI de #270 rouge deux fois sur test-service_cadastre.R:27 (API Cadastre IGN injoignable depuis les runners GitHub, joignable en local, 200 en 0,8 s) ; vert à la 3e relance ; test réseau fragile, à creuser.
 2026-11-14 · orchestrateur · 019 · fusion (accord « merge ce que tu peux ») : #270 fusionnée (fc36d0bd), 2026.10.18.9012 non publié.
 2026-11-14 · orchestrateur · 020 · fusion de main dans la branche 020, conflit NEWS résolu, renumérotée 2026.10.18.9013, « sept » → « neuf » tests (retouche du relecteur) ; tests ciblés 0 échec ; #271 fusionnée (6a9326d4) après CI verte. Branches et worktrees 019/020 supprimés.
+2026-11-14 · Pascal · — · issues GitHub : « regarde et ferme toi-même celles qui ne sont plus nécessaires » ; vérifiées sur main (6a9326d4) : #7 (épopée), #9, #10, #12, #13, #15, #17, #18, #21 livrées → fermées avec preuves en commentaire ; #20 (fiche PDF par UGF + ZIP) partiellement livrée (PDF par projet seulement) → laissée ouverte, commentée.
+2026-11-14 · Pascal · — · fusion : #272 (pilotage 019/020) fusionnée.
