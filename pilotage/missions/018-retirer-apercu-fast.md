@@ -72,3 +72,10 @@ chiffres pass / fail / skip.
 - Temps de la main : *appuyer* (petite suppression, risque faible).
 
 ## Redite par l'agent : _à compléter_
+
+## Statut
+
+Terminée le 2026-11-14 : PR #268 fusionnée sur `main` (`99959307`, commit de mission `e4d672fc`),
+cycle dev `2026.10.18.9011`, non publié. Relecture : prêt. Reste à Pascal : retrait ou non des
+éléments FAST sans lecteur (branche FAST de `.fast_class_labels`, `.classify_alert_count`,
+`.alert_count_palette`, clés `validation_class_fast_*` / `validation_class_unit_*`).
