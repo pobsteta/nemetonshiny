@@ -294,14 +294,68 @@ for (.src in names(.m21_guard_cases)) {
           session$setInputs(classes = c("3", "4"), control_classes = "0")
           session$flushReact()
           res$dist <- class_distribution_r()
+          # Surcouche carte : meme lecture que l'histogramme (_tot + decoupe).
+          plan_rv(data.frame(zone_id = 6L, source = src))
+          res$overlay <- alert_raster_r()
         }
       )
       expect_true(5L %in% seen$read)
       expect_false(6L %in% seen$read)
       expect_identical(unname(res$dist), c(0L, 1L, 0L, 0L, 0L))
+      expect_identical(
+        unname(nemetonshiny:::.validation_class_distribution(res$overlay)),
+        c(0L, 1L, 0L, 0L, 0L))
     })
   })
 }
+
+# ---- FORDEAD : anomaly_index suit la zone du masque -------------------------
+
+.m21_fordead_weight_run <- function(proj, available, seen) {
+  testthat::local_mocked_bindings(get_monitoring_zone_aoi = .m21_aoi,
+                                  .env = parent.frame())
+  testthat::local_mocked_bindings(
+    find_zones_by_project = .m21_zones(TRUE),
+    read_fordead_dieback_mask = .m21_reader(new.env(), available = available),
+    read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                  cache_dir = NULL, ...) {
+      seen$weight_zone <- c(seen$weight_zone, zone_id)
+      .m21_mask()
+    },
+    create_validation_sampling_plan = function(zone, alert_raster, ...,
+                                               weighting = "uniform",
+                                               weight_raster = NULL) {
+      p <- .m21_mock_plan(zone, alert_raster)
+      p$alert_weight <- 1
+      p
+    },
+    .package = "nemeton",
+    .env = parent.frame()
+  )
+  nemetonshiny:::generate_validation_plan(
+    "con", proj, source = "FORDEAD", zone_id = 6L, n_validation = 1L,
+    n_control = 0L, weighting = "continuous")
+}
+
+.m21_fordead_project <- function(zones, env = parent.frame()) {
+  p <- .m21_project(integer(0), env = env)
+  for (z in zones) {
+    d <- file.path(p$path, "cache", "layers", "fordead", sprintf("zone_%d", z))
+    dir.create(d, recursive = TRUE)
+    file.create(file.path(d, sprintf("dieback_mask_RUN%d.tif", z)))
+  }
+  p
+}
+
+test_that("FORDEAD anomaly_index follows the chain zone (fallback b)", {
+  skip_if_not_installed("sf"); skip_if_not_installed("terra")
+  seen <- new.env(); seen$weight_zone <- integer(0)
+  .m21_fordead_weight_run(.m21_fordead_project(c(5L, 6L)), c(5L, 6L), seen)
+  expect_identical(seen$weight_zone, 5L)           # masque _tot -> poids _tot
+  seen <- new.env(); seen$weight_zone <- integer(0)
+  .m21_fordead_weight_run(.m21_fordead_project(6L), 6L, seen)
+  expect_identical(seen$weight_zone, 6L)           # masque strate -> poids strate
+})
 
 # ---- Strate = _tot : aucun changement pour RECONFORT -----------------------
 

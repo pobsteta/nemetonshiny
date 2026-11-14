@@ -8,6 +8,7 @@
 - La chaîne de la mission 019 est généralisée aux deux moteurs catégoriels (`.read_categorical_mask_chain`, `.read_categorical_mask_stratum`) : même repli double (pas de zone `_tot` en base, ou pas de masque `_tot` sur disque : relecture sur la strate). `.fordead_tot_zone_id` devient `.monitoring_tot_zone_id`. FORDEAD est inchangé.
 - Génération : tirage borné par le polygone de la strate ; `source_run_id` et la pondération continue `score` suivent la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque `_tot` découpé à la strate. Strate = `_tot` : aucun changement.
 - Test commun FAST / FORDEAD / RECONFORT : pour une strate différente de `_tot`, le lecteur de masque de chaque source est appelé sur `_tot` et le raster est découpé à la strate.
+- Pondération continue FORDEAD (`anomaly_index`) alignée sur RECONFORT : lue sur la zone réellement lue par la chaîne (en repli sur la strate, poids et masque viennent de la même zone) ; la surcouche carte est couverte par le test commun.
 - Constaté, non corrigé : la surcouche carte RECONFORT affiche la classe saine (1) en jaune pâle, comme une alerte faible (palette 0:4 de FAST / FORDEAD).
 - Tests : `test-service_validation_sampling_reconfort_tot.R`.
 

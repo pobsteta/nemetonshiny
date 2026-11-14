@@ -480,13 +480,14 @@ generate_trend_sanitary_plan <- function(con, project,
 
 # Resolve the CONTINUOUS severity raster used to weight the validation draw
 # (`weighting = "continuous"`), the analogue of the FAST |slope| trend raster.
-# - FORDEAD : `anomaly_index` pixel layer, read on the `_tot` stratum (the core
-#   re-aligns it onto the categorical dieback mask grid).
+# Both engines read on `read_zone_id`, the zone the categorical mask was
+# actually read on (`_tot`, or the stratum on fallback b) ; when NULL, FORDEAD
+# resolves `_tot` itself and RECONFORT uses `zone_id`.
+# - FORDEAD : `anomaly_index` pixel layer (the core re-aligns it onto the
+#   categorical dieback mask grid).
 # - RECONFORT : the continuous `score` raster, resolved from the on-disk cache
-#   manifest of `read_zone_id` (the zone the categorical mask was actually read
-#   on, `_tot` or the stratum on fallback ; default = `zone_id`), cut to the
-#   stratum polygon by the core ; manifest (parity with the reloaded-project path of the RECONFORT map viewer
-#   - no in-memory run result required).
+#   manifest (parity with the reloaded-project path of the RECONFORT map viewer
+#   - no in-memory run result required), cut to the stratum polygon by the core.
 # Returns NULL when the severity layer is unavailable (older run predating the
 # layer) - the caller then degrades cleanly to uniform weighting.
 .resolve_weight_raster <- function(project, con, zone_id, source,
@@ -496,7 +497,11 @@ generate_trend_sanitary_plan <- function(con, project,
   if (identical(source, "FORDEAD")) {
     cd <- file.path(project$path, "cache", "layers", "fordead")
     if (!dir.exists(cd)) return(NULL)
-    id_tot <- .monitoring_tot_zone_id(con, project, zone_id)
+    id_tot <- if (is.null(read_zone_id)) {
+      .monitoring_tot_zone_id(con, project, zone_id)
+    } else {
+      read_zone_id
+    }
     return(tryCatch(
       nemeton::read_fordead_layer(con, zone_id = id_tot,
                                   layer = "anomaly_index", cache_dir = cd),
