@@ -1,7 +1,7 @@
 ---
-title: "Plan d'actions Nemeton"
-subtitle: "Fiche par UGF"
-lang: fr
+title: "@@TITLE@@"
+subtitle: "@@SUBTITLE@@"
+lang: "@@LANG@@"
 format:
   pdf:
     documentclass: article
@@ -28,12 +28,13 @@ format:
         \tcbuselibrary{skins,breakable}
         \pagestyle{fancy}
         \fancyhf{}
-        \fancyhead[L]{\small Plan d'actions Nemeton}
+        \fancyhead[L]{\small @@HEAD@@}
         \fancyhead[R]{\small \thepage}
         \renewcommand{\headrulewidth}{0.4pt}
 params:
   data_file: ""
   language: "fr"
+  mode: "plan"
 execute:
   echo: false
   warning: false
@@ -43,6 +44,7 @@ execute:
 ```{r setup}
 data <- readRDS(params$data_file)
 lang <- params$language
+fiche <- identical(params$mode, "fiche")
 
 f_eur <- function(x) {
   if (is.na(x)) return("--")
@@ -54,7 +56,13 @@ f_ha <- function(x) {
   formatC(round(x, 2), format = "f", digits = 2)
 }
 
-tr <- function(fr, en) if (identical(lang, "fr")) fr else en
+# Annee suivie de " - ", ou rien quand l'action n'a pas d'annee.
+year_prefix <- function(a) {
+  y <- a$annee_realisation
+  if (length(y) == 0L || is.na(y[1])) "" else paste0(y[1], " - ")
+}
+
+tr <- function(fr, en)if (identical(lang, "fr")) fr else en
 
 # Defini ici, avant la page de titre qui l'utilise.
 latex_escape <- function(x) {
@@ -84,6 +92,7 @@ latex_escape <- function(x) {
 {\Huge\bfseries `r latex_escape(data$project_name)`\par}
 \vspace{1cm}
 {\Large `r tr("Plan d'actions sylvicoles", "Silvicultural action plan")`\par}
+`r if (fiche) paste0("\\vspace{0.6cm}\n{\\LARGE\\bfseries ", latex_escape(data$ug_name), "\\par}\n") else ""`
 \vspace{2cm}
 \begin{tcolorbox}[colback=blue!5!white,colframe=blue!50!black,
                   width=0.7\linewidth,arc=2mm,boxrule=0.4pt]
@@ -91,7 +100,7 @@ latex_escape <- function(x) {
 \textbf{`r tr("Date d'edition", "Issued")`} & `r format(Sys.Date(), "%d/%m/%Y")` \\
 \textbf{`r tr("Horizon", "Horizon")`} & `r data$horizon` `r tr("ans", "years")` \\
 \textbf{`r tr("Actions", "Actions")`} & `r data$n_actions` \\
-\textbf{`r tr("UGF concernees", "UGFs covered")`} & `r data$n_ugfs` \\
+`r if (fiche) paste0("\\textbf{", tr("Surface", "Area"), "} & ", f_ha(data$ug_surface_ha), " ha \\\\") else paste0("\\textbf{", tr("UGF concernees", "UGFs covered"), "} & ", data$n_ugfs, " \\\\")`
 \end{tabular}
 \end{tcolorbox}
 \vfill
@@ -100,7 +109,7 @@ latex_escape <- function(x) {
 
 ```{r summary, results = "asis"}
 totals <- data$totals
-cat("# ", tr("Synthese globale", "Global summary"), "\n\n", sep = "")
+cat("# ", if (fiche) tr("Synthese de l'UGF", "UGF summary") else tr("Synthese globale", "Global summary"), "\n\n", sep = "")
 cat("\\begin{tcolorbox}[colback=gray!5!white,colframe=gray!60!black,",
     "title={", tr("Bilan financier sur l'horizon", "Financial outlook"), "},",
     "arc=2mm,boxrule=0.4pt]\n", sep = "")
@@ -224,12 +233,30 @@ for (ug in data$ugfs) {
         "title={", tr("Commentaires", "Comments"), "},",
         "arc=2mm,boxrule=0.3pt,breakable]\n", sep = "")
     for (a in comments) {
-      cat("\\textbf{", a$annee_realisation, " - ",
+      cat("\\textbf{", year_prefix(a),
           latex_escape(a$type), "} ",
           "\\textcolor{", statut_color(a$statut), "}{\\textit{(",
           latex_escape(a$statut), ")}}",
           " \\\\\n", sep = "")
       cat(latex_escape(a$commentaire), "\n\n\\medskip\n", sep = "")
+    }
+    cat("\\end{tcolorbox}\n\n")
+  }
+
+  # ---- Sources (only actions carrying an excerpt) ----
+  sources <- Filter(function(a) nzchar(trimws(a$source_extrait)), ug$actions)
+  if (length(sources) > 0L) {
+    cat("\\vspace{0.6em}\n")
+    cat("\\begin{tcolorbox}[colback=blue!3!white,colframe=blue!50!black,",
+        "title={", tr("Sources", "Sources"), "},",
+        "arc=2mm,boxrule=0.3pt,breakable]\n", sep = "")
+    for (a in sources) {
+      origin <- if (nzchar(a$source_label)) {
+        paste0(" \\textit{(", latex_escape(a$source_label), ")}")
+      } else ""
+      cat("\\textbf{", year_prefix(a),
+          latex_escape(a$type), "}", origin, " \\\\\n", sep = "")
+      cat(latex_escape(a$source_extrait), "\n\n\\medskip\n", sep = "")
     }
     cat("\\end{tcolorbox}\n\n")
   }

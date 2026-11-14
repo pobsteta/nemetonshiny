@@ -1,3 +1,17 @@
+# nemetonshiny 2026.10.18.9017 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Nouveautés : fiche PDF par UGF du Plan d'actions (mission 024, issue #20)
+
+- Nouveau bouton « Fiches PDF par UGF » dans l'onglet Plan d'actions. Une seule UGF sélectionnée : un PDF. Plusieurs sélectionnées : un ZIP des seules UGF sélectionnées. Aucune sélection : un ZIP de toutes les UGF ayant des actions visibles. Une UGF sélectionnée sans action visible est ignorée ; s'il n'en reste aucune, erreur explicite (jamais de ZIP vide).
+- Une UGF dont le rendu échoue est ignorée et listée dans `erreurs.txt` à l'intérieur du ZIP ; si toutes échouent, erreur. Plafond de 30 UGF par export. Noms de fichiers sans collision (`<projet>_fiche_<UGF>.pdf`, suffixe `ug_id` quand deux libellés s'aplatissent pareil).
+- Copie archivée dans `exports/` (`<projet>_fiche_<UGF>.pdf` ou `<projet>_fiches_ugf.zip`), sans jamais écraser `<projet>_action_plan.pdf`.
+- Gabarit PDF : paramètre `mode` (page de titre au nom et à la surface de l'UGF en mode fiche), nouvelle section « Sources » par action (seulement si l'extrait est renseigné ; origine `family_X` traduite avec les familles du cœur, autre code affiché tel quel), actions triées par année (PDF du projet compris), en-tête YAML traduit FR/EN.
+- Préparation en tâche de fond (modèle Marculus, décision de Pascal) : le bouton visible fige la cible au clic, lance le rendu dans un worker (`ExtendedTask`), se désactive pendant le travail et refuse un 2e lancement ; un lien masqué, cliqué par le serveur à la fin, ne fait que copier le fichier prêt (+ archive `exports/`). Progression « Fiche i sur N » : le worker l'écrit dans un petit fichier lu par un `reactivePoll` (500 ms). Helpers `.action_plan_sheet_job()`, `.action_plan_progress_write/read()`, `.action_plan_sheets_run()`.
+- Code : constructeur pur `.build_action_plan_pdf_data()` (testable sans Quarto), `generate_action_plan_ug_sheets()`, helper `.action_plan_sheet_targets()` appelé par `filename` et `content`. Clés i18n `action_plan_sheets_*`. Tests : `test-action_plan_sheets.R`.
+- Hors périmètre : totaux de quantité (volume, surface) de l'issue #20.
+
 # nemetonshiny 2026.10.18.9016 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).

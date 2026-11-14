@@ -193,6 +193,19 @@ mod_action_plan_ui <- function(id) {
                              auto_unbox = TRUE)
           )
         ),
+        # Fiches par UGF : bouton VISIBLE (tache de fond, rendu Quarto long),
+        # puis clic serveur sur le lien masque (meme modele que Marculus).
+        shiny::actionButton(
+          ns("prepare_sheets"),
+          label = i18n$t("action_plan_sheets_download"),
+          icon = shiny::icon("file-pdf"),
+          class = "btn-sm btn-outline-success w-100 mt-2"
+        ),
+        shiny::downloadButton(
+          ns("download_sheets"),
+          label = i18n$t("action_plan_sheets_download"),
+          class = "d-none"
+        ),
         # Persistance versionnee en base (multi-utilisateurs) : distincte des
         # exports locaux ci-dessus, miroir du bouton reGeneration.
         htmltools::tags$hr(class = "my-2"),
@@ -489,9 +502,12 @@ mod_action_plan_ui <- function(id) {
 #'
 #' @param rendered_file Path to the freshly rendered PDF handed to the browser.
 #' @param project The current project (list with `path` and `metadata$name`).
+#' @param file_name Archive file name. `NULL` (default) keeps
+#'   `<slug>_action_plan.pdf`; the UGF sheets export passes its own name so it
+#'   never overwrites the project plan.
 #' @return Invisibly `TRUE` when a copy was made, `FALSE` otherwise.
 #' @noRd
-.archive_action_plan_pdf <- function(rendered_file, project) {
+.archive_action_plan_pdf <- function(rendered_file, project, file_name = NULL) {
   project_path <- tryCatch(project$path, error = function(e) NULL)
   if (is.null(project_path) || !dir.exists(project_path)) return(invisible(FALSE))
   exports_dir <- file.path(project_path, "exports")
@@ -499,7 +515,11 @@ mod_action_plan_ui <- function(id) {
     dir.create(exports_dir, recursive = TRUE, showWarnings = FALSE)
   }
   export_name <- .project_export_slug(project, "nemeton")
-  export_file <- file.path(exports_dir, paste0(export_name, "_action_plan.pdf"))
+  export_file <- file.path(
+    exports_dir,
+    if (is.null(file_name)) paste0(export_name, "_action_plan.pdf") else
+      basename(file_name)
+  )
   tryCatch(
     {
       ok <- file.copy(rendered_file, export_file, overwrite = TRUE)
@@ -2511,6 +2531,152 @@ mod_action_plan_server <- function(id, app_state) {
         }
       }
     )
+
+    # Fiches PDF par UGF : 1 UGF -> PDF ; plusieurs -> ZIP des seules UGF
+    # selectionnees ; aucune selection -> ZIP de toutes les UGF ayant des
+    # actions visibles. Le rendu Quarto est long (de l'ordre de la minute par
+    # UGF) : il tourne en TACHE DE FOND (modele Marculus), puis le serveur clique
+    # le lien masque dont le `content` se borne a copier le fichier pret. La
+    # cible est figee au clic (`.action_plan_sheet_job`). Progression i/N : le
+    # worker l'ecrit dans un petit fichier, lu par un `reactivePoll`.
+    sheets_job <- shiny::reactiveVal(NULL)   # job fige + fichiers + etat
+    sheets_ready <- shiny::reactiveVal(NULL) # job dont le fichier est pret
+
+    sheets_task <- shiny::ExtendedTask$new(
+      function(job, out_file, progress_file, dev_path, app_opts) {
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory",
+                                          "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          utils::getFromNamespace(".action_plan_sheets_run", "nemetonshiny")(
+            job, out_file, progress_file)
+        }, seed = TRUE)
+      })
+
+    .sheets_set_busy <- function(busy) {
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = session$ns("prepare_sheets"), disabled = isTRUE(busy)))
+    }
+
+    shiny::observeEvent(input$prepare_sheets, {
+      i18n <- get_i18n(app_state$language)
+      if (identical(sheets_task$status(), "running")) {
+        shiny::showNotification(i18n$t("action_plan_sheets_busy"),
+                                type = "warning", duration = 8)
+        return()
+      }
+      plan <- plan_rv()
+      project <- app_state$current_project
+      sf_ug <- ug_sf_4326()
+      if (is.null(plan) || is.null(project) || is.null(sf_ug)) {
+        shiny::showNotification(i18n$t("action_plan_sheets_none"),
+                                type = "error", duration = 10)
+        return()
+      }
+      job <- .action_plan_sheet_job(
+        project, plan, sf_ug, selected_ug_rv(), actions_df(),
+        language = app_state$language %||% "fr")
+      if (!is.null(job$error)) {
+        msg <- if (identical(job$error, "action_plan_sheets_toomany")) {
+          sprintf(i18n$t(job$error), job$n, .ACTION_PLAN_SHEETS_MAX)
+        } else i18n$t(job$error)
+        shiny::showNotification(msg, type = "error", duration = 10)
+        return()
+      }
+      job$out_file <- tempfile("fiches_ugf_", fileext = paste0(".", job$ext))
+      job$progress_file <- tempfile("fiches_ugf_progress_", fileext = ".txt")
+      sheets_ready(NULL)
+      sheets_job(job)
+      .sheets_set_busy(TRUE)
+      shiny::showNotification(
+        i18n$t("action_plan_sheets_running"),
+        id = session$ns("sheets_notif"), type = "message", duration = NULL)
+      tryCatch(
+        sheets_task$invoke(job, job$out_file, job$progress_file,
+                           .dev_pkg_path, get_app_options()),
+        error = function(e) {
+          shiny::removeNotification(session$ns("sheets_notif"))
+          .sheets_set_busy(FALSE)
+          shiny::showNotification(
+            paste(i18n$t("action_plan_sheets_failed"), ":", conditionMessage(e)),
+            type = "error", duration = NULL)
+        })
+    })
+
+    # Progression i/N : lecture du fichier ecrit par le worker. Minuteur actif
+    # SEULEMENT pendant la tache (aucun reveil de session sinon).
+    sheets_progress <- shiny::reactive({
+      job <- sheets_job()
+      if (is.null(job) || !identical(sheets_task$status(), "running")) {
+        return(NULL)
+      }
+      shiny::invalidateLater(500, session)
+      .action_plan_progress_read(job$progress_file)
+    })
+    shiny::observeEvent(sheets_progress(), {
+      pr <- sheets_progress()
+      if (is.null(pr) || !identical(sheets_task$status(), "running")) return()
+      i18n <- get_i18n(app_state$language)
+      shiny::showNotification(
+        sprintf(i18n$t("action_plan_sheets_progress"), pr[1], pr[2]),
+        id = session$ns("sheets_notif"), type = "message", duration = NULL)
+    }, ignoreNULL = TRUE)
+
+    shiny::observeEvent(sheets_task$status(), {
+      st <- sheets_task$status()
+      if (!st %in% c("success", "error")) return()
+      i18n <- get_i18n(app_state$language)
+      shiny::removeNotification(session$ns("sheets_notif"))
+      .sheets_set_busy(FALSE)
+      job <- sheets_job()
+      if (!is.null(job$progress_file)) unlink(job$progress_file)
+      res <- tryCatch(sheets_task$result(), error = function(e) e)
+      if (inherits(res, "error") || is.null(res) ||
+          !file.exists(job$out_file %||% "")) {
+        err_msg <- if (inherits(res, "error")) conditionMessage(res) else ""
+        cli::cli_warn("Action plan sheets export failed: {err_msg}")
+        # Fichier partiel eventuel : jamais conserve.
+        if (!is.null(job$out_file)) unlink(job$out_file)
+        shiny::showNotification(
+          paste(i18n$t("action_plan_sheets_failed"), ":", err_msg),
+          type = "error", duration = NULL)
+        return()
+      }
+      if (length(res$failed) > 0L) {
+        shiny::showNotification(
+          sprintf(i18n$t("action_plan_sheets_partial"), length(res$failed)),
+          type = "warning", duration = NULL)
+      }
+      sheets_ready(job)
+      session$sendCustomMessage("nemetonClickElement",
+                                list(id = session$ns("download_sheets")))
+    }, ignoreInit = TRUE)
+
+    output$download_sheets <- shiny::downloadHandler(
+      filename = function() {
+        sheets_ready()$filename %||%
+          paste0(.project_export_slug(app_state$current_project, "nemeton"),
+                 "_fiches_ugf.zip")
+      },
+      content = function(file) {
+        job <- sheets_ready()
+        if (is.null(job) || !file.exists(job$out_file)) {
+          writeLines("No sheets ready", file)
+          return()
+        }
+        file.copy(job$out_file, file, overwrite = TRUE)
+        .archive_action_plan_pdf(file, app_state$current_project,
+                                 file_name = job$filename)
+        unlink(job$out_file)
+      }
+    )
+    # Lien masque : sans cela Shiny suspend sa sortie et le clic ne telecharge rien.
+    shiny::outputOptions(output, "download_sheets", suspendWhenHidden = FALSE)
 
     # --- Persistance versionnee en base (multi-utilisateurs) --------------
     # Miroir du bouton reGeneration : instantane JSONB versionne du plan dans
