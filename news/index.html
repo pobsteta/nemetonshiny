@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9015</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9016</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.10.18.9016" id="nemetonshiny-202610189016-2026-11-14">nemetonshiny 2026.10.18.9016 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189016-2026-11-14"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="changements-visibles--surcouche-du-plan-de-validation-classe-saine-transparente-et-couleurs-de-chaque-moteur-mission-2026-10-18-9016">Changements visibles : surcouche du Plan de validation, classe saine transparente et couleurs de chaque moteur (mission 023)<a class="anchor" aria-label="anchor" href="#changements-visibles--surcouche-du-plan-de-validation-classe-saine-transparente-et-couleurs-de-chaque-moteur-mission-2026-10-18-9016"></a></h3>
+<ul><li>Sur la carte du Plan de validation, la classe saine est transparente pour FAST, FORDEAD et RECONFORT (fond de carte visible sous la forêt saine). RECONFORT : sa classe saine (1) n’est plus peinte en jaune pâle, et 0 / sans donnée restent transparents.</li>
+<li>Les classes d’alerte ont la couleur de la carte de santé du même moteur : FAST prend sa palette (classe 4 « sévère » en rouge foncé, plus en quasi-noir « sol nu » de FORDEAD), RECONFORT prend orange / rouge, FORDEAD est inchangé.</li>
+<li>Nouvelle légende de la surcouche, limitée aux classes peintes (libellés existants de chaque moteur).</li>
+<li>Une seule source de vérité des couleurs par moteur : <code>.FAST_ALERT_CLASS_COLORS</code> et <code>.FORDEAD_SEVERITY_COLORS</code> (cartes de santé et surcouche), <code>.RECONFORT_CLASSIF_COLORS</code> existante. Helper <code>.validation_overlay_style()</code>.</li>
+<li>Inchangés : opacité de la surcouche, marqueurs, plan trend. Tests : <code>test-mod_validation_sampling_overlay.R</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.10.18.9015" id="nemetonshiny-202610189015-2026-11-14">nemetonshiny 2026.10.18.9015 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189015-2026-11-14"></a></h2>
 <blockquote>
