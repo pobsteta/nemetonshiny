@@ -109,3 +109,9 @@ skip.
 - Temps de la main : *appuyer*.
 
 ## Redite par l'agent : _à compléter_
+
+## Statut
+
+Terminée le 2026-11-14 : PR #270 fusionnée sur `main` (`fc36d0bd`, commits `e416200b` et
+`d8bc5d43`), cycle dev `2026.10.18.9012`, non publié. Relecture : prêt. Reste à Pascal : RECONFORT
+(même défaut, 4 lectures sur la strate) ; essai terrain zones 6 et 9.

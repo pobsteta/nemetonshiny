@@ -24,10 +24,7 @@ _(vide)_
 
 ## Validé
 
-- [019-plan-validation-fordead-strate](missions/019-plan-validation-fordead-strate.md) · depuis le cycle 2
-  - Homme : `dev` (sonnet), relecteur sur la fiche (faite) puis la PR
-  - Mission : Plan de validation FORDEAD lu sur `_tot`, découpé à la strate ; cycle dev 2026.10.18.9012
-  - Moyens : worktree depuis main, mocks cœur, helper `.read_fordead_mask_stratum`
+_(vide)_
 
 ## Planifié
 
@@ -50,6 +47,14 @@ _(vide)_
 
 ## Terminé
 
+- [020-retirer-code-fast-orphelin](missions/020-retirer-code-fast-orphelin.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #271 fusionnée (6a9326d4), cycle dev 2026.10.18.9013, non publié
+  - Moyens : —
+- [019-plan-validation-fordead-strate](missions/019-plan-validation-fordead-strate.md) · depuis le cycle 2
+  - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
+  - Mission : #270 fusionnée (fc36d0bd), cycle dev 2026.10.18.9012, non publié
+  - Moyens : —
 - [018-retirer-apercu-fast](missions/018-retirer-apercu-fast.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #268 fusionnée (99959307), cycle dev 2026.10.18.9011, non publié

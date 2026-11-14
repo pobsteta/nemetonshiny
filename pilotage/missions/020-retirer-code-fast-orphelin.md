@@ -79,3 +79,9 @@ l'écran » se prouve par le `grep` (aucun autre lecteur) plus l'identité des l
 - Temps de la main : *appuyer*.
 
 ## Redite par l'agent : _à compléter_
+
+## Statut
+
+Terminée le 2026-11-14 : PR #271 fusionnée sur `main` (`6a9326d4`, commit de mission `3aad4011`,
+fusion de main et renumérotation `208df40b` par l'orchestrateur), cycle dev `2026.10.18.9013`, non
+publié. Relecture : prêt.
