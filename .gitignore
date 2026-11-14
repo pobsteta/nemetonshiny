@@ -55,3 +55,4 @@ rsconnect/
 .s2.out
 .env
 tests/testthat/_problems/
+tests/testthat/testthat-problems.rds
