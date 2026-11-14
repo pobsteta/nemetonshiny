@@ -45,7 +45,7 @@
 #'   the FAST mask is computed and cached on (the `_tot` zone). `zone_id` (the
 #'   stratum) then only bounds the draw via the zone polygon. NULL = same as
 #'   `zone_id` (historical behaviour). Ignored for FORDEAD (its `_tot` zone is
-#'   resolved from the project, mission 019) and RECONFORT.
+#'   resolved from the project, mission 019) and RECONFORT (mission 021).
 #' @param seed Optional integer. Forwarded to the coeur planner.
 #' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
 #'   FAST mask parameters. Required (non-NULL) when `source == "FAST"`
@@ -107,13 +107,18 @@ generate_validation_plan <- function(con, project,
   # reste celui de la strate et borne le tirage (le coeur y restreint le raster).
   mask_zone_id <- .fast_run_zone(source, run_zone_id, zone_id)
 
-  # FORDEAD : le masque est calcule et mis en cache sur `_tot` (mission 019) ;
-  # repli sur la strate si `_tot` n'a pas de masque. Le coeur restreint deja le
-  # raster au polygone `zone` avant le tirage : aucune decoupe ici.
-  if (identical(source, "FORDEAD")) {
-    fd <- .read_fordead_mask_chain(con, project, zone_id)
+  # FORDEAD (mission 019) et RECONFORT (mission 021) : le masque est calcule et
+  # mis en cache sur `_tot` ; repli sur la strate si `_tot` n'a pas de masque.
+  # Le coeur restreint deja le raster au polygone `zone` avant le tirage :
+  # aucune decoupe ici. `read_zone_id` = zone reellement lue (provenance, poids).
+  read_zone_id <- NULL
+  if (source %in% c("FORDEAD", "RECONFORT")) {
+    fd <- .read_categorical_mask_chain(con, project, zone_id, source)
     alert_raster <- fd$raster
-    if (!is.null(fd$zone_id)) mask_zone_id <- fd$zone_id
+    if (!is.null(fd$zone_id)) {
+      mask_zone_id <- fd$zone_id
+      read_zone_id <- fd$zone_id
+    }
   } else {
     alert_raster <- .resolve_alert_raster(
       project, con, mask_zone_id, source,
@@ -137,7 +142,8 @@ generate_validation_plan <- function(con, project,
   weight_raster <- NULL
   if (identical(weighting, "continuous") &&
       source %in% c("FORDEAD", "RECONFORT")) {
-    weight_raster <- .resolve_weight_raster(project, con, zone_id, source)
+    weight_raster <- .resolve_weight_raster(project, con, zone_id, source,
+                                            read_zone_id = read_zone_id)
     if (is.null(weight_raster)) {
       cli::cli_alert_info(
         "No continuous severity layer for {source}; falling back to uniform weighting.")
@@ -182,9 +188,8 @@ generate_validation_plan <- function(con, project,
 
 
 # Zone sur laquelle le masque FAST est calcule/lu : `run_zone_id` (`_tot`) pour
-# FAST quand il est valide, sinon la zone demandee. FORDEAD ne passe plus par
-# ici (`.read_fordead_mask_chain()` resout `_tot` lui-meme) ; seul RECONFORT
-# garde sa resolution sur la strate.
+# FAST quand il est valide, sinon la zone demandee. FORDEAD et RECONFORT ne passent
+# plus par ici (`.read_categorical_mask_chain()` resout `_tot`).
 .fast_run_zone <- function(source, run_zone_id, zone_id) {
   if (!identical(source, "FAST")) return(zone_id)
   run <- suppressWarnings(as.integer(run_zone_id))
@@ -192,25 +197,32 @@ generate_validation_plan <- function(con, project,
 }
 
 
-# Lit le masque de deperissement FORDEAD sur `_tot` (la ou FORDEAD le calcule
-# et le met en cache), avec repli sur la strate : (a) aucune zone `_tot` en
-# base -> `.fordead_tot_zone_id()` rend deja la strate ; (b) `_tot` sans masque
-# sur disque (ancien run fait sur la strate) -> relecture sur la strate.
-# Rend list(raster, zone_id) ; `zone_id` = zone reellement lue (provenance),
-# NULL si rien n'a pu etre lu.
-.read_fordead_mask_chain <- function(con, project, zone_id) {
+# Lit le masque categoriel d'un moteur (FORDEAD 0-4, RECONFORT 1-3) sur `_tot`
+# (la ou il est calcule et mis en cache), avec repli sur la strate : (a) aucune
+# zone `_tot` en base -> `.monitoring_tot_zone_id()` rend deja la strate ; (b)
+# `_tot` sans masque sur disque (ancien run fait sur la strate) -> relecture sur
+# la strate. Rend list(raster, zone_id) ; `zone_id` = zone reellement lue
+# (provenance, poids continu), NULL si rien n'a pu etre lu.
+.read_categorical_mask_chain <- function(con, project, zone_id,
+                                         source = c("FORDEAD", "RECONFORT")) {
+  source <- match.arg(source)
   none <- list(raster = NULL, zone_id = NULL)
   if (is.null(project$path) || !nzchar(project$path)) return(none)
-  cd <- file.path(project$path, "cache", "layers", "fordead")
+  sub <- if (identical(source, "FORDEAD")) "fordead" else "reconfort"
+  cd <- file.path(project$path, "cache", "layers", sub)
   if (!dir.exists(cd)) return(none)
   strate <- suppressWarnings(as.integer(zone_id))
-  ids <- unique(c(.fordead_tot_zone_id(con, project, strate), strate))
+  ids <- unique(c(.monitoring_tot_zone_id(con, project, strate), strate))
   for (id in ids[!is.na(ids)]) {
     r <- tryCatch(
-      nemeton::read_fordead_dieback_mask(con, id, cache_dir = cd),
+      if (identical(source, "FORDEAD")) {
+        nemeton::read_fordead_dieback_mask(con, id, cache_dir = cd)
+      } else {
+        nemeton::read_reconfort_alert_mask(con, id, cache_dir = cd)
+      },
       error = function(e) {
         cli::cli_alert_warning(
-          "read_fordead_dieback_mask failed: {conditionMessage(e)}")
+          "{source} mask read failed: {conditionMessage(e)}")
         NULL
       }
     )
@@ -220,15 +232,24 @@ generate_validation_plan <- function(con, project,
 }
 
 
-# Masque FORDEAD 0-4 lu sur `_tot` puis decoupe a la strate choisie
+# Masque categoriel lu sur `_tot` puis decoupe a la strate choisie
 # (presentation pure, parite FAST). Sert l'histogramme, l'auto-relachement des
-# temoins et la surcouche du Plan de validation FORDEAD. Repli double : voir
-# `.read_fordead_mask_chain()` ; si la zone lue est la strate, pas de decoupe.
-.read_fordead_mask_stratum <- function(con, project, zone_id) {
-  fd <- .read_fordead_mask_chain(con, project, zone_id)
+# temoins et la surcouche des Plans de validation FORDEAD / RECONFORT. Repli
+# double : voir `.read_categorical_mask_chain()` ; si la zone lue est la strate,
+# pas de decoupe.
+.read_categorical_mask_stratum <- function(con, project, zone_id, source) {
+  fd <- .read_categorical_mask_chain(con, project, zone_id, source)
   if (is.null(fd$raster)) return(NULL)
   .clip_fast_to_stratum(fd$raster,
                         .fast_stratum_aoi(con, zone_id, fd$zone_id))
+}
+
+.read_fordead_mask_stratum <- function(con, project, zone_id) {
+  .read_categorical_mask_stratum(con, project, zone_id, "FORDEAD")
+}
+
+.read_reconfort_mask_stratum <- function(con, project, zone_id) {
+  .read_categorical_mask_stratum(con, project, zone_id, "RECONFORT")
 }
 
 
@@ -359,9 +380,8 @@ generate_trend_sanitary_plan <- function(con, project,
 
 
 # Resolve the SpatRaster used to feed create_validation_sampling_plan().
-# - FORDEAD : not handled here, see `.read_fordead_mask_chain()` (read on `_tot`).
-# - RECONFORT : categorical mask read from <project>/cache/layers/reconfort
-#             (on the stratum zone_id).
+# - FORDEAD, RECONFORT : not handled here, see `.read_categorical_mask_chain()`
+#             (read on `_tot`, fallback on the stratum).
 # - FAST    : try the FAST alert mask cache first (cache/layers/fast).
 #             If absent and the FAST compute parameters are complete,
 #             call compute_fast_alert_mask() then re-read. Returns NULL
@@ -378,24 +398,6 @@ generate_trend_sanitary_plan <- function(con, project,
                                   # NULL -> fallback "NDVI" (defaut coeur).
                                   index          = NULL) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
-  # RECONFORT path (spec 021 G4). Mirror of FORDEAD : the categorical
-  # 1-sain / 2-deperissant / 3-tres-deperissant mask is read from the
-  # RECONFORT cache. Unlike FAST there is NO on-the-fly compute - the
-  # mask must have been persisted by a RECONFORT run. Absent -> NULL,
-  # surfaced as `validation_no_mask` (same UX as FORDEAD without a run).
-  if (identical(source, "RECONFORT")) {
-    cd <- file.path(project$path, "cache", "layers", "reconfort")
-    if (!dir.exists(cd)) return(NULL)
-    return(tryCatch(
-      nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd),
-      error = function(e) {
-        cli::cli_alert_warning(
-          "read_reconfort_alert_mask failed: {e$message}"
-        )
-        NULL
-      }
-    ))
-  }
   # FAST path. v0.69.0 - repertoire renomme `fast/` -> `fast_sampling/`
   # pour clarifier le scope (validation d'echantillonnage), a
   # distinguer du cache `fast_alert/` et `fast_alert_mask/` du
@@ -461,12 +463,12 @@ generate_trend_sanitary_plan <- function(con, project,
 }
 
 
-# Resolve the FORDEAD `_tot` zone id (union of UGF strata, spec 020) : the
-# continuous `anomaly_index` pixel layer lives under
-# `cache/layers/fordead/zone_<id_tot>/`, like the FORDEAD map viewer. Falls back
+# Resolve the `_tot` zone id (union of UGF strata, spec 020) : FORDEAD and
+# RECONFORT compute and cache their layers under
+# `cache/layers/<moteur>/zone_<id_tot>/`, like their map viewers. Falls back
 # to the passed zone_id (back-compat pre-spec-020). Mirror of the module-local
 # `.fordead_tot_id` in `mod_monitoring_fordead_map.R`.
-.fordead_tot_zone_id <- function(con, project, fallback_zone) {
+.monitoring_tot_zone_id <- function(con, project, fallback_zone) {
   id_tot <- tryCatch({
     zdf <- nemeton::find_zones_by_project(con, project_uuid = project$id)
     idx <- grep("_tot$", as.character(zdf$name))
@@ -478,20 +480,28 @@ generate_trend_sanitary_plan <- function(con, project,
 
 # Resolve the CONTINUOUS severity raster used to weight the validation draw
 # (`weighting = "continuous"`), the analogue of the FAST |slope| trend raster.
-# - FORDEAD : `anomaly_index` pixel layer, read on the `_tot` stratum (the core
-#   re-aligns it onto the categorical dieback mask grid).
+# Both engines read on `read_zone_id`, the zone the categorical mask was
+# actually read on (`_tot`, or the stratum on fallback b) ; when NULL, FORDEAD
+# resolves `_tot` itself and RECONFORT uses `zone_id`.
+# - FORDEAD : `anomaly_index` pixel layer (the core re-aligns it onto the
+#   categorical dieback mask grid).
 # - RECONFORT : the continuous `score` raster, resolved from the on-disk cache
 #   manifest (parity with the reloaded-project path of the RECONFORT map viewer
-#   - no in-memory run result required).
+#   - no in-memory run result required), cut to the stratum polygon by the core.
 # Returns NULL when the severity layer is unavailable (older run predating the
 # layer) - the caller then degrades cleanly to uniform weighting.
-.resolve_weight_raster <- function(project, con, zone_id, source) {
+.resolve_weight_raster <- function(project, con, zone_id, source,
+                                    read_zone_id = NULL) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
 
   if (identical(source, "FORDEAD")) {
     cd <- file.path(project$path, "cache", "layers", "fordead")
     if (!dir.exists(cd)) return(NULL)
-    id_tot <- .fordead_tot_zone_id(con, project, zone_id)
+    id_tot <- if (is.null(read_zone_id)) {
+      .monitoring_tot_zone_id(con, project, zone_id)
+    } else {
+      read_zone_id
+    }
     return(tryCatch(
       nemeton::read_fordead_layer(con, zone_id = id_tot,
                                   layer = "anomaly_index", cache_dir = cd),
@@ -505,8 +515,9 @@ generate_trend_sanitary_plan <- function(con, project,
   if (identical(source, "RECONFORT")) {
     cd <- file.path(project$path, "cache", "layers", "reconfort")
     if (!dir.exists(cd)) return(NULL)
+    manifest_zone <- if (is.null(read_zone_id)) zone_id else read_zone_id
     man <- tryCatch(
-      nemeton::reconfort_cache_manifest(cd, zone_id = as.integer(zone_id),
+      nemeton::reconfort_cache_manifest(cd, zone_id = as.integer(manifest_zone),
                                         include_range = TRUE),
       error = function(e) {
         cli::cli_alert_warning("reconfort_cache_manifest failed: {e$message}")

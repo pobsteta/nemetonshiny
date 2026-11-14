@@ -20,6 +20,17 @@
 # empty state. The wiring is in place so the panel activates automatically
 # the day the coeur writer ships.
 
+#' Couleurs des classes de severite FORDEAD (codes 0-4), source unique : carte
+#' FORDEAD et surcouche du Plan de validation. 0 = sain (jamais peint), 4 = sol nu.
+#' @noRd
+.FORDEAD_SEVERITY_COLORS <- c(
+  "0" = "#2CA02C",
+  "1" = "#FFD27F",
+  "2" = "#FF9933",
+  "3" = "#D62728",
+  "4" = "#222222"
+)
+
 # Max class value of a categorical FORDEAD dieback mask, NA-safe.
 # Returns NA_real_ when the raster is NULL / not a SpatRaster / empty /
 # all-NA. Used (Phase A, decision D2) to decide healthy-vs-affected
@@ -108,7 +119,7 @@
                     title = i18n$t("monitoring_fordead_layer_confidence"))))
   }
   # severity (defaut) - classe 0 transparente.
-  cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+  cols <- unname(.FORDEAD_SEVERITY_COLORS)
   list(
     r_show = terra::ifel(is.na(r) | r <= 0, NA, r),
     pal    = leaflet::colorFactor(cols, levels = 0:4, na.color = "transparent"),
@@ -233,7 +244,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     # when cache/layers/fordead/ did not exist yet -> NULL) and stayed
     # frozen, so the sub-tab kept showing the empty-state even after
     # the mask had been written to disk.
-    mask_r <- shiny::reactive({
+    mask_pair_r <- shiny::reactive({
       refresh_r()  # re-read after each FORDEAD run completion
       zone <- zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
@@ -279,6 +290,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         }
       )
       if (is.null(r)) return(NULL)
+      # Mission 022 - le masque `_tot` NON decoupe est conserve (lecture unique)
+      # pour compter ses alertes quand la strate affichee n'en a aucune.
+      r_tot <- r
+      is_strate <- FALSE
 
       # Masquage par strate : si la strate selectionnee n'est PAS `_tot`,
       # clipper le raster `_tot` a l'AOI de la strate (les pixels hors
@@ -292,6 +307,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         aoi <- .perf_time("fordead mask: get_zone_aoi",
                           get_monitoring_zone_aoi(con, sel))
         if (!is.null(aoi)) {
+          is_strate <- TRUE
           r <- tryCatch(
             .perf_time("fordead mask: terra::mask (clip strate)",
               terra::mask(r, terra::vect(
@@ -304,7 +320,14 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           )
         }
       }
-      r
+      list(tot = r_tot, strate = r, is_strate = is_strate)
+    })
+    # Vue DECOUPEE a la strate (affichage) et masque `_tot` complet (compte du
+    # rappel " aucune alerte dans cette strate "). Une seule lecture disque.
+    mask_r     <- shiny::reactive(mask_pair_r()$strate)
+    mask_tot_r <- shiny::reactive({
+      p <- mask_pair_r()
+      if (isTRUE(p$is_strate)) p$tot else NULL
     })
 
     # Couche " date de 1re anomalie " (jours depuis 1970) lue UNE fois par
@@ -417,6 +440,23 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (identical(lyr, "severity")) {
         mx <- .fordead_raster_max(r)
         if (!is.finite(mx) || mx < 1) {
+          # Mission 022 - strate (!= `_tot`) sans alerte alors que `_tot` en
+          # compte : carte informative, pas " zone saine ".
+          etat <- .etat_strate_sante(r, mask_tot_r(), "fordead")
+          if (identical(etat$etat, "strate_vide_tot_alerte")) {
+            return(.fordead_overlay(
+              bslib::card(
+                class = "border-info",
+                bslib::card_header(htmltools::div(
+                  class = "d-flex align-items-center",
+                  bsicons::bs_icon("info-circle-fill",
+                                   class = "me-2 text-info fs-4"),
+                  htmltools::tags$strong(
+                    i18n$t("sante_strate_sans_alerte_titre")))),
+                bslib::card_body(htmltools::tags$p(
+                  .sante_rappel_tot(i18n, etat))))
+            ))
+          }
           # Etat (b) - tout classe 0 / NA -> carte " zone saine ".
           return(.fordead_overlay(
             bslib::card(

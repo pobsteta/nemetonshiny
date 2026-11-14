@@ -1,3 +1,40 @@
+# nemetonshiny 2026.10.18.9016 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Changements visibles : surcouche du Plan de validation, classe saine transparente et couleurs de chaque moteur (mission 023)
+
+- Sur la carte du Plan de validation, la classe saine est transparente pour FAST, FORDEAD et RECONFORT (fond de carte visible sous la forêt saine). RECONFORT : sa classe saine (1) n'est plus peinte en jaune pâle, et 0 / sans donnée restent transparents.
+- Les classes d'alerte ont la couleur de la carte de santé du même moteur : FAST prend sa palette (classe 4 « sévère » en rouge foncé, plus en quasi-noir « sol nu » de FORDEAD), RECONFORT prend orange / rouge, FORDEAD est inchangé.
+- Nouvelle légende de la surcouche, limitée aux classes peintes (libellés existants de chaque moteur).
+- Une seule source de vérité des couleurs par moteur : `.FAST_ALERT_CLASS_COLORS` et `.FORDEAD_SEVERITY_COLORS` (cartes de santé et surcouche), `.RECONFORT_CLASSIF_COLORS` existante. Helper `.validation_overlay_style()`.
+- Inchangés : opacité de la surcouche, marqueurs, plan trend. Tests : `test-mod_validation_sampling_overlay.R`.
+
+# nemetonshiny 2026.10.18.9015 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Changements visibles : « Aucune alerte dans cette strate » au lieu de « zone saine » (mission 022)
+
+- Sur une strate (`_res`, `_feu`, `_mix`) sans aucune alerte alors que la zone entière (`_tot`) en compte, les Alertes FAST, la Carte FORDEAD (couche sévérité) et la Carte RECONFORT (couche classification) affichent « Aucune alerte dans cette strate » avec le rappel « La zone entière (_tot) compte N pixels en alerte (≈ H ha) », en bleu informatif (bandeau `alert-info`, carte `border-info`), au lieu d'un « zone saine » vert qui laissait croire que toute la forêt était saine.
+- Inchangé : strate = `_tot`, projet sans `_tot`, strate sans aucune donnée (hors emprise), `_tot` sans alerte non plus (vert actuel pour FAST et FORDEAD, rien pour RECONFORT), couches score et probabilité de RECONFORT. Le sol nu FORDEAD (classe 4) compte comme alerte, comme avant.
+- Nouveau `R/utils_sante_strate.R` (comptage de pixels déjà classés par le cœur, aucune règle métier). RECONFORT relit la seule couche `classification` de `_tot` (bornée à l'AOI de `_tot`), une fois par run ; FORDEAD conserve le masque `_tot` complet de sa lecture.
+- Clés i18n : `sante_strate_sans_alerte_titre`, `sante_strate_rappel_tot`. Tests : `test-utils_sante_strate.R`.
+
+# nemetonshiny 2026.10.18.9014 (2026-11-14)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
+
+## Correctifs : Plan de validation RECONFORT lu sur `_tot`, découpé à la strate (mission 021)
+
+- Sur une strate (`_res`, `_feu`, `_mix`), le Plan de validation RECONFORT cherchait sa classification 1/2/3 et son `score` dans `zone_<id de la strate>`, alors que RECONFORT calcule et met en cache sur `_tot`. Ils sont maintenant lus sur `_tot`, comme la carte RECONFORT et comme FAST (mission 017) et FORDEAD (mission 019).
+- La chaîne de la mission 019 est généralisée aux deux moteurs catégoriels (`.read_categorical_mask_chain`, `.read_categorical_mask_stratum`) : même repli double (pas de zone `_tot` en base, ou pas de masque `_tot` sur disque : relecture sur la strate). `.fordead_tot_zone_id` devient `.monitoring_tot_zone_id`. FORDEAD est inchangé.
+- Génération : tirage borné par le polygone de la strate ; `source_run_id` et la pondération continue `score` suivent la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque `_tot` découpé à la strate. Strate = `_tot` : aucun changement.
+- Test commun FAST / FORDEAD / RECONFORT : pour une strate différente de `_tot`, le lecteur de masque de chaque source est appelé sur `_tot` et le raster est découpé à la strate.
+- Pondération continue FORDEAD (`anomaly_index`) alignée sur RECONFORT : lue sur la zone réellement lue par la chaîne (en repli sur la strate, poids et masque viennent de la même zone) ; la surcouche carte est couverte par le test commun.
+- Constaté, non corrigé : la surcouche carte RECONFORT affiche la classe saine (1) en jaune pâle, comme une alerte faible (palette 0:4 de FAST / FORDEAD).
+- Tests : `test-service_validation_sampling_reconfort_tot.R`.
+
 # nemetonshiny 2026.10.18.9013 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).

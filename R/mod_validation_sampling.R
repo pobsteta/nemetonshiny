@@ -215,9 +215,10 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id.
 #' @param run_zone_id_r Reactive returning the zone the FAST mask is computed
-#'   and cached on (the `_tot` zone, parity FORDEAD / RECONFORT). `zone_id_r`
-#'   (the stratum) only bounds the draw and the display. FAST only; defaults to
-#'   `zone_id_r` for back-compat.
+#'   and cached on (the `_tot` zone). `zone_id_r` (the stratum) only bounds the
+#'   draw and the display. FAST only: FORDEAD and RECONFORT resolve `_tot`
+#'   themselves from the project (missions 019 and 021). Defaults to `zone_id_r`
+#'   for back-compat.
 #' @param mode_r Reactive returning the parent sidebar mode
 #'   (`"quick"` / `"health"`). When `source_fixed` is NULL, drives
 #'   the default of the inner `source` radio. Unused when the source
@@ -328,14 +329,9 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zid, run_zone_id_r(), cd))
       }
-      # FORDEAD : masque lu sur `_tot` puis decoupe a la strate (mission 019).
-      if (identical(src, "FORDEAD")) {
-        return(.read_fordead_mask_stratum(con, proj, zid))
-      }
-      tryCatch(
-        nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd),
-        error = function(e) NULL
-      )
+      # FORDEAD (mission 019) / RECONFORT (mission 021) : masque lu sur `_tot`
+      # puis decoupe a la strate.
+      .read_categorical_mask_stratum(con, proj, zid, src)
     })
 
     class_distribution_r <- shiny::reactive({
@@ -597,13 +593,7 @@ mod_validation_sampling_server <- function(id, app_state,
       if (!src %in% c("FORDEAD", "RECONFORT")) {
         return(.read_fast_mask_stratum(con, zone_id, run_zone_id_r(), cd))
       }
-      if (identical(src, "FORDEAD")) {
-        return(.read_fordead_mask_stratum(con, proj, zone_id))
-      }
-      tryCatch(
-        nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd),
-        error = function(e) NULL
-      )
+      .read_categorical_mask_stratum(con, proj, zone_id, src)
     })
 
     # Panel : empty state, error state, generating state, or the map.
@@ -736,14 +726,20 @@ mod_validation_sampling_server <- function(id, app_state,
         r <- alert_raster_r()
         if (!is.null(r) && inherits(r, "SpatRaster") &&
             terra::ncell(r) > 0L) {
-          r_show <- terra::ifel(r == 0, NA, r)
-          cats <- 0:4
-          cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
-          pal <- leaflet::colorFactor(cols, levels = cats,
-                                      na.color = "transparent")
+          ov <- .validation_overlay_style(
+            r, as.character(plan_ll$source[1] %||% current_source()),
+            i18n, index = if ("index" %in% names(plan_ll))
+              as.character(plan_ll$index[1]) else NULL)
+          r_show <- ov$r_show
+          pal    <- ov$pal
           m <- m |>
             leaflet::addRasterImage(r_show, colors = pal, opacity = 0.55,
-                                    method = "ngb")
+                                    method = "ngb") |>
+            leaflet::addLegend(
+              position = "bottomright", colors = ov$legend$colors,
+              labels = ov$legend$labels, title = ov$legend$title,
+              opacity = 0.95
+            )
         }
       }
 
@@ -948,4 +944,48 @@ mod_validation_sampling_server <- function(id, app_state,
 #' @noRd
 .validation_classe_saine <- function(source) {
   if (identical(source, "RECONFORT")) "1" else "0"
+}
+
+#' Style of the categorical alert overlay of the validation map
+#'
+#' Healthy class transparent (`NA` when `is.na(r) | r <= healthy`), colours of
+#' the engine's own health map (single source of truth per engine) and a
+#' legend of the painted (alert) classes only.
+#'
+#' @param r Categorical `SpatRaster` (alert mask).
+#' @param source `"FAST"`, `"FORDEAD"` or `"RECONFORT"` (other: FORDEAD).
+#' @param i18n i18n object.
+#' @param index Optional FAST index name for the legend title.
+#' @return list(`r_show`, `pal`, `legend` = list(colors, labels, title)).
+#' @noRd
+.validation_overlay_style <- function(r, source, i18n, index = NULL) {
+  source <- if (source %in% c("FAST", "RECONFORT")) source else "FORDEAD"
+  saine  <- as.integer(.validation_classe_saine(source))
+  r_show <- terra::ifel(is.na(r) | r <= saine, NA, r)
+  if (identical(source, "FAST")) {
+    cols <- .FAST_ALERT_CLASS_COLORS
+    keep <- c("1", "2", "3", "4")
+    labels <- vapply(keep, function(k) i18n$t(paste0("fast_alert_class_", k)),
+                     character(1))
+    title <- if (!is.null(index) && !is.na(index) && nzchar(index))
+      sprintf(i18n$t("fast_alert_legend_title"), index) else NULL
+  } else if (identical(source, "RECONFORT")) {
+    cols <- .RECONFORT_CLASSIF_COLORS
+    keep <- c("2", "3")
+    labels <- vapply(keep, function(k) i18n$t(paste0("reconfort_class_label_", k)),
+                     character(1))
+    title <- i18n$t("reconfort_couche_classes")
+  } else {
+    cols <- .FORDEAD_SEVERITY_COLORS
+    keep <- c("1", "2", "3", "4")
+    labels <- vapply(keep, function(k) {
+      sprintf("%s - %s", k, i18n$t(paste0("monitoring_fordead_class_", k)))
+    }, character(1))
+    title <- i18n$t("monitoring_fordead_class_title")
+  }
+  pal <- leaflet::colorFactor(unname(cols), levels = as.integer(names(cols)),
+                              na.color = "transparent")
+  list(r_show = r_show, pal = pal,
+       legend = list(colors = unname(cols[keep]), labels = unname(labels),
+                     title = title))
 }
