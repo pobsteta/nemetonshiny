@@ -5,10 +5,11 @@
 ## Nouveautés
 
 - **T4, vitalité dynamique** (spec 068, `nemeton` >= 2026.11.28, mission 029) : l'accroissement de la hauteur dominante observé sur la série FORMS-T est comparé à celui attendu de placettes IFN comparables. T4 est calculé après T3 et reste `NA` sans série FORMS-T ; il ne pèse alors sur aucun indice.
-  - L'app fournit au cœur l'**essence dominante en code IFN `ESPAR`** (libellé BD Forêt passé par `resoudre_espar()`) et la **SER** des UGF (`ensure_ugf_ser()`, aussi hors mode IFN, cache `data/ugf_ser.rds`). Une essence sans correspondance reste `NA` (statut `skipped_no_essence`), jamais un code deviné : c'est le cas du libellé « Sapin, épicéa », qui nomme deux espèces (61 et 62).
+  - L'app fournit au cœur l'**essence dominante en code IFN `ESPAR`** (libellé BD Forêt passé par `resoudre_espar()`) et la **SER** des UGF (`ensure_ugf_ser()`, aussi hors mode IFN, cache `data/ugf_ser.rds`). Une essence sans correspondance reste `NA` (statut `skipped_no_essence`), jamais un code deviné, hormis la convention ci-dessous.
   - Les coupes sont lues dans la colonne T3 brute, déjà calculée ; la série FORMS-T chargée pour T2 sert aussi à T4 (un seul chargement).
   - Les six statuts `skipped_*` sont traduits (FR/EN) sous la carte grise de la vue famille T.
   - La vue famille T affiche, sous la carte T4, l'accroissement observé et attendu (m / 5 ans), la hauteur dominante, le nombre de placettes analogues, et la mention fixe « Référence construite en Bourgogne-Franche-Comté, climat 2019-2023 ». Ces colonnes (`.t4_*`) traversent la persistance des résultats.
+- Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (`.T4_ESPAR_SAPIN_EPICEA`). Cela remplace la mention précédente : ce libellé n'est plus laissé sans essence.
 - Plancher `Imports: nemeton (>= 2026.11.28)`.
 - Hors périmètre : NDP 3 (`accroissement_hdom_finn()`).
 

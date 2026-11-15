@@ -25,11 +25,16 @@ test_that("T4 reçoit l'essence dominante en code IFN ESPAR", {
 })
 
 test_that("une essence sans correspondance donne NA, jamais un code deviné", {
+  u <- nemetonshiny:::.t4_ajouter_essence(.t4_unites(c("Feuillus", "Pin noir")))
+  expect_true(all(is.na(u$essence)))
+})
+
+test_that("« Sapin, épicéa » et variantes sont codés ESPAR 61 (convention)", {
   u <- nemetonshiny:::.units_for_indicator(
-    "indicateur_t4_vitalite", .t4_unites(), results = data.frame(),
-    cfg = NULL)
-  # « Sapin, épicéa » nomme deux espèces (61 et 62) : T4 dira skipped_no_essence.
-  expect_true(is.na(u$essence[3]))
+    "indicateur_t4_vitalite",
+    .t4_unites(c("Sapin, épicéa", "Épicéa, sapin", "sapin et epicea", "Hêtre")),
+    results = data.frame(), cfg = NULL)
+  expect_equal(u$essence, c("61", "61", "61", "09"))
 })
 
 test_that("sans colonne species, essence vaut NA partout (skipped_no_essence)", {
@@ -44,7 +49,7 @@ test_that("une résolution en échec donne NA et ne casse pas le calcul", {
   testthat::local_mocked_bindings(
     resoudre_espar = function(x) stop("referentiel indisponible"),
     .package = "nemeton")
-  u <- nemetonshiny:::.t4_ajouter_essence(.t4_unites())
+  u <- nemetonshiny:::.t4_ajouter_essence(.t4_unites(c("Chêne sessile", "Hêtre")))
   expect_true(all(is.na(u$essence)))
 })
 

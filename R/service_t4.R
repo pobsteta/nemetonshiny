@@ -26,6 +26,11 @@ NULL
 #'
 #' An `essence` column already present on the units (user input) is kept.
 #'
+#' Convention (Pascal, 2026-11-15, revisable): a BD Foret label mixing fir and
+#' spruce ("Sapin, epicea" and variants) that the core leaves unresolved is
+#' coded ESPAR 61 (silver fir), the majority species of these mixtures in the
+#' Vosges. The core puts the T4 median at 57 (61) or 56 (62) at Dabo.
+#'
 #' @param parcels sf / data.frame. Compute units, with a `species` label column
 #'   when BD Foret enrichment succeeded.
 #'
@@ -41,7 +46,20 @@ NULL
     espar <- tryCatch(as.character(nemeton::resoudre_espar(sp)),
                       error = function(e) NULL)
     if (length(espar) == n) essence <- espar
+    essence <- .t4_essence_melange(sp, essence)
   }
   parcels$essence <- essence
   parcels
+}
+
+
+# Libelles melant sapin et epicea, non resolus par le coeur -> ESPAR 61.
+.T4_ESPAR_SAPIN_EPICEA <- "61"
+
+.t4_essence_melange <- function(sp, essence) {
+  bas <- tolower(iconv(sp, to = "ASCII//TRANSLIT"))
+  melange <- !is.na(bas) & grepl("sapin", bas, fixed = TRUE) &
+    grepl("picea", bas, fixed = TRUE)
+  essence[is.na(essence) & melange] <- .T4_ESPAR_SAPIN_EPICEA
+  essence
 }
