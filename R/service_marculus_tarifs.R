@@ -135,15 +135,53 @@ marculus_tarifs_preparer <- function(travail,
   res
 }
 
-#' IFN vintage of the reference table ("IFN 2011-2025")
+#' IFN vintage of the reference table ("2011-2025")
+#'
+#' Bare form, the one of the `millesime` column of the tables and the one
+#' Marculus writes: no "IFN" prefix.
 #' @noRd
 .marculus_tarifs_millesime <- function() {
   m <- tryCatch(nemeton::ifn_tarif_schaeffer_ser(code = "FR")$millesime,
                 error = function(e) character(0))
   m <- unique(m[!is.na(m) & nzchar(m)])
   if (!length(m)) return(NULL)
-  m <- m[1]
-  if (grepl("^IFN", m)) m else paste("IFN", m)
+  .marculus_tarifs_millesime_nu(m[1])
+}
+
+#' Vintage without the "IFN" prefix (old caches carry "IFN 2011-2025")
+#' @noRd
+.marculus_tarifs_millesime_nu <- function(x) {
+  sub("^IFN\\s*", "", trimws(as.character(x)))
+}
+
+#' Proposals Marculus can use: forest level, number above zero
+#'
+#' The cache keeps every level; the phone recomputes SER, GRECO and national
+#' by itself, so only the `foret` entries are worth shipping (brief Marculus
+#' 2026-10-23). A number at or below zero (formula without lower bound on a
+#' small volume) is not a tariff and is dropped too (brief 2026-11-10).
+#' `conseille` survives only when it points at a kept type; a species with no
+#' kept type disappears.
+#'
+#' @param essences Named list of proposals, as in the cache.
+#' @return The filtered named list (possibly empty).
+#' @noRd
+.marculus_tarifs_foret <- function(essences) {
+  out <- stats::setNames(list(), character(0))
+  for (nom in names(essences %||% list())) {
+    p <- essences[[nom]]
+    types <- setdiff(names(p), "conseille")
+    garde <- Filter(function(t) {
+      e <- p[[t]]
+      identical(e$niveau, "foret") && length(e$numero) == 1L &&
+        is.numeric(e$numero) && !is.na(e$numero) && e$numero > 0
+    }, types)
+    if (!length(garde)) next
+    q <- p[garde]
+    if (!is.null(p$conseille) && p$conseille %in% garde) q$conseille <- p$conseille
+    out[[nom]] <- q
+  }
+  out
 }
 
 #' Proposal of one species, in the `.marsync` shape
@@ -197,19 +235,13 @@ marculus_tarifs_pour_export <- function(project, essences) {
   list(tarifs = cache, statut = "ok")
 }
 
-#' Count of species with a proposal, per level (end-of-export message)
+#' Count of species with a proposal shipped (end-of-export message)
 #'
-#' The level of a species is the one of its advised type (or of its first
-#' type): every type of a species comes from the same level.
-#' @return `list(n, foret, ser, repli)`.
+#' Only the proposals of [.marculus_tarifs_foret()] are shipped, so only those
+#' are counted.
+#' @return `list(n)`: species proposed at forest level.
 #' @noRd
 .marculus_tarifs_comptes <- function(tarifs, essences) {
-  props <- tarifs$essences[intersect(names(tarifs$essences %||% list()), essences)]
-  niv <- vapply(props, function(p) {
-    t <- p[[p$conseille %||% ""]] %||% p[[setdiff(names(p), "conseille")[1]]]
-    t$niveau %||% NA_character_
-  }, character(1))
-  list(n = length(props), foret = sum(niv == "foret", na.rm = TRUE),
-       ser = sum(niv == "ser", na.rm = TRUE),
-       repli = sum(niv %in% c("greco", "national")))
+  props <- .marculus_tarifs_foret(tarifs$essences)
+  list(n = length(intersect(names(props), essences)))
 }

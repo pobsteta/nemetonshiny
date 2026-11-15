@@ -130,51 +130,90 @@ test_that("sans tarifs, le contexte est identique a celui d'avant", {
   expect_false(any(c("ser", "millesimeTarifs", "tarifsProposes") %in% names(avant)))
 })
 
-test_that("avec tarifs, le contexte porte ser, millesime et propositions filtrees", {
+# Cache mele : chene sessile au niveau foret, hetre en repli SER, un national,
+# un numero negatif (-0,3) et un nul.
+.tarifs_mele <- function() {
   tab <- .tab_tarifs()
-  tarifs <- list(ser = "C30", millesime = "IFN 2011-2025", essences = list(
-    "Chêne sessile" = nemetonshiny:::.marculus_tarifs_essence(tab[tab$espar == "03", ]),
-    "Hêtre" = nemetonshiny:::.marculus_tarifs_essence(tab[tab$espar == "09", ])))
+  ess <- nemetonshiny:::.marculus_tarifs_essence
+  neg <- tab[tab$espar == "03", ]
+  neg$numero <- c(-0.3, 0, 8.0, 9.1)            # SCHR < 0, SCHI = 0
+  nat <- tab[5, ]; nat$niveau_utilise <- "FRANCE"; nat$code <- "FR"
+  list(ser = "C30", millesime = "IFN 2011-2025", essences = list(
+    "Chêne sessile" = ess(tab[tab$espar == "03", ]),
+    "Hêtre" = ess(tab[tab$espar == "09", ]),
+    "Frêne" = ess(nat),
+    "Chêne rouge" = ess(neg)))
+}
+
+test_that(".marculus_tarifs_foret ne garde que foret > 0 et recale conseille", {
+  f <- nemetonshiny:::.marculus_tarifs_foret(.tarifs_mele()$essences)
+  expect_setequal(names(f), c("Chêne sessile", "Chêne rouge"))
+  expect_setequal(names(f[["Chêne sessile"]]),
+                  c("SCHR", "SCHI", "SCHL", "SCHTL", "conseille"))
+  # -0,3 et 0 ecartes ; les deux autres types restent, au niveau foret.
+  r <- f[["Chêne rouge"]]
+  expect_setequal(setdiff(names(r), "conseille"), c("SCHL", "SCHTL"))
+  expect_identical(r$conseille, "SCHL")
+  # Conseille sur un type ecarte : la cle disparait.
+  m <- .tarifs_mele()$essences
+  m[["Chêne rouge"]]$conseille <- "SCHR"
+  expect_null(nemetonshiny:::.marculus_tarifs_foret(m)[["Chêne rouge"]]$conseille)
+  expect_identical(length(nemetonshiny:::.marculus_tarifs_foret(NULL)), 0L)
+})
+
+test_that("avec tarifs, le contexte ne porte que le niveau foret > 0, millesime nu", {
+  tarifs <- .tarifs_mele()
   p <- list(id = "p", metadata = list(name = "F"))
   a <- list(id = "x", ug_id = "u", type = "eclaircie")
   ctx <- nemetonshiny:::marculus_context_from_action(
-    a, p, essences = c("Hêtre", "Douglas"), tarifs = tarifs)
+    a, p, essences = c("Chêne sessile", "Hêtre", "Frêne", "Douglas"), tarifs = tarifs)
   expect_identical(ctx$ser, "C30")
-  expect_identical(ctx$millesimeTarifs, "IFN 2011-2025")
-  # Essences du contexte seulement ; Douglas sans proposition : absente.
-  expect_identical(names(ctx$tarifsProposes), "Hêtre")
+  expect_identical(ctx$millesimeTarifs, "2011-2025")   # sans « IFN »
+  # Hetre (SER) et Frene (national) : le telephone les calcule.
+  expect_identical(names(ctx$tarifsProposes), "Chêne sessile")
   # Jamais de reglage du terrain.
   expect_false(any(c("tarif", "tarifNumero", "tarifNumeroParEssence") %in% names(ctx)))
   j <- jsonlite::fromJSON(nemetonshiny:::marculus_sync_json(list(ctx)),
                           simplifyVector = FALSE)
-  h <- j$contextes[[1]]$tarifsProposes[["Hêtre"]]
-  expect_equal(h$SCHL$numero, 11)
-  expect_identical(h$SCHL$niveau, "ser")
-  expect_equal(h$SCHL$cv, 0.12)
+  h <- j$contextes[[1]]$tarifsProposes[["Chêne sessile"]]
+  expect_equal(h$SCHL$numero, 9.1)
+  expect_identical(h$SCHL$niveau, "foret")
+  expect_equal(h$SCHL$cv, 0.11)
   expect_identical(h$conseille, "SCHL")
-  # Aucune essence couverte : objet vide, pas un tableau.
+  expect_identical(j$contextes[[1]]$millesimeTarifs, "2011-2025")
+  # Aucun type foret > 0 pour les essences du contexte : cle omise.
   ctx2 <- nemetonshiny:::marculus_context_from_action(
-    a, p, essences = "Douglas", tarifs = tarifs)
-  expect_match(nemetonshiny:::marculus_sync_json(list(ctx2)),
-               "\"tarifsProposes\": \\{\\}")
+    a, p, essences = c("Hêtre", "Frêne", "Douglas"), tarifs = tarifs)
+  expect_false("tarifsProposes" %in% names(ctx2))
+  expect_false(grepl("tarifsProposes", nemetonshiny:::marculus_sync_json(list(ctx2))))
+  expect_identical(ctx2$ser, "C30")                     # ser et millesime restent
+  expect_identical(ctx2$millesimeTarifs, "2011-2025")
 })
 
-test_that("le message de fin d'export compte les essences par niveau", {
+test_that(".marculus_tarifs_millesime_nu retire le prefixe IFN, une fois", {
+  f <- nemetonshiny:::.marculus_tarifs_millesime_nu
+  expect_identical(f("IFN 2011-2025"), "2011-2025")
+  expect_identical(f("2011-2025"), "2011-2025")
+  expect_identical(f(" IFN2011-2025 "), "2011-2025")
+})
+
+test_that("le message de fin d'export compte les essences au niveau foret", {
   i18n <- nemetonshiny:::get_i18n("fr")
-  tab <- .tab_tarifs()
-  tarifs <- list(essences = list(
-    "Chêne sessile" = nemetonshiny:::.marculus_tarifs_essence(tab[tab$espar == "03", ]),
-    "Hêtre" = nemetonshiny:::.marculus_tarifs_essence(tab[tab$espar == "09", ])))
+  tarifs <- .tarifs_mele()
   cpt <- nemetonshiny:::.marculus_tarifs_comptes(
-    tarifs, c("Chêne sessile", "Hêtre", "Frêne"))
-  expect_identical(cpt, list(n = 2L, foret = 1L, ser = 1L, repli = 0L))
-  base <- list(n_contexts = 1L, n_gpkg = 1L, n_essences = 3L, n_houppiers = 1L,
+    tarifs, c("Chêne sessile", "Hêtre", "Frêne", "Chêne rouge", "Douglas"))
+  expect_identical(cpt, list(n = 2L))
+  base <- list(n_contexts = 1L, n_gpkg = 1L, n_essences = 5L, n_houppiers = 1L,
                has_desserte = TRUE)
   m <- nemetonshiny:::.marculus_export_notice(
     c(base, list(tarifs_statut = "ok", tarifs_comptes = cpt)), i18n)
-  expect_match(m$message, "2 essences sur 3 (niveau forêt : 1, SER : 1, repli : 0)",
+  expect_match(m$message, "au niveau forêt pour 2 essences sur 5 ; les autres niveaux sont calculés sur le téléphone",
                fixed = TRUE)
   expect_identical(m$type, "message")
+  m <- nemetonshiny:::.marculus_export_notice(
+    c(base, list(tarifs_statut = "ok", tarifs_comptes = cpt)),
+    nemetonshiny:::get_i18n("en"))
+  expect_match(m$message, "at forest level for 2 species out of 5", fixed = TRUE)
   m <- nemetonshiny:::.marculus_export_notice(
     c(base, list(tarifs_statut = "echec", tarifs_erreur = "IFN injoignable")), i18n)
   expect_match(m$message, "IFN injoignable", fixed = TRUE)

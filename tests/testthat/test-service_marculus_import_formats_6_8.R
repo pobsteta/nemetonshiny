@@ -143,7 +143,7 @@ test_that("communeInsee, tarifsEssence, steresParM3 et partsLot ne sont jamais r
     a, projet, essences = "Hêtre", tarifs = tarifs)
   expect_false(any(interdites %in% names(ctx2)))
   expect_equal(ctx2$ser, "C20")
-  expect_equal(ctx2$millesimeTarifs, "IFN 2011-2025")
+  expect_equal(ctx2$millesimeTarifs, "2011-2025")
 })
 
 test_that("le bloc des lots dit quelles parties comptent (format 8 vs 7)", {

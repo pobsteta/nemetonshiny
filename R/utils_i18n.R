@@ -638,8 +638,8 @@ TRANSLATIONS <- list(
   ),
   # Numeros de tarif Schaeffer proposes (spec 062 du coeur).
   marculus_export_tarifs_fmt = list(
-    fr = "Num\u00e9ros de tarif Schaeffer propos\u00e9s pour %d essences sur %d (niveau for\u00eat : %d, SER : %d, repli : %d).",
-    en = "Schaeffer tariff numbers proposed for %d species out of %d (forest level: %d, SER: %d, fallback: %d)."
+    fr = "Num\u00e9ros de tarif propos\u00e9s au niveau for\u00eat pour %d essences sur %d ; les autres niveaux sont calcul\u00e9s sur le t\u00e9l\u00e9phone.",
+    en = "Tariff numbers proposed at forest level for %d species out of %d; the other levels are computed on the phone."
   ),
   marculus_export_tarifs_echec = list(
     fr = "Sans num\u00e9ros de tarif propos\u00e9s : le calcul IFN a \u00e9chou\u00e9 (%s). Marculus garde sa table embarqu\u00e9e ; relancez la pr\u00e9paration pour r\u00e9essayer.",
