@@ -1,3 +1,13 @@
+# nemetonshiny 2026.11.1.9002 (2026-11-15)
+
+> **Non publié.** Mission 027 : import Marculus des CSV `FormatCsv;6` à `;8` et des clés `.marsync` correspondantes.
+
+- **Lecture** de `TarifsEssence`, `SteresParM3` (format 6), `CommuneInsee`, `Ser`, `MillesimeTarifs` (7), `PartsLot` (8) et de `partsLot` du `.marsync` (une essence absente compte tige et houppier), rangées dans `reglages_terrain` (`tarifs_essence`, `steres_par_m3`, `commune_insee`, `ser`, `millesime_tarifs`, `parts_lot`, `format_csv`). Numéro de tarif ignoré pour `AUCUN` et `EMERGE` ; `SCHAEFFER_INTERMEDIAIRE` et `SCHAEFFER_TRES_LENT` acceptés. Aucune de ces clés n'est réémise vers le téléphone.
+- **Sens du volume au lot** : le résumé de martelage indique les parties comptées au lot (format 8) ou la règle ancienne (formats 5 à 7). Contrôle croisé : mention si la SER ou le millésime relus diffèrent de ceux émis par l'application, sans rien corriger.
+- **Formats mélangés** : chaque tige garde le numéro de format du fichier d'où elle vient (`formatCsv` ; `.marsync` : 8 si `partsLot` est présent, sinon inconnu). Si un contexte mêle des tiges des formats ≤ 7 et ≥ 8 (second fichier ne portant qu'une partie des tiges), le résumé affiche un avertissement « réexportez tout le contexte depuis Marculus » et n'affiche plus la ligne des parties comptées.
+- Le contrôle SER/millésime compare au cache de tarifs **actuel** du projet : fausse alerte possible si ce cache a été recalculé depuis l'émission.
+- Texte d'aide d'import : « FormatCsv;2 à 8 ».
+
 # nemetonshiny 2026.11.1.9001 (2026-11-15)
 
 > **Non publié.**
