@@ -9,6 +9,34 @@
 - Cas « aucune essence au niveau forêt » (Couchey) : message dédié, clé `marculus_export_tarifs_aucun` (« Aucun numéro de tarif proposé au niveau forêt (N essences examinées) ; Marculus calcule les tarifs sur le téléphone. »), au lieu de « pour 0 essences sur N ».
 - Message de fin d'export : « Numéros de tarif proposés au niveau forêt pour X essences sur Y ; les autres niveaux sont calculés sur le téléphone » (clé `marculus_export_tarifs_fmt` réécrite, deux paramètres au lieu de cinq).
 
+# nemetonshiny 2026.11.1.9005 (2026-11-15)
+
+> **Non publié.** Mission 030 : inventaire vidéo, schéma Groma 1.6.0 (cœur nemeton 2026.11.29).
+
+- **Plancher** `Imports: nemeton (>= 2026.11.29)` : `importer_inventaire_video(terrain = )` n'existe pas avant.
+- **Suivre** : colonne « Terrain » (« Terrain reçu le jj/mm/aaaa hh:mm », heure de Paris, vide si rien reçu) ; état `sans_paquet` (« Saisie reçue, sans vidéo ») rangé entre « À faire » et « Provisoire ».
+- **Intégrer** : « Récupérer les résultats » télécharge `terrain.zip` (placettes définitives : les quatre fichiers ; placettes à saisie seule : `terrain.zip` seul, sans avertissement 404) et le passe à l'import par `terrain =`. La copie de QField devient facultative ; sans elle, le `terrain_integre.gpkg` précédent (source de l'état local de « Suivre ») est conservé. Photos sous `data/photos/<plot_id>/` (le cœur les y copie ; rien dans l'app ne les efface).
+- **Alertes d'import** affichées dans le bilan : `terrain_serveur_prefere`, `saisie_qfield_ignoree` et `centre_telephone` traduits fr/en, avec la colonne `detail` ; un motif inconnu reste tel quel. Un centre au GNSS du téléphone sort en avertissement de validation (`qualite_gnss`), jamais en erreur bloquante.
+- **Rayon** proposé : 15 m (au lieu de 20).
+- **Suivre sans copie QField** : l'état local lit aussi `etat_traitement` dans `data/field_data.gpkg` (lecture seule) ; `terrain_integre.gpkg` n'est ni recréé ni écrasé, et gagne pour une placette présente des deux côtés.
+- **Téléchargement** : le repli de `video_telecharger()` ne retient plus que les fichiers `<plot_id>_<fichier>` de l'appel (plus tout le dossier).
+- **Alertes d'import** : un motif sans clé i18n est regroupé sous « Autre alerte : <code> » (jamais le code brut seul).
+- Non traités (hors plancher 2026.11.29) : téléchargement incrémental `etat =` et part `dbh_ruban` (cœur 2026.11.30).
+
+# nemetonshiny 2026.11.1.9004 (2026-11-15)
+
+> **Non publié.**
+
+## Nouveautés
+
+- **T4, vitalité dynamique** (spec 068, `nemeton` >= 2026.11.28, mission 029) : l'accroissement de la hauteur dominante observé sur la série FORMS-T est comparé à celui attendu de placettes IFN comparables. T4 est calculé après T3 et reste `NA` sans série FORMS-T ; il ne pèse alors sur aucun indice.
+  - L'app fournit au cœur l'**essence dominante en code IFN `ESPAR`** (libellé BD Forêt passé par `resoudre_espar()`) et la **SER** des UGF (`ensure_ugf_ser()`, aussi hors mode IFN, cache `data/ugf_ser.rds`). Une essence sans correspondance reste `NA` (statut `skipped_no_essence`), jamais un code deviné, hormis la convention ci-dessous.
+  - Les coupes sont lues dans la colonne T3 brute, déjà calculée ; la série FORMS-T chargée pour T2 sert aussi à T4 (un seul chargement).
+  - Les six statuts `skipped_*` sont traduits (FR/EN) sous la carte grise de la vue famille T.
+  - La vue famille T affiche, sous la carte T4, l'accroissement observé et attendu (m / 5 ans), la hauteur dominante, le nombre de placettes analogues, et la mention fixe « Référence construite en Bourgogne-Franche-Comté, climat 2019-2023 ». Ces colonnes (`.t4_*`) traversent la persistance des résultats.
+- Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (`.T4_ESPAR_SAPIN_EPICEA`).- Plancher `Imports: nemeton (>= 2026.11.28)`.
+- Hors périmètre : NDP 3 (`accroissement_hdom_finn()`).
+
 # nemetonshiny 2026.11.1.9003 (2026-11-15)
 
 > **Non publié.**

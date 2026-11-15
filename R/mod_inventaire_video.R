@@ -28,7 +28,7 @@ mod_inventaire_video_ui <- function(id) {
         col_widths = c(5, 7),
         htmltools::div(
           shiny::numericInput(ns("rayon"), i18n$t("video_rayon"),
-                              value = 20, min = 5, max = 50, step = 1),
+                              value = 15, min = 5, max = 50, step = 1),
           shiny::numericInput(ns("seuil"), i18n$t("video_seuil_diam"),
                               value = 7.5, min = 0, max = 100, step = 0.5),
           shiny::radioButtons(ns("unite"), i18n$t("video_unite_azimut"),
@@ -108,7 +108,7 @@ mod_inventaire_video_server <- function(id, app_state) {
     ns <- session$ns
     i18n <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
     rv <- shiny::reactiveValues(qgz = NULL, etats = NULL, resultats = NULL,
-                                integration = NULL, import = NULL,
+                                terrain = NULL, integration = NULL, import = NULL,
                                 qgz_retour = NULL, envoi = NULL)
 
     project_path <- shiny::reactive({
@@ -126,6 +126,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       if (identical(project_path(), projet_vu)) return()
       projet_vu <<- project_path()
       rv$qgz <- NULL; rv$etats <- NULL; rv$resultats <- NULL
+      rv$terrain <- NULL
       rv$integration <- NULL; rv$import <- NULL; rv$qgz_retour <- NULL
       rv$envoi <- NULL
     }, ignoreNULL = FALSE)
@@ -376,7 +377,8 @@ mod_inventaire_video_server <- function(id, app_state) {
       tr <- i18n()
       et <- rv$etats
       if (is.null(et) || !nrow(et)) return(NULL)
-      lib_etat <- c(a_faire = "video_etat_a_faire", provisoire = "video_etat_provisoire",
+      lib_etat <- c(a_faire = "video_etat_a_faire",
+                    sans_paquet = "video_etat_sans_paquet", provisoire = "video_etat_provisoire",
                     envoye = "video_etat_envoye", definitif = "video_etat_definitif")
       lib_verdict <- c(conforme = "video_verdict_conforme",
                        a_verifier = "video_verdict_a_verifier")
@@ -386,7 +388,8 @@ mod_inventaire_video_server <- function(id, app_state) {
                vapply(k, function(x) if (is.na(x)) "" else tr$t(x), character(1)))
       }
       en_tetes <- c("video_col_placette", "video_col_etat", "video_col_date",
-                    "video_col_verdict", "video_col_arbres", "video_col_alertes")
+                    "video_col_verdict", "video_col_arbres", "video_col_alertes",
+                    "video_col_terrain")
       htmltools::tags$table(
         class = "table table-sm table-hover",
         htmltools::tags$thead(htmltools::tags$tr(
@@ -402,7 +405,10 @@ mod_inventaire_video_server <- function(id, app_state) {
             htmltools::tags$td(if (is.na(et$date[i])) "" else as.character(et$date[i])),
             htmltools::tags$td(.lib(et$verdict[i], lib_verdict)),
             htmltools::tags$td(if (is.na(et$n_arbres[i])) "" else as.character(et$n_arbres[i])),
-            htmltools::tags$td(if (is.na(et$alertes[i])) "" else as.character(et$alertes[i])))
+            htmltools::tags$td(if (is.na(et$alertes[i])) "" else as.character(et$alertes[i])),
+            htmltools::tags$td(
+              if (nzchar(rec <- video_terrain_recu(et$terrain_envoye_le[i])))
+                sprintf(tr$t("video_terrain_recu"), rec) else ""))
         })))
     })
 
@@ -441,15 +447,29 @@ mod_inventaire_video_server <- function(id, app_state) {
         if (is.null(srv)) return()
         et <- rv$etats <- video_tableau_etats(srv, video_etat_local(project_path()))
       }
-      ids <- et$plot_id[et$etat == "definitif"]
-      if (!length(ids)) {
+      a_recuperer <- video_plots_a_recuperer(et)
+      if (!length(a_recuperer$definitifs) && !length(a_recuperer$terrain_seul)) {
         shiny::showNotification(tr$t("video_aucun_definitif"), type = "warning")
         return()
       }
-      f <- .appel_serveur(function(cfg) video_telecharger(
-        cfg$url, cfg$jeton, plot_ids = ids, dossier = tempfile("groma_resultats_")))
-      if (is.null(f)) return()
+      dossier <- tempfile("groma_resultats_")
+      f <- character(0)
+      # Placettes definitives : les quatre fichiers (terrain.zip absent = 404
+      # silencieux du coeur). Placettes avec seule saisie : terrain.zip seul.
+      if (length(a_recuperer$definitifs)) {
+        f <- .appel_serveur(function(cfg) video_telecharger(
+          cfg$url, cfg$jeton, plot_ids = a_recuperer$definitifs, dossier = dossier))
+        if (is.null(f)) return()
+      }
+      if (length(a_recuperer$terrain_seul)) {
+        ft <- .appel_serveur(function(cfg) video_telecharger(
+          cfg$url, cfg$jeton, plot_ids = a_recuperer$terrain_seul,
+          dossier = dossier, fichiers = "terrain.zip"))
+        if (is.null(ft)) return()
+        f <- c(f, ft)
+      }
       rv$resultats <- f[grepl("\\.gpkg$", f, ignore.case = TRUE)]
+      rv$terrain <- f[grepl("terrain\\.zip$", f, ignore.case = TRUE)]
     })
 
     shiny::observeEvent(input$gpkg_resultats, {
@@ -463,11 +483,17 @@ mod_inventaire_video_server <- function(id, app_state) {
     })
 
     output$resultats_info <- shiny::renderUI({
-      n <- length(rv$resultats)
-      if (!n) return(NULL)
-      htmltools::p(class = "small text-muted",
-                   paste0(i18n()$t("video_resultats_serveur"), " : ",
-                          paste(basename(rv$resultats), collapse = ", ")))
+      if (!length(rv$resultats) && !length(rv$terrain)) return(NULL)
+      tr <- i18n()
+      htmltools::tagList(
+        if (length(rv$resultats))
+          htmltools::p(class = "small text-muted mb-1",
+                       paste0(tr$t("video_resultats_serveur"), " : ",
+                              paste(basename(rv$resultats), collapse = ", "))),
+        if (length(rv$terrain))
+          htmltools::p(class = "small text-muted",
+                       paste0(tr$t("video_saisie_groma"), " : ",
+                              paste(basename(rv$terrain), collapse = ", "))))
     })
 
     shiny::observeEvent(input$integrer, {
@@ -479,8 +505,10 @@ mod_inventaire_video_server <- function(id, app_state) {
         shiny::showNotification(tr$t("field_ingest_no_project"), type = "warning")
         return()
       }
+      # La copie de QField est facultative des qu'on a la saisie de Groma.
       up <- input$gpkg_terrain
-      if (is.null(up) || !nrow(up)) {
+      gpkg <- if (!is.null(up) && nrow(up)) up$datapath[1]
+      if (is.null(gpkg) && !length(rv$terrain)) {
         shiny::showNotification(tr$t("field_ingest_no_file"), type = "warning")
         return()
       }
@@ -489,7 +517,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       on.exit(session$sendCustomMessage("nemetonSetDisabled",
                                         list(id = ns("integrer"), disabled = FALSE)),
               add = TRUE)
-      res <- tryCatch(video_integrer(up$datapath, rv$resultats, pp),
+      res <- tryCatch(video_integrer(gpkg, rv$resultats, pp, terrain = rv$terrain),
                       error = function(e) e)
       if (inherits(res, "error")) {
         msg <- if (inherits(res, "video_coeur_absent")) tr$t("video_coeur_absent")
@@ -592,8 +620,9 @@ mod_inventaire_video_server <- function(id, app_state) {
 #' @noRd
 video_bilan_ui <- function(bilan, i18n, lang = "fr") {
   if (is.null(bilan)) return(NULL)
-  table_df <- function(df, titre) {
+  table_df <- function(df, titre, noms = NULL) {
     if (is.null(df) || !nrow(df)) return(NULL)
+    if (!is.null(noms)) colnames(df) <- unname(noms[colnames(df)])
     htmltools::tagList(
       htmltools::tags$h6(class = "mt-2", sprintf("%s (%d)", titre, nrow(df))),
       htmltools::div(
@@ -641,6 +670,11 @@ video_bilan_ui <- function(bilan, i18n, lang = "fr") {
                      htmltools::tags$small(class = "text-muted me-2",
                                            i18n$t("field_ingest_ndp_after")),
                      ndp_badge(bilan$ndp, lang)),
+    table_df(video_alertes_traduites(bilan$alertes, i18n),
+             i18n$t("video_alertes_import"), noms = c(
+               plot_id = i18n$t("video_col_placette"),
+               motif = i18n$t("video_col_motif"),
+               detail = i18n$t("video_col_detail"))),
     table_df(bilan$a_completer, i18n$t("video_a_completer")),
     table_df(bilan$a_verifier, i18n$t("video_a_verifier")),
     numeros)
