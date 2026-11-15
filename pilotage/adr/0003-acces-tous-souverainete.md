@@ -1,9 +1,9 @@
 # ADR 0003 — Ouvrir le pilotage par IA à tous les utilisateurs : souveraineté des données
 
 - **Date :** 2026-10-24
-- **Statut :** proposée
+- **Statut :** acceptée le 2026-11-15 (option A)
 - **Proposée par :** Claude (orchestrateur)
-- **Tranchée par :** Pascal
+- **Tranchée par :** Pascal, le 2026-11-15 (« A »)
 
 ## La décision en une phrase
 
@@ -23,12 +23,12 @@ Cette ADR touche la plateforme (déploiement, ADR-003/004/005) : elle devra êtr
 
 | Lettre | Question | Réponse (une ligne) | Ce que ça coûte | Prêts à payer ? |
 |---|---|---|---|---|
-| **F**rugale | La plus simple qui tienne ? | A réutilise distant.R et Keycloak existants | un déploiement OVH à faire | à trancher |
-| **R**esponsable | Qui fait quoi ? | nemetonmcp sert ; plateforme déploie ; nemetonshiny garantit l'API et les gardes | trois dépôts | à trancher |
-| **A**nticiper | Et si l'imprévu arrive ? | fuite de données de projet vers un tiers ; fournisseur qui change ses conditions | réputation, RGPD | à trancher |
+| **F**rugale | La plus simple qui tienne ? | A réutilise distant.R et Keycloak existants | un déploiement OVH à faire | oui (Pascal, 2026-11-15) |
+| **R**esponsable | Qui fait quoi ? | nemetonmcp sert ; plateforme déploie ; nemetonshiny garantit l'API et les gardes | trois dépôts | oui (Pascal, 2026-11-15) |
+| **A**nticiper | Et si l'imprévu arrive ? | fuite de données de projet vers un tiers ; fournisseur qui change ses conditions | réputation, RGPD | oui (Pascal, 2026-11-15) |
 | **N**ovateur | Toutes les idées ? | A, B, C ; B mérite une veille | — | — |
-| **C**oût | Dépense inutile ? | hébergement et maintenance du distant | — | à trancher |
-| **É**cologique | Qui réutilise ? | standard MCP : tout client compatible | — | à trancher |
+| **C**oût | Dépense inutile ? | hébergement et maintenance du distant | — | oui (Pascal, 2026-11-15) |
+| **É**cologique | Qui réutilise ? | standard MCP : tout client compatible | — | oui (Pascal, 2026-11-15) |
 
 ## Valeurs sacrifiées
 
@@ -37,6 +37,17 @@ Cette ADR touche la plateforme (déploiement, ADR-003/004/005) : elle devra êtr
 ## Sources
 
 Arbitrage 3 (`pilotage/brief.md`) ; `nemetonmcp/r/R/distant.R:99-128,405-424` ; `briefs/traites/2026-10-12-traite-reponse-connecteur-nemetonclaude-pour-victor.md:39-42` ; `specs/BRIEF-pilotage-victor-aigora.md:222-223,255` ; `CLAUDE.md`, ADR-003, ADR-004, ADR-005.
+
+## Conséquences
+
+- **nemetonmcp** (connecteur distant, `r/R/distant.R`) : déploiement derrière Keycloak, et
+  avertissement affiché à l'utilisateur avant le premier usage : les données du projet lues par
+  l'IA passent chez le fournisseur de son client IA. Brief à émettre au moment du déploiement.
+- **platform_nemeton** : reporter cette décision dans `docs/` (ADR plateforme), en lien avec
+  ADR-003/004/005 ; brief `briefs/vers-platform_nemeton/2026-11-15-adr-0003-acces-tous.md`.
+- **nemetonshiny** : rien à changer ; l'app reste neutre vis-à-vis du fournisseur et garde ses
+  gardes (confirmation des écritures, ADR 0002).
+- Veille sur l'option B (client souverain parlant MCP) : à rouvrir si elle mûrit.
 
 ## Question de contrôle
 
