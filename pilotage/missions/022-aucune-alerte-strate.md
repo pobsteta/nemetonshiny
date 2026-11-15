@@ -120,3 +120,5 @@ rendre pass / fail / skip.
 ## Statut
 
 Terminée le 2026-11-14 : PR #274 fusionnée sur `main` (`7d11cdc4`), cycle dev `2026.10.18.9015`, non publié. Relecture : prêt.
+
+Publié dans v2026.11.1 (2026-11-15).

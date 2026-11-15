@@ -138,3 +138,5 @@ le téléchargement part à la fin. Plafond de 30 UGF conservé. Complément sur
 ## Statut
 
 Terminée le 2026-11-14 : PR #277 fusionnée sur `main` (`ca89adf9`, commits `2696c9ac`, `f7b7a257`, `6a1a02f1`, `820d5d9b`), cycle dev `2026.10.18.9017`, non publié. Issue #20 fermée (totaux quantité signalés hors périmètre). Relecture : prêt. Reste : essai terrain de Pascal (Quarto dans un worker `future`).
+
+Publié dans v2026.11.1 (2026-11-15).

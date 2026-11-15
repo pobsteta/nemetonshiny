@@ -1,6 +1,6 @@
 # Listes de contrôle
 
-> Issues du bilan du 2026-11-13 (journal, décision 4). À recopier dans les fiches concernées.
+> Issues des bilans du 2026-11-13 (journal, décision 4) et du 2026-11-15. À recopier dans les fiches concernées.
 
 ## Test discriminant (pour le testeur, à recopier dans chaque fiche de test)
 
@@ -17,3 +17,13 @@
 - [ ] Critère d'arrêt écrit.
 - [ ] PR ouverte seulement après le « prêt » du relecteur.
 - [ ] Worktree contenant `pilotage/`.
+- [ ] Rubrique « Lecteurs et appelants » remplie : lecteurs et appelants recensés par `grep` (fichier:ligne), repli prévu, limite du périmètre (bilan du 2026-11-15).
+
+## Numérotation de version (bilan du 2026-11-15)
+
+- [ ] Le `dev` écrit son entrée NEWS **sans numéro** de cycle et ne touche pas `Version:` de `DESCRIPTION`.
+- [ ] L'orchestrateur numérote (`.900x` suivant) au moment de la fusion, après avoir rebasé la branche sur `main`.
+
+## Écarts au journal
+
+- [ ] Tout écart va en ligne typée `écart` (attendu / vu / vérifié / décision), jamais en prose dans une ligne « fait » ou « fusion ».

@@ -168,3 +168,5 @@ pipeline ingérant déjà sur `_tot`).
 Terminée le 2026-11-13 : PR #266 fusionnée sur `main` (`61a682c4`, commit de mission `7267c4d2`),
 cycle dev `2026.10.18.9010`, non publié. Relecture : prêt. Suites à trancher par Pascal : aperçu
 `preview_raster_r`, FORDEAD du Plan de validation sur strate, bandeau « zone saine » sur strate.
+
+Suite (2026-11-15) : les trois suites ont été traitées par les missions 018 (aperçu retiré), 019 (FORDEAD) et 022/023 (bandeau sur strate) ; publié dans v2026.11.1.

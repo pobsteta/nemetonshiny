@@ -1,6 +1,7 @@
 # ADR 0003 — Ouvrir le pilotage par IA à tous les utilisateurs : souveraineté des données
 
-- **Date :** 2026-10-24
+- **Proposée le :** 2026-10-24
+- **Tranchée le :** 2026-11-15
 - **Statut :** acceptée le 2026-11-15 (option A)
 - **Proposée par :** Claude (orchestrateur)
 - **Tranchée par :** Pascal, le 2026-11-15 (« A »)
