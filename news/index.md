@@ -1,10 +1,89 @@
 # Changelog
 
-## nemetonshiny 2026.10.18.9017 (2026-11-14)
+## nemetonshiny 2026.11.1 (2026-11-15)
 
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+Release stable qui regroupe le cycle dev `2026.10.18.9001` à `.9018` (le
+détail de chaque entrée suit, plus bas). Elle accompagne l’adaptation de
+`nemetonmcp` (branche `adaptation-nemetonshiny-2026-11`, essai VICTOR
+sur Couchey validé le 2026-11-14).
+
+### Changements cassants
+
+Pour les clients MCP (VICTOR, AIGORA, `nemetonmcp`) et pour tout code
+qui lit les objets internes du contrat (`CONTRAT.md`, section « API pour
+nemetonmcp »).
+
+- **Forme des erreurs MCP** : une erreur d’outil est marquée `isError`
+  côté client ; JSON
+  `{ok, classe, code, langue, erreur, action, candidats}`, messages et
+  actions suivantes en FR ou EN (`.9002`). Un job de fond en échec rend
+  `ok = false` et ces champs au premier niveau d’`etat_calcul`, sans
+  `isError` (`.9009`).
+- **Jeton de confirmation des écritures** : `appliquer_ugf` et
+  `croiser_onf` n’écrivent plus au premier appel ; sans `jeton` ils
+  rendent `confirmation_requise` (`apercu`, `jeton`, `expire_a`), et
+  seul un second appel portant le jeton écrit (ADR 0002, `.9005`). Jeton
+  à usage unique, valable 10 minutes, conservé sur disque pour survivre
+  au redémarrage du serveur (`.9007`). Un client qui enchaînait un seul
+  appel ne modifie plus le projet. `mcp_appliquer_ugf()` et
+  `mcp_croiser_onf()` gagnent l’argument `jeton`.
+- **Outils longs en tâche de fond** : `generer_rapport` et le 2e appel
+  de `croiser_onf` rendent aussitôt `ok`, `projet`, `job_id`, `type` ;
+  le résultat se lit dans `etat_calcul` (`statut = "termine"`, nouveau
+  champ `type`). Un seul job à la fois par projet (`calcul_en_cours`) ;
+  `annuler_calcul` répond `annule = false` pendant un rapport ou un
+  croisement ONF (`.9009`).
+- **Formats de `resume_projet` et de la Synthèse** : `updated_at` passe
+  en ISO 8601 avec fuseau Europe/Paris ; les scores de famille passent à
+  2 décimales (53,3 devient 53,33), y compris
+  `projet_lire()$synthese$families$score` (`.9006`, `.9008`).
+- **Contrat `nemetonmcp`** : 33 objets internes. `lock_status` et
+  `find_action_index` en sortent (plus appelés par `nemetonmcp`) ;
+  `.mcp_vers_outil`, `.mcp_garde_ecriture`, `.mcp_jeton_emettre` et
+  `.mcp_jeton_consommer` y entrent, désormais appelés (`.9018`, mission
+  025).
+- **FAST** : choisir une strate ne recalcule plus FAST, les quartiles
+  sont ceux de l’union des UGF (`_tot`) (`.9010`).
+
+### Nouveautés
+
+- Fiches PDF par UGF du Plan d’actions, un PDF ou un ZIP (mission 024,
+  `.9017`).
+- Serveur MCP : annotations des dix outils (`.9003`), noms de projet
+  dictés résolus de façon tolérante (`.9004`), `resume_projet` rend tout
+  l’écran Synthèse (`.9006`), outils longs en tâche de fond (`.9009`).
+- Table des familles unique pour l’écran, l’API et le MCP (`.9008`).
+
+### Changements visibles
+
+- Plan de validation : classe saine transparente et couleurs propres à
+  chaque moteur (`.9016`) ; « Aucune alerte dans cette strate » au lieu
+  de « zone saine » (`.9015`).
+- Alignement sur nemeton 2026.11.14 : N5 et B5 existent dans le cœur,
+  pas encore dans l’interface (`.9001`).
+
+### Correctifs
+
+- Plan de validation FORDEAD et RECONFORT lus sur `_tot` puis découpés à
+  la strate (`.9012`, `.9014`).
+- Tests de comptage des indicateurs dérivés du cœur (`.9001`).
+- Nettoyage de code mort FAST (`.9011`, `.9013`).
+
+### Détail du cycle dev 2026.10.18.9018 (2026-11-15) — publié dans 2026.11.1
+
+### Changements cassants : contrat nemetonmcp ramené à 33 objets (mission 025)
+
+- `lock_status` et `find_action_index` sortent du contrat `nemetonmcp`
+  (CONTRAT.md, section « API pour nemetonmcp ») : `nemetonmcp` (branche
+  `adaptation-nemetonshiny-2026-11`, `5cc3364`) ne les appelle plus. Les
+  fonctions restent dans l’app.
+- L’exception `pas_encore` du test de contrat est retirée : `nemetonmcp`
+  appelle désormais `.mcp_vers_outil`, `.mcp_garde_ecriture`,
+  `.mcp_jeton_emettre` et `.mcp_jeton_consommer`. L’ensemble appelé
+  égale l’ensemble du contrat (33 objets, vérifié sur l’arbre
+  `nemetonmcp`).
+
+### Détail du cycle dev 2026.10.18.9017 (2026-11-14) — publié dans 2026.11.1
 
 ### Nouveautés : fiche PDF par UGF du Plan d’actions (mission 024, issue [\#20](https://github.com/pobsteta/nemetonshiny/issues/20))
 
@@ -42,11 +121,7 @@
 - Hors périmètre : totaux de quantité (volume, surface) de l’issue
   [\#20](https://github.com/pobsteta/nemetonshiny/issues/20).
 
-## nemetonshiny 2026.10.18.9016 (2026-11-14)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9016 (2026-11-14) — publié dans 2026.11.1
 
 ### Changements visibles : surcouche du Plan de validation, classe saine transparente et couleurs de chaque moteur (mission 023)
 
@@ -67,11 +142,7 @@
 - Inchangés : opacité de la surcouche, marqueurs, plan trend. Tests :
   `test-mod_validation_sampling_overlay.R`.
 
-## nemetonshiny 2026.10.18.9015 (2026-11-14)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9015 (2026-11-14) — publié dans 2026.11.1
 
 ### Changements visibles : « Aucune alerte dans cette strate » au lieu de « zone saine » (mission 022)
 
@@ -94,11 +165,7 @@
 - Clés i18n : `sante_strate_sans_alerte_titre`,
   `sante_strate_rappel_tot`. Tests : `test-utils_sante_strate.R`.
 
-## nemetonshiny 2026.10.18.9014 (2026-11-14)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9014 (2026-11-14) — publié dans 2026.11.1
 
 ### Correctifs : Plan de validation RECONFORT lu sur `_tot`, découpé à la strate (mission 021)
 
@@ -130,11 +197,7 @@
   / FORDEAD).
 - Tests : `test-service_validation_sampling_reconfort_tot.R`.
 
-## nemetonshiny 2026.10.18.9013 (2026-11-14)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9013 (2026-11-14) — publié dans 2026.11.1
 
 ### Nettoyage : retrait du code FAST sans lecteur des libellés de classes (mission 020)
 
@@ -150,11 +213,7 @@
 - Tests : neuf tests du code retiré supprimés ; le test FORDEAD compare
   les quatre libellés en fr et en en aux clés i18n, plus un littéral.
 
-## nemetonshiny 2026.10.18.9012 (2026-11-14)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9012 (2026-11-14) — publié dans 2026.11.1
 
 ### Correctifs : Plan de validation FORDEAD lu sur `_tot`, découpé à la strate (mission 019)
 
@@ -177,11 +236,7 @@
   alors que RECONFORT tourne sur `_tot`.
 - Test : `test-service_validation_sampling_fordead_tot.R`.
 
-## nemetonshiny 2026.10.18.9011 (2026-11-14)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9011 (2026-11-14) — publié dans 2026.11.1
 
 ### Nettoyage : retrait de l’aperçu FAST mort du Plan de validation (mission 018)
 
@@ -200,11 +255,7 @@
 - Test : `test-mod_validation_sampling.R` (libellés FORDEAD anglais,
   ordre 4, 3, 2, 1).
 
-## nemetonshiny 2026.10.18.9010 (2026-11-13)
-
-> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec
-> les changements cassants de la tête `.9009` (brief nemetonmcp et essai
-> VICTOR sur Couchey, bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9010 (2026-11-13) — publié dans 2026.11.1
 
 ### FAST calculé sur `_tot`, découpé par strate à l’affichage (mission 017)
 
@@ -236,11 +287,7 @@
   `generate_trend_sanitary_plan` accepte le nouvel argument
   `run_zone_id`.
 
-## nemetonshiny 2026.10.18.9009 (2026-11-11)
-
-> **Non publié.** Ces changements cassants sortiront dans la release
-> v2026.11.1, après application du brief nemetonmcp et l’essai VICTOR
-> sur Couchey (bilan du 2026-11-13).
+### Détail du cycle dev 2026.10.18.9009 (2026-11-11) — publié dans 2026.11.1
 
 ### Changements cassants
 
@@ -292,7 +339,7 @@
   `etat_calcul` renvoient les uns aux autres ; `inst/mcp/README.md` et
   `CONTRAT.md` § 6 bis à jour.
 
-## nemetonshiny 2026.10.18.9008 (2026-11-11)
+### Détail du cycle dev 2026.10.18.9008 (2026-11-11) — publié dans 2026.11.1
 
 Changements cassants : `projet_lire()$synthese$families$score` passe de
 1 à **2 décimales** (53,3 → 53,33), comme l’écran Synthèse et
@@ -312,7 +359,7 @@ Changements cassants : `projet_lire()$synthese$families$score` passe de
 - Test corrigé : `test-service_synthesis.R` figeait l’arrondi à 1
   décimale ; il attend désormais 2 décimales.
 
-## nemetonshiny 2026.10.18.9007 (2026-11-11)
+### Détail du cycle dev 2026.10.18.9007 (2026-11-11) — publié dans 2026.11.1
 
 Changements cassants : aucun (contrat client inchangé : forme de
 `confirmation_requise`, usage unique, 10 minutes, empreinte).
@@ -344,7 +391,7 @@ Changements cassants : aucun (contrat client inchangé : forme de
   chemin et md5 du fichier, réglages résolus), échéance. Ni géométrie ni
   aperçu.
 
-## nemetonshiny 2026.10.18.9006 (2026-11-10)
+### Détail du cycle dev 2026.10.18.9006 (2026-11-10) — publié dans 2026.11.1
 
 Changements cassants : `updated_at` n’est pas un champ nouveau, seul son
 **format** change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ;
@@ -363,7 +410,7 @@ Synthèse. Autres champs : ajoutés.
 - `calcule_le` : `completed_at` \> `fin_a` (job `termine`) \> date de
   `indicators.parquet` \> `null`.
 
-## nemetonshiny 2026.10.18.9005 (2026-11-10)
+### Détail du cycle dev 2026.10.18.9005 (2026-11-10) — publié dans 2026.11.1
 
 ### Changements cassants
 
@@ -404,7 +451,7 @@ Synthèse. Autres champs : ajoutés.
   `.mcp_jeton_consommer()`, pour ses propres écritures (plan d’actions)
   ; pas encore appelés par `nemetonmcp` (brief de la mission 013).
 
-## nemetonshiny 2026.10.18.9004 (2026-11-10)
+### Détail du cycle dev 2026.10.18.9004 (2026-11-10) — publié dans 2026.11.1
 
 Changements cassants : aucun.
 
@@ -431,7 +478,7 @@ Changements cassants : aucun.
   candidats (« nom (id) ») ; aucun : `projet_introuvable`. Plus de
   simple sous-chaîne (« de », « onf » ne rapprochent rien).
 
-## nemetonshiny 2026.10.18.9003 (2026-11-10)
+### Détail du cycle dev 2026.10.18.9003 (2026-11-10) — publié dans 2026.11.1
 
 Changements cassants : aucun.
 
@@ -443,7 +490,7 @@ Changements cassants : aucun.
   destructifs `appliquer_ugf` et `croiser_onf` ; non idempotent
   `lancer_calcul` seul.
 
-## nemetonshiny 2026.10.18.9002 (2026-11-10)
+### Détail du cycle dev 2026.10.18.9002 (2026-11-10) — publié dans 2026.11.1
 
 Changements cassants : aucun pour les fonctions `mcp_*` (elles rendent
 toujours une chaîne JSON) ; côté client MCP, une erreur d’outil est
@@ -468,7 +515,7 @@ désormais marquée `isError`.
 - Hygiène : retrait de `tests/testthat/_problems/` du suivi git (ignoré
   par `.gitignore` et `.Rbuildignore`).
 
-## nemetonshiny 2026.10.18.9001 (2026-11-10)
+### Détail du cycle dev 2026.10.18.9001 (2026-11-10) — publié dans 2026.11.1
 
 Changements cassants : aucun.
 

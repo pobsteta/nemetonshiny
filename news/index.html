@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.10.18.9017</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,12 +34,55 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9017" id="nemetonshiny-202610189017-2026-11-14">nemetonshiny 2026.10.18.9017 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189017-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
+<h2 class="pkg-version" data-toc-text="2026.11.1" id="nemetonshiny-2026111-2026-11-15">nemetonshiny 2026.11.1 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026111-2026-11-15"></a></h2>
+<p>Release stable qui regroupe le cycle dev <code>2026.10.18.9001</code> à <code>.9018</code> (le détail de chaque entrée suit, plus bas). Elle accompagne l’adaptation de <code>nemetonmcp</code> (branche <code>adaptation-nemetonshiny-2026-11</code>, essai VICTOR sur Couchey validé le 2026-11-14).</p>
 <div class="section level3">
-<h3 id="nouveautés--fiche-pdf-par-ugf-du-plan-dactions-mission-issue-2026-10-18-9017">Nouveautés : fiche PDF par UGF du Plan d’actions (mission 024, issue <a href="https://github.com/pobsteta/nemetonshiny/issues/20" class="external-link">#20</a>)<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s--fiche-pdf-par-ugf-du-plan-dactions-mission-issue-2026-10-18-9017"></a></h3>
+<h3 id="changements-cassants-2026-11-1">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-11-1"></a></h3>
+<p>Pour les clients MCP (VICTOR, AIGORA, <code>nemetonmcp</code>) et pour tout code qui lit les objets internes du contrat (<code>CONTRAT.md</code>, section « API pour nemetonmcp »).</p>
+<ul><li>
+<strong>Forme des erreurs MCP</strong> : une erreur d’outil est marquée <code>isError</code> côté client ; JSON <code>{ok, classe, code, langue, erreur, action, candidats}</code>, messages et actions suivantes en FR ou EN (<code>.9002</code>). Un job de fond en échec rend <code>ok = false</code> et ces champs au premier niveau d’<code>etat_calcul</code>, sans <code>isError</code> (<code>.9009</code>).</li>
+<li>
+<strong>Jeton de confirmation des écritures</strong> : <code>appliquer_ugf</code> et <code>croiser_onf</code> n’écrivent plus au premier appel ; sans <code>jeton</code> ils rendent <code>confirmation_requise</code> (<code>apercu</code>, <code>jeton</code>, <code>expire_a</code>), et seul un second appel portant le jeton écrit (ADR 0002, <code>.9005</code>). Jeton à usage unique, valable 10 minutes, conservé sur disque pour survivre au redémarrage du serveur (<code>.9007</code>). Un client qui enchaînait un seul appel ne modifie plus le projet. <code>mcp_appliquer_ugf()</code> et <code>mcp_croiser_onf()</code> gagnent l’argument <code>jeton</code>.</li>
+<li>
+<strong>Outils longs en tâche de fond</strong> : <code>generer_rapport</code> et le 2e appel de <code>croiser_onf</code> rendent aussitôt <code>ok</code>, <code>projet</code>, <code>job_id</code>, <code>type</code> ; le résultat se lit dans <code>etat_calcul</code> (<code>statut = "termine"</code>, nouveau champ <code>type</code>). Un seul job à la fois par projet (<code>calcul_en_cours</code>) ; <code>annuler_calcul</code> répond <code>annule = false</code> pendant un rapport ou un croisement ONF (<code>.9009</code>).</li>
+<li>
+<strong>Formats de <code>resume_projet</code> et de la Synthèse</strong> : <code>updated_at</code> passe en ISO 8601 avec fuseau Europe/Paris ; les scores de famille passent à 2 décimales (53,3 devient 53,33), y compris <code>projet_lire()$synthese$families$score</code> (<code>.9006</code>, <code>.9008</code>).</li>
+<li>
+<strong>Contrat <code>nemetonmcp</code></strong> : 33 objets internes. <code>lock_status</code> et <code>find_action_index</code> en sortent (plus appelés par <code>nemetonmcp</code>) ; <code>.mcp_vers_outil</code>, <code>.mcp_garde_ecriture</code>, <code>.mcp_jeton_emettre</code> et <code>.mcp_jeton_consommer</code> y entrent, désormais appelés (<code>.9018</code>, mission 025).</li>
+<li>
+<strong>FAST</strong> : choisir une strate ne recalcule plus FAST, les quartiles sont ceux de l’union des UGF (<code>_tot</code>) (<code>.9010</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-1">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1"></a></h3>
+<ul><li>Fiches PDF par UGF du Plan d’actions, un PDF ou un ZIP (mission 024, <code>.9017</code>).</li>
+<li>Serveur MCP : annotations des dix outils (<code>.9003</code>), noms de projet dictés résolus de façon tolérante (<code>.9004</code>), <code>resume_projet</code> rend tout l’écran Synthèse (<code>.9006</code>), outils longs en tâche de fond (<code>.9009</code>).</li>
+<li>Table des familles unique pour l’écran, l’API et le MCP (<code>.9008</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="changements-visibles-2026-11-1">Changements visibles<a class="anchor" aria-label="anchor" href="#changements-visibles-2026-11-1"></a></h3>
+<ul><li>Plan de validation : classe saine transparente et couleurs propres à chaque moteur (<code>.9016</code>) ; « Aucune alerte dans cette strate » au lieu de « zone saine » (<code>.9015</code>).</li>
+<li>Alignement sur nemeton 2026.11.14 : N5 et B5 existent dans le cœur, pas encore dans l’interface (<code>.9001</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-1">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1"></a></h3>
+<ul><li>Plan de validation FORDEAD et RECONFORT lus sur <code>_tot</code> puis découpés à la strate (<code>.9012</code>, <code>.9014</code>).</li>
+<li>Tests de comptage des indicateurs dérivés du cœur (<code>.9001</code>).</li>
+<li>Nettoyage de code mort FAST (<code>.9011</code>, <code>.9013</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1">Détail du cycle dev 2026.10.18.9018 (2026-11-15) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="changements-cassants--contrat-nemetonmcp-ramené-à-objets-mission-2026-11-1">Changements cassants : contrat nemetonmcp ramené à 33 objets (mission 025)<a class="anchor" aria-label="anchor" href="#changements-cassants--contrat-nemetonmcp-ramen%C3%A9-%C3%A0-objets-mission-2026-11-1"></a></h3>
+<ul><li>
+<code>lock_status</code> et <code>find_action_index</code> sortent du contrat <code>nemetonmcp</code> (CONTRAT.md, section « API pour nemetonmcp ») : <code>nemetonmcp</code> (branche <code>adaptation-nemetonshiny-2026-11</code>, <code>5cc3364</code>) ne les appelle plus. Les fonctions restent dans l’app.</li>
+<li>L’exception <code>pas_encore</code> du test de contrat est retirée : <code>nemetonmcp</code> appelle désormais <code>.mcp_vers_outil</code>, <code>.mcp_garde_ecriture</code>, <code>.mcp_jeton_emettre</code> et <code>.mcp_jeton_consommer</code>. L’ensemble appelé égale l’ensemble du contrat (33 objets, vérifié sur l’arbre <code>nemetonmcp</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-1">Détail du cycle dev 2026.10.18.9017 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-1"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="nouveautés--fiche-pdf-par-ugf-du-plan-dactions-mission-issue-2026-11-1">Nouveautés : fiche PDF par UGF du Plan d’actions (mission 024, issue <a href="https://github.com/pobsteta/nemetonshiny/issues/20" class="external-link">#20</a>)<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s--fiche-pdf-par-ugf-du-plan-dactions-mission-issue-2026-11-1"></a></h3>
 <ul><li>Nouveau bouton « Fiches PDF par UGF » dans l’onglet Plan d’actions. Une seule UGF sélectionnée : un PDF. Plusieurs sélectionnées : un ZIP des seules UGF sélectionnées. Aucune sélection : un ZIP de toutes les UGF ayant des actions visibles. Une UGF sélectionnée sans action visible est ignorée ; s’il n’en reste aucune, erreur explicite (jamais de ZIP vide).</li>
 <li>Une UGF dont le rendu échoue est ignorée et listée dans <code>erreurs.txt</code> à l’intérieur du ZIP ; si toutes échouent, erreur. Plafond de 30 UGF par export. Noms de fichiers sans collision (<code>&lt;projet&gt;_fiche_&lt;UGF&gt;.pdf</code>, suffixe <code>ug_id</code> quand deux libellés s’aplatissent pareil).</li>
 <li>Copie archivée dans <code>exports/</code> (<code>&lt;projet&gt;_fiche_&lt;UGF&gt;.pdf</code> ou <code>&lt;projet&gt;_fiches_ugf.zip</code>), sans jamais écraser <code>&lt;projet&gt;_action_plan.pdf</code>.</li>
@@ -48,41 +91,32 @@
 <li>Code : constructeur pur <code>.build_action_plan_pdf_data()</code> (testable sans Quarto), <code>generate_action_plan_ug_sheets()</code>, helper <code>.action_plan_sheet_targets()</code> appelé par <code>filename</code> et <code>content</code>. Clés i18n <code>action_plan_sheets_*</code>. Tests : <code>test-action_plan_sheets.R</code>.</li>
 <li>Hors périmètre : totaux de quantité (volume, surface) de l’issue <a href="https://github.com/pobsteta/nemetonshiny/issues/20" class="external-link">#20</a>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9016" id="nemetonshiny-202610189016-2026-11-14">nemetonshiny 2026.10.18.9016 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189016-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="changements-visibles--surcouche-du-plan-de-validation-classe-saine-transparente-et-couleurs-de-chaque-moteur-mission-2026-10-18-9016">Changements visibles : surcouche du Plan de validation, classe saine transparente et couleurs de chaque moteur (mission 023)<a class="anchor" aria-label="anchor" href="#changements-visibles--surcouche-du-plan-de-validation-classe-saine-transparente-et-couleurs-de-chaque-moteur-mission-2026-10-18-9016"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-2">Détail du cycle dev 2026.10.18.9016 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-2"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="changements-visibles--surcouche-du-plan-de-validation-classe-saine-transparente-et-couleurs-de-chaque-moteur-mission-2026-11-1">Changements visibles : surcouche du Plan de validation, classe saine transparente et couleurs de chaque moteur (mission 023)<a class="anchor" aria-label="anchor" href="#changements-visibles--surcouche-du-plan-de-validation-classe-saine-transparente-et-couleurs-de-chaque-moteur-mission-2026-11-1"></a></h3>
 <ul><li>Sur la carte du Plan de validation, la classe saine est transparente pour FAST, FORDEAD et RECONFORT (fond de carte visible sous la forêt saine). RECONFORT : sa classe saine (1) n’est plus peinte en jaune pâle, et 0 / sans donnée restent transparents.</li>
 <li>Les classes d’alerte ont la couleur de la carte de santé du même moteur : FAST prend sa palette (classe 4 « sévère » en rouge foncé, plus en quasi-noir « sol nu » de FORDEAD), RECONFORT prend orange / rouge, FORDEAD est inchangé.</li>
 <li>Nouvelle légende de la surcouche, limitée aux classes peintes (libellés existants de chaque moteur).</li>
 <li>Une seule source de vérité des couleurs par moteur : <code>.FAST_ALERT_CLASS_COLORS</code> et <code>.FORDEAD_SEVERITY_COLORS</code> (cartes de santé et surcouche), <code>.RECONFORT_CLASSIF_COLORS</code> existante. Helper <code>.validation_overlay_style()</code>.</li>
 <li>Inchangés : opacité de la surcouche, marqueurs, plan trend. Tests : <code>test-mod_validation_sampling_overlay.R</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9015" id="nemetonshiny-202610189015-2026-11-14">nemetonshiny 2026.10.18.9015 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189015-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="changements-visibles---aucune-alerte-dans-cette-strate--au-lieu-de--zone-saine--mission-2026-10-18-9015">Changements visibles : « Aucune alerte dans cette strate » au lieu de « zone saine » (mission 022)<a class="anchor" aria-label="anchor" href="#changements-visibles---aucune-alerte-dans-cette-strate--au-lieu-de--zone-saine--mission-2026-10-18-9015"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-3">Détail du cycle dev 2026.10.18.9015 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-3"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="changements-visibles---aucune-alerte-dans-cette-strate--au-lieu-de--zone-saine--mission-2026-11-1">Changements visibles : « Aucune alerte dans cette strate » au lieu de « zone saine » (mission 022)<a class="anchor" aria-label="anchor" href="#changements-visibles---aucune-alerte-dans-cette-strate--au-lieu-de--zone-saine--mission-2026-11-1"></a></h3>
 <ul><li>Sur une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>) sans aucune alerte alors que la zone entière (<code>_tot</code>) en compte, les Alertes FAST, la Carte FORDEAD (couche sévérité) et la Carte RECONFORT (couche classification) affichent « Aucune alerte dans cette strate » avec le rappel « La zone entière (_tot) compte N pixels en alerte (≈ H ha) », en bleu informatif (bandeau <code>alert-info</code>, carte <code>border-info</code>), au lieu d’un « zone saine » vert qui laissait croire que toute la forêt était saine.</li>
 <li>Inchangé : strate = <code>_tot</code>, projet sans <code>_tot</code>, strate sans aucune donnée (hors emprise), <code>_tot</code> sans alerte non plus (vert actuel pour FAST et FORDEAD, rien pour RECONFORT), couches score et probabilité de RECONFORT. Le sol nu FORDEAD (classe 4) compte comme alerte, comme avant.</li>
 <li>Nouveau <code>R/utils_sante_strate.R</code> (comptage de pixels déjà classés par le cœur, aucune règle métier). RECONFORT relit la seule couche <code>classification</code> de <code>_tot</code> (bornée à l’AOI de <code>_tot</code>), une fois par run ; FORDEAD conserve le masque <code>_tot</code> complet de sa lecture.</li>
 <li>Clés i18n : <code>sante_strate_sans_alerte_titre</code>, <code>sante_strate_rappel_tot</code>. Tests : <code>test-utils_sante_strate.R</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9014" id="nemetonshiny-202610189014-2026-11-14">nemetonshiny 2026.10.18.9014 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189014-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs--plan-de-validation-reconfort-lu-sur-_tot-découpé-à-la-strate-mission-2026-10-18-9014">Correctifs : Plan de validation RECONFORT lu sur <code>_tot</code>, découpé à la strate (mission 021)<a class="anchor" aria-label="anchor" href="#correctifs--plan-de-validation-reconfort-lu-sur-_tot-d%C3%A9coup%C3%A9-%C3%A0-la-strate-mission-2026-10-18-9014"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-4">Détail du cycle dev 2026.10.18.9014 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-4"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="correctifs--plan-de-validation-reconfort-lu-sur-_tot-découpé-à-la-strate-mission-2026-11-1">Correctifs : Plan de validation RECONFORT lu sur <code>_tot</code>, découpé à la strate (mission 021)<a class="anchor" aria-label="anchor" href="#correctifs--plan-de-validation-reconfort-lu-sur-_tot-d%C3%A9coup%C3%A9-%C3%A0-la-strate-mission-2026-11-1"></a></h3>
 <ul><li>Sur une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>), le Plan de validation RECONFORT cherchait sa classification 1/2/3 et son <code>score</code> dans <code>zone_&lt;id de la strate&gt;</code>, alors que RECONFORT calcule et met en cache sur <code>_tot</code>. Ils sont maintenant lus sur <code>_tot</code>, comme la carte RECONFORT et comme FAST (mission 017) et FORDEAD (mission 019).</li>
 <li>La chaîne de la mission 019 est généralisée aux deux moteurs catégoriels (<code>.read_categorical_mask_chain</code>, <code>.read_categorical_mask_stratum</code>) : même repli double (pas de zone <code>_tot</code> en base, ou pas de masque <code>_tot</code> sur disque : relecture sur la strate). <code>.fordead_tot_zone_id</code> devient <code>.monitoring_tot_zone_id</code>. FORDEAD est inchangé.</li>
 <li>Génération : tirage borné par le polygone de la strate ; <code>source_run_id</code> et la pondération continue <code>score</code> suivent la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque <code>_tot</code> découpé à la strate. Strate = <code>_tot</code> : aucun changement.</li>
@@ -91,54 +125,42 @@
 <li>Constaté, non corrigé : la surcouche carte RECONFORT affiche la classe saine (1) en jaune pâle, comme une alerte faible (palette 0:4 de FAST / FORDEAD).</li>
 <li>Tests : <code>test-service_validation_sampling_reconfort_tot.R</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9013" id="nemetonshiny-202610189013-2026-11-14">nemetonshiny 2026.10.18.9013 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189013-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="nettoyage--retrait-du-code-fast-sans-lecteur-des-libellés-de-classes-mission-2026-10-18-9013">Nettoyage : retrait du code FAST sans lecteur des libellés de classes (mission 020)<a class="anchor" aria-label="anchor" href="#nettoyage--retrait-du-code-fast-sans-lecteur-des-libell%C3%A9s-de-classes-mission-2026-10-18-9013"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-5">Détail du cycle dev 2026.10.18.9013 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-5"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="nettoyage--retrait-du-code-fast-sans-lecteur-des-libellés-de-classes-mission-2026-11-1">Nettoyage : retrait du code FAST sans lecteur des libellés de classes (mission 020)<a class="anchor" aria-label="anchor" href="#nettoyage--retrait-du-code-fast-sans-lecteur-des-libell%C3%A9s-de-classes-mission-2026-11-1"></a></h3>
 <ul><li>Aucun changement visible. Retirés : la branche FAST de <code>.fast_class_labels</code> (la fonction devient <code>.fordead_class_labels(i18n)</code>, mêmes libellés FORDEAD), <code>.classify_alert_count</code>, <code>.alert_count_palette</code> et les sept clés i18n <code>validation_class_fast_1..4</code> et <code>validation_class_unit_days|deficit|trend</code>, que l’application n’appelait plus depuis la mission 018.</li>
 <li>
 <code>.fast_raster_is_empty</code> est conservé (autres lecteurs dans l’onglet Alertes FAST).</li>
 <li>Tests : neuf tests du code retiré supprimés ; le test FORDEAD compare les quatre libellés en fr et en en aux clés i18n, plus un littéral.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9012" id="nemetonshiny-202610189012-2026-11-14">nemetonshiny 2026.10.18.9012 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189012-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs--plan-de-validation-fordead-lu-sur-_tot-découpé-à-la-strate-mission-2026-10-18-9012">Correctifs : Plan de validation FORDEAD lu sur <code>_tot</code>, découpé à la strate (mission 019)<a class="anchor" aria-label="anchor" href="#correctifs--plan-de-validation-fordead-lu-sur-_tot-d%C3%A9coup%C3%A9-%C3%A0-la-strate-mission-2026-10-18-9012"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-6">Détail du cycle dev 2026.10.18.9012 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-6"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="correctifs--plan-de-validation-fordead-lu-sur-_tot-découpé-à-la-strate-mission-2026-11-1">Correctifs : Plan de validation FORDEAD lu sur <code>_tot</code>, découpé à la strate (mission 019)<a class="anchor" aria-label="anchor" href="#correctifs--plan-de-validation-fordead-lu-sur-_tot-d%C3%A9coup%C3%A9-%C3%A0-la-strate-mission-2026-11-1"></a></h3>
 <ul><li>Sur une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>), le Plan de validation FORDEAD cherchait le masque de dépérissement dans <code>zone_&lt;id de la strate&gt;</code>, alors que FORDEAD le calcule et le met en cache sur <code>_tot</code> : le masque était introuvable (« pas de masque ») ou ancien. Il est maintenant lu sur <code>_tot</code>, comme la carte FORDEAD et la pondération continue.</li>
 <li>Génération : le tirage reste borné par le polygone de la strate (le cœur y restreint déjà le raster) ; <code>source_run_id</code> suit la zone réellement lue. Histogramme des classes, auto-relâchement des témoins et surcouche carte : masque <code>_tot</code> découpé à la strate (<code>.read_fordead_mask_stratum</code>).</li>
 <li>Repli double, jamais pire qu’avant : sans zone <code>_tot</code> en base, ou si <code>_tot</code> n’a pas de masque sur disque (ancien run fait sur la strate), relecture sur la strate sans découpe. Strate = <code>_tot</code> : aucun changement.</li>
 <li>Constaté, non corrigé (périmètre à décider) : le Plan de validation RECONFORT lit encore sa classification et son score sur la strate, alors que RECONFORT tourne sur <code>_tot</code>.</li>
 <li>Test : <code>test-service_validation_sampling_fordead_tot.R</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9011" id="nemetonshiny-202610189011-2026-11-14">nemetonshiny 2026.10.18.9011 (2026-11-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189011-2026-11-14"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="nettoyage--retrait-de-laperçu-fast-mort-du-plan-de-validation-mission-2026-10-18-9011">Nettoyage : retrait de l’aperçu FAST mort du Plan de validation (mission 018)<a class="anchor" aria-label="anchor" href="#nettoyage--retrait-de-laper%C3%A7u-fast-mort-du-plan-de-validation-mission-2026-10-18-9011"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-7">Détail du cycle dev 2026.10.18.9011 (2026-11-14) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-7"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="nettoyage--retrait-de-laperçu-fast-mort-du-plan-de-validation-mission-2026-11-1">Nettoyage : retrait de l’aperçu FAST mort du Plan de validation (mission 018)<a class="anchor" aria-label="anchor" href="#nettoyage--retrait-de-laper%C3%A7u-fast-mort-du-plan-de-validation-mission-2026-11-1"></a></h3>
 <ul><li>Aucun changement visible. <code>preview_raster_r</code> (<code>R/mod_validation_sampling.R</code>) est supprimée : son seul lecteur, l’observateur des libellés de classes, sort avant de l’appeler pour FAST et RECONFORT, et pour FORDEAD elle valait toujours <code>NULL</code>. L’observateur passe maintenant <code>NULL</code> à <code>.fast_class_labels()</code> (libellés FORDEAD statiques, traduits dans la langue courante).</li>
 <li>Commentaires devenus faux corrigés (<code>mod_monitoring_fast_alerts.R</code>, <code>mod_monitoring.R</code>, <code>utils_i18n.R</code>), aucun code touché.</li>
 <li>Resté sans lecteur dans l’app, signalé et non retiré : branche FAST de <code>.fast_class_labels</code>, <code>.classify_alert_count</code>, <code>.alert_count_palette</code>, clés i18n <code>validation_class_fast_1..4</code> et <code>validation_class_unit_days|deficit|trend</code>.</li>
 <li>Test : <code>test-mod_validation_sampling.R</code> (libellés FORDEAD anglais, ordre 4, 3, 2, 1).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9010" id="nemetonshiny-202610189010-2026-11-13">nemetonshiny 2026.10.18.9010 (2026-11-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189010-2026-11-13"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête <code>.9009</code> (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="fast-calculé-sur-_tot-découpé-par-strate-à-laffichage-mission-2026-10-18-9010">FAST calculé sur <code>_tot</code>, découpé par strate à l’affichage (mission 017)<a class="anchor" aria-label="anchor" href="#fast-calcul%C3%A9-sur-_tot-d%C3%A9coup%C3%A9-par-strate-%C3%A0-laffichage-mission-2026-10-18-9010"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-8">Détail du cycle dev 2026.10.18.9010 (2026-11-13) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-8"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="fast-calculé-sur-_tot-découpé-par-strate-à-laffichage-mission-2026-11-1">FAST calculé sur <code>_tot</code>, découpé par strate à l’affichage (mission 017)<a class="anchor" aria-label="anchor" href="#fast-calcul%C3%A9-sur-_tot-d%C3%A9coup%C3%A9-par-strate-%C3%A0-laffichage-mission-2026-11-1"></a></h3>
 <ul><li>
 <strong>Changement de comportement : choisir une strate (<code>_res</code>, <code>_feu</code>, <code>_mix</code>) ne recalcule plus FAST ; les quartiles du masque 0-4 sont ceux de l’union des UGF (<code>_tot</code>), donc les cartes <code>_tot</code> et strate sont comparables.</strong> La strate ne fait que découper l’affichage (<code><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">terra::mask</a></code> après calcul, comme FORDEAD et RECONFORT). Sans zone <code>_tot</code>, repli sur la zone du menu.</li>
 <li>Alertes FAST : le masque, son cache, la signature (pas de toast au changement de strate) et le préchauffage trend portent la zone <code>_tot</code> (<code>run_zone_id_r</code>). Bandeau, carte, sévérité au clic et export lisent le raster découpé.</li>
@@ -147,14 +169,11 @@
 <li>Hors périmètre, constaté : le Plan de validation FORDEAD lit <code>read_fordead_dieback_mask()</code> sur la strate alors que son cache est sous <code>zone_&lt;id_tot&gt;</code> (voir la PR).</li>
 <li>Tests : <code>test-mod_monitoring_fast_alerts_strate.R</code>, <code>test-mod_monitoring_fast_ingest_tot.R</code>, <code>test-service_validation_sampling_tot.R</code> ; <code>test-mod_validation_sampling.R</code> : le mock de <code>generate_trend_sanitary_plan</code> accepte le nouvel argument <code>run_zone_id</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9009" id="nemetonshiny-202610189009-2026-11-11">nemetonshiny 2026.10.18.9009 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189009-2026-11-11"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ces changements cassants sortiront dans la release v2026.11.1, après application du brief nemetonmcp et l’essai VICTOR sur Couchey (bilan du 2026-11-13).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="changements-cassants-2026-10-18-9009">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-10-18-9009"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-9">Détail du cycle dev 2026.10.18.9009 (2026-11-11) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-9"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="changements-cassants-2026-11-1-1">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-11-1-1"></a></h3>
 <ul><li>Serveur MCP : <code>generer_rapport</code> et le <strong>2e appel</strong> de <code>croiser_onf</code> (avec <code>jeton</code>) ne rendent plus leur résultat : ils lancent un job de fond et rendent <code>ok</code>, <code>projet</code>, <code>job_id</code>, <code>type</code> (<code>rapport</code> ou <code>onf</code>) aussitôt. Le résultat (<code>fichier</code> ; <code>n_ugf</code>, <code>n_tenements</code>, <code>n_parcelles</code>, <code>n_cad</code>, <code>ecartees</code>, <code>ecart_median_m</code>, <code>indicateurs_perimes</code>) se lit dans <code>etat_calcul</code> quand <code>statut = "termine"</code>. Le 1er appel de <code>croiser_onf</code> (aperçu) reste synchrone.</li>
 <li>
 <code>etat_calcul</code> : nouveau champ <code>type</code> (<code>calcul</code>, <code>rapport</code>, <code>onf</code>) ; un job en échec rend désormais <code>ok = false</code> et les champs d’erreur MCP (<code>classe</code>, <code>code</code>, <code>langue</code>, <code>erreur</code>, <code>action</code>) au premier niveau, à côté de <code>statut</code>, <strong>sans marquage <code>isError</code></strong> (l’outil a réussi, c’est le job qui a échoué). <code>erreur</code> est le texte classé (avant : le message brut) ; <code>statut</code> vaut <code>en_cours</code> dès le lancement (avant : <code>lancement</code>).</li>
@@ -165,54 +184,54 @@
 <code>.mcp_jeton_consommer()</code> rejoue la garde <strong>avant</strong> de consommer le jeton : un refus <code>calcul_en_cours</code> ou <code>projet_verrouille</code> au 2e appel (<code>appliquer_ugf</code> comme <code>croiser_onf</code>) laisse le jeton valable. Un jeton inconnu ou déjà utilisé reste <code>jeton_invalide</code>, sans passer par la garde.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="serveur-mcp--les-outils-longs-mesurés-partent-en-tâche-de-fond-mission-2026-10-18-9009">Serveur MCP : les outils longs mesurés partent en tâche de fond (mission 012)<a class="anchor" aria-label="anchor" href="#serveur-mcp--les-outils-longs-mesur%C3%A9s-partent-en-t%C3%A2che-de-fond-mission-2026-10-18-9009"></a></h3>
+<h3 id="serveur-mcp--les-outils-longs-mesurés-partent-en-tâche-de-fond-mission-2026-11-1">Serveur MCP : les outils longs mesurés partent en tâche de fond (mission 012)<a class="anchor" aria-label="anchor" href="#serveur-mcp--les-outils-longs-mesur%C3%A9s-partent-en-t%C3%A2che-de-fond-mission-2026-11-1"></a></h3>
 <ul><li>Mesures de la mission 011 : <code>croiser_onf</code> 79-160 s, <code>generer_rapport</code> 49 s (220 s sur un process neuf) ; ADR 0004, aucun appel ne doit dépasser 600 s.</li>
 <li>Modèle de <code>lancer_calcul</code> : <code>data/compute_job.json</code> (champs <code>type</code>, <code>args</code>), <code>Rscript</code> détaché (<code>setsid</code>), <code>.mcp_child_job()</code> aiguille par <code>type</code>. En développement (<code>load_all</code>), l’enfant charge les sources du dépôt, pas le paquet installé.</li>
 <li>L’aperçu de <code>croiser_onf</code> (1er appel) reste <strong>synchrone</strong> : durée mesurée 38 à 70 s sur Couchey et Marsannay (DGFiP en cache), jusqu’à ~160 s à froid (mission 011).</li>
 <li>L’enfant détaché reçoit le <code>job_id</code> et sort sans rien faire s’il ne correspond pas à celui de <code>compute_job.json</code> (course entre deux serveurs).</li>
 <li>Descriptions d’outils : <code>generer_rapport</code>, <code>croiser_onf</code> et <code>etat_calcul</code> renvoient les uns aux autres ; <code>inst/mcp/README.md</code> et <code>CONTRAT.md</code> § 6 bis à jour.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9008" id="nemetonshiny-202610189008-2026-11-11">nemetonshiny 2026.10.18.9008 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189008-2026-11-11"></a></h2>
-<p>Changements cassants : <code>projet_lire()$synthese$families$score</code> passe de 1 à <strong>2 décimales</strong> (53,3 → 53,33), comme l’écran Synthèse et <code>resume_projet</code> ; <code>families</code> gagne les colonnes <code>ndp</code> et <code>n_indicateurs</code> (ajout).</p>
 <div class="section level3">
-<h3 id="une-seule-table-des-familles-pour-lécran-lapi-et-le-mcp-mission-2026-10-18-9008">Une seule table des familles pour l’écran, l’API et le MCP (mission 015)<a class="anchor" aria-label="anchor" href="#une-seule-table-des-familles-pour-l%C3%A9cran-lapi-et-le-mcp-mission-2026-10-18-9008"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-10">Détail du cycle dev 2026.10.18.9008 (2026-11-11) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-10"></a></h3>
+<p>Changements cassants : <code>projet_lire()$synthese$families$score</code> passe de 1 à <strong>2 décimales</strong> (53,3 → 53,33), comme l’écran Synthèse et <code>resume_projet</code> ; <code>families</code> gagne les colonnes <code>ndp</code> et <code>n_indicateurs</code> (ajout).</p>
+</div>
+<div class="section level3">
+<h3 id="une-seule-table-des-familles-pour-lécran-lapi-et-le-mcp-mission-2026-11-1">Une seule table des familles pour l’écran, l’API et le MCP (mission 015)<a class="anchor" aria-label="anchor" href="#une-seule-table-des-familles-pour-l%C3%A9cran-lapi-et-le-mcp-mission-2026-11-1"></a></h3>
 <ul><li>Nouveau helper <code>project_family_table(project, family_sf, language)</code> (<code>R/service_synthesis.R</code>) : les 12 familles avec nom, score (2 décimales), NDP et nombre d’indicateurs présents (à défaut prévus). Utilisé par le tableau de l’onglet Synthèse, par <code>project_synthesis_summary()</code> (donc <code>projet_lire()$synthese</code>) et par <code>mcp_resume_projet()</code> : plus de comptage en double ni de repli divergent quand <code>indicators_sf</code> n’est pas un sf (repli sur la config partout).</li>
 <li>Test corrigé : <code>test-service_synthesis.R</code> figeait l’arrondi à 1 décimale ; il attend désormais 2 décimales.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9007" id="nemetonshiny-202610189007-2026-11-11">nemetonshiny 2026.10.18.9007 (2026-11-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189007-2026-11-11"></a></h2>
-<p>Changements cassants : aucun (contrat client inchangé : forme de <code>confirmation_requise</code>, usage unique, 10 minutes, empreinte).</p>
 <div class="section level3">
-<h3 id="serveur-mcp--le-jeton-de-confirmation-survit-au-redémarrage-du-serveur-mission-2026-10-18-9007">Serveur MCP : le jeton de confirmation survit au redémarrage du serveur (mission 016)<a class="anchor" aria-label="anchor" href="#serveur-mcp--le-jeton-de-confirmation-survit-au-red%C3%A9marrage-du-serveur-mission-2026-10-18-9007"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-11">Détail du cycle dev 2026.10.18.9007 (2026-11-11) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-11"></a></h3>
+<p>Changements cassants : aucun (contrat client inchangé : forme de <code>confirmation_requise</code>, usage unique, 10 minutes, empreinte).</p>
+</div>
+<div class="section level3">
+<h3 id="serveur-mcp--le-jeton-de-confirmation-survit-au-redémarrage-du-serveur-mission-2026-11-1">Serveur MCP : le jeton de confirmation survit au redémarrage du serveur (mission 016)<a class="anchor" aria-label="anchor" href="#serveur-mcp--le-jeton-de-confirmation-survit-au-red%C3%A9marrage-du-serveur-mission-2026-11-1"></a></h3>
 <ul><li>Le registre des jetons de la mission 010 n’est plus en mémoire mais <strong>sur disque</strong>, un fichier <code>&lt;jeton&gt;.rds</code> par jeton dans <code>NEMETON_MCP_JETONS_DIR</code> (défaut <code>tools::R_user_dir("nemetonshiny", "data")/mcp/jetons</code>), hors du dossier projet. VICTOR lance un <code>claude -p</code> neuf par tâche, donc un serveur MCP neuf : l’aperçu (tâche 1) et le « oui » (tâche 2) passaient par deux processus et le second rendait <code>jeton_invalide</code>.</li>
 <li>Écriture atomique (fichier temporaire dans le même répertoire puis <code>file.rename</code>), répertoire <code>0700</code> et fichiers <code>0600</code> sous Unix. Consommation : la suppression du fichier fait foi, deux serveurs (VICTOR et AIGORA) ne consomment pas le même jeton.</li>
 <li>Jetons périmés, fichiers illisibles et temporaires abandonnés purgés à l’émission et à la consommation ; un fichier corrompu vaut un jeton inconnu (<code>jeton_invalide</code>). Registre impossible à créer ou à écrire : erreur classée (<code>erreur</code>), rien d’écrit.</li>
 <li>Jeton tiré de <code>/dev/urandom</code> (insensible à <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code>, ne touche pas <code>.Random.seed</code>) ; repli sans <code>/dev/urandom</code> (Windows) : md5 d’aléa interne de R, de l’heure et du PID, plus faible. Aucune dépendance ajoutée. Seul un jeton de la forme émise (24 caractères <code>[0-9a-z]</code>) désigne un fichier.</li>
 <li>Sur disque : jeton, outil, id du projet, empreinte (md5 des parcelles, chemin et md5 du fichier, réglages résolus), échéance. Ni géométrie ni aperçu.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9006" id="nemetonshiny-202610189006-2026-11-10">nemetonshiny 2026.10.18.9006 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189006-2026-11-10"></a></h2>
-<p>Changements cassants : <code>updated_at</code> n’est pas un champ nouveau, seul son <strong>format</strong> change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ; <code>score</code> des familles de <code>resume_projet</code> passe à 2 décimales, comme la Synthèse. Autres champs : ajoutés.</p>
 <div class="section level3">
-<h3 id="mcp--resume_projet-rend-tout-lécran-synthèse-mission-2026-10-18-9006">MCP : <code>resume_projet</code> rend tout l’écran Synthèse (mission 008)<a class="anchor" aria-label="anchor" href="#mcp--resume_projet-rend-tout-l%C3%A9cran-synth%C3%A8se-mission-2026-10-18-9006"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-12">Détail du cycle dev 2026.10.18.9006 (2026-11-10) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-12"></a></h3>
+<p>Changements cassants : <code>updated_at</code> n’est pas un champ nouveau, seul son <strong>format</strong> change (heure naïve → ISO 8601 avec fuseau Europe/Paris) ; <code>score</code> des familles de <code>resume_projet</code> passe à 2 décimales, comme la Synthèse. Autres champs : ajoutés.</p>
+</div>
+<div class="section level3">
+<h3 id="mcp--resume_projet-rend-tout-lécran-synthèse-mission-2026-11-1">MCP : <code>resume_projet</code> rend tout l’écran Synthèse (mission 008)<a class="anchor" aria-label="anchor" href="#mcp--resume_projet-rend-tout-l%C3%A9cran-synth%C3%A8se-mission-2026-11-1"></a></h3>
 <ul><li>Nouveaux champs : <code>description</code>, <code>created_at</code>, <code>updated_at</code> et <code>calcule_le</code> (ISO 8601, fuseau Europe/Paris ; heures naïves lues dans le fuseau du process), <code>chm_suspect</code>, <code>chm_suspect_max</code>, et par famille <code>ndp</code> et <code>n_indicateurs</code> (présents, à défaut prévus).</li>
 <li>Le serveur MCP force <code>TZ = "Europe/Paris"</code> au lancement (<code>inst/mcp/server.R</code>), donc les heures naïves sont lues en heure de Paris quel que soit le fuseau du poste.</li>
 <li>
 <code>calcule_le</code> : <code>completed_at</code> &gt; <code>fin_a</code> (job <code>termine</code>) &gt; date de <code>indicators.parquet</code> &gt; <code>null</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9005" id="nemetonshiny-202610189005-2026-11-10">nemetonshiny 2026.10.18.9005 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189005-2026-11-10"></a></h2>
 <div class="section level3">
-<h3 id="changements-cassants-2026-10-18-9005">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-10-18-9005"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-13">Détail du cycle dev 2026.10.18.9005 (2026-11-10) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-13"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="changements-cassants-2026-11-1-2">Changements cassants<a class="anchor" aria-label="anchor" href="#changements-cassants-2026-11-1-2"></a></h3>
 <ul><li>Serveur MCP : <code>appliquer_ugf</code> et <code>croiser_onf</code> <strong>n’écrivent plus au premier appel</strong>. Sans <code>jeton</code>, ils font tous les contrôles, n’écrivent rien et rendent l’erreur <code>confirmation_requise</code> avec <code>apercu</code>, <code>jeton</code> et <code>expire_a</code> ; seul un second appel portant ce jeton écrit (ADR 0002). Un client qui enchaînait un seul appel ne modifie plus le projet. <code>mcp_appliquer_ugf()</code> et <code>mcp_croiser_onf()</code> gagnent un argument <code>jeton</code> (en dernier). La release qui embarquera ce changement demandera la confirmation de Pascal.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="serveur-mcp--confirmation-des-écritures-par-jeton-mission-2026-10-18-9005">Serveur MCP : confirmation des écritures par jeton (mission 010)<a class="anchor" aria-label="anchor" href="#serveur-mcp--confirmation-des-%C3%A9critures-par-jeton-mission-2026-10-18-9005"></a></h3>
+<h3 id="serveur-mcp--confirmation-des-écritures-par-jeton-mission-2026-11-1">Serveur MCP : confirmation des écritures par jeton (mission 010)<a class="anchor" aria-label="anchor" href="#serveur-mcp--confirmation-des-%C3%A9critures-par-jeton-mission-2026-11-1"></a></h3>
 <ul><li>Jeton à usage unique, 24 caractères <code>[0-9a-z]</code>, valable 10 minutes (une seule constante, <code>.MCP_JETON_DUREE</code>, provisoire jusqu’à l’essai VICTOR), gardé en mémoire du serveur : rien n’est écrit dans le dossier du projet à l’aperçu.</li>
 <li>Lien du jeton : outil, projet, md5 des fichiers de parcelles du projet ; <code>appliquer_ugf</code> : fichier (chemin normalisé et md5) et <code>remplacer</code> ; <code>croiser_onf</code> : tous les réglages ONF résolus (<code>purger</code> compris). Tout jeton connu présenté est consommé, même refusé, <strong>sauf</strong> si le projet est introuvable ou ambigu, ou si les métadonnées ONF sont illisibles (erreurs levées avant la lecture du jeton : il reste valable). L’aperçu nomme le projet : le message cite le nom résolu et l’identifiant, le JSON porte <code>projet</code> et <code>projet_nom</code>.</li>
 <li>Ordre : gardes (calcul en cours, verrou, projet ancien) puis jeton, puis fichier ou croisement (recalculé à la confirmation), puis écriture. Au premier appel, erreurs métier et gardes passent avant l’aperçu, sans jeton.</li>
@@ -220,30 +239,30 @@
 <li>Deux classes d’erreur : <code>confirmation_requise</code>, <code>jeton_invalide</code> (16 messages <code>mcp_err_*</code>, 11 actions <code>mcp_act_*</code>).</li>
 <li>Contrat <code>nemetonmcp</code> (CONTRAT.md § 6 bis, 35 objets) : <code>.mcp_garde_ecriture()</code>, <code>.mcp_jeton_emettre()</code>, <code>.mcp_jeton_consommer()</code>, pour ses propres écritures (plan d’actions) ; pas encore appelés par <code>nemetonmcp</code> (brief de la mission 013).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9004" id="nemetonshiny-202610189004-2026-11-10">nemetonshiny 2026.10.18.9004 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189004-2026-11-10"></a></h2>
-<p>Changements cassants : aucun.</p>
 <div class="section level3">
-<h3 id="noms-de-projet-dictés--résolution-tolérante-mission-2026-10-18-9004">Noms de projet dictés : résolution tolérante (mission 007)<a class="anchor" aria-label="anchor" href="#noms-de-projet-dict%C3%A9s--r%C3%A9solution-tol%C3%A9rante-mission-2026-10-18-9004"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-14">Détail du cycle dev 2026.10.18.9004 (2026-11-10) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-14"></a></h3>
+<p>Changements cassants : aucun.</p>
+</div>
+<div class="section level3">
+<h3 id="noms-de-projet-dictés--résolution-tolérante-mission-2026-11-1">Noms de projet dictés : résolution tolérante (mission 007)<a class="anchor" aria-label="anchor" href="#noms-de-projet-dict%C3%A9s--r%C3%A9solution-tol%C3%A9rante-mission-2026-11-1"></a></h3>
 <ul><li>
 <code>.mcp_resolve_project</code> rapproche un nom approximatif du mot-clé de la commune du projet (« Forêt communale de Couchey (ONF) » -&gt; « couchey »). Accents et casse ignorés (normalisation par points de code, indépendante de la locale, y compris <code>LC_ALL=C</code>). L’introduction « Forêt [communale] de/du/des/d’ » (apostrophe droite ou typographique) est retirée des deux côtés (« Forêt de Dabot » trouve « Forêt de Dabo »). Un projet correspond si le nom dicté égale le mot-clé, ou en est une suite de mots entiers en tête, ou en est à une distance d’édition &lt;= 2 (seuil provisoire) ; cette distance ne s’applique que si le nom dicté ET le mot-clé ont au moins 4 lettres (« de », « du » ne rapprochent jamais « Forêt de Bé » ; « la » ne rapproche pas « Laix »). Une égalité exacte avec un mot-clé l’emporte sur les rapprochements approchés, sauf si un autre projet est à distance &lt;= 1 du nom dicté (alors <code>projet_ambigu</code> avec les candidats : « Écouché » face à Couchey trouve Écouché ; « Couchey » face à Couchay rend les deux). Ligatures œ/æ lues oe/ae. Le serveur MCP est forcé en locale UTF-8 au lancement.</li>
 <li>Un seul projet : il est retenu ; plusieurs : <code>projet_ambigu</code> avec les candidats (« nom (id) ») ; aucun : <code>projet_introuvable</code>. Plus de simple sous-chaîne (« de », « onf » ne rapprochent rien).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9003" id="nemetonshiny-202610189003-2026-11-10">nemetonshiny 2026.10.18.9003 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189003-2026-11-10"></a></h2>
-<p>Changements cassants : aucun.</p>
 <div class="section level3">
-<h3 id="mcp--annotations-des-dix-outils-2026-10-18-9003">MCP : annotations des dix outils<a class="anchor" aria-label="anchor" href="#mcp--annotations-des-dix-outils-2026-10-18-9003"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-15">Détail du cycle dev 2026.10.18.9003 (2026-11-10) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-15"></a></h3>
+<p>Changements cassants : aucun.</p>
+</div>
+<div class="section level3">
+<h3 id="mcp--annotations-des-dix-outils-2026-11-1">MCP : annotations des dix outils<a class="anchor" aria-label="anchor" href="#mcp--annotations-des-dix-outils-2026-11-1"></a></h3>
 <ul><li>Chaque outil de <code>mcp_tools()</code> porte <code>read_only_hint</code>, <code>destructive_hint</code> et <code>idempotent_hint</code> : lecture seule pour <code>lister_projets</code>, <code>resume_projet</code>, <code>etat_calcul</code>, <code>url_app</code> ; destructifs <code>appliquer_ugf</code> et <code>croiser_onf</code> ; non idempotent <code>lancer_calcul</code> seul.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9002" id="nemetonshiny-202610189002-2026-11-10">nemetonshiny 2026.10.18.9002 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189002-2026-11-10"></a></h2>
-<p>Changements cassants : aucun pour les fonctions <code>mcp_*</code> (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d’outil est désormais marquée <code>isError</code>.</p>
 <div class="section level3">
-<h3 id="serveur-mcp--erreurs-marquées-classées-bilingues-mission-2026-10-18-9002">Serveur MCP : erreurs marquées, classées, bilingues (mission 003)<a class="anchor" aria-label="anchor" href="#serveur-mcp--erreurs-marqu%C3%A9es-class%C3%A9es-bilingues-mission-2026-10-18-9002"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-16">Détail du cycle dev 2026.10.18.9002 (2026-11-10) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-16"></a></h3>
+<p>Changements cassants : aucun pour les fonctions <code>mcp_*</code> (elles rendent toujours une chaîne JSON) ; côté client MCP, une erreur d’outil est désormais marquée <code>isError</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="serveur-mcp--erreurs-marquées-classées-bilingues-mission-2026-11-1">Serveur MCP : erreurs marquées, classées, bilingues (mission 003)<a class="anchor" aria-label="anchor" href="#serveur-mcp--erreurs-marqu%C3%A9es-class%C3%A9es-bilingues-mission-2026-11-1"></a></h3>
 <ul><li>Une erreur d’outil MCP n’est plus lue comme un succès : <code>mcp_tools()</code> la rend en <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentToolResult</a></code> en erreur (<code>isError: true</code> côté mcptools).</li>
 <li>Forme JSON : <code>{ok, classe, code, langue, erreur, action, candidats}</code> ; <code>classe</code> = nom R complet (<code>nemetonshiny_projet_introuvable</code>), <code>code</code> = nom court.</li>
 <li>Message et action suivante en FR (défaut) ou EN : 14 messages <code>mcp_err_*</code> et 9 actions <code>mcp_act_*</code> dans <code>TRANSLATIONS</code>. <code>langue</code> n’est lue que par <code>resume_projet</code> et <code>generer_rapport</code> (aucune signature d’outil changée).</li>
@@ -252,12 +271,12 @@
 <li>Dette connue : le détail technique (cause brute) reste en français dans une erreur rendue en anglais.</li>
 <li>Hygiène : retrait de <code>tests/testthat/_problems/</code> du suivi git (ignoré par <code>.gitignore</code> et <code>.Rbuildignore</code>).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.10.18.9001" id="nemetonshiny-202610189001-2026-11-10">nemetonshiny 2026.10.18.9001 (2026-11-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-202610189001-2026-11-10"></a></h2>
-<p>Changements cassants : aucun.</p>
 <div class="section level3">
-<h3 id="alignement-sur-nemeton-ci-rouge-2026-10-18-9001">Alignement sur nemeton 2026.11.14 (CI rouge)<a class="anchor" aria-label="anchor" href="#alignement-sur-nemeton-ci-rouge-2026-10-18-9001"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-1-17">Détail du cycle dev 2026.10.18.9001 (2026-11-10) — publié dans 2026.11.1<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-1-17"></a></h3>
+<p>Changements cassants : aucun.</p>
+</div>
+<div class="section level3">
+<h3 id="alignement-sur-nemeton-ci-rouge-2026-11-1">Alignement sur nemeton 2026.11.14 (CI rouge)<a class="anchor" aria-label="anchor" href="#alignement-sur-nemeton-ci-rouge-2026-11-1"></a></h3>
 <ul><li>Le cœur 2026.11.14 ajoute N5 et B5 (43 indicateurs) et complète la description de la famille Biodiversité (« stratification verticale »).</li>
 <li>
 <code>famille_biodiversite_desc</code> (repli statique FR/EN) suit la description du cœur.</li>
