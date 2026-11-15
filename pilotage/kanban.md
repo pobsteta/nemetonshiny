@@ -28,7 +28,7 @@ _(vide)_
 
 ## Planifié
 
-- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo (030), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031) · depuis le cycle 3
+- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo (030), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 non NA sur Couchey (032) · depuis le cycle 3
   - Homme : Pascal
   - Mission : retours au journal en lignes « écart »
   - Moyens : app `main` 2026.11.1.9006
@@ -50,6 +50,8 @@ _(vide)_
   - Mission : VICTOR à la voix (essai par texte fait le 2026-11-15 ; reste le micro et la transcription Gradium) ; liste de contrôle de la fiche 024 (Statut) ; série santé 017-023
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
+
+- [032-bdtopo-reponse-vide](missions/032-bdtopo-reponse-vide.md) · cycle 3 · PR #290 (`4d1ccf55`), `.9007`
 
 - [026-duree-tests](missions/026-duree-tests.md) · cycle 3 · rapport de l'analyste ; commande ciblée adoptée, à remesurer machine calme
 - [027-marculus-csv-formats-6-8](missions/027-marculus-csv-formats-6-8.md) · cycle 3 · PR #284 (`ca837bf8`), `.9002`
