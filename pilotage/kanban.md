@@ -28,21 +28,15 @@ _(vide)_
 
 ## Planifié
 
-- [bilan-chaine-nemetonmcp] Brief nemetonmcp appliqué (puis aigora, victor) · depuis le cycle 2 · nemetonmcp FAIT (6c85d2f, 2026-11-13) ; reste victor (2 briefs) et aigora
+- [bilan-chaine-nemetonmcp] Brief nemetonmcp appliqué (puis aigora, victor) · depuis le cycle 2 · nemetonmcp CLOS (v2026.11.2, 2026-11-15) ; reste victor (2 briefs) et aigora
   - Homme : Pascal (sessions nemetonmcp, aigora, victor)
   - Mission : ouvrir `briefs/vers-nemetonmcp/2026-11-10-contrat-jeton-erreurs-noms.md` d'ici le 2026-11-17 ; relance si aucun commit nemetonmcp sous 7 jours
   - Moyens : briefs de la mission 013 (`briefs/vers-*/2026-11-10-*.md`)
-- [bilan-essai-couchey] Essai VICTOR sur Couchey · depuis le cycle 2
-  - Homme : Pascal, à la voix
-  - Mission : « où en est Couchey », « applique les UGF ONF » + « oui », « fais le rapport » ; au plus tard le 2026-11-24, après nemetonmcp
-  - Moyens : VICTOR + nemetonmcp à jour ; vérifie aussi le bloc NEMETON_CONFIRMATION en vrai `claude -p` et la durée de l'aperçu croiser_onf (écart l. 45)
-- [bilan-release-2026.11.1] Release v2026.11.1 · depuis le cycle 2
-  - Homme : orchestrateur, sur feu vert de Pascal
-  - Mission : publier les changements cassants de 2026.10.18.9009 après l'essai Couchey
-  - Moyens : `release.yml` (PR vers main)
 
 ## Terminé
 
+- [025-release-2026-11-1](missions/025-release-2026-11-1.md) · Release **v2026.11.1** publiée le 2026-11-15 (PR #280, `eaa47428`, tag posé par release.yml) ; contrat nemetonmcp à 33 objets
+- [bilan-essai-couchey] Essai VICTOR sur Couchey validé par Pascal le 2026-11-14 (selon nemetonmcp, brief 2026-11-14)
 - [bilan-adr-0003] ADR 0003 tranchée par Pascal le 2026-11-15 : option A (tout client MCP, avertissement) · reste le report dans platform_nemeton (brief déposé)
 - [024-fiche-pdf-par-ugf](missions/024-fiche-pdf-par-ugf.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR ; PR #277 (`ca89adf9`), 2026.10.18.9017, issue #20 fermée ; reste l'essai terrain de Pascal (Quarto en tâche de fond)
