@@ -1,3 +1,7 @@
+# nemetonshiny 2026.11.2.9000 (2026-11-15)
+
+> **Non publié.** Ouverture du cycle dev après la release v2026.11.2.
+
 # nemetonshiny 2026.11.2 (2026-11-15)
 
 Release stable qui regroupe le cycle dev `2026.11.1.9001` à `.9008` (missions 027 à 033, le détail de chaque entrée suit, plus bas). Elle demande le cœur **nemeton >= 2026.11.30** (`Imports`). Aucun changement cassant pour les clients MCP : le contrat `nemetonmcp` gagne seulement le champ `indicateurs_perimes` ; `nemetonmcp` doit être réinstallé pour en profiter.
