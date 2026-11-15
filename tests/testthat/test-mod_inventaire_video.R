@@ -143,7 +143,8 @@ test_that("video_tableau_etats croise le serveur et l'etat local", {
                     verdict = c(NA, NA, "conforme"))
   local <- c(P001 = "envoye", P004 = "a_faire")
   t <- video_tableau_etats(srv, local)
-  expect_named(t, c("plot_id", "etat", "date", "verdict", "n_arbres", "alertes"))
+  expect_named(t, c("plot_id", "etat", "date", "verdict", "n_arbres", "alertes",
+                    "terrain_envoye_le"))
   expect_identical(t$plot_id, c("P001", "P002", "P003", "P004"))
   # Le plus avance des deux gagne.
   expect_identical(t$etat, c("envoye", "envoye", "definitif", "a_faire"))
@@ -235,7 +236,7 @@ test_that("Integrer : NDP du coeur persiste et projet recharge", {
     .project_chm = function(id) NULL,
     video_placettes_plan = function(project_path) NULL,
     deny_if_readonly = function(app_state, ...) FALSE,
-    video_integrer = function(gpkg, resultats, project_path) {
+    video_integrer = function(gpkg, resultats, project_path, terrain = NULL) {
       list(validation = list(ok = TRUE, errors = data.frame(), warnings = data.frame()),
            a_completer = data.frame(plot_id = "P001", tree_id = "4"),
            a_verifier = data.frame(),
@@ -352,7 +353,7 @@ test_that("Renvoyer : le bouton apparait apres integration et sert le .qgz", {
     video_placettes_plan = function(project_path) NULL,
     deny_if_readonly = function(app_state, ...) FALSE,
     video_renvoi_disponible = function() TRUE,
-    video_integrer = function(gpkg, resultats, project_path) {
+    video_integrer = function(gpkg, resultats, project_path, terrain = NULL) {
       list(validation = list(ok = TRUE, errors = data.frame(), warnings = data.frame()),
            a_completer = data.frame(plot_id = "P001", tree_id = "4"),
            a_verifier = data.frame(), ndp = NA_integer_, marqueur = "import")
@@ -612,4 +613,241 @@ test_that("un changement de projet efface l'etat de l'envoi", {
     session$flushReact()
     expect_null(rv$envoi)
   })
+})
+
+# ---- Schema Groma 1.6.0 (mission 030, coeur nemeton 2026.11.29) --------------
+
+test_that("le rayon propose par defaut est de 15 m", {
+  local_mocked_bindings(get_app_options = function() list(language = "fr"))
+  html <- as.character(mod_inventaire_video_ui("iv"))
+  expect_match(html, 'id="iv-rayon"[^>]*value="15"')
+  expect_false(grepl('id="iv-rayon"[^>]*value="20"', html))
+  pp <- withr::local_tempdir()
+  a <- video_args_generation(pp, .plan_video(), "P001")
+  expect_identical(a$rayon_m, 15)
+})
+
+test_that("sans_paquet est un etat du cycle, entre a_faire et provisoire", {
+  expect_identical(.VIDEO_ETATS,
+                   c("a_faire", "sans_paquet", "provisoire", "envoye", "definitif"))
+  srv <- data.frame(plot_id = c("P1", "P2", "P3"),
+                    etat = c("sans_paquet", "sans_paquet", "a_faire"),
+                    terrain_envoye_le = c("2026-11-15T13:25:00Z", NA, NA))
+  t <- video_tableau_etats(srv, c(P2 = "provisoire", P3 = "a_faire"))
+  # Le local plus avance gagne ; sans_paquet bat a_faire.
+  expect_identical(t$etat, c("sans_paquet", "provisoire", "a_faire"))
+  expect_identical(t$terrain_envoye_le, c("2026-11-15T13:25:00Z", NA, NA))
+  # Serveur sans la colonne (serveur anterieur) : NA, pas d'erreur.
+  expect_true(all(is.na(video_tableau_etats(srv[, 1:2])$terrain_envoye_le)))
+})
+
+test_that("terrain_envoye_le s'affiche en heure de Paris, vide si NA", {
+  # Hiver UTC+1, ete UTC+2 : le fuseau est applique, pas un decalage fixe.
+  expect_identical(video_terrain_recu("2026-11-15T13:25:00Z"), "15/11/2026 14:25")
+  expect_identical(video_terrain_recu("2026-07-01T10:00:00Z"), "01/07/2026 12:00")
+  expect_identical(video_terrain_recu("2026-07-01T10:00:00+00:00"), "01/07/2026 12:00")
+  expect_identical(video_terrain_recu(c(NA, "n'importe quoi")), c("", ""))
+})
+
+test_that("Suivre : saisie recue sans video et date du terrain affichees", {
+  withr::local_envvar(GROMA_URL = "https://groma.test/", GROMA_JETON = "secret")
+  pp <- withr::local_tempdir()
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL,
+    video_etat_serveur = function(url, jeton) {
+      data.frame(plot_id = c("P001", "P002"),
+                 etat = c("sans_paquet", "a_faire"),
+                 terrain_envoye_le = c("2026-11-15T13:25:00Z", NA))
+    }
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(actualiser = 1)
+    html <- output$etats$html
+    expect_match(html, "Saisie reçue, sans vidéo", fixed = TRUE)
+    expect_match(html, "Terrain reçu le 15/11/2026 14:25", fixed = TRUE)
+    # Une seule ligne porte une date de terrain.
+    expect_equal(lengths(regmatches(html, gregexpr("Terrain reçu le", html))), 1L)
+  })
+})
+
+test_that("video_integrer passe terrain au coeur ; la copie QField est facultative", {
+  pp <- withr::local_tempdir()
+  recu <- NULL
+  local_mocked_bindings(.video_appeler = function(nom, ...) {
+    recu <<- c(list(nom = nom), list(...))
+    list(ndp = 2L)
+  })
+  zip <- file.path(pp, "P001_terrain.zip")
+  res <- video_integrer(NULL, NULL, pp, terrain = zip)
+  expect_identical(recu$nom, "importer_inventaire_video")
+  expect_identical(recu$terrain, zip)
+  expect_true("gpkg" %in% names(recu))
+  expect_null(recu$gpkg)
+  expect_identical(recu$field_data_gpkg, file.path(pp, "data", "field_data.gpkg"))
+  expect_identical(res$field_data_gpkg, recu$field_data_gpkg)
+  # Pas de copie de QField : aucun terrain_integre.gpkg fabrique.
+  expect_false(file.exists(file.path(video_dossier(pp), "terrain_integre.gpkg")))
+  # Avec la copie : elle est gardee comme avant.
+  video_integrer(.fixture_video(), NULL, pp, terrain = zip)
+  expect_true(file.exists(file.path(video_dossier(pp), "terrain_integre.gpkg")))
+  # Sans terrain : l'argument n'est pas transmis (comportement d'avant).
+  video_integrer(.fixture_video(), NULL, pp)
+  expect_false("terrain" %in% names(recu))
+  # Ni copie ni saisie : refus net.
+  expect_error(video_integrer(NULL, NULL, pp), "QField copy")
+})
+
+test_that("video_telecharger restreint les fichiers seulement sur demande", {
+  d <- withr::local_tempdir()
+  recu <- NULL
+  local_mocked_bindings(.video_appeler = function(nom, ...) {
+    recu <<- list(...)
+    character(0)
+  })
+  video_telecharger("u", "j", "P1", file.path(d, "a"))
+  expect_false("fichiers" %in% names(recu))
+  video_telecharger("u", "j", "P1", file.path(d, "b"), fichiers = "terrain.zip")
+  expect_identical(recu$fichiers, "terrain.zip")
+})
+
+test_that("Integrer : terrain.zip telecharge puis passe a l'import sans gpkg", {
+  withr::local_envvar(GROMA_URL = "https://groma.test/", GROMA_JETON = "secret")
+  pp <- withr::local_tempdir()
+  appels <- list()
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL,
+    deny_if_readonly = function(app_state, ...) FALSE,
+    video_etat_serveur = function(url, jeton) {
+      data.frame(plot_id = c("P001", "P002", "P003"),
+                 etat = c("definitif", "sans_paquet", "a_faire"),
+                 terrain_envoye_le = c("2026-11-15T13:25:00Z",
+                                       "2026-11-15T14:00:00Z", NA))
+    },
+    video_telecharger = function(url, jeton, plot_ids, dossier, fichiers = NULL) {
+      appels[[length(appels) + 1L]] <<- list(plot_ids = plot_ids, fichiers = fichiers)
+      f <- file.path(dossier, paste0(plot_ids, "_terrain.zip"))
+      dir.create(dossier, showWarnings = FALSE)
+      if (is.null(fichiers)) f <- c(f, file.path(dossier, paste0(plot_ids, "_resultat.gpkg")))
+      file.create(f)
+      f
+    },
+    video_integrer = function(gpkg, resultats, project_path, terrain = NULL) {
+      recu <<- list(gpkg = gpkg, resultats = resultats, terrain = terrain)
+      list(validation = list(ok = TRUE, errors = data.frame(), warnings = data.frame()),
+           ndp = NA_integer_)
+    },
+    update_project_metadata = function(id, updates, ...) NULL,
+    load_project = function(id, ...) list(id = id)
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(recuperer = 1)
+    # Definitive : les quatre fichiers ; saisie seule : terrain.zip uniquement.
+    expect_length(appels, 2L)
+    expect_identical(appels[[1]]$plot_ids, "P001")
+    expect_null(appels[[1]]$fichiers)
+    expect_identical(appels[[2]]$plot_ids, "P002")
+    expect_identical(appels[[2]]$fichiers, "terrain.zip")
+    session$setInputs(integrer = 1)
+    expect_null(recu$gpkg)
+    expect_identical(basename(recu$terrain), c("P001_terrain.zip", "P002_terrain.zip"))
+    expect_identical(basename(recu$resultats), "P001_resultat.gpkg")
+  })
+})
+
+test_that("Integrer : ni copie de QField ni saisie de Groma -> rien n'est lance", {
+  pp <- withr::local_tempdir()
+  appele <- FALSE
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL,
+    deny_if_readonly = function(app_state, ...) FALSE,
+    video_integrer = function(...) { appele <<- TRUE; list() }
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(integrer = 1)
+    expect_false(appele)
+  })
+})
+
+test_that("les trois motifs d'alerte sont traduits, avec leur detail", {
+  al <- data.frame(
+    plot_id = c("P1", "P1", "P2", "P3"),
+    motif = c("terrain_serveur_prefere", "saisie_qfield_ignoree",
+              "centre_telephone", "autre_motif_du_coeur"),
+    detail = c(NA, "essence = CHE", "precision_h_m = 6.5", NA))
+  fr <- video_alertes_traduites(al, get_i18n("fr"))
+  en <- video_alertes_traduites(al, get_i18n("en"))
+  expect_named(fr, c("plot_id", "motif", "detail"))
+  expect_match(fr$motif[1], "remplacée par la saisie de Groma", fixed = TRUE)
+  expect_match(fr$motif[2], "seulement dans QField", fixed = TRUE)
+  expect_match(fr$motif[3], "GNSS du téléphone", fixed = TRUE)
+  expect_match(en$motif[1], "replaced by the Groma entry", fixed = TRUE)
+  expect_match(en$motif[3], "phone GNSS", fixed = TRUE)
+  expect_identical(fr$detail, c("", "essence = CHE", "precision_h_m = 6.5", ""))
+  # Motif inconnu : garde tel quel, jamais perdu ni invente.
+  expect_identical(fr$motif[4], "autre_motif_du_coeur")
+  # Coeur anterieur : pas de colonne detail, ni d'alertes du tout.
+  expect_identical(video_alertes_traduites(al[, 1:2], get_i18n("fr"))$detail, rep("", 4))
+  expect_identical(nrow(video_alertes_traduites(NULL, get_i18n("fr"))), 0L)
+})
+
+test_that("le bilan affiche les alertes d'import et leur detail", {
+  res <- list(validation = list(ok = TRUE),
+              alertes = data.frame(plot_id = "P2", motif = "centre_telephone",
+                                   detail = "precision_h_m = 6.5"))
+  b <- video_bilan(res)
+  html <- as.character(video_bilan_ui(b, get_i18n("fr")))
+  expect_match(html, "Alertes d'import (1)", fixed = TRUE)
+  expect_match(html, "precision_h_m = 6.5", fixed = TRUE)
+  expect_match(html, "GNSS du téléphone", fixed = TRUE)
+  expect_false(grepl("centre_telephone", html, fixed = TRUE))
+  # Sans alerte : aucun bloc.
+  expect_false(grepl("Alertes d'import", as.character(
+    video_bilan_ui(video_bilan(list(validation = list(ok = TRUE))), get_i18n("fr"))),
+    fixed = TRUE))
+})
+
+test_that("un centre telephone est un avertissement, pas une erreur bloquante", {
+  w <- data.frame(plot_id = "P2", field = "qualite_gnss",
+                  message = "centre mesure au GNSS du telephone")
+  b <- video_bilan(list(validation = list(ok = TRUE, warnings = w)))
+  html <- as.character(video_bilan_ui(b, get_i18n("fr")))
+  expect_match(html, "alert alert-warning", fixed = TRUE)
+  expect_false(grepl("alert-danger", html, fixed = TRUE))
+  expect_match(html, "qualite_gnss", fixed = TRUE)
+
+  # Dans le module : l'import est persiste malgre l'avertissement.
+  pp <- withr::local_tempdir()
+  maj <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL,
+    deny_if_readonly = function(app_state, ...) FALSE,
+    video_integrer = function(gpkg, resultats, project_path, terrain = NULL) {
+      list(validation = list(ok = TRUE, errors = data.frame(), warnings = w),
+           ndp = NA_integer_)
+    },
+    update_project_metadata = function(id, updates, ...) maj <<- updates,
+    load_project = function(id, ...) list(id = id)
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(gpkg_terrain = data.frame(
+      name = "inventaire_video.gpkg", size = 1, type = "", datapath = .fixture_video()))
+    session$setInputs(integrer = 1)
+    expect_identical(maj$field_data_source, "inventaire_video")
+  })
+})
+
+test_that("le coeur installe accepte l'argument terrain (plancher 2026.11.29)", {
+  skip_if_not_installed("nemeton")
+  skip_if_not(utils::packageVersion("nemeton") >= "2026.11.29",
+              "coeur anterieur a 2026.11.29")
+  expect_true("terrain" %in% names(formals(nemeton::importer_inventaire_video)))
 })

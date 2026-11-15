@@ -1,3 +1,14 @@
+# nemetonshiny 2026.11.1.9005 (2026-11-15)
+
+> **Non publié.** Mission 030 : inventaire vidéo, schéma Groma 1.6.0 (cœur nemeton 2026.11.29).
+
+- **Plancher** `Imports: nemeton (>= 2026.11.29)` : `importer_inventaire_video(terrain = )` n'existe pas avant.
+- **Suivre** : colonne « Terrain » (« Terrain reçu le jj/mm/aaaa hh:mm », heure de Paris, vide si rien reçu) ; état `sans_paquet` (« Saisie reçue, sans vidéo ») rangé entre « À faire » et « Provisoire ».
+- **Intégrer** : « Récupérer les résultats » télécharge `terrain.zip` (placettes définitives : les quatre fichiers ; placettes à saisie seule : `terrain.zip` seul, sans avertissement 404) et le passe à l'import par `terrain =`. La copie de QField devient facultative ; sans elle, le `terrain_integre.gpkg` précédent (source de l'état local de « Suivre ») est conservé. Photos sous `data/photos/<plot_id>/` (le cœur les y copie ; rien dans l'app ne les efface).
+- **Alertes d'import** affichées dans le bilan : `terrain_serveur_prefere`, `saisie_qfield_ignoree` et `centre_telephone` traduits fr/en, avec la colonne `detail` ; un motif inconnu reste tel quel. Un centre au GNSS du téléphone sort en avertissement de validation (`qualite_gnss`), jamais en erreur bloquante.
+- **Rayon** proposé : 15 m (au lieu de 20).
+- Non traités (hors plancher 2026.11.29) : téléchargement incrémental `etat =` et part `dbh_ruban` (cœur 2026.11.30).
+
 # nemetonshiny 2026.11.1.9002 (2026-11-15)
 
 > **Non publié.** Mission 027 : import Marculus des CSV `FormatCsv;6` à `;8` et des clés `.marsync` correspondantes.

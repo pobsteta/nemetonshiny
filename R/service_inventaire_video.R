@@ -12,8 +12,10 @@
 # affiche alors un message au lieu de planter. Les tests simulent les enveloppes
 # `video_*` ci-dessous, pas le coeur.
 
-# Etats d'une placette, dans l'ordre du cycle de vie.
-.VIDEO_ETATS <- c("a_faire", "provisoire", "envoye", "definitif")
+# Etats d'une placette, dans l'ordre du cycle de vie. `sans_paquet` (schema
+# Groma 1.5.0) : la saisie du terrain est arrivee, pas la video ; la placette
+# est plus avancee qu'une placette a faire, mais pas encore en traitement.
+.VIDEO_ETATS <- c("a_faire", "sans_paquet", "provisoire", "envoye", "definitif")
 
 #' Exported nemeton function used by the video inventory, if available
 #'
@@ -60,13 +62,20 @@ video_etat_serveur <- function(url, jeton) {
   .video_appeler("groma_etat_placettes", url = url, jeton = jeton)
 }
 
-#' Download the final results (GeoPackage, reports) of some plots
+#' Download the final results (GeoPackage, reports, field data) of some plots
+#'
+#' By default the core downloads the four files of a plot, `terrain.zip`
+#' (field data entered in Groma, schema 1.5.0) included. `fichiers` restricts
+#' the download, e.g. to `terrain.zip` for a plot that has no video result.
+#'
+#' @param fichiers Files per plot, or `NULL` for the core's default.
 #' @return Paths of the downloaded files.
 #' @noRd
-video_telecharger <- function(url, jeton, plot_ids, dossier) {
+video_telecharger <- function(url, jeton, plot_ids, dossier, fichiers = NULL) {
   dir.create(dossier, recursive = TRUE, showWarnings = FALSE)
-  res <- .video_appeler("groma_telecharger_resultats", url = url, jeton = jeton,
-                        plot_ids = plot_ids, dossier = dossier)
+  args <- list(url = url, jeton = jeton, plot_ids = plot_ids, dossier = dossier)
+  if (!is.null(fichiers)) args$fichiers <- fichiers
+  res <- do.call(.video_appeler, c(list("groma_telecharger_resultats"), args))
   chemins <- unlist(res, use.names = FALSE)
   if (!is.character(chemins) || !length(chemins)) {
     chemins <- list.files(dossier, recursive = TRUE, full.names = TRUE)
@@ -78,26 +87,40 @@ video_telecharger <- function(url, jeton, plot_ids, dossier) {
 #'
 #' Calls `nemeton::importer_inventaire_video()` with the project's
 #' `data/field_data.gpkg`. The core merges by `plot_id` and never overwrites a
-#' classic inventory.
+#' classic inventory. Since Groma 1.5.0 the field data entered on the server
+#' (`terrain.zip`) replaces the QField copy for its plots, so `gpkg` is
+#' optional as soon as `terrain` is given. The core copies the packed photos
+#' under `photos/<plot_id>/` next to `field_data_gpkg` (`data/photos/`).
 #'
-#' @param gpkg Path of the `inventaire_video.gpkg` back from the field.
+#' @param gpkg Path of the `inventaire_video.gpkg` back from the field (QField
+#'   copy), or `NULL` when only Groma field data is available.
 #' @param resultats Paths of the server's final GeoPackages, or `NULL`.
 #' @param project_path Project directory.
+#' @param terrain Paths of `*terrain.zip` archives (or of directories holding
+#'   them), or `NULL`.
 #' @return The core's result (a list), with `field_data_gpkg` added.
 #' @noRd
-video_integrer <- function(gpkg, resultats, project_path) {
+video_integrer <- function(gpkg, resultats, project_path, terrain = NULL) {
+  if (is.null(gpkg) && !length(terrain)) {
+    stop("Give the QField copy, the Groma field data, or both.")
+  }
   data_dir <- file.path(project_path, "data")
   dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   dest <- file.path(data_dir, "field_data.gpkg")
   if (length(resultats)) resultats <- resultats[grepl("\\.gpkg$", resultats,
                                                       ignore.case = TRUE)]
-  res <- .video_appeler("importer_inventaire_video", gpkg = gpkg,
-                        resultats = if (length(resultats)) resultats else NULL,
-                        field_data_gpkg = dest)
+  args <- list(gpkg = gpkg,
+               resultats = if (length(resultats)) resultats else NULL,
+               field_data_gpkg = dest)
+  if (length(terrain)) args$terrain <- terrain
+  res <- do.call(.video_appeler, c(list("importer_inventaire_video"), args))
   # Le dernier GeoPackage integre : source de `etat_traitement` pour " Suivre ".
+  # Sans copie de QField (saisie Groma seule), on garde la precedente.
   vdir <- video_dossier(project_path)
   dir.create(vdir, recursive = TRUE, showWarnings = FALSE)
-  file.copy(gpkg, file.path(vdir, "terrain_integre.gpkg"), overwrite = TRUE)
+  if (!is.null(gpkg)) {
+    file.copy(gpkg, file.path(vdir, "terrain_integre.gpkg"), overwrite = TRUE)
+  }
   res <- as.list(res)
   res$field_data_gpkg <- dest
   res
@@ -121,7 +144,7 @@ video_integrer <- function(gpkg, resultats, project_path) {
 #' @return The argument list, or an i18n key naming what is missing.
 #' @noRd
 video_args_generation <- function(project_path, placettes, plot_ids,
-                                  rayon_m = 20, seuil_diam_cm = 7.5,
+                                  rayon_m = 15, seuil_diam_cm = 7.5,
                                   unite_azimut = "deg", declinaison_deg = NA,
                                   avec_lidar = FALSE, dem = NULL, chm = NULL,
                                   lang = "fr") {
@@ -360,10 +383,12 @@ video_etat_local <- function(project_path) {
 #'
 #' @param serveur data.frame from `groma_etat_placettes()`, or `NULL`.
 #' @param local Named character vector from [video_etat_local()].
-#' @return data.frame `plot_id, etat, date, verdict, n_arbres, alertes`.
+#' @return data.frame `plot_id, etat, date, verdict, n_arbres, alertes,
+#'   terrain_envoye_le` (ISO 8601 UTC or `NA`: nothing received from the field).
 #' @noRd
 video_tableau_etats <- function(serveur, local = character(0)) {
-  cols <- c("plot_id", "etat", "date", "verdict", "n_arbres", "alertes")
+  cols <- c("plot_id", "etat", "date", "verdict", "n_arbres", "alertes",
+            "terrain_envoye_le")
   s <- if (is.null(serveur)) data.frame() else as.data.frame(serveur)
   if ("geom" %in% names(s) || inherits(serveur, "sf")) s <- sf::st_drop_geometry(s)
   # Le serveur Groma nomme `maj` la date de derniere mise a jour.
@@ -374,6 +399,7 @@ video_tableau_etats <- function(serveur, local = character(0)) {
     v <- if (cl %in% names(s)) s[[cl]][match(ids, s$plot_id)] else rep(NA, length(ids))
     if (is.list(v)) v <- vapply(v, function(x) paste(unlist(x), collapse = "; "),
                                 character(1))
+    if (cl == "terrain_envoye_le") v <- as.character(v)
     out[[cl]] <- v
   }
   rang <- function(e) match(e, .VIDEO_ETATS)
@@ -396,6 +422,7 @@ video_bilan <- function(res) {
     a_completer = df(res$a_completer),
     a_verifier = df(res$a_verifier),
     numeros_modifies = df(res$numeros_modifies),
+    alertes = df(res$alertes),
     # Le coeur peut rendre les plot_id conserves ou directement leur nombre.
     classique_conserve = {
       cc <- res$classique_conserve %||% character(0)
@@ -465,4 +492,72 @@ video_separer_infos <- function(warnings) {
   info <- !is.na(warnings$severity) & warnings$severity == "info"
   list(avertissements = warnings[!info, , drop = FALSE],
        infos = warnings[info, , drop = FALSE])
+}
+
+#' Date the field data reached Groma, in Paris time
+#'
+#' @param x Character. `terrain_envoye_le` (ISO 8601, UTC) or `NA`.
+#' @return Character, `"dd/mm/yyyy HH:MM"` (one per element), `""` for `NA` or
+#'   an unreadable date (nothing received, nothing shown).
+#' @noRd
+video_terrain_recu <- function(x) {
+  x <- as.character(x)
+  # Suffixe `Z` ou decalage nul retire : la date est lue comme UTC.
+  x <- sub("(Z|[+-]00:?00)$", "", x)
+  t <- suppressWarnings(as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC"))
+  ifelse(is.na(t), "", format(t, "%d/%m/%Y %H:%M", tz = "Europe/Paris"))
+}
+
+#' Plots whose field data must be downloaded
+#'
+#' A plot with a final video result gets all its files; a plot that only sent
+#' field data (`sans_paquet`, or any other state with `terrain_envoye_le`) gets
+#' `terrain.zip` alone, so that no 404 warning is raised for a missing result.
+#'
+#' @param etats Table from [video_tableau_etats()].
+#' @return `list(definitifs, terrain_seul)`.
+#' @noRd
+video_plots_a_recuperer <- function(etats) {
+  if (is.null(etats) || !nrow(etats)) {
+    return(list(definitifs = character(0), terrain_seul = character(0)))
+  }
+  def <- etats$plot_id[etats$etat == "definitif"]
+  recu <- etats$plot_id[!is.na(etats$terrain_envoye_le) &
+                          nzchar(etats$terrain_envoye_le)]
+  list(definitifs = def, terrain_seul = setdiff(recu, def))
+}
+
+# Motifs d'alerte de l'import (`$alertes$motif`) traduits par l'app : motif du
+# coeur -> cle i18n. Un motif inconnu reste tel quel.
+VIDEO_MOTIFS_ALERTE <- c(
+  terrain_serveur_prefere = "video_motif_serveur_pref",
+  saisie_qfield_ignoree = "video_motif_saisie_ignoree",
+  centre_telephone = "video_motif_centre_tel"
+)
+
+#' Import alerts, with translated reasons
+#'
+#' @param alertes The `alertes` data.frame of an import (`plot_id`, `uuid`,
+#'   `motif`, `dbh_provisoire`, `dbh_definitif`, `detail`).
+#' @param i18n Translator.
+#' @return data.frame `plot_id, motif, detail` (`detail` empty when the core
+#'   gives none), possibly with zero rows.
+#' @noRd
+video_alertes_traduites <- function(alertes, i18n) {
+  vide <- data.frame(plot_id = character(0), motif = character(0),
+                     detail = character(0), stringsAsFactors = FALSE)
+  if (is.null(alertes) || !is.data.frame(alertes) || !nrow(alertes) ||
+      !"motif" %in% names(alertes)) return(vide)
+  col <- function(nm) {
+    if (nm %in% names(alertes)) as.character(alertes[[nm]])
+    else rep(NA_character_, nrow(alertes))
+  }
+  motif <- col("motif")
+  cle <- unname(VIDEO_MOTIFS_ALERTE[motif])
+  lib <- ifelse(is.na(cle), ifelse(is.na(motif), "", motif),
+                vapply(cle, function(k) if (is.na(k)) "" else i18n$t(k), character(1)))
+  detail <- col("detail")
+  detail[is.na(detail)] <- ""
+  data.frame(plot_id = col("plot_id"), motif = lib, detail = detail,
+             stringsAsFactors = FALSE)
 }

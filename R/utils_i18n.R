@@ -953,16 +953,44 @@ TRANSLATIONS <- list(
     en = "No final report for this plot."
   ),
   video_gpkg_terrain = list(
-    fr = "GeoPackage revenu du terrain",
-    en = "GeoPackage back from the field"
+    fr = "GeoPackage revenu du terrain (facultatif si la saisie est dans Groma)",
+    en = "GeoPackage back from the field (optional if the entry is in Groma)"
+  ),
+  video_etat_sans_paquet = list(
+    fr = "Saisie re\u00e7ue, sans vid\u00e9o",
+    en = "Field entry received, no video"
+  ),
+  video_col_terrain = list(fr = "Terrain", en = "Field data"),
+  video_terrain_recu = list(
+    fr = "Terrain re\u00e7u le %s",
+    en = "Field data received on %s"
+  ),
+  video_saisie_groma = list(
+    fr = "Saisie de Groma (terrain.zip)",
+    en = "Groma field entry (terrain.zip)"
+  ),
+  video_alertes_import = list(fr = "Alertes d'import", en = "Import alerts"),
+  video_col_motif = list(fr = "Motif", en = "Reason"),
+  video_col_detail = list(fr = "D\u00e9tail", en = "Detail"),
+  video_motif_serveur_pref = list(
+    fr = "Copie de QField remplac\u00e9e par la saisie de Groma",
+    en = "QField copy replaced by the Groma entry"
+  ),
+  video_motif_saisie_ignoree = list(
+    fr = "Valeur saisie seulement dans QField, ignor\u00e9e",
+    en = "Value entered only in QField, ignored"
+  ),
+  video_motif_centre_tel = list(
+    fr = "Centre mesur\u00e9 au GNSS du t\u00e9l\u00e9phone : la placette peut \u00eatre d\u00e9cal\u00e9e de quelques m\u00e8tres",
+    en = "Centre measured with the phone GNSS: the plot may be shifted by a few metres"
   ),
   video_recuperer_resultats = list(
     fr = "R\u00e9cup\u00e9rer les r\u00e9sultats d\u00e9finitifs",
     en = "Fetch the final results"
   ),
   video_aucun_definitif = list(
-    fr = "Aucune placette d\u00e9finitive sur le serveur.",
-    en = "No final plot on the server."
+    fr = "Aucune placette d\u00e9finitive ni saisie re\u00e7ue sur le serveur.",
+    en = "No final plot nor field entry on the server."
   ),
   video_renvoyer = list(
     fr = "Renvoyer sur le terrain",
