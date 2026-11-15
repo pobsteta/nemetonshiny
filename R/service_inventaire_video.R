@@ -78,7 +78,16 @@ video_telecharger <- function(url, jeton, plot_ids, dossier, fichiers = NULL) {
   res <- do.call(.video_appeler, c(list("groma_telecharger_resultats"), args))
   chemins <- unlist(res, use.names = FALSE)
   if (!is.character(chemins) || !length(chemins)) {
-    chemins <- list.files(dossier, recursive = TRUE, full.names = TRUE)
+    # Repli : seulement les fichiers de CET appel (le dossier peut en contenir
+    # d'un appel precedent), `<plot_id>_<fichier>`.
+    tous <- list.files(dossier, recursive = TRUE, full.names = TRUE)
+    nom <- basename(tous)
+    de_ces_placettes <- Reduce(`|`, lapply(plot_ids, function(id)
+      startsWith(nom, paste0(id, "_"))), rep(FALSE, length(nom)))
+    de_ces_fichiers <- if (is.null(fichiers)) rep(TRUE, length(nom)) else
+      Reduce(`|`, lapply(fichiers, function(x) endsWith(nom, paste0("_", x))),
+             rep(FALSE, length(nom)))
+    chemins <- tous[de_ces_placettes & de_ces_fichiers]
   }
   chemins[file.exists(chemins)]
 }
@@ -360,20 +369,30 @@ video_placettes_plan <- function(project_path) {
   if (is.null(p) || !nrow(p)) NULL else p
 }
 
-#' `etat_traitement` of the plots in the last integrated GeoPackage
+#' `etat_traitement` of the plots already integrated
+#'
+#' Read-only. First source: the last integrated QField copy
+#' (`terrain_integre.gpkg`). Complement: layer `placettes` of the project's
+#' `data/field_data.gpkg`, which also holds the plots integrated from Groma
+#' field data alone (no QField copy); the QField copy wins for a plot found in
+#' both.
 #' @return Named character vector (names = plot_id).
 #' @noRd
 video_etat_local <- function(project_path) {
   if (is.null(project_path)) return(character(0))
-  gpkg <- file.path(video_dossier(project_path), "terrain_integre.gpkg")
-  if (!file.exists(gpkg)) return(character(0))
-  p <- tryCatch(sf::st_drop_geometry(
-    sf::st_read(gpkg, layer = "placettes", quiet = TRUE)),
-    error = function(e) NULL)
-  if (is.null(p) || !all(c("plot_id", "etat_traitement") %in% names(p))) {
-    return(character(0))
+  lire <- function(gpkg) {
+    if (!file.exists(gpkg)) return(character(0))
+    p <- tryCatch(sf::st_drop_geometry(
+      sf::st_read(gpkg, layer = "placettes", quiet = TRUE)),
+      error = function(e) NULL)
+    if (is.null(p) || !all(c("plot_id", "etat_traitement") %in% names(p))) {
+      return(character(0))
+    }
+    stats::setNames(as.character(p$etat_traitement), as.character(p$plot_id))
   }
-  stats::setNames(as.character(p$etat_traitement), as.character(p$plot_id))
+  integre <- lire(file.path(video_dossier(project_path), "terrain_integre.gpkg"))
+  projet <- lire(file.path(project_path, "data", "field_data.gpkg"))
+  c(integre, projet[setdiff(names(projet), names(integre))])
 }
 
 #' Table of the plots for the "Track" block
@@ -528,7 +547,7 @@ video_plots_a_recuperer <- function(etats) {
 }
 
 # Motifs d'alerte de l'import (`$alertes$motif`) traduits par l'app : motif du
-# coeur -> cle i18n. Un motif inconnu reste tel quel.
+# coeur -> cle i18n. Un motif sans cle est regroupe sous `video_motif_autre`.
 VIDEO_MOTIFS_ALERTE <- c(
   terrain_serveur_prefere = "video_motif_serveur_pref",
   saisie_qfield_ignoree = "video_motif_saisie_ignoree",
@@ -554,7 +573,11 @@ video_alertes_traduites <- function(alertes, i18n) {
   }
   motif <- col("motif")
   cle <- unname(VIDEO_MOTIFS_ALERTE[motif])
-  lib <- ifelse(is.na(cle), ifelse(is.na(motif), "", motif),
+  # Motif sans cle i18n : etiquette generique traduite suivie du code, jamais
+  # le code brut seul.
+  lib <- ifelse(is.na(cle),
+                ifelse(is.na(motif) | !nzchar(motif), "",
+                       sprintf(i18n$t("video_motif_autre"), motif)),
                 vapply(cle, function(k) if (is.na(k)) "" else i18n$t(k), character(1)))
   detail <- col("detail")
   detail[is.na(detail)] <- ""

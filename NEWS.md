@@ -7,6 +7,9 @@
 - **Intégrer** : « Récupérer les résultats » télécharge `terrain.zip` (placettes définitives : les quatre fichiers ; placettes à saisie seule : `terrain.zip` seul, sans avertissement 404) et le passe à l'import par `terrain =`. La copie de QField devient facultative ; sans elle, le `terrain_integre.gpkg` précédent (source de l'état local de « Suivre ») est conservé. Photos sous `data/photos/<plot_id>/` (le cœur les y copie ; rien dans l'app ne les efface).
 - **Alertes d'import** affichées dans le bilan : `terrain_serveur_prefere`, `saisie_qfield_ignoree` et `centre_telephone` traduits fr/en, avec la colonne `detail` ; un motif inconnu reste tel quel. Un centre au GNSS du téléphone sort en avertissement de validation (`qualite_gnss`), jamais en erreur bloquante.
 - **Rayon** proposé : 15 m (au lieu de 20).
+- **Suivre sans copie QField** : l'état local lit aussi `etat_traitement` dans `data/field_data.gpkg` (lecture seule) ; `terrain_integre.gpkg` n'est ni recréé ni écrasé, et gagne pour une placette présente des deux côtés.
+- **Téléchargement** : le repli de `video_telecharger()` ne retient plus que les fichiers `<plot_id>_<fichier>` de l'appel (plus tout le dossier).
+- **Alertes d'import** : un motif sans clé i18n est regroupé sous « Autre alerte : <code> » (jamais le code brut seul).
 - Non traités (hors plancher 2026.11.29) : téléchargement incrémental `etat =` et part `dbh_ruban` (cœur 2026.11.30).
 # nemetonshiny 2026.11.1.9003 (2026-11-15)
 

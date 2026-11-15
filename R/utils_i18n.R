@@ -972,6 +972,7 @@ TRANSLATIONS <- list(
   video_alertes_import = list(fr = "Alertes d'import", en = "Import alerts"),
   video_col_motif = list(fr = "Motif", en = "Reason"),
   video_col_detail = list(fr = "D\u00e9tail", en = "Detail"),
+  video_motif_autre = list(fr = "Autre alerte : %s", en = "Other alert: %s"),
   video_motif_serveur_pref = list(
     fr = "Copie de QField remplac\u00e9e par la saisie de Groma",
     en = "QField copy replaced by the Groma entry"

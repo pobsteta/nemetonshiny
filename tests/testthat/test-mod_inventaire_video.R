@@ -790,8 +790,8 @@ test_that("les trois motifs d'alerte sont traduits, avec leur detail", {
   expect_match(en$motif[1], "replaced by the Groma entry", fixed = TRUE)
   expect_match(en$motif[3], "phone GNSS", fixed = TRUE)
   expect_identical(fr$detail, c("", "essence = CHE", "precision_h_m = 6.5", ""))
-  # Motif inconnu : garde tel quel, jamais perdu ni invente.
-  expect_identical(fr$motif[4], "autre_motif_du_coeur")
+  # Motif inconnu : etiquette generique + code, jamais perdu ni invente.
+  expect_identical(fr$motif[4], "Autre alerte : autre_motif_du_coeur")
   # Coeur anterieur : pas de colonne detail, ni d'alertes du tout.
   expect_identical(video_alertes_traduites(al[, 1:2], get_i18n("fr"))$detail, rep("", 4))
   expect_identical(nrow(video_alertes_traduites(NULL, get_i18n("fr"))), 0L)
@@ -850,4 +850,62 @@ test_that("le coeur installe accepte l'argument terrain (plancher 2026.11.29)", 
   skip_if_not(utils::packageVersion("nemeton") >= "2026.11.29",
               "coeur anterieur a 2026.11.29")
   expect_true("terrain" %in% names(formals(nemeton::importer_inventaire_video)))
+})
+
+# ---- Reprise de relecture #287 ------------------------------------------------
+
+.ecrire_placettes <- function(chemin, ids, etats) {
+  p <- sf::st_sf(plot_id = ids, etat_traitement = etats,
+                 geometry = sf::st_sfc(lapply(seq_along(ids), function(i)
+                   sf::st_point(c(900000 + i, 6500000))), crs = 2154))
+  dir.create(dirname(chemin), recursive = TRUE, showWarnings = FALSE)
+  sf::st_write(p, chemin, layer = "placettes", quiet = TRUE)
+}
+
+test_that("Suivre : l'etat local vient aussi de field_data.gpkg, en lecture seule", {
+  pp <- withr::local_tempdir()
+  expect_identical(video_etat_local(pp), character(0))
+  # Saisie Groma seule : pas de terrain_integre.gpkg, mais field_data.gpkg.
+  fd <- file.path(pp, "data", "field_data.gpkg")
+  .ecrire_placettes(fd, c("P1", "P2"), c("definitif", "provisoire"))
+  avant <- unname(tools::md5sum(fd))
+  expect_identical(video_etat_local(pp), c(P1 = "definitif", P2 = "provisoire"))
+  expect_identical(unname(tools::md5sum(fd)), avant)
+  expect_false(file.exists(file.path(video_dossier(pp), "terrain_integre.gpkg")))
+  # La copie QField integree gagne pour une placette presente des deux cotes.
+  .ecrire_placettes(file.path(video_dossier(pp), "terrain_integre.gpkg"),
+                    c("P2", "P3"), c("envoye", "provisoire"))
+  expect_identical(video_etat_local(pp),
+                   c(P2 = "envoye", P3 = "provisoire", P1 = "definitif"))
+  # Un field_data.gpkg classique (sans etat_traitement) est ignore.
+  fd2 <- withr::local_tempdir()
+  p <- sf::st_sf(plot_id = "Z", geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154))
+  dir.create(file.path(fd2, "data"))
+  sf::st_write(p, file.path(fd2, "data", "field_data.gpkg"), layer = "placettes", quiet = TRUE)
+  expect_identical(video_etat_local(fd2), character(0))
+})
+
+test_that("video_telecharger : le repli ne ramasse que les fichiers de l'appel", {
+  d <- withr::local_tempdir()
+  # Fichiers d'un appel precedent, dans le meme dossier.
+  file.create(file.path(d, c("P1_resultat.gpkg", "P1_terrain.zip", "P9_terrain.zip",
+                             "P9_resultat.gpkg", "autre.txt")))
+  local_mocked_bindings(.video_appeler = function(nom, ...) NULL)
+  f <- video_telecharger("u", "j", "P1", d, fichiers = "terrain.zip")
+  expect_identical(basename(f), "P1_terrain.zip")
+  f <- video_telecharger("u", "j", c("P1", "P9"), d)
+  expect_setequal(basename(f), c("P1_resultat.gpkg", "P1_terrain.zip",
+                                 "P9_terrain.zip", "P9_resultat.gpkg"))
+})
+
+test_that("les motifs sans cle sont regroupes sous 'Autre alerte', jamais bruts", {
+  al <- data.frame(plot_id = c("P1", "P1"), motif = c("ecart_dbh", "centre_telephone"),
+                   detail = c(NA, "precision_h_m = 4"))
+  fr <- video_alertes_traduites(al, get_i18n("fr"))
+  en <- video_alertes_traduites(al, get_i18n("en"))
+  expect_identical(fr$motif[1], "Autre alerte : ecart_dbh")
+  expect_identical(en$motif[1], "Other alert: ecart_dbh")
+  expect_match(fr$motif[2], "GNSS", fixed = TRUE)
+  # Aucun motif ne s'affiche seul, sans etiquette.
+  expect_false(any(fr$motif == "ecart_dbh"))
 })
