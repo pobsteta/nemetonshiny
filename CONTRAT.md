@@ -33,7 +33,7 @@ fonction a sa page d'aide (`?api_hors_interface`).
 |----------|------|-------|
 | `projets_lister()` | projets du dossier, avec leur format (`format_ok`) | non |
 | `projet_etat(id)` | métadonnées, format du projet, indicateurs et UGF présents | non |
-| `projet_lire(id, langue)` | indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l'onglet Synthèse) | **non** |
+| `projet_lire(id, langue)` | indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l'onglet Synthèse) ; `synthese$n_ugf` compte les UGF du projet même sans indicateurs, `synthese$indicateurs_perimes` (logique, ajout) vaut `TRUE` quand seul un `indicators.perime-*.parquet` existe (scores à recalculer) | **non** |
 | `parcelles_commune(insee, ids)` | parcelles cadastrales d'une commune | non |
 | `projet_creer(nom, parcelles, ...)` | crée et initialise un projet (UGF par défaut) ; renvoie l'id | oui |
 | `projet_calculer(id, indicateurs, progression)` | calcul synchrone des indicateurs | oui |

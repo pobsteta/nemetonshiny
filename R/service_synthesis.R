@@ -153,6 +153,32 @@ project_family_table <- function(project, family_sf, language = "fr", means = NU
   out
 }
 
+#' Number of management units (UGF) of a project
+#'
+#' Counted from the project itself, not from the indicator scores: `ugs`, else
+#' `metadata$ug_count`, else the rows of the family scores, else 0.
+#' @noRd
+project_ugf_count <- function(project, family_sf = NULL) {
+  if (is.data.frame(project$ugs)) return(nrow(project$ugs))
+  n <- suppressWarnings(as.integer(unlist(project$metadata$ug_count)[1]))
+  if (length(n) == 1L && !is.na(n)) return(n)
+  if (is.null(family_sf)) 0L else nrow(family_sf)
+}
+
+#' Are the project's indicators set aside (stale)?
+#'
+#' `TRUE` when `data/indicators.parquet` is missing and at least one
+#' `indicators.perime-*.parquet` is present (UGF rewritten since the last
+#' computation). `FALSE` otherwise, including when the project has no path.
+#' @noRd
+project_indicators_stale <- function(project) {
+  path <- project$path
+  if (is.null(path) || !nzchar(path)) return(FALSE)
+  data_dir <- file.path(path, "data")
+  if (file.exists(file.path(data_dir, "indicators.parquet"))) return(FALSE)
+  length(list.files(data_dir, pattern = "^indicators\\.perime-.*\\.parquet$")) > 0L
+}
+
 #' Serialisable synthesis of a project
 #'
 #' Same figures as the Synthesis tab (global score, 12 family scores, NDP),
@@ -164,8 +190,11 @@ project_family_table <- function(project, family_sf, language = "fr", means = NU
 #' @param family_sf Optional output of [project_family_scores()] already
 #'   computed for this project (avoids aggregating twice).
 #' @return A list: `project_id`, `name`, `status`, `ndp_level`, `ndp_name`,
-#'   `confidence`, `global_score` (`NA` when not computed), `n_ugf`,
-#'   `n_parcels`, `updated_at`, and `families`, the data.frame of
+#'   `confidence`, `global_score` (`NA` when not computed), `n_ugf` (the
+#'   project's management units, whether or not indicators exist),
+#'   `n_parcels`, `indicateurs_perimes` (`TRUE` when no `indicators.parquet`
+#'   exists but a set-aside `indicators.perime-*.parquet` does: scores must
+#'   be recomputed), `updated_at`, and `families`, the data.frame of
 #'   [project_family_table()] (`code`, `famille`, `score` to 2 decimals,
 #'   `ndp`, `n_indicateurs`), in the canonical family order.
 #' @noRd
@@ -190,8 +219,9 @@ project_synthesis_summary <- function(project, language = "fr", family_sf = NULL
     ndp_name = ndp_info$name %||% NA_character_,
     confidence = if (is.null(index)) NA_real_ else round(index$confidence, 3),
     global_score = if (is.null(index)) NA_real_ else index$score,
-    n_ugf = if (is.null(family_sf)) 0L else nrow(family_sf),
+    n_ugf = project_ugf_count(project, family_sf),
     n_parcels = if (is.null(project$parcels)) 0L else nrow(project$parcels),
+    indicateurs_perimes = project_indicators_stale(project),
     updated_at = meta$updated_at %||% NA_character_,
     families = families
   )
