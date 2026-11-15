@@ -761,8 +761,8 @@ TRANSLATIONS <- list(
     en = "Import Marculus marking"
   ),
   marculus_import_help = list(
-    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (FormatCsv;2 \u00e0 5). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
-    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2 to 5). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
+    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (FormatCsv;2 \u00e0 8). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
+    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2 to 8). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
   ),
   marculus_import_fichiers = list(fr = "Fichiers Marculus", en = "Marculus files"),
   marculus_import_run = list(fr = "Importer", en = "Import"),
@@ -810,6 +810,35 @@ TRANSLATIONS <- list(
   marculus_part_houppier_fmt = list(
     fr = "Part de houppier (terrain) : %s",
     en = "Crown share (field): %s"
+  ),
+  # Formats 6 a 8 : parties comptees au lot, controle croise SER / millesime.
+  marculus_parts_lot_fmt = list(
+    fr = "Parties compt\u00e9es au lot : %s",
+    en = "Parts counted in the lot: %s"
+  ),
+  marculus_part_tige_houppier = list(fr = "tige + houppier", en = "bole + crown"),
+  marculus_part_tige = list(fr = "tige", en = "bole"),
+  marculus_part_houppier = list(fr = "houppier", en = "crown"),
+  marculus_part_aucune = list(fr = "aucune partie", en = "no part"),
+  marculus_parts_autres = list(
+    fr = "autres essences : tige + houppier",
+    en = "other species: bole + crown"
+  ),
+  marculus_lot_ancienne_regle = list(
+    fr = "Volume au lot (fichier avant le format 8) : houppier seul s'il existe, sinon la tige.",
+    en = "Lot volume (file before format 8): crown alone when there is one, otherwise the bole."
+  ),
+  marculus_lot_formats_mixtes = list(
+    fr = "Volumes au lot de formats diff\u00e9rents : r\u00e9exportez tout le contexte depuis Marculus.",
+    en = "Lot volumes from different formats: re-export the whole context from Marculus."
+  ),
+  marculus_ctrl_ser_fmt = list(
+    fr = "SER relue du t\u00e9l\u00e9phone : %s, \u00e9mise par l'application : %s.",
+    en = "SER read back from the phone: %s, emitted by the app: %s."
+  ),
+  marculus_ctrl_millesime_fmt = list(
+    fr = "Mill\u00e9sime des tarifs relu du t\u00e9l\u00e9phone : %s, \u00e9mis par l'application : %s.",
+    en = "Tariff vintage read back from the phone: %s, emitted by the app: %s."
   ),
   marculus_col_etat = list(fr = "\u00c9tat", en = "State"),
   marculus_lot_complet = list(fr = "complet", en = "complete"),

@@ -67,6 +67,10 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              # Volume UNITAIRE compte au lot d'affouage (format 5), NA hors
              # affouage ou dans un fichier plus ancien.
              affouageLotM3 = numeric(0),
+             # Numero de FormatCsv du fichier d'ou vient la tige (le sens de
+             # `affouageLotM3` change au format 8) ; NA = inconnu (.marsync
+             # sans `partsLot`, tige stockee avant cette colonne).
+             formatCsv = integer(0),
              # Journal d'origine : "NET" pour un CSV d'etat de comptage, qui ne
              # doit jamais remplacer une tige lue dans un journal complet.
              journal = character(0),
@@ -79,7 +83,14 @@ MARCULUS_REGLAGES_CONTEXTE <- list(
   tarif = NA_character_, tarifNumero = NA_integer_, coefficientForme = NA_real_,
   # Parts de houppier (format 5), encodees `Chene=0.3|Hetre=0.25` comme dans
   # l'en-tete du CSV ; NA = inconnu, "" = aucune part saisie.
-  partHouppier = NA_character_)
+  partHouppier = NA_character_,
+  # Formats 6 a 8 (briefs Marculus 2026-10-24 et 2026-11-10). Tous gardes pour
+  # l'affichage, jamais reemis vers le telephone. Numero de format lu (NA pour
+  # un .marsync, qui n'en porte pas), `TarifsEssence` et `PartsLot` encodes
+  # comme dans le CSV, `""` = ligne presente mais vide, NA = cle absente.
+  formatCsv = NA_integer_, tarifsEssence = NA_character_,
+  steresParM3 = NA_real_, communeInsee = NA_character_, ser = NA_character_,
+  millesimeTarifs = NA_character_, partsLot = NA_character_)
 
 #' Complete a contexts data.frame with the field settings columns
 #'
@@ -151,6 +162,121 @@ MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeTotalM3",
   as.list(stats::setNames(val[garde], nom[garde]))
 }
 
+#' Cells of a nested `.marsync` object, one list per context
+#'
+#' `jsonlite` turns `{"Chene": {"tige": true}}` per context into a data.frame
+#' column per species, itself a data.frame. Returns, for context `i`, a named
+#' list species -> named list of the fields set (`NA` fields dropped).
+#' @noRd
+.marculus_objet_par_ctx <- function(x, n) {
+  if (is.null(x)) return(NULL)
+  if (is.data.frame(x)) {
+    return(lapply(seq_len(nrow(x)), function(i) {
+      out <- lapply(names(x), function(e) {
+        cel <- x[[e]]
+        cel <- if (is.data.frame(cel)) as.list(cel[i, , drop = FALSE]) else NULL
+        cel[!vapply(cel, function(v) length(v) != 1L || is.na(v), logical(1))]
+      })
+      names(out) <- names(x)
+      out[vapply(out, length, 1L) > 0L]
+    }))
+  }
+  if (is.list(x)) {
+    return(rep_len(list(lapply(x, as.list)), n))
+  }
+  NULL
+}
+
+#' Encode the `tarifsEssence` object of `.marsync` contexts as the CSV does
+#'
+#' @param x The `tarifsEssence` column (data.frame or list) or `NULL`.
+#' @param n Number of contexts.
+#' @return Character, one per context: `"Chene=SCHAEFFER_RAPIDE:9|..."`, `""`
+#'   when empty, `NA` when the key is absent from the file.
+#' @noRd
+.marculus_tarifs_encoder <- function(x, n) {
+  lignes <- .marculus_objet_par_ctx(x, n)
+  if (is.null(lignes)) return(rep(NA_character_, n))
+  out <- vapply(lignes, function(o) {
+    if (!length(o)) return("")
+    paste(vapply(names(o), function(e) {
+      t <- as.character(o[[e]]$tarif %||% "AUCUN")
+      num <- suppressWarnings(as.integer(o[[e]]$numero %||% 0L))
+      paste0(e, "=", t, ":", if (is.na(num)) 0L else num)
+    }, ""), collapse = "|")
+  }, character(1))
+  rep_len(out, n)
+}
+
+#' Encode the `partsLot` object of `.marsync` contexts as the CSV does
+#'
+#' Only the species the phone has set are listed in a `.marsync`; an absent
+#' species counts bole and crown. A missing side defaults to checked.
+#' @return Character, one per context: `"Chene=tige:1,houppier:0|..."`, `""`
+#'   when empty, `NA` when the key is absent from the file.
+#' @noRd
+.marculus_parts_lot_encoder <- function(x, n) {
+  lignes <- .marculus_objet_par_ctx(x, n)
+  if (is.null(lignes)) return(rep(NA_character_, n))
+  b <- function(v) if (isFALSE(as.logical(v %||% TRUE)) || identical(v, 0)) 0L else 1L
+  out <- vapply(lignes, function(o) {
+    if (!length(o)) return("")
+    paste(vapply(names(o), function(e) {
+      sprintf("%s=tige:%d,houppier:%d", e, b(o[[e]]$tige), b(o[[e]]$houppier))
+    }, ""), collapse = "|")
+  }, character(1))
+  rep_len(out, n)
+}
+
+#' Decode a `TarifsEssence` value (format 6)
+#'
+#' The number is meaningless for `AUCUN` and `EMERGE` (a leftover may be
+#' there, `Hetre=EMERGE:9`): it is ignored and returned as `NA`.
+#' @param x Character. `"Chene=SCHAEFFER_RAPIDE:9|Hetre=EMERGE:9"`, `""`, `NA`.
+#' @return Named list species -> `list(tarif, numero)`; empty for `""`, `NULL`
+#'   for `NA`. Tariff names are kept as read (new values included).
+#' @noRd
+.marculus_tarifs_decoder <- function(x) {
+  if (length(x) != 1L || is.na(x)) return(NULL)
+  morceaux <- strsplit(trimws(x), "|", fixed = TRUE)[[1]]
+  morceaux <- morceaux[nzchar(morceaux) & grepl("=", morceaux, fixed = TRUE)]
+  out <- list()
+  for (m in morceaux) {
+    e <- trimws(sub("=[^=]*$", "", m))
+    v <- strsplit(sub("^.*=", "", m), ":", fixed = TRUE)[[1]]
+    t <- trimws(v[1])
+    if (!nzchar(e) || is.na(t) || !nzchar(t)) next
+    num <- if (t %in% c("AUCUN", "EMERGE") || length(v) < 2L) NA_integer_ else
+      suppressWarnings(as.integer(v[2]))
+    out[[e]] <- list(tarif = t, numero = num)
+  }
+  out
+}
+
+#' Decode a `PartsLot` value (format 8)
+#'
+#' @param x Character. `"Chene=tige:1,houppier:0|Hetre=tige:1,houppier:1"`.
+#' @return Named list species -> `list(tige, houppier)` (logicals); empty for
+#'   `""`, `NULL` for `NA`.
+#' @noRd
+.marculus_parts_lot_decoder <- function(x) {
+  if (length(x) != 1L || is.na(x)) return(NULL)
+  morceaux <- strsplit(trimws(x), "|", fixed = TRUE)[[1]]
+  morceaux <- morceaux[nzchar(morceaux) & grepl("=", morceaux, fixed = TRUE)]
+  out <- list()
+  for (m in morceaux) {
+    e <- trimws(sub("=[^=]*$", "", m))
+    champs <- trimws(strsplit(sub("^.*=", "", m), ",", fixed = TRUE)[[1]])
+    val <- function(cle) {
+      h <- champs[startsWith(champs, paste0(cle, ":"))]
+      # Une partie non dite compte (regle de Marculus : cochee par defaut).
+      if (!length(h)) TRUE else !identical(trimws(sub("^[^:]*:", "", h[1])), "0")
+    }
+    if (nzchar(e)) out[[e]] <- list(tige = val("tige"), houppier = val("houppier"))
+  }
+  out
+}
+
 # Aligne un data.frame de tiges sur les colonnes attendues (champs optionnels
 # absents -> NA), dans l'ordre de `.marculus_tiges_vides()`.
 .marculus_tiges_normaliser <- function(df) {
@@ -220,6 +346,8 @@ marculus_lire_exports <- function(chemins) {
     src <- as.list(c0)
     src$journal <- NULL
     src$partHouppier <- .marculus_parts_encoder(c0$partHouppier, nrow(c0))
+    src$tarifsEssence <- .marculus_tarifs_encoder(c0$tarifsEssence, nrow(c0))
+    src$partsLot <- .marculus_parts_lot_encoder(c0$partsLot, nrow(c0))
     d0 <- .marculus_ctx_completer(d0, src)
     d0$reglages_connus <- "affouage" %in% names(c0)
     ctx[[length(ctx) + 1L]] <- d0
@@ -229,6 +357,11 @@ marculus_lire_exports <- function(chemins) {
         rep_len(as.character(c0$mode %||% NA_character_), nrow(c0)),
         as.character(c0$id))
       t0$mode <- unname(modes[t0$contexteId])
+      # `partsLot` n'existe qu'a partir du format 8 : sa presence date le sens.
+      f8 <- stats::setNames(
+        ifelse(!is.na(d0$partsLot) & nzchar(d0$partsLot), 8L, NA_integer_),
+        d0$id)
+      t0$formatCsv <- unname(f8[t0$contexteId])
       tig[[length(tig) + 1L]] <- t0
     }
   }
@@ -349,7 +482,16 @@ MARCULUS_QUALITE_FIX <- c(
       tarifNumero = suppressWarnings(as.integer(entete$TarifNumero %||% NA)),
       coefficientForme = suppressWarnings(as.numeric(entete$CoefficientForme %||% NA)),
       # Format 5 : la ligne existe meme vide (aucune part saisie).
-      partHouppier = if (fmt >= 5L) entete$PartHouppier %||% "" else NA_character_))
+      partHouppier = if (fmt >= 5L) entete$PartHouppier %||% "" else NA_character_,
+      # Formats 6 a 8 : lignes toujours ecrites, vides si rien de renseigne.
+      formatCsv = fmt,
+      tarifsEssence = if (fmt >= 6L) entete$TarifsEssence %||% "" else NA_character_,
+      steresParM3 = suppressWarnings(as.numeric(
+        if (fmt >= 6L) entete$SteresParM3 %||% NA else NA)),
+      communeInsee = if (fmt >= 7L) entete$CommuneInsee %||% "" else NA_character_,
+      ser = if (fmt >= 7L) entete$Ser %||% "" else NA_character_,
+      millesimeTarifs = if (fmt >= 7L) entete$MillesimeTarifs %||% "" else NA_character_,
+      partsLot = if (fmt >= 8L) entete$PartsLot %||% "" else NA_character_))
     # Avant le format 4, l'absence de `Affouage` ne dit rien du telephone.
     contexte$reglages_connus <- fmt >= 4L
 
@@ -382,6 +524,7 @@ MARCULUS_QUALITE_FIX <- c(
           mode = entete$Mode %||% NA_character_,
           lot = suppressWarnings(as.integer(jr$Lot %||% NA)),
           affouageLotM3 = num(jr$AffouageLotM3 %||% NA),
+          formatCsv = fmt,
           journal = journal,
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]
@@ -649,6 +792,23 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
       # l'affichage et jamais reemis, comme `tarif`.
       ph <- .marculus_parts_decoder(contextes$partHouppier[i] %||% NA_character_)
       if (length(ph)) rt$part_houppier <- ph
+      # Formats 6 a 8 : memes regles, garde pour l'affichage, jamais reemis
+      # (`communeInsee`, `tarifsEssence`, `steresParM3`, `partsLot` sont au
+      # telephone). `ser` et `millesimeTarifs` servent au controle croise.
+      rt$format_csv <- contextes$formatCsv[i]
+      rt$steres_par_m3 <- contextes$steresParM3[i]
+      cles <- c(commune_insee = "communeInsee", ser = "ser",
+                millesime_tarifs = "millesimeTarifs")
+      for (nom in names(cles)) {
+        v <- trimws(contextes[[cles[[nom]]]][i])
+        if (!is.na(v) && nzchar(v)) rt[[nom]] <- v
+      }
+      rt <- rt[!vapply(rt, function(v) length(v) == 1L && is.atomic(v) && is.na(v),
+                       logical(1))]
+      te <- .marculus_tarifs_decoder(contextes$tarifsEssence[i])
+      if (length(te)) rt$tarifs_essence <- te
+      pl <- .marculus_parts_lot_decoder(contextes$partsLot[i])
+      if (length(pl)) rt$parts_lot <- pl
       upd$reglages_terrain <- rt
     }
 
