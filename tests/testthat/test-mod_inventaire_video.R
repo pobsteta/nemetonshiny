@@ -985,3 +985,35 @@ test_that("coeur reel : deux appels, meme terrain_envoye_le -> une seule requete
                     fichiers = "terrain.zip", etat = et)
   expect_identical(n_req, 2L)
 })
+
+test_that("Recuperer reinterroge le serveur a chaque clic et passe l'etat frais", {
+  withr::local_envvar(GROMA_URL = "https://groma.test/", GROMA_JETON = "secret")
+  pp <- withr::local_tempdir()
+  n_srv <- 0L
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) NULL,
+    deny_if_readonly = function(app_state, ...) FALSE,
+    video_etat_serveur = function(url, jeton) {
+      n_srv <<- n_srv + 1L
+      data.frame(plot_id = "P001", etat = "definitif",
+                 terrain_envoye_le = paste0("2026-11-15T13:2", n_srv, ":00Z"))
+    },
+    video_telecharger = function(url, jeton, plot_ids, dossier, fichiers = NULL,
+                                 etat = NULL) {
+      recu <<- etat
+      character(0)
+    }
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(actualiser = 1)
+    expect_identical(n_srv, 1L)
+    expect_false(is.null(rv$srv))
+    session$setInputs(recuperer = 1)
+    expect_identical(n_srv, 2L)
+    expect_identical(recu$terrain_envoye_le, "2026-11-15T13:22:00Z")
+    expect_identical(rv$srv$terrain_envoye_le, "2026-11-15T13:22:00Z")
+  })
+})

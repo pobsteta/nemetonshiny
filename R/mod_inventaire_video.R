@@ -128,7 +128,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       rv$qgz <- NULL; rv$etats <- NULL; rv$resultats <- NULL
       rv$terrain <- NULL
       rv$integration <- NULL; rv$import <- NULL; rv$qgz_retour <- NULL
-      rv$envoi <- NULL
+      rv$envoi <- NULL; rv$srv <- NULL
     }, ignoreNULL = FALSE)
 
     plan <- shiny::reactive(video_placettes_plan(project_path()))
@@ -442,13 +442,12 @@ mod_inventaire_video_server <- function(id, app_state) {
     # --- Integrer ------------------------------------------------------
     shiny::observeEvent(input$recuperer, {
       tr <- i18n()
-      et <- rv$etats
-      if (is.null(et)) {
-        srv <- .appel_serveur(function(cfg) video_etat_serveur(cfg$url, cfg$jeton))
-        if (is.null(srv)) return()
-        rv$srv <- srv
-        et <- rv$etats <- video_tableau_etats(srv, video_etat_local(project_path()))
-      }
+      # Etat frais a chaque clic (simple GET) : un terrain renvoye depuis
+      # « Suivre » ne doit pas etre manque en silence.
+      srv <- .appel_serveur(function(cfg) video_etat_serveur(cfg$url, cfg$jeton))
+      if (is.null(srv)) return()
+      rv$srv <- srv
+      et <- rv$etats <- video_tableau_etats(srv, video_etat_local(project_path()))
       a_recuperer <- video_plots_a_recuperer(et)
       if (!length(a_recuperer$definitifs) && !length(a_recuperer$terrain_seul)) {
         shiny::showNotification(tr$t("video_aucun_definitif"), type = "warning")
@@ -457,7 +456,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       # Dossier stable du projet : le temoin `<plot_id>_terrain.envoye_le` du
       # coeur y survit, un terrain.zip inchange n'est pas redemande.
       dossier <- video_dossier_serveur(project_path())
-      srv_brut <- rv$srv
+      srv_brut <- srv
       f <- character(0)
       # Placettes definitives : les quatre fichiers (terrain.zip absent = 404
       # silencieux du coeur). Placettes avec seule saisie : terrain.zip seul.
