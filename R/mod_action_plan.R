@@ -2336,6 +2336,12 @@ mod_action_plan_server <- function(id, app_state) {
       tot <- tot[tot$contexteId %in% ids, , drop = FALSE]
       if (nrow(tot) == 0L) return(invisible(FALSE))
       df_act <- actions_df_all()
+      # SER et millesime emis pour le projet (cache), pour le controle croise.
+      emis <- tryCatch({
+        pr <- app_state$current_project
+        cache <- marculus_tarifs_lire(.marculus_tarifs_chemin(pr$path %||% pr$project_path))
+        if (is.null(cache)) NULL else list(ser = cache$ser, millesime = cache$millesime)
+      }, error = function(e) NULL)
       blocs <- lapply(unique(tot$contexteId), function(cid) {
         sub <- tot[tot$contexteId == cid, , drop = FALSE]
         a <- df_act[df_act$id == cid, , drop = FALSE]
@@ -2355,6 +2361,8 @@ mod_action_plan_server <- function(id, app_state) {
           .marculus_synthese_table(sub, i18n),
           .marculus_lots_bloc(marculus_tiges_rv(),
                               plan$actions[[match(cid, ids)]], i18n),
+          .marculus_controle_tarifs(
+            plan$actions[[match(cid, ids)]]$reglages_terrain, emis, i18n),
           if (isTRUE(nc > 0L))
             htmltools::p(class = "small text-warning-emphasis mb-1",
                          sprintf(i18n$t("marculus_non_cubees_fmt"), nc)))
@@ -3531,17 +3539,67 @@ coerce_table_value <- function(field, raw) {
 }
 
 
-#' Marking summary of one action, as the phone's marking sheet
+#' Parts counted in the lot volume, as a sentence (format 8)
 #'
-#' One row per species, one column per diameter class, net stem counts in the
-#' cells, a total per species and per class. The first version listed one row
-#' per species x class pair: on "Reconfort" a single thinning ran to 25 rows,
-#' and the dialog overflowed the page.
+#' From the format 8 on, the lot volume counts the checked parts of each
+#' species; before, the crown alone when the species has one, else the bole
+#' (a different number under the same name). A `.marsync` lists only the
+#' species the phone has set: the others count bole and crown.
 #'
-#' @param sub A data.frame `essence, classe, tiges` (one action).
+#' @param rt The action's `reglages_terrain`.
 #' @param i18n An i18n object.
-#' @return A `div` wrapping the table, horizontally scrollable.
+#' @return A `p`, or `NULL` when the file says nothing on the rule.
 #' @noRd
+.marculus_parts_lot_ligne <- function(rt, i18n) {
+  fmt <- suppressWarnings(as.integer(rt$format_csv %||% NA))
+  pl <- rt$parts_lot
+  if (length(fmt) == 1L && !is.na(fmt) && fmt >= 5L && fmt < 8L) {
+    return(htmltools::p(class = "small text-muted mb-1",
+                        i18n$t("marculus_lot_ancienne_regle")))
+  }
+  if (!(isTRUE(fmt >= 8L) || length(pl))) return(NULL)
+  txt <- vapply(names(pl), function(e) {
+    cle <- if (isTRUE(pl[[e]]$tige) && isTRUE(pl[[e]]$houppier)) "marculus_part_tige_houppier"
+    else if (isTRUE(pl[[e]]$tige)) "marculus_part_tige"
+    else if (isTRUE(pl[[e]]$houppier)) "marculus_part_houppier"
+    else "marculus_part_aucune"
+    paste(e, i18n$t(cle))
+  }, "")
+  # Format 8 CSV : toutes les essences y sont. `.marsync` : seules les reglees.
+  if (is.na(fmt)) txt <- c(txt, i18n$t("marculus_parts_autres"))
+  if (!length(txt)) txt <- i18n$t("marculus_part_tige_houppier")
+  htmltools::p(class = "small text-muted mb-1",
+               sprintf(i18n$t("marculus_parts_lot_fmt"), paste(txt, collapse = ", ")))
+}
+
+#' Cross-check of the SER and tariff vintage the phone kept
+#'
+#' Compares what came back from the field with what the app emitted for the
+#' project, and says so when they differ. Corrects nothing.
+#'
+#' @param rt The action's `reglages_terrain`.
+#' @param emis `list(ser, millesime)` read from the project's tariff cache,
+#'   or `NULL`.
+#' @param i18n An i18n object.
+#' @return A `p`, or `NULL` when nothing differs.
+#' @noRd
+.marculus_controle_tarifs <- function(rt, emis, i18n) {
+  if (is.null(emis)) return(NULL)
+  # Le millesime emis peut porter le prefixe " IFN " que le CSV n'a pas.
+  nu <- function(x) sub("^IFN\\s*", "", trimws(as.character(x %||% "")))
+  msgs <- character()
+  ser_r <- trimws(as.character(rt$ser %||% "")); ser_e <- trimws(as.character(emis$ser %||% ""))
+  if (nzchar(ser_r) && nzchar(ser_e) && !identical(ser_r, ser_e)) {
+    msgs <- c(msgs, sprintf(i18n$t("marculus_ctrl_ser_fmt"), ser_r, ser_e))
+  }
+  mil_r <- nu(rt$millesime_tarifs); mil_e <- nu(emis$millesime)
+  if (nzchar(mil_r) && nzchar(mil_e) && !identical(mil_r, mil_e)) {
+    msgs <- c(msgs, sprintf(i18n$t("marculus_ctrl_millesime_fmt"), mil_r, mil_e))
+  }
+  if (!length(msgs)) return(NULL)
+  htmltools::p(class = "small text-warning-emphasis mb-1", paste(msgs, collapse = " "))
+}
+
 #' Affouage lots of one action, for the marking summary
 #'
 #' Shown only when the field settings imported from Marculus say the context
@@ -3553,6 +3611,12 @@ coerce_table_value <- function(field, raw) {
   vmax <- as.numeric(rt$volume_max_lot_m3 %||% NA_real_)
   lots <- marculus_bilan_lots(tiges, action$id, vmax)
   if (nrow(lots) == 0L) return(NULL)
+  # Tiges de formats differents (<= 7 et >= 8) dans le meme contexte : leurs
+  # volumes au lot n'ont pas le meme sens, aucune regle ne vaut pour tout le lot.
+  fm <- suppressWarnings(as.integer(
+    tiges$formatCsv[tiges$contexteId %in% action$id] %||% NA))
+  fm <- fm[!is.na(fm)]
+  mixte <- any(fm <= 7L) && any(fm >= 8L)
   etat <- vapply(lots$etat, function(e) i18n$t(paste0("marculus_lot_", e)), "")
   # Colonnes tige et houppier, comme l'onglet " Par lot " de Marculus, des
   # qu'un houppier existe : sans lui, le volume au lot EST le volume tige.
@@ -3581,6 +3645,9 @@ coerce_table_value <- function(field, raw) {
   htmltools::tagList(
     htmltools::p(class = "small fw-semibold mt-2 mb-1",
                  sprintf(i18n$t("marculus_lots_titre_fmt"), .format_m3(vmax, i18n))),
+    if (mixte) htmltools::p(class = "small text-warning mb-1",
+                            i18n$t("marculus_lot_formats_mixtes"))
+    else .marculus_parts_lot_ligne(rt, i18n),
     if (!is.null(parts_txt))
       htmltools::p(class = "small text-muted mb-1",
                    sprintf(i18n$t("marculus_part_houppier_fmt"), parts_txt)),
@@ -3599,6 +3666,17 @@ coerce_table_value <- function(field, raw) {
       htmltools::tags$tbody(lignes))))
 }
 
+#' Marking summary of one action, as the phone's marking sheet
+#'
+#' One row per species, one column per diameter class, net stem counts in the
+#' cells, a total per species and per class. The first version listed one row
+#' per species x class pair: on "Reconfort" a single thinning ran to 25 rows,
+#' and the dialog overflowed the page.
+#'
+#' @param sub A data.frame `essence, classe, tiges` (one action).
+#' @param i18n An i18n object.
+#' @return A `div` wrapping the table, horizontally scrollable.
+#' @noRd
 .marculus_synthese_table <- function(sub, i18n) {
   classes <- sort(unique(as.integer(sub$classe)))
   essences <- unique(sub$essence[order(sub$essence)])
