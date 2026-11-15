@@ -36,10 +36,10 @@ _(vide)_
   - Homme : Pascal, sur Couchey
   - Mission : VICTOR à la voix (essai par texte fait le 2026-11-15 ; reste le micro et la transcription Gradium) ; liste de contrôle de la fiche 024 (Statut) ; série santé 017-023
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
-- [duree-tests] Durée de chaque fichier de test et commande ciblée sous 300 s · depuis le cycle 3 · avant le prochain cycle de code
-  - Homme : `analyste` (sonnet)
-  - Mission : mesurer, marquer les fichiers > 60 s (dont `test-service_mcp_detache.R`), proposer la commande pour le hook et le relecteur
-  - Moyens : cause n° 2 du Pareto du bilan du 2026-11-15 ; fiche à rédiger
+- [026-duree-tests](missions/026-duree-tests.md) · depuis le cycle 3 · avant le prochain cycle de code
+  - Homme : `analyste` (sonnet), confiée le 2026-11-15
+  - Mission : mesurer chaque fichier de test, marquer ceux > 60 s (dont `test-service_mcp_detache.R`), proposer la commande ciblée sous 300 s
+  - Moyens : lecture seule, rapport à l'orchestrateur
 
 ## Terminé
 
