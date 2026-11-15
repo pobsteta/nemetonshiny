@@ -2794,7 +2794,8 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
   # whole CHM pipeline and forced P2 back into legacy mode.
   forest_mask <- vectors$bdforet
   water       <- vectors$water_surfaces
-  buildings   <- vectors$buildings
+  buildings   <- .masque_ou_null(vectors$buildings)
+  water       <- .masque_ou_null(water)
   ndvi        <- rasters$ndvi
 
   cleaned <- nemeton::sanitize_chm(
@@ -2899,6 +2900,11 @@ download_raster_source <- function(source_name,
 }
 
 
+#' Distance (m) over which W1 rewards the proximity of a watercourse
+#' (`proximity_m` of `nemeton::indicateur_w1_reseau()`).
+#' @noRd
+.W1_PROXIMITE_M <- 500
+
 #' Download vector source
 #'
 #' @noRd
@@ -2908,6 +2914,13 @@ download_vector_source <- function(source_name,
                                    cache_dir) {
 
   cache_file <- file.path(cache_dir, paste0(source_name, ".gpkg"))
+
+  # W1 donne un bonus aux UGF a moins de proximity_m (500 m) d'un cours d'eau :
+  # un troncon a 100-500 m doit etre telecharge. L'emprise elargie est aussi
+  # celle du cache (.bbox.json) : un ancien cache plus etroit n'est pas resservi.
+  if (identical(source_name, "water_network")) {
+    bbox <- .bbox_elargie(bbox, .W1_PROXIMITE_M)
+  }
 
   lire <- function(f) {
     cached <- sf::st_read(f, quiet = TRUE)
@@ -3085,6 +3098,46 @@ download_vector_source <- function(source_name,
 #' @name download_functions
 #' @keywords internal
 NULL
+
+
+#' Empty BD TOPO layer (Lambert-93)
+#'
+#' What a successful WFS answer with 0 object stands for: a measurement
+#' ("nothing in the extent"), distinct from a failed download (`NULL`).
+#' @noRd
+.couche_bdtopo_vide <- function() {
+  sf::st_sf(geometry = sf::st_sfc(crs = 2154))
+}
+
+
+#' Widen a WGS84 extent by a distance in metres
+#'
+#' The buffer is applied in Lambert-93 (metres), never as a numeric offset on
+#' degrees.
+#' @param bbox Numeric `c(xmin, ymin, xmax, ymax)` in WGS84.
+#' @param metres Distance in metres.
+#' @return Numeric `c(xmin, ymin, xmax, ymax)` in WGS84.
+#' @noRd
+.bbox_elargie <- function(bbox, metres) {
+  bbox <- as.numeric(bbox)
+  zone <- sf::st_as_sfc(sf::st_bbox(
+    c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
+    crs = sf::st_crs(4326)))
+  zone <- sf::st_buffer(sf::st_transform(zone, 2154), metres,
+                        endCapStyle = "SQUARE", joinStyle = "MITRE")
+  as.numeric(sf::st_bbox(sf::st_transform(zone, 4326)))
+}
+
+
+#' Vector layer usable as a CHM mask, or NULL when it has no feature
+#'
+#' An empty layer (BD TOPO: nothing in the extent) masks nothing; the mask
+#' step is skipped rather than handed an empty geometry.
+#' @noRd
+.masque_ou_null <- function(x) {
+  if (inherits(x, "sf") && nrow(x) == 0L) return(NULL)
+  x
+}
 
 
 #' Download INPN WFS data (protected areas)
@@ -3282,9 +3335,20 @@ download_ign_bdtopo <- function(layer_name, bbox, cache_file) {
 
     result <- happign::get_wfs(x = shape, layer = typename)
 
-    if (is.null(result) || nrow(result) == 0) {
+    # NULL = la requete a echoue (happign) : pas de mesure, donc NULL.
+    if (is.null(result)) {
       cli::cli_alert_warning("No IGN BD TOPO features found for {layer_name}")
       return(NULL)
+    }
+
+    # Reponse WFS vide mais reussie : il n'y a rien dans l'emprise, et c'est
+    # une MESURE (W1 = 0, pas NA). On ecrit une couche vide en Lambert-93, avec
+    # son cache, pour ne pas reinterroger le WFS a chaque calcul.
+    if (nrow(result) == 0) {
+      vide <- .couche_bdtopo_vide()
+      sf::st_write(vide, cache_file, quiet = TRUE, delete_dsn = TRUE)
+      cli::cli_alert_info("No IGN BD TOPO features in the extent for {layer_name} (empty layer cached)")
+      return(vide)
     }
 
     # Drop Z/M coordinates (BD TOPO is 3D, s2 engine only supports 2D)

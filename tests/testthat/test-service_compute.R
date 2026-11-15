@@ -1655,6 +1655,8 @@ test_that("download_vector_source returns cached file if exists", {
     )
   )
   sf::st_write(mock_sf, cache_file, quiet = TRUE)
+  # Cache valide = cache avec son emprise (sans elle, la couche est retelechargee).
+  nemetonshiny:::.layer_cache_write_bbox(cache_file, c(0, 0, 3, 3))
 
   result <- nemetonshiny:::download_vector_source(
     source_name = "roads",
@@ -3421,7 +3423,7 @@ test_that("download_ign_bdtopo downloads and caches roads", {
   })
 })
 
-test_that("download_ign_bdtopo returns NULL when get_wfs returns empty", {
+test_that("download_ign_bdtopo returns an empty layer when get_wfs answers with 0 feature", {
   skip_if_not_installed("sf")
   skip_if_not_installed("happign")
 
@@ -3437,8 +3439,12 @@ test_that("download_ign_bdtopo returns NULL when get_wfs returns empty", {
       },
       .package = "happign",
       {
-        result <- nemetonshiny:::download_ign_bdtopo("buildings", bbox, cache_file)
-        expect_null(result)
+        # Reponse reussie sans objet = mesure (mission 032), pas un echec.
+        result <- suppressMessages(
+          nemetonshiny:::download_ign_bdtopo("buildings", bbox, cache_file))
+        expect_s3_class(result, "sf")
+        expect_identical(nrow(result), 0L)
+        expect_true(file.exists(cache_file))
       }
     )
   })

@@ -1,3 +1,13 @@
+# nemetonshiny 2026.11.1.9007 (2026-11-15)
+
+> **Non publié.** Mission 032 : une réponse BD TOPO vide est une mesure.
+
+## Correctifs
+
+- **W1 = NA sur Couchey** : quand le WFS BD TOPO répond sans erreur avec 0 objet (aucun cours d'eau, route ou bâtiment dans l'emprise), `download_ign_bdtopo()` écrit et rend une couche **vide** en Lambert-93 (avec son `.bbox.json`, donc pas de réinterrogation du WFS à chaque calcul) au lieu de `NULL`. Le cœur reçoit une couche fournie mais vide : W1 = 0, et non NA. Un échec (erreur réseau, `NULL` de happign) reste `NULL`, donc NA. Vaut pour `water_network`, `water_surfaces`, `roads` et `buildings` ; l'avertissement « aucune donnée trouvée » ne s'affiche plus pour une absence avérée.
+- **Emprise du réseau hydrographique** : `water_network` est téléchargé sur l'emprise des parcelles élargie de 500 m (`proximity_m` de W1), pour qu'un tronçon à 100-500 m compte dans le bonus de proximité. L'emprise élargie est celle du cache : un ancien cache plus étroit est retéléchargé au prochain calcul (rien à migrer).
+- Le masque du MNH (`sanitize_chm`, P2) saute une couche bâtiments ou eau vide au lieu de la lui passer.
+
 # nemetonshiny 2026.11.1.9006 (2026-11-15)
 
 > **Non publié.**
