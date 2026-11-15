@@ -36,10 +36,6 @@ _(vide)_
   - Homme : Pascal, à la voix
   - Mission : « où en est Couchey », « applique les UGF ONF » + « oui », « fais le rapport » ; au plus tard le 2026-11-24, après nemetonmcp
   - Moyens : VICTOR + nemetonmcp à jour ; vérifie aussi le bloc NEMETON_CONFIRMATION en vrai `claude -p` et la durée de l'aperçu croiser_onf (écart l. 45)
-- [bilan-adr-0003] ADR 0003 (souveraineté) tranchée · depuis le cycle 2
-  - Homme : Pascal
-  - Mission : accepter ou refuser `pilotage/adr/0003-acces-tous-souverainete.md` avant la release v2026.11.1, puis report dans platform_nemeton
-  - Moyens : l'ADR telle que proposée le 2026-10-24
 - [bilan-release-2026.11.1] Release v2026.11.1 · depuis le cycle 2
   - Homme : orchestrateur, sur feu vert de Pascal
   - Mission : publier les changements cassants de 2026.10.18.9009 après l'essai Couchey
@@ -47,6 +43,7 @@ _(vide)_
 
 ## Terminé
 
+- [bilan-adr-0003] ADR 0003 tranchée par Pascal le 2026-11-15 : option A (tout client MCP, avertissement) · reste le report dans platform_nemeton (brief déposé)
 - [024-fiche-pdf-par-ugf](missions/024-fiche-pdf-par-ugf.md) · depuis le cycle 2
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR ; PR #277 (`ca89adf9`), 2026.10.18.9017, issue #20 fermée ; reste l'essai terrain de Pascal (Quarto en tâche de fond)
 - [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
