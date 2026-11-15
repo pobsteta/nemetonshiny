@@ -297,8 +297,8 @@ download_chm_theia <- function(parcels, year = NULL,
     nemeton::sanitize_chm(
       chm_m,
       forest_mask = vectors$bdforet,
-      buildings   = vectors$buildings,
-      water       = vectors$water_surfaces,
+      buildings   = .masque_ou_null(vectors$buildings),
+      water       = .masque_ou_null(vectors$water_surfaces),
       ndvi        = rasters$ndvi
     ),
     error = function(e) {
