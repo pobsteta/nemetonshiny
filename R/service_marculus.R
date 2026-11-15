@@ -270,7 +270,8 @@ MARCULUS_STATUTS <- c(
 #'   [.marculus_suffixes_doublons()]).
 #' @param tarifs Schaeffer tariff proposal of the project
 #'   ([marculus_tarifs_preparer()]), or `NULL`. When given, the context carries
-#'   `ser`, `millesimeTarifs` and `tarifsProposes` (restricted to `essences`),
+#'   `ser`, `millesimeTarifs` and `tarifsProposes` (forest level only,
+#'   restricted to `essences`; key omitted when empty),
 #'   keys unknown to Marculus releases before the spec 062 ones, hence inert
 #'   there. `tarif`, `tarifNumero` and `tarifNumeroParEssence` are field
 #'   settings and are never emitted.
@@ -346,13 +347,16 @@ marculus_context_from_action <- function(action, project, essences = character(0
   if (!is.null(gpkg_nom) && nzchar(gpkg_nom)) ctx$gpkgNom <- basename(gpkg_nom)
   if (!is.null(tarifs)) {
     if (length(tarifs$ser) == 1L && nzchar(tarifs$ser)) ctx$ser <- tarifs$ser
-    if (length(tarifs$millesime) == 1L) ctx$millesimeTarifs <- tarifs$millesime
+    # Forme nue `2011-2025`, comme Marculus ; un cache ancien porte "IFN".
+    if (length(tarifs$millesime) == 1L && !is.na(tarifs$millesime)) {
+      ctx$millesimeTarifs <- .marculus_tarifs_millesime_nu(tarifs$millesime)
+    }
     # Cles = libelles EXACTEMENT tels qu'emis dans `essences` ; une essence
-    # sans proposition est absente. Objet nomme, meme vide (`{}` en JSON).
-    props <- tarifs$essences %||% list()
+    # sans proposition est absente. Seul le niveau foret (numero > 0) est
+    # emis : le telephone recalcule les autres. Cle OMISE s'il n'en reste aucune.
+    props <- .marculus_tarifs_foret(tarifs$essences)
     props <- props[intersect(essences, names(props))]
-    if (!length(props)) props <- stats::setNames(list(), character(0))
-    ctx$tarifsProposes <- props
+    if (length(props)) ctx$tarifsProposes <- props
   }
   ctx
 }
@@ -1359,9 +1363,13 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   st <- res$tarifs_statut %||% NA_character_
   if (identical(st, "ok")) {
     cpt <- res$tarifs_comptes
-    parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_fmt"),
-                              cpt$n %||% 0L, res$n_essences %||% 0L,
-                              cpt$foret %||% 0L, cpt$ser %||% 0L, cpt$repli %||% 0L))
+    if ((cpt$n %||% 0L) == 0L) {
+      parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_aucun"),
+                                res$n_essences %||% 0L))
+    } else {
+      parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_fmt"),
+                                cpt$n, res$n_essences %||% 0L))
+    }
   } else if (identical(st, "echec")) {
     parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_echec"),
                               res$tarifs_erreur %||% ""))

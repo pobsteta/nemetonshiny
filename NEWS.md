@@ -1,3 +1,14 @@
+# nemetonshiny 2026.11.1.9006 (2026-11-15)
+
+> **Non publié.**
+
+## Correctifs
+
+- Tarifs Schaeffer proposés à Marculus (mission 028) : le `.marsync` n'émet plus dans `tarifsProposes` que les propositions du niveau `foret` à numéro strictement positif ; le téléphone recalcule SER, GRECO et national. Les numéros ≤ 0 (formule sans borne basse sur un faible volume) sont écartés. `conseille` n'est gardé que s'il désigne un type conservé ; une essence sans type conservé disparaît ; la clé `tarifsProposes` est **omise** quand plus aucune essence ne reste (et non plus `{}`). Le filtre s'applique à l'émission : un cache déjà écrit donne le bon lot sans recalcul, et le cache garde tous les niveaux.
+- `millesimeTarifs` est émis sous la forme nue `2011-2025` (celle de Marculus), sans préfixe « IFN », caches anciens compris. Le contrôle croisé SER/millésime du Plan d'actions utilise le même helper.
+- Cas « aucune essence au niveau forêt » (Couchey) : message dédié, clé `marculus_export_tarifs_aucun` (« Aucun numéro de tarif proposé au niveau forêt (N essences examinées) ; Marculus calcule les tarifs sur le téléphone. »), au lieu de « pour 0 essences sur N ».
+- Message de fin d'export : « Numéros de tarif proposés au niveau forêt pour X essences sur Y ; les autres niveaux sont calculés sur le téléphone » (clé `marculus_export_tarifs_fmt` réécrite, deux paramètres au lieu de cinq).
+
 # nemetonshiny 2026.11.1.9005 (2026-11-15)
 
 > **Non publié.** Mission 030 : inventaire vidéo, schéma Groma 1.6.0 (cœur nemeton 2026.11.29).

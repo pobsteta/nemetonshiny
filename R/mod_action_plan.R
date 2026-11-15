@@ -3586,7 +3586,7 @@ coerce_table_value <- function(field, raw) {
 .marculus_controle_tarifs <- function(rt, emis, i18n) {
   if (is.null(emis)) return(NULL)
   # Le millesime emis peut porter le prefixe " IFN " que le CSV n'a pas.
-  nu <- function(x) sub("^IFN\\s*", "", trimws(as.character(x %||% "")))
+  nu <- function(x) .marculus_tarifs_millesime_nu(x %||% "")
   msgs <- character()
   ser_r <- trimws(as.character(rt$ser %||% "")); ser_e <- trimws(as.character(emis$ser %||% ""))
   if (nzchar(ser_r) && nzchar(ser_e) && !identical(ser_r, ser_e)) {
