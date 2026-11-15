@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9005</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9006</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.1.9006" id="nemetonshiny-20261119006-2026-11-15">nemetonshiny 2026.11.1.9006 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119006-2026-11-15"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong></p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs-2026-11-1-9006">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9006"></a></h3>
+<ul><li>Tarifs Schaeffer proposés à Marculus (mission 028) : le <code>.marsync</code> n’émet plus dans <code>tarifsProposes</code> que les propositions du niveau <code>foret</code> à numéro strictement positif ; le téléphone recalcule SER, GRECO et national. Les numéros ≤ 0 (formule sans borne basse sur un faible volume) sont écartés. <code>conseille</code> n’est gardé que s’il désigne un type conservé ; une essence sans type conservé disparaît ; la clé <code>tarifsProposes</code> est <strong>omise</strong> quand plus aucune essence ne reste (et non plus <code><a href="https://rdrr.io/r/base/Paren.html" class="external-link">{}</a></code>). Le filtre s’applique à l’émission : un cache déjà écrit donne le bon lot sans recalcul, et le cache garde tous les niveaux.</li>
+<li>
+<code>millesimeTarifs</code> est émis sous la forme nue <code>2011-2025</code> (celle de Marculus), sans préfixe « IFN », caches anciens compris. Le contrôle croisé SER/millésime du Plan d’actions utilise le même helper.</li>
+<li>Cas « aucune essence au niveau forêt » (Couchey) : message dédié, clé <code>marculus_export_tarifs_aucun</code> (« Aucun numéro de tarif proposé au niveau forêt (N essences examinées) ; Marculus calcule les tarifs sur le téléphone. »), au lieu de « pour 0 essences sur N ».</li>
+<li>Message de fin d’export : « Numéros de tarif proposés au niveau forêt pour X essences sur Y ; les autres niveaux sont calculés sur le téléphone » (clé <code>marculus_export_tarifs_fmt</code> réécrite, deux paramètres au lieu de cinq).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1.9005" id="nemetonshiny-20261119005-2026-11-15">nemetonshiny 2026.11.1.9005 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119005-2026-11-15"></a></h2>
 <blockquote>
