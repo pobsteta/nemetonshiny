@@ -28,14 +28,10 @@ _(vide)_
 
 ## Planifié
 
-- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo (030), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 non NA sur Couchey (032) · depuis le cycle 3
+- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 non NA sur Couchey (032) · depuis le cycle 3
   - Homme : Pascal
   - Mission : retours au journal en lignes « écart »
-  - Moyens : app `main` 2026.11.1.9006
-- [suite-groma-2026-11-30] `etat =` incrémental et `dbh_ruban` quand nemeton 2026.11.30 sera publié · depuis le cycle 3
-  - Homme : `dev` (sonnet), à confier
-  - Mission : brief `nemeton/specs/061-inventaire-video/brief-nemetonshiny.md` (points 3 et 8)
-  - Moyens : attendre le tag cœur
+  - Moyens : app v2026.11.2
 - [suite-duree-tests] Pistes de la mission 026 (un seul processus, garde `NEMETON_TESTS_LENTS`) · depuis le cycle 3
   - Homme : à décider par Pascal
   - Mission : rapport 026 au journal
@@ -51,6 +47,7 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [033-groma-incremental-dbh-ruban](missions/033-groma-incremental-dbh-ruban.md) · cycle 3 · PR #292 (`0d9eb553`), `.9008`
 - [032-bdtopo-reponse-vide](missions/032-bdtopo-reponse-vide.md) · cycle 3 · PR #290 (`4d1ccf55`), `.9007`
 
 - [026-duree-tests](missions/026-duree-tests.md) · cycle 3 · rapport de l'analyste ; commande ciblée adoptée, à remesurer machine calme
