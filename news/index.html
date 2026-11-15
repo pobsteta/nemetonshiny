@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9006</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9007</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.1.9007" id="nemetonshiny-20261119007-2026-11-15">nemetonshiny 2026.11.1.9007 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119007-2026-11-15"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 032 : une réponse BD TOPO vide est une mesure.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs-2026-11-1-9007">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9007"></a></h3>
+<ul><li>
+<strong>W1 = NA sur Couchey</strong> : quand le WFS BD TOPO répond sans erreur avec 0 objet (aucun cours d’eau, route ou bâtiment dans l’emprise), <code>download_ign_bdtopo()</code> écrit et rend une couche <strong>vide</strong> en Lambert-93 (avec son <code>.bbox.json</code>, donc pas de réinterrogation du WFS à chaque calcul) au lieu de <code>NULL</code>. Le cœur reçoit une couche fournie mais vide : W1 = 0, et non NA. Un échec (erreur réseau, <code>NULL</code> de happign) reste <code>NULL</code>, donc NA. Vaut pour <code>water_network</code>, <code>water_surfaces</code>, <code>roads</code> et <code>buildings</code> ; l’avertissement « aucune donnée trouvée » ne s’affiche plus pour une absence avérée.</li>
+<li>
+<strong>Emprise du réseau hydrographique</strong> : <code>water_network</code> est téléchargé sur l’emprise des parcelles élargie de 500 m (<code>proximity_m</code> de W1), pour qu’un tronçon à 100-500 m compte dans le bonus de proximité. L’emprise élargie est celle du cache : un ancien cache plus étroit est retéléchargé au prochain calcul (rien à migrer).</li>
+<li>Le masque du MNH (<code>sanitize_chm</code>, P2) saute une couche bâtiments ou eau vide au lieu de la lui passer.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1.9006" id="nemetonshiny-20261119006-2026-11-15">nemetonshiny 2026.11.1.9006 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119006-2026-11-15"></a></h2>
 <blockquote>
