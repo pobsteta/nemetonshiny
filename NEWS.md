@@ -1,3 +1,11 @@
+# nemetonshiny 2026.11.1.9001 (2026-11-15)
+
+> **Non publié.**
+
+## Correctifs
+
+- Description statique de la famille T alignée sur nemeton 2026.11.28 (« … pression de coupe rase et vitalité dynamique ») : `test-utils_i18n_families.R` échouait sur `main` depuis la sortie du cœur, tiré par `@*release`.
+
 # nemetonshiny 2026.11.1.9000 (2026-11-15)
 
 > **Non publié.** Ouverture du cycle dev après la release v2026.11.1.

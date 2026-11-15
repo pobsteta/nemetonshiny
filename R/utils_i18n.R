@@ -2425,8 +2425,8 @@ TRANSLATIONS <- list(
     )
   ),
   famille_temporel_desc = list(
-    fr = "Anciennet\u00e9 foresti\u00e8re, taux de changement et pression de coupe rase",
-    en = "Forest age, change rate and clear-cut pressure"
+    fr = "Anciennet\u00e9 foresti\u00e8re, taux de changement, pression de coupe rase et vitalit\u00e9 dynamique",
+    en = "Forest age, change rate, clear-cut pressure and dynamic vitality"
   ),
   famille_risque_desc = list(
     fr = paste0(
