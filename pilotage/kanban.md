@@ -28,7 +28,7 @@ _(vide)_
 
 ## Planifié
 
-- [bilan-chaine-nemetonmcp] Brief nemetonmcp appliqué (puis aigora, victor) · depuis le cycle 2
+- [bilan-chaine-nemetonmcp] Brief nemetonmcp appliqué (puis aigora, victor) · depuis le cycle 2 · nemetonmcp FAIT (6c85d2f, 2026-11-13) ; reste victor (2 briefs) et aigora
   - Homme : Pascal (sessions nemetonmcp, aigora, victor)
   - Mission : ouvrir `briefs/vers-nemetonmcp/2026-11-10-contrat-jeton-erreurs-noms.md` d'ici le 2026-11-17 ; relance si aucun commit nemetonmcp sous 7 jours
   - Moyens : briefs de la mission 013 (`briefs/vers-*/2026-11-10-*.md`)
