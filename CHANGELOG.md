@@ -10,6 +10,42 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.11.1] - 2026-11-15
+
+Groups the dev cycle `2026.10.18.9001` to `.9018`. See NEWS.md for details.
+
+### Added
+- PDF sheets per management unit (UGF) in the Action plan tab, one PDF or a ZIP.
+- MCP server: annotations on the ten tools, tolerant resolution of dictated
+  project names, `resume_projet` returns the whole Synthesis screen, long
+  tools (`generer_rapport`, second call of `croiser_onf`) run as background jobs.
+- Single family table shared by the screen, the API and the MCP.
+
+### Changed
+- **Breaking (MCP clients):** tool errors are flagged `isError` with a
+  classified bilingual JSON body; a failed background job returns `ok = false`
+  and the error fields at top level of `etat_calcul`.
+- **Breaking:** `appliquer_ugf` and `croiser_onf` no longer write on the first
+  call; a one-time confirmation token (10 minutes, stored on disk) is required.
+- **Breaking:** `generer_rapport` and `croiser_onf` (second call) return a job
+  id; the result is read from `etat_calcul` (new `type` field).
+- **Breaking:** family scores use 2 decimals; `updated_at` is ISO 8601 with
+  time zone Europe/Paris.
+- **Breaking:** the `nemetonmcp` contract is now 33 internal objects:
+  `lock_status` and `find_action_index` removed from it, the four
+  token/guard helpers now called.
+- FAST is computed on the union of the UGF (`_tot`) and only cropped to the
+  stratum for display; Validation plan overlay: transparent healthy class and
+  per-engine colours; "No alert in this stratum" message.
+- Alignment with `nemeton` 2026.11.14 (N5 and B5 not yet in the UI).
+
+### Fixed
+- Validation plan: FORDEAD and RECONFORT read on `_tot` then cropped to the
+  stratum.
+
+### Removed
+- Dead FAST code in the Validation plan and class-label helpers.
+
 ## [2026.10.11] - 2026-10-17
 
 ### Added

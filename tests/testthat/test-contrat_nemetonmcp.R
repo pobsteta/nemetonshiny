@@ -1,7 +1,7 @@
 # Contrat nemetonshiny -> nemetonmcp (pilotage/adr/0001, mission 001).
 #
-# `nemetonmcp` lit 35 objets internes par getFromNamespace(). CONTRAT.md,
-# section « API pour nemetonmcp », les declare ; ce test les verrouille : un
+# `nemetonmcp` lit 33 objets internes par getFromNamespace(). CONTRAT.md,
+# section "API pour nemetonmcp", les declare ; ce test les verrouille : un
 # objet renomme, retire, ou dont les arguments changent fait echouer la CI
 # ici, pas VICTOR en production. Changer cette table = changer le contrat :
 # mettre CONTRAT.md a jour et prevenir nemetonmcp (brief).
@@ -15,7 +15,6 @@
   update_action_in_plan   = c("plan", "action_id", "updates", "ug_ids", "user"),
   delete_action_from_plan = c("plan", "action_id", "user"),
   get_action_by_id        = c("plan", "action_id"),
-  find_action_index       = c("plan", "action_id"),
   action_plan_annee_base  = c("plan"),
   load_ug_comments        = c("project_id"),
   # projet
@@ -24,7 +23,6 @@
   get_project_path        = c("project_id"),
   get_projects_root       = character(),
   ug_build_sf             = c("projet"),
-  lock_status             = c("pid"),
   # communes
   get_commune_geometry    = c("code_insee"),
   save_commune_geometry   = c("project_id", "commune_geom"),
@@ -58,8 +56,8 @@
 
 .contrat_ns <- function() asNamespace("nemetonshiny")
 
-test_that("le contrat compte 35 objets, sans doublon", {
-  expect_length(.contrat_noms(), 35L)
+test_that("le contrat compte 33 objets, sans doublon", {
+  expect_length(.contrat_noms(), 33L)
   expect_false(anyDuplicated(.contrat_noms()) > 0L)
 })
 
@@ -135,11 +133,8 @@ test_that("nemetonmcp n'appelle aucun objet hors contrat (si son depot est la)",
       sub('^\\.ns\\("([^"]+)"\\)$', "\\1", m)
     })))
   # Egalite stricte : nemetonmcp appelle exactement le contrat.
-  # Exception 2026-11-10 : .mcp_vers_outil (mission 003) et les trois objets
-  # de la confirmation par jeton (mission 010) sont au contrat avant d'etre
-  # appeles par nemetonmcp (brief mission 013). Retirer l'exception a sa
-  # livraison.
-  pas_encore <- c(".mcp_vers_outil", ".mcp_garde_ecriture",
-                  ".mcp_jeton_emettre", ".mcp_jeton_consommer")
-  expect_setequal(appelles, setdiff(.contrat_noms(), pas_encore))
+  # Depuis la branche adaptation-nemetonshiny-2026-11 (5cc3364), nemetonmcp
+  # appelle les 4 objets de la confirmation par jeton ; lock_status et
+  # find_action_index ne sont plus appeles (mission 025).
+  expect_setequal(appelles, .contrat_noms())
 })

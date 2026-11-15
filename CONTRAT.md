@@ -212,7 +212,7 @@ et reste stable en 1.x ; ajouter un profil est une évolution mineure.
 
 ## 6 bis. API pour nemetonmcp
 
-`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **35 objets internes**
+`nemetonmcp` (le serveur MCP de VICTOR et d'AIGORA) lit **33 objets internes**
 de nemetonshiny par `getFromNamespace(nom, "nemetonshiny")`. Ils ne sont pas
 exportés (ADR 0001, option B) mais **font partie du contrat** : les renommer,
 les retirer ou changer leurs arguments est un changement cassant (section
@@ -221,6 +221,11 @@ les retirer ou changer leurs arguments est un changement cassant (section
 arguments (`formals()`, dans l'ordre) de chaque objet ; il vérifie aussi que
 cette section et la liste lue dans le code de `nemetonmcp` sont identiques.
 Un objet absent de cette section n'est **pas** garanti.
+
+Non appelés par `nemetonmcp` depuis sa branche `adaptation-nemetonshiny-2026-11`
+(`5cc3364`), donc **sortis du contrat** : `find_action_index()` et
+`lock_status()`. Ils restent dans nemetonshiny (usage interne), sans garantie
+pour `nemetonmcp`.
 
 Plan d'actions et commentaires :
 
@@ -232,7 +237,6 @@ Plan d'actions et commentaires :
 | `update_action_in_plan()` | `plan`, `action_id`, `updates`, `ug_ids`, `user` |
 | `delete_action_from_plan()` | `plan`, `action_id`, `user` |
 | `get_action_by_id()` | `plan`, `action_id` |
-| `find_action_index()` | `plan`, `action_id` ; `NA` si absente |
 | `action_plan_annee_base()` | `plan` |
 | `load_ug_comments()` | `project_id` |
 | `ACTION_PLAN_TYPES` | vecteur de types d'action |
@@ -250,7 +254,6 @@ Projet :
 | `get_project_path()` | `project_id` |
 | `get_projects_root()` | aucun |
 | `ug_build_sf()` | `projet` |
-| `lock_status()` | `pid` ; `NULL` si aucun verrou |
 
 Communes :
 
