@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.1.9004" id="nemetonshiny-20261119004-2026-11-15">nemetonshiny 2026.11.1.9004 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119004-2026-11-15"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong></p>
+</blockquote>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-1-9004">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1-9004"></a></h3>
+<ul><li>
+<strong>T4, vitalité dynamique</strong> (spec 068, <code>nemeton</code> &gt;= 2026.11.28, mission 029) : l’accroissement de la hauteur dominante observé sur la série FORMS-T est comparé à celui attendu de placettes IFN comparables. T4 est calculé après T3 et reste <code>NA</code> sans série FORMS-T ; il ne pèse alors sur aucun indice.
+<ul><li>L’app fournit au cœur l’<strong>essence dominante en code IFN <code>ESPAR</code></strong> (libellé BD Forêt passé par <code>resoudre_espar()</code>) et la <strong>SER</strong> des UGF (<code>ensure_ugf_ser()</code>, aussi hors mode IFN, cache <code>data/ugf_ser.rds</code>). Une essence sans correspondance reste <code>NA</code> (statut <code>skipped_no_essence</code>), jamais un code deviné, hormis la convention ci-dessous.</li>
+<li>Les coupes sont lues dans la colonne T3 brute, déjà calculée ; la série FORMS-T chargée pour T2 sert aussi à T4 (un seul chargement).</li>
+<li>Les six statuts <code>skipped_*</code> sont traduits (FR/EN) sous la carte grise de la vue famille T.</li>
+<li>La vue famille T affiche, sous la carte T4, l’accroissement observé et attendu (m / 5 ans), la hauteur dominante, le nombre de placettes analogues, et la mention fixe « Référence construite en Bourgogne-Franche-Comté, climat 2019-2023 ». Ces colonnes (<code>.t4_*</code>) traversent la persistance des résultats.</li>
+</ul></li>
+<li>Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (<code>.T4_ESPAR_SAPIN_EPICEA</code>).- Plancher <code>Imports: nemeton (&gt;= 2026.11.28)</code>.</li>
+<li>Hors périmètre : NDP 3 (<code>accroissement_hdom_finn()</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1.9003" id="nemetonshiny-20261119003-2026-11-15">nemetonshiny 2026.11.1.9003 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119003-2026-11-15"></a></h2>
 <blockquote>
