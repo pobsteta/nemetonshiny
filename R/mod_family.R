@@ -200,7 +200,10 @@ mod_family_server <- function(id, family_code, app_state) {
           production_ifn_banner(enriched_sf(), ind_cols[i], i18n),
           # T2 mesure sur FORMS-T (spec 060) : un T2 de 92 se lit "8 % du
           # couvert perdu". Memes colonnes annexes, meme sf enrichi.
-          t2_forms_t_banner(enriched_sf(), ind_cols[i], i18n)
+          t2_forms_t_banner(enriched_sf(), ind_cols[i], i18n),
+          # T4 vitalite dynamique (spec 068) : accroissement observe / attendu
+          # et la reference sur laquelle le score est centre.
+          t4_vitalite_banner(enriched_sf(), ind_cols[i], i18n)
         )
       })
 
@@ -945,6 +948,56 @@ t2_forms_t_banner <- function(data, ind_col, i18n) {
     class = "small text-muted fst-italic px-1 pb-1",
     bsicons::bs_icon("info-circle", class = "me-1"),
     txt
+  )
+}
+
+
+#' Banner reading a T4 (dynamic vitality)
+#'
+#' @description
+#' T4 (spec 068) is 50 when the unit grows as the reference expects. The score
+#' alone does not say what was compared: this line gives the observed and the
+#' expected dominant-height increment (m / 5 years, as a range over the units
+#' when they differ), the dominant height and the number of IFN analogue plots,
+#' then the fixed mention of the reference (built in Bourgogne-Franche-Comte,
+#' 2019-2023 climate). `NULL` when no unit has a T4.
+#'
+#' @param data data.frame / sf carrying the `.t4_*` annex columns.
+#' @param ind_col Character. Indicator column (raw or `_norm`).
+#' @param i18n Translator object.
+#'
+#' @return A [htmltools::div] or `NULL`.
+#'
+#' @noRd
+t4_vitalite_banner <- function(data, ind_col, i18n) {
+  if (!identical(sub("_norm$", "", ind_col), "indicateur_t4_vitalite")) {
+    return(NULL)
+  }
+  if (is.null(data)) return(NULL)
+  num <- function(col) {
+    v <- suppressWarnings(as.numeric(data[[col]]))
+    v[!is.na(v)]
+  }
+  obs <- num(".t4_accroissement_obs")
+  att <- num(".t4_accroissement_att")
+  if (length(obs) == 0L || length(att) == 0L) return(NULL)
+
+  plage <- function(v, digits) {
+    lo <- .fmt_num(min(v), i18n, digits)
+    hi <- .fmt_num(max(v), i18n, digits)
+    if (identical(lo, hi)) lo else sprintf(i18n$t("t4_bandeau_intervalle"), lo, hi)
+  }
+  h_dom <- num(".t4_h_dom")
+  n_ana <- num(".t4_n_analogues")
+  txt <- sprintf(i18n$t("t4_bandeau_accroissement"),
+                 plage(obs, 2), plage(att, 2),
+                 if (length(h_dom)) plage(h_dom, 1) else "NA",
+                 if (length(n_ana)) plage(n_ana, 0) else "NA")
+
+  htmltools::div(
+    class = "small text-muted fst-italic px-1 pb-1",
+    bsicons::bs_icon("info-circle", class = "me-1"),
+    txt, " ", i18n$t("t4_reference_bfc")
   )
 }
 

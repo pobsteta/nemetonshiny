@@ -49,6 +49,14 @@ PRODUCTION_ANNEX_COLS <- list(
     t2_perte_pct       = ".t2_perte_pct",
     t2_croissance_m_an = ".t2_croissance_m_an",
     t2_annees          = ".t2_annees"
+  ),
+  # T4 (spec 068) : l'accroissement observe et l'attendu qui disent ce que
+  # le score vaut (le statut, lui, voyage en `.t4_status`).
+  indicateur_t4_vitalite = c(
+    t4_accroissement_obs = ".t4_accroissement_obs",
+    t4_accroissement_att = ".t4_accroissement_att",
+    t4_h_dom             = ".t4_h_dom",
+    t4_n_analogues       = ".t4_n_analogues"
   )
 )
 
@@ -149,7 +157,9 @@ PRODUCTION_ANNEX_COLS <- list(
   indicateur_n3_naturalite = c(N1 = "indicateur_n1_distance",
                                N2 = "indicateur_n2_continuite",
                                L1 = "indicateur_l1_effet_lisiere",
-                               B3 = "indicateur_b3_connectivite")
+                               B3 = "indicateur_b3_connectivite"),
+  # T4 ecarte les unites coupees (`T3 > 0`) : T3 brut, non inverse.
+  indicateur_t4_vitalite = c(T3 = "indicateur_t3_coupes_rases")
 )
 
 
@@ -177,6 +187,9 @@ PRODUCTION_ANNEX_COLS <- list(
 #' @noRd
 .units_for_indicator <- function(indicator, parcels, results, cfg) {
   n <- nrow(parcels)
+  if (identical(indicator, "indicateur_t4_vitalite")) {
+    parcels <- .t4_ajouter_essence(parcels)
+  }
   # T2 ne lit plus N2 / T1 : mesure FORMS-T seule depuis nemeton 2026.10.5.
   # E2 et N3 lisent les colonnes courtes de leurs composantes : sans elles,
   # le coeur rend NA partout (brief du 2026-10-09).

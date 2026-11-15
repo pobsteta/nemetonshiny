@@ -346,6 +346,9 @@ list_available_indicators <- function(metadata = NULL) {
     # Temporal (T)
     "indicateur_t1_anciennete", "indicateur_t2_changement",
     "indicateur_t3_coupes_rases",
+    # T4 vitalite dynamique (spec 068) : APRES T3, dont il lit la colonne pour
+    # ecarter les coupes (.COMPOSANTES_LUES). NA sans serie FORMS-T.
+    "indicateur_t4_vitalite",
     # Risk (R)
     "indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement",
     # Social (S)
@@ -999,7 +1002,9 @@ start_computation <- function(project_id,
     # dans layers$rasters$forms_t, ou indicateur_t2_changement() la trouve seul.
     # Pas de serie (Theia absent, < 3 annees) -> T2 = NA (le proxy N2 / T1 est
     # retire du coeur depuis nemeton 2026.10.5).
-    if ("indicateur_t2_changement" %in% effective_indicators) {
+    # T4 (spec 068) lit la MEME serie : un seul chargement pour les deux.
+    if (any(c("indicateur_t2_changement", "indicateur_t4_vitalite") %in%
+            effective_indicators)) {
       state$current_task <- "forms_t"
       report_progress(state)
       forms_t <- build_forms_t_series(compute_unit, project_path)
@@ -1086,6 +1091,14 @@ start_computation <- function(project_id,
       # (nemeton >= 0.206.0, hauteur FORMS-T chargee a part).
       build_production_ifn_summary(compute_unit, project_path,
                                    dem = layers$rasters$dem)
+    }
+
+    # T4 (spec 068) compare a des placettes IFN de MEME SER : le code SER des
+    # UGF est localise ici (cache data/ugf_ser.rds) meme hors mode IFN. Sans
+    # lui le coeur prend ses analogues dans toutes les SER.
+    if ("indicateur_t4_vitalite" %in% effective_indicators &&
+        !"ser" %in% names(compute_unit)) {
+      compute_unit <- ensure_ugf_ser(compute_unit, project_path)
     }
 
     # Spectral diversity (B4 alpha / L3 beta) - biodivMapR, spec 028.
@@ -4926,8 +4939,10 @@ compute_all_indicators <- function(parcels,
   # nemeton::enrich_parcels_bdforet. We enrich once up-front rather
   # than inside compute_single_indicator because the enrichment does
   # a spatial intersection that is not cheap.
+  # T4 (spec 068) y lit aussi l'essence dominante (code IFN ESPAR).
   needs_bdforet_enrich <-
-    length(intersect(CHM_REQUIRED_INDICATORS, indicators_to_compute)) > 0 &&
+    length(intersect(c(CHM_REQUIRED_INDICATORS, "indicateur_t4_vitalite"),
+                     indicators_to_compute)) > 0 &&
     !all(c("species", "age") %in% names(parcels))
   if (needs_bdforet_enrich) {
     bd <- resolve_vector_layer(layers, "bdforet")
