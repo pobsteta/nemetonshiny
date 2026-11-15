@@ -1719,6 +1719,44 @@ TRANSLATIONS <- list(
     fr = "Croissance m\u00e9diane du couvert sans perte : %s m/an (hors score).",
     en = "Median growth of the cover without loss: %s m/yr (not scored)."
   ),
+  # T4 vitalite dynamique (spec 068, nemeton >= 2026.11.28) : un statut par
+  # cause de NA (`t4_<statut>` ; `calculated` n'a pas de cle, rien a nuancer).
+  t4_skipped_no_forms_t = list(
+    fr = "T4 non calcul\u00e9 : la s\u00e9rie FORMS-T des hauteurs de canop\u00e9e n'est pas disponible.",
+    en = "T4 not computed: the FORMS-T canopy-height series is not available."
+  ),
+  t4_skipped_no_coverage = list(
+    fr = "T4 non calcul\u00e9 : la s\u00e9rie FORMS-T ne couvre pas assez cette unit\u00e9 (moins de 0,5 ha de couvert).",
+    en = "T4 not computed: the FORMS-T series does not cover this unit enough (under 0.5 ha of canopy)."
+  ),
+  t4_skipped_cut = list(
+    fr = "T4 non calcul\u00e9 : une coupe a \u00e9t\u00e9 d\u00e9tect\u00e9e sur la p\u00e9riode, ce n'est pas un d\u00e9faut de vitalit\u00e9.",
+    en = "T4 not computed: a cut was detected over the period, which is not a vitality defect."
+  ),
+  t4_skipped_drop = list(
+    fr = "T4 non calcul\u00e9 : la hauteur dominante a chut\u00e9 de plus de 3 m d'une ann\u00e9e \u00e0 l'autre (coupe ou perturbation).",
+    en = "T4 not computed: the dominant height fell by more than 3 m from one year to the next (cut or disturbance)."
+  ),
+  t4_skipped_no_essence = list(
+    fr = "T4 non calcul\u00e9 : l'essence dominante n'est pas connue en code IFN (ESPAR) pour cette unit\u00e9.",
+    en = "T4 not computed: the dominant species is not known as an IFN code (ESPAR) for this unit."
+  ),
+  t4_skipped_no_analogues = list(
+    fr = "T4 non calcul\u00e9 : pas assez de placettes IFN comparables (peuplements de plus de 33 m en particulier).",
+    en = "T4 not computed: not enough comparable IFN plots (stands over 33 m in particular)."
+  ),
+  t4_bandeau_accroissement = list(
+    fr = "T4 : accroissement de la hauteur dominante observ\u00e9 %s m / 5 ans, attendu %s m / 5 ans (hauteur dominante %s m, %s placettes analogues).",
+    en = "T4: observed dominant-height increment %s m / 5 yr, expected %s m / 5 yr (dominant height %s m, %s analogue plots)."
+  ),
+  t4_bandeau_intervalle = list(
+    fr = "%s \u00e0 %s",
+    en = "%s to %s"
+  ),
+  t4_reference_bfc = list(
+    fr = "R\u00e9f\u00e9rence construite en Bourgogne-Franche-Comt\u00e9, climat 2019-2023.",
+    en = "Reference built in Bourgogne-Franche-Comt\u00e9, 2019-2023 climate."
+  ),
   b4_skipped_no_spectral = list(fr = "B4 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
                                 en = "B4 not computed: no spectral data for diversity (Sentinel-2)."),
   l3_skipped_no_spectral = list(fr = "L3 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
