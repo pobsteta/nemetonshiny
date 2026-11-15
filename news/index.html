@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.1.9002" id="nemetonshiny-20261119002-2026-11-15">nemetonshiny 2026.11.1.9002 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119002-2026-11-15"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 027 : import Marculus des CSV <code>FormatCsv;6</code> à <code>;8</code> et des clés <code>.marsync</code> correspondantes.</p>
+</blockquote>
+<ul><li>
+<strong>Lecture</strong> de <code>TarifsEssence</code>, <code>SteresParM3</code> (format 6), <code>CommuneInsee</code>, <code>Ser</code>, <code>MillesimeTarifs</code> (7), <code>PartsLot</code> (8) et de <code>partsLot</code> du <code>.marsync</code> (une essence absente compte tige et houppier), rangées dans <code>reglages_terrain</code> (<code>tarifs_essence</code>, <code>steres_par_m3</code>, <code>commune_insee</code>, <code>ser</code>, <code>millesime_tarifs</code>, <code>parts_lot</code>, <code>format_csv</code>). Numéro de tarif ignoré pour <code>AUCUN</code> et <code>EMERGE</code> ; <code>SCHAEFFER_INTERMEDIAIRE</code> et <code>SCHAEFFER_TRES_LENT</code> acceptés. Aucune de ces clés n’est réémise vers le téléphone.</li>
+<li>
+<strong>Sens du volume au lot</strong> : le résumé de martelage indique les parties comptées au lot (format 8) ou la règle ancienne (formats 5 à 7). Contrôle croisé : mention si la SER ou le millésime relus diffèrent de ceux émis par l’application, sans rien corriger.</li>
+<li>
+<strong>Formats mélangés</strong> : chaque tige garde le numéro de format du fichier d’où elle vient (<code>formatCsv</code> ; <code>.marsync</code> : 8 si <code>partsLot</code> est présent, sinon inconnu). Si un contexte mêle des tiges des formats ≤ 7 et ≥ 8 (second fichier ne portant qu’une partie des tiges), le résumé affiche un avertissement « réexportez tout le contexte depuis Marculus » et n’affiche plus la ligne des parties comptées.</li>
+<li>Le contrôle SER/millésime compare au cache de tarifs <strong>actuel</strong> du projet : fausse alerte possible si ce cache a été recalculé depuis l’émission.</li>
+<li>Texte d’aide d’import : « FormatCsv;2 à 8 ».</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1.9001" id="nemetonshiny-20261119001-2026-11-15">nemetonshiny 2026.11.1.9001 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119001-2026-11-15"></a></h2>
 <blockquote>
