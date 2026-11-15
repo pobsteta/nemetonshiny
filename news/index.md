@@ -1,5 +1,9 @@
 # Changelog
 
+## nemetonshiny 2026.11.1.9000 (2026-11-15)
+
+> **Non publié.** Ouverture du cycle dev après la release v2026.11.1.
+
 ## nemetonshiny 2026.11.1 (2026-11-15)
 
 Release stable qui regroupe le cycle dev `2026.10.18.9001` à `.9018` (le
