@@ -1,3 +1,15 @@
+# nemetonshiny 2026.11.1.9003 (2026-11-15)
+
+> **Non publié.**
+
+## Correctifs
+
+- La synthèse compte les UGF du projet, plus les lignes de scores : `project_synthesis_summary()` (donc `projet_lire()$synthese`, `resume_projet`) rendait `n_ugf = 0` quand les indicateurs étaient périmés ou jamais calculés (Couchey, 63 UGF, après `croiser_onf`). Source : `project$ugs`, à défaut `metadata$ug_count`, à défaut les scores, à défaut 0.
+
+## Nouveautés
+
+- Champ `indicateurs_perimes` (logique) dans la synthèse : `TRUE` quand il n'y a plus d'`indicators.parquet` mais au moins un `indicators.perime-*.parquet` (scores à recalculer). Ajout seul au contrat `nemetonmcp` (`CONTRAT.md`) ; `nemetonmcp` doit être réinstallé pour que sa fiche en profite.
+
 # nemetonshiny 2026.11.1.9001 (2026-11-15)
 
 > **Non publié.**
