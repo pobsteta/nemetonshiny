@@ -1,3 +1,12 @@
+# nemetonshiny 2026.10.18.9018 (2026-11-15)
+
+> **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009`.
+
+## Changements cassants : contrat nemetonmcp ramené à 33 objets (mission 025)
+
+- `lock_status` et `find_action_index` sortent du contrat `nemetonmcp` (CONTRAT.md, section « API pour nemetonmcp ») : `nemetonmcp` (branche `adaptation-nemetonshiny-2026-11`, `5cc3364`) ne les appelle plus. Les fonctions restent dans l'app.
+- L'exception `pas_encore` du test de contrat est retirée : `nemetonmcp` appelle désormais `.mcp_vers_outil`, `.mcp_garde_ecriture`, `.mcp_jeton_emettre` et `.mcp_jeton_consommer`. L'ensemble appelé égale l'ensemble du contrat (33 objets, vérifié sur l'arbre `nemetonmcp`).
+
 # nemetonshiny 2026.10.18.9017 (2026-11-14)
 
 > **Non publié.** Ce changement sortira dans la release v2026.11.1, avec les changements cassants de la tête `.9009` (brief nemetonmcp et essai VICTOR sur Couchey, bilan du 2026-11-13).
