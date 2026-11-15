@@ -45,6 +45,15 @@
 | [014-alignement-coeur-2026-11-14](missions/014-alignement-coeur-2026-11-14.md) | `dev` | sonnet | appuyer | oui/oui/oui | 1 |
 | [015-table-familles-partagee](missions/015-table-familles-partagee.md) | `dev` | sonnet | appuyer | oui/oui/oui (staffing confirmé par Pascal le 2026-11-11) | 2 |
 | [016-jeton-persiste](missions/016-jeton-persiste.md) | `dev` | opus | appuyer | oui/oui/oui (décidée par Pascal le 2026-11-10) | 2 |
+| [017-fast-sur-tot](missions/017-fast-sur-tot.md) | `dev` | sonnet | appuyer | oui/oui/oui (cap de Pascal, journal 2026-11-13) | 3 |
+| [018-retirer-apercu-fast](missions/018-retirer-apercu-fast.md) | `dev` | sonnet | appuyer | oui/oui/oui (« Retire le », 2026-11-14) | 3 |
+| [019-plan-validation-fordead-strate](missions/019-plan-validation-fordead-strate.md) | `dev` | sonnet | appuyer | oui/oui/oui (« Oui fais le », 2026-11-14) | 3 |
+| [020-retirer-code-fast-orphelin](missions/020-retirer-code-fast-orphelin.md) | `dev` | sonnet | appuyer | oui/oui/oui (« oui fais le », 2026-11-14) | 3 |
+| [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) | `dev` | sonnet | appuyer | oui/oui/oui (2026-11-14) | 3 |
+| [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) | `dev` | sonnet | appuyer | oui/oui/oui (2026-11-14) | 3 |
+| [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) | `dev` | sonnet | appuyer | oui/oui/oui (2026-11-14) | 3 |
+| [024-fiche-pdf-par-ugf](missions/024-fiche-pdf-par-ugf.md) | `dev` | sonnet | appuyer | oui/oui/oui (« fais la fiche PDF par UGF », 2026-11-14) | 3 |
+| [025-release-2026-11-1](missions/025-release-2026-11-1.md) | orchestrateur | — | appuyer | oui/oui/oui (« oui », 2026-11-15) | 3 |
 
 ## Ajustements du bilan du 2026-11-13 (validés par Pascal)
 
@@ -55,3 +64,13 @@
 - `afficheur` : non utilisé, sans objet tant que le chantier reste MCP ; reste au vivier.
 - Pas de cycle de code dans ce dépôt tant que la chaîne nemetonmcp → essai Couchey n'est pas bouclée (cartes « Planifié » du kanban).
 - Listes de contrôle (test discriminant ; fiche prête pour le dev) : [listes-de-controle.md](listes-de-controle.md).
+
+## Ajustements du bilan du 2026-11-15 (validés par Pascal, « Oui vas-y »)
+
+- Missions 017-025 inscrites ci-dessus (cycle 3), validées une à une par Pascal au journal ; la porte n° 2 n'avait pas été repassée pour elles (constat de l'archiviste).
+- `analyste` : mission « durée des tests » avant le prochain cycle de code (carte `duree-tests`). Cause n° 2 du Pareto (tests trop longs pour la machine, 23 %).
+- Numérotation : seul l'orchestrateur numérote `DESCRIPTION` / `NEWS` (cycle `.900x`), à la fusion ; les `dev` écrivent leur entrée NEWS sans numéro. Cause n° 4 (missions parallèles, 14 %).
+- Fiche-type : rubrique « lecteurs et appelants recensés par grep, repli, périmètre limite » remplie avant relecture. Cause n° 1 (fiches à reprendre, 36 %) ; effet mesuré sur les 3 prochaines missions.
+- Pas de nouvelle mission de code dans ce dépôt avant les deux briefs victor (carte `suite-victor`).
+- `afficheur` : reste au vivier.
+- Listes de contrôle mises à jour : [listes-de-controle.md](listes-de-controle.md).

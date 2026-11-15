@@ -79,3 +79,5 @@ Terminée le 2026-11-14 : PR #268 fusionnée sur `main` (`99959307`, commit de m
 cycle dev `2026.10.18.9011`, non publié. Relecture : prêt. Reste à Pascal : retrait ou non des
 éléments FAST sans lecteur (branche FAST de `.fast_class_labels`, `.classify_alert_count`,
 `.alert_count_palette`, clés `validation_class_fast_*` / `validation_class_unit_*`).
+
+Suite (2026-11-15) : éléments FAST sans lecteur retirés par la mission 020 ; publié dans v2026.11.1.

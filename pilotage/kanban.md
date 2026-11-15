@@ -6,7 +6,7 @@
 > colonne ; on change ce numéro chaque fois qu'elle change de colonne.
 > **Une carte qui ne bouge pas est souvent la mauvaise nouvelle à dire tout de suite.**
 
-**Dernier cycle :** 2 _(augmenté de 1 à la fin de chaque `/boucle`, même quand elle n'a
+**Dernier cycle :** 3 _(augmenté de 1 à la fin de chaque `/boucle`, même quand elle n'a
 rien lancé. Une carte est immobile quand dernier cycle − N ≥ 2.)_
 
 _Modèle de carte :_
@@ -28,43 +28,60 @@ _(vide)_
 
 ## Planifié
 
-- [bilan-chaine-nemetonmcp] Brief nemetonmcp appliqué (puis aigora, victor) · depuis le cycle 2 · nemetonmcp CLOS (v2026.11.2, 2026-11-15) ; reste victor (2 briefs) et aigora
-  - Homme : Pascal (sessions nemetonmcp, aigora, victor)
-  - Mission : ouvrir `briefs/vers-nemetonmcp/2026-11-10-contrat-jeton-erreurs-noms.md` d'ici le 2026-11-17 ; relance si aucun commit nemetonmcp sous 7 jours
-  - Moyens : briefs de la mission 013 (`briefs/vers-*/2026-11-10-*.md`)
+- [suite-victor] Appliquer les deux briefs victor · depuis le cycle 3 · échéance 2026-11-17
+  - Homme : Pascal (session sur `/home/pascal/dev/victor`)
+  - Mission : relais vocal de la confirmation d'abord (`briefs/vers-victor/2026-11-10-relais-vocal-confirmation.md`), puis journal des dictées (`2026-11-10-journal-des-dictees.md`) ; relance si aucun commit victor au 2026-11-17
+  - Moyens : briefs publiés dans v2026.11.1 ; nemetonmcp v2026.11.2 déjà aligné
+- [suite-aigora] Appliquer le brief aigora · depuis le cycle 3 · échéance 2026-11-17
+  - Homme : Pascal (session aigora)
+  - Mission : `briefs/vers-aigora/` ; relance si rien au 2026-11-17
+  - Moyens : brief de la mission 013
+- [suite-plateforme-coeur] Reporter l'ADR 0003 dans platform_nemeton, ligne PLAN.md v2026.11.1 dans nemeton · depuis le cycle 3 · échéance 2026-11-20
+  - Homme : Pascal (sessions platform_nemeton et nemeton)
+  - Mission : `briefs/vers-platform_nemeton/2026-11-15-adr-0003-acces-tous.md` ; `~/dev/briefs/vers-nemeton/2026-11-15-plan-nemetonshiny-v2026.11.1.md` (hors dépôt)
+  - Moyens : briefs déposés le 2026-11-15
+- [essai-terrain-couchey] Essai VICTOR de bout en bout, fiches PDF par UGF, cartes santé par strate · depuis le cycle 3 · échéance 2026-11-24
+  - Homme : Pascal, sur Couchey
+  - Mission : VICTOR (après suite-victor) ; liste de contrôle de la fiche 024 (Statut) ; série santé 017-023
+  - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
+- [duree-tests] Durée de chaque fichier de test et commande ciblée sous 300 s · depuis le cycle 3 · avant le prochain cycle de code
+  - Homme : `analyste` (sonnet)
+  - Mission : mesurer, marquer les fichiers > 60 s (dont `test-service_mcp_detache.R`), proposer la commande pour le hook et le relecteur
+  - Moyens : cause n° 2 du Pareto du bilan du 2026-11-15 ; fiche à rédiger
 
 ## Terminé
 
-- [025-release-2026-11-1](missions/025-release-2026-11-1.md) · Release **v2026.11.1** publiée le 2026-11-15 (PR #280, `eaa47428`, tag posé par release.yml) ; contrat nemetonmcp à 33 objets
-- [bilan-essai-couchey] Essai VICTOR sur Couchey validé par Pascal le 2026-11-14 (selon nemetonmcp, brief 2026-11-14)
-- [bilan-adr-0003] ADR 0003 tranchée par Pascal le 2026-11-15 : option A (tout client MCP, avertissement) · reste le report dans platform_nemeton (brief déposé)
-- [024-fiche-pdf-par-ugf](missions/024-fiche-pdf-par-ugf.md) · depuis le cycle 2
+- [bilan-chaine-nemetonmcp] Chaîne nemetonmcp close le 2026-11-15 : nemetonmcp#27 fusionnée, release nemetonmcp v2026.11.2 (journal du 2026-11-15, « clôture chaîne nemetonmcp »)
+- [025-release-2026-11-1](missions/025-release-2026-11-1.md) · depuis le cycle 3 · Release **v2026.11.1** publiée le 2026-11-15 (PR #280, `eaa47428`, tag posé par release.yml) ; contrat nemetonmcp à 33 objets
+- [bilan-essai-couchey] Essai Couchey côté nemetonmcp validé par Pascal le 2026-11-14 (source de seconde main : brief nemetonmcp du 2026-11-15, journal « 025 · accord ») ; l'essai VICTOR de bout en bout reste à faire (carte essai-terrain-couchey)
+- [bilan-adr-0003](adr/0003-acces-tous-souverainete.md) ADR 0003 tranchée par Pascal le 2026-11-15 : option A (tout client MCP, avertissement) · report dans platform_nemeton : carte suite-plateforme-coeur
+- [024-fiche-pdf-par-ugf](missions/024-fiche-pdf-par-ugf.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR ; PR #277 (`ca89adf9`), 2026.10.18.9017, issue #20 fermée ; reste l'essai terrain de Pascal (Quarto en tâche de fond)
-- [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 2
+- [023-surcouche-classe-saine](missions/023-surcouche-classe-saine.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #275 fusionnée, cycle dev 2026.10.18.9016, non publié
   - Moyens : —
-- [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 2
+- [022-aucune-alerte-strate](missions/022-aucune-alerte-strate.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR (une reprise)
   - Mission : #274 fusionnée (7d11cdc4), cycle dev 2026.10.18.9015, non publié
   - Moyens : —
-- [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) · depuis le cycle 2
+- [021-plan-validation-reconfort-strate](missions/021-plan-validation-reconfort-strate.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #273 fusionnée (176c4837), cycle dev 2026.10.18.9014, non publié
   - Moyens : —
-- [020-retirer-code-fast-orphelin](missions/020-retirer-code-fast-orphelin.md) · depuis le cycle 2
+- [020-retirer-code-fast-orphelin](missions/020-retirer-code-fast-orphelin.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #271 fusionnée (6a9326d4), cycle dev 2026.10.18.9013, non publié
   - Moyens : —
-- [019-plan-validation-fordead-strate](missions/019-plan-validation-fordead-strate.md) · depuis le cycle 2
+- [019-plan-validation-fordead-strate](missions/019-plan-validation-fordead-strate.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #270 fusionnée (fc36d0bd), cycle dev 2026.10.18.9012, non publié
   - Moyens : —
-- [018-retirer-apercu-fast](missions/018-retirer-apercu-fast.md) · depuis le cycle 2
+- [018-retirer-apercu-fast](missions/018-retirer-apercu-fast.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #268 fusionnée (99959307), cycle dev 2026.10.18.9011, non publié
   - Moyens : —
-- [017-fast-sur-tot](missions/017-fast-sur-tot.md) · depuis le cycle 2
+- [017-fast-sur-tot](missions/017-fast-sur-tot.md) · depuis le cycle 3
   - Homme : `dev` (sonnet), relecteur sur la fiche puis la PR
   - Mission : #266 fusionnée (61a682c4), cycle dev 2026.10.18.9010, non publié
   - Moyens : —
@@ -156,3 +173,4 @@ l'inscrit avec ce qu'elle nous apprend._
 - cycle 1 · contrat nemetonshiny → nemetonmcp (CONTRAT.md § 6 bis + test de présence/signature, README MCP à 10 outils, PR #253) · pour le mainteneur de nemetonmcp et les utilisateurs de VICTOR/AIGORA · première livraison : un renommage casse la CI de l'app au lieu de VICTOR en production ; mauvaise nouvelle associée : rien encore de sensible dans AIGORA (une erreur y passe toujours pour un succès, cycle 2) et CI rouge par dérive du cœur (levée par #255)
 - cycle 2 · pilotage vocal sûr : noms dictés de travers retrouvés, aucune écriture sans « oui » (jeton qui survit entre deux tâches VICTOR), resume_projet = écran Synthèse, outils longs en tâche de fond, 4 briefs vers nemetonmcp/aigora/victor (PR #256-#264) · pour Pascal et les utilisateurs de VICTOR/AIGORA · le cycle 1 livrait un contrat ; celui-ci livre des comportements essayables à la voix (essai terrain encore à faire)
 - bilan du 2026-11-13 · mauvaise nouvelle : 16 missions et 12 PR fusionnées, rien de publié ni consommé par nemetonmcp, le critère « moins se répéter dans AIGORA » n'a pas bougé · pour Pascal et les utilisateurs de VICTOR/AIGORA · ce qu'elle nous apprend : un chantier qui traverse plusieurs dépôts ne livre qu'au bout de la chaîne ; le prochain cycle se mesure à l'essai de Couchey, pas au nombre de PR
+- bilan du 2026-11-15 · release v2026.11.1 consommée par nemetonmcp v2026.11.2 (erreurs reconnues comme erreurs, noms dictés retrouvés, confirmation avant écriture, outils longs en tâche de fond, contrat à 33 objets) · pour Pascal et les utilisateurs d'AIGORA · ce qu'elle apporte de plus que le bilan du 2026-11-13 : la chaîne livre pour la première fois jusqu'au bout (publié ET consommé) ; VICTOR pas encore (relais du jeton à faire)
