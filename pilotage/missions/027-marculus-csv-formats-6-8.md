@@ -81,4 +81,4 @@ test « clés jamais réémises » ; rendu du bloc lots (format 7 vs 8). Une mut
 
 ## Statut
 
-Confiée le 2026-11-15.
+Terminée le 2026-11-15 : PR #284 fusionnée (`ca837bf8`), `.9002`. Reprise après relecture : format gardé par tige, avertissement si formats ≤ 7 et ≥ 8 mêlés (décision de l'orchestrateur, Pascal ayant délégué). Reste : essai sur un vrai export « Affouage » format 8.

@@ -42,4 +42,4 @@ l'orchestrateur au journal et dans la section Statut ci-dessous.
 
 ## Statut
 
-Confiée le 2026-11-15.
+Terminée le 2026-11-15 (rapport de l'analyste) : 176 fichiers, 11 208 s murales sous charge 22/8 ; 52 % = rechargement du paquet par fichier (~33 s × 176) ; dépassements `test-app_server.R` (l. 258), `test-service_export.R` (l. 1029-1107), `test-service_mcp_detache.R` (l. 118-127, 10 × 150 s) ; Pareto plat (20 fichiers = 54 %). Commande ciblée adoptée par l'orchestrateur dans `.claude/test-command` (149 s CPU, 391 s murales sous charge, à remesurer machine calme). Mesures : scratchpad de la session (`mesures.csv`). Pistes non appliquées : exécution en un seul processus, garde `NEMETON_TESTS_LENTS` sur mcp_detache / app_server / export PDF.
