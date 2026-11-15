@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9003</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.1.9003" id="nemetonshiny-20261119003-2026-11-15">nemetonshiny 2026.11.1.9003 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119003-2026-11-15"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong></p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs-2026-11-1-9003">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9003"></a></h3>
+<ul><li>La synthèse compte les UGF du projet, plus les lignes de scores : <code>project_synthesis_summary()</code> (donc <code>projet_lire()$synthese</code>, <code>resume_projet</code>) rendait <code>n_ugf = 0</code> quand les indicateurs étaient périmés ou jamais calculés (Couchey, 63 UGF, après <code>croiser_onf</code>). Source : <code>project$ugs</code>, à défaut <code>metadata$ug_count</code>, à défaut les scores, à défaut 0.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-1-9003">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1-9003"></a></h3>
+<ul><li>Champ <code>indicateurs_perimes</code> (logique) dans la synthèse : <code>TRUE</code> quand il n’y a plus d’<code>indicators.parquet</code> mais au moins un <code>indicators.perime-*.parquet</code> (scores à recalculer). Ajout seul au contrat <code>nemetonmcp</code> (<code>CONTRAT.md</code>) ; <code>nemetonmcp</code> doit être réinstallé pour que sa fiche en profite.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1.9002" id="nemetonshiny-20261119002-2026-11-15">nemetonshiny 2026.11.1.9002 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119002-2026-11-15"></a></h2>
 <blockquote>

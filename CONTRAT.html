@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9003</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -73,7 +73,7 @@
 <td>métadonnées, format du projet, indicateurs et UGF présents</td>
 <td>non</td>
 </tr><tr><td><code>projet_lire(id, langue)</code></td>
-<td>indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l’onglet Synthèse)</td>
+<td>indicateurs par UGF, scores de famille et synthèse (mêmes chiffres que l’onglet Synthèse) ; <code>synthese$n_ugf</code> compte les UGF du projet même sans indicateurs, <code>synthese$indicateurs_perimes</code> (logique, ajout) vaut <code>TRUE</code> quand seul un <code>indicators.perime-*.parquet</code> existe (scores à recalculer)</td>
 <td><strong>non</strong></td>
 </tr><tr><td><code>parcelles_commune(insee, ids)</code></td>
 <td>parcelles cadastrales d’une commune</td>
