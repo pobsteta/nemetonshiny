@@ -12,6 +12,41 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.11.2\] - 2026-11-15
+
+Groups the dev cycle `2026.11.1.9001` to `.9008`. See NEWS.md for
+details. Requires `nemeton` \>= 2026.11.30.
+
+### Added
+
+- T4 (dynamic vitality): computed with the dominant species as IFN
+  `ESPAR` code and the SER of each management unit; translated statuses;
+  observed and expected growth shown in the T family view.
+- Video inventory, Groma schema 1.6.0: field data received and “no
+  video” state in Track; `terrain.zip` integrated without a QField copy;
+  three new import alerts with their detail; incremental download of
+  `terrain.zip` (`etat =`, stable folder per project); share of
+  tape-measured diameters in the integration summary.
+- Marculus import of CSV formats 6 to 8 and matching `.marsync` keys,
+  with a warning on lots mixing formats.
+- Synthesis: `indicateurs_perimes` field (additive change to the
+  `nemetonmcp` contract).
+
+### Changed
+
+- Tariffs proposed to Marculus: forest level only, numbers \> 0, bare
+  vintage `2011-2025`, `tarifsProposes` omitted when empty; export
+  message rewritten.
+- Default video plot radius: 15 m.
+
+### Fixed
+
+- Synthesis counts the project’s management units, even with stale
+  scores.
+- An empty BD TOPO WFS response is a measurement: W1 = 0 instead of NA;
+  hydrographic network downloaded on a 500 m wider extent.
+- Static description of the T family aligned with `nemeton` 2026.11.28.
+
 ## \[2026.11.1\] - 2026-11-15
 
 Groups the dev cycle `2026.10.18.9001` to `.9018`. See NEWS.md for

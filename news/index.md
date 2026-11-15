@@ -1,10 +1,53 @@
 # Changelog
 
-## nemetonshiny 2026.11.1.9008 (2026-11-15)
+## nemetonshiny 2026.11.2 (2026-11-15)
 
-> **Non publié.** Mission 033 : téléchargement incrémental de
-> `terrain.zip` et part des diamètres au ruban (cœur nemeton
-> 2026.11.30).
+Release stable qui regroupe le cycle dev `2026.11.1.9001` à `.9008`
+(missions 027 à 033, le détail de chaque entrée suit, plus bas). Elle
+demande le cœur **nemeton \>= 2026.11.30** (`Imports`). Aucun changement
+cassant pour les clients MCP : le contrat `nemetonmcp` gagne seulement
+le champ `indicateurs_perimes` ; `nemetonmcp` doit être réinstallé pour
+en profiter.
+
+### Nouveautés
+
+- **T4, vitalité dynamique** (cœur 2026.11.28) : calculé avec l’essence
+  dominante en code IFN `ESPAR` et la SER des UGF ; statuts traduits ;
+  la vue famille T affiche l’accroissement observé et attendu (`.9004`).
+- **Inventaire vidéo au schéma Groma 1.6.0** (cœur 2026.11.29 et
+  2026.11.30) : réception du terrain et état « saisie reçue, sans vidéo
+  » dans « Suivre » ; intégration de `terrain.zip` sans copie de QField
+  ; trois nouvelles alertes traduites avec leur détail ; rayon 15 m
+  (`.9005`). « Récupérer » ne retélécharge plus un `terrain.zip`
+  inchangé et le bilan donne la part des arbres mesurés au ruban
+  (`.9008`).
+- **Import Marculus** des CSV `FormatCsv;6` à `;8` et des clés
+  `.marsync` correspondantes, avec avertissement sur un lot aux formats
+  mélangés (`.9002`).
+- Synthèse : champ `indicateurs_perimes` (`.9003`).
+
+### Changements visibles
+
+- Tarifs proposés à Marculus : niveau forêt seul, numéros \> 0,
+  millésime `2011-2025` sans « IFN », clé `tarifsProposes` omise quand
+  rien ne reste ; message de fin d’export réécrit (`.9006`).
+
+### Correctifs
+
+- La synthèse (et `resume_projet`) compte les UGF du projet : plus de «
+  0 unité de gestion » quand les indicateurs sont périmés (`.9003`).
+- Une réponse BD TOPO vide est une mesure : W1 = 0, et non NA ; réseau
+  hydrographique sur une emprise élargie de 500 m (`.9007`).
+- Description de la famille T alignée sur le cœur 2026.11.28 (`.9001`).
+
+### Dépendances
+
+- Plancher `Imports: nemeton (>= 2026.11.30)`.
+
+### Détail du cycle dev 2026.11.1.9008 (2026-11-15) — publié dans 2026.11.2
+
+> Mission 033 : téléchargement incrémental de `terrain.zip` et part des
+> diamètres au ruban (cœur nemeton 2026.11.30).
 
 ### Nouveautés
 
@@ -23,9 +66,9 @@
 - Plancher `Imports: nemeton (>= 2026.11.30)` (l’argument `etat`
   n’existe pas avant).
 
-## nemetonshiny 2026.11.1.9007 (2026-11-15)
+### Détail du cycle dev 2026.11.1.9007 (2026-11-15) — publié dans 2026.11.2
 
-> **Non publié.** Mission 032 : une réponse BD TOPO vide est une mesure.
+> Mission 032 : une réponse BD TOPO vide est une mesure.
 
 ### Correctifs
 
@@ -46,9 +89,7 @@
 - Le masque du MNH (`sanitize_chm`, P2) saute une couche bâtiments ou
   eau vide au lieu de la lui passer.
 
-## nemetonshiny 2026.11.1.9006 (2026-11-15)
-
-> **Non publié.**
+### Détail du cycle dev 2026.11.1.9006 (2026-11-15) — publié dans 2026.11.2
 
 ### Correctifs
 
@@ -74,10 +115,10 @@
   téléphone » (clé `marculus_export_tarifs_fmt` réécrite, deux
   paramètres au lieu de cinq).
 
-## nemetonshiny 2026.11.1.9005 (2026-11-15)
+### Détail du cycle dev 2026.11.1.9005 (2026-11-15) — publié dans 2026.11.2
 
-> **Non publié.** Mission 030 : inventaire vidéo, schéma Groma 1.6.0
-> (cœur nemeton 2026.11.29).
+> Mission 030 : inventaire vidéo, schéma Groma 1.6.0 (cœur nemeton
+> 2026.11.29).
 
 - **Plancher** `Imports: nemeton (>= 2026.11.29)` :
   `importer_inventaire_video(terrain = )` n’existe pas avant.
@@ -110,9 +151,7 @@
 - Non traités (hors plancher 2026.11.29) : téléchargement incrémental
   `etat =` et part `dbh_ruban` (cœur 2026.11.30).
 
-## nemetonshiny 2026.11.1.9004 (2026-11-15)
-
-> **Non publié.**
+### Détail du cycle dev 2026.11.1.9004 (2026-11-15) — publié dans 2026.11.2
 
 ### Nouveautés
 
@@ -137,13 +176,11 @@
     Bourgogne-Franche-Comté, climat 2019-2023 ». Ces colonnes (`.t4_*`)
     traversent la persistance des résultats.
 - Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) →
-  ESPAR 61, révisable (`.T4_ESPAR_SAPIN_EPICEA`).- Plancher
-  `Imports: nemeton (>= 2026.11.28)`.
+  ESPAR 61, révisable (`.T4_ESPAR_SAPIN_EPICEA`).
+- Plancher `Imports: nemeton (>= 2026.11.28)`.
 - Hors périmètre : NDP 3 (`accroissement_hdom_finn()`).
 
-## nemetonshiny 2026.11.1.9003 (2026-11-15)
-
-> **Non publié.**
+### Détail du cycle dev 2026.11.1.9003 (2026-11-15) — publié dans 2026.11.2
 
 ### Correctifs
 
@@ -162,10 +199,10 @@
   contrat `nemetonmcp` (`CONTRAT.md`) ; `nemetonmcp` doit être
   réinstallé pour que sa fiche en profite.
 
-## nemetonshiny 2026.11.1.9002 (2026-11-15)
+### Détail du cycle dev 2026.11.1.9002 (2026-11-15) — publié dans 2026.11.2
 
-> **Non publié.** Mission 027 : import Marculus des CSV `FormatCsv;6` à
-> `;8` et des clés `.marsync` correspondantes.
+> Mission 027 : import Marculus des CSV `FormatCsv;6` à `;8` et des clés
+> `.marsync` correspondantes.
 
 - **Lecture** de `TarifsEssence`, `SteresParM3` (format 6),
   `CommuneInsee`, `Ser`, `MillesimeTarifs` (7), `PartsLot` (8) et de
@@ -190,9 +227,7 @@
   l’émission.
 - Texte d’aide d’import : « FormatCsv;2 à 8 ».
 
-## nemetonshiny 2026.11.1.9001 (2026-11-15)
-
-> **Non publié.**
+### Détail du cycle dev 2026.11.1.9001 (2026-11-15) — publié dans 2026.11.2
 
 ### Correctifs
 
@@ -200,10 +235,6 @@
   … pression de coupe rase et vitalité dynamique ») :
   `test-utils_i18n_families.R` échouait sur `main` depuis la sortie du
   cœur, tiré par `@*release`.
-
-## nemetonshiny 2026.11.1.9000 (2026-11-15)
-
-> **Non publié.** Ouverture du cycle dev après la release v2026.11.1.
 
 ## nemetonshiny 2026.11.1 (2026-11-15)
 

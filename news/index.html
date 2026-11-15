@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9008</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,54 +34,78 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9008" id="nemetonshiny-20261119008-2026-11-15">nemetonshiny 2026.11.1.9008 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119008-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 033 : téléchargement incrémental de <code>terrain.zip</code> et part des diamètres au ruban (cœur nemeton 2026.11.30).</p>
-</blockquote>
+<h2 class="pkg-version" data-toc-text="2026.11.2" id="nemetonshiny-2026112-2026-11-15">nemetonshiny 2026.11.2 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026112-2026-11-15"></a></h2>
+<p>Release stable qui regroupe le cycle dev <code>2026.11.1.9001</code> à <code>.9008</code> (missions 027 à 033, le détail de chaque entrée suit, plus bas). Elle demande le cœur <strong>nemeton &gt;= 2026.11.30</strong> (<code>Imports</code>). Aucun changement cassant pour les clients MCP : le contrat <code>nemetonmcp</code> gagne seulement le champ <code>indicateurs_perimes</code> ; <code>nemetonmcp</code> doit être réinstallé pour en profiter.</p>
 <div class="section level3">
-<h3 id="nouveautés-2026-11-1-9008">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1-9008"></a></h3>
+<h3 id="nouveautés-2026-11-2">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2"></a></h3>
+<ul><li>
+<strong>T4, vitalité dynamique</strong> (cœur 2026.11.28) : calculé avec l’essence dominante en code IFN <code>ESPAR</code> et la SER des UGF ; statuts traduits ; la vue famille T affiche l’accroissement observé et attendu (<code>.9004</code>).</li>
+<li>
+<strong>Inventaire vidéo au schéma Groma 1.6.0</strong> (cœur 2026.11.29 et 2026.11.30) : réception du terrain et état « saisie reçue, sans vidéo » dans « Suivre » ; intégration de <code>terrain.zip</code> sans copie de QField ; trois nouvelles alertes traduites avec leur détail ; rayon 15 m (<code>.9005</code>). « Récupérer » ne retélécharge plus un <code>terrain.zip</code> inchangé et le bilan donne la part des arbres mesurés au ruban (<code>.9008</code>).</li>
+<li>
+<strong>Import Marculus</strong> des CSV <code>FormatCsv;6</code> à <code>;8</code> et des clés <code>.marsync</code> correspondantes, avec avertissement sur un lot aux formats mélangés (<code>.9002</code>).</li>
+<li>Synthèse : champ <code>indicateurs_perimes</code> (<code>.9003</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="changements-visibles-2026-11-2">Changements visibles<a class="anchor" aria-label="anchor" href="#changements-visibles-2026-11-2"></a></h3>
+<ul><li>Tarifs proposés à Marculus : niveau forêt seul, numéros &gt; 0, millésime <code>2011-2025</code> sans « IFN », clé <code>tarifsProposes</code> omise quand rien ne reste ; message de fin d’export réécrit (<code>.9006</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-2">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2"></a></h3>
+<ul><li>La synthèse (et <code>resume_projet</code>) compte les UGF du projet : plus de « 0 unité de gestion » quand les indicateurs sont périmés (<code>.9003</code>).</li>
+<li>Une réponse BD TOPO vide est une mesure : W1 = 0, et non NA ; réseau hydrographique sur une emprise élargie de 500 m (<code>.9007</code>).</li>
+<li>Description de la famille T alignée sur le cœur 2026.11.28 (<code>.9001</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-2">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2"></a></h3>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.30)</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2">Détail du cycle dev 2026.11.1.9008 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2"></a></h3>
+<blockquote>
+<p>Mission 033 : téléchargement incrémental de <code>terrain.zip</code> et part des diamètres au ruban (cœur nemeton 2026.11.30).</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-2-1">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-1"></a></h3>
 <ul><li>
 <strong>Inventaire vidéo — « Récupérer » incrémental</strong> : les fichiers du serveur Groma sont téléchargés dans un dossier stable du projet (<code>data/inventaire_video/serveur</code>, plus de dossier temporaire) et le tableau d’état du serveur est transmis au cœur (<code>etat =</code>) : un <code>terrain.zip</code> dont <code>terrain_envoye_le</code> n’a pas changé n’est pas redemandé. Sans projet ouvert, repli sur un dossier temporaire.</li>
 <li>
 <strong>Bilan d’intégration</strong> : par placette, « x arbres sur n mesurés au ruban » (<code>dbh_ruban</code> du cœur) ; rien quand la part est inconnue (projet antérieur au schéma 1.4.0).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-1-9008">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-1-9008"></a></h3>
+<h3 id="dépendances-2026-11-2-1">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-1"></a></h3>
 <ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.30)</code> (l’argument <code>etat</code> n’existe pas avant).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9007" id="nemetonshiny-20261119007-2026-11-15">nemetonshiny 2026.11.1.9007 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119007-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 032 : une réponse BD TOPO vide est une mesure.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs-2026-11-1-9007">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9007"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-1">Détail du cycle dev 2026.11.1.9007 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-1"></a></h3>
+<blockquote>
+<p>Mission 032 : une réponse BD TOPO vide est une mesure.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-2-1">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2-1"></a></h3>
 <ul><li>
 <strong>W1 = NA sur Couchey</strong> : quand le WFS BD TOPO répond sans erreur avec 0 objet (aucun cours d’eau, route ou bâtiment dans l’emprise), <code>download_ign_bdtopo()</code> écrit et rend une couche <strong>vide</strong> en Lambert-93 (avec son <code>.bbox.json</code>, donc pas de réinterrogation du WFS à chaque calcul) au lieu de <code>NULL</code>. Le cœur reçoit une couche fournie mais vide : W1 = 0, et non NA. Un échec (erreur réseau, <code>NULL</code> de happign) reste <code>NULL</code>, donc NA. Vaut pour <code>water_network</code>, <code>water_surfaces</code>, <code>roads</code> et <code>buildings</code> ; l’avertissement « aucune donnée trouvée » ne s’affiche plus pour une absence avérée.</li>
 <li>
 <strong>Emprise du réseau hydrographique</strong> : <code>water_network</code> est téléchargé sur l’emprise des parcelles élargie de 500 m (<code>proximity_m</code> de W1), pour qu’un tronçon à 100-500 m compte dans le bonus de proximité. L’emprise élargie est celle du cache : un ancien cache plus étroit est retéléchargé au prochain calcul (rien à migrer).</li>
 <li>Le masque du MNH (<code>sanitize_chm</code>, P2) saute une couche bâtiments ou eau vide au lieu de la lui passer.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9006" id="nemetonshiny-20261119006-2026-11-15">nemetonshiny 2026.11.1.9006 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119006-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs-2026-11-1-9006">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9006"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-2">Détail du cycle dev 2026.11.1.9006 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-2"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-2-2">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2-2"></a></h3>
 <ul><li>Tarifs Schaeffer proposés à Marculus (mission 028) : le <code>.marsync</code> n’émet plus dans <code>tarifsProposes</code> que les propositions du niveau <code>foret</code> à numéro strictement positif ; le téléphone recalcule SER, GRECO et national. Les numéros ≤ 0 (formule sans borne basse sur un faible volume) sont écartés. <code>conseille</code> n’est gardé que s’il désigne un type conservé ; une essence sans type conservé disparaît ; la clé <code>tarifsProposes</code> est <strong>omise</strong> quand plus aucune essence ne reste (et non plus <code><a href="https://rdrr.io/r/base/Paren.html" class="external-link">{}</a></code>). Le filtre s’applique à l’émission : un cache déjà écrit donne le bon lot sans recalcul, et le cache garde tous les niveaux.</li>
 <li>
 <code>millesimeTarifs</code> est émis sous la forme nue <code>2011-2025</code> (celle de Marculus), sans préfixe « IFN », caches anciens compris. Le contrôle croisé SER/millésime du Plan d’actions utilise le même helper.</li>
 <li>Cas « aucune essence au niveau forêt » (Couchey) : message dédié, clé <code>marculus_export_tarifs_aucun</code> (« Aucun numéro de tarif proposé au niveau forêt (N essences examinées) ; Marculus calcule les tarifs sur le téléphone. »), au lieu de « pour 0 essences sur N ».</li>
 <li>Message de fin d’export : « Numéros de tarif proposés au niveau forêt pour X essences sur Y ; les autres niveaux sont calculés sur le téléphone » (clé <code>marculus_export_tarifs_fmt</code> réécrite, deux paramètres au lieu de cinq).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9005" id="nemetonshiny-20261119005-2026-11-15">nemetonshiny 2026.11.1.9005 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119005-2026-11-15"></a></h2>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-3">Détail du cycle dev 2026.11.1.9005 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-3"></a></h3>
 <blockquote>
-<p><strong>Non publié.</strong> Mission 030 : inventaire vidéo, schéma Groma 1.6.0 (cœur nemeton 2026.11.29).</p>
+<p>Mission 030 : inventaire vidéo, schéma Groma 1.6.0 (cœur nemeton 2026.11.29).</p>
 </blockquote>
 <ul><li>
 <strong>Plancher</strong> <code>Imports: nemeton (&gt;= 2026.11.29)</code> : <code>importer_inventaire_video(terrain = )</code> n’existe pas avant.</li>
@@ -102,13 +126,11 @@
 </li>
 <li>Non traités (hors plancher 2026.11.29) : téléchargement incrémental <code>etat =</code> et part <code>dbh_ruban</code> (cœur 2026.11.30).</li>
 </ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9004" id="nemetonshiny-20261119004-2026-11-15">nemetonshiny 2026.11.1.9004 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119004-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
 <div class="section level3">
-<h3 id="nouveautés-2026-11-1-9004">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1-9004"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-4">Détail du cycle dev 2026.11.1.9004 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-4"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-2-2">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-2"></a></h3>
 <ul><li>
 <strong>T4, vitalité dynamique</strong> (spec 068, <code>nemeton</code> &gt;= 2026.11.28, mission 029) : l’accroissement de la hauteur dominante observé sur la série FORMS-T est comparé à celui attendu de placettes IFN comparables. T4 est calculé après T3 et reste <code>NA</code> sans série FORMS-T ; il ne pèse alors sur aucun indice.
 <ul><li>L’app fournit au cœur l’<strong>essence dominante en code IFN <code>ESPAR</code></strong> (libellé BD Forêt passé par <code>resoudre_espar()</code>) et la <strong>SER</strong> des UGF (<code>ensure_ugf_ser()</code>, aussi hors mode IFN, cache <code>data/ugf_ser.rds</code>). Une essence sans correspondance reste <code>NA</code> (statut <code>skipped_no_essence</code>), jamais un code deviné, hormis la convention ci-dessous.</li>
@@ -116,28 +138,25 @@
 <li>Les six statuts <code>skipped_*</code> sont traduits (FR/EN) sous la carte grise de la vue famille T.</li>
 <li>La vue famille T affiche, sous la carte T4, l’accroissement observé et attendu (m / 5 ans), la hauteur dominante, le nombre de placettes analogues, et la mention fixe « Référence construite en Bourgogne-Franche-Comté, climat 2019-2023 ». Ces colonnes (<code>.t4_*</code>) traversent la persistance des résultats.</li>
 </ul></li>
-<li>Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (<code>.T4_ESPAR_SAPIN_EPICEA</code>).- Plancher <code>Imports: nemeton (&gt;= 2026.11.28)</code>.</li>
+<li>Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (<code>.T4_ESPAR_SAPIN_EPICEA</code>).</li>
+<li>Plancher <code>Imports: nemeton (&gt;= 2026.11.28)</code>.</li>
 <li>Hors périmètre : NDP 3 (<code>accroissement_hdom_finn()</code>).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9003" id="nemetonshiny-20261119003-2026-11-15">nemetonshiny 2026.11.1.9003 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119003-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs-2026-11-1-9003">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9003"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-5">Détail du cycle dev 2026.11.1.9003 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-5"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-2-3">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2-3"></a></h3>
 <ul><li>La synthèse compte les UGF du projet, plus les lignes de scores : <code>project_synthesis_summary()</code> (donc <code>projet_lire()$synthese</code>, <code>resume_projet</code>) rendait <code>n_ugf = 0</code> quand les indicateurs étaient périmés ou jamais calculés (Couchey, 63 UGF, après <code>croiser_onf</code>). Source : <code>project$ugs</code>, à défaut <code>metadata$ug_count</code>, à défaut les scores, à défaut 0.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="nouveautés-2026-11-1-9003">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1-9003"></a></h3>
+<h3 id="nouveautés-2026-11-2-3">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-3"></a></h3>
 <ul><li>Champ <code>indicateurs_perimes</code> (logique) dans la synthèse : <code>TRUE</code> quand il n’y a plus d’<code>indicators.parquet</code> mais au moins un <code>indicators.perime-*.parquet</code> (scores à recalculer). Ajout seul au contrat <code>nemetonmcp</code> (<code>CONTRAT.md</code>) ; <code>nemetonmcp</code> doit être réinstallé pour que sa fiche en profite.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9002" id="nemetonshiny-20261119002-2026-11-15">nemetonshiny 2026.11.1.9002 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119002-2026-11-15"></a></h2>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-6">Détail du cycle dev 2026.11.1.9002 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-6"></a></h3>
 <blockquote>
-<p><strong>Non publié.</strong> Mission 027 : import Marculus des CSV <code>FormatCsv;6</code> à <code>;8</code> et des clés <code>.marsync</code> correspondantes.</p>
+<p>Mission 027 : import Marculus des CSV <code>FormatCsv;6</code> à <code>;8</code> et des clés <code>.marsync</code> correspondantes.</p>
 </blockquote>
 <ul><li>
 <strong>Lecture</strong> de <code>TarifsEssence</code>, <code>SteresParM3</code> (format 6), <code>CommuneInsee</code>, <code>Ser</code>, <code>MillesimeTarifs</code> (7), <code>PartsLot</code> (8) et de <code>partsLot</code> du <code>.marsync</code> (une essence absente compte tige et houppier), rangées dans <code>reglages_terrain</code> (<code>tarifs_essence</code>, <code>steres_par_m3</code>, <code>commune_insee</code>, <code>ser</code>, <code>millesime_tarifs</code>, <code>parts_lot</code>, <code>format_csv</code>). Numéro de tarif ignoré pour <code>AUCUN</code> et <code>EMERGE</code> ; <code>SCHAEFFER_INTERMEDIAIRE</code> et <code>SCHAEFFER_TRES_LENT</code> acceptés. Aucune de ces clés n’est réémise vers le téléphone.</li>
@@ -148,21 +167,13 @@
 <li>Le contrôle SER/millésime compare au cache de tarifs <strong>actuel</strong> du projet : fausse alerte possible si ce cache a été recalculé depuis l’émission.</li>
 <li>Texte d’aide d’import : « FormatCsv;2 à 8 ».</li>
 </ul></div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9001" id="nemetonshiny-20261119001-2026-11-15">nemetonshiny 2026.11.1.9001 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119001-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs-2026-11-1-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-1-9001"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-2-7">Détail du cycle dev 2026.11.1.9001 (2026-11-15) — publié dans 2026.11.2<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-2-7"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-2-4">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2-4"></a></h3>
 <ul><li>Description statique de la famille T alignée sur nemeton 2026.11.28 (« … pression de coupe rase et vitalité dynamique ») : <code>test-utils_i18n_families.R</code> échouait sur <code>main</code> depuis la sortie du cœur, tiré par <code>@*release</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.1.9000" id="nemetonshiny-20261119000-2026-11-15">nemetonshiny 2026.11.1.9000 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119000-2026-11-15"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Ouverture du cycle dev après la release v2026.11.1.</p>
-</blockquote>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1" id="nemetonshiny-2026111-2026-11-15">nemetonshiny 2026.11.1 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026111-2026-11-15"></a></h2>
