@@ -28,29 +28,22 @@ _(vide)_
 
 ## Planifié
 
-- [suite-victor] Appliquer les deux briefs victor · depuis le cycle 3 · échéance 2026-11-17
-  - Homme : Pascal (session sur `/home/pascal/dev/victor`)
-  - Mission : relais vocal de la confirmation d'abord (`briefs/vers-victor/2026-11-10-relais-vocal-confirmation.md`), puis journal des dictées (`2026-11-10-journal-des-dictees.md`) ; relance si aucun commit victor au 2026-11-17
-  - Moyens : briefs publiés dans v2026.11.1 ; nemetonmcp v2026.11.2 déjà aligné
-- [suite-aigora] Appliquer le brief aigora · depuis le cycle 3 · échéance 2026-11-17
-  - Homme : Pascal (session aigora)
-  - Mission : `briefs/vers-aigora/` ; relance si rien au 2026-11-17
-  - Moyens : brief de la mission 013
 - [suite-plateforme-coeur] Reporter l'ADR 0003 dans platform_nemeton, ligne PLAN.md v2026.11.1 dans nemeton · depuis le cycle 3 · échéance 2026-11-20
   - Homme : Pascal (sessions platform_nemeton et nemeton)
   - Mission : `briefs/vers-platform_nemeton/2026-11-15-adr-0003-acces-tous.md` ; `~/dev/briefs/vers-nemeton/2026-11-15-plan-nemetonshiny-v2026.11.1.md` (hors dépôt)
   - Moyens : briefs déposés le 2026-11-15
 - [essai-terrain-couchey] Essai VICTOR de bout en bout, fiches PDF par UGF, cartes santé par strate · depuis le cycle 3 · échéance 2026-11-24
   - Homme : Pascal, sur Couchey
-  - Mission : VICTOR (après suite-victor) ; liste de contrôle de la fiche 024 (Statut) ; série santé 017-023
+  - Mission : VICTOR à la voix (essai par texte fait le 2026-11-15 ; reste le micro et la transcription Gradium) ; liste de contrôle de la fiche 024 (Statut) ; série santé 017-023
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
-- [duree-tests] Durée de chaque fichier de test et commande ciblée sous 300 s · depuis le cycle 3 · avant le prochain cycle de code
-  - Homme : `analyste` (sonnet)
-  - Mission : mesurer, marquer les fichiers > 60 s (dont `test-service_mcp_detache.R`), proposer la commande pour le hook et le relecteur
-  - Moyens : cause n° 2 du Pareto du bilan du 2026-11-15 ; fiche à rédiger
+- [026-duree-tests](missions/026-duree-tests.md) · depuis le cycle 3 · avant le prochain cycle de code
+  - Homme : `analyste` (sonnet), confiée le 2026-11-15
+  - Mission : mesurer chaque fichier de test, marquer ceux > 60 s (dont `test-service_mcp_detache.R`), proposer la commande ciblée sous 300 s
+  - Moyens : lecture seule, rapport à l'orchestrateur
 
 ## Terminé
 
+- [suite-victor-aigora] Briefs victor (relais vocal de la confirmation, journal des dictées) et aigora appliqués le 2026-11-15 (victor `main` 9dd43dd ; aigora-nemeton 9ac3c34, branche locale `confirmation-nemetonmcp` non poussée) ; essai par texte de bout en bout réussi sur Couchey (croiser_onf, jeton entre deux `claude -p` réels) · depuis le cycle 3
 - [bilan-chaine-nemetonmcp] Chaîne nemetonmcp close le 2026-11-15 : nemetonmcp#27 fusionnée, release nemetonmcp v2026.11.2 (journal du 2026-11-15, « clôture chaîne nemetonmcp »)
 - [025-release-2026-11-1](missions/025-release-2026-11-1.md) · depuis le cycle 3 · Release **v2026.11.1** publiée le 2026-11-15 (PR #280, `eaa47428`, tag posé par release.yml) ; contrat nemetonmcp à 33 objets
 - [bilan-essai-couchey] Essai Couchey côté nemetonmcp validé par Pascal le 2026-11-14 (source de seconde main : brief nemetonmcp du 2026-11-15, journal « 025 · accord ») ; l'essai VICTOR de bout en bout reste à faire (carte essai-terrain-couchey)
