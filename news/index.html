@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9007</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.1.9008</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.1.9008" id="nemetonshiny-20261119008-2026-11-15">nemetonshiny 2026.11.1.9008 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119008-2026-11-15"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 033 : téléchargement incrémental de <code>terrain.zip</code> et part des diamètres au ruban (cœur nemeton 2026.11.30).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-1-9008">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-1-9008"></a></h3>
+<ul><li>
+<strong>Inventaire vidéo — « Récupérer » incrémental</strong> : les fichiers du serveur Groma sont téléchargés dans un dossier stable du projet (<code>data/inventaire_video/serveur</code>, plus de dossier temporaire) et le tableau d’état du serveur est transmis au cœur (<code>etat =</code>) : un <code>terrain.zip</code> dont <code>terrain_envoye_le</code> n’a pas changé n’est pas redemandé. Sans projet ouvert, repli sur un dossier temporaire.</li>
+<li>
+<strong>Bilan d’intégration</strong> : par placette, « x arbres sur n mesurés au ruban » (<code>dbh_ruban</code> du cœur) ; rien quand la part est inconnue (projet antérieur au schéma 1.4.0).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-1-9008">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-1-9008"></a></h3>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.30)</code> (l’argument <code>etat</code> n’existe pas avant).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.1.9007" id="nemetonshiny-20261119007-2026-11-15">nemetonshiny 2026.11.1.9007 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261119007-2026-11-15"></a></h2>
 <blockquote>
