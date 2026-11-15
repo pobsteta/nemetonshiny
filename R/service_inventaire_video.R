@@ -69,12 +69,18 @@ video_etat_serveur <- function(url, jeton) {
 #' the download, e.g. to `terrain.zip` for a plot that has no video result.
 #'
 #' @param fichiers Files per plot, or `NULL` for the core's default.
+#' @param etat Raw table of [video_etat_serveur()], or `NULL`. Since core
+#'   2026.11.30 an unchanged `terrain.zip` (same `terrain_envoye_le` as at the
+#'   last download, kept in `dossier`) is not requested again. Only passed to
+#'   the core when not `NULL`, to stay compatible with older cores.
 #' @return Paths of the downloaded files.
 #' @noRd
-video_telecharger <- function(url, jeton, plot_ids, dossier, fichiers = NULL) {
+video_telecharger <- function(url, jeton, plot_ids, dossier, fichiers = NULL,
+                              etat = NULL) {
   dir.create(dossier, recursive = TRUE, showWarnings = FALSE)
   args <- list(url = url, jeton = jeton, plot_ids = plot_ids, dossier = dossier)
   if (!is.null(fichiers)) args$fichiers <- fichiers
+  if (!is.null(etat)) args$etat <- etat
   res <- do.call(.video_appeler, c(list("groma_telecharger_resultats"), args))
   chemins <- unlist(res, use.names = FALSE)
   if (!is.character(chemins) || !length(chemins)) {
@@ -336,6 +342,22 @@ video_dossier <- function(project_path) {
   file.path(project_path, "data", "inventaire_video")
 }
 
+#' Stable download directory of the Groma server files of a project
+#'
+#' Keeps `<plot_id>_terrain.envoye_le` (core witness) between two downloads,
+#' so that an unchanged `terrain.zip` is not requested again. Falls back on a
+#' temporary directory when no project is open.
+#' @noRd
+video_dossier_serveur <- function(project_path) {
+  if (is.null(project_path) || !length(project_path) || is.na(project_path[1]) ||
+      !nzchar(project_path[1])) {
+    return(tempfile("groma_resultats_"))
+  }
+  d <- file.path(video_dossier(project_path[1]), "serveur")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  d
+}
+
 #' Groma server settings
 #'
 #' The URL comes from the project metadata (`groma_url`) or the `GROMA_URL`
@@ -442,6 +464,7 @@ video_bilan <- function(res) {
     a_verifier = df(res$a_verifier),
     numeros_modifies = df(res$numeros_modifies),
     alertes = df(res$alertes),
+    dbh_ruban = df(res$validation$dbh_ruban),
     # Le coeur peut rendre les plot_id conserves ou directement leur nombre.
     classique_conserve = {
       cc <- res$classique_conserve %||% character(0)

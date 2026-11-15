@@ -109,7 +109,7 @@ mod_inventaire_video_server <- function(id, app_state) {
     i18n <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
     rv <- shiny::reactiveValues(qgz = NULL, etats = NULL, resultats = NULL,
                                 terrain = NULL, integration = NULL, import = NULL,
-                                qgz_retour = NULL, envoi = NULL)
+                                qgz_retour = NULL, envoi = NULL, srv = NULL)
 
     project_path <- shiny::reactive({
       p <- app_state$current_project
@@ -128,7 +128,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       rv$qgz <- NULL; rv$etats <- NULL; rv$resultats <- NULL
       rv$terrain <- NULL
       rv$integration <- NULL; rv$import <- NULL; rv$qgz_retour <- NULL
-      rv$envoi <- NULL
+      rv$envoi <- NULL; rv$srv <- NULL
     }, ignoreNULL = FALSE)
 
     plan <- shiny::reactive(video_placettes_plan(project_path()))
@@ -370,6 +370,7 @@ mod_inventaire_video_server <- function(id, app_state) {
     shiny::observeEvent(input$actualiser, {
       srv <- .appel_serveur(function(cfg) video_etat_serveur(cfg$url, cfg$jeton))
       if (is.null(srv)) return()
+      rv$srv <- srv
       rv$etats <- video_tableau_etats(srv, video_etat_local(project_path()))
     })
 
@@ -441,30 +442,34 @@ mod_inventaire_video_server <- function(id, app_state) {
     # --- Integrer ------------------------------------------------------
     shiny::observeEvent(input$recuperer, {
       tr <- i18n()
-      et <- rv$etats
-      if (is.null(et)) {
-        srv <- .appel_serveur(function(cfg) video_etat_serveur(cfg$url, cfg$jeton))
-        if (is.null(srv)) return()
-        et <- rv$etats <- video_tableau_etats(srv, video_etat_local(project_path()))
-      }
+      # Etat frais a chaque clic (simple GET) : un terrain renvoye depuis
+      # « Suivre » ne doit pas etre manque en silence.
+      srv <- .appel_serveur(function(cfg) video_etat_serveur(cfg$url, cfg$jeton))
+      if (is.null(srv)) return()
+      rv$srv <- srv
+      et <- rv$etats <- video_tableau_etats(srv, video_etat_local(project_path()))
       a_recuperer <- video_plots_a_recuperer(et)
       if (!length(a_recuperer$definitifs) && !length(a_recuperer$terrain_seul)) {
         shiny::showNotification(tr$t("video_aucun_definitif"), type = "warning")
         return()
       }
-      dossier <- tempfile("groma_resultats_")
+      # Dossier stable du projet : le temoin `<plot_id>_terrain.envoye_le` du
+      # coeur y survit, un terrain.zip inchange n'est pas redemande.
+      dossier <- video_dossier_serveur(project_path())
+      srv_brut <- srv
       f <- character(0)
       # Placettes definitives : les quatre fichiers (terrain.zip absent = 404
       # silencieux du coeur). Placettes avec seule saisie : terrain.zip seul.
       if (length(a_recuperer$definitifs)) {
         f <- .appel_serveur(function(cfg) video_telecharger(
-          cfg$url, cfg$jeton, plot_ids = a_recuperer$definitifs, dossier = dossier))
+          cfg$url, cfg$jeton, plot_ids = a_recuperer$definitifs, dossier = dossier,
+          etat = srv_brut))
         if (is.null(f)) return()
       }
       if (length(a_recuperer$terrain_seul)) {
         ft <- .appel_serveur(function(cfg) video_telecharger(
           cfg$url, cfg$jeton, plot_ids = a_recuperer$terrain_seul,
-          dossier = dossier, fichiers = "terrain.zip"))
+          dossier = dossier, fichiers = "terrain.zip", etat = srv_brut))
         if (is.null(ft)) return()
         f <- c(f, ft)
       }
@@ -611,6 +616,24 @@ mod_inventaire_video_server <- function(id, app_state) {
   })
 }
 
+#' Share of trees measured with a tape, per plot
+#'
+#' @param dbh_ruban `dbh_ruban` table of [video_bilan()] (`plot_id`,
+#'   `n_arbres`, `n_ruban`); a plot with `NA` `n_ruban` shows nothing.
+#' @noRd
+video_part_ruban_ui <- function(dbh_ruban, i18n) {
+  d <- dbh_ruban
+  if (is.null(d) || !nrow(d) || !all(c("plot_id", "n_arbres", "n_ruban") %in% names(d)))
+    return(NULL)
+  d <- d[!is.na(d$n_ruban), , drop = FALSE]
+  if (!nrow(d)) return(NULL)
+  htmltools::tags$ul(class = "small mb-2", lapply(seq_len(nrow(d)), function(i)
+    htmltools::tags$li(paste0(
+      d$plot_id[i], " : ",
+      sprintf(i18n$t("video_part_ruban"), as.integer(d$n_ruban[i]),
+              as.integer(d$n_arbres[i]))))))
+}
+
 #' Summary of a video inventory integration
 #'
 #' @param bilan Result of [video_bilan()], or `NULL`.
@@ -675,6 +698,7 @@ video_bilan_ui <- function(bilan, i18n, lang = "fr") {
                plot_id = i18n$t("video_col_placette"),
                motif = i18n$t("video_col_motif"),
                detail = i18n$t("video_col_detail"))),
+    video_part_ruban_ui(bilan$dbh_ruban, i18n),
     table_df(bilan$a_completer, i18n$t("video_a_completer")),
     table_df(bilan$a_verifier, i18n$t("video_a_verifier")),
     numeros)
