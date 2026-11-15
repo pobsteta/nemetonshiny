@@ -1,3 +1,11 @@
+# nemetonshiny 2026.11.1.9002 (2026-11-15)
+
+> **Non publié.** Mission 027 : import Marculus des CSV `FormatCsv;6` à `;8` et des clés `.marsync` correspondantes.
+
+- **Lecture** de `TarifsEssence`, `SteresParM3` (format 6), `CommuneInsee`, `Ser`, `MillesimeTarifs` (7), `PartsLot` (8) et de `partsLot` du `.marsync` (une essence absente compte tige et houppier), rangées dans `reglages_terrain` (`tarifs_essence`, `steres_par_m3`, `commune_insee`, `ser`, `millesime_tarifs`, `parts_lot`, `format_csv`). Numéro de tarif ignoré pour `AUCUN` et `EMERGE` ; `SCHAEFFER_INTERMEDIAIRE` et `SCHAEFFER_TRES_LENT` acceptés. Aucune de ces clés n'est réémise vers le téléphone.
+- **Sens du volume au lot** : le résumé de martelage indique les parties comptées au lot (format 8) ou la règle ancienne (formats 5 à 7). Contrôle croisé : mention si la SER ou le millésime relus diffèrent de ceux émis par l'application, sans rien corriger.
+- Texte d'aide d'import : « FormatCsv;2 à 8 ».
+
 # nemetonshiny 2026.11.1.9000 (2026-11-15)
 
 > **Non publié.** Ouverture du cycle dev après la release v2026.11.1.
