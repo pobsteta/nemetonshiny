@@ -241,3 +241,50 @@ test_that("mod_synthesis summary_table shows the shared family table", {
   expect_identical(got$n, want$n_indicateurs)
   expect_identical(vapply(rows, cell, "", i = 1L), want$famille)
 })
+
+# ---- n_ugf et indicateurs perimes (mission 031) --------------------------
+
+.synth_ugf_project <- function(path, n = 63L) {
+  dir.create(file.path(path, "data"), recursive = TRUE, showWarnings = FALSE)
+  list(id = "p-ugf", path = path,
+       metadata = list(name = "Sans indicateurs", status = "draft",
+                       ndp_level = 0L, ug_count = n),
+       parcels = data.frame(id = 1:5),
+       ugs = data.frame(label = seq_len(n)))
+}
+
+test_that("n_ugf vient des UGF du projet, pas des scores (sans indicateurs)", {
+  withr::with_tempdir({
+    p <- .synth_ugf_project(file.path(getwd(), "proj"))
+    s <- suppressMessages(project_synthesis_summary(p, "fr"))
+    expect_identical(s$n_ugf, 63L)
+    expect_true(is.na(s$global_score))
+    expect_false(s$indicateurs_perimes)
+    # Repli sur metadata$ug_count quand ugs n'est pas charge
+    p$ugs <- NULL
+    expect_identical(suppressMessages(project_synthesis_summary(p))$n_ugf, 63L)
+    # Rien nulle part : 0
+    p$metadata$ug_count <- NULL
+    expect_identical(suppressMessages(project_synthesis_summary(p))$n_ugf, 0L)
+  })
+})
+
+test_that("indicateurs_perimes vaut TRUE si seul un indicators.perime-* existe", {
+  withr::with_tempdir({
+    p <- .synth_ugf_project(file.path(getwd(), "proj"))
+    file.create(file.path(p$path, "data", "indicators.perime-20261115-120205.parquet"))
+    s <- suppressMessages(project_synthesis_summary(p, "fr"))
+    expect_true(s$indicateurs_perimes)
+    expect_identical(s$n_ugf, 63L)
+    # Un indicators.parquet present : pas perime
+    file.create(file.path(p$path, "data", "indicators.parquet"))
+    expect_false(project_indicators_stale(p))
+  })
+})
+
+test_that("projet calcule : n_ugf et indicateurs_perimes inchanges", {
+  .identity_enrichers()
+  s <- suppressMessages(project_synthesis_summary(.synth_project(), "fr"))
+  expect_identical(s$n_ugf, 3L)
+  expect_false(s$indicateurs_perimes)
+})
