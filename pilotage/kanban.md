@@ -28,6 +28,19 @@ _(vide)_
 
 ## Planifié
 
+- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo (030), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031) · depuis le cycle 3
+  - Homme : Pascal
+  - Mission : retours au journal en lignes « écart »
+  - Moyens : app `main` 2026.11.1.9006
+- [suite-groma-2026-11-30] `etat =` incrémental et `dbh_ruban` quand nemeton 2026.11.30 sera publié · depuis le cycle 3
+  - Homme : `dev` (sonnet), à confier
+  - Mission : brief `nemeton/specs/061-inventaire-video/brief-nemetonshiny.md` (points 3 et 8)
+  - Moyens : attendre le tag cœur
+- [suite-duree-tests] Pistes de la mission 026 (un seul processus, garde `NEMETON_TESTS_LENTS`) · depuis le cycle 3
+  - Homme : à décider par Pascal
+  - Mission : rapport 026 au journal
+  - Moyens : —
+
 - [suite-plateforme-coeur] Reporter l'ADR 0003 dans platform_nemeton, ligne PLAN.md v2026.11.1 dans nemeton · depuis le cycle 3 · échéance 2026-11-20
   - Homme : Pascal (sessions platform_nemeton et nemeton)
   - Mission : `briefs/vers-platform_nemeton/2026-11-15-adr-0003-acces-tous.md` ; `~/dev/briefs/vers-nemeton/2026-11-15-plan-nemetonshiny-v2026.11.1.md` (hors dépôt)
@@ -36,12 +49,18 @@ _(vide)_
   - Homme : Pascal, sur Couchey
   - Mission : VICTOR à la voix (essai par texte fait le 2026-11-15 ; reste le micro et la transcription Gradium) ; liste de contrôle de la fiche 024 (Statut) ; série santé 017-023
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
-- [026-duree-tests](missions/026-duree-tests.md) · depuis le cycle 3 · avant le prochain cycle de code
-  - Homme : `analyste` (sonnet), confiée le 2026-11-15
-  - Mission : mesurer chaque fichier de test, marquer ceux > 60 s (dont `test-service_mcp_detache.R`), proposer la commande ciblée sous 300 s
-  - Moyens : lecture seule, rapport à l'orchestrateur
-
 ## Terminé
+
+- [026-duree-tests](missions/026-duree-tests.md) · cycle 3 · rapport de l'analyste ; commande ciblée adoptée, à remesurer machine calme
+- [027-marculus-csv-formats-6-8](missions/027-marculus-csv-formats-6-8.md) · cycle 3 · PR #284 (`ca837bf8`), `.9002`
+- [031-synthese-n-ugf-indicateurs-perimes](missions/031-synthese-n-ugf-indicateurs-perimes.md) · cycle 3 · PR #285 (`93299204`), `.9003`
+- [029-t4-vitalite-dynamique](missions/029-t4-vitalite-dynamique.md) · cycle 3 · PR #286 (`03125fe5`), `.9004`
+- [030-groma-schema-1-6](missions/030-groma-schema-1-6.md) · cycle 3 · PR #287 (`953729be`), `.9005`
+- [028-tarifs-proposes-niveau-foret](missions/028-tarifs-proposes-niveau-foret.md) · cycle 3 · PR #288 (`c90f8d12`), `.9006`
+
+- [brief-c1-infradensite] Brief nemeton du 2026-11-09 : l'app n'atteint jamais le mode CHM du C1 (aucune colonne `dbh`), rien ne change ; réponse déposée dans `vers-nemeton` le 2026-11-15 · depuis le cycle 3
+- [brief-tarifs-ifn-negatifs] Brief Marculus du 2026-11-10 : questions d'origine transmises au cœur (`vers-nemeton/2026-11-15-tarifs-ifn-numeros-negatifs.md`) ; filtrage côté app dans 028 · depuis le cycle 3
+- [main-rouge-famille-t] Description de la famille T alignée sur nemeton 2026.11.28 (`.9001`, PR #283) · depuis le cycle 3
 
 - [suite-victor-aigora] Briefs victor (relais vocal de la confirmation, journal des dictées) et aigora appliqués le 2026-11-15 (victor `main` 9dd43dd ; aigora-nemeton 9ac3c34, branche locale `confirmation-nemetonmcp` non poussée) ; essai par texte de bout en bout réussi sur Couchey (croiser_onf, jeton entre deux `claude -p` réels) · depuis le cycle 3
 - [bilan-chaine-nemetonmcp] Chaîne nemetonmcp close le 2026-11-15 : nemetonmcp#27 fusionnée, release nemetonmcp v2026.11.2 (journal du 2026-11-15, « clôture chaîne nemetonmcp »)
