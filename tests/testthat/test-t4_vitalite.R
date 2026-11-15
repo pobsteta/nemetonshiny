@@ -49,7 +49,9 @@ test_that("une résolution en échec donne NA et ne casse pas le calcul", {
   testthat::local_mocked_bindings(
     resoudre_espar = function(x) stop("referentiel indisponible"),
     .package = "nemeton")
-  u <- nemetonshiny:::.t4_ajouter_essence(.t4_unites(c("Chêne sessile", "Hêtre")))
+  expect_warning(
+    u <- nemetonshiny:::.t4_ajouter_essence(.t4_unites(c("Chêne sessile", "Hêtre"))),
+    "species resolution")
   expect_true(all(is.na(u$essence)))
 })
 
@@ -271,4 +273,84 @@ test_that("le cœur réel rend T4 = NA et skipped_no_forms_t sans série", {
   expect_equal(attr(out, "nemeton_status"), rep("skipped_no_forms_t", 3))
   expect_equal(attr(out, "nemeton_status_name"), "t4_status")
   expect_true(".t4_h_dom" %in% names(attr(out, "nemeton_annex")))
+})
+
+# ---- Câblage de start_computation (sans réseau) -------------------------------
+
+.t4_lancer <- function(indicators) {
+  skip_if_not_installed("sf")
+  dossier <- withr::local_tempdir()
+  dir.create(file.path(dossier, "data"))
+  u <- .t4_unites()
+  u$surface_m2 <- 4e4
+  sf::st_write(u, file.path(dossier, "data", "parcels.gpkg"), quiet = TRUE)
+  appels <- new.env()
+  appels$forms_t <- 0L
+  appels$ser <- 0L
+  testthat::local_mocked_bindings(
+    clear_cancel = function(...) invisible(NULL),
+    is_cancelled = function(...) FALSE,
+    init_compute_state = function(project_id, indicators = "all") {
+      list(project_id = project_id, indicators_status = character(0))
+    },
+    load_project = function(...) list(metadata = list()),
+    has_ug_data = function(...) TRUE,
+    ug_build_sf = function(...) u,
+    update_project_status = function(...) invisible(NULL),
+    update_project_metadata = function(...) invisible(NULL),
+    download_layers_for_parcels = function(...) {
+      structure(list(rasters = list(), vectors = list(), warnings = list()),
+                class = "nemeton_layers")
+    },
+    .apply_field_data_if_present = function(x, ...) x,
+    build_forms_t_series = function(...) {
+      appels$forms_t <- appels$forms_t + 1L
+      NULL
+    },
+    ensure_ugf_ser = function(units, ...) {
+      appels$ser <- appels$ser + 1L
+      units$ser <- "C11"
+      units
+    },
+    # Fin de course : on ne calcule rien, on a vu le câblage.
+    compute_all_indicators = function(...) stop("arret volontaire du test")
+  )
+  suppressMessages(suppressWarnings(
+    try(nemetonshiny:::start_computation("p", indicators = indicators,
+                                         project_path = dossier),
+        silent = TRUE)))
+  appels
+}
+
+test_that("T4 seul (sans T2) charge FORMS-T et localise la SER hors mode IFN", {
+  a <- .t4_lancer("indicateur_t4_vitalite")
+  expect_equal(a$forms_t, 1L)
+  expect_equal(a$ser, 1L)
+})
+
+test_that("sans T2 ni T4, ni FORMS-T ni SER ne sont demandés", {
+  a <- .t4_lancer("indicateur_c1_biomasse")
+  expect_equal(a$forms_t, 0L)
+  expect_equal(a$ser, 0L)
+})
+
+test_that("T2 seul charge FORMS-T sans localiser la SER", {
+  a <- .t4_lancer("indicateur_t2_changement")
+  expect_equal(a$forms_t, 1L)
+  expect_equal(a$ser, 0L)
+})
+
+# ---- T4 tout NA ne pèse pas sur l'indice de la famille T ----------------------
+
+test_that("un T4 tout NA ne change pas l'indice de la famille T", {
+  skip_if(utils::packageVersion("nemeton") < "2026.11.28",
+          "nemeton >= 2026.11.28 requis pour T4")
+  d <- sf::st_sf(
+    indicateur_t1_anciennete = c(40, 60),
+    indicateur_t2_changement = c(80, 90),
+    geometry = sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), crs = 2154))
+  sans <- suppressMessages(nemeton::create_family_index(d, method = "mean", na.rm = TRUE))
+  d$indicateur_t4_vitalite <- NA_real_
+  avec <- suppressMessages(nemeton::create_family_index(d, method = "mean", na.rm = TRUE))
+  expect_equal(avec$famille_temporel, sans$famille_temporel)
 })

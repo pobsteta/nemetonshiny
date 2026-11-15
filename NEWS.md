@@ -9,8 +9,7 @@
   - Les coupes sont lues dans la colonne T3 brute, déjà calculée ; la série FORMS-T chargée pour T2 sert aussi à T4 (un seul chargement).
   - Les six statuts `skipped_*` sont traduits (FR/EN) sous la carte grise de la vue famille T.
   - La vue famille T affiche, sous la carte T4, l'accroissement observé et attendu (m / 5 ans), la hauteur dominante, le nombre de placettes analogues, et la mention fixe « Référence construite en Bourgogne-Franche-Comté, climat 2019-2023 ». Ces colonnes (`.t4_*`) traversent la persistance des résultats.
-- Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (`.T4_ESPAR_SAPIN_EPICEA`). Cela remplace la mention précédente : ce libellé n'est plus laissé sans essence.
-- Plancher `Imports: nemeton (>= 2026.11.28)`.
+- Convention : « Sapin, épicéa » (et variantes mêlant sapin et épicéa) → ESPAR 61, révisable (`.T4_ESPAR_SAPIN_EPICEA`).- Plancher `Imports: nemeton (>= 2026.11.28)`.
 - Hors périmètre : NDP 3 (`accroissement_hdom_finn()`).
 
 # nemetonshiny 2026.11.1.9002 (2026-11-15)

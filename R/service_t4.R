@@ -43,8 +43,12 @@ NULL
   sp <- if ("species" %in% names(parcels)) as.character(parcels$species) else NULL
   essence <- rep(NA_character_, n)
   if (length(sp) == n && any(!is.na(sp) & nzchar(sp))) {
-    espar <- tryCatch(as.character(nemeton::resoudre_espar(sp)),
-                      error = function(e) NULL)
+    espar <- tryCatch(
+      as.character(nemeton::resoudre_espar(sp)),
+      error = function(e) {
+        cli::cli_warn("T4: species resolution to ESPAR failed: {conditionMessage(e)}")
+        NULL
+      })
     if (length(espar) == n) essence <- espar
     essence <- .t4_essence_melange(sp, essence)
   }
