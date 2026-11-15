@@ -1,3 +1,16 @@
+# nemetonshiny 2026.11.1.9008 (2026-11-15)
+
+> **Non publié.** Mission 033 : téléchargement incrémental de `terrain.zip` et part des diamètres au ruban (cœur nemeton 2026.11.30).
+
+## Nouveautés
+
+- **Inventaire vidéo — « Récupérer » incrémental** : les fichiers du serveur Groma sont téléchargés dans un dossier stable du projet (`data/inventaire_video/serveur`, plus de dossier temporaire) et le tableau d'état du serveur est transmis au cœur (`etat =`) : un `terrain.zip` dont `terrain_envoye_le` n'a pas changé n'est pas redemandé. Sans projet ouvert, repli sur un dossier temporaire.
+- **Bilan d'intégration** : par placette, « x arbres sur n mesurés au ruban » (`dbh_ruban` du cœur) ; rien quand la part est inconnue (projet antérieur au schéma 1.4.0).
+
+## Dépendances
+
+- Plancher `Imports: nemeton (>= 2026.11.30)` (l'argument `etat` n'existe pas avant).
+
 # nemetonshiny 2026.11.1.9007 (2026-11-15)
 
 > **Non publié.** Mission 032 : une réponse BD TOPO vide est une mesure.

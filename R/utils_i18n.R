@@ -1034,6 +1034,10 @@ TRANSLATIONS <- list(
     fr = "Inventaire classique conserv\u00e9 pour %d placette(s)",
     en = "Classic inventory kept for %d plot(s)"
   ),
+  video_part_ruban = list(
+    fr = "%d arbres sur %d mesur\u00e9s au ruban",
+    en = "%d trees out of %d measured with a tape"
+  ),
   video_integration_ok = list(
     fr = "Inventaire vid\u00e9o int\u00e9gr\u00e9",
     en = "Video inventory integrated"

@@ -728,8 +728,10 @@ test_that("Integrer : terrain.zip telecharge puis passe a l'import sans gpkg", {
                  terrain_envoye_le = c("2026-11-15T13:25:00Z",
                                        "2026-11-15T14:00:00Z", NA))
     },
-    video_telecharger = function(url, jeton, plot_ids, dossier, fichiers = NULL) {
-      appels[[length(appels) + 1L]] <<- list(plot_ids = plot_ids, fichiers = fichiers)
+    video_telecharger = function(url, jeton, plot_ids, dossier, fichiers = NULL,
+                                 etat = NULL) {
+      appels[[length(appels) + 1L]] <<- list(plot_ids = plot_ids, fichiers = fichiers,
+                                             dossier = dossier, etat = etat)
       f <- file.path(dossier, paste0(plot_ids, "_terrain.zip"))
       dir.create(dossier, showWarnings = FALSE)
       if (is.null(fichiers)) f <- c(f, file.path(dossier, paste0(plot_ids, "_resultat.gpkg")))
@@ -752,6 +754,11 @@ test_that("Integrer : terrain.zip telecharge puis passe a l'import sans gpkg", {
     expect_null(appels[[1]]$fichiers)
     expect_identical(appels[[2]]$plot_ids, "P002")
     expect_identical(appels[[2]]$fichiers, "terrain.zip")
+    # Dossier stable sous le projet, tableau brut du serveur transmis.
+    expect_identical(appels[[1]]$dossier, file.path(pp, "data", "inventaire_video", "serveur"))
+    expect_identical(appels[[2]]$dossier, appels[[1]]$dossier)
+    expect_identical(appels[[1]]$etat$terrain_envoye_le[1], "2026-11-15T13:25:00Z")
+    expect_identical(appels[[2]]$etat$plot_id, c("P001", "P002", "P003"))
     session$setInputs(integrer = 1)
     expect_null(recu$gpkg)
     expect_identical(basename(recu$terrain), c("P001_terrain.zip", "P002_terrain.zip"))
@@ -908,4 +915,73 @@ test_that("les motifs sans cle sont regroupes sous 'Autre alerte', jamais bruts"
   expect_match(fr$motif[2], "GNSS", fixed = TRUE)
   # Aucun motif ne s'affiche seul, sans etiquette.
   expect_false(any(fr$motif == "ecart_dbh"))
+})
+
+test_that("video_telecharger transmet etat au coeur, et seulement s'il est donne", {
+  d <- withr::local_tempdir()
+  recu <- NULL
+  local_mocked_bindings(.video_appeler = function(nom, ...) {
+    recu <<- list(...)
+    character(0)
+  })
+  video_telecharger("u", "j", "P1", file.path(d, "a"))
+  expect_false("etat" %in% names(recu))
+  et <- data.frame(plot_id = "P1", terrain_envoye_le = "2026-11-15T13:25:00Z")
+  video_telecharger("u", "j", "P1", file.path(d, "b"), etat = et)
+  expect_identical(recu$etat, et)
+})
+
+test_that("video_dossier_serveur : stable sous le projet, temporaire sans projet", {
+  pp <- withr::local_tempdir()
+  d <- video_dossier_serveur(pp)
+  expect_identical(d, file.path(pp, "data", "inventaire_video", "serveur"))
+  expect_true(dir.exists(d))
+  expect_identical(video_dossier_serveur(pp), d)
+  sans <- video_dossier_serveur(NULL)
+  expect_false(startsWith(sans, pp))
+  expect_false(identical(video_dossier_serveur(NULL), sans))
+})
+
+test_that("video_bilan rend dbh_ruban, et l'ecran affiche la part par placette", {
+  res <- list(validation = list(ok = TRUE, dbh_ruban = data.frame(
+    plot_id = c("P1", "P2"), n_arbres = c(10L, 8L), n_ruban = c(4L, NA),
+    part_ruban = c(0.4, NA))))
+  b <- video_bilan(res)
+  expect_identical(b$dbh_ruban$n_ruban, c(4L, NA))
+  html <- as.character(video_bilan_ui(b, get_i18n("fr")))
+  expect_match(html, "P1 : 4 arbres sur 10 mesurés au ruban", fixed = TRUE)
+  expect_false(grepl("P2 :", html, fixed = TRUE))
+  # Projet anterieur au schema 1.4.0 (n_ruban NA) ou element absent : rien.
+  expect_false(grepl("ruban", as.character(video_bilan_ui(video_bilan(
+    list(validation = list(ok = TRUE))), get_i18n("fr"))), fixed = TRUE))
+  na <- video_bilan(list(validation = list(ok = TRUE, dbh_ruban = data.frame(
+    plot_id = "P1", n_arbres = 3L, n_ruban = NA_integer_, part_ruban = NA_real_))))
+  expect_false(grepl("ruban", as.character(video_bilan_ui(na, get_i18n("fr"))),
+                     fixed = TRUE))
+})
+
+test_that("coeur reel : deux appels, meme terrain_envoye_le -> une seule requete terrain.zip", {
+  skip_if_not_installed("httr2")
+  skip_if(!requireNamespace("nemeton", quietly = TRUE))
+  skip_if(utils::packageVersion("nemeton") < "2026.11.30",
+          "etat= demande nemeton >= 2026.11.30")
+  d <- withr::local_tempdir()
+  n_req <- 0L
+  httr2::local_mocked_responses(function(req) {
+    n_req <<- n_req + 1L
+    httr2::response(status_code = 200L, body = charToRaw("zip"))
+  })
+  et <- data.frame(plot_id = "P1", terrain_envoye_le = "2026-11-15T13:25:00Z")
+  f1 <- video_telecharger("https://groma.test/", "j", "P1", d,
+                          fichiers = "terrain.zip", etat = et)
+  f2 <- video_telecharger("https://groma.test/", "j", "P1", d,
+                          fichiers = "terrain.zip", etat = et)
+  expect_identical(n_req, 1L)
+  expect_identical(basename(f1), "P1_terrain.zip")
+  expect_identical(f2, f1)
+  # Date changee : redemande.
+  et$terrain_envoye_le <- "2026-11-16T08:00:00Z"
+  video_telecharger("https://groma.test/", "j", "P1", d,
+                    fichiers = "terrain.zip", etat = et)
+  expect_identical(n_req, 2L)
 })
