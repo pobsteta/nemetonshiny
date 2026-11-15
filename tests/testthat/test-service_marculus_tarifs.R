@@ -214,6 +214,19 @@ test_that("le message de fin d'export compte les essences au niveau foret", {
     c(base, list(tarifs_statut = "ok", tarifs_comptes = cpt)),
     nemetonshiny:::get_i18n("en"))
   expect_match(m$message, "at forest level for 2 species out of 5", fixed = TRUE)
+  # Aucune essence au niveau foret (cas Couchey) : message dedie.
+  cpt0 <- nemetonshiny:::.marculus_tarifs_comptes(list(essences = list()), "Hêtre")
+  expect_identical(cpt0, list(n = 0L))
+  m0 <- nemetonshiny:::.marculus_export_notice(
+    c(base, list(tarifs_statut = "ok", tarifs_comptes = cpt0)), i18n)
+  expect_match(m0$message, "Aucun numéro de tarif proposé au niveau forêt (5 essences examinées) ; Marculus calcule les tarifs sur le téléphone.",
+               fixed = TRUE)
+  expect_false(grepl("pour 0 essences", m0$message, fixed = TRUE))
+  m0 <- nemetonshiny:::.marculus_export_notice(
+    c(base, list(tarifs_statut = "ok", tarifs_comptes = cpt0)),
+    nemetonshiny:::get_i18n("en"))
+  expect_match(m0$message, "No forest-level tariff number proposed (5 species checked); the phone computes the tariffs.",
+               fixed = TRUE)
   m <- nemetonshiny:::.marculus_export_notice(
     c(base, list(tarifs_statut = "echec", tarifs_erreur = "IFN injoignable")), i18n)
   expect_match(m$message, "IFN injoignable", fixed = TRUE)

@@ -270,7 +270,8 @@ MARCULUS_STATUTS <- c(
 #'   [.marculus_suffixes_doublons()]).
 #' @param tarifs Schaeffer tariff proposal of the project
 #'   ([marculus_tarifs_preparer()]), or `NULL`. When given, the context carries
-#'   `ser`, `millesimeTarifs` and `tarifsProposes` (forest level only, restricted to `essences`; key omitted when empty),
+#'   `ser`, `millesimeTarifs` and `tarifsProposes` (forest level only,
+#'   restricted to `essences`; key omitted when empty),
 #'   keys unknown to Marculus releases before the spec 062 ones, hence inert
 #'   there. `tarif`, `tarifNumero` and `tarifNumeroParEssence` are field
 #'   settings and are never emitted.
@@ -1362,8 +1363,13 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   st <- res$tarifs_statut %||% NA_character_
   if (identical(st, "ok")) {
     cpt <- res$tarifs_comptes
-    parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_fmt"),
-                              cpt$n %||% 0L, res$n_essences %||% 0L))
+    if ((cpt$n %||% 0L) == 0L) {
+      parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_aucun"),
+                                res$n_essences %||% 0L))
+    } else {
+      parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_fmt"),
+                                cpt$n, res$n_essences %||% 0L))
+    }
   } else if (identical(st, "echec")) {
     parts <- c(parts, sprintf(i18n$t("marculus_export_tarifs_echec"),
                               res$tarifs_erreur %||% ""))
