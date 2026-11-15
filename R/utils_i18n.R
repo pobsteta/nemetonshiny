@@ -828,6 +828,10 @@ TRANSLATIONS <- list(
     fr = "Volume au lot (fichier avant le format 8) : houppier seul s'il existe, sinon la tige.",
     en = "Lot volume (file before format 8): crown alone when there is one, otherwise the bole."
   ),
+  marculus_lot_formats_mixtes = list(
+    fr = "Volumes au lot de formats diff\u00e9rents : r\u00e9exportez tout le contexte depuis Marculus.",
+    en = "Lot volumes from different formats: re-export the whole context from Marculus."
+  ),
   marculus_ctrl_ser_fmt = list(
     fr = "SER relue du t\u00e9l\u00e9phone : %s, \u00e9mise par l'application : %s.",
     en = "SER read back from the phone: %s, emitted by the app: %s."

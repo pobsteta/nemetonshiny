@@ -67,6 +67,10 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              # Volume UNITAIRE compte au lot d'affouage (format 5), NA hors
              # affouage ou dans un fichier plus ancien.
              affouageLotM3 = numeric(0),
+             # Numero de FormatCsv du fichier d'ou vient la tige (le sens de
+             # `affouageLotM3` change au format 8) ; NA = inconnu (.marsync
+             # sans `partsLot`, tige stockee avant cette colonne).
+             formatCsv = integer(0),
              # Journal d'origine : "NET" pour un CSV d'etat de comptage, qui ne
              # doit jamais remplacer une tige lue dans un journal complet.
              journal = character(0),
@@ -353,6 +357,11 @@ marculus_lire_exports <- function(chemins) {
         rep_len(as.character(c0$mode %||% NA_character_), nrow(c0)),
         as.character(c0$id))
       t0$mode <- unname(modes[t0$contexteId])
+      # `partsLot` n'existe qu'a partir du format 8 : sa presence date le sens.
+      f8 <- stats::setNames(
+        ifelse(!is.na(d0$partsLot) & nzchar(d0$partsLot), 8L, NA_integer_),
+        d0$id)
+      t0$formatCsv <- unname(f8[t0$contexteId])
       tig[[length(tig) + 1L]] <- t0
     }
   }
@@ -515,6 +524,7 @@ MARCULUS_QUALITE_FIX <- c(
           mode = entete$Mode %||% NA_character_,
           lot = suppressWarnings(as.integer(jr$Lot %||% NA)),
           affouageLotM3 = num(jr$AffouageLotM3 %||% NA),
+          formatCsv = fmt,
           journal = journal,
           stringsAsFactors = FALSE))
         tiges <- tiges[!is.na(tiges$uuid) & nzchar(tiges$uuid), , drop = FALSE]

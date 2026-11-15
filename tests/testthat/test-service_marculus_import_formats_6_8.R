@@ -15,7 +15,7 @@
              stringsAsFactors = FALSE)
 }
 
-.ent_fmt <- function(fmt, extra = character()) {
+.ent_fmt <- function(fmt, extra = character(), uuid = "u1") {
   c("Contexte;Affouage 2027", paste0("FormatCsv;", fmt), "ContexteId;a1",
     "Statut;REALISEE", "DateMartelage;2027-10-15", "Modifie;1790000000000",
     "Tarif;SCHAEFFER_RAPIDE", "TarifNumero;9", "CoefficientForme;0.5",
@@ -25,12 +25,13 @@
     "VolumeHouppierTotalM3;0.6", "PartHouppier;", "AffouageLotTotalM3;1.0",
     extra, "Journal;COMPLET", "", "JOURNAL",
     "Horodatage;Essence;Classe;Action;Quantite;Hauteur;QualiteArbre;Latitude;Longitude;Operateur;QualiteFix;Precision_m;Uuid;Parcelle;Modifie;VolumeTigeM3;VolumeHouppierM3;VolumeTotalM3;SurfaceTerriereM2;Cubage;Lot;AffouageLotM3",
-    "2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;u1;;1;0.6;0.6;1.2;0.1;S:8;1;1.200000")
+    paste0("2027-10-15T08:00:00Z;Hetre;40;PLUS;1;;;;;PO;;;", uuid,
+           ";;1;0.6;0.6;1.2;0.1;S:8;1;1.200000"))
 }
 
-.csv_fmt <- function(fmt, extra, env = parent.frame()) {
+.csv_fmt <- function(fmt, extra, env = parent.frame(), uuid = "u1") {
   f <- file.path(withr::local_tempdir(.local_envir = env), "f.csv")
-  writeLines(.ent_fmt(fmt, extra), f)
+  writeLines(.ent_fmt(fmt, extra, uuid), f)
   f
 }
 
@@ -181,6 +182,44 @@ test_that("le controle croise signale une SER ou un millesime different", {
   # Rien relu (champ vide au telephone) : pas de fausse alerte.
   expect_null(nemetonshiny:::.marculus_controle_tarifs(
     list(), list(ser = "B11", millesime = "IFN 2010-2024"), i18n))
+})
+
+test_that("des tiges de formats 7 et 8 dans un meme contexte : avertissement", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  l7 <- nemetonshiny:::marculus_lire_exports(.csv_fmt(7, .EXTRA7, uuid = "u1"))
+  l8 <- nemetonshiny:::marculus_lire_exports(.csv_fmt(8, .EXTRA8, uuid = "u2"))
+  expect_equal(l7$tiges$formatCsv, 7L)
+  expect_equal(l8$tiges$formatCsv, 8L)
+  # Comme `marculus_importer()` : union par uuid des tiges lues et gardees.
+  tiges <- nemetonshiny:::.marculus_tiges_union(rbind(l8$tiges, l7$tiges))
+  rt <- .appliquer(l8)$reglages_terrain
+  h <- as.character(nemetonshiny:::.marculus_lots_bloc(
+    tiges, list(id = "a1", reglages_terrain = rt), i18n))
+  expect_match(h, "formats différents", fixed = TRUE)
+  expect_match(h, "text-warning", fixed = TRUE)
+  expect_false(grepl("Parties compt", h, fixed = TRUE))
+  # Contexte homogene : pas d'avertissement, la ligne des parties reste.
+  h8 <- as.character(nemetonshiny:::.marculus_lots_bloc(
+    l8$tiges, list(id = "a1", reglages_terrain = rt), i18n))
+  expect_false(grepl("formats diff", h8, fixed = TRUE))
+  expect_match(h8, "Parties compt", fixed = TRUE)
+  # Tiges stockees avant la colonne : format inconnu, pas d'avertissement.
+  anc <- nemetonshiny:::.marculus_tiges_normaliser(
+    tiges[, setdiff(names(tiges), "formatCsv")])
+  expect_true(all(is.na(anc$formatCsv)))
+})
+
+test_that("un .marsync avec partsLot date ses tiges au format 8", {
+  d <- withr::local_tempdir()
+  f <- .marsync(d, contextes = list(
+    list(id = "a1", nom = "A", statut = "REALISEE", modifie = 2, affouage = TRUE,
+         partsLot = list("Chêne" = list(tige = FALSE, houppier = TRUE)))),
+    tiges = .tiges("u1"))
+  expect_equal(nemetonshiny:::marculus_lire_exports(f)$tiges$formatCsv, 8L)
+  g <- .marsync(d, contextes = list(
+    list(id = "a1", nom = "A", statut = "REALISEE", modifie = 2, affouage = TRUE)),
+    tiges = .tiges("u1"))
+  expect_true(is.na(nemetonshiny:::marculus_lire_exports(g)$tiges$formatCsv))
 })
 
 test_that("le texte d'aide dit FormatCsv;2 a 8", {

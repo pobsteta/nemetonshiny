@@ -3539,17 +3539,6 @@ coerce_table_value <- function(field, raw) {
 }
 
 
-#' Marking summary of one action, as the phone's marking sheet
-#'
-#' One row per species, one column per diameter class, net stem counts in the
-#' cells, a total per species and per class. The first version listed one row
-#' per species x class pair: on "Reconfort" a single thinning ran to 25 rows,
-#' and the dialog overflowed the page.
-#'
-#' @param sub A data.frame `essence, classe, tiges` (one action).
-#' @param i18n An i18n object.
-#' @return A `div` wrapping the table, horizontally scrollable.
-#' @noRd
 #' Parts counted in the lot volume, as a sentence (format 8)
 #'
 #' From the format 8 on, the lot volume counts the checked parts of each
@@ -3622,6 +3611,12 @@ coerce_table_value <- function(field, raw) {
   vmax <- as.numeric(rt$volume_max_lot_m3 %||% NA_real_)
   lots <- marculus_bilan_lots(tiges, action$id, vmax)
   if (nrow(lots) == 0L) return(NULL)
+  # Tiges de formats differents (<= 7 et >= 8) dans le meme contexte : leurs
+  # volumes au lot n'ont pas le meme sens, aucune regle ne vaut pour tout le lot.
+  fm <- suppressWarnings(as.integer(
+    tiges$formatCsv[tiges$contexteId %in% action$id] %||% NA))
+  fm <- fm[!is.na(fm)]
+  mixte <- any(fm <= 7L) && any(fm >= 8L)
   etat <- vapply(lots$etat, function(e) i18n$t(paste0("marculus_lot_", e)), "")
   # Colonnes tige et houppier, comme l'onglet " Par lot " de Marculus, des
   # qu'un houppier existe : sans lui, le volume au lot EST le volume tige.
@@ -3650,7 +3645,9 @@ coerce_table_value <- function(field, raw) {
   htmltools::tagList(
     htmltools::p(class = "small fw-semibold mt-2 mb-1",
                  sprintf(i18n$t("marculus_lots_titre_fmt"), .format_m3(vmax, i18n))),
-    .marculus_parts_lot_ligne(rt, i18n),
+    if (mixte) htmltools::p(class = "small text-warning mb-1",
+                            i18n$t("marculus_lot_formats_mixtes"))
+    else .marculus_parts_lot_ligne(rt, i18n),
     if (!is.null(parts_txt))
       htmltools::p(class = "small text-muted mb-1",
                    sprintf(i18n$t("marculus_part_houppier_fmt"), parts_txt)),
@@ -3669,6 +3666,17 @@ coerce_table_value <- function(field, raw) {
       htmltools::tags$tbody(lignes))))
 }
 
+#' Marking summary of one action, as the phone's marking sheet
+#'
+#' One row per species, one column per diameter class, net stem counts in the
+#' cells, a total per species and per class. The first version listed one row
+#' per species x class pair: on "Reconfort" a single thinning ran to 25 rows,
+#' and the dialog overflowed the page.
+#'
+#' @param sub A data.frame `essence, classe, tiges` (one action).
+#' @param i18n An i18n object.
+#' @return A `div` wrapping the table, horizontally scrollable.
+#' @noRd
 .marculus_synthese_table <- function(sub, i18n) {
   classes <- sort(unique(as.integer(sub$classe)))
   essences <- unique(sub$essence[order(sub$essence)])
