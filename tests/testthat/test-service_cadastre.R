@@ -623,3 +623,26 @@ test_that("parcel labels escape cadastre attributes and translate the hint", {
   s <- nemetonshiny:::create_parcel_label(as.list(p), hint = "Click to select")
   expect_false(grepl("<img", s, fixed = TRUE))
 })
+
+test_that("fetch_happign_cadastre calls get_wfs with the predicate API (happign >= 0.3)", {
+  skip_if_not_installed("happign")
+  skip_if_not_installed("sf")
+  commune <- sf::st_sf(
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(5, 47), c(5.01, 47), c(5.01, 47.01), c(5, 47.01), c(5, 47)
+    ))), crs = 4326)
+  )
+  recu <- NULL
+  testthat::local_mocked_bindings(
+    get_wfs = function(x = NULL, layer = NULL, predicate = happign::bbox(),
+                       query = NULL, verbose = TRUE) {
+      recu <<- list(layer = layer, predicate = predicate)
+      sf::st_transform(x, 2154)
+    },
+    .package = "happign"
+  )
+  res <- nemetonshiny:::fetch_happign_cadastre("21200", commune_geometry = commune)
+  expect_s3_class(res, "sf")
+  expect_equal(recu$layer, "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle")
+  expect_identical(recu$predicate, happign::intersects())
+})
