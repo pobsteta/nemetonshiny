@@ -1,5 +1,33 @@
 # Changelog
 
+## nemetonshiny 2026.11.2.9002 (2026-11-16)
+
+> **Non publié.** Mission 034.
+
+### Nouveautés
+
+- **reGénération, le froid d’hiver écarte les essences gélives** (cœur
+  **nemeton \>= 2026.11.32**, plancher `Imports` relevé). À Couchey, le
+  classement des essences mettait en tête le Pin d’Alep, le Pin brutia
+  et le Pin des Canaries : rien ne tenait compte du froid. Après
+  l’analyse, une tâche de fond calcule une fois le minimum décennal
+  E-OBS TN de chaque UGF
+  ([`nemeton::regen_tmin_decennale()`](https://pobsteta.github.io/nemeton/reference/regen_tmin_decennale.html),
+  environ 15 minutes au premier passage), le pose sur les unités, et
+  `regen_rank_species()` écarte alors les essences qui ne tiennent pas
+  ce froid. Le résultat est mis en cache dans le projet
+  (`cache/regeneration/tmin_decennale.csv`, clé = UGF + position) et
+  relu à la réouverture, sans recalcul. Si E-OBS est indisponible,
+  l’avertissement est affiché et le classement reste celui d’avant.
+- **Fiche parcelle** : la fiche affiche « hiver décennal : −13,2 °C » et
+  le nombre d’essences écartées pour le froid. Une UGF où toutes les
+  essences sont écartées (`rank = NA`, facteur `froid_hiver`) le dit en
+  clair, sans « NA/100 », dans la fiche, l’export PDF et le prompt de
+  l’IA. L’hiver décennal figure aussi dans les conditions de station du
+  PDF et du prompt.
+- Pendant ce calcul, les autres boutons de calcul de l’onglet sont
+  grisés (un seul worker lourd à la fois).
+
 ## nemetonshiny 2026.11.2.9001 (2026-11-16)
 
 > **Non publié.**

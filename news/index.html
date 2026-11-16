@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9002" id="nemetonshiny-20261129002-2026-11-16">nemetonshiny 2026.11.2.9002 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129002-2026-11-16"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 034.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-2-9002">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-9002"></a></h3>
+<ul><li>
+<strong>reGénération, le froid d’hiver écarte les essences gélives</strong> (cœur <strong>nemeton &gt;= 2026.11.32</strong>, plancher <code>Imports</code> relevé). À Couchey, le classement des essences mettait en tête le Pin d’Alep, le Pin brutia et le Pin des Canaries : rien ne tenait compte du froid. Après l’analyse, une tâche de fond calcule une fois le minimum décennal E-OBS TN de chaque UGF (<code><a href="https://pobsteta.github.io/nemeton/reference/regen_tmin_decennale.html" class="external-link">nemeton::regen_tmin_decennale()</a></code>, environ 15 minutes au premier passage), le pose sur les unités, et <code>regen_rank_species()</code> écarte alors les essences qui ne tiennent pas ce froid. Le résultat est mis en cache dans le projet (<code>cache/regeneration/tmin_decennale.csv</code>, clé = UGF + position) et relu à la réouverture, sans recalcul. Si E-OBS est indisponible, l’avertissement est affiché et le classement reste celui d’avant.</li>
+<li>
+<strong>Fiche parcelle</strong> : la fiche affiche « hiver décennal : −13,2 °C » et le nombre d’essences écartées pour le froid. Une UGF où toutes les essences sont écartées (<code>rank = NA</code>, facteur <code>froid_hiver</code>) le dit en clair, sans « NA/100 », dans la fiche, l’export PDF et le prompt de l’IA. L’hiver décennal figure aussi dans les conditions de station du PDF et du prompt.</li>
+<li>Pendant ce calcul, les autres boutons de calcul de l’onglet sont grisés (un seul worker lourd à la fois).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9001" id="nemetonshiny-20261129001-2026-11-16">nemetonshiny 2026.11.2.9001 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129001-2026-11-16"></a></h2>
 <blockquote>
