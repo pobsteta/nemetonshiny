@@ -163,6 +163,15 @@ DATA_SOURCES <- list(
       source = "ign_bd_topo",
       required_for = c("indicateur_w1_reseau")
     ),
+    # Sources / resurgences (BD TOPO detail_hydrographique) : couche entiere,
+    # sans filtre cote app - le coeur retient natures et etat (W1, bonus de
+    # proximite). Absente (echec WFS), W1 se replie sur le reseau de surface.
+    water_points = list(
+      name = "Water Points",
+      type = "vector",
+      source = "ign_bd_topo",
+      required_for = c("indicateur_w1_reseau")
+    ),
     water_surfaces = list(
       name = "Water Surfaces",
       type = "vector",
@@ -1665,6 +1674,7 @@ download_layers_for_parcels <- function(parcels,
     lidar_copc = "source_lidar_copc",
     protected_areas = "source_protected_areas",
     water_network = "source_water_network",
+    water_points = "source_water_points",
     water_surfaces = "source_water_surfaces",
     roads = "source_roads",
     buildings = "source_buildings",
@@ -1798,6 +1808,19 @@ download_layers_for_parcels <- function(parcels,
 
       if (!is.null(vector_data)) {
         vectors[[source_name]] <- vector_data
+      } else if (identical(source_name, "water_points")) {
+        # Absente : le coeur replie W1 sur le reseau de surface, W1 n'est pas NA.
+        # Le message commun (retourneront NA) serait faux ici.
+        download_warnings <- c(download_warnings, list(list(
+          type = "info",
+          source = source$name,
+          key = "dl_w1_sources_absentes", args = list(),
+          message = paste0(
+            "Sources non t\u00e9l\u00e9charg\u00e9es : W1 est calcul\u00e9 ",
+            "sur le seul r\u00e9seau de surface."
+          ),
+          time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        )))
       } else {
         translation_key <- source_translation_keys[[source_name]] %||% source_name
         download_warnings <- c(download_warnings, list(list(
@@ -2918,7 +2941,9 @@ download_vector_source <- function(source_name,
   # W1 donne un bonus aux UGF a moins de proximity_m (500 m) d'un cours d'eau :
   # un troncon a 100-500 m doit etre telecharge. L'emprise elargie est aussi
   # celle du cache (.bbox.json) : un ancien cache plus etroit n'est pas resservi.
-  if (identical(source_name, "water_network")) {
+  # Meme emprise pour les sources (water_points), sinon une source juste hors
+  # de la parcelle serait perdue.
+  if (source_name %in% c("water_network", "water_points")) {
     bbox <- .bbox_elargie(bbox, .W1_PROXIMITE_M)
   }
 
@@ -3311,6 +3336,7 @@ download_ign_bdtopo <- function(layer_name, bbox, cache_file) {
   if (is.null(typename)) {
     layer_mapping <- list(
       water_network = "BDTOPO_V3:troncon_hydrographique",
+      water_points = "BDTOPO_V3:detail_hydrographique",
       water_surfaces = "BDTOPO_V3:surface_hydrographique",
       roads = "BDTOPO_V3:troncon_de_route",
       buildings = "BDTOPO_V3:batiment"
