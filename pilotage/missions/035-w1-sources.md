@@ -58,4 +58,4 @@ rebase sur `origin/main` et garde `.9003` au-dessus de son entrée NEWS).
 
 ## Statut
 
-En cours (2026-11-16).
+Terminée le 2026-11-16 : PR #298 fusionnée (`3e1adda7`), `.9003`, plancher nemeton 2026.11.34. Reprise après relecture : message dédié quand les sources manquent, test « sans filtre » non vacant. Pas de marquage périmé automatique. Reste : recalcul de Couchey (6 UGF avec bonus source).
