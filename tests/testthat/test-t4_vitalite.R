@@ -29,12 +29,46 @@ test_that("une essence sans correspondance donne NA, jamais un code deviné", {
   expect_true(all(is.na(u$essence)))
 })
 
-test_that("« Sapin, épicéa » et variantes sont codés ESPAR 61 (convention)", {
-  u <- nemetonshiny:::.units_for_indicator(
-    "indicateur_t4_vitalite",
-    .t4_unites(c("Sapin, épicéa", "Épicéa, sapin", "sapin et epicea", "Hêtre")),
-    results = data.frame(), cfg = NULL)
-  expect_equal(u$essence, c("61", "61", "61", "09"))
+test_that("l'essence est résolue par le cœur avec la SER de chaque UGF", {
+  vu <- NULL
+  testthat::local_mocked_bindings(
+    resoudre_espar_bdforet = function(libelle, ser = NULL) {
+      vu <<- list(libelle = libelle, ser = ser)
+      c("03", "54", "09")
+    },
+    .package = "nemeton")
+  p <- .t4_unites(c("Chênes décidus", "Pin laricio, pin noir", "Hêtre"))
+  p$ser <- c("C20", "C20", "B10")
+  u <- nemetonshiny:::.t4_ajouter_essence(p)
+  expect_equal(vu$libelle, c("Chênes décidus", "Pin laricio, pin noir", "Hêtre"))
+  expect_equal(vu$ser, c("C20", "C20", "B10"))
+  expect_equal(u$essence, c("03", "54", "09"))
+})
+
+test_that("sans colonne ser, le cœur est appelé avec ser = NULL", {
+  vu <- "non appelé"
+  testthat::local_mocked_bindings(
+    resoudre_espar_bdforet = function(libelle, ser = NULL) {
+      vu <<- ser
+      rep("09", length(libelle))
+    },
+    .package = "nemeton")
+  nemetonshiny:::.t4_ajouter_essence(.t4_unites())
+  expect_null(vu)
+})
+
+test_that("libellés de groupe résolus par le cœur selon la SER (appel réel)", {
+  skip_if_not(
+    "resoudre_espar_bdforet" %in% getNamespaceExports("nemeton"),
+    "nemeton >= 2026.11.35 requis")
+  p <- .t4_unites(c("Chênes décidus", "Pin laricio, pin noir", "Feuillus",
+                    "Hêtre"))
+  p$ser <- "C20"
+  u <- nemetonshiny:::.t4_ajouter_essence(p)
+  expect_equal(u$essence, c("03", "54", NA, "09"))
+  # Sans SER, « Pin laricio, pin noir » retombe sur le laricio de Corse (53CO).
+  p$ser <- NULL
+  expect_equal(nemetonshiny:::.t4_ajouter_essence(p)$essence[2], "53CO")
 })
 
 test_that("sans colonne species, essence vaut NA partout (skipped_no_essence)", {
@@ -47,7 +81,7 @@ test_that("sans colonne species, essence vaut NA partout (skipped_no_essence)", 
 
 test_that("une résolution en échec donne NA et ne casse pas le calcul", {
   testthat::local_mocked_bindings(
-    resoudre_espar = function(x) stop("referentiel indisponible"),
+    resoudre_espar_bdforet = function(libelle, ser = NULL) stop("referentiel indisponible"),
     .package = "nemeton")
   expect_warning(
     u <- nemetonshiny:::.t4_ajouter_essence(.t4_unites(c("Chêne sessile", "Hêtre"))),
