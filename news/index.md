@@ -1,5 +1,31 @@
 # Changelog
 
+## nemetonshiny 2026.11.2.9004 (2026-11-16)
+
+> **Non publié.** Mission 036. Demande le cœur **nemeton \>=
+> 2026.11.35** (`Imports`).
+
+### Nouveautés
+
+- **T4 : l’essence des libellés BD Forêt de groupe vient du cœur**
+  ([`nemeton::resoudre_espar_bdforet()`](https://pobsteta.github.io/nemeton/reference/resoudre_espar_bdforet.html),
+  2026.11.35). L’app lui passe le libellé et la **SER de chaque UGF** ;
+  pour « Chênes décidus », « Pin laricio, pin noir », « Sapin, épicéa »…
+  le cœur retient l’essence au plus fort volume à l’hectare de l’IFN
+  dans la SER (puis la GRECO, puis la France). Les libellés génériques
+  (Feuillus, Conifères, Mixte) restent `NA`, donc `skipped_no_essence`,
+  et c’est juste. À Couchey (SER C20), « Chênes décidus » donne 03
+  (chêne sessile) et « Pin laricio, pin noir » donne 54 (pin noir
+  d’Autriche) : les 34 UGF `skipped_no_essence` redeviennent
+  calculables, sauf Feuillus / Conifères / Mixte. Une `essence` déjà
+  fournie sur les unités reste prioritaire.
+- **Retrait de la convention « Sapin, épicéa » → ESPAR 61**
+  (`.T4_ESPAR_SAPIN_EPICEA`, `.t4_essence_melange()`) : l’app ne tient
+  plus aucune convention d’essence. Le cœur donne 61 au niveau national
+  ; dans une SER où l’épicéa domine, il donne 62 : c’est voulu.
+- **Relancez le calcul** des projets existants pour que T4 en tienne
+  compte : l’app n’invalide pas les `indicators.parquet` d’elle-même.
+
 ## nemetonshiny 2026.11.2.9003 (2026-11-16)
 
 > **Non publié.** Demande le cœur **nemeton \>= 2026.11.34**

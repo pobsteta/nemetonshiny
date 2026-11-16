@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9004" id="nemetonshiny-20261129004-2026-11-16">nemetonshiny 2026.11.2.9004 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129004-2026-11-16"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 036. Demande le cœur <strong>nemeton &gt;= 2026.11.35</strong> (<code>Imports</code>).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-2-9004">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-9004"></a></h3>
+<ul><li>
+<strong>T4 : l’essence des libellés BD Forêt de groupe vient du cœur</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/resoudre_espar_bdforet.html" class="external-link">nemeton::resoudre_espar_bdforet()</a></code>, 2026.11.35). L’app lui passe le libellé et la <strong>SER de chaque UGF</strong> ; pour « Chênes décidus », « Pin laricio, pin noir », « Sapin, épicéa »… le cœur retient l’essence au plus fort volume à l’hectare de l’IFN dans la SER (puis la GRECO, puis la France). Les libellés génériques (Feuillus, Conifères, Mixte) restent <code>NA</code>, donc <code>skipped_no_essence</code>, et c’est juste. À Couchey (SER C20), « Chênes décidus » donne 03 (chêne sessile) et « Pin laricio, pin noir » donne 54 (pin noir d’Autriche) : les 34 UGF <code>skipped_no_essence</code> redeviennent calculables, sauf Feuillus / Conifères / Mixte. Une <code>essence</code> déjà fournie sur les unités reste prioritaire.</li>
+<li>
+<strong>Retrait de la convention « Sapin, épicéa » → ESPAR 61</strong> (<code>.T4_ESPAR_SAPIN_EPICEA</code>, <code>.t4_essence_melange()</code>) : l’app ne tient plus aucune convention d’essence. Le cœur donne 61 au niveau national ; dans une SER où l’épicéa domine, il donne 62 : c’est voulu.</li>
+<li>
+<strong>Relancez le calcul</strong> des projets existants pour que T4 en tienne compte : l’app n’invalide pas les <code>indicators.parquet</code> d’elle-même.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9003" id="nemetonshiny-20261129003-2026-11-16">nemetonshiny 2026.11.2.9003 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129003-2026-11-16"></a></h2>
 <blockquote>
