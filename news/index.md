@@ -1,5 +1,19 @@
 # Changelog
 
+## nemetonshiny 2026.11.2.9001 (2026-11-16)
+
+> **Non publié.**
+
+### Correctifs
+
+- **Cadastre, repli WFS cassé** : quand l’API Cadastre (Etalab) est
+  indisponible, l’app se replie sur le WFS IGN par happign. Depuis
+  happign 0.3, `get_wfs()` n’accepte plus `spatial_filter` (« unused
+  argument ») : le repli échouait toujours et aucune parcelle ne se
+  chargeait. L’appel passe par `predicate = happign::intersects()`. Vu
+  en CI (`R-CMD-check-oldrel` sur `main`, API Cadastre indisponible le
+  2026-11-15).
+
 ## nemetonshiny 2026.11.2.9000 (2026-11-15)
 
 > **Non publié.** Ouverture du cycle dev après la release v2026.11.2.

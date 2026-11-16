@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9001" id="nemetonshiny-20261129001-2026-11-16">nemetonshiny 2026.11.2.9001 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129001-2026-11-16"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong></p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs-2026-11-2-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2-9001"></a></h3>
+<ul><li>
+<strong>Cadastre, repli WFS cassé</strong> : quand l’API Cadastre (Etalab) est indisponible, l’app se replie sur le WFS IGN par happign. Depuis happign 0.3, <code>get_wfs()</code> n’accepte plus <code>spatial_filter</code> (« unused argument ») : le repli échouait toujours et aucune parcelle ne se chargeait. L’appel passe par <code>predicate = happign::intersects()</code>. Vu en CI (<code>R-CMD-check-oldrel</code> sur <code>main</code>, API Cadastre indisponible le 2026-11-15).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9000" id="nemetonshiny-20261129000-2026-11-15">nemetonshiny 2026.11.2.9000 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129000-2026-11-15"></a></h2>
 <blockquote>
