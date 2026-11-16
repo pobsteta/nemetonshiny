@@ -81,6 +81,66 @@ test_that("run_regeneration_tmin : echec ou E-OBS absent -> colonne absente, jam
   expect_false("tmin_decennale" %in% names(r$units))
 })
 
+test_that("resultat partiel : UGF finies gardees et cachees, UGF NA essayees sans relance", {
+  skip_if_not_installed("sf")
+  pp <- withr::local_tempdir()
+  u <- .froid_units(3)
+  n_appels <- 0L
+  testthat::local_mocked_bindings(
+    regen_tmin_decennale = function(units, ...) {
+      n_appels <<- n_appels + 1L
+      units$tmin_decennale <- c(-13.2, NA, -9)
+      units$tmin_decennale_n_annees <- c(30L, 0L, 29L)
+      units
+    }, .package = "nemeton")
+  r <- NULL
+  expect_warning(r <- nemetonshiny:::run_regeneration_tmin(u, pp), "without value")
+  expect_identical(r$status, "calculated")
+  expect_equal(r$units$tmin_decennale, c(-13.2, NA, -9))
+  r2 <- nemetonshiny:::run_regeneration_tmin(u, pp)
+  expect_identical(r2$status, "cached")           # l'UGF NA n'est pas relancee
+  expect_equal(r2$units$tmin_decennale, c(-13.2, NA, -9))
+  expect_identical(n_appels, 1L)
+})
+
+test_that("cle de cache : version du coeur, parametres et signature NA invalident", {
+  skip_if_not_installed("sf")
+  pp <- withr::local_tempdir()
+  u <- .froid_units(2)
+  testthat::local_mocked_bindings(
+    regen_tmin_decennale = function(units, ...) .froid_core(units),
+    .package = "nemeton")
+  nemetonshiny:::run_regeneration_tmin(u, pp)
+  expect_true("tmin_decennale" %in% names(nemetonshiny:::.regen_tmin_from_cache(u, pp)))
+  # Cle differente (autre coeur / autre parametre) : cache ignore.
+  testthat::local_mocked_bindings(.regen_tmin_params_key = function() "autre",
+                                  .package = "nemetonshiny")
+  expect_false("tmin_decennale" %in% names(nemetonshiny:::.regen_tmin_from_cache(u, pp)))
+})
+
+test_that("cle de cache : embarque version du coeur et parametres par defaut du coeur", {
+  skip_if_not_installed("sf")
+  testthat::skip_if_not(exists("regen_tmin_decennale", envir = asNamespace("nemeton")))
+  cle <- nemetonshiny:::.regen_tmin_params_key()
+  expect_match(cle, paste0("nemeton=", as.character(utils::packageVersion("nemeton"))), fixed = TRUE)
+  expect_match(cle, "prob=0.1", fixed = TRUE)
+  expect_match(cle, "years=1991:2020", fixed = TRUE)
+})
+
+test_that("signature de position NA : l'entree de cache n'est pas valable", {
+  skip_if_not_installed("sf")
+  pp <- withr::local_tempdir()
+  u <- .froid_units(2)
+  testthat::local_mocked_bindings(
+    regen_tmin_decennale = function(units, ...) .froid_core(units),
+    .package = "nemeton")
+  nemetonshiny:::run_regeneration_tmin(u, pp)
+  testthat::local_mocked_bindings(
+    .regen_tmin_signature = function(units) rep(NA_character_, nrow(units)),
+    .package = "nemetonshiny")
+  expect_false("tmin_decennale" %in% names(nemetonshiny:::.regen_tmin_from_cache(u, pp)))
+})
+
 test_that(".regen_attach_tmin et .regen_tmin_from_cache : jointure par ug_id", {
   skip_if_not_installed("sf")
   u <- .froid_units(3)
@@ -91,8 +151,8 @@ test_that(".regen_attach_tmin et .regen_tmin_from_cache : jointure par ug_id", {
   # Sans froid a reporter : inchange.
   expect_identical(names(nemetonshiny:::.regen_attach_tmin(u, data.frame(ug_id = "1"))),
                    names(u))
-  expect_false(nemetonshiny:::.regen_tmin_complet(out))
-  expect_true(nemetonshiny:::.regen_tmin_complet(.froid_core(u)))
+  expect_false(nemetonshiny:::.regen_tmin_essaye(u))
+  expect_true(nemetonshiny:::.regen_tmin_essaye(out))   # meme avec des NA "essayes"
   # Pas de cache (ou pas de projet) : inchange.
   expect_identical(nemetonshiny:::.regen_tmin_from_cache(u, NULL), u)
   expect_identical(nemetonshiny:::.regen_tmin_from_cache(u, withr::local_tempdir()), u)
@@ -121,9 +181,8 @@ test_that("regeneration_species_ranking : tmin_decennale lu par le coeur, exclus
 
 test_that("regen_rank_species reel : tmin_decennale = -13,2 ecarte le Pin d'Alep", {
   skip_if_not_installed("sf")
-  skip_if_not("tmin_decennale" %in% names(formals(nemeton::regen_tmin_decennale)) ||
-              exists("regen_tmin_decennale", asNamespace("nemeton")),
-              "coeur sans regen_tmin_decennale (< 2026.11.32)")
+  testthat::skip_if_not(exists("regen_tmin_decennale", envir = asNamespace("nemeton")),
+                         "coeur sans regen_tmin_decennale (< 2026.11.32)")
   u <- .froid_units(2)
   u$tmax_moyenne <- 30; u$d_tmax <- 0; u$vpd_canicule <- 2; u$rew_min <- 0.3
   u$r7_gel_days <- 0
@@ -336,5 +395,45 @@ test_that("module : en test d'analyse en ligne, le froid n'est jamais lance sans
     session$setInputs(run = 1)
     .froid_attendre(session)
     expect_identical(n_appels, 0L)
+  })
+})
+
+test_that("module : projet change pendant la tache -> resultat NON joint au nouveau projet", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  withr::local_options(nemetonshiny.analyse_inline = TRUE,
+                       nemetonshiny.tmin_inline = TRUE)
+  units <- .froid_units(2)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj, project_id = "p1")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = function(u, cfg = list(), precomputed = NULL, progress = NULL) {
+      u$indice_priorite_regen <- 70
+      list(units = u, years = list(), warnings = character(0))
+    }, .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    regen_tmin_decennale = function(units, ...) .froid_core(units),
+    .package = "nemeton")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(map_layer = "indice_priorite_regen", forest_type = "feuillu",
+      year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
+    session$setInputs(run = 1)
+    # L'analyse (inline) se termine et lance la tache froid ; on change de projet
+    # AVANT que la tache ne se resolve.
+    for (i in 1:40) {
+      later::run_now(0.02); session$flushReact()
+      if (identical(tmin_task$status(), "running")) break
+    }
+    expect_identical(tmin_task$status(), "running")
+    expect_false(is.null(rv$result))
+    as$project_id <- "p2"
+    .froid_attendre(session)
+    expect_identical(tmin_task$status(), "success")   # la tache s'est bien terminee
+    expect_false(is.null(rv$result))                  # rv$result existe encore
+    expect_false("tmin_decennale" %in% names(rv$result))   # mais sans le froid de p1
+    expect_true(isTRUE(rv$tmin_retry))                # a relancer pour le projet courant
   })
 })

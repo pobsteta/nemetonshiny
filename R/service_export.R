@@ -3081,12 +3081,13 @@ generate_action_plan_ug_sheets <- function(project, plan, ug_sf, output_file,
           if (is.na(s$rank)) {
             # Ligne `rank = NA` du coeur : aucune essence ne tient le froid
             # (`froid_hiver`) ou pas de donnee. Jamais de "NA/100".
+            lf <- if ("limiting_factor" %in% names(s)) s$limiting_factor else NA_character_
             return(list(
               rank = "--",
-              label = if (identical(as.character(s$limiting_factor), "froid_hiver"))
+              label = if (identical(as.character(lf), "froid_hiver"))
                 i18n$t("regen_froid_tout_exclu") else "--",
               suitability = "--",
-              limiting = if (!is.na(s$limiting_factor)) lf_label(s$limiting_factor) else "--",
+              limiting = if (!is.na(lf)) lf_label(lf) else "--",
               confidence = "--"))
           }
           list(

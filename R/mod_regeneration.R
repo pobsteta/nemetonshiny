@@ -961,6 +961,12 @@ mod_regeneration_server <- function(id, app_state) {
           # Froid d'hiver deja calcule (cache disque) : relu, jamais recalcule.
           res$units <- .regen_tmin_from_cache(res$units, project_path)
           rv$result <- res$units
+          # Une tache froid a ete ignoree pendant un changement de projet : ce
+          # projet-ci n'a pas sa valeur en cache, on la (re)lance.
+          if (isTRUE(shiny::isolate(rv$tmin_retry))) {
+            rv$tmin_retry <- FALSE
+            .lancer_tmin(res$units)
+          }
           # Restaurer n'est pas analyser : ni avertissements, ni annees detectees.
           rv$warnings <- character(0)
           rv$canopy_source <- regen_canopy_provenance(res$units)
@@ -1396,7 +1402,7 @@ mod_regeneration_server <- function(id, app_state) {
     # n'est pas applique a l'autre.
     .lancer_tmin <- function(units) {
       if (!inherits(units, "sf") || nrow(units) == 0L) return(invisible(FALSE))
-      if (.regen_tmin_complet(units)) return(invisible(FALSE))
+      if (.regen_tmin_essaye(units)) return(invisible(FALSE))
       if (project_is_readonly(app_state)) return(invisible(FALSE))
       # Tests de l'analyse (execution dans le processus) : ne jamais atteindre le
       # reseau E-OBS ; seul `nemetonshiny.tmin_inline` (doublure) l'autorise.
@@ -1416,7 +1422,14 @@ mod_regeneration_server <- function(id, app_state) {
       st <- tmin_task$status()
       if (!st %in% c("success", "error")) return()
       shiny::removeNotification(session$ns("tmin_notif"))
-      if (!.est_projet_courant(app_state, rv$tmin_pid)) return()  # autre projet ouvert
+      if (!.est_projet_courant(app_state, rv$tmin_pid)) {
+        # Autre projet ouvert pendant la tache : son resultat est sur SON disque
+        # (cache), on ne l'injecte pas ici. Le projet courant, lui, ne doit pas
+        # rester prive du froid : a sa restauration la tache est relancee si son
+        # cache n'a pas la valeur.
+        rv$tmin_retry <- TRUE
+        return()
+      }
       res <- if (identical(st, "success")) {
         tryCatch(tmin_task$result(), error = function(e) NULL)
       }
@@ -1456,10 +1469,16 @@ mod_regeneration_server <- function(id, app_state) {
     busy <- shiny::reactive({
       any(vapply(
         list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task, analysis_task,
-             tmin_task, climat_task),
+             climat_task),
         function(t) identical(t$status(), "running"),
         logical(1)))
     })
+    # Le froid d'hiver (tmin_task) ne bloque que le LANCEMENT d'un autre calcul
+    # lourd : il ne grise pas les gestes legers (export terrain, sauvegarde DB).
+    # Fonction simple (pas un reactive) : elle relit `busy` a chaque appel.
+    busy_lourd <- function() {
+      isTRUE(busy()) || identical(tmin_task$status(), "running")
+    }
 
     # Grisage client : task buttons via update_task_button (le binding bslib
     # ignore la cle `disabled`), actionButton classiques via updateActionButton.
@@ -1469,6 +1488,8 @@ mod_regeneration_server <- function(id, app_state) {
     # mais n'est ni un task button ni un moteur : il DOIT figurer ici, sinon
     # l'observer d'autorite ne le re-active jamais et il reste grise a vie.
     ACTION_BTNS <- c("run", "recompute_pai", "persist_db", "export_terrain", "climat_recalculer")
+    # Gestes legers : grises par un calcul en cours, pas par le froid d'hiver.
+    ACTION_BTNS_LEGERS <- c("persist_db", "export_terrain")
     # meteoland absent -> run_frost est rendu desactive : ne jamais le repasser
     # " ready " (sinon l'observer l'activerait alors qu'il ne doit pas l'etre).
     frost_ok <- regen_meteoland_available()
@@ -1482,12 +1503,14 @@ mod_regeneration_server <- function(id, app_state) {
     shiny::observe({
       rv$click_tick                                   # dependance : re-sync post-clic
       locked <- isTRUE(busy()) || isTRUE(rv$running)
+      locked_lourd <- locked || isTRUE(busy_lourd())
       for (btn in TASK_BTNS) {
         if (identical(btn, "run_frost") && !frost_ok) next
-        bslib::update_task_button(btn, state = if (locked) "busy" else "ready")
+        bslib::update_task_button(btn, state = if (locked_lourd) "busy" else "ready")
       }
       for (btn in ACTION_BTNS) {
-        shiny::updateActionButton(session, btn, disabled = locked)
+        shiny::updateActionButton(session, btn,
+          disabled = if (btn %in% ACTION_BTNS_LEGERS) locked else locked_lourd)
       }
     })
 
@@ -1508,7 +1531,7 @@ mod_regeneration_server <- function(id, app_state) {
     # " ready " : le laisser grise est coherent avec le verrou ; l'observer
     # ci-dessus le reactive quand busy() repasse FALSE (fin de la tache active).
     deny_if_busy <- function() {
-      if (!isTRUE(busy())) return(FALSE)
+      if (!isTRUE(busy_lourd())) return(FALSE)
       shiny::showNotification(i18n$t("regen_busy_already"), type = "warning", duration = 5)
       TRUE
     }
@@ -1998,7 +2021,7 @@ mod_regeneration_server <- function(id, app_state) {
       req <- app_state$pipeline_request
       if (!pipeline_targets(req, "regen_climat")) return()
       if (!.regen_pipeline_pret(req)) return()
-      if (isTRUE(busy())) {
+      if (isTRUE(busy_lourd())) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
         return()
       }

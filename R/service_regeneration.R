@@ -1165,8 +1165,24 @@ regen_meteoland_available <- function() {
   file.path(project_path, "cache", "regeneration", "tmin_decennale.csv")
 }
 
+# Cle de validite du cache : version du coeur + parametres EFFECTIVEMENT passes au
+# coeur (defauts de `regen_tmin_decennale()` : prob, annees, source, version
+# E-OBS). Un changement de coeur ou de parametre invalide tout le cache.
+.regen_tmin_params_key <- function() {
+  fm <- tryCatch(formals(nemeton::regen_tmin_decennale), error = function(e) list())
+  par <- vapply(c("prob", "years", "source", "version"), function(n) {
+    v <- tryCatch(eval(fm[[n]]), error = function(e) NULL)
+    paste(deparse(v), collapse = "")
+  }, character(1))
+  paste(c(paste0("nemeton=", tryCatch(as.character(utils::packageVersion("nemeton")),
+                                      error = function(e) "?")),
+          paste0(names(par), "=", par)), collapse = ";")
+}
+
 # `units` enrichi de `tmin_decennale` depuis le cache disque, ou `units` inchange
-# si une UGF n'a pas d'entree valide (ug_id + signature + valeur finie).
+# si une UGF n'a pas d'entree valide (ug_id + signature NON NA + cle de
+# parametres). Une entree a valeur NA est valide : l'UGF a ete "essayee", elle
+# reste sans froid (le coeur la classe sans filtre) sans relance en boucle.
 .regen_tmin_from_cache <- function(units, project_path) {
   if (!inherits(units, "sf") || is.null(project_path) || !"ug_id" %in% names(units)) {
     return(units)
@@ -1174,15 +1190,20 @@ regen_meteoland_available <- function() {
   f <- .regen_tmin_cache_path(project_path)
   if (!file.exists(f)) return(units)
   tab <- tryCatch(utils::read.csv(f, stringsAsFactors = FALSE, colClasses = c(
-    ug_id = "character", sig = "character")), error = function(e) NULL)
-  if (!is.data.frame(tab) || !all(c("ug_id", "sig", .REGEN_TMIN_COLS) %in% names(tab))) {
+    ug_id = "character", sig = "character", cle = "character")),
+    error = function(e) NULL)
+  if (!is.data.frame(tab) ||
+      !all(c("ug_id", "sig", "cle", .REGEN_TMIN_COLS) %in% names(tab))) {
     return(units)
   }
-  key_u <- paste(as.character(units$ug_id), .regen_tmin_signature(units), sep = "|")
-  key_t <- paste(tab$ug_id, tab$sig, sep = "|")
-  idx <- match(key_u, key_t)
-  if (anyNA(idx) || !all(is.finite(tab$tmin_decennale[idx]))) return(units)
-  units$tmin_decennale <- tab$tmin_decennale[idx]
+  sig_u <- .regen_tmin_signature(units)
+  if (anyNA(sig_u)) return(units)                       # position inconnue : invalide
+  tab <- tab[!is.na(tab$sig) & !is.na(tab$cle) & tab$cle == .regen_tmin_params_key(), ,
+             drop = FALSE]
+  idx <- match(paste(as.character(units$ug_id), sig_u, sep = "|"),
+               paste(tab$ug_id, tab$sig, sep = "|"))
+  if (anyNA(idx)) return(units)
+  units$tmin_decennale <- suppressWarnings(as.numeric(tab$tmin_decennale[idx]))
   units$tmin_decennale_n_annees <- as.integer(tab$tmin_decennale_n_annees[idx])
   units
 }
@@ -1226,24 +1247,35 @@ run_regeneration_tmin <- function(units, project_path = NULL) {
       cli::cli_warn("Winter-cold (tmin_decennale) skipped: {conditionMessage(e)}")
       NULL
     })
-  ok <- inherits(out, "sf") && "tmin_decennale" %in% names(out) &&
-    nrow(out) == nrow(units) &&
-    all(is.finite(suppressWarnings(as.numeric(out$tmin_decennale))))
-  if (!ok) {
+  vals <- if (inherits(out, "sf") && "tmin_decennale" %in% names(out) &&
+              nrow(out) == nrow(units)) {
+    suppressWarnings(as.numeric(out$tmin_decennale))
+  }
+  if (is.null(vals) || !any(is.finite(vals))) {
+    # Echec total (E-OBS indisponible...) : transitoire, rien n'est cache.
     if (!is.null(out)) {
       cli::cli_warn("Winter-cold (tmin_decennale) unavailable: ranking unchanged.")
     }
     return(list(units = units, status = "skipped"))
   }
+  # Resultat partiel : les UGF a valeur finie sont gardees et cachees ; les UGF NA
+  # restent sans froid (le coeur les classe sans filtre), notees "essayees".
+  vals[!is.finite(vals)] <- NA_real_
+  if (anyNA(vals)) {
+    cli::cli_warn("Winter-cold (tmin_decennale): {sum(is.na(vals))} unit{?s} without value, ranked without cold filter.")
+  }
   res <- units
-  res$tmin_decennale <- as.numeric(out$tmin_decennale)
-  res$tmin_decennale_n_annees <- as.integer(out$tmin_decennale_n_annees %||% 0L)
+  res$tmin_decennale <- vals
+  nan <- suppressWarnings(as.integer(out$tmin_decennale_n_annees %||% 0L))
+  nan[is.na(vals) | is.na(nan)] <- 0L
+  res$tmin_decennale_n_annees <- nan
 
   if (!is.null(project_path) && "ug_id" %in% names(res)) {
     dir <- dirname(.regen_tmin_cache_path(project_path))
     if (!dir.exists(dir)) dir.create(dir, recursive = TRUE)
     tab <- data.frame(ug_id = as.character(res$ug_id),
                       sig = .regen_tmin_signature(res),
+                      cle = .regen_tmin_params_key(),
                       tmin_decennale = res$tmin_decennale,
                       tmin_decennale_n_annees = res$tmin_decennale_n_annees,
                       stringsAsFactors = FALSE)
@@ -1274,11 +1306,10 @@ run_regeneration_tmin <- function(units, project_path = NULL) {
   if (length(v)) v[1] else NULL
 }
 
-# Vrai si TOUTES les UGF portent deja un `tmin_decennale` fini (rien a calculer).
-.regen_tmin_complet <- function(units) {
-  if (!is.data.frame(units) || !"tmin_decennale" %in% names(units)) return(FALSE)
-  v <- suppressWarnings(as.numeric(units$tmin_decennale))
-  length(v) > 0L && all(is.finite(v))
+# Vrai si le froid a deja ete tente pour ces UGF (colonne presente, meme avec des
+# NA "essayes") : rien a relancer.
+.regen_tmin_essaye <- function(units) {
+  is.data.frame(units) && "tmin_decennale" %in% names(units)
 }
 
 # Nombre d'essences ecartees pour le froid dans l'UGF (`attr(, "exclus_froid")`).
