@@ -2892,6 +2892,7 @@ TRANSLATIONS <- list(
   source_forest_cover = list(fr = "Occupation du sol (OSO Theia/CESBIO)", en = "Land Cover (OSO Theia/CESBIO)"),
   source_protected_areas = list(fr = "Aires prot\u00e9g\u00e9es (INPN)", en = "Protected Areas (INPN)"),
   source_water_network = list(fr = "R\u00e9seau hydrographique (IGN)", en = "Water Network (IGN)"),
+  source_water_points = list(fr = "Sources et r\u00e9surgences (IGN)", en = "Springs (IGN)"),
   source_water_surfaces = list(fr = "Surfaces hydrographiques (IGN)", en = "Water Surfaces (IGN)"),
   source_roads = list(fr = "R\u00e9seau routier (IGN)", en = "Road Network (IGN)"),
   source_buildings = list(fr = "B\u00e2timents (BD TOPO)", en = "Buildings (BD TOPO)"),

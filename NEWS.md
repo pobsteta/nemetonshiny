@@ -1,3 +1,11 @@
+# nemetonshiny 2026.11.2.9003 (2026-11-16)
+
+> **Non publié.** Demande le cœur **nemeton >= 2026.11.34** (`Imports`).
+
+## Nouveautés
+
+- **W1 lit les sources** (mission 035, cœur 2026.11.34) : le calcul télécharge la couche BD TOPO `detail_hydrographique` entière, sans filtre (le cœur retient les natures `Source`, `Source captée` et `Résurgence` « En service »), sur la même emprise élargie de 500 m que le réseau hydrographique, et la passe au cœur sous le nom `water_points`. Une UGF sans cours d'eau prend alors sa distance au plus proche cours d'eau ou source. Couche vide : c'est une mesure, elle est passée. Échec du WFS : la couche est absente, W1 se replie sur le réseau de surface (pas de NA). **Relancez le calcul** des projets existants pour que W1 tienne compte des sources : l'app n'invalide pas les `indicators.parquet` d'elle-même. À Couchey, le Trou de Fiat donne un bonus à 6 UGF (de 3,5 à 40,6) ; les fontaines et le lavoir sont écartés par le cœur.
+
 # nemetonshiny 2026.11.2.9001 (2026-11-16)
 
 > **Non publié.**
