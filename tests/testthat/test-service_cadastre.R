@@ -19,15 +19,23 @@ test_that("get_cadastral_parcels validates INSEE code format", {
 })
 
 test_that("get_cadastral_parcels accepts valid INSEE codes", {
-  skip_if_offline()
-  skip_on_cran()
-
-  # Don't actually call the API, just check format validation passes
-  # Use a small commune for faster test
-  expect_error(
-    nemetonshiny:::get_cadastral_parcels("01001"),
-    regexp = NA  # Should not error on format
+  skip_if_not_installed("sf")
+  # Validation du format seule : les services sont simules, le test ne depend
+  # plus de la disponibilite de l'API Cadastre ni du WFS IGN (echecs en CI).
+  fausse <- sf::st_sf(
+    id = "01001000AA0001", commune = "01001", prefixe = "000",
+    section = "AA", numero = "0001", contenance = 1000,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(5, 46), c(5.001, 46), c(5.001, 46.001), c(5, 46.001), c(5, 46)
+    ))), crs = 4326)
   )
+  testthat::local_mocked_bindings(
+    fetch_api_cadastre = function(code_insee) fausse,
+    .package = "nemetonshiny"
+  )
+  for (code in c("01001", "2A004", "2B033")) {
+    expect_error(nemetonshiny:::get_cadastral_parcels(code), regexp = NA)
+  }
 })
 
 test_that("standardize_parcels creates required columns", {
