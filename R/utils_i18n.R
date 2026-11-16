@@ -1644,6 +1644,10 @@ TRANSLATIONS <- list(
     fr = "Aucune donn\u00e9e trouv\u00e9e pour %s dans cette zone. Les indicateurs concern\u00e9s utiliseront des donn\u00e9es alternatives ou retourneront NA.",
     en = "No data found for %s in this area. The indicators concerned will use alternative data or return NA."
   ),
+  dl_w1_sources_absentes = list(
+    fr = "Sources non t\u00e9l\u00e9charg\u00e9es : W1 est calcul\u00e9 sur le seul r\u00e9seau de surface.",
+    en = "Springs not downloaded: W1 is computed on the surface network only."
+  ),
   dl_lasr_echec = list(fr = "D\u00e9rivation CHM via lasR \u00e9chou\u00e9e : %s", en = "CHM derivation with lasR failed: %s"),
   dl_formspot_echec = list(fr = "CHM Theia FORMSpoT non disponible : %s", en = "Theia FORMSpoT CHM unavailable: %s"),
   dl_opencanopy_echec = list(fr = "CHM Open-Canopy non disponible : %s", en = "Open-Canopy CHM unavailable: %s"),

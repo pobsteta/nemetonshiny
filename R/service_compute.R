@@ -1808,6 +1808,19 @@ download_layers_for_parcels <- function(parcels,
 
       if (!is.null(vector_data)) {
         vectors[[source_name]] <- vector_data
+      } else if (identical(source_name, "water_points")) {
+        # Absente : le coeur replie W1 sur le reseau de surface, W1 n'est pas NA.
+        # Le message commun (retourneront NA) serait faux ici.
+        download_warnings <- c(download_warnings, list(list(
+          type = "info",
+          source = source$name,
+          key = "dl_w1_sources_absentes", args = list(),
+          message = paste0(
+            "Sources non t\u00e9l\u00e9charg\u00e9es : W1 est calcul\u00e9 ",
+            "sur le seul r\u00e9seau de surface."
+          ),
+          time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        )))
       } else {
         translation_key <- source_translation_keys[[source_name]] %||% source_name
         download_warnings <- c(download_warnings, list(list(

@@ -135,3 +135,16 @@ test_that("coeur reel : une Fontaine seule donne 0 (ecartee par le coeur)", {
 test_that("coeur reel : water_points absente, W1 calcule (non NA)", {
   expect_false(is.na(.wp_w1(NULL)))
 })
+
+test_that("echec water_points : ligne info dediee, pas le message commun", {
+  ko <- .wp_telecharger(NULL)
+  cles <- vapply(ko$warnings, function(w) w$key %||% "", character(1))
+  expect_true("dl_w1_sources_absentes" %in% cles)
+  expect_false(any(vapply(ko$warnings, function(w) {
+    identical(w$key, "dl_source_vide") && identical(w$source, "Water Points")
+  }, logical(1))))
+  expect_true("dl_w1_sources_absentes" %in% names(nemetonshiny:::TRANSLATIONS))
+  expect_lte(nchar("dl_w1_sources_absentes"), 30L)
+  w <- ko$warnings[[which(cles == "dl_w1_sources_absentes")]]
+  expect_equal(w$type, "info")
+})
