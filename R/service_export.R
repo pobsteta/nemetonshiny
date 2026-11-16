@@ -3042,17 +3042,12 @@ generate_action_plan_ug_sheets <- function(project, plan, ug_sf, output_file,
   field_key <- c(indice_priorite_regen = "indice", sensibilite = "sensibilite",
     njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
     rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
-    couverture_pct = "couverture")
+    couverture_pct = "couverture", tmin_decennale = "tmin")
   fmt_val <- function(v) {
     if (is.null(v) || length(v) == 0 || is.na(v)) return("--")
     if (is.numeric(v)) format(v, digits = 3, trim = TRUE) else as.character(v)
   }
-  lf_label <- function(lf) {
-    lf <- as.character(lf)
-    key <- switch(lf, secheresse = "regen_limit_secheresse", gel = "regen_limit_gel",
-      chaleur = "regen_limit_chaleur", ombre = "regen_limit_ombre", NA_character_)
-    if (is.na(key)) lf else i18n$t(key)
-  }
+  lf_label <- function(lf) .regen_lf_label(lf, i18n)
   conf_label <- function(cf) {
     cf <- as.character(cf)
     key <- switch(cf, eleve = "regen_conf_eleve", moyen = "regen_conf_moyen",
@@ -3083,6 +3078,18 @@ generate_action_plan_ug_sheets <- function(project, plan, ug_sf, output_file,
         sub <- sub[order(sub$rank), , drop = FALSE]
         species <- lapply(seq_len(nrow(sub)), function(k) {
           s <- sub[k, , drop = FALSE]
+          if (is.na(s$rank)) {
+            # Ligne `rank = NA` du coeur : aucune essence ne tient le froid
+            # (`froid_hiver`) ou pas de donnee. Jamais de "NA/100".
+            lf <- if ("limiting_factor" %in% names(s)) s$limiting_factor else NA_character_
+            return(list(
+              rank = "--",
+              label = if (identical(as.character(lf), "froid_hiver"))
+                i18n$t("regen_froid_tout_exclu") else "--",
+              suitability = "--",
+              limiting = if (!is.na(lf)) lf_label(lf) else "--",
+              confidence = "--"))
+          }
           list(
             rank = as.integer(s$rank),
             label = as.character(s$label),

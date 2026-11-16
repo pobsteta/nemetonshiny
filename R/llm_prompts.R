@@ -290,15 +290,28 @@ build_regen_advice_prompt <- function(ranking_df, station_df, language,
   lines <- vapply(ids, function(id) {
     rk <- ranking_df[as.character(ranking_df$ug_id) == id, , drop = FALSE]
     rk <- rk[order(rk$rank), , drop = FALSE]
-    sp <- paste(sprintf("%d. %s (%d/100, %s)", rk$rank, rk$label,
-      round(suppressWarnings(as.numeric(rk$suitability))),
-      as.character(rk$limiting_factor)), collapse = " ; ")
+    # Ligne `rank = NA` (coeur) : aucune essence ne tient le froid d'hiver, ou
+    # pas de donnee. Jamais de "NA. NA (NA/100)" dans le prompt.
+    sans_rang <- is.na(rk$rank)
+    froid_tout <- any(sans_rang & as.character(rk$limiting_factor) %in% "froid_hiver")
+    rk <- rk[!sans_rang, , drop = FALSE]
+    sp <- if (nrow(rk) > 0L) {
+      paste(sprintf("%d. %s (%d/100, %s)", rk$rank, rk$label,
+        round(suppressWarnings(as.numeric(rk$suitability))),
+        as.character(rk$limiting_factor)), collapse = " ; ")
+    } else if (froid_tout) {
+      if (fr) "aucune essence ne tient le froid d'hiver d\u00e9cennal (froid_hiver)"
+      else "no species withstands the ten-year winter cold (froid_hiver)"
+    } else {
+      if (fr) "pas de classement" else "no ranking"
+    }
     st <- station_df[as.character(station_df$ug_id) == id, , drop = FALSE]
     parts <- c(
       if (!is.null(v <- st_val(st, "njstress", 0))) paste0("jours stress=", v),
       if (!is.null(v <- st_val(st, "rew_min", 2))) paste0("REW min=", v),
       if (!is.null(v <- st_val(st, "d_tmax", 1))) paste0("dTmax=", v),
-      if (!is.null(v <- st_val(st, "r7_gel_days", 0))) paste0("gel tardif=", v, "j"))
+      if (!is.null(v <- st_val(st, "r7_gel_days", 0))) paste0("gel tardif=", v, "j"),
+      if (!is.null(v <- st_val(st, "tmin_decennale", 1))) paste0("hiver d\u00e9cennal=", v, "\u00b0C"))
     cond <- paste(parts, collapse = ", ")
     paste0("- UGF ", id, if (nzchar(cond)) paste0(" [", cond, "]") else "",
       " -> ", sp)
