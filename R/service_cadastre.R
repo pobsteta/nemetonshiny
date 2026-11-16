@@ -158,11 +158,12 @@ fetch_happign_cadastre <- function(code_insee, commune_geometry = NULL) {
   # Transform to Lambert 93 for WFS query
   commune_l93 <- sf::st_transform(commune_geometry, 2154)
 
-  # Query WFS
+  # Query WFS. happign >= 0.3 remplace `spatial_filter` par `predicate`
+  # (objet de requete spatiale) : l'ancien argument faisait echouer le repli.
   parcels <- happign::get_wfs(
     x = commune_l93,
     layer = "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle",
-    spatial_filter = "intersects"
+    predicate = happign::intersects()
   )
 
   # Transform back to WGS84 for consistency
