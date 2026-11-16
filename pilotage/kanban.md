@@ -28,10 +28,14 @@ _(vide)_
 
 ## Planifié
 
-- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 non NA sur Couchey (032) · depuis le cycle 3
+- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 non NA sur Couchey après recalcul (032 ; nemetonmcp a vu NA sur le calcul du 15/11 16 h 01, antérieur au correctif) · depuis le cycle 3
   - Homme : Pascal
   - Mission : retours au journal en lignes « écart »
   - Moyens : app v2026.11.2
+- [suite-regen-froid-hiver] Onglet reGénération : `regen_tmin_decennale()` (minimum décennal E-OBS TN, ~15 min en tâche de fond) pour que `regen_rank_species()` écarte les essences gélives (pins méditerranéens en tête à Couchey) · depuis le cycle 3
+  - Homme : `dev` (sonnet), à confier
+  - Mission : brief `briefs/traites/2026-11-16-traite-2026-11-16-s1-s2-couche-vide-livre.md`
+  - Moyens : attendre le tag cœur 2026.11.32
 - [suite-duree-tests] Pistes de la mission 026 (un seul processus, garde `NEMETON_TESTS_LENTS`) · depuis le cycle 3
   - Homme : à décider par Pascal
   - Mission : rapport 026 au journal
