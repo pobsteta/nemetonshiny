@@ -44,8 +44,10 @@ test_that("water_points : typename detail_hydrographique interroge, aucun filtre
     "water_points", .wp_bbox, file.path(d, "water_points.gpkg")))
   expect_s3_class(res, "sf")
   expect_identical(vu[[1]]$layer, "BDTOPO_V3:detail_hydrographique")
-  # Aucun filtre CQL cote app : le coeur filtre natures et etat.
-  expect_false(any(c("cql_filter", "filter") %in% vu[[1]]$args))
+  # Aucun filtre cote app (ni query, ni predicate) : le coeur filtre natures et
+  # etat. Le mock nomme x et layer ; tout autre argument serait un filtre.
+  expect_length(vu[[1]]$args, 0L)
+  expect_false(any(c("query", "predicate") %in% vu[[1]]$args))
 })
 
 test_that("water_points : emprise elargie de 500 m, comme water_network", {

@@ -6,6 +6,16 @@
 
 - **W1 lit les sources** (mission 035, cœur 2026.11.34) : le calcul télécharge la couche BD TOPO `detail_hydrographique` entière, sans filtre (le cœur retient les natures `Source`, `Source captée` et `Résurgence` « En service »), sur la même emprise élargie de 500 m que le réseau hydrographique, et la passe au cœur sous le nom `water_points`. Une UGF sans cours d'eau prend alors sa distance au plus proche cours d'eau ou source. Couche vide : c'est une mesure, elle est passée. Échec du WFS : la couche est absente, W1 se replie sur le réseau de surface (pas de NA). **Relancez le calcul** des projets existants pour que W1 tienne compte des sources : l'app n'invalide pas les `indicators.parquet` d'elle-même. À Couchey, le Trou de Fiat donne un bonus à 6 UGF (de 3,5 à 40,6) ; les fontaines et le lavoir sont écartés par le cœur.
 
+# nemetonshiny 2026.11.2.9002 (2026-11-16)
+
+> **Non publié.** Mission 034.
+
+## Nouveautés
+
+- **reGénération, le froid d'hiver écarte les essences gélives** (cœur **nemeton >= 2026.11.32**, plancher `Imports` relevé). À Couchey, le classement des essences mettait en tête le Pin d'Alep, le Pin brutia et le Pin des Canaries : rien ne tenait compte du froid. Après l'analyse, une tâche de fond calcule une fois le minimum décennal E-OBS TN de chaque UGF (`nemeton::regen_tmin_decennale()`, environ 15 minutes au premier passage), le pose sur les unités, et `regen_rank_species()` écarte alors les essences qui ne tiennent pas ce froid. Le résultat est mis en cache dans le projet (`cache/regeneration/tmin_decennale.csv`, clé = UGF + position) et relu à la réouverture, sans recalcul. Si E-OBS est indisponible, l'avertissement est affiché et le classement reste celui d'avant.
+- **Fiche parcelle** : la fiche affiche « hiver décennal : −13,2 °C » et le nombre d'essences écartées pour le froid. Une UGF où toutes les essences sont écartées (`rank = NA`, facteur `froid_hiver`) le dit en clair, sans « NA/100 », dans la fiche, l'export PDF et le prompt de l'IA. L'hiver décennal figure aussi dans les conditions de station du PDF et du prompt.
+- Pendant ce calcul, les autres boutons de calcul de l'onglet sont grisés (un seul worker lourd à la fois).
+
 # nemetonshiny 2026.11.2.9001 (2026-11-16)
 
 > **Non publié.**
