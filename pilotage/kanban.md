@@ -28,14 +28,10 @@ _(vide)_
 
 ## Planifié
 
-- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 sur Couchey après recalcul : 6 UGF avec bonus source (035), reGénération : hiver décennal ≈ −13,2 °C et plus de pins méditerranéens en tête (034) (032 ; nemetonmcp a vu NA sur le calcul du 15/11 16 h 01, antérieur au correctif) · depuis le cycle 3
+- [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029) et Couchey sans `skipped_no_essence` hors Feuillus/Conifères/Mixte (036), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 sur Couchey après recalcul : 6 UGF avec bonus source (035), reGénération : hiver décennal ≈ −13,2 °C et plus de pins méditerranéens en tête (034) (032 ; nemetonmcp a vu NA sur le calcul du 15/11 16 h 01, antérieur au correctif) · depuis le cycle 3
   - Homme : Pascal
   - Mission : retours au journal en lignes « écart »
   - Moyens : app v2026.11.2
-- [suite-t4-bdforet] T4 : `resoudre_espar_bdforet(libelle, ser)` à la place de `resoudre_espar()`, retrait de la règle « Sapin, épicéa » → 61 · depuis le cycle 3
-  - Homme : `dev` (sonnet), à confier
-  - Mission : brief `vers-nemetonshiny/2026-11-16-t4-libelles-bdforet-reponse.md`
-  - Moyens : attendre le tag cœur 2026.11.35
 - [suite-duree-tests] Pistes de la mission 026 (un seul processus, garde `NEMETON_TESTS_LENTS`) · depuis le cycle 3
   - Homme : à décider par Pascal
   - Mission : rapport 026 au journal
@@ -51,6 +47,8 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [036-t4-essence-bdforet](missions/036-t4-essence-bdforet.md) · cycle 3 · PR #300 (`253fc266`), `.9004`
+- [035-w1-sources](missions/035-w1-sources.md) · cycle 3 · PR #298 (`3e1adda7`), `.9003`
 - [034-regen-froid-hiver](missions/034-regen-froid-hiver.md) · cycle 3 · PR #297 (`3bf6ae58`), `.9002`
 - [033-groma-incremental-dbh-ruban](missions/033-groma-incremental-dbh-ruban.md) · cycle 3 · PR #292 (`0d9eb553`), `.9008`
 - [032-bdtopo-reponse-vide](missions/032-bdtopo-reponse-vide.md) · cycle 3 · PR #290 (`4d1ccf55`), `.9007`
