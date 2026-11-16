@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9003</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9003" id="nemetonshiny-20261129003-2026-11-16">nemetonshiny 2026.11.2.9003 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129003-2026-11-16"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Demande le cœur <strong>nemeton &gt;= 2026.11.34</strong> (<code>Imports</code>).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-2-9003">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-9003"></a></h3>
+<ul><li>
+<strong>W1 lit les sources</strong> (mission 035, cœur 2026.11.34) : le calcul télécharge la couche BD TOPO <code>detail_hydrographique</code> entière, sans filtre (le cœur retient les natures <code>Source</code>, <code>Source captée</code> et <code>Résurgence</code> « En service »), sur la même emprise élargie de 500 m que le réseau hydrographique, et la passe au cœur sous le nom <code>water_points</code>. Une UGF sans cours d’eau prend alors sa distance au plus proche cours d’eau ou source. Couche vide : c’est une mesure, elle est passée. Échec du WFS : la couche est absente, W1 se replie sur le réseau de surface (pas de NA). <strong>Relancez le calcul</strong> des projets existants pour que W1 tienne compte des sources : l’app n’invalide pas les <code>indicators.parquet</code> d’elle-même. À Couchey, le Trou de Fiat donne un bonus à 6 UGF (de 3,5 à 40,6) ; les fontaines et le lavoir sont écartés par le cœur.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9002" id="nemetonshiny-20261129002-2026-11-16">nemetonshiny 2026.11.2.9002 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129002-2026-11-16"></a></h2>
 <blockquote>
