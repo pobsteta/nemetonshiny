@@ -376,7 +376,7 @@
 #' translated limiting factor and confidence. Returns `NULL` when the ranking is
 #' absent or has no row for that UGF (NA/empty-safe). `ug` is the UGF id string.
 #' @noRd
-.regen_species_ranking_ui <- function(rank_df, ug, i18n) {
+.regen_species_ranking_ui <- function(rank_df, ug, i18n, tmin = NULL) {
   if (is.null(rank_df) || !is.data.frame(rank_df) ||
       !all(c("ug_id", "rank", "label", "suitability") %in% names(rank_df))) {
     return(NULL)
@@ -384,13 +384,7 @@
   sub <- rank_df[as.character(rank_df$ug_id) == as.character(ug), , drop = FALSE]
   if (nrow(sub) == 0L) return(NULL)
   sub <- sub[order(sub$rank), , drop = FALSE]
-  lf_label <- function(lf) {
-    lf <- as.character(lf)
-    key <- switch(lf,
-      secheresse = "regen_limit_secheresse", gel = "regen_limit_gel",
-      chaleur = "regen_limit_chaleur", ombre = "regen_limit_ombre", NA_character_)
-    if (is.na(key)) lf else i18n$t(key)
-  }
+  lf_label <- function(lf) .regen_lf_label(lf, i18n)
   conf_label <- function(cf) {
     cf <- as.character(cf)
     key <- switch(cf,
@@ -398,8 +392,26 @@
       faible = "regen_conf_faible", NA_character_)
     if (is.na(key)) cf else i18n$t(key)
   }
+  # Froid de la station (hiver decennal) + essences ecartees pour le froid.
+  n_froid <- .regen_n_exclus_froid(rank_df, ug)
+  froid <- if (!is.null(tmin) || n_froid > 0L) {
+    htmltools::div(class = "small text-muted mb-1",
+      if (!is.null(tmin)) htmltools::span(class = "me-3",
+        sprintf(i18n$t("regen_tmin_decennale"),
+                .regen_fmt_tmin(tmin, i18n$language))),
+      if (n_froid > 0L) htmltools::span(
+        sprintf(i18n$t("regen_froid_ecartees"), n_froid)))
+  }
+  # Ligne `rank = NA` : aucune essence ne tient le froid (`froid_hiver`) ou pas de
+  # donnee ; jamais de "NA/100".
+  sans_rang <- is.na(sub$rank)
+  tout_froid <- any(sans_rang & as.character(sub$limiting_factor) %in% "froid_hiver")
+  sub <- sub[!sans_rang, , drop = FALSE]
   htmltools::div(class = "mt-1 mb-3",
     htmltools::tags$strong(class = "small", i18n$t("regen_species_ranking_title")),
+    froid,
+    if (tout_froid && nrow(sub) == 0L) htmltools::div(class = "small text-warning",
+      i18n$t("regen_froid_tout_exclu")),
     htmltools::tags$ol(class = "mb-0 ps-3 small",
       lapply(seq_len(nrow(sub)), function(i) {
         s <- sub[i, , drop = FALSE]
@@ -946,6 +958,8 @@ mod_regeneration_server <- function(id, app_state) {
         res <- tryCatch(restore_regeneration(units, precomputed = pc),
                         error = function(e) NULL)
         if (!is.null(res)) {
+          # Froid d'hiver deja calcule (cache disque) : relu, jamais recalcule.
+          res$units <- .regen_tmin_from_cache(res$units, project_path)
           rv$result <- res$units
           # Restaurer n'est pas analyser : ni avertissements, ni annees detectees.
           rv$warnings <- character(0)
@@ -1197,10 +1211,18 @@ mod_regeneration_server <- function(id, app_state) {
       # rv$result, vidant la couche gel des qu'on relancait l'analyse apres R7.
       # `.regen_attach_r7` reattache par ug_id (no-op si aucun R7 anterieur).
       carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
+      # Idem pour le froid d'hiver (tmin_decennale), relu du cache valide par
+      # position d'UGF (un ug_id redessine ne reprend pas l'ancienne valeur).
+      carried <- .regen_tmin_from_cache(carried,
+        tryCatch(app_state$current_project$path, error = function(e) NULL))
       rv$result <- carried
       rv$years <- res$years
       # Publier le resultat pour l'export PDF (section reGeneration de mod_synthesis).
       app_state$regeneration_result <- carried
+      # Froid d'hiver de la station : tache de fond (~15 min au premier passage),
+      # seulement si le cache projet n'a pas deja la valeur. Le classement des
+      # essences reste celui d'aujourd'hui tant qu'elle n'est pas la.
+      .lancer_tmin(carried)
       if (identical(mode, "post_moteur")) {
         # B3.b - CUMULER les diagnostics du moteur avec ceux du re-run.
         rv$warnings <- unique(c(res$warnings %||% character(0), eng_warns))
@@ -1335,6 +1357,82 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
+    # Froid d'hiver de la station (minimum decennal E-OBS TN, coeur >= 2026.11.32) :
+    # ~15 min au premier passage (fichier KNMI mis en cache machine par le coeur),
+    # donc worker future, resultat cache dans le projet (tmin_decennale.csv).
+    tmin_task <- shiny::ExtendedTask$new(
+      function(units, project_path, dev_path, app_opts) {
+        # Tests : execution dans le processus (doublures visibles), derriere une
+        # promesse - meme sequence d'etats que le worker.
+        if (isTRUE(getOption("nemetonshiny.tmin_inline"))) {
+          return(promises::promise(function(resolve, reject) {
+            .later_sur(function() {
+              tryCatch(resolve(run_regeneration_tmin(units, project_path)),
+                       error = function(e) reject(e))
+            })
+          }))
+        }
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          fn <- utils::getFromNamespace("run_regeneration_tmin", "nemetonshiny")
+          fn(units, project_path)
+        }, seed = TRUE)
+      })
+
+    # Lance le calcul du froid d'hiver s'il manque (jamais synchrone). Le projet
+    # lanceur est memorise : un resultat arrive apres un changement de projet
+    # n'est pas applique a l'autre.
+    .lancer_tmin <- function(units) {
+      if (!inherits(units, "sf") || nrow(units) == 0L) return(invisible(FALSE))
+      if (.regen_tmin_complet(units)) return(invisible(FALSE))
+      if (project_is_readonly(app_state)) return(invisible(FALSE))
+      # Tests de l'analyse (execution dans le processus) : ne jamais atteindre le
+      # reseau E-OBS ; seul `nemetonshiny.tmin_inline` (doublure) l'autorise.
+      if (isTRUE(getOption("nemetonshiny.analyse_inline")) &&
+          !isTRUE(getOption("nemetonshiny.tmin_inline"))) return(invisible(FALSE))
+      if (identical(tmin_task$status(), "running")) return(invisible(FALSE))
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      rv$tmin_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
+      rv$tmin_start <- Sys.time()
+      shiny::showNotification(i18n$t("regen_tmin_running"),
+        id = session$ns("tmin_notif"), type = "message", duration = NULL)
+      tmin_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(tmin_task$status(), {
+      st <- tmin_task$status()
+      if (!st %in% c("success", "error")) return()
+      shiny::removeNotification(session$ns("tmin_notif"))
+      if (!.est_projet_courant(app_state, rv$tmin_pid)) return()  # autre projet ouvert
+      res <- if (identical(st, "success")) {
+        tryCatch(tmin_task$result(), error = function(e) NULL)
+      }
+      if (is.null(res) || !res$status %in% c("calculated", "cached")) {
+        # E-OBS indisponible / echec : classement inchange, jamais une erreur.
+        shiny::showNotification(i18n$t("regen_tmin_skipped"), type = "warning", duration = 10)
+        return()
+      }
+      cur <- shiny::isolate(rv$result)
+      if (is.null(cur)) return()
+      updated <- .regen_attach_tmin(cur, res$units)
+      rv$result <- updated
+      app_state$regeneration_result <- updated
+      shiny::showNotification(i18n$t("regen_tmin_done"), type = "message", duration = 6)
+    })
+
     # Contexte climatique (spec 063) : cartes et nuages, au clic seulement.
     climat_task <- .regen_climat_task()
 
@@ -1358,7 +1456,7 @@ mod_regeneration_server <- function(id, app_state) {
     busy <- shiny::reactive({
       any(vapply(
         list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task, analysis_task,
-             climat_task),
+             tmin_task, climat_task),
         function(t) identical(t$status(), "running"),
         logical(1)))
     })
@@ -2828,7 +2926,8 @@ mod_regeneration_server <- function(id, app_state) {
                   rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
                   couverture_pct = "couverture", f)))),
               htmltools::tags$td(format(row[[f]], digits = 3))))),
-          .regen_species_ranking_ui(rk, ug, i18n),
+          .regen_species_ranking_ui(rk, ug, i18n,
+                                    tmin = .regen_tmin_of(rv$result, ug)),
           comment_zone)
       }
       rows <- which(as.character(df$ug_id) %in% sel)
