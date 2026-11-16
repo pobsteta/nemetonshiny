@@ -3832,7 +3832,7 @@ auto-cohérence sampling. Aucun correctif côté app requis.
   [`suppressWarnings()`](https://rdrr.io/r/base/warning.html).
 - **`audit_to_dataframe` ne renvoyait pas un data.frame propre** : la
   classe `json` de
-  [`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html)
+  [`jsonlite::toJSON()`](https://rdrr.io/pkg/jsonlite/man/fromJSON.html)
   se propageait à toute la colonne via
   [`rbind()`](https://rdrr.io/r/base/cbind.html) → dé-classage
   [`as.character()`](https://rdrr.io/r/base/character.html).

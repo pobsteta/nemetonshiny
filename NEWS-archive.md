@@ -12273,7 +12273,7 @@ décrit fidèlement l’étape Sentinel-2 sous-jacente).
 
 `audit_to_dataframe()` sérialise les entrées d’audit complexes (op
 `create` / `delete`, dont la valeur est l’action entière) via
-[`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html).
+[`jsonlite::toJSON()`](https://rdrr.io/pkg/jsonlite/man/fromJSON.html).
 Le résultat porte la classe `json` ; lors du
 [`rbind()`](https://rdrr.io/r/base/cbind.html) des lignes, cette classe
 se propageait à **toute** la colonne `nouveau` / `ancien`, y compris aux

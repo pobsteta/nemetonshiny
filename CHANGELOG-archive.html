@@ -2489,7 +2489,7 @@
 <li>
 <strong><code>.build_progress_writer</code> laissait fuir un avertissement</strong> sur écriture en répertoire absent → <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings()</a></code>.</li>
 <li>
-<strong><code>audit_to_dataframe</code> ne renvoyait pas un data.frame propre</strong> : la classe <code>json</code> de <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code> se propageait à toute la colonne via <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> → dé-classage <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code>.</li>
+<strong><code>audit_to_dataframe</code> ne renvoyait pas un data.frame propre</strong> : la classe <code>json</code> de <code><a href="https://rdrr.io/pkg/jsonlite/man/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code> se propageait à toute la colonne via <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> → dé-classage <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="changed-122">Changed<a class="anchor" aria-label="anchor" href="#changed-122"></a></h3>
