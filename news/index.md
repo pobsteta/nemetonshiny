@@ -1,5 +1,19 @@
 # Changelog
 
+## nemetonshiny 2026.11.2.9006 (2026-11-17)
+
+> **Non publié.** Mission 009.
+
+### Corrections
+
+- **Les deux derniers appels à
+  [`future::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html)
+  de `test-service_compute.R` passent à
+  [`parallelly::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html)**
+  (tests de plafond de `.resolve_parallel_workers()`) : même plafond que
+  le code depuis la mission 005, plus d’avertissement de dépréciation de
+  `future`. Tests seuls, aucun changement dans `R/`.
+
 ## nemetonshiny 2026.11.2.9005 (2026-11-17)
 
 > **Non publié.** Mission 005.
