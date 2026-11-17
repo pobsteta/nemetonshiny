@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9005" id="nemetonshiny-20261129005-2026-11-17">nemetonshiny 2026.11.2.9005 (2026-11-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129005-2026-11-17"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 005.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="corrections-2026-11-2-9005">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9005"></a></h3>
+<ul><li>
+<strong><code>.resolve_parallel_workers()</code> appelle <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores()</a></code></strong> au lieu de <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">future::availableCores()</a></code>, déprécié : l’avertissement émis une fois par session faisait échouer <code>test-service_monitoring_wiring.R</code> (<code>expect_silent</code>) lancé seul. <code>parallelly</code> passe en <code>Imports</code> (déjà installé via <code>future</code>). Les deux tests de plancher de <code>test-service_compute.R</code> simulent désormais <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores</a></code>. Le fichier revient dans le niveau rapide de <code>.claude/test-command</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9004" id="nemetonshiny-20261129004-2026-11-16">nemetonshiny 2026.11.2.9004 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129004-2026-11-16"></a></h2>
 <blockquote>
