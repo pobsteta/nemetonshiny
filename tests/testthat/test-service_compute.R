@@ -5377,8 +5377,8 @@ test_that(".resolve_parallel_workers falls back to the env var", {
 })
 
 test_that(".resolve_parallel_workers defaults to a BOUNDED pool, never availableCores()", {
-  skip_if_not_installed("future")
-  cap <- as.integer(future::availableCores())
+  skip_if_not_installed("parallelly")
+  cap <- as.integer(parallelly::availableCores())
   skip_if(cap < 3L, "machine trop petite pour distinguer le plafond")
   withr::with_options(
     list(nemeton.app_options = list(parallel_workers = NULL)),
@@ -5394,8 +5394,8 @@ test_that(".resolve_parallel_workers defaults to a BOUNDED pool, never available
 })
 
 test_that(".resolve_parallel_workers rejects junk and clamps to availableCores()", {
-  skip_if_not_installed("future")
-  cap <- as.integer(future::availableCores())
+  skip_if_not_installed("parallelly")
+  cap <- as.integer(parallelly::availableCores())
   withr::with_options(
     list(nemeton.app_options = list(parallel_workers = NULL)),
     {
