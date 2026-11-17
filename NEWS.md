@@ -1,3 +1,11 @@
+# nemetonshiny 2026.11.2.9005 (2026-11-17)
+
+> **Non publié.** Mission 005.
+
+## Corrections
+
+- **`.resolve_parallel_workers()` appelle `parallelly::availableCores()`** au lieu de `future::availableCores()`, déprécié : l'avertissement émis une fois par session faisait échouer `test-service_monitoring_wiring.R` (`expect_silent`) lancé seul. `parallelly` passe en `Imports` (déjà installé via `future`). Les deux tests de plancher de `test-service_compute.R` simulent désormais `parallelly::availableCores`. Le fichier revient dans le niveau rapide de `.claude/test-command`.
+
 # nemetonshiny 2026.11.2.9004 (2026-11-16)
 
 > **Non publié.** Mission 036. Demande le cœur **nemeton >= 2026.11.35** (`Imports`).

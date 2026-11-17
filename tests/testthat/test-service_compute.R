@@ -5413,13 +5413,13 @@ test_that(".resolve_parallel_workers rejects junk and clamps to availableCores()
 })
 
 test_that(".resolve_parallel_workers never collapses to a single worker on 2 cores", {
-  skip_if_not_installed("future")
+  skip_if_not_installed("parallelly")
   # availableCores() rapporte 2 sous R CMD check (_R_CHECK_LIMIT_CORES_), en CI
   # et dans les petits conteneurs. Un `min(4, cap - 2)` nu y donnerait 1 seul
   # worker, que warmup_async_workers() occuperait entierement -> boucle Shiny
   # figee. Le plancher de 2 est la pour ca.
   testthat::local_mocked_bindings(availableCores = function(...) 2L,
-                                  .package = "future")
+                                  .package = "parallelly")
   withr::with_options(
     list(nemeton.app_options = list(parallel_workers = NULL)),
     withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = ""), {
@@ -5429,9 +5429,9 @@ test_that(".resolve_parallel_workers never collapses to a single worker on 2 cor
 })
 
 test_that(".resolve_parallel_workers still respects a 1-core host", {
-  skip_if_not_installed("future")
+  skip_if_not_installed("parallelly")
   testthat::local_mocked_bindings(availableCores = function(...) 1L,
-                                  .package = "future")
+                                  .package = "parallelly")
   withr::with_options(
     list(nemeton.app_options = list(parallel_workers = NULL)),
     withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = ""), {

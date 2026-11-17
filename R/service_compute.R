@@ -66,7 +66,7 @@ get_global_cache_dir <- function() {
 #' @return Integer scalar >= 1.
 #' @noRd
 .resolve_parallel_workers <- function() {
-  cap <- tryCatch(as.integer(future::availableCores()), error = function(e) 2L)
+  cap <- tryCatch(as.integer(parallelly::availableCores()), error = function(e) 2L)
   if (length(cap) != 1L || is.na(cap) || cap < 1L) cap <- 2L
 
   raw <- tryCatch(get_app_options()$parallel_workers, error = function(e) NULL)
