@@ -50,7 +50,9 @@ rsconnect/
 .positai
 
 # Claude Code local settings + scheduler state
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/test-command
 .nemeton_shot.png
 .s2.out
 .env
