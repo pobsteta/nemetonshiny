@@ -287,6 +287,29 @@ Divers :
 | `MARCULUS_CONTEXT_ACTION_TYPES` | vecteur de types d'action Marculus |
 | `INDICATOR_FAMILIES` | liste des 12 familles, nommée par code |
 
+## 6 ter. API lue dans nemeton
+
+Sens inverse de la section précédente : nemetonshiny **appelle** le cœur
+`nemeton` (`Imports: nemeton`, installé depuis la dernière release). Il en
+utilise **181 fonctions exportées** et **17 fonctions internes** (non exportées,
+résolues par `getFromNamespace()` dans `R/imports.R` : `msg_*`, `get_language`,
+`set_ndp_attributes`, `resolve_raster_layer`, …), plus les colonnes des deux
+tables `nemeton::indicator_families()` et `nemeton::indicator_labels()` que
+`.build_indicator_families()` lit (`R/app_config.R`).
+
+`tests/testthat/test-contrat_nemeton.R` en est le contrat : il liste ces objets
+avec leurs arguments et échoue si l'un est renommé, retiré, ou perd un argument
+listé. Un argument **ajouté** côté cœur ne casse rien. Le relevé vient d'une
+analyse syntaxique de `R/` (appels `nemeton::`, appels nus permis par
+`import(nemeton)`, `.nemeton_fn()`, `getExportedValue()`, `fun = "…"` passé à
+`run_memory_capped()`, `indicateur_*` de `list_available_indicators()`), pas
+d'une supposition. Changer la table = changer le contrat : mettre cette section
+à jour. Si le cœur doit casser un de ces objets, l'annoncer par un brief à
+nemetonshiny avant la release.
+
+Le test ne saute pas en CI : `nemeton` est dans `Imports`, donc installé par le
+workflow `r.yml`.
+
 ## 7. Politique de compatibilité
 
 - **Majeure** (2.0.0) : rupture d'un élément de ce document (argument de
