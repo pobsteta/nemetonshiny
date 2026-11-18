@@ -11,6 +11,7 @@
 #   - appels nus `f()` permis par `import(nemeton)` du NAMESPACE ;
 #   - enveloppes `.nemeton_fn("f")` de R/imports.R (resolues par
 #     getFromNamespace : objets INTERNES de nemeton, non exportes) ;
+#   - `.memory_ceiling_bytes` (R/service_compute.R, getFromNamespace direct) ;
 #   - noms resolus a l'execution : getExportedValue("nemeton", ...)
 #     (applicabilite, inventaire video, theia, foret ancienne), `fun = "..."`
 #     passe a run_memory_capped, et les indicateur_* de
@@ -206,6 +207,7 @@ EXPORTS <- list(
 
 # Fonctions INTERNES de nemeton (R/imports.R, getFromNamespace).
 INTERNES <- list(
+  .memory_ceiling_bytes        = c("x"),
   as_pure_sf                   = c("x", "raster"),
   clean_indicator_name         = c("names"),
   detect_ndp_from_cache        = c("project_path"),
@@ -260,7 +262,7 @@ test_that("nemeton est installe a la version minimale du contrat", {
 test_that("le contrat est sans doublon", {
   expect_false(anyDuplicated(.contrat_noms()) > 0L)
   expect_length(EXPORTS, 181L)
-  expect_length(INTERNES, 17L)
+  expect_length(INTERNES, 18L)
 })
 
 test_that("chaque fonction exportee utilisee existe avec ses arguments", {

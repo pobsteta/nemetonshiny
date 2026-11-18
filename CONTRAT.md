@@ -291,8 +291,8 @@ Divers :
 
 Sens inverse de la section précédente : nemetonshiny **appelle** le cœur
 `nemeton` (`Imports: nemeton`, installé depuis la dernière release). Il en
-utilise **181 fonctions exportées** et **17 fonctions internes** (non exportées,
-résolues par `getFromNamespace()` dans `R/imports.R` : `msg_*`, `get_language`,
+utilise **181 fonctions exportées** et **18 fonctions internes** (non exportées,
+résolues par `getFromNamespace()` dans `R/imports.R` : `msg_*`, `get_language`, `.memory_ceiling_bytes`,
 `set_ndp_attributes`, `resolve_raster_layer`, …), plus les colonnes des deux
 tables `nemeton::indicator_families()` et `nemeton::indicator_labels()` que
 `.build_indicator_families()` lit (`R/app_config.R`).
