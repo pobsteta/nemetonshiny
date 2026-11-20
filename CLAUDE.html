@@ -221,7 +221,10 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 </tr><tr><td>013</td>
 <td>
 <strong>Suivi sanitaire</strong> : FORDEAD via reticulate (CRSWIR + harmonique, GPL-3) en méthode officielle, hybridé avec rolling-window E6.a, 5 garde-fous applicatifs G1-G5 issus du rapport ONF/DSF 2024</td>
-</tr></tbody></table></div>
+</tr></tbody></table><blockquote>
+<p><strong>Note du 2026-11-19, Pascal : hébergeur Hostinger.</strong> Pour le connecteur distant de l’IA (nemetonmcp), l’hébergeur est un <strong>VPS Hostinger</strong>, et non plus OVHcloud + Scaleway (ligne 003 ci-dessus, conservée telle quelle) ; voir <code>nemetonplateforme/docs/adr/0002-ia-ouverte-a-tous.md</code>.</p>
+</blockquote>
+</div>
 <div class="section level2">
 <h2 id="walking-skeleton--épaississements">Walking Skeleton — Épaississements<a class="anchor" aria-label="anchor" href="#walking-skeleton--%C3%A9paississements"></a></h2>
 <p><code>nemetonshiny</code> n’a <strong>pas</strong> son propre PLAN.md : la séquence des épaississements (E1, E2, …) est partagée avec <code>nemeton</code> dans <strong><code>nemeton/PLAN.md</code></strong> à la racine du repo voisin. Cette source unique de vérité indique pour chaque épaississement quel package porte la livraison (cœur ou app).</p>
