@@ -53,3 +53,5 @@ Arbitrage 3 (`pilotage/brief.md`) ; `nemetonmcp/r/R/distant.R:99-128,405-424` ; 
 ## Question de contrôle
 
 Cette décision tient-elle nos six valeurs, et que sommes-nous prêts à payer pour cela ?
+
+> **Note du 2026-11-19, Pascal : hébergeur Hostinger.** Le « déploiement OVH » du crible F (tableau ci-dessus) est remplacé par un déploiement sur **VPS Hostinger** ; voir `nemetonplateforme/docs/adr/0002-ia-ouverte-a-tous.md`. La ligne d'origine reste telle quelle (ADR acceptée, on ajoute sans réécrire).

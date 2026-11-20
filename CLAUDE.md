@@ -115,6 +115,8 @@ Les ADR vivent dans `platform_nemeton/docs/`. Rappel des décisions structurante
 | 012 | Extensions PG futures : TimescaleDB (monitoring continu) + pgvector (RAG perspectives IA) |
 | 013 | **Suivi sanitaire** : FORDEAD via reticulate (CRSWIR + harmonique, GPL-3) en méthode officielle, hybridé avec rolling-window E6.a, 5 garde-fous applicatifs G1-G5 issus du rapport ONF/DSF 2024 |
 
+> **Note du 2026-11-19, Pascal : hébergeur Hostinger.** Pour le connecteur distant de l'IA (nemetonmcp), l'hébergeur est un **VPS Hostinger**, et non plus OVHcloud + Scaleway (ligne 003 ci-dessus, conservée telle quelle) ; voir `nemetonplateforme/docs/adr/0002-ia-ouverte-a-tous.md`.
+
 ## Walking Skeleton — Épaississements
 
 `nemetonshiny` n'a **pas** son propre PLAN.md : la séquence des épaississements (E1, E2, …) est partagée avec `nemeton` dans **`nemeton/PLAN.md`** à la racine du repo voisin. Cette source unique de vérité indique pour chaque épaississement quel package porte la livraison (cœur ou app).
