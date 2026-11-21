@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9008</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9009</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9009" id="nemetonshiny-20261129009-2026-11-21">nemetonshiny 2026.11.2.9009 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129009-2026-11-21"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 039. Demande <strong>foretaccess &gt;= 2.6.3</strong> (<code>Imports</code>).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="corrections-2026-11-2-9009">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9009"></a></h3>
+<ul><li>
+<strong>L’alerte « tuile IGN perdue » est reconnue par sa classe, plus par son texte.</strong> <code>.capturer_alertes_tuiles()</code> (<code>R/service_desserte.R</code>) intercepte la classe <code>foretaccess_tuiles_perdues</code> que foretaccess 2.6.3 ajoute à l’avertissement : une reformulation du texte ne la fait plus échapper à la capture, et un autre avertissement qui parlerait de « tuile » et de « WFS » n’est plus étouffé à tort. Les autres avertissements passent inchangés.</li>
+<li>
+<strong>L’alerte revient à chaque lancement tant que l’IGN ne rend pas la couche entière.</strong> foretaccess 2.6.3 n’écrit plus de cache pour une couche incomplète (et supprime l’ancien) : le run suivant retente l’IGN au lieu de rejouer sans rien dire une couche amputée. Une fausse alarme est aussi corrigée : si toutes les tuiles échouent mais que l’emprise entière passe, aucune alerte.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-2-9009">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9009"></a></h3>
+<ul><li>
+<strong>Plancher <code>foretaccess (&gt;= 2.6.3)</code></strong> : classe <code>foretaccess_tuiles_perdues</code>, pas de cache pour une couche incomplète, fausse alarme corrigée.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9008" id="nemetonshiny-20261129008-2026-11-21">nemetonshiny 2026.11.2.9008 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129008-2026-11-21"></a></h2>
 <blockquote>
