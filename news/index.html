@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9007</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9008</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9008" id="nemetonshiny-20261129008-2026-11-21">nemetonshiny 2026.11.2.9008 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129008-2026-11-21"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 038. Demande <strong>foretaccess &gt;= 2.6.2</strong> (<code>Imports</code>).</p>
+</blockquote>
+<div class="section level3">
+<h3 id="corrections-2026-11-2-9008">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9008"></a></h3>
+<ul><li>
+<strong>Une tuile IGN perdue n’est plus silencieuse : l’étape réussit, mais son rapport et l’onglet le disent.</strong> foretaccess 2.6.2 retente chaque tuile WFS 3 fois, puis, si elle reste perdue, rend une couche <strong>incomplète</strong> avec un simple avertissement (« N tuile(s) WFS sur M en echec… ») que les <code>tryCatch(error = )</code> de l’app laissaient se perdre. Un helper (<code>.capturer_alertes_tuiles()</code>, <code>R/service_desserte.R</code>) enveloppe les appels <code>acquire_desserte()</code> et <code>acquire_foret()</code> (les seuls à passer par le WFS ; <code>acquire_mnt()</code>, WMS, n’émet rien) dans <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">withCallingHandlers()</a></code>, ne retient et n’étouffe que ces avertissements, et les rend dans le champ <code>avertissements</code> du résultat (capture <strong>dans</strong> le worker, pas de relais <code>future</code>). Sites couverts : <code>run_desserte()</code>, <code>run_desserte_optimiser()</code>, <code>run_desserte_osm()</code>, <code>run_desserte_detection()</code>, <code>.acquire_mnt_desserte()</code> (donc <code>run_accessibility()</code> et <code>run_desserte_lidar_correction()</code>) et le masque forêt d’<code>run_accessibility()</code>. Le message complet (dernière ligne : l’erreur de l’IGN) est calculé une fois (<code>pipeline_alertes_message()</code>, clé <code>tuiles_en_echec</code>) : il va dans le rapport du lancement enchaîné <strong>sur une étape <code>ok</code></strong> (<code>pipeline_answer(…, "ok", message)</code>, le rapport affiche déjà le message de toute étape) et dans une notification <code>warning</code> de l’onglet. <code>pipeline_engine_outcome()</code> expose <code>alerte</code>. L’alerte ne vaut que pour le run qui l’a vue : foretaccess met en cache la couche incomplète et la rejoue ensuite sans rien dire.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-2-9008">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9008"></a></h3>
+<ul><li>
+<strong>Plancher <code>foretaccess (&gt;= 2.6.2)</code></strong> : la 2.6.2 retente chaque requête IGN (WFS et WMS) 3 fois avant de perdre une tuile, et émet l’avertissement ci-dessus.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9007" id="nemetonshiny-20261129007-2026-11-21">nemetonshiny 2026.11.2.9007 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129007-2026-11-21"></a></h2>
 <blockquote>
