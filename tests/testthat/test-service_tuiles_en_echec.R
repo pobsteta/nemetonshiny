@@ -3,13 +3,15 @@
 # capturer cet avertissement dans le service, le rendre dans le resultat
 # (`avertissements`) et l'afficher dans le rapport du pipeline (etape `ok`).
 
-# Avertissement tel que foretaccess::.fetch_wfs() l'emet (cli_warn, 3 lignes).
+# Avertissement tel que foretaccess (>= 2.6.3) l'emet : cli_warn, 3 lignes, classe
+# `foretaccess_tuiles_perdues` (c'est elle que l'app reconnait, plus le texte).
 .avert_tuile <- function(n = 1L, total = 4L,
                          couche = "BDTOPO_V3:troncon_de_route") {
   cli::cli_warn(c(
     "{n} tuile{?s} WFS sur {total} en echec pour {.val {couche}}.",
     "!" = "La couche rendue est incomplete sur une partie de l'emprise.",
-    "x" = "Derniere erreur : Unexpected content type \"text/plain\"."))
+    "x" = "Derniere erreur : Unexpected content type \"text/plain\"."),
+    class = "foretaccess_tuiles_perdues")
 }
 
 .desserte_toy <- function() {
@@ -44,10 +46,32 @@ test_that(".capturer_alertes_tuiles laisse passer un avertissement sans rapport"
     })
   expect_length(out$alertes, 0L)
   expect_identical(fuites, "autre chose, sans rapport")
-  # "tuile" sans "WFS" (ou l'inverse) n'est pas l'alerte de foretaccess.
-  out2 <- suppressWarnings(nemetonshiny:::.capturer_alertes_tuiles({
-    warning("tuile seule"); warning("WFS seul"); 1L }))
-  expect_length(out2$alertes, 0L)
+})
+
+test_that(".capturer_alertes_tuiles : meme texte SANS la classe n'est pas capture", {
+  fuites <- character(0)
+  out <- withCallingHandlers(
+    nemetonshiny:::.capturer_alertes_tuiles({
+      warning("2 tuiles WFS sur 4 en echec pour X."); 1L }),
+    warning = function(w) {
+      fuites <<- c(fuites, conditionMessage(w)); invokeRestart("muffleWarning")
+    })
+  expect_length(out$alertes, 0L)
+  expect_identical(fuites, "2 tuiles WFS sur 4 en echec pour X.")
+})
+
+test_that(".capturer_alertes_tuiles : classee avec un autre texte, capturee et etouffee", {
+  fuites <- character(0)
+  out <- withCallingHandlers(
+    nemetonshiny:::.capturer_alertes_tuiles({
+      warning(warningCondition("texte reformule par foretaccess",
+                               class = "foretaccess_tuiles_perdues"))
+      1L }),
+    warning = function(w) {
+      fuites <<- c(fuites, conditionMessage(w)); invokeRestart("muffleWarning")
+    })
+  expect_identical(out$alertes, "texte reformule par foretaccess")
+  expect_length(fuites, 0L)
 })
 
 test_that(".capturer_alertes_tuiles : un echec dans un tryCatch interne rend quand meme la valeur", {
