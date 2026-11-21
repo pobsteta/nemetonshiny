@@ -1147,14 +1147,13 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
-    shiny::observe({
+    shiny::observeEvent(integ_task$status(), {
       st <- integ_task$status()
       req <- shiny::isolate(integ_pipeline_req())
       if (is.null(req) || !st %in% c("success", "error")) return()
-      pipeline_answer(app_state, req,
-                      if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL
-                      else pipeline_task_error(integ_task, i18n$t("error")))
+      # Une tache reussie peut rendre `status = "error"` : on lit le resultat.
+      issue <- pipeline_task_outcome(integ_task, i18n, "desserte_integrite_failed")
+      pipeline_answer(app_state, req, issue$status, issue$message)
       integ_pipeline_req(NULL)
     })
 

@@ -649,3 +649,65 @@ test_that("pipeline_engine_outcome : resultat non liste ou sans motif = motif de
   expect_identical(o$status, "error")
   expect_identical(o$message, i18n$t("desserte_engine_failed"))
 })
+
+# --- mission 041 : une tache reussie qui rend `status = "error"` ------------
+
+.fausse_tache <- function(st, res = NULL, leve = NULL) {
+  list(status = function() st,
+       result = function() if (!is.null(leve)) stop(leve) else res)
+}
+
+test_that("pipeline_task_outcome : succes sans alerte = ok sans message", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  o <- nemetonshiny:::pipeline_task_outcome(
+    .fausse_tache("success", list(status = "success")), i18n, "acc_correct_failed")
+  expect_identical(o$status, "ok")
+  expect_null(o$message)
+})
+
+test_that("pipeline_task_outcome : succes avec alerte de tuiles = ok + alerte", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  al <- list(list(couche = "mnt", n_perdues = 2L, n_total = 10L))
+  res <- list(status = "success", avertissements = al)
+  ref <- nemetonshiny:::pipeline_alertes_message(al, i18n)
+  skip_if(is.null(ref), "forme d'alerte inconnue")
+  o <- nemetonshiny:::pipeline_task_outcome(
+    .fausse_tache("success", res), i18n, "acc_correct_failed")
+  expect_identical(o$status, "ok")
+  expect_identical(o$message, ref)
+})
+
+test_that("pipeline_task_outcome : succes rendant status error = erreur + motif + detail", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  res <- list(status = "error", reason = "acc_correct_invariant_broken",
+              detail = "5 troncons en entree, 3 en sortie")
+  o <- nemetonshiny:::pipeline_task_outcome(
+    .fausse_tache("success", res), i18n, "acc_correct_failed")
+  expect_identical(o$status, "error")
+  expect_match(o$message, i18n$t("acc_correct_invariant_broken"), fixed = TRUE)
+  expect_match(o$message, "5 troncons en entree", fixed = TRUE)
+  expect_false(grepl("acc_correct_invariant_broken", o$message, fixed = TRUE))
+})
+
+test_that("pipeline_task_outcome : tache en erreur = erreur avec le message du worker", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  o <- nemetonshiny:::pipeline_task_outcome(
+    .fausse_tache("error", leve = "boom du worker"), i18n, "acc_correct_failed")
+  expect_identical(o$status, "error")
+  expect_match(o$message, "boom du worker", fixed = TRUE)
+})
+
+test_that("les motifs `reason` des services desserte/accessibilite ont une traduction", {
+  dir_r <- testthat::test_path("..", "..", "R")
+  fich <- file.path(dir_r, c("service_desserte.R", "service_accessibility.R"))
+  skip_if(!all(file.exists(fich)), "sources R absentes (covr / paquet installe)")
+  code <- unlist(lapply(fich, readLines, warn = FALSE))
+  m <- regmatches(code, gregexpr("reason = \"([a-z0-9_]+)\"", code, perl = TRUE))
+  cles <- unique(sub("\"$", "", sub("^reason = \"", "", unlist(m))))
+  expect_true("acc_correct_invariant_broken" %in% cles)
+  expect_identical(setdiff(cles, names(nemetonshiny:::TRANSLATIONS)), character(0))
+  for (k in c("acc_correct_invariant_broken", "acc_profil_failed")) {
+    expect_true(all(c("fr", "en") %in% names(nemetonshiny:::TRANSLATIONS[[k]])))
+    expect_lte(nchar(k), 30L)
+  }
+})
