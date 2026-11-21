@@ -888,8 +888,12 @@ mod_accessibility_server <- function(id, app_state) {
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL
-                      else pipeline_task_error(correct_task, i18n$t("error")))
+                      if (identical(st, "success")) {
+                        # Tuiles IGN perdues pendant la correction : etape ok, alerte dite.
+                        pipeline_alertes_message(
+                          tryCatch(correct_task$result()$avertissements,
+                                   error = function(e) NULL), i18n)
+                      } else pipeline_task_error(correct_task, i18n$t("error")))
       correction_pipeline_req(NULL)
     })
 
@@ -919,6 +923,10 @@ mod_accessibility_server <- function(id, app_state) {
       }
       rv_correct(res)
       if (identical(res$status, "success")) {
+        alerte <- pipeline_alertes_message(res$avertissements, i18n)
+        if (!is.null(alerte)) {
+          shiny::showNotification(alerte, type = "warning", duration = NULL)
+        }
         correct_refresh(correct_refresh() + 1L)   # la case " utiliser " apparait
         shiny::showNotification(
           sprintf(i18n$t("acc_correct_done_fmt"),
@@ -1145,6 +1153,11 @@ mod_accessibility_server <- function(id, app_state) {
       if (!ok_moteur) {
         shiny::showNotification(issue$message, type = "error", duration = NULL)
         return()
+      }
+      # Etape REUSSIE mais couche IGN incomplete (tuiles perdues) : le rapport
+      # du pipeline porte deja le message ; l'onglet le dit aussi.
+      if (isTRUE(issue$alerte)) {
+        shiny::showNotification(issue$message, type = "warning", duration = NULL)
       }
       # Recharger depuis le cache disque : le selecteur de couche liste ainsi
       # TOUS les rasters deja calcules du projet (tous moteurs + classes de

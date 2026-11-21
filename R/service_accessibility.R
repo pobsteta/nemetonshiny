@@ -388,9 +388,10 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(list(status = "error", reason = "accessibility_mnt_failed"))
 
-  desserte <- tryCatch(
+  cap <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = epsg, cache_dir = acq_dir),
-    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err")))
+  desserte <- cap$valeur
   if (inherits(desserte, "acc_err")) {
     return(list(status = "error", reason = "accessibility_desserte_failed",
                 detail = desserte$msg))
@@ -399,7 +400,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
     return(list(status = "error", reason = "accessibility_desserte_empty"))
   }
   list(status = "ok", aoi = aoi, aoi_ext = aoi_ext, epsg = epsg,
-       acq_dir = acq_dir, mnt = mnt, desserte = desserte)
+       acq_dir = acq_dir, mnt = mnt, desserte = desserte,
+       avertissements = cap$alertes)
 }
 
 #' Map an OSM `highway` value onto the BD TOPO `classe` vocabulary
@@ -665,7 +667,8 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
 
   list(status = "success", corrected_path = out, n_troncons = nrow(dq),
        n_bdtopo = cplt$n_bdtopo, n_osm_ajoutes = cplt$n_ajoutes,
-       osm_statut = cplt$statut)
+       osm_statut = cplt$statut,
+       avertissements = acq$avertissements)
 }
 
 #' Run the accessibility engines for a project (worker-side)
@@ -761,9 +764,11 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
   # couvre toute la foret accessible dans le tampon (y compris hors parcelles du
   # projet) et ne peint pas en " foret " des zones non boisees. Repli sur la
   # geometrie projet si la BD Foret est indisponible ou vide sur l'emprise.
-  foret_bd <- tryCatch(
+  cap_f <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_foret(aoi_ext, crs = epsg, cache_dir = acq_dir),
-    error = function(e) NULL)
+    error = function(e) NULL))
+  foret_bd <- cap_f$valeur
+  alertes_tuiles <- unique(c(acq$avertissements, cap_f$alertes))
   foret_mask <- if (inherits(foret_bd, "sf") && nrow(foret_bd) > 0L) foret_bd else aoi
 
   # 4. Pretraitement commun (pente, exposition, masques, rasterisation).
@@ -885,6 +890,8 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
 
   list(
     status = "success",
+    # Alertes " tuile(s) WFS en echec " de CE run (non persistees).
+    avertissements = alertes_tuiles,
     engines = engines,
     recaps = recaps,
     raster_paths = raster_paths,

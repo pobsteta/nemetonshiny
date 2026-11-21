@@ -403,6 +403,31 @@ pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
   paste0(msg, " \u2014 ", d)
 }
 
+#' Message d'alerte d'une etape REUSSIE dont une couche IGN est incomplete
+#'
+#' @description
+#' foretaccess (>= 2.6.2) perd une tuile WFS apres 3 tentatives sans faire
+#' echouer l'etape : le reseau rendu est incomplet sur une partie de l'emprise.
+#' Le resultat porte ces alertes (`avertissements`, cf.
+#' `.capturer_alertes_tuiles()`) ; ce helper en fait UN message pour le rapport
+#' du pipeline ET la notification `warning` : intitule traduit + messages
+#' complets (sur une ligne, sans ANSI ; la derniere ligne porte l'erreur de l'IGN).
+#'
+#' @param alertes Character vector (peut etre NULL / vide).
+#' @param i18n Objet i18n (`$t()`).
+#' @param max Integer. Longueur maximale du detail.
+#' @return Character scalar, ou NULL s'il n'y a aucune alerte.
+#' @noRd
+pipeline_alertes_message <- function(alertes, i18n, max = 600L) {
+  # Les codes ANSI sont retires UNE fois, par `pipeline_error_message()`.
+  a <- trimws(as.character(unlist(alertes)))
+  a <- a[!is.na(a) & nzchar(a)]
+  if (length(a) == 0L) return(NULL)
+  a <- gsub("\\s*\n\\s*", " ", a)
+  pipeline_error_message(i18n$t("tuiles_en_echec"),
+                         paste(unique(a), collapse = " | "), max = max)
+}
+
 #' Issue d'une etape moteur (desserte, accessibilite) pour le pipeline
 #'
 #' @description
@@ -416,18 +441,24 @@ pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
 #' @param defaut Character. Motif de repli si `res$reason` est absent.
 #' @param step_id Character. Etape qui repond.
 #' @param run_id Character or NULL. Run courant.
-#' @return Liste `ok`, `status`, `message` (NULL si ok), `ko_run`.
+#' @return Liste `ok`, `status`, `message`, `ko_run`, `alerte`. `message` est
+#'   NULL si ok sans alerte ; sur une etape reussie dont `res$avertissements`
+#'   porte des tuiles perdues, le statut reste `"ok"`, `message` porte l'alerte
+#'   et `alerte` vaut TRUE.
 #' @noRd
 pipeline_engine_outcome <- function(res, i18n, defaut, step_id = NULL,
                                     run_id = NULL) {
   ok <- is.list(res) && identical(res$status, "success")
   if (ok) {
-    return(list(ok = TRUE, status = "ok", message = NULL, ko_run = NULL))
+    alerte <- pipeline_alertes_message(
+      tryCatch(res$avertissements, error = function(e) NULL), i18n)
+    return(list(ok = TRUE, status = "ok", message = alerte, ko_run = NULL,
+                alerte = !is.null(alerte)))
   }
   reason <- tryCatch(res$reason, error = function(e) NULL) %||% defaut
   msg <- pipeline_error_message(
     i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
-  list(ok = FALSE, status = "error", message = msg,
+  list(ok = FALSE, status = "error", message = msg, alerte = FALSE,
        ko_run = if (identical(step_id, "desserte")) run_id else NULL)
 }
 
