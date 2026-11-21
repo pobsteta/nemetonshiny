@@ -6,6 +6,10 @@
 
 - **Lancement enchaîné : le rapport des étapes desserte, typage de la desserte et accessibilité montre la vraie erreur**, plus seulement « Vérifiez la connexion réseau ». Un helper commun (`pipeline_error_message()`, `R/service_pipeline.R`) ajoute au message traduit le `detail` du moteur (sans codes ANSI, tronqué à 300 caractères) ; le même message sert à la notification de l'onglet et à `pipeline_answer()`. Les clés `desserte_desserte_failed` et `accessibility_desserte_failed` n'accusent plus le réseau d'office. Quand l'étape `desserte` échoue dans un run, `desserte_typage` du même run est marquée « ignorée » (clé `pipeline_skip_desserte_ko`) au lieu d'un échec en cascade ; `desserte_integrite` est ignorée de la même façon (sans lancer la tâche). La décision de fin de tâche des moteurs (statut, message, run à mémoriser) est un helper pur, `pipeline_engine_outcome()`, testé directement. Les étapes de correction d'accessibilité et de contrôle d'intégrité de la desserte remontent aussi l'erreur réelle de la tâche (`pipeline_task_error()`) au lieu d'un « Erreur » nu.
 
+## Dépendances
+
+- **Plancher `foretaccess (>= 2.6.1)`** : la 2.6.1 corrige `.rbind_features`, qui plantait (`character string is not in a standard unambiguous format`) dès que l'emprise de la desserte dépassait une tuile WFS de 2 km (projet « Parc de la colombière »).
+
 # nemetonshiny 2026.11.2.9006 (2026-11-17)
 
 > **Non publié.** Mission 009.
