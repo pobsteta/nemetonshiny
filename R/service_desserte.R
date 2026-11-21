@@ -105,6 +105,35 @@ DESSERTE_LARGEUR_DEFAULT_M <- 4
 #' @noRd
 DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
 
+#' Capture the "tiles lost" warnings of the IGN WFS acquisitions
+#'
+#' `foretaccess::acquire_desserte()` / `acquire_foret()` (>= 2.6.2) retry each
+#' WFS tile 3 times and, when one is still lost, emit a `warning` ("N tuile(s)
+#' WFS sur M en echec ..."). The layer is then INCOMPLETE but the call
+#' succeeds : without this wrapper the warning is lost (the calls sit in
+#' `tryCatch(error = )`, and a `future` worker drops it). Only these warnings
+#' are muffled and returned ; any other warning passes through untouched.
+#' `acquire_mnt()` (WMS) retries too but emits nothing, so it is not wrapped.
+#'
+#' @param expr Expression to evaluate (typically a `tryCatch()` around the
+#'   `acquire_*` call, so that an error still yields a value).
+#' @return `list(valeur, alertes)` : the value of `expr` and the character
+#'   vector of captured messages (ANSI-free, unique, possibly empty).
+#' @noRd
+.capturer_alertes_tuiles <- function(expr) {
+  alertes <- character(0)
+  valeur <- withCallingHandlers(
+    expr,
+    warning = function(w) {
+      m <- .strip_ansi(conditionMessage(w))
+      if (grepl("tuile", m, fixed = TRUE) && grepl("WFS", m, fixed = TRUE)) {
+        alertes <<- c(alertes, m)
+        invokeRestart("muffleWarning")
+      }
+    })
+  list(valeur = valeur, alertes = unique(alertes))
+}
+
 #' Directory holding the desserte artefacts of a project
 #' @noRd
 .desserte_cache_dir <- function(project_path) {
@@ -386,12 +415,15 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
   } else parcelles
   mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
-  desserte <- tryCatch(
+  cap_d <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
-    error = function(e) NULL)
-  foret <- tryCatch(
+    error = function(e) NULL))
+  desserte <- cap_d$valeur
+  cap_f <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_foret(aoi_ext, crs = 2154, cache_dir = acq_dir),
-    error = function(e) NULL)
+    error = function(e) NULL))
+  foret <- cap_f$valeur
+  alertes_tuiles <- unique(c(cap_d$alertes, cap_f$alertes))
   if (is.null(mnt) || is.null(desserte)) {
     return(list(status = "error", reason = "desserte_optim_no_entrees"))
   }
@@ -423,7 +455,7 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
     skidding_m = skidding_m)
   tryCatch(saveRDS(out, file.path(cache_dir, "optimisation.rds")),
            error = function(e) invisible(NULL))
-  c(list(status = "success"), out)
+  c(list(status = "success"), out, list(avertissements = alertes_tuiles))
 }
 
 #' Read the persisted optimiser result
@@ -466,9 +498,11 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   if (!inherits(osm, "sf") || nrow(osm) == 0L) {
     return(list(status = "error", reason = "desserte_osm_empty"))
   }
-  bdtopo <- tryCatch(foretaccess::acquire_desserte(aoi_ext, crs = 2154,
-                                                   cache_dir = acq_dir),
-                     error = function(e) NULL)
+  cap <- .capturer_alertes_tuiles(tryCatch(
+    foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
+    error = function(e) NULL))
+  bdtopo <- cap$valeur
+  alertes_tuiles <- cap$alertes
   if (is.null(bdtopo)) return(list(status = "error", reason = "desserte_osm_failed"))
 
   cmp <- tryCatch(foretaccess::comparer_desserte_osm(bdtopo, osm),
@@ -513,7 +547,7 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
                 error = function(e) NA_character_))
   tryCatch(saveRDS(out, file.path(cache_dir, "osm.rds")),
            error = function(e) invisible(NULL))
-  c(list(status = "success"), out)
+  c(list(status = "success"), out, list(avertissements = alertes_tuiles))
 }
 
 #' Read the persisted OSM comparison
@@ -620,9 +654,11 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
   }
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
-  reference <- tryCatch(
+  cap <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
-    error = function(e) NULL)
+    error = function(e) NULL))
+  reference <- cap$valeur
+  alertes_tuiles <- cap$alertes
   if (is.null(mnt)) return(list(status = "error", reason = "desserte_detect_no_entrees"))
 
   # Nuage LiDAR du projet, s'il existe ET si l'utilisateur le demande. Sans lui
@@ -699,7 +735,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
               gpkg_path = if (file.exists(gp)) gp else NULL)
   tryCatch(saveRDS(out, file.path(cache_dir, "detection.rds")),
            error = function(e) invisible(NULL))
-  c(list(status = "success"), out)
+  c(list(status = "success"), out, list(avertissements = alertes_tuiles))
 }
 
 #' Read the persisted detection result
@@ -1154,9 +1190,11 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
 
   .dess_write_phase(cache_dir, "desserte")
   # 2. Desserte EXISTANTE (reseau a raccorder) via IGN BD TOPO V3.
-  desserte <- tryCatch(
+  cap <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = epsg, cache_dir = acq_dir),
-    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err")))
+  desserte <- cap$valeur
+  alertes_tuiles <- cap$alertes
   if (inherits(desserte, "acc_err")) {
     return(list(status = "error", reason = "desserte_desserte_failed", detail = desserte$msg))
   }
@@ -1166,9 +1204,11 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
 
   .dess_write_phase(cache_dir, "foret")
   # 3. Masque foret (IGN BD Foret V2 inter emprise), repli geometrie projet.
-  foret_bd <- tryCatch(
+  cap <- .capturer_alertes_tuiles(tryCatch(
     foretaccess::acquire_foret(aoi_ext, crs = epsg, cache_dir = acq_dir),
-    error = function(e) NULL)
+    error = function(e) NULL))
+  foret_bd <- cap$valeur
+  alertes_tuiles <- unique(c(alertes_tuiles, cap$alertes))
   foret_mask <- if (inherits(foret_bd, "sf") && nrow(foret_bd) > 0L) foret_bd else parcelles
 
   .dess_write_phase(cache_dir, "preprocess")
@@ -1302,7 +1342,10 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
     n_desservies = n_desservies,
     n_parcelles = n_parcelles,
     n_routes = n_routes,
-    skidding_m = skidding_m)
+    skidding_m = skidding_m,
+    # Alertes " tuile(s) WFS en echec " (couche IGN incomplete) : propres a CE
+    # run, non persistees - le cache foretaccess rejoue la couche sans les redire.
+    avertissements = alertes_tuiles)
 }
 
 #' Resolve the standing-volume (P1) column on a project's units
