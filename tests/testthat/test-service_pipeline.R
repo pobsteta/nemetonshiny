@@ -705,8 +705,12 @@ test_that("les motifs `reason` des services desserte/accessibilite ont une tradu
   m <- regmatches(code, gregexpr("reason = \"([a-z0-9_]+)\"", code, perl = TRUE))
   cles <- unique(sub("\"$", "", sub("^reason = \"", "", unlist(m))))
   expect_true("acc_correct_invariant_broken" %in% cles)
-  expect_identical(setdiff(cles, names(nemetonshiny:::TRANSLATIONS)), character(0))
-  for (k in c("acc_correct_invariant_broken", "acc_profil_failed")) {
+  # Convention de mod_accessibility.R (~l.1835) : les motifs `acc_profil_*` se
+  # lisent via la cle `profil_*` (prefixe `acc_` retire).
+  tr <- names(nemetonshiny:::TRANSLATIONS)
+  sans <- cles[!(cles %in% tr | sub("^acc_", "", cles) %in% tr)]
+  expect_identical(sans, character(0))
+  for (k in c("acc_correct_invariant_broken", "profil_failed")) {
     expect_true(all(c("fr", "en") %in% names(nemetonshiny:::TRANSLATIONS[[k]])))
     expect_lte(nchar(k), 30L)
   }
