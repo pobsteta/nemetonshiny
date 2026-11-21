@@ -28,6 +28,10 @@ _(vide)_
 
 ## Planifié
 
+- [suite-cvat-inventaire-video] Passer `cvat_path` à `creer_projet_inventaire_video()` (brief du 2026-11-20) · depuis le cycle 3
+  - Homme : `dev`, à la sortie du tag nemeton qui porte `cvat_path` (absent de 2026.11.36)
+  - Mission : brief `~/dev/briefs/vers-nemetonshiny/2026-11-20-cvat-path-inventaire-video.md`
+  - Moyens : attend le cœur
 - [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029) et Couchey sans `skipped_no_essence` hors Feuillus/Conifères/Mixte (036), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 sur Couchey après recalcul : 6 UGF avec bonus source (035), reGénération : hiver décennal ≈ −13,2 °C et plus de pins méditerranéens en tête (034) (032 ; nemetonmcp a vu NA sur le calcul du 15/11 16 h 01, antérieur au correctif) · depuis le cycle 3
   - Homme : Pascal
   - Mission : retours au journal en lignes « écart »
@@ -47,6 +51,10 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [037-desserte-detail-erreur](missions/037-desserte-detail-erreur.md) · depuis le cycle 3
+  - Homme : `dev` (sonnet)
+  - Mission : PR #308 fusionnée (b518ee1c), `.9007`, plancher foretaccess 2.6.1
+  - Moyens : —
 - [036-t4-essence-bdforet](missions/036-t4-essence-bdforet.md) · cycle 3 · PR #300 (`253fc266`), `.9004`
 - [035-w1-sources](missions/035-w1-sources.md) · cycle 3 · PR #298 (`3e1adda7`), `.9003`
 - [034-regen-froid-hiver](missions/034-regen-froid-hiver.md) · cycle 3 · PR #297 (`3bf6ae58`), `.9002`
