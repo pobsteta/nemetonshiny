@@ -263,3 +263,52 @@ test_that("la provenance du typage s'affiche : badge, volume IFN, essences", {
   expect_match(ui(list(volume_source = c(mesure = 1L, ifn_ser = 2L))), "2 parcelles sur 3")
   expect_match(ui(list(n_essences_non_resolues = 4L)), "4 parcelles")
 })
+
+
+# ---- Mission 040 : « rien a typer » AVANT le volume ---------------------------
+
+.typage_ecrire_reseau_vide <- function(cache_dir) {
+  skip_if_not_installed("terra")
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  r <- terra::rast(nrows = 2, ncols = 2, vals = 1)
+  obj <- structure(list(reseau = terra::wrap(r), lignes = NULL),
+                   class = "foretaccess_reseau")
+  saveRDS(obj, file.path(cache_dir, "reseau_obj_glouton.rds"))
+}
+
+test_that("lignes vide et sans P1 : empty / rien_a_typer, sans preparation IFN", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("nemeton")
+  skip_if_not_installed("sf")
+  cache <- withr::local_tempdir()
+  .typage_ecrire_reseau_vide(cache)
+  prep_appelee <- FALSE
+  testthat::local_mocked_bindings(
+    .typage_preparer_ifn = function(...) { prep_appelee <<- TRUE; stop("ne doit pas etre appelee") },
+    .package = "nemetonshiny")
+  res <- nemetonshiny:::run_desserte_typage(
+    cache, .typage_parcelles(with_p1 = FALSE), 0.5, 30)
+  expect_equal(res$status, "empty")
+  expect_equal(res$reason, "desserte_typage_rien_a_typer")
+  expect_false(prep_appelee)
+})
+
+test_that("lignes non vide et sans P1 : no_volume inchange, apres la preparation IFN", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("nemeton")
+  skip_if_not_installed("sf")
+  cache <- withr::local_tempdir()
+  .typage_write_reseau_obj(cache)
+  prep_appelee <- FALSE
+  testthat::local_mocked_bindings(
+    .typage_preparer_ifn = function(parcelles, project_path) {
+      prep_appelee <<- TRUE
+      list(parcelles = parcelles, has_species = FALSE, ser = NA, n_non_resolues = 0L)
+    },
+    .package = "nemetonshiny")
+  res <- nemetonshiny:::run_desserte_typage(
+    cache, .typage_parcelles(with_p1 = FALSE), 0.5, 30)
+  expect_equal(res$status, "error")
+  expect_equal(res$reason, "desserte_typage_no_volume")
+  expect_true(prep_appelee)
+})

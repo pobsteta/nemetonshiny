@@ -1482,9 +1482,7 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(i18n$t(res$reason %||% "desserte_typage_rien_a_typer"),
                                 type = "message", duration = 8)
       } else if (!identical(res$status, "success")) {
-        msg <- pipeline_error_message(
-          i18n$t(res$reason %||% "desserte_typage_failed"),
-          tryCatch(res$detail, error = function(e) NULL))
+        msg <- pipeline_reason_message(res, i18n, "desserte_typage_failed")
         shiny::showNotification(msg, type = "error", duration = NULL)
       }
       st <- rv_typage()$status
@@ -1516,9 +1514,7 @@ mod_desserte_server <- function(id, app_state) {
         if (isTRUE(ok)) NULL
         else if (is.na(ok)) i18n$t("desserte_typage_rien_a_typer")
         else if (is.null(ok)) i18n$t("pipeline_skip_not_started")
-        else pipeline_error_message(
-          i18n$t("desserte_typage_failed"),
-          tryCatch(rv_typage()$detail, error = function(e) NULL)))
+        else pipeline_reason_message(rv_typage(), i18n, "desserte_typage_failed"))
     })
 
     # Le typage etait le SEUL des cinq a n'avoir aucun repli sur le cache : on
