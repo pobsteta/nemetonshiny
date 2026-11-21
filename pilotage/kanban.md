@@ -51,6 +51,10 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [038-foretaccess-tuiles-en-echec](missions/038-foretaccess-tuiles-en-echec.md) · depuis le cycle 3
+  - Homme : `dev` (sonnet)
+  - Mission : PR #309 fusionnée (441d03bb), `.9008`, plancher foretaccess 2.6.2
+  - Moyens : —
 - [037-desserte-detail-erreur](missions/037-desserte-detail-erreur.md) · depuis le cycle 3
   - Homme : `dev` (sonnet)
   - Mission : PR #308 fusionnée (b518ee1c), `.9007`, plancher foretaccess 2.6.1
