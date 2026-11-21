@@ -7,7 +7,8 @@
   cli::cli_warn(c(
     "{n} tuile{?s} WFS sur {total} en echec pour {.val {couche}}.",
     "!" = "La couche rendue est incomplete sur une partie de l'emprise.",
-    "x" = "Derniere erreur : Unexpected content type \"text/plain\"."))
+    "x" = "Derniere erreur : Unexpected content type \"text/plain\"."),
+    class = "foretaccess_tuiles_perdues")
 }
 
 .desserte_toy <- function() {

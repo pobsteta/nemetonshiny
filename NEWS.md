@@ -7,6 +7,19 @@
 - **Typage de la desserte : un réseau sans route à créer finit « rien à typer » même sans volume P1.** Dans `run_desserte_typage()`, la lecture du réseau et le test `lignes` vide (`status = "empty"`, `desserte_typage_rien_a_typer`) passent désormais **avant** le bloc volume (préparation IFN, accès disque, comblement). Nouvel ordre : paquets, fichier réseau, parcelles, paramètres, **réseau vide**, préparation IFN / volume (`no_volume`), essence (`no_species`), vectorisation. Sur un parc urbain hors BD Forêt (« Parc de la colombière »), l'étape est ignorée au lieu d'échouer en `no_volume`.
 - **Lancement enchaîné : le rapport du typage dit le vrai motif.** L'étape `desserte_typage` affichait toujours le libellé générique `desserte_typage_failed`. Un helper commun (`pipeline_reason_message()`, `R/service_pipeline.R`) construit le message à partir de `reason` (puis `detail`) ; il sert au rapport, à la notification de l'onglet et à `pipeline_engine_outcome()`.
 
+# nemetonshiny 2026.11.2.9009 (2026-11-21)
+
+> **Non publié.** Mission 039. Demande **foretaccess >= 2.6.3** (`Imports`).
+
+## Corrections
+
+- **L'alerte « tuile IGN perdue » est reconnue par sa classe, plus par son texte.** `.capturer_alertes_tuiles()` (`R/service_desserte.R`) intercepte la classe `foretaccess_tuiles_perdues` que foretaccess 2.6.3 ajoute à l'avertissement : une reformulation du texte ne la fait plus échapper à la capture, et un autre avertissement qui parlerait de « tuile » et de « WFS » n'est plus étouffé à tort. Les autres avertissements passent inchangés.
+- **L'alerte revient à chaque lancement tant que l'IGN ne rend pas la couche entière.** foretaccess 2.6.3 n'écrit plus de cache pour une couche incomplète (et supprime l'ancien) : le run suivant retente l'IGN au lieu de rejouer sans rien dire une couche amputée. Une fausse alarme est aussi corrigée : si toutes les tuiles échouent mais que l'emprise entière passe, aucune alerte.
+
+## Dépendances
+
+- **Plancher `foretaccess (>= 2.6.3)`** : classe `foretaccess_tuiles_perdues`, pas de cache pour une couche incomplète, fausse alarme corrigée.
+
 # nemetonshiny 2026.11.2.9008 (2026-11-21)
 
 > **Non publié.** Mission 038. Demande **foretaccess >= 2.6.2** (`Imports`).

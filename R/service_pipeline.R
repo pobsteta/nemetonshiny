@@ -425,7 +425,7 @@ pipeline_reason_message <- function(res, i18n, defaut) {
 #' Message d'alerte d'une etape REUSSIE dont une couche IGN est incomplete
 #'
 #' @description
-#' foretaccess (>= 2.6.2) perd une tuile WFS apres 3 tentatives sans faire
+#' foretaccess (>= 2.6.3) perd une tuile WFS apres 3 tentatives sans faire
 #' echouer l'etape : le reseau rendu est incomplet sur une partie de l'emprise.
 #' Le resultat porte ces alertes (`avertissements`, cf.
 #' `.capturer_alertes_tuiles()`) ; ce helper en fait UN message pour le rapport
