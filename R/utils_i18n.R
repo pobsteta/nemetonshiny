@@ -195,7 +195,7 @@ TRANSLATIONS <- list(
   accessibility_no_foretaccess = list(fr = "Le paquet 'foretaccess' n'est pas install\u00e9.", en = "The 'foretaccess' package is not installed."),
   accessibility_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie avant de lancer l'analyse.", en = "Load a project with geometry before running."),
   accessibility_need_engine = list(fr = "S\u00e9lectionnez au moins un moteur.", en = "Select at least one engine."),
-  accessibility_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte (OpenStreetMap). V\u00e9rifiez la connexion r\u00e9seau.", en = "Road network acquisition failed (OpenStreetMap). Check the network connection."),
+  accessibility_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte (OpenStreetMap).", en = "Road network acquisition failed (OpenStreetMap)."),
   accessibility_mnt_failed = list(fr = "\u00c9chec de l'acquisition du MNT IGN RGE ALTI 5 m. V\u00e9rifiez la connexion r\u00e9seau.", en = "IGN RGE ALTI 5 m DEM acquisition failed. Check the network connection."),
   accessibility_desserte_empty = list(fr = "Aucune desserte trouv\u00e9e sur l'emprise du projet.", en = "No road network found over the project area."),
   accessibility_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
@@ -356,7 +356,7 @@ TRANSLATIONS <- list(
   desserte_no_foretaccess = list(fr = "Le paquet 'foretaccess' n'est pas install\u00e9.", en = "The 'foretaccess' package is not installed."),
   desserte_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie avant de lancer la g\u00e9n\u00e9ration.", en = "Load a project with geometry before running."),
   desserte_need_engine = list(fr = "S\u00e9lectionnez un moteur de cr\u00e9ation.", en = "Select a creation engine."),
-  desserte_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte existante (IGN BD TOPO). V\u00e9rifiez la connexion r\u00e9seau.", en = "Existing road-network acquisition failed (IGN BD TOPO). Check the network connection."),
+  desserte_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte existante (IGN BD TOPO).", en = "Existing road-network acquisition failed (IGN BD TOPO)."),
   desserte_desserte_empty = list(fr = "Aucune desserte existante trouv\u00e9e sur l'emprise du projet.", en = "No existing road network found over the project area."),
   desserte_mnt_failed = list(fr = "\u00c9chec de l'acquisition du MNT IGN RGE ALTI 5 m. V\u00e9rifiez la connexion r\u00e9seau.", en = "IGN RGE ALTI 5 m DEM acquisition failed. Check the network connection."),
   desserte_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
@@ -7057,6 +7057,10 @@ TRANSLATIONS <- list(
   pipeline_skip_busy = list(
     fr = "Moteur d\u00e9j\u00e0 en cours d'ex\u00e9cution.",
     en = "Engine already running."
+  ),
+  pipeline_skip_desserte_ko = list(
+    fr = "Desserte indisponible : l'\u00e9tape pr\u00e9c\u00e9dente a \u00e9chou\u00e9.",
+    en = "Road network unavailable: the previous step failed."
   )
 )
 

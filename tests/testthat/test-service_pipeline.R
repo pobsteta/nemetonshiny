@@ -580,3 +580,36 @@ test_that("toute transition de mod_pipeline passe par le setter persistant", {
   expect_match(directes[1], "nouvel_etat", fixed = TRUE)
   expect_true(any(grepl("pipeline_state_save", src, fixed = TRUE)))
 })
+
+
+# ---- Mission 037 : la vraie erreur remonte dans le rapport -----------------
+
+test_that("pipeline_error_message ajoute le detail, sans ANSI", {
+  m <- nemetonshiny:::pipeline_error_message(
+    "Echec.", "\033[31mcharacter string is not in a standard unambiguous format\033[39m")
+  expect_identical(
+    m, paste0("Echec. — character string is not in a standard unambiguous format"))
+  expect_false(grepl("\033", m, fixed = TRUE))
+})
+
+test_that("pipeline_error_message tronque le detail a 300 caracteres", {
+  m <- nemetonshiny:::pipeline_error_message("Echec.", strrep("x", 1000))
+  expect_lte(nchar(m), nchar("Echec. — ") + 301L)
+  expect_true(endsWith(m, "…"))
+})
+
+test_that("pipeline_error_message sans detail rend la seule traduction", {
+  expect_identical(nemetonshiny:::pipeline_error_message("Echec.", NULL), "Echec.")
+  expect_identical(nemetonshiny:::pipeline_error_message("Echec.", ""), "Echec.")
+  expect_identical(nemetonshiny:::pipeline_error_message("Echec.", character(0)), "Echec.")
+  expect_identical(nemetonshiny:::pipeline_error_message("Echec.", NA_character_), "Echec.")
+})
+
+test_that("les cles desserte_failed n'accusent plus le reseau d'office", {
+  for (k in c("desserte_desserte_failed", "accessibility_desserte_failed")) {
+    for (l in c("fr", "en")) {
+      expect_false(grepl("réseau|network connection", nemetonshiny:::TRANSLATIONS[[k]][[l]]))
+    }
+  }
+  expect_true(all(c("fr", "en") %in% names(nemetonshiny:::TRANSLATIONS$pipeline_skip_desserte_ko)))
+})

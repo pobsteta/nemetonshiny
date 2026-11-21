@@ -1,3 +1,11 @@
+# nemetonshiny 2026.11.2.9007 (2026-11-21)
+
+> **Non publié.** Mission 037.
+
+## Corrections
+
+- **Lancement enchaîné : le rapport des étapes desserte, typage de la desserte et accessibilité montre la vraie erreur**, plus seulement « Vérifiez la connexion réseau ». Un helper commun (`pipeline_error_message()`, `R/service_pipeline.R`) ajoute au message traduit le `detail` du moteur (sans codes ANSI, tronqué à 300 caractères) ; le même message sert à la notification de l'onglet et à `pipeline_answer()`. Les clés `desserte_desserte_failed` et `accessibility_desserte_failed` n'accusent plus le réseau d'office. Quand l'étape `desserte` échoue dans un run, `desserte_typage` du même run est marquée « ignorée » (clé `pipeline_skip_desserte_ko`) au lieu d'un échec en cascade.
+
 # nemetonshiny 2026.11.2.9006 (2026-11-17)
 
 > **Non publié.** Mission 009.

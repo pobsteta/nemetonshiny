@@ -229,3 +229,52 @@ test_that("un reseau sans route nouvelle rend 'empty', pas une erreur", {
   # Et la raison doit etre traduisible - sinon le rapport afficherait la cle.
   expect_true(res$reason %in% names(nemetonshiny:::TRANSLATIONS))
 })
+
+
+# ---- Mission 037 : etape desserte_typage du lancement enchaine --------------
+
+.typage_state <- function(env = parent.frame()) {
+  shiny::reactiveValues(
+    current_project = list(id = "p1", path = withr::local_tempdir(.local_envir = env),
+                           indicators_sf = .dess_units(2)),
+    language = "fr", pipeline_request = NULL, pipeline_answer = NULL)
+}
+
+test_that("le typage en echec fait remonter le detail dans le rapport du pipeline", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    deny_if_readonly = function(...) FALSE,
+    run_desserte_typage = function(...) list(
+      status = "error", reason = "desserte_typage_failed",
+      detail = "\033[31mcharacter string is not in a standard unambiguous format\033[39m"),
+    .package = "nemetonshiny")
+  as <- .typage_state()
+  shiny::testServer(nemetonshiny:::mod_desserte_server, args = list(app_state = as), {
+    as$pipeline_request <- list(run_id = "r1", step_id = "desserte_typage", ts = Sys.time())
+    session$flushReact()
+    rep <- as$pipeline_answer
+    expect_identical(rep$status, "error")
+    expect_match(rep$message, "character string is not in a standard unambiguous format",
+                 fixed = TRUE)
+    expect_false(grepl("\033", rep$message, fixed = TRUE))
+  })
+})
+
+test_that("desserte en echec dans le meme run : le typage est saute, pas en erreur", {
+  skip_if_not_installed("sf")
+  appele <- FALSE
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    deny_if_readonly = function(...) FALSE,
+    run_desserte_typage = function(...) { appele <<- TRUE; list(status = "success") },
+    .package = "nemetonshiny")
+  as <- .typage_state()
+  shiny::testServer(nemetonshiny:::mod_desserte_server, args = list(app_state = as), {
+    dess_ko_run("r1")
+    as$pipeline_request <- list(run_id = "r1", step_id = "desserte_typage", ts = Sys.time())
+    session$flushReact()
+    expect_identical(as$pipeline_answer$status, "skipped")
+    expect_false(appele)
+  })
+})

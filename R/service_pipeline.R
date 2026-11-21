@@ -382,6 +382,29 @@ pipeline_profil <- function(request) {
 
 #' Message d'erreur reel d'un `ExtendedTask`, pour le rapport de la chaine
 #'
+#' Message d'echec d'une etape : traduction + cause precise
+#'
+#' @description
+#' Le rapport du lancement enchaine ne montrait que la traduction du motif
+#' (`res$reason`) ; le `detail` (vraie erreur) n'allait que dans une
+#' notification invisible pendant un run. Calcule UNE fois le message, pour le
+#' rapport ET la notification : `msg` + " - " + `detail` sans ANSI, tronque.
+#'
+#' @param msg Character. Message deja traduit.
+#' @param detail Character or NULL. Cause precise ; ignoree si vide.
+#' @param max Integer. Longueur maximale du detail.
+#' @return Character scalar.
+#' @noRd
+pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
+  d <- tryCatch(as.character(detail)[1], error = function(e) NA_character_)
+  if (is.null(detail) || length(detail) == 0L || is.na(d) || !nzchar(trimws(d))) {
+    return(msg)
+  }
+  d <- trimws(.strip_ansi(d))
+  if (nchar(d) > max) d <- paste0(substr(d, 1L, max), "\u2026")
+  paste0(msg, " \u2014 ", d)
+}
+
 #' @description
 #' `task$result()` RE-LEVE l'erreur du worker : c'est le seul endroit ou son
 #' message existe encore. Sans cette extraction, le rapport du lancement

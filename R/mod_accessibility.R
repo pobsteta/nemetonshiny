@@ -1136,23 +1136,20 @@ mod_accessibility_server <- function(id, app_state) {
       })
       ok_moteur <- is.list(res) && identical(res$status, "success")
       req_pipeline <- shiny::isolate(pipeline_req())
-      if (!is.null(req_pipeline)) {
-        pipeline_answer(app_state, req_pipeline,
-                        if (ok_moteur) "ok" else "error",
-                        if (ok_moteur) NULL
-                        else i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
-                                      "accessibility_engine_failed"))
-        pipeline_req(NULL)
-      }
+      msg_echec <- NULL
       if (!ok_moteur) {
         reason <- tryCatch(res$reason, error = function(e) NULL) %||%
           "accessibility_engine_failed"
-        msg <- i18n$t(reason)
-        detail <- tryCatch(res$detail, error = function(e) NULL)
-        if (!is.null(detail) && nzchar(detail)) {
-          msg <- paste0(msg, " \u2014 ", .strip_ansi(as.character(detail)))
-        }
-        shiny::showNotification(msg, type = "error", duration = NULL)
+        msg_echec <- pipeline_error_message(
+          i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
+      }
+      if (!is.null(req_pipeline)) {
+        pipeline_answer(app_state, req_pipeline,
+                        if (ok_moteur) "ok" else "error", msg_echec)
+        pipeline_req(NULL)
+      }
+      if (!ok_moteur) {
+        shiny::showNotification(msg_echec, type = "error", duration = NULL)
         return()
       }
       # Recharger depuis le cache disque : le selecteur de couche liste ainsi
