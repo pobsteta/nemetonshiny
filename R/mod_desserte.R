@@ -751,24 +751,17 @@ mod_desserte_server <- function(id, app_state) {
       ok_moteur <- is.list(res) && identical(res$status, "success")
       req_pipeline <- shiny::isolate(pipeline_req())
       # Un seul calcul du message, pour le rapport du pipeline ET la notification.
-      msg_echec <- NULL
-      if (!ok_moteur) {
-        reason <- tryCatch(res$reason, error = function(e) NULL) %||%
-          "desserte_engine_failed"
-        msg_echec <- pipeline_error_message(
-          i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
-      }
+      issue <- pipeline_engine_outcome(
+        res, i18n, "desserte_engine_failed",
+        step_id = req_pipeline$step_id, run_id = req_pipeline$run_id)
       if (!is.null(req_pipeline)) {
         # Memorise l'echec du run : le typage, qui en depend, sera saute.
-        if (!ok_moteur && identical(req_pipeline$step_id, "desserte")) {
-          dess_ko_run(req_pipeline$run_id)
-        }
-        pipeline_answer(app_state, req_pipeline,
-                        if (ok_moteur) "ok" else "error", msg_echec)
+        if (!is.null(issue$ko_run)) dess_ko_run(issue$ko_run)
+        pipeline_answer(app_state, req_pipeline, issue$status, issue$message)
         pipeline_req(NULL)
       }
       if (!ok_moteur) {
-        shiny::showNotification(msg_echec, type = "error", duration = NULL)
+        shiny::showNotification(issue$message, type = "error", duration = NULL)
         return()
       }
       # Recharger depuis le cache disque (chemins + sidecar de scalaires).
@@ -1150,7 +1143,8 @@ mod_desserte_server <- function(id, app_state) {
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL else i18n$t("error"))
+                      if (identical(st, "success")) NULL
+                      else pipeline_task_error(integ_task, i18n$t("error")))
       integ_pipeline_req(NULL)
     })
 
@@ -1494,7 +1488,7 @@ mod_desserte_server <- function(id, app_state) {
         return()
       }
       # Cascade : la desserte du MEME run a echoue, le typage n'a rien a typer.
-      if (identical(dess_ko_run(), req$run_id)) {
+      if (!is.null(req$run_id) && identical(dess_ko_run(), req$run_id)) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_desserte_ko"))
         return()
       }

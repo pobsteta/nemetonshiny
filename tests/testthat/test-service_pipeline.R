@@ -588,14 +588,14 @@ test_that("pipeline_error_message ajoute le detail, sans ANSI", {
   m <- nemetonshiny:::pipeline_error_message(
     "Echec.", "\033[31mcharacter string is not in a standard unambiguous format\033[39m")
   expect_identical(
-    m, paste0("Echec. — character string is not in a standard unambiguous format"))
+    m, paste0("Echec. \u2014 character string is not in a standard unambiguous format"))
   expect_false(grepl("\033", m, fixed = TRUE))
 })
 
 test_that("pipeline_error_message tronque le detail a 300 caracteres", {
   m <- nemetonshiny:::pipeline_error_message("Echec.", strrep("x", 1000))
-  expect_lte(nchar(m), nchar("Echec. — ") + 301L)
-  expect_true(endsWith(m, "…"))
+  expect_lte(nchar(m), nchar("Echec. \u2014 ") + 301L)
+  expect_true(endsWith(m, "\u2026"))
 })
 
 test_that("pipeline_error_message sans detail rend la seule traduction", {
@@ -608,8 +608,44 @@ test_that("pipeline_error_message sans detail rend la seule traduction", {
 test_that("les cles desserte_failed n'accusent plus le reseau d'office", {
   for (k in c("desserte_desserte_failed", "accessibility_desserte_failed")) {
     for (l in c("fr", "en")) {
-      expect_false(grepl("réseau|network connection", nemetonshiny:::TRANSLATIONS[[k]][[l]]))
+      expect_false(grepl("r\u00e9seau|network connection", nemetonshiny:::TRANSLATIONS[[k]][[l]]))
     }
   }
   expect_true(all(c("fr", "en") %in% names(nemetonshiny:::TRANSLATIONS$pipeline_skip_desserte_ko)))
+})
+
+test_that("pipeline_engine_outcome : succes = ok, sans message ni run a memoriser", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  o <- nemetonshiny:::pipeline_engine_outcome(
+    list(status = "success"), i18n, "desserte_engine_failed",
+    step_id = "desserte", run_id = "r1")
+  expect_true(o$ok)
+  expect_identical(o$status, "ok")
+  expect_null(o$message)
+  expect_null(o$ko_run)
+})
+
+test_that("pipeline_engine_outcome : echec = traduction + detail, run memorise pour desserte", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  res <- list(status = "error", reason = "desserte_desserte_failed",
+              detail = "\033[31mcause precise\033[39m")
+  o <- nemetonshiny:::pipeline_engine_outcome(
+    res, i18n, "desserte_engine_failed", step_id = "desserte", run_id = "r1")
+  expect_false(o$ok)
+  expect_identical(o$status, "error")
+  expect_identical(o$message, paste0(i18n$t("desserte_desserte_failed"),
+                                     " \u2014 cause precise"))
+  expect_identical(o$ko_run, "r1")
+  # une autre etape (accessibilite) ne memorise aucun run
+  o2 <- nemetonshiny:::pipeline_engine_outcome(
+    res, i18n, "accessibility_engine_failed", step_id = "accessibilite", run_id = "r1")
+  expect_null(o2$ko_run)
+  expect_match(o2$message, "cause precise", fixed = TRUE)
+})
+
+test_that("pipeline_engine_outcome : resultat non liste ou sans motif = motif de repli", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  o <- nemetonshiny:::pipeline_engine_outcome(NULL, i18n, "desserte_engine_failed")
+  expect_identical(o$status, "error")
+  expect_identical(o$message, i18n$t("desserte_engine_failed"))
 })
