@@ -1344,7 +1344,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
     n_routes = n_routes,
     skidding_m = skidding_m,
     # Alertes " tuile(s) WFS en echec " (couche IGN incomplete) : propres a CE
-    # run, non persistees - le cache foretaccess rejoue la couche sans les redire.
+    # run, non persistees : foretaccess (>= 2.6.3) ne met plus en cache une couche
+    # incomplete, l alerte revient donc au run suivant.
     avertissements = alertes_tuiles)
 }
 
