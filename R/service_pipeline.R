@@ -419,7 +419,8 @@ pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
 #' @return Character scalar, ou NULL s'il n'y a aucune alerte.
 #' @noRd
 pipeline_alertes_message <- function(alertes, i18n, max = 600L) {
-  a <- trimws(.strip_ansi(as.character(unlist(alertes))))
+  # Les codes ANSI sont retires UNE fois, par `pipeline_error_message()`.
+  a <- trimws(as.character(unlist(alertes)))
   a <- a[!is.na(a) & nzchar(a)]
   if (length(a) == 0L) return(NULL)
   a <- gsub("\\s*\n\\s*", " ", a)
