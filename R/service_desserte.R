@@ -107,12 +107,15 @@ DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
 
 #' Capture the "tiles lost" warnings of the IGN WFS acquisitions
 #'
-#' `foretaccess::acquire_desserte()` / `acquire_foret()` (>= 2.6.2) retry each
-#' WFS tile 3 times and, when one is still lost, emit a `warning` ("N tuile(s)
-#' WFS sur M en echec ..."). The layer is then INCOMPLETE but the call
-#' succeeds : without this wrapper the warning is lost (the calls sit in
-#' `tryCatch(error = )`, and a `future` worker drops it). Only these warnings
-#' are muffled and returned ; any other warning passes through untouched.
+#' `foretaccess::acquire_desserte()` / `acquire_foret()` (>= 2.6.3) retry each
+#' WFS tile 3 times and, when one is still lost, emit a warning of class
+#' `foretaccess_tuiles_perdues` ("N tuile(s) WFS sur M en echec ..."). The layer
+#' is then INCOMPLETE but the call succeeds : without this wrapper the warning
+#' is lost (the calls sit in `tryCatch(error = )`, and a `future` worker drops
+#' it). Since 2.6.3 an incomplete layer is no longer cached, so the alert comes
+#' back at every run until the IGN serves the whole layer. The warning is
+#' recognised by its CLASS, not by its text. Only these warnings are muffled
+#' and returned ; any other warning passes through untouched.
 #' `acquire_mnt()` (WMS) retries too but emits nothing, so it is not wrapped.
 #'
 #' @param expr Expression to evaluate (typically a `tryCatch()` around the
@@ -124,12 +127,9 @@ DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
   alertes <- character(0)
   valeur <- withCallingHandlers(
     expr,
-    warning = function(w) {
-      m <- .strip_ansi(conditionMessage(w))
-      if (grepl("tuile", m, fixed = TRUE) && grepl("WFS", m, fixed = TRUE)) {
-        alertes <<- c(alertes, m)
-        invokeRestart("muffleWarning")
-      }
+    foretaccess_tuiles_perdues = function(w) {
+      alertes <<- c(alertes, .strip_ansi(conditionMessage(w)))
+      invokeRestart("muffleWarning")
     })
   list(valeur = valeur, alertes = unique(alertes))
 }
