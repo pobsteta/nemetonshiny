@@ -764,6 +764,11 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(issue$message, type = "error", duration = NULL)
         return()
       }
+      # Etape REUSSIE mais couche IGN incomplete (tuiles perdues) : le rapport
+      # du pipeline porte deja le message ; l'onglet le dit aussi.
+      if (isTRUE(issue$alerte)) {
+        shiny::showNotification(issue$message, type = "warning", duration = NULL)
+      }
       # Recharger depuis le cache disque (chemins + sidecar de scalaires).
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
@@ -1238,6 +1243,11 @@ mod_desserte_server <- function(id, app_state) {
                      "desserte_engine_failed"),
             type = "error", duration = NULL)
           return()
+        }
+        # Couche IGN incomplete (tuiles perdues) : succes, mais on le dit.
+        alerte <- pipeline_alertes_message(res$avertissements, i18n)
+        if (!is.null(alerte)) {
+          shiny::showNotification(alerte, type = "warning", duration = NULL)
         }
         on_success(res)
       })

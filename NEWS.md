@@ -1,3 +1,15 @@
+# nemetonshiny 2026.11.2.9008 (2026-11-21)
+
+> **Non publié.** Mission 038. Demande **foretaccess >= 2.6.2** (`Imports`).
+
+## Corrections
+
+- **Une tuile IGN perdue n'est plus silencieuse : l'étape réussit, mais son rapport et l'onglet le disent.** foretaccess 2.6.2 retente chaque tuile WFS 3 fois, puis, si elle reste perdue, rend une couche **incomplète** avec un simple avertissement (« N tuile(s) WFS sur M en echec… ») que les `tryCatch(error = )` de l'app laissaient se perdre. Un helper (`.capturer_alertes_tuiles()`, `R/service_desserte.R`) enveloppe les appels `acquire_desserte()` et `acquire_foret()` (les seuls à passer par le WFS ; `acquire_mnt()`, WMS, n'émet rien) dans `withCallingHandlers()`, ne retient et n'étouffe que ces avertissements, et les rend dans le champ `avertissements` du résultat (capture **dans** le worker, pas de relais `future`). Sites couverts : `run_desserte()`, `run_desserte_optimiser()`, `run_desserte_osm()`, `run_desserte_detection()`, `.acquire_mnt_desserte()` (donc `run_accessibility()` et `run_desserte_lidar_correction()`) et le masque forêt d'`run_accessibility()`. Le message complet (dernière ligne : l'erreur de l'IGN) est calculé une fois (`pipeline_alertes_message()`, clé `tuiles_en_echec`) : il va dans le rapport du lancement enchaîné **sur une étape `ok`** (`pipeline_answer(…, "ok", message)`, le rapport affiche déjà le message de toute étape) et dans une notification `warning` de l'onglet. `pipeline_engine_outcome()` expose `alerte`. L'alerte ne vaut que pour le run qui l'a vue : foretaccess met en cache la couche incomplète et la rejoue ensuite sans rien dire.
+
+## Dépendances
+
+- **Plancher `foretaccess (>= 2.6.2)`** : la 2.6.2 retente chaque requête IGN (WFS et WMS) 3 fois avant de perdre une tuile, et émet l'avertissement ci-dessus.
+
 # nemetonshiny 2026.11.2.9007 (2026-11-21)
 
 > **Non publié.** Mission 037.

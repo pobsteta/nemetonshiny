@@ -7050,6 +7050,10 @@ TRANSLATIONS <- list(
     fr = "Aucune route nouvelle \u00e0 typer : le r\u00e9seau existant dessert d\u00e9j\u00e0 toutes les parcelles.",
     en = "No new road to type: the existing network already serves every parcel."
   ),
+  tuiles_en_echec = list(
+    fr = "Couche IGN incompl\u00e8te : des tuiles n'ont pas pu \u00eatre t\u00e9l\u00e9charg\u00e9es, le r\u00e9seau peut manquer sur une partie de l'emprise.",
+    en = "Incomplete IGN layer: some tiles could not be downloaded, the network may be missing over part of the extent."
+  ),
   pipeline_skip_not_started = list(
     fr = "Le lancement a \u00e9t\u00e9 refus\u00e9 par l'onglet (pr\u00e9requis manquant).",
     en = "The tab declined to start (missing prerequisite)."
