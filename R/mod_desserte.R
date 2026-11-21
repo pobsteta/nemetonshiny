@@ -671,6 +671,8 @@ mod_desserte_server <- function(id, app_state) {
 
     # --- Lancement enchaine : etape " desserte " -----------------------
     pipeline_req <- shiny::reactiveVal(NULL)
+    # run_id du dernier lancement enchaine ou la desserte a echoue (cascade typage).
+    dess_ko_run <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(app_state$pipeline_request, {
       req <- app_state$pipeline_request
@@ -748,23 +750,18 @@ mod_desserte_server <- function(id, app_state) {
       })
       ok_moteur <- is.list(res) && identical(res$status, "success")
       req_pipeline <- shiny::isolate(pipeline_req())
+      # Un seul calcul du message, pour le rapport du pipeline ET la notification.
+      issue <- pipeline_engine_outcome(
+        res, i18n, "desserte_engine_failed",
+        step_id = req_pipeline$step_id, run_id = req_pipeline$run_id)
       if (!is.null(req_pipeline)) {
-        pipeline_answer(app_state, req_pipeline,
-                        if (ok_moteur) "ok" else "error",
-                        if (ok_moteur) NULL
-                        else i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
-                                      "desserte_engine_failed"))
+        # Memorise l'echec du run : le typage, qui en depend, sera saute.
+        if (!is.null(issue$ko_run)) dess_ko_run(issue$ko_run)
+        pipeline_answer(app_state, req_pipeline, issue$status, issue$message)
         pipeline_req(NULL)
       }
       if (!ok_moteur) {
-        reason <- tryCatch(res$reason, error = function(e) NULL) %||%
-          "desserte_engine_failed"
-        msg <- i18n$t(reason)
-        detail <- tryCatch(res$detail, error = function(e) NULL)
-        if (!is.null(detail) && nzchar(detail)) {
-          msg <- paste0(msg, " \u2014 ", .strip_ansi(as.character(detail)))
-        }
-        shiny::showNotification(msg, type = "error", duration = NULL)
+        shiny::showNotification(issue$message, type = "error", duration = NULL)
         return()
       }
       # Recharger depuis le cache disque (chemins + sidecar de scalaires).
@@ -1118,6 +1115,11 @@ mod_desserte_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
+      # Cascade : la desserte du MEME run a echoue, il n'y a rien a controler.
+      if (!is.null(req$run_id) && identical(dess_ko_run(), req$run_id)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_desserte_ko"))
+        return()
+      }
       if (identical(integ_task$status(), "running")) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
         return()
@@ -1146,7 +1148,8 @@ mod_desserte_server <- function(id, app_state) {
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL else i18n$t("error"))
+                      if (identical(st, "success")) NULL
+                      else pipeline_task_error(integ_task, i18n$t("error")))
       integ_pipeline_req(NULL)
     })
 
@@ -1469,9 +1472,9 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(i18n$t(res$reason %||% "desserte_typage_rien_a_typer"),
                                 type = "message", duration = 8)
       } else if (!identical(res$status, "success")) {
-        msg <- i18n$t(res$reason %||% "desserte_typage_failed")
-        det <- tryCatch(res$detail, error = function(e) NULL)
-        if (!is.null(det) && nzchar(det)) msg <- paste0(msg, " \u2014 ", .strip_ansi(det))
+        msg <- pipeline_error_message(
+          i18n$t(res$reason %||% "desserte_typage_failed"),
+          tryCatch(res$detail, error = function(e) NULL))
         shiny::showNotification(msg, type = "error", duration = NULL)
       }
       st <- rv_typage()$status
@@ -1489,6 +1492,11 @@ mod_desserte_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
+      # Cascade : la desserte du MEME run a echoue, le typage n'a rien a typer.
+      if (!is.null(req$run_id) && identical(dess_ko_run(), req$run_id)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_desserte_ko"))
+        return()
+      }
       ok <- .lancer_typage()
       # Trois issues : type (TRUE), rien a typer (NA - le reseau existant
       # suffit, c'est un bon resultat), garde refusee (NULL), echec (FALSE).
@@ -1498,7 +1506,9 @@ mod_desserte_server <- function(id, app_state) {
         if (isTRUE(ok)) NULL
         else if (is.na(ok)) i18n$t("desserte_typage_rien_a_typer")
         else if (is.null(ok)) i18n$t("pipeline_skip_not_started")
-        else i18n$t("desserte_typage_failed"))
+        else pipeline_error_message(
+          i18n$t("desserte_typage_failed"),
+          tryCatch(rv_typage()$detail, error = function(e) NULL)))
     })
 
     # Le typage etait le SEUL des cinq a n'avoir aucun repli sur le cache : on

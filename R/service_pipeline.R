@@ -380,6 +380,57 @@ pipeline_profil <- function(request) {
   if (!nzchar(p)) NULL else p
 }
 
+#' Message d'echec d'une etape : traduction + cause precise
+#'
+#' @description
+#' Le rapport du lancement enchaine ne montrait que la traduction du motif
+#' (`res$reason`) ; le `detail` (vraie erreur) n'allait que dans une
+#' notification invisible pendant un run. Calcule UNE fois le message, pour le
+#' rapport ET la notification : `msg` + " - " + `detail` sans ANSI, tronque.
+#'
+#' @param msg Character. Message deja traduit.
+#' @param detail Character or NULL. Cause precise ; ignoree si vide.
+#' @param max Integer. Longueur maximale du detail.
+#' @return Character scalar.
+#' @noRd
+pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
+  d <- tryCatch(as.character(detail)[1], error = function(e) NA_character_)
+  if (is.null(detail) || length(detail) == 0L || is.na(d) || !nzchar(trimws(d))) {
+    return(msg)
+  }
+  d <- trimws(.strip_ansi(d))
+  if (nchar(d) > max) d <- paste0(substr(d, 1L, max), "\u2026")
+  paste0(msg, " \u2014 ", d)
+}
+
+#' Issue d'une etape moteur (desserte, accessibilite) pour le pipeline
+#'
+#' @description
+#' Decision pure de fin de tache, partagee par `mod_desserte` et
+#' `mod_accessibility` : statut a repondre, message (traduction + `detail`),
+#' et `run_id` a memoriser quand la desserte echoue (le typage du meme run
+#' sera alors saute).
+#'
+#' @param res Resultat de la tache (`list(status, reason, detail)`) ou autre.
+#' @param i18n Objet i18n (`$t()`).
+#' @param defaut Character. Motif de repli si `res$reason` est absent.
+#' @param step_id Character. Etape qui repond.
+#' @param run_id Character or NULL. Run courant.
+#' @return Liste `ok`, `status`, `message` (NULL si ok), `ko_run`.
+#' @noRd
+pipeline_engine_outcome <- function(res, i18n, defaut, step_id = NULL,
+                                    run_id = NULL) {
+  ok <- is.list(res) && identical(res$status, "success")
+  if (ok) {
+    return(list(ok = TRUE, status = "ok", message = NULL, ko_run = NULL))
+  }
+  reason <- tryCatch(res$reason, error = function(e) NULL) %||% defaut
+  msg <- pipeline_error_message(
+    i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
+  list(ok = FALSE, status = "error", message = msg,
+       ko_run = if (identical(step_id, "desserte")) run_id else NULL)
+}
+
 #' Message d'erreur reel d'un `ExtendedTask`, pour le rapport de la chaine
 #'
 #' @description

@@ -888,7 +888,8 @@ mod_accessibility_server <- function(id, app_state) {
       if (is.null(req) || !st %in% c("success", "error")) return()
       pipeline_answer(app_state, req,
                       if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) NULL else i18n$t("error"))
+                      if (identical(st, "success")) NULL
+                      else pipeline_task_error(correct_task, i18n$t("error")))
       correction_pipeline_req(NULL)
     })
 
@@ -1136,23 +1137,13 @@ mod_accessibility_server <- function(id, app_state) {
       })
       ok_moteur <- is.list(res) && identical(res$status, "success")
       req_pipeline <- shiny::isolate(pipeline_req())
+      issue <- pipeline_engine_outcome(res, i18n, "accessibility_engine_failed")
       if (!is.null(req_pipeline)) {
-        pipeline_answer(app_state, req_pipeline,
-                        if (ok_moteur) "ok" else "error",
-                        if (ok_moteur) NULL
-                        else i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
-                                      "accessibility_engine_failed"))
+        pipeline_answer(app_state, req_pipeline, issue$status, issue$message)
         pipeline_req(NULL)
       }
       if (!ok_moteur) {
-        reason <- tryCatch(res$reason, error = function(e) NULL) %||%
-          "accessibility_engine_failed"
-        msg <- i18n$t(reason)
-        detail <- tryCatch(res$detail, error = function(e) NULL)
-        if (!is.null(detail) && nzchar(detail)) {
-          msg <- paste0(msg, " \u2014 ", .strip_ansi(as.character(detail)))
-        }
-        shiny::showNotification(msg, type = "error", duration = NULL)
+        shiny::showNotification(issue$message, type = "error", duration = NULL)
         return()
       }
       # Recharger depuis le cache disque : le selecteur de couche liste ainsi
