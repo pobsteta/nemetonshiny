@@ -1115,6 +1115,11 @@ mod_desserte_server <- function(id, app_state) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
         return()
       }
+      # Cascade : la desserte du MEME run a echoue, il n'y a rien a controler.
+      if (!is.null(req$run_id) && identical(dess_ko_run(), req$run_id)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_desserte_ko"))
+        return()
+      }
       if (identical(integ_task$status(), "running")) {
         pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
         return()

@@ -278,3 +278,22 @@ test_that("desserte en echec dans le meme run : le typage est saute, pas en erre
     expect_false(appele)
   })
 })
+
+test_that("desserte en echec dans le meme run : l'integrite est sautee, tache non lancee", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    deny_if_readonly = function(...) FALSE,
+    .package = "nemetonshiny")
+  as <- .typage_state()
+  shiny::testServer(nemetonshiny:::mod_desserte_server, args = list(app_state = as), {
+    dess_ko_run("r1")
+    as$pipeline_request <- list(run_id = "r1", step_id = "desserte_integrite", ts = Sys.time())
+    session$flushReact()
+    expect_identical(as$pipeline_answer$status, "skipped")
+    expect_identical(as$pipeline_answer$message,
+                     nemetonshiny:::get_i18n("fr")$t("pipeline_skip_desserte_ko"))
+    expect_null(integ_pipeline_req())
+    expect_identical(integ_task$status(), "initial")
+  })
+})
