@@ -1,5 +1,18 @@
 # Changelog
 
+## nemetonshiny 2026.11.3.9002 (2026-11-22)
+
+> **Non publié.**
+
+### Dépendances
+
+- **Plancher `nemeton (>= 2026.11.38)`** :
+  `run_memory_capped(marker_path =)`, `capped_run_alive()`,
+  `stop_memory_capped()` et l’enfant supervisé (mort avec son worker),
+  plus la purge des jobs ERA5 orphelins. Sans eux, la protection « un
+  seul moteur reGénération par projet » de la `.9001` reste inactive
+  (garde de capacité, conservée).
+
 ## nemetonshiny 2026.11.3.9001 (2026-11-22)
 
 ### Correctifs
@@ -16,6 +29,10 @@
   `marker_path`, `capped_run_alive` ou `stop_memory_capped` (antérieur à
   2026.11.38, non encore tagué) garde le comportement actuel, sans
   erreur ; le plancher `nemeton` n’est pas modifié.
+
+## nemetonshiny 2026.11.3.9000 (2026-11-22)
+
+> **Non publié.** Ouverture du cycle dev après la release v2026.11.3.
 
 ## nemetonshiny 2026.11.3 (2026-11-22)
 

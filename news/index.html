@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.3.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.3.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,12 +34,29 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.3.9002" id="nemetonshiny-20261139002-2026-11-22">nemetonshiny 2026.11.3.9002 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139002-2026-11-22"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong></p>
+</blockquote>
+<div class="section level3">
+<h3 id="dépendances-2026-11-3-9002">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-9002"></a></h3>
+<ul><li>
+<strong>Plancher <code>nemeton (&gt;= 2026.11.38)</code></strong> : <code>run_memory_capped(marker_path =)</code>, <code>capped_run_alive()</code>, <code>stop_memory_capped()</code> et l’enfant supervisé (mort avec son worker), plus la purge des jobs ERA5 orphelins. Sans eux, la protection « un seul moteur reGénération par projet » de la <code>.9001</code> reste inactive (garde de capacité, conservée).</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.3.9001" id="nemetonshiny-20261139001-2026-11-22">nemetonshiny 2026.11.3.9001 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139001-2026-11-22"></a></h2>
 <div class="section level3">
 <h3 id="correctifs-2026-11-3-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-3-9001"></a></h3>
 <ul><li>
 <strong>reGénération : un seul moteur vivant par projet</strong> (mission 043). Un nouveau lancement (bouton ou étape du « Tout calculer ») arrête le moteur encore actif sur le projet et le dit (<code>regen_moteur_precedent_arrete</code>), avant d’effacer <code>engine_status.json</code> ; l’arrêt du lancement enchaîné pendant l’étape <code>regeneration</code> (bouton Arrêter, projet changé) arrête le moteur sans toast d’échec ; la fin de session arrête le moteur lancé par cette session. Le marqueur de run <code>cache/regeneration/engine_run.json</code> est passé au cœur. Tout est <strong>sous garde de capacité</strong> : un cœur sans <code>marker_path</code>, <code>capped_run_alive</code> ou <code>stop_memory_capped</code> (antérieur à 2026.11.38, non encore tagué) garde le comportement actuel, sans erreur ; le plancher <code>nemeton</code> n’est pas modifié.</li>
 </ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.3.9000" id="nemetonshiny-20261139000-2026-11-22">nemetonshiny 2026.11.3.9000 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139000-2026-11-22"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Ouverture du cycle dev après la release v2026.11.3.</p>
+</blockquote>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.3" id="nemetonshiny-2026113-2026-11-22">nemetonshiny 2026.11.3 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026113-2026-11-22"></a></h2>
