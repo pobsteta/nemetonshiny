@@ -12,6 +12,40 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.11.3\] - 2026-11-22
+
+Groups the dev cycle `2026.11.2.9001` to `.9012`. See NEWS.md for
+details. Requires `nemeton` \>= 2026.11.37 and `foretaccess` \>= 2.6.3.
+
+### Added
+
+- Video inventory: the project’s precomputed CVAT is passed to the core
+  (`cvat_path`) and written as `rasters/cvat.tif` in the field project.
+- Regeneration: decennial winter minimum (E-OBS) per management unit,
+  used to rule out frost-sensitive species; shown in the plot sheet, PDF
+  and AI prompt.
+- W1 reads BD TOPO springs (`water_points`).
+- T4: species of grouped BD Foret labels resolved by the core, per SER.
+
+### Fixed
+
+- Chained run: every step reports its real error (translated reason plus
+  engine detail); a failed service no longer reports “ok”; dependent
+  steps are skipped, not failed, when the network step fails.
+- Road typing ends “nothing to type” on a network with no road to build,
+  even without P1 volume.
+- A lost IGN tile is reported in the run report and the tab, recognised
+  by its foretaccess warning class.
+- Cadastre WFS fallback works again with happign 0.3.
+- [`parallelly::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html)
+  replaces the deprecated
+  [`future::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html).
+
+### Changed
+
+- Dependencies: `nemeton` \>= 2026.11.37, `foretaccess` \>= 2.6.3,
+  `parallelly` in Imports.
+
 ## \[2026.11.2\] - 2026-11-15
 
 Groups the dev cycle `2026.11.1.9001` to `.9008`. See NEWS.md for

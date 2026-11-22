@@ -1,8 +1,58 @@
 # Changelog
 
-## nemetonshiny 2026.11.2.9012 (2026-11-22)
+## nemetonshiny 2026.11.3 (2026-11-22)
 
-> **Non publié.** Mission 042.
+Release stable qui regroupe le cycle dev `2026.11.2.9001` à `.9012`
+(missions 005, 009 et 034 à 042, le détail de chaque entrée suit, plus
+bas). Elle demande le cœur **nemeton \>= 2026.11.37** et **foretaccess
+\>= 2.6.3** (`Imports`). Aucun changement cassant. **Relancez le
+calcul** des projets existants pour que W1 et T4 en tiennent compte.
+
+### Nouveautés
+
+- **Inventaire vidéo : le CVAT du projet part dans le projet terrain**
+  (`rasters/cvat.tif` du `.qgz`) quand il est déjà calculé ; rien n’est
+  calculé sinon (`.9012`).
+- **reGénération : le froid d’hiver écarte les essences gélives**
+  (minimum décennal E-OBS par UGF, en tâche de fond et mis en cache) ;
+  la fiche parcelle, le PDF et le prompt de l’IA affichent l’hiver
+  décennal (`.9002`).
+- **W1 lit les sources** BD TOPO (`water_points`) en plus du réseau
+  hydrographique (`.9003`).
+- **T4 : l’essence des libellés BD Forêt de groupe vient du cœur**
+  (`resoudre_espar_bdforet()`, par SER) ; l’app ne tient plus de
+  convention d’essence (`.9004`).
+
+### Correctifs
+
+- **Lancement enchaîné : chaque étape dit sa vraie erreur.** Desserte,
+  typage, intégrité, accessibilité et correction LiDAR affichent le
+  motif traduit et le détail du moteur au lieu d’un libellé générique ;
+  une étape dont le service échoue n’est plus marquée « ok » ; le typage
+  et l’intégrité sont ignorés, et non en échec, quand la desserte a
+  échoué (`.9007`, `.9010`, `.9011`).
+- **Typage de la desserte : un réseau sans route à créer finit « rien à
+  typer »**, même sans volume P1 (`.9010`).
+- **Une tuile IGN perdue n’est plus silencieuse** : l’étape réussit mais
+  le rapport et l’onglet le disent ; l’alerte est reconnue par sa classe
+  foretaccess et revient à chaque lancement tant que la couche est
+  incomplète (`.9008`, `.9009`).
+- Desserte sur une emprise de plus de 2 km : plus de plantage
+  `.rbind_features` (foretaccess 2.6.1, `.9007`).
+- Cadastre : le repli WFS IGN refonctionne avec happign 0.3 (`.9001`).
+- [`parallelly::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html)
+  remplace
+  [`future::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html),
+  déprécié (`.9005`, `.9006`).
+
+### Dépendances
+
+- Plancher `Imports: nemeton (>= 2026.11.37)`, `foretaccess (>= 2.6.3)`
+  ; `parallelly` passe en `Imports`.
+
+### Détail du cycle dev 2026.11.2.9012 (2026-11-22) — publié dans 2026.11.3
+
+> Mission 042.
 
 ### Ajouts
 
@@ -19,9 +69,9 @@
 
 - `nemeton (>= 2026.11.37)` (argument `cvat_path`).
 
-## nemetonshiny 2026.11.2.9011 (2026-11-22)
+### Détail du cycle dev 2026.11.2.9011 (2026-11-22) — publié dans 2026.11.3
 
-> **Non publié.** Mission 041.
+> Mission 041.
 
 ### Corrections
 
@@ -41,9 +91,9 @@
   `service_desserte.R` / `service_accessibility.R` a une entrée dans
   `TRANSLATIONS` (les `acc_profil_*` via la clé `profil_*`).
 
-## nemetonshiny 2026.11.2.9010 (2026-11-21)
+### Détail du cycle dev 2026.11.2.9010 (2026-11-21) — publié dans 2026.11.3
 
-> **Non publié.** Mission 040.
+> Mission 040.
 
 ### Corrections
 
@@ -63,10 +113,9 @@
   message à partir de `reason` (puis `detail`) ; il sert au rapport, à
   la notification de l’onglet et à `pipeline_engine_outcome()`.
 
-## nemetonshiny 2026.11.2.9009 (2026-11-21)
+### Détail du cycle dev 2026.11.2.9009 (2026-11-21) — publié dans 2026.11.3
 
-> **Non publié.** Mission 039. Demande **foretaccess \>= 2.6.3**
-> (`Imports`).
+> Mission 039. Demande **foretaccess \>= 2.6.3** (`Imports`).
 
 ### Corrections
 
@@ -90,10 +139,9 @@
   `foretaccess_tuiles_perdues`, pas de cache pour une couche incomplète,
   fausse alarme corrigée.
 
-## nemetonshiny 2026.11.2.9008 (2026-11-21)
+### Détail du cycle dev 2026.11.2.9008 (2026-11-21) — publié dans 2026.11.3
 
-> **Non publié.** Mission 038. Demande **foretaccess \>= 2.6.2**
-> (`Imports`).
+> Mission 038. Demande **foretaccess \>= 2.6.2** (`Imports`).
 
 ### Corrections
 
@@ -128,9 +176,9 @@
   requête IGN (WFS et WMS) 3 fois avant de perdre une tuile, et émet
   l’avertissement ci-dessus.
 
-## nemetonshiny 2026.11.2.9007 (2026-11-21)
+### Détail du cycle dev 2026.11.2.9007 (2026-11-21) — publié dans 2026.11.3
 
-> **Non publié.** Mission 037.
+> Mission 037.
 
 ### Corrections
 
@@ -160,9 +208,9 @@
   l’emprise de la desserte dépassait une tuile WFS de 2 km (projet «
   Parc de la colombière »).
 
-## nemetonshiny 2026.11.2.9006 (2026-11-17)
+### Détail du cycle dev 2026.11.2.9006 (2026-11-17) — publié dans 2026.11.3
 
-> **Non publié.** Mission 009.
+> Mission 009.
 
 ### Corrections
 
@@ -174,9 +222,9 @@
   le code depuis la mission 005, plus d’avertissement de dépréciation de
   `future`. Tests seuls, aucun changement dans `R/`.
 
-## nemetonshiny 2026.11.2.9005 (2026-11-17)
+### Détail du cycle dev 2026.11.2.9005 (2026-11-17) — publié dans 2026.11.3
 
-> **Non publié.** Mission 005.
+> Mission 005.
 
 ### Corrections
 
@@ -191,10 +239,9 @@
   [`parallelly::availableCores`](https://parallelly.futureverse.org/reference/availableCores.html).
   Le fichier revient dans le niveau rapide de `.claude/test-command`.
 
-## nemetonshiny 2026.11.2.9004 (2026-11-16)
+### Détail du cycle dev 2026.11.2.9004 (2026-11-16) — publié dans 2026.11.3
 
-> **Non publié.** Mission 036. Demande le cœur **nemeton \>=
-> 2026.11.35** (`Imports`).
+> Mission 036. Demande le cœur **nemeton \>= 2026.11.35** (`Imports`).
 
 ### Nouveautés
 
@@ -217,10 +264,9 @@
 - **Relancez le calcul** des projets existants pour que T4 en tienne
   compte : l’app n’invalide pas les `indicators.parquet` d’elle-même.
 
-## nemetonshiny 2026.11.2.9003 (2026-11-16)
+### Détail du cycle dev 2026.11.2.9003 (2026-11-16) — publié dans 2026.11.3
 
-> **Non publié.** Demande le cœur **nemeton \>= 2026.11.34**
-> (`Imports`).
+> Demande le cœur **nemeton \>= 2026.11.34** (`Imports`).
 
 ### Nouveautés
 
@@ -238,9 +284,9 @@
   Trou de Fiat donne un bonus à 6 UGF (de 3,5 à 40,6) ; les fontaines et
   le lavoir sont écartés par le cœur.
 
-## nemetonshiny 2026.11.2.9002 (2026-11-16)
+### Détail du cycle dev 2026.11.2.9002 (2026-11-16) — publié dans 2026.11.3
 
-> **Non publié.** Mission 034.
+> Mission 034.
 
 ### Nouveautés
 
@@ -266,9 +312,7 @@
 - Pendant ce calcul, les autres boutons de calcul de l’onglet sont
   grisés (un seul worker lourd à la fois).
 
-## nemetonshiny 2026.11.2.9001 (2026-11-16)
-
-> **Non publié.**
+### Détail du cycle dev 2026.11.2.9001 (2026-11-16) — publié dans 2026.11.3
 
 ### Correctifs
 
@@ -280,9 +324,9 @@
   en CI (`R-CMD-check-oldrel` sur `main`, API Cadastre indisponible le
   2026-11-15).
 
-## nemetonshiny 2026.11.2.9000 (2026-11-15)
+### Détail du cycle dev 2026.11.2.9000 (2026-11-15) — publié dans 2026.11.3
 
-> **Non publié.** Ouverture du cycle dev après la release v2026.11.2.
+> Ouverture du cycle dev après la release v2026.11.2.
 
 ## nemetonshiny 2026.11.2 (2026-11-15)
 

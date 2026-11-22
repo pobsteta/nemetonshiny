@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9012</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,126 +34,158 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9012" id="nemetonshiny-20261129012-2026-11-22">nemetonshiny 2026.11.2.9012 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129012-2026-11-22"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 042.</p>
-</blockquote>
+<h2 class="pkg-version" data-toc-text="2026.11.3" id="nemetonshiny-2026113-2026-11-22">nemetonshiny 2026.11.3 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026113-2026-11-22"></a></h2>
+<p>Release stable qui regroupe le cycle dev <code>2026.11.2.9001</code> à <code>.9012</code> (missions 005, 009 et 034 à 042, le détail de chaque entrée suit, plus bas). Elle demande le cœur <strong>nemeton &gt;= 2026.11.37</strong> et <strong>foretaccess &gt;= 2.6.3</strong> (<code>Imports</code>). Aucun changement cassant. <strong>Relancez le calcul</strong> des projets existants pour que W1 et T4 en tiennent compte.</p>
 <div class="section level3">
-<h3 id="ajouts-2026-11-2-9012">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-2-9012"></a></h3>
+<h3 id="nouveautés-2026-11-3">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-3"></a></h3>
+<ul><li>
+<strong>Inventaire vidéo : le CVAT du projet part dans le projet terrain</strong> (<code>rasters/cvat.tif</code> du <code>.qgz</code>) quand il est déjà calculé ; rien n’est calculé sinon (<code>.9012</code>).</li>
+<li>
+<strong>reGénération : le froid d’hiver écarte les essences gélives</strong> (minimum décennal E-OBS par UGF, en tâche de fond et mis en cache) ; la fiche parcelle, le PDF et le prompt de l’IA affichent l’hiver décennal (<code>.9002</code>).</li>
+<li>
+<strong>W1 lit les sources</strong> BD TOPO (<code>water_points</code>) en plus du réseau hydrographique (<code>.9003</code>).</li>
+<li>
+<strong>T4 : l’essence des libellés BD Forêt de groupe vient du cœur</strong> (<code>resoudre_espar_bdforet()</code>, par SER) ; l’app ne tient plus de convention d’essence (<code>.9004</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-3">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-3"></a></h3>
+<ul><li>
+<strong>Lancement enchaîné : chaque étape dit sa vraie erreur.</strong> Desserte, typage, intégrité, accessibilité et correction LiDAR affichent le motif traduit et le détail du moteur au lieu d’un libellé générique ; une étape dont le service échoue n’est plus marquée « ok » ; le typage et l’intégrité sont ignorés, et non en échec, quand la desserte a échoué (<code>.9007</code>, <code>.9010</code>, <code>.9011</code>).</li>
+<li>
+<strong>Typage de la desserte : un réseau sans route à créer finit « rien à typer »</strong>, même sans volume P1 (<code>.9010</code>).</li>
+<li>
+<strong>Une tuile IGN perdue n’est plus silencieuse</strong> : l’étape réussit mais le rapport et l’onglet le disent ; l’alerte est reconnue par sa classe foretaccess et revient à chaque lancement tant que la couche est incomplète (<code>.9008</code>, <code>.9009</code>).</li>
+<li>Desserte sur une emprise de plus de 2 km : plus de plantage <code>.rbind_features</code> (foretaccess 2.6.1, <code>.9007</code>).</li>
+<li>Cadastre : le repli WFS IGN refonctionne avec happign 0.3 (<code>.9001</code>).</li>
+<li>
+<code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores()</a></code> remplace <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">future::availableCores()</a></code>, déprécié (<code>.9005</code>, <code>.9006</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-3">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3"></a></h3>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.37)</code>, <code>foretaccess (&gt;= 2.6.3)</code> ; <code>parallelly</code> passe en <code>Imports</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3">Détail du cycle dev 2026.11.2.9012 (2026-11-22) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3"></a></h3>
+<blockquote>
+<p>Mission 042.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="ajouts-2026-11-3">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-3"></a></h3>
 <ul><li>
 <strong>Inventaire vidéo : le CVAT du projet part dans le projet terrain.</strong> <code>video_args_generation()</code> passe <code>cvat_path</code> à <code><a href="https://pobsteta.github.io/nemeton/reference/creer_projet_inventaire_video.html" class="external-link">nemeton::creer_projet_inventaire_video()</a></code> quand le projet a déjà un CVAT précalculé (Byte 0-255 de <code>build_cvat_precomputed()</code>, à côté du MNT) ; le cœur l’écrit en <code>rasters/cvat.tif</code> du <code>.qgz</code>. Sans CVAT, l’argument n’est pas passé et rien n’est calculé (helper <code>.video_cvat_path()</code>). L’emprise du cœur est l’union des UGF + 50 m : hors du CVAT, la valeur est 0 (nodata).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-2-9012">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9012"></a></h3>
+<h3 id="dépendances-2026-11-3-1">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-1"></a></h3>
 <ul><li>
 <code>nemeton (&gt;= 2026.11.37)</code> (argument <code>cvat_path</code>).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9011" id="nemetonshiny-20261129011-2026-11-22">nemetonshiny 2026.11.2.9011 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129011-2026-11-22"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 041.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9011">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9011"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-1">Détail du cycle dev 2026.11.2.9011 (2026-11-22) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-1"></a></h3>
+<blockquote>
+<p>Mission 041.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3"></a></h3>
 <ul><li>
 <strong>Le pipeline ne répond plus « ok » à une étape dont le service a échoué.</strong> Les étapes enchaînées <code>desserte_integrite</code> et correction LiDAR de l’accessibilité répondaient « ok » dès que l’<code>ExtendedTask</code> réussissait, même quand <code>run_desserte_integrite()</code> / <code>run_desserte_lidar_correction()</code> rendaient <code>list(status = "error", reason = ...)</code>. Elles passent désormais par <code>pipeline_task_outcome()</code> (<code>R/service_pipeline.R</code>, décision pure) : erreur + motif traduit + <code>detail</code>, comme l’onglet ; les alertes de tuiles IGN perdues sur succès sont conservées (mission 038). Les deux <code>observe</code> orphelins deviennent des <code>observeEvent(task$status())</code>.</li>
 <li>
 <strong>Motifs sans traduction.</strong> <code>acc_correct_invariant_broken</code> (correction LiDAR ayant perdu des tronçons) s’affichait en clé brute : traduction FR/EN ajoutée, et un test vérifie que tout <code>reason = "..."</code> de <code>service_desserte.R</code> / <code>service_accessibility.R</code> a une entrée dans <code>TRANSLATIONS</code> (les <code>acc_profil_*</code> via la clé <code>profil_*</code>).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9010" id="nemetonshiny-20261129010-2026-11-21">nemetonshiny 2026.11.2.9010 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129010-2026-11-21"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 040.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9010">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9010"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-2">Détail du cycle dev 2026.11.2.9010 (2026-11-21) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-2"></a></h3>
+<blockquote>
+<p>Mission 040.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3-1">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3-1"></a></h3>
 <ul><li>
 <strong>Typage de la desserte : un réseau sans route à créer finit « rien à typer » même sans volume P1.</strong> Dans <code>run_desserte_typage()</code>, la lecture du réseau et le test <code>lignes</code> vide (<code>status = "empty"</code>, <code>desserte_typage_rien_a_typer</code>) passent désormais <strong>avant</strong> le bloc volume (préparation IFN, accès disque, comblement). Nouvel ordre : paquets, fichier réseau, parcelles, paramètres, <strong>réseau vide</strong>, préparation IFN / volume (<code>no_volume</code>), essence (<code>no_species</code>), vectorisation. Sur un parc urbain hors BD Forêt (« Parc de la colombière »), l’étape est ignorée au lieu d’échouer en <code>no_volume</code>.</li>
 <li>
 <strong>Lancement enchaîné : le rapport du typage dit le vrai motif.</strong> L’étape <code>desserte_typage</code> affichait toujours le libellé générique <code>desserte_typage_failed</code>. Un helper commun (<code>pipeline_reason_message()</code>, <code>R/service_pipeline.R</code>) construit le message à partir de <code>reason</code> (puis <code>detail</code>) ; il sert au rapport, à la notification de l’onglet et à <code>pipeline_engine_outcome()</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9009" id="nemetonshiny-20261129009-2026-11-21">nemetonshiny 2026.11.2.9009 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129009-2026-11-21"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 039. Demande <strong>foretaccess &gt;= 2.6.3</strong> (<code>Imports</code>).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9009">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9009"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-3">Détail du cycle dev 2026.11.2.9009 (2026-11-21) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-3"></a></h3>
+<blockquote>
+<p>Mission 039. Demande <strong>foretaccess &gt;= 2.6.3</strong> (<code>Imports</code>).</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3-2">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3-2"></a></h3>
 <ul><li>
 <strong>L’alerte « tuile IGN perdue » est reconnue par sa classe, plus par son texte.</strong> <code>.capturer_alertes_tuiles()</code> (<code>R/service_desserte.R</code>) intercepte la classe <code>foretaccess_tuiles_perdues</code> que foretaccess 2.6.3 ajoute à l’avertissement : une reformulation du texte ne la fait plus échapper à la capture, et un autre avertissement qui parlerait de « tuile » et de « WFS » n’est plus étouffé à tort. Les autres avertissements passent inchangés.</li>
 <li>
 <strong>L’alerte revient à chaque lancement tant que l’IGN ne rend pas la couche entière.</strong> foretaccess 2.6.3 n’écrit plus de cache pour une couche incomplète (et supprime l’ancien) : le run suivant retente l’IGN au lieu de rejouer sans rien dire une couche amputée. Une fausse alarme est aussi corrigée : si toutes les tuiles échouent mais que l’emprise entière passe, aucune alerte.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-2-9009">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9009"></a></h3>
+<h3 id="dépendances-2026-11-3-2">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-2"></a></h3>
 <ul><li>
 <strong>Plancher <code>foretaccess (&gt;= 2.6.3)</code></strong> : classe <code>foretaccess_tuiles_perdues</code>, pas de cache pour une couche incomplète, fausse alarme corrigée.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9008" id="nemetonshiny-20261129008-2026-11-21">nemetonshiny 2026.11.2.9008 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129008-2026-11-21"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 038. Demande <strong>foretaccess &gt;= 2.6.2</strong> (<code>Imports</code>).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9008">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9008"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-4">Détail du cycle dev 2026.11.2.9008 (2026-11-21) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-4"></a></h3>
+<blockquote>
+<p>Mission 038. Demande <strong>foretaccess &gt;= 2.6.2</strong> (<code>Imports</code>).</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3-3">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3-3"></a></h3>
 <ul><li>
 <strong>Une tuile IGN perdue n’est plus silencieuse : l’étape réussit, mais son rapport et l’onglet le disent.</strong> foretaccess 2.6.2 retente chaque tuile WFS 3 fois, puis, si elle reste perdue, rend une couche <strong>incomplète</strong> avec un simple avertissement (« N tuile(s) WFS sur M en echec… ») que les <code>tryCatch(error = )</code> de l’app laissaient se perdre. Un helper (<code>.capturer_alertes_tuiles()</code>, <code>R/service_desserte.R</code>) enveloppe les appels <code>acquire_desserte()</code> et <code>acquire_foret()</code> (les seuls à passer par le WFS ; <code>acquire_mnt()</code>, WMS, n’émet rien) dans <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">withCallingHandlers()</a></code>, ne retient et n’étouffe que ces avertissements, et les rend dans le champ <code>avertissements</code> du résultat (capture <strong>dans</strong> le worker, pas de relais <code>future</code>). Sites couverts : <code>run_desserte()</code>, <code>run_desserte_optimiser()</code>, <code>run_desserte_osm()</code>, <code>run_desserte_detection()</code>, <code>.acquire_mnt_desserte()</code> (donc <code>run_accessibility()</code> et <code>run_desserte_lidar_correction()</code>) et le masque forêt d’<code>run_accessibility()</code>. Le message complet (dernière ligne : l’erreur de l’IGN) est calculé une fois (<code>pipeline_alertes_message()</code>, clé <code>tuiles_en_echec</code>) : il va dans le rapport du lancement enchaîné <strong>sur une étape <code>ok</code></strong> (<code>pipeline_answer(…, "ok", message)</code>, le rapport affiche déjà le message de toute étape) et dans une notification <code>warning</code> de l’onglet. <code>pipeline_engine_outcome()</code> expose <code>alerte</code>. L’alerte ne vaut que pour le run qui l’a vue : foretaccess met en cache la couche incomplète et la rejoue ensuite sans rien dire.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-2-9008">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9008"></a></h3>
+<h3 id="dépendances-2026-11-3-3">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-3"></a></h3>
 <ul><li>
 <strong>Plancher <code>foretaccess (&gt;= 2.6.2)</code></strong> : la 2.6.2 retente chaque requête IGN (WFS et WMS) 3 fois avant de perdre une tuile, et émet l’avertissement ci-dessus.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9007" id="nemetonshiny-20261129007-2026-11-21">nemetonshiny 2026.11.2.9007 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129007-2026-11-21"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 037.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9007">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9007"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-5">Détail du cycle dev 2026.11.2.9007 (2026-11-21) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-5"></a></h3>
+<blockquote>
+<p>Mission 037.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3-4">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3-4"></a></h3>
 <ul><li>
 <strong>Lancement enchaîné : le rapport des étapes desserte, typage de la desserte et accessibilité montre la vraie erreur</strong>, plus seulement « Vérifiez la connexion réseau ». Un helper commun (<code>pipeline_error_message()</code>, <code>R/service_pipeline.R</code>) ajoute au message traduit le <code>detail</code> du moteur (sans codes ANSI, tronqué à 300 caractères) ; le même message sert à la notification de l’onglet et à <code>pipeline_answer()</code>. Les clés <code>desserte_desserte_failed</code> et <code>accessibility_desserte_failed</code> n’accusent plus le réseau d’office. Quand l’étape <code>desserte</code> échoue dans un run, <code>desserte_typage</code> du même run est marquée « ignorée » (clé <code>pipeline_skip_desserte_ko</code>) au lieu d’un échec en cascade ; <code>desserte_integrite</code> est ignorée de la même façon (sans lancer la tâche). La décision de fin de tâche des moteurs (statut, message, run à mémoriser) est un helper pur, <code>pipeline_engine_outcome()</code>, testé directement. Les étapes de correction d’accessibilité et de contrôle d’intégrité de la desserte remontent aussi l’erreur réelle de la tâche (<code>pipeline_task_error()</code>) au lieu d’un « Erreur » nu.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-2-9007">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9007"></a></h3>
+<h3 id="dépendances-2026-11-3-4">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-4"></a></h3>
 <ul><li>
 <strong>Plancher <code>foretaccess (&gt;= 2.6.1)</code></strong> : la 2.6.1 corrige <code>.rbind_features</code>, qui plantait (<code>character string is not in a standard unambiguous format</code>) dès que l’emprise de la desserte dépassait une tuile WFS de 2 km (projet « Parc de la colombière »).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9006" id="nemetonshiny-20261129006-2026-11-17">nemetonshiny 2026.11.2.9006 (2026-11-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129006-2026-11-17"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 009.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9006">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9006"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-6">Détail du cycle dev 2026.11.2.9006 (2026-11-17) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-6"></a></h3>
+<blockquote>
+<p>Mission 009.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3-5">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3-5"></a></h3>
 <ul><li>
 <strong>Les deux derniers appels à <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">future::availableCores()</a></code> de <code>test-service_compute.R</code> passent à <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores()</a></code></strong> (tests de plafond de <code>.resolve_parallel_workers()</code>) : même plafond que le code depuis la mission 005, plus d’avertissement de dépréciation de <code>future</code>. Tests seuls, aucun changement dans <code>R/</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9005" id="nemetonshiny-20261129005-2026-11-17">nemetonshiny 2026.11.2.9005 (2026-11-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129005-2026-11-17"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 005.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="corrections-2026-11-2-9005">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9005"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-7">Détail du cycle dev 2026.11.2.9005 (2026-11-17) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-7"></a></h3>
+<blockquote>
+<p>Mission 005.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="corrections-2026-11-3-6">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-3-6"></a></h3>
 <ul><li>
 <strong><code>.resolve_parallel_workers()</code> appelle <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores()</a></code></strong> au lieu de <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">future::availableCores()</a></code>, déprécié : l’avertissement émis une fois par session faisait échouer <code>test-service_monitoring_wiring.R</code> (<code>expect_silent</code>) lancé seul. <code>parallelly</code> passe en <code>Imports</code> (déjà installé via <code>future</code>). Les deux tests de plancher de <code>test-service_compute.R</code> simulent désormais <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores</a></code>. Le fichier revient dans le niveau rapide de <code>.claude/test-command</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9004" id="nemetonshiny-20261129004-2026-11-16">nemetonshiny 2026.11.2.9004 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129004-2026-11-16"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 036. Demande le cœur <strong>nemeton &gt;= 2026.11.35</strong> (<code>Imports</code>).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="nouveautés-2026-11-2-9004">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-9004"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-8">Détail du cycle dev 2026.11.2.9004 (2026-11-16) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-8"></a></h3>
+<blockquote>
+<p>Mission 036. Demande le cœur <strong>nemeton &gt;= 2026.11.35</strong> (<code>Imports</code>).</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-3-1">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-3-1"></a></h3>
 <ul><li>
 <strong>T4 : l’essence des libellés BD Forêt de groupe vient du cœur</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/resoudre_espar_bdforet.html" class="external-link">nemeton::resoudre_espar_bdforet()</a></code>, 2026.11.35). L’app lui passe le libellé et la <strong>SER de chaque UGF</strong> ; pour « Chênes décidus », « Pin laricio, pin noir », « Sapin, épicéa »… le cœur retient l’essence au plus fort volume à l’hectare de l’IFN dans la SER (puis la GRECO, puis la France). Les libellés génériques (Feuillus, Conifères, Mixte) restent <code>NA</code>, donc <code>skipped_no_essence</code>, et c’est juste. À Couchey (SER C20), « Chênes décidus » donne 03 (chêne sessile) et « Pin laricio, pin noir » donne 54 (pin noir d’Autriche) : les 34 UGF <code>skipped_no_essence</code> redeviennent calculables, sauf Feuillus / Conifères / Mixte. Une <code>essence</code> déjà fournie sur les unités reste prioritaire.</li>
 <li>
@@ -161,48 +193,45 @@
 <li>
 <strong>Relancez le calcul</strong> des projets existants pour que T4 en tienne compte : l’app n’invalide pas les <code>indicators.parquet</code> d’elle-même.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9003" id="nemetonshiny-20261129003-2026-11-16">nemetonshiny 2026.11.2.9003 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129003-2026-11-16"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Demande le cœur <strong>nemeton &gt;= 2026.11.34</strong> (<code>Imports</code>).</p>
-</blockquote>
 <div class="section level3">
-<h3 id="nouveautés-2026-11-2-9003">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-9003"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-9">Détail du cycle dev 2026.11.2.9003 (2026-11-16) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-9"></a></h3>
+<blockquote>
+<p>Demande le cœur <strong>nemeton &gt;= 2026.11.34</strong> (<code>Imports</code>).</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-3-2">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-3-2"></a></h3>
 <ul><li>
 <strong>W1 lit les sources</strong> (mission 035, cœur 2026.11.34) : le calcul télécharge la couche BD TOPO <code>detail_hydrographique</code> entière, sans filtre (le cœur retient les natures <code>Source</code>, <code>Source captée</code> et <code>Résurgence</code> « En service »), sur la même emprise élargie de 500 m que le réseau hydrographique, et la passe au cœur sous le nom <code>water_points</code>. Une UGF sans cours d’eau prend alors sa distance au plus proche cours d’eau ou source. Couche vide : c’est une mesure, elle est passée. Échec du WFS : la couche est absente, W1 se replie sur le réseau de surface (pas de NA). <strong>Relancez le calcul</strong> des projets existants pour que W1 tienne compte des sources : l’app n’invalide pas les <code>indicators.parquet</code> d’elle-même. À Couchey, le Trou de Fiat donne un bonus à 6 UGF (de 3,5 à 40,6) ; les fontaines et le lavoir sont écartés par le cœur.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9002" id="nemetonshiny-20261129002-2026-11-16">nemetonshiny 2026.11.2.9002 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129002-2026-11-16"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong> Mission 034.</p>
-</blockquote>
 <div class="section level3">
-<h3 id="nouveautés-2026-11-2-9002">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-2-9002"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-10">Détail du cycle dev 2026.11.2.9002 (2026-11-16) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-10"></a></h3>
+<blockquote>
+<p>Mission 034.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="nouveautés-2026-11-3-3">Nouveautés<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9s-2026-11-3-3"></a></h3>
 <ul><li>
 <strong>reGénération, le froid d’hiver écarte les essences gélives</strong> (cœur <strong>nemeton &gt;= 2026.11.32</strong>, plancher <code>Imports</code> relevé). À Couchey, le classement des essences mettait en tête le Pin d’Alep, le Pin brutia et le Pin des Canaries : rien ne tenait compte du froid. Après l’analyse, une tâche de fond calcule une fois le minimum décennal E-OBS TN de chaque UGF (<code><a href="https://pobsteta.github.io/nemeton/reference/regen_tmin_decennale.html" class="external-link">nemeton::regen_tmin_decennale()</a></code>, environ 15 minutes au premier passage), le pose sur les unités, et <code>regen_rank_species()</code> écarte alors les essences qui ne tiennent pas ce froid. Le résultat est mis en cache dans le projet (<code>cache/regeneration/tmin_decennale.csv</code>, clé = UGF + position) et relu à la réouverture, sans recalcul. Si E-OBS est indisponible, l’avertissement est affiché et le classement reste celui d’avant.</li>
 <li>
 <strong>Fiche parcelle</strong> : la fiche affiche « hiver décennal : −13,2 °C » et le nombre d’essences écartées pour le froid. Une UGF où toutes les essences sont écartées (<code>rank = NA</code>, facteur <code>froid_hiver</code>) le dit en clair, sans « NA/100 », dans la fiche, l’export PDF et le prompt de l’IA. L’hiver décennal figure aussi dans les conditions de station du PDF et du prompt.</li>
 <li>Pendant ce calcul, les autres boutons de calcul de l’onglet sont grisés (un seul worker lourd à la fois).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9001" id="nemetonshiny-20261129001-2026-11-16">nemetonshiny 2026.11.2.9001 (2026-11-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129001-2026-11-16"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
 <div class="section level3">
-<h3 id="correctifs-2026-11-2-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-2-9001"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-11">Détail du cycle dev 2026.11.2.9001 (2026-11-16) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-11"></a></h3>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-3-1">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-3-1"></a></h3>
 <ul><li>
 <strong>Cadastre, repli WFS cassé</strong> : quand l’API Cadastre (Etalab) est indisponible, l’app se replie sur le WFS IGN par happign. Depuis happign 0.3, <code>get_wfs()</code> n’accepte plus <code>spatial_filter</code> (« unused argument ») : le repli échouait toujours et aucune parcelle ne se chargeait. L’appel passe par <code>predicate = happign::intersects()</code>. Vu en CI (<code>R-CMD-check-oldrel</code> sur <code>main</code>, API Cadastre indisponible le 2026-11-15).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.2.9000" id="nemetonshiny-20261129000-2026-11-15">nemetonshiny 2026.11.2.9000 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129000-2026-11-15"></a></h2>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-3-12">Détail du cycle dev 2026.11.2.9000 (2026-11-15) — publié dans 2026.11.3<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-3-12"></a></h3>
 <blockquote>
-<p><strong>Non publié.</strong> Ouverture du cycle dev après la release v2026.11.2.</p>
+<p>Ouverture du cycle dev après la release v2026.11.2.</p>
 </blockquote>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2" id="nemetonshiny-2026112-2026-11-15">nemetonshiny 2026.11.2 (2026-11-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026112-2026-11-15"></a></h2>
