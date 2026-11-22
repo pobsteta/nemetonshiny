@@ -882,18 +882,14 @@ mod_accessibility_server <- function(id, app_state) {
       }
     })
 
-    shiny::observe({
+    shiny::observeEvent(correct_task$status(), {
       st <- correct_task$status()
       req <- shiny::isolate(correction_pipeline_req())
       if (is.null(req) || !st %in% c("success", "error")) return()
-      pipeline_answer(app_state, req,
-                      if (identical(st, "success")) "ok" else "error",
-                      if (identical(st, "success")) {
-                        # Tuiles IGN perdues pendant la correction : etape ok, alerte dite.
-                        pipeline_alertes_message(
-                          tryCatch(correct_task$result()$avertissements,
-                                   error = function(e) NULL), i18n)
-                      } else pipeline_task_error(correct_task, i18n$t("error")))
+      # Tuiles IGN perdues : etape ok + alerte ; `status = "error"` rendu par
+      # une tache reussie : etape en erreur avec son motif.
+      issue <- pipeline_task_outcome(correct_task, i18n, "acc_correct_failed")
+      pipeline_answer(app_state, req, issue$status, issue$message)
       correction_pipeline_req(NULL)
     })
 

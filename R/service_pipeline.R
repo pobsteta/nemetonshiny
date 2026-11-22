@@ -403,10 +403,29 @@ pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
   paste0(msg, " \u2014 ", d)
 }
 
+#' Message d'echec d'un resultat de moteur : le MOTIF precis, puis le detail
+#'
+#' @description
+#' Un resultat d'echec porte `reason` (cle i18n du motif : `no_volume`,
+#' `no_reseau`, `bad_params`...) et parfois `detail`. Le rapport du pipeline et
+#' la notification de l'onglet doivent dire la meme chose : le libelle generique
+#' (`defaut`) ne sert que si `reason` est absent. Un seul calcul, partage.
+#'
+#' @param res Liste de resultat (ou NULL).
+#' @param i18n Objet i18n (`$t()`).
+#' @param defaut Character. Cle i18n de repli.
+#' @return Character scalar.
+#' @noRd
+pipeline_reason_message <- function(res, i18n, defaut) {
+  reason <- tryCatch(res$reason, error = function(e) NULL) %||% defaut
+  pipeline_error_message(
+    i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
+}
+
 #' Message d'alerte d'une etape REUSSIE dont une couche IGN est incomplete
 #'
 #' @description
-#' foretaccess (>= 2.6.2) perd une tuile WFS apres 3 tentatives sans faire
+#' foretaccess (>= 2.6.3) perd une tuile WFS apres 3 tentatives sans faire
 #' echouer l'etape : le reseau rendu est incomplet sur une partie de l'emprise.
 #' Le resultat porte ces alertes (`avertissements`, cf.
 #' `.capturer_alertes_tuiles()`) ; ce helper en fait UN message pour le rapport
@@ -455,11 +474,36 @@ pipeline_engine_outcome <- function(res, i18n, defaut, step_id = NULL,
     return(list(ok = TRUE, status = "ok", message = alerte, ko_run = NULL,
                 alerte = !is.null(alerte)))
   }
-  reason <- tryCatch(res$reason, error = function(e) NULL) %||% defaut
-  msg <- pipeline_error_message(
-    i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
+  msg <- pipeline_reason_message(res, i18n, defaut)
   list(ok = FALSE, status = "error", message = msg, alerte = FALSE,
        ko_run = if (identical(step_id, "desserte")) run_id else NULL)
+}
+
+#' Issue d'une `ExtendedTask` moteur enchainee (integrite, correction LiDAR)
+#'
+#' @description
+#' Une tache qui REUSSIT peut rendre `list(status = "error", reason = ...)` :
+#' repondre "ok" au pipeline sur la seule fin de tache cachait l'echec.
+#' Decision pure : tache en erreur -> message reel du worker ; tache reussie ->
+#' `pipeline_engine_outcome()` sur son resultat (motif traduit + `detail`, ou
+#' succes avec alertes de tuiles).
+#'
+#' @param task Objet avec `$status()` et `$result()` (un `ExtendedTask`).
+#' @param i18n Objet i18n.
+#' @param defaut Character. Motif de repli.
+#' @param step_id,run_id Voir `pipeline_engine_outcome()`.
+#' @return Liste `status`, `message` (+ champs de `pipeline_engine_outcome()`).
+#' @noRd
+pipeline_task_outcome <- function(task, i18n, defaut, step_id = NULL,
+                                  run_id = NULL) {
+  if (!identical(task$status(), "success")) {
+    return(list(ok = FALSE, status = "error", alerte = FALSE, ko_run = NULL,
+                message = pipeline_task_error(task, i18n$t("error"))))
+  }
+  res <- tryCatch(task$result(), error = function(e) {
+    list(status = "error", reason = defaut, detail = conditionMessage(e))
+  })
+  pipeline_engine_outcome(res, i18n, defaut, step_id = step_id, run_id = run_id)
 }
 
 #' Message d'erreur reel d'un `ExtendedTask`, pour le rapport de la chaine

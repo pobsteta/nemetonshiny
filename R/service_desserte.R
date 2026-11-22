@@ -107,12 +107,15 @@ DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
 
 #' Capture the "tiles lost" warnings of the IGN WFS acquisitions
 #'
-#' `foretaccess::acquire_desserte()` / `acquire_foret()` (>= 2.6.2) retry each
-#' WFS tile 3 times and, when one is still lost, emit a `warning` ("N tuile(s)
-#' WFS sur M en echec ..."). The layer is then INCOMPLETE but the call
-#' succeeds : without this wrapper the warning is lost (the calls sit in
-#' `tryCatch(error = )`, and a `future` worker drops it). Only these warnings
-#' are muffled and returned ; any other warning passes through untouched.
+#' `foretaccess::acquire_desserte()` / `acquire_foret()` (>= 2.6.3) retry each
+#' WFS tile 3 times and, when one is still lost, emit a warning of class
+#' `foretaccess_tuiles_perdues` ("N tuile(s) WFS sur M en echec ..."). The layer
+#' is then INCOMPLETE but the call succeeds : without this wrapper the warning
+#' is lost (the calls sit in `tryCatch(error = )`, and a `future` worker drops
+#' it). Since 2.6.3 an incomplete layer is no longer cached, so the alert comes
+#' back at every run until the IGN serves the whole layer. The warning is
+#' recognised by its CLASS, not by its text. Only these warnings are muffled
+#' and returned ; any other warning passes through untouched.
 #' `acquire_mnt()` (WMS) retries too but emits nothing, so it is not wrapped.
 #'
 #' @param expr Expression to evaluate (typically a `tryCatch()` around the
@@ -124,12 +127,9 @@ DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
   alertes <- character(0)
   valeur <- withCallingHandlers(
     expr,
-    warning = function(w) {
-      m <- .strip_ansi(conditionMessage(w))
-      if (grepl("tuile", m, fixed = TRUE) && grepl("WFS", m, fixed = TRUE)) {
-        alertes <<- c(alertes, m)
-        invokeRestart("muffleWarning")
-      }
+    foretaccess_tuiles_perdues = function(w) {
+      alertes <<- c(alertes, .strip_ansi(conditionMessage(w)))
+      invokeRestart("muffleWarning")
     })
   list(valeur = valeur, alertes = unique(alertes))
 }
@@ -1344,7 +1344,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
     n_routes = n_routes,
     skidding_m = skidding_m,
     # Alertes " tuile(s) WFS en echec " (couche IGN incomplete) : propres a CE
-    # run, non persistees - le cache foretaccess rejoue la couche sans les redire.
+    # run, non persistees : foretaccess (>= 2.6.3) ne met plus en cache une couche
+    # incomplete, l alerte revient donc au run suivant.
     avertissements = alertes_tuiles)
 }
 
@@ -1457,6 +1458,27 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     return(list(status = "error", reason = "desserte_typage_bad_params"))
   }
 
+  # Reseau persiste par run_desserte : unwrap du SpatRaster puis vectorisation.
+  reseau <- tryCatch({
+    r <- readRDS(obj_path); r$reseau <- terra::unwrap(r$reseau); r
+  }, error = function(e) NULL)
+  if (is.null(reseau)) {
+    return(list(status = "error", reason = "desserte_typage_no_reseau"))
+  }
+  # Zero route NOUVELLE a creer n'est pas une panne : c'est le meilleur resultat
+  # possible - le reseau existant dessert deja toutes les parcelles (constate
+  # sur Couchey : `lignes` vide, 17 056 troncons existants, 76 UGF desservies
+  # sur 76, cout 0). `vectoriser_reseau()` travaille sur `reseau$lignes` et
+  # abandonne alors sur " Le reseau ne contient aucune route a vectoriser ", que
+  # l'onglet affichait en rouge - un bon resultat rapporte comme un echec.
+  # On le distingue ici, AVANT l'appel, avec un statut propre.
+  if (is.null(reseau$lignes) || nrow(reseau$lignes) == 0L) {
+    return(list(status = "empty", reason = "desserte_typage_rien_a_typer"))
+  }
+  # Le test est AVANT le bloc volume (mission 040) : sans route a creer, le volume
+  # (et la preparation IFN, un acces disque) ne sert a rien ; un parc sans BD
+  # Foret finissait `no_volume` en erreur au lieu de `rien_a_typer`.
+
   # Essence (BD Foret) et SER du projet : la voie IFN en a besoin, et le
   # comblement de P1 aussi (NDP 0, brief 040 sect.7). Best-effort.
   prep <- .typage_preparer_ifn(parcelles, project_path)
@@ -1491,24 +1513,6 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
   }
   if (identical(voie, "ifn") && !prep$has_species) {
     return(list(status = "error", reason = "desserte_typage_no_species"))
-  }
-
-  # Reseau persiste par run_desserte : unwrap du SpatRaster puis vectorisation.
-  reseau <- tryCatch({
-    r <- readRDS(obj_path); r$reseau <- terra::unwrap(r$reseau); r
-  }, error = function(e) NULL)
-  if (is.null(reseau)) {
-    return(list(status = "error", reason = "desserte_typage_no_reseau"))
-  }
-  # Zero route NOUVELLE a creer n'est pas une panne : c'est le meilleur resultat
-  # possible - le reseau existant dessert deja toutes les parcelles (constate
-  # sur Couchey : `lignes` vide, 17 056 troncons existants, 76 UGF desservies
-  # sur 76, cout 0). `vectoriser_reseau()` travaille sur `reseau$lignes` et
-  # abandonne alors sur " Le reseau ne contient aucune route a vectoriser ", que
-  # l'onglet affichait en rouge - un bon resultat rapporte comme un echec.
-  # On le distingue ici, AVANT l'appel, avec un statut propre.
-  if (is.null(reseau$lignes) || nrow(reseau$lignes) == 0L) {
-    return(list(status = "empty", reason = "desserte_typage_rien_a_typer"))
   }
 
   graphe <- tryCatch(foretaccess::vectoriser_reseau(reseau),
