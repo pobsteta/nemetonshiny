@@ -6331,6 +6331,10 @@ TRANSLATIONS <- list(
   regen_engine_run = list(fr = "Lancer le moteur r\u00e9el", en = "Run the real engine"),
   regen_engine_tip = list(fr = "Lance le vrai mod\u00e8le microclimf (structure LiDAR HD + for\u00e7age ERA5-Land) pour calculer la sensibilit\u00e9 microclimatique. Co\u00fbteux (minutes \u00e0 heures) : s'ex\u00e9cute en arri\u00e8re-plan sans bloquer l'application.", en = "Runs the real microclimf model (LiDAR HD structure + ERA5-Land forcing) to compute microclimatic sensitivity. Expensive (minutes to hours): runs in the background without blocking the app."),
   regen_engine_running = list(fr = "Moteur microclimf en cours (LiDAR HD + ERA5) \u2014 cela peut prendre plusieurs minutes\u2026", en = "microclimf engine running (LiDAR HD + ERA5) \u2014 this can take several minutes\u2026"),
+  regen_moteur_precedent_arrete = list(
+    fr = "Un calcul reG\u00e9n\u00e9ration pr\u00e9c\u00e9dent tournait encore sur ce projet : il a \u00e9t\u00e9 arr\u00eat\u00e9.",
+    en = "A previous reGeneration run was still running on this project: it has been stopped."
+  ),
   regen_engine_running_short = list(fr = "Moteur en cours\u2026", en = "Engine running\u2026"),
   regen_auto_running_short = list(fr = "D\u00e9tection E-OBS\u2026", en = "E-OBS detection\u2026"),
   # Verrou d'exclusion mutuelle des calculs (brief 035 verrou-boutons). Libell\u00e9
