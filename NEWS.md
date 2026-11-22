@@ -1,3 +1,11 @@
+# nemetonshiny 2026.11.3.9002 (2026-11-22)
+
+> **Non publié.**
+
+## Dépendances
+
+- **Plancher `nemeton (>= 2026.11.38)`** : `run_memory_capped(marker_path =)`, `capped_run_alive()`, `stop_memory_capped()` et l'enfant supervisé (mort avec son worker), plus la purge des jobs ERA5 orphelins. Sans eux, la protection « un seul moteur reGénération par projet » de la `.9001` reste inactive (garde de capacité, conservée).
+
 # nemetonshiny 2026.11.3.9001 (2026-11-22)
 
 ## Correctifs
