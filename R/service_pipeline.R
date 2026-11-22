@@ -479,6 +479,33 @@ pipeline_engine_outcome <- function(res, i18n, defaut, step_id = NULL,
        ko_run = if (identical(step_id, "desserte")) run_id else NULL)
 }
 
+#' Issue d'une `ExtendedTask` moteur enchainee (integrite, correction LiDAR)
+#'
+#' @description
+#' Une tache qui REUSSIT peut rendre `list(status = "error", reason = ...)` :
+#' repondre "ok" au pipeline sur la seule fin de tache cachait l'echec.
+#' Decision pure : tache en erreur -> message reel du worker ; tache reussie ->
+#' `pipeline_engine_outcome()` sur son resultat (motif traduit + `detail`, ou
+#' succes avec alertes de tuiles).
+#'
+#' @param task Objet avec `$status()` et `$result()` (un `ExtendedTask`).
+#' @param i18n Objet i18n.
+#' @param defaut Character. Motif de repli.
+#' @param step_id,run_id Voir `pipeline_engine_outcome()`.
+#' @return Liste `status`, `message` (+ champs de `pipeline_engine_outcome()`).
+#' @noRd
+pipeline_task_outcome <- function(task, i18n, defaut, step_id = NULL,
+                                  run_id = NULL) {
+  if (!identical(task$status(), "success")) {
+    return(list(ok = FALSE, status = "error", alerte = FALSE, ko_run = NULL,
+                message = pipeline_task_error(task, i18n$t("error"))))
+  }
+  res <- tryCatch(task$result(), error = function(e) {
+    list(status = "error", reason = defaut, detail = conditionMessage(e))
+  })
+  pipeline_engine_outcome(res, i18n, defaut, step_id = step_id, run_id = run_id)
+}
+
 #' Message d'erreur reel d'un `ExtendedTask`, pour le rapport de la chaine
 #'
 #' @description

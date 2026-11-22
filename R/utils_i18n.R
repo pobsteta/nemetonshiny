@@ -107,6 +107,7 @@ TRANSLATIONS <- list(
   acc_desserte_abandonnee = list(fr = "Abandonn\u00e9e (recolonis\u00e9e)", en = "Abandoned (recolonised)"),
   acc_desserte_sans_signal = list(fr = "Aucun signal mesur\u00e9", en = "No signal measured"),
   acc_correct_attrs_lost = list(fr = "La qualification LiDAR a perdu la colonne 'classe' : desserte corrig\u00e9e inutilisable.", en = "LiDAR qualification dropped the 'classe' column: corrected network unusable."),
+  acc_correct_invariant_broken = list(fr = "La correction LiDAR a perdu des tron\u00e7ons : correction refus\u00e9e.", en = "LiDAR correction dropped road segments: correction rejected."),
   acc_correct_write_failed = list(fr = "\u00c9chec d'\u00e9criture de la desserte corrig\u00e9e.", en = "Failed to write the corrected road network."),
   acc_desserte_ndp1_badge = list(fr = "Desserte corrig\u00e9e au LiDAR (g\u00e9om\u00e9trie recal\u00e9e, largeurs mesur\u00e9es) \u2014 entr\u00e9e de tous les moteurs.", en = "LiDAR-corrected road network (re-aligned geometry, measured widths) \u2014 input to all engines."),
   acc_desserte_ndp0_badge = list(fr = "Desserte corrig\u00e9e demand\u00e9e mais absente : repli sur la desserte brute.", en = "Corrected network requested but missing: fell back to the raw network."),
