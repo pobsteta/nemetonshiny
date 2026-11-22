@@ -28,10 +28,6 @@ _(vide)_
 
 ## Planifié
 
-- [suite-cvat-inventaire-video] Passer `cvat_path` à `creer_projet_inventaire_video()` (brief du 2026-11-20) · depuis le cycle 3
-  - Homme : `dev`, à la sortie du tag nemeton qui porte `cvat_path` (absent de 2026.11.36)
-  - Mission : brief `~/dev/briefs/vers-nemetonshiny/2026-11-20-cvat-path-inventaire-video.md`
-  - Moyens : attend le cœur
 - [essais-terrain-cycle-3] Essais de Pascal : export « Affouage » réel format 8 (027), T4 sur Dabo vers 57 (029) et Couchey sans `skipped_no_essence` hors Feuillus/Conifères/Mixte (036), placette Groma 1.6 avec et sans vidéo, deux clics « Récupérer » → une seule archive (030, 033), fiche Couchey à 63 UGF après réinstallation de nemetonmcp (031), W1 sur Couchey après recalcul : 6 UGF avec bonus source (035), reGénération : hiver décennal ≈ −13,2 °C et plus de pins méditerranéens en tête (034) (032 ; nemetonmcp a vu NA sur le calcul du 15/11 16 h 01, antérieur au correctif) · depuis le cycle 3
   - Homme : Pascal
   - Mission : retours au journal en lignes « écart »
@@ -51,6 +47,7 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [042-inventaire-video-cvat](missions/042-inventaire-video-cvat.md) · cycle 3 · PR #314 (`207f0d7f`), `.9012`
 - [041-integrite-correction-statut](missions/041-integrite-correction-statut.md) · cycle 3 · PR #312 (`accd2789`), `.9011`
 - [040-desserte-typage-ordre-motif](missions/040-desserte-typage-ordre-motif.md) · cycle 3 · PR #311 (`fadd0d6f`), `.9010`
 - [039-foretaccess-classe-tuiles](missions/039-foretaccess-classe-tuiles.md) · cycle 3 · PR #310 (`1e5956fb`), `.9009`
