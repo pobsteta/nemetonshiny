@@ -86,8 +86,11 @@ test_that("arret demande : moteur arrete, echec voulu seulement si un moteur tou
   # Aucun moteur dans ce module : arret tente, mais pas de drapeau d'arret voulu.
   expect_false(nemetonshiny:::.regen_arret_demande("/m2", FALSE, arreter = arreter))
   expect_identical(vus, c("/m", "/m2"))
+  # Rien n'a ete arrete (coeur ancien, marqueur perime) : pas d'arret voulu.
+  expect_false(nemetonshiny:::.regen_arret_demande(
+    "/m3", TRUE, arreter = function(marker) FALSE))
   # Pas de marqueur : rien a arreter.
-  expect_true(nemetonshiny:::.regen_arret_demande(NULL, TRUE, arreter = arreter))
+  expect_false(nemetonshiny:::.regen_arret_demande(NULL, TRUE, arreter = arreter))
   expect_length(vus, 2L)
 })
 

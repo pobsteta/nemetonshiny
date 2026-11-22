@@ -222,9 +222,10 @@
 # en cours dans ce module) : pas de toast d'echec dans ce cas.
 .regen_arret_demande <- function(marker, engine_running,
                                  arreter = .regen_marker_stop) {
-  voulu <- isTRUE(engine_running)
-  if (!is.null(marker) && nzchar(marker)) arreter(marker)
-  voulu
+  arrete <- if (!is.null(marker) && nzchar(marker)) isTRUE(arreter(marker)) else FALSE
+  # Voulu seulement si un moteur de ce module a REELLEMENT ete arrete : sinon un
+  # vrai echec ulterieur perdrait son toast.
+  isTRUE(engine_running) && arrete
 }
 
 # Fin de session : arrete le moteur lance par CETTE session (marqueur memorise
@@ -1929,7 +1930,6 @@ mod_regeneration_server <- function(id, app_state) {
                                 type = "warning", duration = 8)
       })
       rv$arret_voulu <- FALSE
-      app_state$regen_marker <- .regen_marker_path(project_path)
       rv$engine_running <- TRUE
       rv$engine_start <- Sys.time()
       # Notif persistante bas-droite (retiree en fin de tache) - le moteur reel
@@ -1938,7 +1938,15 @@ mod_regeneration_server <- function(id, app_state) {
       shiny::showNotification(i18n$t("regen_engine_running"), type = "message",
                               duration = NULL, id = session$ns("engine_notif"))
       rv$engine_pid <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)  # projet du run (resultat rendu a CE projet)
-      engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
+      # Marqueur memorise au plus pres du demarrage de la tache ; efface si
+      # l'invocation echoue (rien ne tourne, rien a arreter en fin de session).
+      app_state$regen_marker <- .regen_marker_path(project_path)
+      tryCatch(
+        engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options()),
+        error = function(e) {
+          app_state$regen_marker <- NULL
+          stop(e)
+        })
       invisible(TRUE)
     }
 
