@@ -59,4 +59,4 @@ Mutations rouges (ignorer `res$status` → rouge ; retirer la clé → rouge). F
 
 ## Statut
 
-En cours (confiée le 2026-11-21).
+Terminée le 2026-11-22 : PR #312 fusionnée (`accd2789`, `.9011`). Relecture : reprises faites (clés `acc_profil_*` mortes retirées, NEWS corrigée).
