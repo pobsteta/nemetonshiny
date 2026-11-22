@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9009</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9010</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9010" id="nemetonshiny-20261129010-2026-11-21">nemetonshiny 2026.11.2.9010 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129010-2026-11-21"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 040.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="corrections-2026-11-2-9010">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-2-9010"></a></h3>
+<ul><li>
+<strong>Typage de la desserte : un réseau sans route à créer finit « rien à typer » même sans volume P1.</strong> Dans <code>run_desserte_typage()</code>, la lecture du réseau et le test <code>lignes</code> vide (<code>status = "empty"</code>, <code>desserte_typage_rien_a_typer</code>) passent désormais <strong>avant</strong> le bloc volume (préparation IFN, accès disque, comblement). Nouvel ordre : paquets, fichier réseau, parcelles, paramètres, <strong>réseau vide</strong>, préparation IFN / volume (<code>no_volume</code>), essence (<code>no_species</code>), vectorisation. Sur un parc urbain hors BD Forêt (« Parc de la colombière »), l’étape est ignorée au lieu d’échouer en <code>no_volume</code>.</li>
+<li>
+<strong>Lancement enchaîné : le rapport du typage dit le vrai motif.</strong> L’étape <code>desserte_typage</code> affichait toujours le libellé générique <code>desserte_typage_failed</code>. Un helper commun (<code>pipeline_reason_message()</code>, <code>R/service_pipeline.R</code>) construit le message à partir de <code>reason</code> (puis <code>detail</code>) ; il sert au rapport, à la notification de l’onglet et à <code>pipeline_engine_outcome()</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9009" id="nemetonshiny-20261129009-2026-11-21">nemetonshiny 2026.11.2.9009 (2026-11-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129009-2026-11-21"></a></h2>
 <blockquote>
