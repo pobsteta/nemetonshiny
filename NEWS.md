@@ -1,3 +1,15 @@
+# nemetonshiny 2026.11.2.9012 (2026-11-22)
+
+> **Non publié.** Mission 042.
+
+## Ajouts
+
+- **Inventaire vidéo : le CVAT du projet part dans le projet terrain.** `video_args_generation()` passe `cvat_path` à `nemeton::creer_projet_inventaire_video()` quand le projet a déjà un CVAT précalculé (Byte 0-255 de `build_cvat_precomputed()`, à côté du MNT) ; le cœur l'écrit en `rasters/cvat.tif` du `.qgz`. Sans CVAT, l'argument n'est pas passé et rien n'est calculé (helper `.video_cvat_path()`). L'emprise du cœur est l'union des UGF + 50 m : hors du CVAT, la valeur est 0 (nodata).
+
+## Dépendances
+
+- `nemeton (>= 2026.11.37)` (argument `cvat_path`).
+
 # nemetonshiny 2026.11.2.9011 (2026-11-22)
 
 > **Non publié.** Mission 041.

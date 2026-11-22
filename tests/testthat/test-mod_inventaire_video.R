@@ -86,6 +86,32 @@ test_that("video_args_generation transmet les reglages tels quels", {
                    "field_ingest_no_project")
 })
 
+test_that("le CVAT precalcule du projet est passe au coeur (cvat_path), sinon absent", {
+  pp <- withr::local_tempdir()
+  # Sans MNT ni CVAT : l'argument n'est pas passe.
+  expect_null(.video_cvat_path(pp))
+  a <- video_args_generation(pp, .plan_video(), "P001")
+  expect_false("cvat_path" %in% names(a))
+  # MNT sans CVAT a cote : toujours rien, et rien n'est calcule.
+  acc <- file.path(pp, "cache", "accessibility", "emprise_500m")
+  dir.create(acc, recursive = TRUE)
+  mnt <- file.path(acc, "mnt_highres_1m.tif")
+  file.create(mnt)
+  expect_null(.video_cvat_path(pp))
+  expect_false("cvat_path" %in% names(video_args_generation(pp, .plan_video(), "P001")))
+  expect_identical(list.files(acc), "mnt_highres_1m.tif")
+  # CVAT Byte a cote du MNT : chemin rendu et transmis tel quel.
+  cvat <- file.path(acc, "mnt_highres_1m_CVAT_8bit_foretaccess.tif")
+  file.create(cvat)
+  expect_identical(.video_cvat_path(pp), cvat)
+  b <- video_args_generation(pp, .plan_video(), "P001")
+  expect_true("cvat_path" %in% names(b))
+  expect_identical(b$cvat_path, cvat)
+  # Le coeur installe expose bien l'argument (plancher 2026.11.37).
+  skip_if_not("cvat_path" %in% names(formals(nemeton::creer_projet_inventaire_video)))
+  expect_true(TRUE)
+})
+
 test_that("Preparer : le formulaire arrive a la generation, et le .qgz est servi", {
   pp <- withr::local_tempdir()
   qgz <- file.path(pp, "inventaire_video.qgz")
