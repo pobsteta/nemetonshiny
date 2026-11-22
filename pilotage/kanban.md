@@ -28,6 +28,10 @@ _(vide)_
 
 ## Planifié
 
+- [041-integrite-correction-statut](missions/041-integrite-correction-statut.md) · depuis le cycle 3
+  - Homme : `dev` (sonnet)
+  - Mission : intégrité et correction LiDAR rendent leur échec au pipeline, `.9011` (PR #312, à rebaser sur main)
+  - Moyens : worktree, branche `claude/041-integrite-correction-statut`, relecteur sur la PR
 - [suite-cvat-inventaire-video] Passer `cvat_path` à `creer_projet_inventaire_video()` (brief du 2026-11-20) · depuis le cycle 3
   - Homme : `dev`, à la sortie du tag nemeton qui porte `cvat_path` (absent de 2026.11.36)
   - Mission : brief `~/dev/briefs/vers-nemetonshiny/2026-11-20-cvat-path-inventaire-video.md`
@@ -51,6 +55,8 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [040-desserte-typage-ordre-motif](missions/040-desserte-typage-ordre-motif.md) · cycle 3 · PR #311 (`fadd0d6f`), `.9010`
+- [039-foretaccess-classe-tuiles](missions/039-foretaccess-classe-tuiles.md) · cycle 3 · PR #310 (`1e5956fb`), `.9009`
 - [038-foretaccess-tuiles-en-echec](missions/038-foretaccess-tuiles-en-echec.md) · depuis le cycle 3
   - Homme : `dev` (sonnet)
   - Mission : PR #309 fusionnée (441d03bb), `.9008`, plancher foretaccess 2.6.2
