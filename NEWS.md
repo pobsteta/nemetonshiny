@@ -1,3 +1,7 @@
+# nemetonshiny 2026.11.3.9000 (2026-11-22)
+
+> **Non publié.** Ouverture du cycle dev après la release v2026.11.3.
+
 # nemetonshiny 2026.11.3 (2026-11-22)
 
 Release stable qui regroupe le cycle dev `2026.11.2.9001` à `.9012` (missions 005, 009 et 034 à 042, le détail de chaque entrée suit, plus bas). Elle demande le cœur **nemeton >= 2026.11.37** et **foretaccess >= 2.6.3** (`Imports`). Aucun changement cassant. **Relancez le calcul** des projets existants pour que W1 et T4 en tiennent compte.
