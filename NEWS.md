@@ -1,3 +1,9 @@
+# nemetonshiny 2026.11.3.9001 (2026-11-22)
+
+## Correctifs
+
+- **reGénération : un seul moteur vivant par projet** (mission 043). Un nouveau lancement (bouton ou étape du « Tout calculer ») arrête le moteur encore actif sur le projet et le dit (`regen_moteur_precedent_arrete`), avant d'effacer `engine_status.json` ; l'arrêt du lancement enchaîné pendant l'étape `regeneration` (bouton Arrêter, projet changé) arrête le moteur sans toast d'échec ; la fin de session arrête le moteur lancé par cette session. Le marqueur de run `cache/regeneration/engine_run.json` est passé au cœur. Tout est **sous garde de capacité** : un cœur sans `marker_path`, `capped_run_alive` ou `stop_memory_capped` (antérieur à 2026.11.38, non encore tagué) garde le comportement actuel, sans erreur ; le plancher `nemeton` n'est pas modifié.
+
 # nemetonshiny 2026.11.3 (2026-11-22)
 
 Release stable qui regroupe le cycle dev `2026.11.2.9001` à `.9012` (missions 005, 009 et 034 à 042, le détail de chaque entrée suit, plus bas). Elle demande le cœur **nemeton >= 2026.11.37** et **foretaccess >= 2.6.3** (`Imports`). Aucun changement cassant. **Relancez le calcul** des projets existants pour que W1 et T4 en tiennent compte.

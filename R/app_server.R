@@ -521,6 +521,10 @@ app_server <- function(input, output, session) {
     pid <- shiny::isolate(app_state$lock_held_pid)
     hid <- shiny::isolate(app_state$lock_holder_id)
     if (!is.null(pid) && !is.null(hid)) try(lock_release(pid, hid), silent = TRUE)
+    # Moteur reGeneration lance par CETTE session : on ne le laisse pas orphelin
+    # (et ses jobs CDS avec lui). Marqueur memorise au lancement, efface en fin
+    # de tache ; best-effort, jamais d'erreur a la fermeture.
+    .regen_arreter_fin_session(shiny::isolate(app_state$regen_marker))
     cli::cli_alert_info("nemetonApp session ended")
   })
 

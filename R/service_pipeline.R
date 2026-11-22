@@ -236,6 +236,17 @@ pipeline_mark_running <- function(state) {
   state
 }
 
+#' Must cancelling this run also stop the reGeneration engine?
+#'
+#' TRUE when the run is still open and its current step is `regeneration`: the
+#' engine lives in a background worker that `pipeline_cancel()` does not reach.
+#' Call it BEFORE `pipeline_cancel()` (which moves the cursor past the end).
+#' @noRd
+pipeline_arret_moteur_requis <- function(state) {
+  if (is.null(state) || pipeline_is_done(state)) return(FALSE)
+  identical(pipeline_current_step(state), "regeneration")
+}
+
 #' Cancel the run: everything not yet decided becomes `cancelled`
 #' @noRd
 pipeline_cancel <- function(state) {
