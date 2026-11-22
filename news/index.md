@@ -1,5 +1,27 @@
 # Changelog
 
+## nemetonshiny 2026.11.2.9011 (2026-11-22)
+
+> **Non publié.** Mission 041.
+
+### Corrections
+
+- **Le pipeline ne répond plus « ok » à une étape dont le service a
+  échoué.** Les étapes enchaînées `desserte_integrite` et correction
+  LiDAR de l’accessibilité répondaient « ok » dès que l’`ExtendedTask`
+  réussissait, même quand `run_desserte_integrite()` /
+  `run_desserte_lidar_correction()` rendaient
+  `list(status = "error", reason = ...)`. Elles passent désormais par
+  `pipeline_task_outcome()` (`R/service_pipeline.R`, décision pure) :
+  erreur + motif traduit + `detail`, comme l’onglet ; les alertes de
+  tuiles IGN perdues sur succès sont conservées (mission 038). Les deux
+  `observe` orphelins deviennent des `observeEvent(task$status())`.
+- **Motifs sans traduction.** `acc_correct_invariant_broken` (correction
+  LiDAR ayant perdu des tronçons) s’affichait en clé brute : traduction
+  FR/EN ajoutée, et un test vérifie que tout `reason = "..."` de
+  `service_desserte.R` / `service_accessibility.R` a une entrée dans
+  `TRANSLATIONS` (les `acc_profil_*` via la clé `profil_*`).
+
 ## nemetonshiny 2026.11.2.9010 (2026-11-21)
 
 > **Non publié.** Mission 040.
