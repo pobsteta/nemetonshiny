@@ -221,6 +221,16 @@ mod_pipeline_server <- function(id, app_state) {
       invisible(nouvel_etat)
     }
 
+    # Arret du run pendant l'etape `regeneration` : le moteur vit dans un worker
+    # que l'annulation de l'etat n'atteint pas. On demande au module reGeneration
+    # de l'arreter (a faire AVANT pipeline_cancel : le curseur y passe au-dela).
+    .arreter_moteur_regen <- function(etat) {
+      if (!pipeline_arret_moteur_requis(etat)) return(invisible(FALSE))
+      app_state$regen_stop_request <- list(project_path = etat$project_path,
+                                           ts = Sys.time())
+      invisible(TRUE)
+    }
+
     # Poste la requete de l'etape courante, ou cloture le run.
     .emettre <- function() {
       etat <- rv$state
@@ -234,6 +244,7 @@ mod_pipeline_server <- function(id, app_state) {
       courant <- shiny::isolate(app_state$project_id %||% app_state$current_project$id)
       if (!is.null(etat$project_id) && !identical(as.character(courant),
                                                   as.character(etat$project_id))) {
+        .arreter_moteur_regen(etat)
         .poser_etat(pipeline_cancel(etat))
         app_state$pipeline_request <- NULL
         shiny::showNotification(i18n_r()$t("pipeline_projet_change"),
@@ -304,6 +315,7 @@ mod_pipeline_server <- function(id, app_state) {
     shiny::observeEvent(input$cancel, {
       i18n <- i18n_r()
       if (is.null(rv$state)) return()
+      .arreter_moteur_regen(rv$state)
       .poser_etat(pipeline_cancel(rv$state))
       app_state$pipeline_request <- NULL
       shiny::showNotification(i18n$t("pipeline_cancelled_notice"),

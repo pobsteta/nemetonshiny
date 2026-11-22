@@ -162,6 +162,79 @@
     unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
 }
 
+# --- Un seul moteur vivant par projet (mission 043) --------------------------
+# Le coeur (nemeton >= 2026.11.38, pas encore tague : tout est sous garde de
+# capacite) depose un marqueur JSON `engine_run.json` pendant le run plafonne et
+# sait dire s'il vit (`capped_run_alive`) et l'arreter (`stop_memory_capped`).
+
+# Chemin du marqueur de run du moteur d'un projet.
+.regen_marker_path <- function(project_path) {
+  file.path(project_path, "cache", "regeneration", "engine_run.json")
+}
+
+# Resout une fonction exportee du coeur si elle existe, sinon NULL (coeur
+# anterieur : comportement actuel, sans erreur).
+.regen_core_fn <- function(nom) {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
+  ns <- asNamespace("nemeton")
+  if (!exists(nom, envir = ns, inherits = FALSE)) return(NULL)
+  get(nom, envir = ns, inherits = FALSE)
+}
+
+# Le moteur du marqueur vit-il encore ? Liste du marqueur, ou NULL (absent,
+# perime, ou coeur sans la fonction). Ne leve jamais. Enveloppe mockable.
+.regen_marker_alive <- function(marker) {
+  f <- .regen_core_fn("capped_run_alive")
+  if (is.null(f) || is.null(marker) || !nzchar(marker)) return(NULL)
+  tryCatch(f(marker), error = function(e) NULL)
+}
+
+# Arrete le moteur du marqueur. TRUE si quelque chose a ete arrete, sinon FALSE
+# (coeur sans la fonction compris). Ne leve jamais. Enveloppe mockable.
+.regen_marker_stop <- function(marker) {
+  f <- .regen_core_fn("stop_memory_capped")
+  if (is.null(f) || is.null(marker) || !nzchar(marker)) return(FALSE)
+  isTRUE(tryCatch(f(marker), error = function(e) FALSE))
+}
+
+# Arrete le moteur precedent d'un projet s'il vit. TRUE si un moteur vivant a
+# ete arrete. `alive`/`arreter` injectables (tests).
+.regen_arreter_precedent <- function(project_path, alive = .regen_marker_alive,
+                                     arreter = .regen_marker_stop) {
+  marker <- .regen_marker_path(project_path)
+  if (is.null(alive(marker))) return(FALSE)
+  arreter(marker)
+  TRUE
+}
+
+# Preparation d'un lancement : le moteur encore vivant est arrete et annonce
+# AVANT l'effacement d'engine_status.json (le moteur precedent l'ecrit encore
+# tant qu'il vit). `notifier` est appele sans argument si un moteur a ete arrete.
+.regen_preparer_lancement <- function(project_path, notifier = function() NULL,
+                                      precedent = .regen_arreter_precedent) {
+  if (isTRUE(precedent(project_path))) notifier()
+  unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
+  invisible(TRUE)
+}
+
+# Arret demande de l'exterieur (annulation du pipeline, projet change) : arrete le
+# moteur du marqueur. Rend TRUE si l'echec de tache qui suit est VOULU (moteur
+# en cours dans ce module) : pas de toast d'echec dans ce cas.
+.regen_arret_demande <- function(marker, engine_running,
+                                 arreter = .regen_marker_stop) {
+  voulu <- isTRUE(engine_running)
+  if (!is.null(marker) && nzchar(marker)) arreter(marker)
+  voulu
+}
+
+# Fin de session : arrete le moteur lance par CETTE session (marqueur memorise
+# au lancement). Best-effort, ne leve jamais. TRUE si un arret a ete tente.
+.regen_arreter_fin_session <- function(marker, arreter = .regen_marker_stop) {
+  if (is.null(marker) || !is.character(marker) || !nzchar(marker[1])) return(FALSE)
+  try(arreter(marker[1]), silent = TRUE)
+  TRUE
+}
+
 # Execute le moteur reGeneration sous PLAFOND memoire (cgroup systemd) quand le
 # coeur le permet, sinon repli sur l'appel direct dans ce worker (brief 035
 # regen-capped). Appele DANS le worker `future` (nemeton + nemetonshiny charges).
@@ -193,6 +266,13 @@
   if ("log_path" %in% names(formals(rmc))) {
     lp <- .child_log_path(file.path(project_path, "data"), "regeneration")
     if (!is.null(lp)) extra$log_path <- lp
+  }
+  # Marqueur de run (coeur >= 2026.11.38) : permet d'arreter CE moteur depuis un
+  # autre worker, une autre session ou un rechargement. Garde de capacite propre.
+  if ("marker_path" %in% names(formals(rmc))) {
+    mp <- .regen_marker_path(project_path)
+    dir.create(dirname(mp), recursive = TRUE, showWarnings = FALSE)
+    extra$marker_path <- mp
   }
   do.call(rmc, c(list(
     fun     = "run_regeneration_engine",
@@ -1842,7 +1922,14 @@ mod_regeneration_server <- function(id, app_state) {
       )
       # Supprimer un engine_status.json perime d'un run precedent : sans ca, le
       # poll afficherait une phase fantome du run anterieur au demarrage.
-      unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
+      # Un moteur encore vivant sur ce projet (autre session, onglet recharge) est
+      # arrete AVANT cet effacement : le lancement le plus recent l'emporte.
+      .regen_preparer_lancement(project_path, notifier = function() {
+        shiny::showNotification(i18n$t("regen_moteur_precedent_arrete"),
+                                type = "warning", duration = 8)
+      })
+      rv$arret_voulu <- FALSE
+      app_state$regen_marker <- .regen_marker_path(project_path)
       rv$engine_running <- TRUE
       rv$engine_start <- Sys.time()
       # Notif persistante bas-droite (retiree en fin de tache) - le moteur reel
@@ -2091,6 +2178,8 @@ mod_regeneration_server <- function(id, app_state) {
 
     shiny::observeEvent(engine_task$status(), {
       st <- engine_task$status()
+      # Tache tranchee : le moteur n'est plus a arreter en fin de session.
+      if (st %in% c("success", "error")) app_state$regen_marker <- NULL
       # Reponse au lancement enchaine des que la tache est tranchee, avant tout
       # le rechargement qui suit : celui-ci peut echouer sans que le MOTEUR ait
       # echoue, et la chaine doit rapporter le moteur, pas le rafraichissement
@@ -2179,11 +2268,28 @@ mod_regeneration_server <- function(id, app_state) {
         cli::cli_alert_danger("regen engine: {err_txt}")
         rv$warnings <- unique(c(.regen_log_issues(log), err_txt))
 
-        shiny::showNotification(
-          sprintf("%s: %s", i18n$t("error"), err_txt),
-          type = "error", duration = 10)
+        # Arret VOULU (annulation du pipeline, projet change) : la mort du moteur
+        # n'est pas un echec a signaler.
+        if (isTRUE(shiny::isolate(rv$arret_voulu))) {
+          rv$arret_voulu <- FALSE
+        } else {
+          shiny::showNotification(
+            sprintf("%s: %s", i18n$t("error"), err_txt),
+            type = "error", duration = 10)
+        }
       }
     })
+
+    # Arret demande par le lancement enchaine (bouton Arreter, projet change)
+    # pendant l'etape `regeneration` : on tue le moteur, l'observateur de statut
+    # ci-dessus constate l'erreur sans toast.
+    shiny::observeEvent(app_state$regen_stop_request, {
+      rq <- app_state$regen_stop_request
+      if (is.null(rq)) return()
+      marker <- if (!is.null(rq$project_path)) .regen_marker_path(rq$project_path)
+                else shiny::isolate(app_state$regen_marker)
+      if (.regen_arret_demande(marker, rv$engine_running)) rv$arret_voulu <- TRUE
+    }, ignoreNULL = TRUE)
 
     output$engine_status <- shiny::renderUI({
       if (isTRUE(rv$engine_running)) {
