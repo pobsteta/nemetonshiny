@@ -47,6 +47,7 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [043-regen-moteur-unique](missions/043-regen-moteur-unique.md) · cycle 3 · PR #316 (`19465988`), `.9001`
 - [042-inventaire-video-cvat](missions/042-inventaire-video-cvat.md) · cycle 3 · PR #314 (`207f0d7f`), `.9012`
 - [041-integrite-correction-statut](missions/041-integrite-correction-statut.md) · cycle 3 · PR #312 (`accd2789`), `.9011`
 - [040-desserte-typage-ordre-motif](missions/040-desserte-typage-ordre-motif.md) · cycle 3 · PR #311 (`fadd0d6f`), `.9010`
