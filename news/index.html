@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9011</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.2.9012</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.2.9012" id="nemetonshiny-20261129012-2026-11-22">nemetonshiny 2026.11.2.9012 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129012-2026-11-22"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong> Mission 042.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="ajouts-2026-11-2-9012">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-2-9012"></a></h3>
+<ul><li>
+<strong>Inventaire vidéo : le CVAT du projet part dans le projet terrain.</strong> <code>video_args_generation()</code> passe <code>cvat_path</code> à <code><a href="https://pobsteta.github.io/nemeton/reference/creer_projet_inventaire_video.html" class="external-link">nemeton::creer_projet_inventaire_video()</a></code> quand le projet a déjà un CVAT précalculé (Byte 0-255 de <code>build_cvat_precomputed()</code>, à côté du MNT) ; le cœur l’écrit en <code>rasters/cvat.tif</code> du <code>.qgz</code>. Sans CVAT, l’argument n’est pas passé et rien n’est calculé (helper <code>.video_cvat_path()</code>). L’emprise du cœur est l’union des UGF + 50 m : hors du CVAT, la valeur est 0 (nodata).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-2-9012">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-2-9012"></a></h3>
+<ul><li>
+<code>nemeton (&gt;= 2026.11.37)</code> (argument <code>cvat_path</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.2.9011" id="nemetonshiny-20261129011-2026-11-22">nemetonshiny 2026.11.2.9011 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261129011-2026-11-22"></a></h2>
 <blockquote>
