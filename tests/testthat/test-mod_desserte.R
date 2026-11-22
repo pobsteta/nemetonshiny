@@ -261,6 +261,26 @@ test_that("le typage en echec fait remonter le detail dans le rapport du pipelin
   })
 })
 
+test_that("le typage en echec sans detail dit son MOTIF, pas le libelle generique (mission 040)", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    deny_if_readonly = function(...) FALSE,
+    run_desserte_typage = function(...) list(
+      status = "error", reason = "desserte_typage_no_volume"),
+    .package = "nemetonshiny")
+  as <- .typage_state()
+  shiny::testServer(nemetonshiny:::mod_desserte_server, args = list(app_state = as), {
+    as$pipeline_request <- list(run_id = "r1", step_id = "desserte_typage", ts = Sys.time())
+    session$flushReact()
+    rep <- as$pipeline_answer
+    i18n <- nemetonshiny:::get_i18n("fr")
+    expect_identical(rep$status, "error")
+    expect_identical(rep$message, i18n$t("desserte_typage_no_volume"))
+    expect_false(identical(rep$message, i18n$t("desserte_typage_failed")))
+  })
+})
+
 test_that("desserte en echec dans le meme run : le typage est saute, pas en erreur", {
   skip_if_not_installed("sf")
   appele <- FALSE

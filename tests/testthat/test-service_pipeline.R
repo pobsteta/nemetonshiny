@@ -649,3 +649,41 @@ test_that("pipeline_engine_outcome : resultat non liste ou sans motif = motif de
   expect_identical(o$status, "error")
   expect_identical(o$message, i18n$t("desserte_engine_failed"))
 })
+
+
+# ---- Mission 040 : le motif precis, pas le libelle generique ------------------
+
+test_that("pipeline_reason_message : motif traduit, detail ajoute, repli sinon", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  expect_identical(
+    nemetonshiny:::pipeline_reason_message(
+      list(status = "error", reason = "desserte_typage_no_volume"), i18n,
+      "desserte_typage_failed"),
+    i18n$t("desserte_typage_no_volume"))
+  expect_identical(
+    nemetonshiny:::pipeline_reason_message(
+      list(status = "error", reason = "desserte_typage_volume_failed", detail = "boum"),
+      i18n, "desserte_typage_failed"),
+    paste0(i18n$t("desserte_typage_volume_failed"), " \u2014 boum"))
+  expect_identical(
+    nemetonshiny:::pipeline_reason_message(list(status = "error"), i18n,
+                                           "desserte_typage_failed"),
+    i18n$t("desserte_typage_failed"))
+  expect_identical(
+    nemetonshiny:::pipeline_reason_message(NULL, i18n, "desserte_typage_failed"),
+    i18n$t("desserte_typage_failed"))
+})
+
+test_that("chaque motif du typage a sa cle i18n FR et EN", {
+  motifs <- c("desserte_typage_no_pkg", "desserte_typage_no_reseau",
+              "desserte_typage_no_parcelles", "desserte_typage_bad_params",
+              "desserte_typage_no_volume", "desserte_typage_no_species",
+              "desserte_typage_volume_failed", "desserte_typage_failed",
+              "desserte_typage_rien_a_typer", "desserte_integrite_failed",
+              "acc_correct_failed")
+  for (k in motifs) {
+    t <- nemetonshiny:::TRANSLATIONS[[k]]
+    expect_true(nzchar(t$fr %||% ""), info = paste(k, "fr"))
+    expect_true(nzchar(t$en %||% ""), info = paste(k, "en"))
+  }
+})

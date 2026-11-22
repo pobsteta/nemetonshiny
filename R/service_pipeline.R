@@ -403,6 +403,25 @@ pipeline_error_message <- function(msg, detail = NULL, max = 300L) {
   paste0(msg, " \u2014 ", d)
 }
 
+#' Message d'echec d'un resultat de moteur : le MOTIF precis, puis le detail
+#'
+#' @description
+#' Un resultat d'echec porte `reason` (cle i18n du motif : `no_volume`,
+#' `no_reseau`, `bad_params`...) et parfois `detail`. Le rapport du pipeline et
+#' la notification de l'onglet doivent dire la meme chose : le libelle generique
+#' (`defaut`) ne sert que si `reason` est absent. Un seul calcul, partage.
+#'
+#' @param res Liste de resultat (ou NULL).
+#' @param i18n Objet i18n (`$t()`).
+#' @param defaut Character. Cle i18n de repli.
+#' @return Character scalar.
+#' @noRd
+pipeline_reason_message <- function(res, i18n, defaut) {
+  reason <- tryCatch(res$reason, error = function(e) NULL) %||% defaut
+  pipeline_error_message(
+    i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
+}
+
 #' Message d'alerte d'une etape REUSSIE dont une couche IGN est incomplete
 #'
 #' @description
@@ -455,9 +474,7 @@ pipeline_engine_outcome <- function(res, i18n, defaut, step_id = NULL,
     return(list(ok = TRUE, status = "ok", message = alerte, ko_run = NULL,
                 alerte = !is.null(alerte)))
   }
-  reason <- tryCatch(res$reason, error = function(e) NULL) %||% defaut
-  msg <- pipeline_error_message(
-    i18n$t(reason), tryCatch(res$detail, error = function(e) NULL))
+  msg <- pipeline_reason_message(res, i18n, defaut)
   list(ok = FALSE, status = "error", message = msg, alerte = FALSE,
        ko_run = if (identical(step_id, "desserte")) run_id else NULL)
 }
