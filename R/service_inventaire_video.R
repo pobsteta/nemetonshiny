@@ -174,7 +174,7 @@ video_args_generation <- function(project_path, placettes, plot_ids,
     if (length(s) && nzchar(s[1])) s[1] else NULL
   }
   avec_lidar <- isTRUE(avec_lidar) && !is.null(chm)
-  list(
+  args <- list(
     placettes = placettes, plot_ids = as.character(plot_ids),
     rayon_m = rayon_m, seuil_diam_cm = seuil_diam_cm,
     unite_azimut = unite_azimut %||% "deg",
@@ -186,6 +186,26 @@ video_args_generation <- function(project_path, placettes, plot_ids,
     project_path = project_path,
     output_dir = video_dossier(project_path), lang = lang
   )
+  # CVAT deja calcule : le coeur l'ecrit en rasters/cvat.tif. Absent : on ne
+  # passe pas l'argument (aucun calcul pour l'occasion).
+  cvat <- .video_cvat_path(project_path)
+  if (!is.null(cvat)) args$cvat_path <- cvat
+  args
+}
+
+#' Path of the project's precomputed CVAT, if any (never computes it)
+#'
+#' Looks only next to the project DEM for the Byte 0-255 file written by
+#' `build_cvat_precomputed()`. Deliberately not `generate_rvt()`, which may
+#' return a float [0, 1] cache and may trigger a computation.
+#'
+#' @param project_path Project directory, or `NULL`.
+#' @return Path of the CVAT file, or `NULL`.
+#' @noRd
+.video_cvat_path <- function(project_path) {
+  mnt <- .acc_rvt_mnt_path(project_path)
+  if (is.null(mnt)) return(NULL)
+  .rvt_precomputed_path(mnt)
 }
 
 #' Can the core send trees back to the field?
