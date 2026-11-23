@@ -1,3 +1,7 @@
+# nemetonshiny 2026.11.4.9000 (en cours)
+
+Cycle dev ouvert après la release 2026.11.4.
+
 # nemetonshiny 2026.11.4 (2026-11-23)
 
 Release stable qui regroupe le cycle dev `2026.11.3.9001` à `.9003` (missions 043 et 044, le détail de chaque entrée suit, plus bas). Elle demande le cœur **nemeton >= 2026.11.39** (`Imports`). Aucun changement cassant. Le premier téléchargement E-OBS pèse **~4,3 Go par variable**, puis il est partagé entre tous les projets.
