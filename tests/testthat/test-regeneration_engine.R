@@ -556,14 +556,18 @@ test_that("era5_attente (expo et BILJOU) ecrit l'attente CDS, sans ntfy", {
       .package = "nemetonshiny")
     testthat::local_mocked_bindings(
       regen_sensibilite = function(units, ..., progress_callback = NULL) {
+        n0 <- length(seen$ntfy)
         progress_callback(list(current = "regen_expo:era5_attente", mois_i = 3,
                                mois_n = 24, attente_file_s = 13200,
                                etat_cds = "accepted"))
+        seen$ntfy_expo <- length(seen$ntfy) - n0
         units$sensibilite <- 1; units },
       load_biljou_forcing = function(aoi, years, ..., progress_callback = NULL) {
+        n0 <- length(seen$ntfy)
         progress_callback(list(current = "biljou:era5_attente", mois_i = 4,
                                mois_n = 24, attente_file_s = 600,
                                etat_cds = "running"))
+        seen$ntfy_biljou <- length(seen$ntfy) - n0
         data.frame(year = 2018) },
       build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
       regen_bilan_hydrique = function(units, ...) units,
@@ -581,8 +585,11 @@ test_that("era5_attente (expo et BILJOU) ecrit l'attente CDS, sans ntfy", {
     # Rendu : 13200 s -> "3 h 40".
     expect_match(nemetonshiny:::.regen_phase_label(get_i18n("fr"), lot[[1]]),
                  "en file CDS depuis 3 h 40", fixed = TRUE)
-    # Aucun ntfy ne porte l'attente (3 h 40 / mois 3/24 / CDS).
-    expect_false(any(grepl("CDS|3/24|4/24|3 h", seen$ntfy)))
+    expect_match(nemetonshiny:::.regen_phase_label(get_i18n("fr"), lot[[2]]),
+                 "mois 4/24 \u2014 en cours au CDS", fixed = TRUE)
+    # Aucun envoi ntfy pendant l'emission de ces evenements (compte avant/apres).
+    expect_identical(seen$ntfy_expo, 0L)
+    expect_identical(seen$ntfy_biljou, 0L)
   })
 })
 
