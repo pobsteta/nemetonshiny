@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.4.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.4.9001" id="nemetonshiny-20261149001-2026-11-23">nemetonshiny 2026.11.4.9001 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149001-2026-11-23"></a></h2>
+<blockquote>
+<p>Mission 045.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs-2026-11-4-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-4-9001"></a></h3>
+<ul><li>
+<strong>reGénération : la source ERA5 est nommée correctement.</strong> Le cœur télécharge <code>reanalysis-era5-single-levels</code> (ERA5, 0,25°), pas ERA5-Land : les textes (forçage, infobulle du moteur, aide, description BILJOU, commentaires) disent désormais « ERA5 ».</li>
+<li>
+<strong>reGénération : durée annoncée réaliste.</strong> L’infobulle du moteur annonce « plusieurs heures à deux jours au premier calcul (attente dans la file du CDS, ~12 requêtes par année), quelques minutes ensuite (cache partagé) » ; le message d’interruption ne parle plus de « throttle ».</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.4.9000" id="nemetonshiny-20261149000">nemetonshiny 2026.11.4.9000<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149000"></a></h2>
+<p>Cycle dev ouvert après la release 2026.11.4.</p>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.4" id="nemetonshiny-2026114-2026-11-23">nemetonshiny 2026.11.4 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026114-2026-11-23"></a></h2>
 <p>Release stable qui regroupe le cycle dev <code>2026.11.3.9001</code> à <code>.9003</code> (missions 043 et 044, le détail de chaque entrée suit, plus bas). Elle demande le cœur <strong>nemeton &gt;= 2026.11.39</strong> (<code>Imports</code>). Aucun changement cassant. Le premier téléchargement E-OBS pèse <strong>~4,3 Go par variable</strong>, puis il est partagé entre tous les projets.</p>
