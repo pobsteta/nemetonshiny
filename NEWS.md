@@ -1,3 +1,16 @@
+# nemetonshiny 2026.11.4.9001 (2026-11-23)
+
+> Mission 045.
+
+## Correctifs
+
+- **reGénération : la source ERA5 est nommée correctement.** Le cœur télécharge `reanalysis-era5-single-levels` (ERA5, 0,25°), pas ERA5-Land : les textes (forçage, infobulle du moteur, aide, description BILJOU, commentaires) disent désormais « ERA5 ».
+- **reGénération : durée annoncée réaliste.** L'infobulle du moteur annonce « plusieurs heures à deux jours au premier calcul (attente dans la file du CDS, ~12 requêtes par année), quelques minutes ensuite (cache partagé) » ; le message d'interruption ne parle plus de « throttle ».
+
+# nemetonshiny 2026.11.4.9000
+
+Cycle dev ouvert après la release 2026.11.4.
+
 # nemetonshiny 2026.11.4 (2026-11-23)
 
 Release stable qui regroupe le cycle dev `2026.11.3.9001` à `.9003` (missions 043 et 044, le détail de chaque entrée suit, plus bas). Elle demande le cœur **nemeton >= 2026.11.39** (`Imports`). Aucun changement cassant. Le premier téléchargement E-OBS pèse **~4,3 Go par variable**, puis il est partagé entre tous les projets.
