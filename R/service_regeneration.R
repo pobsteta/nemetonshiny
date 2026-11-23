@@ -232,14 +232,37 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
   f[[1]]
 }
 
+#' Last year of the E-OBS window, bounded by the data
+#'
+#' `min(current year - 1, nemeton::eobs_last_complete_year(version, months))`:
+#' a version that stops mid-year (34.0e ends on 2026-06-30) has no complete
+#' summer for the previous calendar year. When the core answers `NA` (unknown
+#' version without cache) or fails, falls back on `current year - 1`; the
+#' core's warning is caught and never reaches the session.
+#' @param annee_courante Integer, current calendar year.
+#' @param version,months E-OBS version and summer months; same values as the
+#'   summer reduction of `nemeton::load_eobs_source()` (its defaults, which
+#'   the app never overrides).
+#' @return An integer year.
+#' @noRd
+.regen_eobs_fin_fenetre <- function(annee_courante, version = "34.0e", months = 6:8) {
+  fin <- as.integer(annee_courante) - 1L
+  der <- tryCatch(
+    suppressWarnings(nemeton::eobs_last_complete_year(version = version, months = months)),
+    error = function(e) NA_integer_)
+  der <- suppressWarnings(as.integer(der))
+  if (length(der) != 1L || is.na(der)) return(fin)
+  min(fin, der)
+}
+
 #' E-OBS year window shared by detection and downloads
 #'
 #' The CDS now delivers the whole series since 1950 in one file, so the window
-#' only bounds the years read back. It ends at `current year - 1` (the 34.0e
-#' version holds the full previous summer).
+#' only bounds the years read back. It ends at `.regen_eobs_fin_fenetre()`
+#' (the last complete summer present in the data, at most `current year - 1`).
 #' @noRd
 .regen_eobs_years <- function(year_window = 10L, today = Sys.Date()) {
-  end_year <- as.integer(format(today, "%Y")) - 1L
+  end_year <- .regen_eobs_fin_fenetre(as.integer(format(today, "%Y")))
   win      <- max(as.integer(year_window %||% 10L) + 2L, 7L)
   seq.int(end_year - win + 1L, end_year)
 }

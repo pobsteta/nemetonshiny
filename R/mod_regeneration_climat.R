@@ -19,7 +19,7 @@
 #' @param i18n Translator.
 #' @noRd
 .regen_climat_ui <- function(ns, i18n) {
-  an_max <- as.integer(format(Sys.Date(), "%Y")) - 1L
+  an_max <- .regen_eobs_fin_fenetre(as.integer(format(Sys.Date(), "%Y")))
   onglet_carte <- function(source) {
     bslib::nav_panel(i18n$t(paste0("regen_climat_onglet_", source)), value = source,
       leaflet::leafletOutput(ns(paste0("climat_carte_", source)), height = "68vh"))

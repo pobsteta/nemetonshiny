@@ -721,3 +721,66 @@ test_that(".regen_eobs_monthly_clim limite la climatologie à la fenêtre récen
     eobs_monthly_climatology = function(...) stop("boom"), .package = "nemeton")
   expect_null(nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "rr"))
 })
+
+# ---- Mission 047 : fenetre E-OBS bornee sur la donnee -------------------------
+
+test_that(".regen_eobs_fin_fenetre borne l'annee de fin sur la derniere annee complete du coeur", {
+  vu <- new.env()
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(version = "34.0e", months = 6:8, ...) {
+      vu$version <- version; vu$months <- months; 2025L },
+    .package = "nemeton")
+  # 1er janvier 2027 : la donnee s'arrete a 2025, pas 2026
+  expect_identical(nemetonshiny:::.regen_eobs_fin_fenetre(2027L), 2025L)
+  expect_identical(vu$months, 6:8)
+  expect_identical(vu$version, "34.0e")
+  # version et mois transmis tels quels
+  nemetonshiny:::.regen_eobs_fin_fenetre(2027L, version = "33.0e", months = 5:9)
+  expect_identical(vu$version, "33.0e")
+  expect_identical(vu$months, 5:9)
+})
+
+test_that(".regen_eobs_fin_fenetre ne depasse jamais annee_courante - 1", {
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(...) 2026L, .package = "nemeton")
+  expect_identical(nemetonshiny:::.regen_eobs_fin_fenetre(2026L), 2025L)
+})
+
+test_that(".regen_eobs_fin_fenetre se replie sur annee_courante - 1 quand le coeur rend NA, sans avertissement", {
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(...) {
+      warning("version inconnue sans cache")
+      NA_integer_
+    }, .package = "nemeton")
+  res <- NULL
+  expect_no_warning(res <- nemetonshiny:::.regen_eobs_fin_fenetre(2027L))
+  expect_identical(res, 2026L)
+  # une erreur du coeur donne le meme repli
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(...) stop("boom"), .package = "nemeton")
+  expect_identical(nemetonshiny:::.regen_eobs_fin_fenetre(2027L), 2026L)
+})
+
+test_that("tous les appelants de la fenetre E-OBS passent par .regen_eobs_fin_fenetre", {
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(...) 2025L, .package = "nemeton")
+  yrs <- nemetonshiny:::.regen_eobs_years(10L, today = as.Date("2027-01-01"))
+  expect_identical(max(yrs), 2025L)
+  expect_identical(yrs, 2014L:2025L)
+  # climatologie ombrothermique : meme fenetre
+  vu <- new.env()
+  testthat::local_mocked_bindings(
+    eobs_monthly_climatology = function(daily, point, var, years = NULL) {
+      vu$years <- years; "CLIM" },
+    .package = "nemeton")
+  nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "tg")
+  expect_identical(vu$years, nemetonshiny:::.regen_eobs_years())
+  # garde de source : plus de `format(Sys.Date(), "%Y")) - 1L` brut
+  src <- c("service_regeneration.R", "mod_regeneration_climat.R", "mod_regeneration.R")
+  chemins <- file.path(testthat::test_path("..", "..", "R"), src)
+  skip_if_not(all(file.exists(chemins)), "sources R/ absentes")
+  for (f in chemins) {
+    expect_false(any(grepl("\"%Y\"\\)\\) - 1L", readLines(f, warn = FALSE))),
+                 info = f)
+  }
+})
