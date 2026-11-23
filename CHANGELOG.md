@@ -12,6 +12,19 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.11.6\] - 2026-11-23
+
+### Changed
+
+- Regeneration: ERA5 download counter reads “requests i/n” instead of
+  “months i/n” (nemeton `timeseries` forcing counts grid-cell years, 4
+  per point and year); engine tooltip no longer announces hours to two
+  days.
+- A `rsen_era5ts_echec` error from the core is shown as is (cause and
+  `options(nemeton.era5_source = "classique")`); the app never switches
+  to the classic path by itself.
+- Requires `nemeton (>= 2026.11.42)`.
+
 ## \[2026.11.5\] - 2026-11-23
 
 Groups the dev cycle `2026.11.4.9001` to `.9002`. See NEWS.md for

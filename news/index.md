@@ -1,6 +1,6 @@
 # Changelog
 
-## nemetonshiny 2026.11.5.9001 (en développement)
+## nemetonshiny 2026.11.6 (2026-11-23)
 
 Demande le cœur **nemeton \>= 2026.11.42** (`Imports`). Aucun changement
 cassant.
