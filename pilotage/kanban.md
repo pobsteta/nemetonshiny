@@ -47,6 +47,7 @@ _(vide)_
   - Moyens : app 2026.11.1 ; retours au journal en lignes « écart »
 ## Terminé
 
+- [046-era5-attente-file-cds](missions/046-era5-attente-file-cds.md) · cycle 3 · PR #321 (`1fbda17c`), `.9002`
 - [045-era5-textes-justes](missions/045-era5-textes-justes.md) · cycle 3 · PR #320 (`ac460fc3`), `.9001`
 - [044-eobs-nouveau-format-cds](missions/044-eobs-nouveau-format-cds.md) · cycle 3 · PR #318 (`b2d9117f`), `.9003`
 - [043-regen-moteur-unique](missions/043-regen-moteur-unique.md) · cycle 3 · PR #316 (`19465988`), `.9001`
