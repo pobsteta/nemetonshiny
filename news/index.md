@@ -1,5 +1,28 @@
 # Changelog
 
+## nemetonshiny 2026.11.5.9001 (en développement)
+
+Demande le cœur **nemeton \>= 2026.11.42** (`Imports`). Aucun changement
+cassant.
+
+### Changements
+
+- **reGénération : suivi du forçage ERA5 par le jeu `timeseries`**
+  (mission 040). Le compteur de téléchargement dit « requêtes i/n » (et
+  non plus « mois i/n » : sur `timeseries` il compte des mailles-années,
+  4 par point et par année). L’infobulle du moteur annonce quelques
+  minutes par année et par point au premier calcul, quelques secondes
+  ensuite.
+- **Échec `timeseries` affiché tel quel.** Une erreur
+  `rsen_era5ts_echec` du cœur arrive à l’utilisateur avec son message
+  (cause et `options(nemeton.era5_source = "classique")`), au lieu du
+  texte générique « acquisition interrompue ». L’app ne bascule jamais
+  d’elle-même sur le chemin classique.
+
+### Dépendances
+
+- Plancher `Imports: nemeton (>= 2026.11.42)`.
+
 ## nemetonshiny 2026.11.5 (2026-11-23)
 
 Release stable qui regroupe le cycle dev `2026.11.4.9001` à `.9002`

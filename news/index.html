@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.5.9001" id="nemetonshiny-20261159001-en-développement">nemetonshiny 2026.11.5.9001 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261159001-en-d%C3%A9veloppement"></a></h2>
+<p>Demande le cœur <strong>nemeton &gt;= 2026.11.42</strong> (<code>Imports</code>). Aucun changement cassant.</p>
+<div class="section level3">
+<h3 id="changements-2026-11-5-9001">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-5-9001"></a></h3>
+<ul><li>
+<strong>reGénération : suivi du forçage ERA5 par le jeu <code>timeseries</code></strong> (mission 040). Le compteur de téléchargement dit « requêtes i/n » (et non plus « mois i/n » : sur <code>timeseries</code> il compte des mailles-années, 4 par point et par année). L’infobulle du moteur annonce quelques minutes par année et par point au premier calcul, quelques secondes ensuite.</li>
+<li>
+<strong>Échec <code>timeseries</code> affiché tel quel.</strong> Une erreur <code>rsen_era5ts_echec</code> du cœur arrive à l’utilisateur avec son message (cause et <code>options(nemeton.era5_source = "classique")</code>), au lieu du texte générique « acquisition interrompue ». L’app ne bascule jamais d’elle-même sur le chemin classique.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-5-9001">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-5-9001"></a></h3>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.42)</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.5" id="nemetonshiny-2026115-2026-11-23">nemetonshiny 2026.11.5 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026115-2026-11-23"></a></h2>
 <p>Release stable qui regroupe le cycle dev <code>2026.11.4.9001</code> à <code>.9002</code> (missions 045 et 046, le détail de chaque entrée suit, plus bas). Elle demande le cœur <strong>nemeton &gt;= 2026.11.40</strong> (<code>Imports</code>). Aucun changement cassant.</p>
