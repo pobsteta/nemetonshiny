@@ -228,3 +228,23 @@ test_that("les etapes E-OBS traversent le worker par eobs_status.json", {
   expect_null(nemetonshiny:::.regen_eobs_step_label(i18n, nemetonshiny:::.regen_read_eobs_step(p)))
   expect_null(nemetonshiny:::.regen_read_eobs_step(withr::local_tempdir()))
 })
+
+test_that("le lot ERA5 dit l'attente dans la file du CDS", {
+  lbl <- function(st, lang = "fr")
+    nemetonshiny:::.regen_phase_label(get_i18n(lang), st)
+  base <- list(phase = "era5_lot", mois_i = 3, mois_n = 24)
+  expect_equal(lbl(c(base, list(attente_file_s = 13200, etat_cds = "accepted"))),
+               paste0("Téléchargement ERA5 (Copernicus) — mois 3/24",
+                      " — en file CDS depuis 3 h 40"))
+  expect_match(lbl(c(base, list(attente_file_s = 13200, etat_cds = "accepted")), "en"),
+               "queued at CDS for 3 h 40 min", fixed = TRUE)
+  expect_match(lbl(c(base, list(attente_file_s = 600, etat_cds = "accepted"))),
+               "depuis 10 min", fixed = TRUE)
+  run <- lbl(c(base, list(attente_file_s = 13200, etat_cds = "running")))
+  expect_match(run, "mois 3/24 — en cours au CDS", fixed = TRUE)
+  expect_false(grepl("3 h", run, fixed = TRUE))
+  # Sans etat (anciens fichiers, coeur anterieur) : libelle inchange.
+  expect_equal(lbl(base), "Téléchargement ERA5 (Copernicus) — mois 3/24")
+  # accepted sans duree exploitable : pas de phrase tronquee.
+  expect_equal(lbl(c(base, list(etat_cds = "accepted"))), lbl(base))
+})

@@ -93,7 +93,31 @@
   if (!is.null(st$mois_i) && !is.null(st$mois_n))
     base <- paste0(base, sprintf(i18n$t("regen_phase_micro_mois"),
                                  as.integer(st$mois_i), as.integer(st$mois_n)))
+  base <- paste0(base, .regen_cds_suffix(i18n, st))
   base
+}
+
+# Duree d'attente lisible : "3 h 40" (>= 1 h, minutes tronquees) ou "12 min".
+# NULL/NA/negatif -> "".
+.regen_duree_hm <- function(i18n, secondes) {
+  if (is.null(secondes) || length(secondes) != 1L || !is.numeric(secondes) ||
+      is.na(secondes) || secondes < 0) return("")
+  min_tot <- as.integer(floor(secondes / 60))
+  if (min_tot < 60L) return(sprintf(i18n$t("regen_cds_duree_min"), min_tot))
+  sprintf(i18n$t("regen_cds_duree_hm"), min_tot %/% 60L, min_tot %% 60L)
+}
+
+# Suffixe d'attente CDS (evenement `era5_attente`) : " - en file CDS depuis 3 h 40"
+# (`accepted`) ou " - en cours au CDS" (`running`). "" sans etat connu.
+.regen_cds_suffix <- function(i18n, st) {
+  etat <- st$etat_cds
+  if (is.null(etat) || length(etat) != 1L || is.na(etat)) return("")
+  if (identical(etat, "running")) return(i18n$t("regen_cds_cours"))
+  if (identical(etat, "accepted")) {
+    d <- .regen_duree_hm(i18n, st$attente_file_s)
+    if (nzchar(d)) return(sprintf(i18n$t("regen_cds_file"), d))
+  }
+  ""
 }
 
 # Lit engine.log (JSONL, ecrit en ajout par le worker - spec 035 B3.b). Renvoie

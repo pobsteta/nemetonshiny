@@ -863,6 +863,14 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:era5_mois" =
         .regen_write_phase(out_dir, "era5_lot",
                            list(mois_i = p$mois_i, mois_n = p$mois_n)),
+      # Attente au CDS (coeur >= 2026.11.40) : un evenement toutes les 5 min tant
+      # que la requete ERA5 est en file ou en cours. Meme phase que le lot, avec
+      # l'attente et l'etat CDS. Volontairement SANS ntfy (voir (b) plus bas).
+      "regen_expo:era5_attente" = , "biljou:era5_attente" =
+        .regen_write_phase(out_dir, "era5_lot",
+                           list(mois_i = p$mois_i, mois_n = p$mois_n,
+                                attente_file_s = p$attente_file_s,
+                                etat_cds = p$etat_cds)),
       "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
       "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
       "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),
