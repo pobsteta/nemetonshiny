@@ -11,12 +11,17 @@ test_that("aucune traduction ne nomme ERA5-Land", {
   }
 })
 
-test_that("l'infobulle du moteur annonce la file du CDS, FR et EN", {
-  expect_match(TRANSLATIONS$regen_engine_tip$fr, "file du CDS", fixed = TRUE)
-  expect_match(TRANSLATIONS$regen_engine_tip$fr, "deux jours", fixed = TRUE)
-  expect_false(grepl("minutes à heures", TRANSLATIONS$regen_engine_tip$fr, fixed = TRUE))
-  expect_match(TRANSLATIONS$regen_engine_tip$en, "CDS queue", fixed = TRUE)
-  expect_match(TRANSLATIONS$regen_engine_tip$en, "two days", fixed = TRUE)
+test_that("l'infobulle du moteur annonce la durée du jeu timeseries, FR et EN", {
+  fr <- TRANSLATIONS$regen_engine_tip$fr
+  en <- TRANSLATIONS$regen_engine_tip$en
+  expect_match(fr, "quelques minutes par année et par point", fixed = TRUE)
+  expect_match(fr, "4 requêtes", fixed = TRUE)
+  expect_match(fr, "quelques secondes ensuite", fixed = TRUE)
+  expect_false(grepl("deux jours|plusieurs heures|~12", fr))
+  expect_match(en, "a few minutes per year and per point", fixed = TRUE)
+  expect_match(en, "4 requests", fixed = TRUE)
+  expect_match(en, "a few seconds afterwards", fixed = TRUE)
+  expect_false(grepl("two days|several hours|~12", en))
 })
 
 test_that("le message d'interruption ne parle plus de throttle", {

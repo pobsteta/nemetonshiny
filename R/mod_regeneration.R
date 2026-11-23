@@ -79,7 +79,7 @@
   else base
 }
 
-# " base {year} ({i}/{n}) - mois {mois_i}/{mois_n} ", chaque morceau n'apparaissant
+# " base {year} ({i}/{n}) - requetes {mois_i}/{mois_n} ", chaque morceau n'apparaissant
 # que si l'evenement l'a fourni. L'annee vient de `regen_expo:era5` ; le mois de
 # `regen_expo:era5_mois`, qu'un coeur assez recent emet pendant les douze
 # telechargements CDS d'une annee - cf. specs/BRIEF-nemeton-era5-progression-
@@ -91,7 +91,7 @@
   if (!is.null(st$i) && !is.null(st$n))
     base <- sprintf("%s (%d/%d)", base, as.integer(st$i), as.integer(st$n))
   if (!is.null(st$mois_i) && !is.null(st$mois_n))
-    base <- paste0(base, sprintf(i18n$t("regen_phase_micro_mois"),
+    base <- paste0(base, sprintf(i18n$t("regen_phase_micro_requetes"),
                                  as.integer(st$mois_i), as.integer(st$mois_n)))
   base <- paste0(base, .regen_cds_suffix(i18n, st))
   base

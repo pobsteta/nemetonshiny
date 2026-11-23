@@ -855,11 +855,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:era5" =
         .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
                            list(year = p$year, i = p$i, n = p$n)),
-      # Un evenement par MOIS TERMINE du lot ERA5 (coeur >= 2026.10.6) : les
-      # requetes de toutes les annees partent ensemble, `mois_n` est la taille du
-      # lot (12 x annees manquantes) et category/year sont ceux du dernier mois
-      # termine - ils changent en cours de route. On n'affiche donc que le
-      # compteur global, dans une phase propre au lot.
+      # Un evenement par requete terminee du lot ERA5 : `mois_i`/`mois_n` sont des
+      # mois (coeur >= 2026.10.6, chemin classique) ou, sur le jeu `timeseries`
+      # (coeur >= 2026.11.42), des mailles-annees (4 par point et par annee).
+      # category/year sont ceux de la derniere terminee - ils changent en route.
+      # On n'affiche donc que le compteur global, dans une phase propre au lot.
       "regen_expo:era5_mois" =
         .regen_write_phase(out_dir, "era5_lot",
                            list(mois_i = p$mois_i, mois_n = p$mois_n)),
@@ -970,9 +970,16 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
           progress_callback = on_prog), pai_arg, veg_args)),
         error = function(e) {
           msg <- conditionMessage(e)
-          # Throttle/coupure CDS pendant l'acquisition ERA5 (~12 req/an) : la
-          # structure est OK, c'est reseau -> warning " relancez pour reprendre ".
-          if (grepl("era5|mcera5|curl|rate.?limit|throttl|timeout|too many|429",
+          # Echec du jeu `timeseries` (coeur >= 2026.11.42) : le message du coeur
+          # dit la cause et comment passer au chemin classique
+          # (`options(nemeton.era5_source = "classique")`). Remonte tel quel ;
+          # l'app ne bascule jamais d'elle-meme.
+          if (inherits(e, "rsen_era5ts_echec")) {
+            warnings <<- c(warnings, .strip_ansi(msg))
+            .regen_log(out_dir, "error", "microclimf", msg)
+          # Throttle/coupure CDS pendant l'acquisition ERA5 : la structure est
+          # OK, c'est reseau -> warning " relancez pour reprendre ".
+          } else if (grepl("era5|mcera5|curl|rate.?limit|throttl|timeout|too many|429",
                     msg, ignore.case = TRUE)) {
             warnings <<- c(warnings, i18n$t("regen_engine_era5_interrupted"))
             .regen_log(out_dir, "warning", "microclimf", i18n$t("regen_engine_era5_interrupted"))
