@@ -155,7 +155,7 @@ test_that("run_regeneration_detect_years passes an explicit E-OBS years window",
   testthat::local_mocked_bindings(
     load_eobs_source = function(aoi = NULL, var = NULL, years = NULL,
                                 cache_dir = NULL, ...) {
-      seen$years <- years; "fake-eobs"
+      seen$years <- years; seen$cache_dir <- cache_dir; "fake-eobs"
     },
     microclimate_detect_years = function(eobs = NULL, aoi = NULL,
                                          year_window = NULL, ...) {
@@ -168,9 +168,9 @@ test_that("run_regeneration_detect_years passes an explicit E-OBS years window",
 
   expect_equal(out, list(year_moyenne = 2018, year_canicule = 2022))
   expect_true(is.numeric(seen$years) && length(seen$years) >= 7L)  # fenêtre non vide
-  expect_true(min(seen$years) >= 2011L)                            # un seul bloc CDS
   expect_equal(max(seen$years),
-               as.integer(format(Sys.Date(), "%Y")) - 2L)         # latence E-OBS
+               as.integer(format(Sys.Date(), "%Y")) - 1L)         # série complète : N-1
+  expect_null(seen$cache_dir)                                     # cache global du cœur
 })
 
 test_that("run_regeneration_detect_years returns NULL when E-OBS is unavailable", {
@@ -502,6 +502,8 @@ test_that("restore_regeneration returns NULL when the priority index cannot be b
 }
 
 test_that("regen_eobs_cached_nc finds the cached NetCDF, per variable", {
+  testthat::local_mocked_bindings(eobs_cached_file = function(var, ...) NULL,
+                                  .package = "nemeton")
   withr::with_tempdir({
     p <- getwd()
     expect_null(nemetonshiny:::regen_eobs_cached_nc(p, "tx"))   # rien encore
@@ -522,15 +524,16 @@ test_that("regen_eobs_cached_nc finds the cached NetCDF, per variable", {
 })
 
 test_that("regen_fetch_eobs_tg acquiert tg via le cœur (var=tg) et confirme le cache", {
-  seen <- new.env(); seen$var <- NA_character_
+  seen <- new.env(); seen$var <- NULL
+  glob_nc <- withr::local_tempfile(fileext = ".nc"); file.create(glob_nc)
   testthat::local_mocked_bindings(
     load_eobs_source = function(aoi, var, years = NULL, cache_dir = NULL, ...) {
-      seen$var <- var
-      # Simule l'écriture du .nc caché que le cœur aurait produit.
-      dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-      file.create(file.path(cache_dir, "eobs_mean-temperature-2011-2024-v30-0e-0-1deg.nc"))
+      seen$var <- var; seen$cache_dir <- cache_dir
       NULL
-    }, .package = "nemeton")
+    },
+    # Simule le fichier du cache global que le cœur aurait produit.
+    eobs_cached_file = function(var, ...) if (!is.null(seen$var)) glob_nc else NULL,
+    .package = "nemeton")
 
   withr::with_tempdir({
     p <- getwd()
@@ -538,8 +541,76 @@ test_that("regen_fetch_eobs_tg acquiert tg via le cœur (var=tg) et confirme le 
     ok <- nemetonshiny:::regen_fetch_eobs_tg(ugf, p)
     expect_true(ok)
     expect_identical(seen$var, "tg")              # bonne clé CDS demandée au cœur
-    expect_match(nemetonshiny:::regen_eobs_cached_nc(p, "tg"), "mean-temperature")
+    expect_null(seen$cache_dir)                   # cache GLOBAL : pas de cache_dir projet
+    expect_identical(nemetonshiny:::regen_eobs_cached_nc(p, "tg"), glob_nc)
+    expect_false(dir.exists(file.path(p, "cache", "regeneration", "eobs")))
   })
+})
+
+test_that("regen_fetch_eobs_rr n'envoie pas de cache_dir et finit par la fenêtre N-1", {
+  seen <- new.env()
+  testthat::local_mocked_bindings(
+    load_eobs_source = function(aoi, var, years = NULL, cache_dir = NULL, ...) {
+      seen$var <- var; seen$cache_dir <- cache_dir; seen$years <- years; NULL
+    },
+    eobs_cached_file = function(var, ...) NULL,
+    .package = "nemeton")
+  withr::with_tempdir({
+    ok <- nemetonshiny:::regen_fetch_eobs_rr(.regen_units(2), getwd())
+    expect_false(isTRUE(ok))                      # rien téléchargé : pas de faux TRUE
+    expect_identical(seen$var, "rr")
+    expect_null(seen$cache_dir)
+    expect_equal(max(seen$years), as.integer(format(Sys.Date(), "%Y")) - 1L)
+  })
+})
+
+test_that("un échec du cœur remonte son message dans l'attribut reason", {
+  testthat::local_mocked_bindings(
+    load_eobs_source = function(...) stop("invalid request"),
+    eobs_cached_file = function(var, ...) NULL,
+    .package = "nemeton")
+  withr::with_tempdir({
+    ok <- nemetonshiny:::regen_fetch_eobs_rr(.regen_units(2), getwd())
+    expect_false(isTRUE(ok))
+    expect_match(attr(ok, "reason"), "invalid request")
+  })
+})
+
+test_that("regen_eobs_cached_nc délègue à eobs_cached_file(), repli sur le cache projet", {
+  glob_nc <- withr::local_tempfile(fileext = ".nc"); file.create(glob_nc)
+  vu <- new.env()
+  testthat::local_mocked_bindings(
+    eobs_cached_file = function(var, ...) { vu$var <- var; glob_nc },
+    .package = "nemeton")
+  withr::with_tempdir({
+    p <- getwd()
+    .stub_eobs_nc(p, "rr")                         # un ancien fichier local existe aussi
+    expect_identical(nemetonshiny:::regen_eobs_cached_nc(p, "rr"), glob_nc)  # global prime
+    expect_identical(vu$var, "rr")
+    expect_identical(nemetonshiny:::regen_eobs_cached_nc(NULL, "rr"), glob_nc)
+  })
+  testthat::local_mocked_bindings(eobs_cached_file = function(var, ...) NULL,
+                                  .package = "nemeton")
+  withr::with_tempdir({
+    p <- getwd()
+    expect_null(nemetonshiny:::regen_eobs_cached_nc(p, "rr"))
+    .stub_eobs_nc(p, "rr")
+    expect_match(nemetonshiny:::regen_eobs_cached_nc(p, "rr"), "precipitation-amount")
+  })
+})
+
+test_that(".regen_eobs_step_status : FALSE rendu par la tâche n'est jamais ok", {
+  f <- nemetonshiny:::.regen_eobs_step_status
+  expect_identical(f("success", TRUE)$status, "ok")
+  r <- f("success", FALSE)
+  expect_identical(r$status, "error")
+  expect_null(r$detail)
+  expect_identical(f("success", NULL)$status, "error")
+  r <- f("success", structure(FALSE, reason = "invalid request"))
+  expect_identical(r$status, "error")
+  expect_identical(r$detail, "invalid request")
+  expect_identical(f("success", FALSE, fallback = "repli")$detail, "repli")
+  expect_identical(f("error", TRUE)$status, "error")   # tâche en erreur : jamais ok
 })
 
 test_that("regen_fetch_eobs_tg valide ses entrées (sf + project_path)", {

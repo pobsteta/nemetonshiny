@@ -198,26 +198,31 @@ regen_reprioritize <- function(units, species = NULL) {
     error = function(e) units)
 }
 
-#' Locate a cached E-OBS NetCDF for a project, without ever downloading
+#' Locate a cached E-OBS NetCDF, without ever downloading
 #'
-#' `load_eobs_source()` caches the CDS archive as
-#' `<project>/cache/regeneration/eobs/eobs_<cds-var>-<period>-v...-....nc`. Reading it
-#' back through `nc =` bypasses CDS entirely - no network, no key. Returning
-#' `NULL` when the file is absent is what keeps a tab render from silently firing
-#' an ~800 MB download.
+#' Since nemeton 2026.11.39 the E-OBS archive is cached once, globally (one file
+#' per variable x version x resolution, ~4.3 GB), and located through
+#' `nemeton::eobs_cached_file()`. Projects downloaded before that keep their
+#' own copy under `<project>/cache/regeneration/eobs/`: it is the fallback.
+#' Reading the file back through `nc =` bypasses CDS entirely - no network, no
+#' key. Returning `NULL` when the file is absent is what keeps a tab render from
+#' silently firing a multi-GB download.
 #'
-#' @param project_path Project root, or `NULL`.
+#' @param project_path Project root, or `NULL` (then only the global cache is
+#'   consulted).
 #' @param var `"tx"` (maximum temperature), `"rr"` (precipitation) or `"tg"`
 #'   (mean temperature, required by the ombrothermic diagram - spec 036 sect.3).
 #' @return An existing `.nc` path, or `NULL`.
 #' @noRd
 regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
   var <- match.arg(var)
+  f <- tryCatch(nemeton::eobs_cached_file(var), error = function(e) NULL)
+  if (is.character(f) && length(f) == 1L && !is.na(f) && file.exists(f)) return(f)
   if (is.null(project_path)) return(NULL)
   dir <- file.path(project_path, "cache", "regeneration", "eobs")
   if (!dir.exists(dir)) return(NULL)
-  # Le nom encode la variable CDS, tirets a la place des soulignes
-  # (cf. `.eobs_cache_file()` cote coeur).
+  # Ancien cache de projet : le nom encode la variable CDS, tirets a la place
+  # des soulignes (cf. `.eobs_cache_file()` cote coeur).
   pat <- switch(var,
     tx = "^eobs_maximum-temperature.*\\.nc$",
     rr = "^eobs_precipitation-amount.*\\.nc$",
@@ -227,57 +232,80 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
   f[[1]]
 }
 
-#' Download the E-OBS precipitation series into the project cache (opt-in)
+#' E-OBS year window shared by detection and downloads
 #'
-#' Heavy (~800 MB from the Copernicus CDS) and network-bound: never called from a
-#' render, only from an explicit user action, inside a `future` worker.
-#' Idempotent - `load_eobs_source()` returns the cached file on a second call.
+#' The CDS now delivers the whole series since 1950 in one file, so the window
+#' only bounds the years read back. It ends at `current year - 1` (the 34.0e
+#' version holds the full previous summer).
+#' @noRd
+.regen_eobs_years <- function(year_window = 10L, today = Sys.Date()) {
+  end_year <- as.integer(format(today, "%Y")) - 1L
+  win      <- max(as.integer(year_window %||% 10L) + 2L, 7L)
+  seq.int(end_year - win + 1L, end_year)
+}
+
+#' Fetch one E-OBS variable into the shared core cache (shared by rr / tg)
+#'
+#' @return `TRUE` when the `.nc` is present afterwards; otherwise `FALSE` with a
+#'   `reason` attribute (the core's error message when there is one).
+#' @noRd
+.regen_fetch_eobs_var <- function(ugf, project_path, var, year_window = 10L) {
+  if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
+  err <- NULL
+  # Pas de `cache_dir` : le coeur utilise son cache GLOBAL (un seul jeu de
+  # fichiers pour tous les projets, ~4,3 Go par variable).
+  tryCatch(
+    nemeton::load_eobs_source(aoi = ugf, var = var,
+                              years = .regen_eobs_years(year_window)),
+    error = function(e) { err <<- conditionMessage(e); NULL })
+  if (!is.null(regen_eobs_cached_nc(project_path, var))) return(TRUE)
+  structure(FALSE, reason = if (!is.null(err)) .strip_ansi(err) else NULL)
+}
+
+#' Pipeline status of an E-OBS download step, from the task's returned value
+#'
+#' `ExtendedTask` "success" only means the worker did not crash: the value it
+#' returns (`TRUE`/`FALSE`) says whether the `.nc` is there.
+#'
+#' @param task_status `"success"` or `"error"`.
+#' @param value The task's returned value (may be `NULL`).
+#' @param fallback Message used when the failure carries no reason.
+#' @return `list(status = "ok"|"error", detail = chr|NULL)`.
+#' @noRd
+.regen_eobs_step_status <- function(task_status, value, fallback = NULL) {
+  if (identical(task_status, "success") && isTRUE(value)) {
+    return(list(status = "ok", detail = NULL))
+  }
+  reason <- attr(value, "reason", exact = TRUE)
+  if (is.null(reason) || !nzchar(reason[[1]])) reason <- fallback
+  list(status = "error", detail = if (is.null(reason)) NULL else as.character(reason)[[1]])
+}
+
+#' Download the E-OBS precipitation series into the shared cache (opt-in)
+#'
+#' Heavy (~4.3 GB at the first download, then shared between projects) and
+#' network-bound: never called from a render, only from an explicit user action,
+#' inside a `future` worker. Idempotent - `load_eobs_source()` returns the cached
+#' file on a second call.
 #'
 #' @return `TRUE` when the `.nc` is present afterwards.
 #' @noRd
 regen_fetch_eobs_rr <- function(ugf, project_path, year_window = 10L) {
-  if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
-  cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
-  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
-  # Meme fenetre que la detection d'annees : le coeur en derive la periode CDS,
-  # donc le nom de fichier - indispensable pour que le cache soit retrouve ensuite.
-  end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
-  win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
-  start_year <- max(2011L, end_year - win + 1L)
-  tryCatch(
-    nemeton::load_eobs_source(aoi = ugf, var = "rr",
-                              years = seq.int(start_year, end_year),
-                              cache_dir = cache_dir),
-    error = function(e) NULL)
-  !is.null(regen_eobs_cached_nc(project_path, "rr"))
+  .regen_fetch_eobs_var(ugf, project_path, "rr", year_window)
 }
 
-#' Download the E-OBS mean-temperature (`tg`) series into the project cache (opt-in)
+#' Download the E-OBS mean-temperature (`tg`) series into the shared cache (opt-in)
 #'
 #' Required by the ombrothermic (Gaussen-Bagnouls) diagram - spec 036 sect.3 - which
-#' needs the *mean* temperature, whereas only `tx`/`rr` are cached by default.
-#' Modelled exactly on [regen_fetch_eobs_rr()] : heavy (~800 MB from the Copernicus
-#' CDS), network-bound, so never called from a render - only from an explicit user
-#' action inside a `future` worker. `load_eobs_source()` maps `tg ->
-#' mean_temperature` (same CDS key family as `tx`/`rr`) and is idempotent.
+#' needs the *mean* temperature. Modelled on [regen_fetch_eobs_rr()] : heavy
+#' (~4.3 GB at the first download, then shared between projects), network-bound,
+#' so never called from a render - only from an explicit user action inside a
+#' `future` worker. Idempotent.
 #'
 #' @return `TRUE` when the `tg` `.nc` is present afterwards.
 #' @noRd
 regen_fetch_eobs_tg <- function(ugf, project_path, year_window = 10L) {
-  if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
-  cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
-  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
-  # Meme fenetre / derivation de periode que `rr` : indispensable pour que le nom
-  # de fichier soit reconstruit a l'identique et le cache retrouve ensuite.
-  end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
-  win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
-  start_year <- max(2011L, end_year - win + 1L)
-  tryCatch(
-    nemeton::load_eobs_source(aoi = ugf, var = "tg",
-                              years = seq.int(start_year, end_year),
-                              cache_dir = cache_dir),
-    error = function(e) NULL)
-  !is.null(regen_eobs_cached_nc(project_path, "tg"))
+  .regen_fetch_eobs_var(ugf, project_path, "tg", year_window)
 }
 
 #' Target-species option list for the reGeneration selector
@@ -1504,13 +1532,13 @@ restore_regeneration <- function(units, precomputed = NULL) {
 #'
 #' An explicit \code{years} window is passed to \code{load_eobs_source()}: the
 #' core CDS fetch bails out to \code{NULL} \emph{before downloading} when both
-#' \code{years} and \code{period} are \code{NULL}. The window ends at
-#' \code{current year - 2} (E-OBS publication lag; the core pins version 30.0e,
-#' last full year 2024) and is clamped to start no earlier than 2011 so it fits
-#' a single CDS period block (one download).
+#' \code{years} and \code{period} are \code{NULL}. The CDS delivers the whole
+#' series since 1950 in one file (cached globally by the core, shared between
+#' projects), so the window only ends at \code{current year - 1}.
 #'
 #' @param units An \code{sf} of the UGF footprint.
-#' @param project_path Project directory (E-OBS cache location).
+#' @param project_path Project directory (hosts only the `eobs_status.json`
+#'   progress file; the E-OBS cache itself is the core's global one).
 #' @param year_window Integer window for the detection (default 10).
 #' @return \code{list(year_moyenne=, year_canicule=)} or \code{NULL}.
 #' @noRd
@@ -1521,20 +1549,11 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
     cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
     if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
   }
-  # E-OBS/CDS exige une plage d'annees explicite : sans `years`, le coeur
-  # (`.eobs_cds_fetch`) sort en NULL AVANT tout telechargement (le bouton
-  # affichait alors " indisponible " sans rien telecharger). On demande une
-  # fenetre recente se terminant a `annee_courante - 2` (latence de publication
-  # E-OBS ; le coeur pin la version 30.0e dont la derniere annee pleine est
-  # 2024). `start` est borne a 2011 pour rester dans un seul bloc de periode CDS
-  # (2011-2100) et ne declencher qu'un telechargement.
-  end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
-  win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
-  start_year <- max(2011L, end_year - win + 1L)
-  years      <- seq.int(start_year, end_year)
+  # Plage explicite (sans `years`, le coeur sort avant tout telechargement) ;
+  # serie complete depuis 1950 : la fenetre finit a `annee_courante - 1`.
+  years <- .regen_eobs_years(year_window)
   eobs <- tryCatch(
     nemeton::load_eobs_source(aoi = units, var = "tx", years = years,
-                              cache_dir = cache_dir,
                               progress_callback = .regen_eobs_progress_cb(cache_dir)),
     error = function(e) {
       cli::cli_warn("regen detect_years: load_eobs_source failed: {conditionMessage(e)}")

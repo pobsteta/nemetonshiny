@@ -529,7 +529,7 @@ mod_regeneration_ui <- function(id) {
   # `info_popover_in_label()` et non `info_popover()` : le " i " vit DANS le
   # <label> d'un radio, ou un clic selectionnerait aussi la couche (cf. son
   # roxygen). Ici la consequence est chere : la vue " precipitations "
-  # declenche un telechargement E-OBS de ~800 Mo.
+  # declenche un telechargement E-OBS de ~4,3 Go.
   layer_tt <- function(label, tooltip) {
     htmltools::tagList(label, " ",
       info_popover_in_label(
@@ -939,7 +939,7 @@ mod_regeneration_server <- function(id, app_state) {
       # a NULL a la fin de la tache. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
       engine_start = NULL, eobs_start = NULL,
-      # Chrono du telechargement des precipitations E-OBS (~800 Mo) : notif
+      # Chrono du telechargement des precipitations E-OBS (~4,3 Go, cache partage) : notif
       # persistante " engrenage + MM:SS " tant que la tache tourne.
       eobs_rr_running = FALSE, eobs_rr_start = NULL,
       # Idem pour la Tdeg moyenne (tg) - requise par le diagramme ombrothermique.
@@ -1373,7 +1373,7 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
-    # Acquisition opt-in de la serie precipitations E-OBS (~800 Mo, CDS). Jamais
+    # Acquisition opt-in de la serie precipitations E-OBS (~4,3 Go la premiere fois, cache partage, CDS). Jamais
     # declenchee par un rendu : uniquement sur clic explicite, dans un worker.
     eobs_rr_task <- shiny::ExtendedTask$new(
       function(units, project_path, dev_path, app_opts) {
@@ -1398,7 +1398,7 @@ mod_regeneration_server <- function(id, app_state) {
       })
 
     # Acquisition de la Tdeg moyenne (tg) pour le diagramme ombrothermique - meme
-    # patron que rr (opt-in, worker future, ~800 Mo, cache .nc).
+    # patron que rr (opt-in, worker future, ~4,3 Go, cache .nc).
     eobs_tg_task <- shiny::ExtendedTask$new(
       function(units, project_path, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
@@ -1624,7 +1624,7 @@ mod_regeneration_server <- function(id, app_state) {
                                    units_sf, climat_task, deny_if_busy, .dev_pkg_path,
                                    pipeline_req = climat_pipeline_req)
 
-    # ORCHESTRATION - telechargement E-OBS des precipitations (~800 Mo, CDS).
+    # ORCHESTRATION - telechargement E-OBS des precipitations (~4,3 Go la premiere fois, cache partage, CDS).
     .lancer_eobs_rr <- function() {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
@@ -1639,7 +1639,7 @@ mod_regeneration_server <- function(id, app_state) {
         return()
       }
       # Notif persistante " engrenage qui tourne + chrono MM:SS " (cadre unifie
-      # partage avec les moteurs) : le telechargement (~800 Mo, CDS) dure
+      # partage avec les moteurs) : le telechargement (~4,3 Go la premiere fois, cache partage, CDS) dure
       # plusieurs minutes. Retiree en fin de tache par l'observer de statut.
       rv$eobs_rr_running <- TRUE
       rv$eobs_rr_start <- Sys.time()
@@ -1671,11 +1671,15 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("eobs_rr_notif"))
       }
       if (identical(st, "success")) {
-        ok <- tryCatch(eobs_rr_task$result(), error = function(e) FALSE)
-        if (isTRUE(ok)) {
+        # La valeur rendue (TRUE/FALSE) fixe le resultat, pas le seul `success`.
+        val <- tryCatch(eobs_rr_task$result(), error = function(e) FALSE)
+        if (isTRUE(val)) {
           shiny::showNotification(i18n$t("regen_eobs_rr_done"), type = "message", duration = 6)
         } else {
-          shiny::showNotification(i18n$t("regen_eobs_rr_failed"), type = "warning", duration = 10)
+          why <- .regen_eobs_step_status("success", val)$detail
+          shiny::showNotification(
+            paste(c(i18n$t("regen_eobs_rr_failed"), why), collapse = " \u2014 "),
+            type = "warning", duration = 10)
         }
       } else if (identical(st, "error")) {
         err <- tryCatch(eobs_rr_task$result(), error = function(e) conditionMessage(e))
@@ -1686,7 +1690,7 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # --- Acquisition Tdeg moyenne (tg) pour le diagramme ombrothermique --------
-    # ORCHESTRATION - telechargement E-OBS de la temperature moyenne (~800 Mo, CDS).
+    # ORCHESTRATION - telechargement E-OBS de la temperature moyenne (~4,3 Go la premiere fois, cache partage, CDS).
     .lancer_eobs_tg <- function() {
       if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
@@ -1728,10 +1732,13 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("eobs_tg_notif"))
       }
       if (identical(st, "success")) {
-        ok <- tryCatch(eobs_tg_task$result(), error = function(e) FALSE)
+        val <- tryCatch(eobs_tg_task$result(), error = function(e) FALSE)
+        ok <- isTRUE(val)
+        why <- if (ok) NULL else .regen_eobs_step_status("success", val)$detail
         shiny::showNotification(
-          i18n$t(if (isTRUE(ok)) "regen_fetch_tg_done" else "regen_fetch_tg_failed"),
-          type = if (isTRUE(ok)) "message" else "warning", duration = if (isTRUE(ok)) 6 else 10)
+          paste(c(i18n$t(if (ok) "regen_fetch_tg_done" else "regen_fetch_tg_failed"), why),
+                collapse = " \u2014 "),
+          type = if (ok) "message" else "warning", duration = if (ok) 6 else 10)
       } else if (identical(st, "error")) {
         err <- tryCatch(eobs_tg_task$result(), error = function(e) conditionMessage(e))
         shiny::showNotification(
@@ -2030,7 +2037,7 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # 1bis / 1ter. Telechargements E-OBS (precipitations, temperature moyenne).
-    # Deux fetch CDS d'environ 800 Mo chacun : ce sont les etapes les plus
+    # Deux fetch CDS d'environ 4,3 Go chacun (cache global) : ce sont les etapes les plus
     # longues de la partie reGeneration, et les seules qui dependent du reseau
     # plutot que du CPU.
     rr_pipeline_req <- shiny::reactiveVal(NULL)
@@ -2063,10 +2070,15 @@ mod_regeneration_server <- function(id, app_state) {
                         list(rv = tg_pipeline_req, st = eobs_tg_task$status(), tk = eobs_tg_task))) {
         req <- shiny::isolate(item$rv())
         if (is.null(req) || !item$st %in% c("success", "error")) next
-        pipeline_answer(app_state, req,
-                        if (identical(item$st, "success")) "ok" else "error",
-                        if (identical(item$st, "success")) NULL
-                        else pipeline_task_error(item$tk, i18n$t("error")))
+        # Le statut vient de la valeur rendue (TRUE/FALSE), pas du seul
+        # `success` : une tache qui n'a rien telecharge ne repond plus `ok`.
+        val <- if (identical(item$st, "success"))
+          tryCatch(item$tk$result(), error = function(e) FALSE) else FALSE
+        res <- .regen_eobs_step_status(item$st, val)
+        if (!identical(res$status, "ok") && is.null(res$detail)) {
+          res$detail <- pipeline_task_error(item$tk, i18n$t("regen_eobs_rr_failed"))
+        }
+        pipeline_answer(app_state, req, res$status, res$detail)
         item$rv(NULL)
       }
     })

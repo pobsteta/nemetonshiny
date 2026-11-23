@@ -61,7 +61,7 @@ PIPELINE_STEPS <- list(
   # que ce helper couvre.
   list(id = "regen_annees",    module = "regeneration",  label = "pipeline_step_regen_annees"),
   # Precipitations et temperature moyenne E-OBS : deux telechargements CDS
-  # d'environ 800 Mo chacun. Places APRES la detection des annees, qui les
+  # d'environ 4,3 Go chacun (cache global, partage entre projets). Places APRES la detection des annees, qui les
   # borne, et avant le gel et le moteur, qui les consomment.
   list(id = "regen_eobs_rr",   module = "regeneration",  label = "pipeline_step_regen_eobs_rr"),
   list(id = "regen_eobs_tg",   module = "regeneration",  label = "pipeline_step_regen_eobs_tg"),

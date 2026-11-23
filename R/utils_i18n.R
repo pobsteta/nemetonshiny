@@ -6565,8 +6565,8 @@ TRANSLATIONS <- list(
   regen_climat_unite_totale = list(fr = "variation totale sur la p\u00e9riode", en = "total change over the period"),
   # S\u00e9ries CDS du projet (diagramme ombrothermique du clic, onglet E-OBS).
   regen_eobs_rr_fetch = list(
-    fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~800 Mo)",
-    en = "Download precipitation (~800 MB)"
+    fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~4,3 Go au premier t\u00e9l\u00e9chargement, puis partag\u00e9 entre projets)",
+    en = "Download precipitation (~4.3 GB on first download, then shared between projects)"
   ),
   regen_eobs_rr_running = list(
     fr = "T\u00e9l\u00e9chargement de la s\u00e9rie E-OBS de pr\u00e9cipitations (Copernicus CDS) \u2014 plusieurs minutes, en arri\u00e8re-plan.",
@@ -6629,8 +6629,8 @@ TRANSLATIONS <- list(
     en = "Ombrothermic diagram unavailable: acquire the E-OBS temperature series."
   ),
   regen_fetch_tg = list(
-    fr = "T\u00e9l\u00e9charger la T\u00b0 moyenne (Gaussen, ~800 Mo)",
-    en = "Download mean temperature (Gaussen, ~800 MB)"
+    fr = "T\u00e9l\u00e9charger la T\u00b0 moyenne (Gaussen, ~4,3 Go au premier t\u00e9l\u00e9chargement, puis partag\u00e9 entre projets)",
+    en = "Download mean temperature (Gaussen, ~4.3 GB on first download, then shared between projects)"
   ),
   regen_fetch_tg_running = list(
     fr = "T\u00e9l\u00e9chargement de la s\u00e9rie E-OBS de temp\u00e9rature moyenne (Copernicus CDS) \u2014 plusieurs minutes, en arri\u00e8re-plan.",
