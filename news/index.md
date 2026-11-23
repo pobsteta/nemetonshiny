@@ -1,8 +1,34 @@
 # Changelog
 
-## nemetonshiny 2026.11.3.9003 (2026-11-23)
+## nemetonshiny 2026.11.4 (2026-11-23)
 
-> **Non publié.**
+Release stable qui regroupe le cycle dev `2026.11.3.9001` à `.9003`
+(missions 043 et 044, le détail de chaque entrée suit, plus bas). Elle
+demande le cœur **nemeton \>= 2026.11.39** (`Imports`). Aucun changement
+cassant. Le premier téléchargement E-OBS pèse **~4,3 Go par variable**,
+puis il est partagé entre tous les projets.
+
+### Correctifs
+
+- **reGénération : un seul moteur vivant par projet.** Un nouveau
+  lancement, l’arrêt du lancement enchaîné ou la fin de session arrêtent
+  le moteur déjà actif sur le projet (marqueur
+  `cache/regeneration/engine_run.json` passé au cœur) ; plus de moteurs
+  ni de jobs CDS orphelins (`.9001`, `.9002`).
+- **E-OBS : nouveau format du CDS.** Les téléchargements refonctionnent,
+  par le cache global du cœur (un seul jeu de fichiers pour tous les
+  projets) ; la détection des années n’est plus sautée ; `regen_eobs_rr`
+  / `regen_eobs_tg` répondent `error` avec le motif du cœur quand rien
+  n’est téléchargé, jamais `ok` ; le diagramme ombrothermique est
+  calculé sur la fenêtre récente de dix ans (`.9003`).
+
+### Dépendances
+
+- Plancher `Imports: nemeton (>= 2026.11.39)`.
+
+### Détail du cycle dev 2026.11.3.9003 (2026-11-23) — publié dans 2026.11.4
+
+> Mission 044.
 
 ### Correctifs
 
@@ -34,9 +60,9 @@
   `licence_type`), cache global par défaut (`cache_dir = NULL`) et
   export `eobs_cached_file()`.
 
-## nemetonshiny 2026.11.3.9002 (2026-11-22)
+### Détail du cycle dev 2026.11.3.9002 (2026-11-22) — publié dans 2026.11.4
 
-> **Non publié.**
+> Plancher cœur.
 
 ### Dépendances
 
@@ -47,7 +73,9 @@
   seul moteur reGénération par projet » de la `.9001` reste inactive
   (garde de capacité, conservée).
 
-## nemetonshiny 2026.11.3.9001 (2026-11-22)
+### Détail du cycle dev 2026.11.3.9001 (2026-11-22) — publié dans 2026.11.4
+
+> Mission 043.
 
 ### Correctifs
 
@@ -64,9 +92,9 @@
   2026.11.38, non encore tagué) garde le comportement actuel, sans
   erreur ; le plancher `nemeton` n’est pas modifié.
 
-## nemetonshiny 2026.11.3.9000 (2026-11-22)
+### Détail du cycle dev 2026.11.3.9000 (2026-11-22) — publié dans 2026.11.4
 
-> **Non publié.** Ouverture du cycle dev après la release v2026.11.3.
+> Ouverture du cycle dev après la release v2026.11.3.
 
 ## nemetonshiny 2026.11.3 (2026-11-22)
 

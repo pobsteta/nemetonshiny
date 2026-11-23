@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.3.9003</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,45 +34,63 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.3.9003" id="nemetonshiny-20261139003-2026-11-23">nemetonshiny 2026.11.3.9003 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139003-2026-11-23"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
+<h2 class="pkg-version" data-toc-text="2026.11.4" id="nemetonshiny-2026114-2026-11-23">nemetonshiny 2026.11.4 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026114-2026-11-23"></a></h2>
+<p>Release stable qui regroupe le cycle dev <code>2026.11.3.9001</code> à <code>.9003</code> (missions 043 et 044, le détail de chaque entrée suit, plus bas). Elle demande le cœur <strong>nemeton &gt;= 2026.11.39</strong> (<code>Imports</code>). Aucun changement cassant. Le premier téléchargement E-OBS pèse <strong>~4,3 Go par variable</strong>, puis il est partagé entre tous les projets.</p>
 <div class="section level3">
-<h3 id="correctifs-2026-11-3-9003">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-3-9003"></a></h3>
+<h3 id="correctifs-2026-11-4">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-4"></a></h3>
+<ul><li>
+<strong>reGénération : un seul moteur vivant par projet.</strong> Un nouveau lancement, l’arrêt du lancement enchaîné ou la fin de session arrêtent le moteur déjà actif sur le projet (marqueur <code>cache/regeneration/engine_run.json</code> passé au cœur) ; plus de moteurs ni de jobs CDS orphelins (<code>.9001</code>, <code>.9002</code>).</li>
+<li>
+<strong>E-OBS : nouveau format du CDS.</strong> Les téléchargements refonctionnent, par le cache global du cœur (un seul jeu de fichiers pour tous les projets) ; la détection des années n’est plus sautée ; <code>regen_eobs_rr</code> / <code>regen_eobs_tg</code> répondent <code>error</code> avec le motif du cœur quand rien n’est téléchargé, jamais <code>ok</code> ; le diagramme ombrothermique est calculé sur la fenêtre récente de dix ans (<code>.9003</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-4">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-4"></a></h3>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.39)</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-4">Détail du cycle dev 2026.11.3.9003 (2026-11-23) — publié dans 2026.11.4<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-4"></a></h3>
+<blockquote>
+<p>Mission 044.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-4-1">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-4-1"></a></h3>
 <ul><li>
 <strong>E-OBS : nouveau format du CDS, cache partagé, plus de faux <code>ok</code></strong> (mission 044). Le CDS a retiré le champ <code>period</code> du jeu E-OBS : toutes les requêtes échouaient (« invalid request », run Colombière du 2026-11-22), <code>regen_annees</code> était sauté et <code>regen_eobs_rr</code> / <code>regen_eobs_tg</code> affichaient <code>ok</code> sans rien avoir téléchargé. L’app ne passe plus de <code>cache_dir</code> projet à <code>load_eobs_source()</code> : le cœur utilise son <strong>cache global</strong> (un seul jeu de fichiers, ~4,3 Go par variable, partagé entre projets) ; <code>eobs_status.json</code> reste dans le projet. <code>regen_eobs_cached_nc()</code> retrouve le fichier par <code><a href="https://pobsteta.github.io/nemeton/reference/eobs_cached_file.html" class="external-link">nemeton::eobs_cached_file()</a></code>, avec repli sur l’ancien cache du projet. La fenêtre d’années se termine à l’année courante − 1. Les étapes <code>regen_eobs_rr</code> / <code>regen_eobs_tg</code> du « Tout calculer » et les toasts des boutons tirent leur statut de la valeur rendue par la tâche : <code>FALSE</code> donne <code>error</code> (message du cœur repris), jamais <code>ok</code>. Libellés : « ~4,3 Go au premier téléchargement, puis partagé entre projets ». Le cache contenant désormais la série depuis 1950, le <strong>diagramme ombrothermique</strong> (climatologie mensuelle du clic sur la maille) est calculé sur la <strong>même fenêtre récente de dix ans</strong> que le pipeline, et non plus sur 1950-aujourd’hui ; l’étape <code>regen_eobs_tg</code> sans motif affiche son propre libellé d’échec.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-3-9003">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-9003"></a></h3>
+<h3 id="dépendances-2026-11-4-1">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-4-1"></a></h3>
 <ul><li>
 <strong>Plancher <code>nemeton (&gt;= 2026.11.39)</code></strong> : nouvelle requête CDS (34.0e, <code>licence_type</code>), cache global par défaut (<code>cache_dir = NULL</code>) et export <code>eobs_cached_file()</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.3.9002" id="nemetonshiny-20261139002-2026-11-22">nemetonshiny 2026.11.3.9002 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139002-2026-11-22"></a></h2>
-<blockquote>
-<p><strong>Non publié.</strong></p>
-</blockquote>
 <div class="section level3">
-<h3 id="dépendances-2026-11-3-9002">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-9002"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-4-1">Détail du cycle dev 2026.11.3.9002 (2026-11-22) — publié dans 2026.11.4<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-4-1"></a></h3>
+<blockquote>
+<p>Plancher cœur.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-4-2">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-4-2"></a></h3>
 <ul><li>
 <strong>Plancher <code>nemeton (&gt;= 2026.11.38)</code></strong> : <code>run_memory_capped(marker_path =)</code>, <code>capped_run_alive()</code>, <code>stop_memory_capped()</code> et l’enfant supervisé (mort avec son worker), plus la purge des jobs ERA5 orphelins. Sans eux, la protection « un seul moteur reGénération par projet » de la <code>.9001</code> reste inactive (garde de capacité, conservée).</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.3.9001" id="nemetonshiny-20261139001-2026-11-22">nemetonshiny 2026.11.3.9001 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139001-2026-11-22"></a></h2>
 <div class="section level3">
-<h3 id="correctifs-2026-11-3-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-3-9001"></a></h3>
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-4-2">Détail du cycle dev 2026.11.3.9001 (2026-11-22) — publié dans 2026.11.4<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-4-2"></a></h3>
+<blockquote>
+<p>Mission 043.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-4-2">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-4-2"></a></h3>
 <ul><li>
 <strong>reGénération : un seul moteur vivant par projet</strong> (mission 043). Un nouveau lancement (bouton ou étape du « Tout calculer ») arrête le moteur encore actif sur le projet et le dit (<code>regen_moteur_precedent_arrete</code>), avant d’effacer <code>engine_status.json</code> ; l’arrêt du lancement enchaîné pendant l’étape <code>regeneration</code> (bouton Arrêter, projet changé) arrête le moteur sans toast d’échec ; la fin de session arrête le moteur lancé par cette session. Le marqueur de run <code>cache/regeneration/engine_run.json</code> est passé au cœur. Tout est <strong>sous garde de capacité</strong> : un cœur sans <code>marker_path</code>, <code>capped_run_alive</code> ou <code>stop_memory_capped</code> (antérieur à 2026.11.38, non encore tagué) garde le comportement actuel, sans erreur ; le plancher <code>nemeton</code> n’est pas modifié.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.3.9000" id="nemetonshiny-20261139000-2026-11-22">nemetonshiny 2026.11.3.9000 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139000-2026-11-22"></a></h2>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-4-3">Détail du cycle dev 2026.11.3.9000 (2026-11-22) — publié dans 2026.11.4<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-4-3"></a></h3>
 <blockquote>
-<p><strong>Non publié.</strong> Ouverture du cycle dev après la release v2026.11.3.</p>
+<p>Ouverture du cycle dev après la release v2026.11.3.</p>
 </blockquote>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.3" id="nemetonshiny-2026113-2026-11-22">nemetonshiny 2026.11.3 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026113-2026-11-22"></a></h2>

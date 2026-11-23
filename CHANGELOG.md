@@ -12,6 +12,26 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
+## \[2026.11.4\] - 2026-11-23
+
+Groups the dev cycle `2026.11.3.9001` to `.9003`. See NEWS.md for
+details. Requires `nemeton` \>= 2026.11.39.
+
+### Fixed
+
+- Regeneration: a single live engine per project; a new launch, stopping
+  the chained run or the end of the session stops the running engine
+  (run marker passed to the core).
+- E-OBS: new CDS request format; downloads go through the core’s shared
+  global cache; year detection no longer skipped; `regen_eobs_rr` /
+  `regen_eobs_tg` report `error` instead of `ok` when nothing was
+  downloaded; ombrothermic diagram computed over the recent ten-year
+  window.
+
+### Changed
+
+- `Imports: nemeton (>= 2026.11.39)`.
+
 ## \[2026.11.3\] - 2026-11-22
 
 Groups the dev cycle `2026.11.2.9001` to `.9012`. See NEWS.md for
