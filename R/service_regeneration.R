@@ -269,16 +269,49 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
 #'
 #' @param task_status `"success"` or `"error"`.
 #' @param value The task's returned value (may be `NULL`).
-#' @param fallback Message used when the failure carries no reason.
-#' @return `list(status = "ok"|"error", detail = chr|NULL)`.
+#' @return `list(status = "ok"|"error", detail = chr|NULL)`; `detail` is the
+#'   core's reason (`reason` attribute) when there is one.
 #' @noRd
-.regen_eobs_step_status <- function(task_status, value, fallback = NULL) {
+.regen_eobs_step_status <- function(task_status, value) {
   if (identical(task_status, "success") && isTRUE(value)) {
     return(list(status = "ok", detail = NULL))
   }
   reason <- attr(value, "reason", exact = TRUE)
-  if (is.null(reason) || !nzchar(reason[[1]])) reason <- fallback
-  list(status = "error", detail = if (is.null(reason)) NULL else as.character(reason)[[1]])
+  list(status = "error",
+       detail = if (is.null(reason) || !nzchar(reason[[1]])) NULL else as.character(reason)[[1]])
+}
+
+#' Answer of a pipeline E-OBS step (status + detail), decision of the observer
+#'
+#' @param task_status `"success"` / `"error"`.
+#' @param value Value returned by the task (`NULL` when the task errored).
+#' @param failed_label Message when the failure carries no reason of its own
+#'   (already translated; differs for `rr` and `tg`).
+#' @param task_error `function(default)` giving the task's own error message,
+#'   or `default` (wraps `pipeline_task_error()`).
+#' @return `list(status, detail)` for `pipeline_answer()`.
+#' @noRd
+.regen_eobs_step_answer <- function(task_status, value, failed_label,
+                                    task_error = function(default) default) {
+  res <- .regen_eobs_step_status(task_status, value)
+  if (!identical(res$status, "ok") && is.null(res$detail)) {
+    res$detail <- task_error(failed_label)
+  }
+  res
+}
+
+#' Monthly climatology of one E-OBS variable over the recent window
+#'
+#' The cached `.nc` now holds the whole series since 1950: without `years` the
+#' ombrothermic diagram would average 1950-last year. Same ten-year window as
+#' the pipeline (`.regen_eobs_years()`).
+#' @return The climatology, or `NULL` on failure.
+#' @noRd
+.regen_eobs_monthly_clim <- function(nc, pt, var, year_window = 10L) {
+  tryCatch(
+    nemeton::eobs_monthly_climatology(nc, pt, var = var,
+                                      years = .regen_eobs_years(year_window)),
+    error = function(e) NULL)
 }
 
 #' Download the E-OBS precipitation series into the shared cache (opt-in)

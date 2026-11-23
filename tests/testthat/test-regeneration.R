@@ -609,7 +609,6 @@ test_that(".regen_eobs_step_status : FALSE rendu par la tâche n'est jamais ok",
   r <- f("success", structure(FALSE, reason = "invalid request"))
   expect_identical(r$status, "error")
   expect_identical(r$detail, "invalid request")
-  expect_identical(f("success", FALSE, fallback = "repli")$detail, "repli")
   expect_identical(f("error", TRUE)$status, "error")   # tâche en erreur : jamais ok
 })
 
@@ -683,4 +682,42 @@ test_that("load_regen_comments : projet sans path / sans fichier -> list() vide"
 test_that(".regen_comment_key : token stable et sûr pour un id d'input", {
   expect_equal(nemetonshiny:::.regen_comment_key("U-Nord 12"), "regcom_U_Nord_12")
   expect_equal(nemetonshiny:::.regen_comment_key(3L), "regcom_3")
+})
+
+test_that(".regen_eobs_step_answer : motif du cœur, sinon message de la tâche, sinon libellé de l'étape", {
+  f <- nemetonshiny:::.regen_eobs_step_answer
+  expect_identical(f("success", TRUE, "L")$status, "ok")
+  r <- f("success", structure(FALSE, reason = "invalid request"), "L")
+  expect_identical(c(r$status, r$detail), c("error", "invalid request"))
+  r <- f("error", FALSE, "L", task_error = function(d) paste("tache:", d))
+  expect_identical(c(r$status, r$detail), c("error", "tache: L"))
+  expect_identical(f("success", FALSE, "L")$detail, "L")
+})
+
+test_that("l'observer pipeline E-OBS passe par .regen_eobs_step_answer et la bonne clé par étape", {
+  src <- testthat::test_path("..", "..", "R", "mod_regeneration.R")
+  testthat::skip_if_not(file.exists(src), "sources R/ absentes (covr / paquet installé)")
+  txt <- paste(readLines(src, warn = FALSE), collapse = "\n")
+  expect_match(txt, ".regen_eobs_step_answer(", fixed = TRUE)
+  expect_match(txt, 'failed_key = "regen_eobs_rr_failed"', fixed = TRUE)
+  expect_match(txt, 'failed_key = "regen_fetch_tg_failed"', fixed = TRUE)
+  expect_match(txt, "pipeline_answer(app_state, req, res$status, res$detail)", fixed = TRUE)
+  # et les clés existent bien en i18n
+  tr <- nemetonshiny:::TRANSLATIONS
+  expect_true(all(c("regen_eobs_rr_failed", "regen_fetch_tg_failed") %in% names(tr)))
+})
+
+test_that(".regen_eobs_monthly_clim limite la climatologie à la fenêtre récente (années passées)", {
+  vu <- new.env()
+  testthat::local_mocked_bindings(
+    eobs_monthly_climatology = function(daily, point, var, years = NULL) {
+      vu$years <- years; vu$var <- var; "CLIM" },
+    .package = "nemeton")
+  expect_identical(nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "tg"), "CLIM")
+  expect_identical(vu$var, "tg")
+  expect_identical(vu$years, nemetonshiny:::.regen_eobs_years())
+  expect_gte(min(vu$years), as.integer(format(Sys.Date(), "%Y")) - 12L)  # pas 1950
+  testthat::local_mocked_bindings(
+    eobs_monthly_climatology = function(...) stop("boom"), .package = "nemeton")
+  expect_null(nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "rr"))
 })

@@ -2066,18 +2066,19 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     shiny::observe({
-      for (item in list(list(rv = rr_pipeline_req, st = eobs_rr_task$status(), tk = eobs_rr_task),
-                        list(rv = tg_pipeline_req, st = eobs_tg_task$status(), tk = eobs_tg_task))) {
+      for (item in list(list(rv = rr_pipeline_req, st = eobs_rr_task$status(), tk = eobs_rr_task,
+                             failed_key = "regen_eobs_rr_failed"),
+                        list(rv = tg_pipeline_req, st = eobs_tg_task$status(), tk = eobs_tg_task,
+                             failed_key = "regen_fetch_tg_failed"))) {
         req <- shiny::isolate(item$rv())
         if (is.null(req) || !item$st %in% c("success", "error")) next
         # Le statut vient de la valeur rendue (TRUE/FALSE), pas du seul
         # `success` : une tache qui n'a rien telecharge ne repond plus `ok`.
         val <- if (identical(item$st, "success"))
           tryCatch(item$tk$result(), error = function(e) FALSE) else FALSE
-        res <- .regen_eobs_step_status(item$st, val)
-        if (!identical(res$status, "ok") && is.null(res$detail)) {
-          res$detail <- pipeline_task_error(item$tk, i18n$t("regen_eobs_rr_failed"))
-        }
+        res <- .regen_eobs_step_answer(
+          item$st, val, i18n$t(item$failed_key),
+          task_error = function(d) pipeline_task_error(item$tk, d))
         pipeline_answer(app_state, req, res$status, res$detail)
         item$rv(NULL)
       }
@@ -2835,10 +2836,9 @@ mod_regeneration_server <- function(id, app_state) {
         nc_t  <- nc_tg %||% regen_eobs_cached_nc(project_path, "tx")
         temp_is_tg <- !is.null(nc_tg)
         nc_rr <- regen_eobs_cached_nc(project_path, "rr")
-        clim_t  <- if (!is.null(nc_t)) tryCatch(nemeton::eobs_monthly_climatology(
-          nc_t, pt, var = if (temp_is_tg) "tg" else "tx"), error = function(e) NULL)
-        clim_rr <- if (!is.null(nc_rr)) tryCatch(nemeton::eobs_monthly_climatology(
-          nc_rr, pt, var = "rr"), error = function(e) NULL)
+        clim_t  <- if (!is.null(nc_t))
+          .regen_eobs_monthly_clim(nc_t, pt, if (temp_is_tg) "tg" else "tx")
+        clim_rr <- if (!is.null(nc_rr)) .regen_eobs_monthly_clim(nc_rr, pt, "rr")
 
         shiny::isolate(rv$click_series <- list(view = source, entries = entries,
           distrib = distrib_entries, clim_t = clim_t, clim_rr = clim_rr,
