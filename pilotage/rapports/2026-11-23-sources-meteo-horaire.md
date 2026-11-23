@@ -130,3 +130,33 @@ Quelle décision cette donnée va-t-elle éclairer ? Quelle source horaire (ERA5
 ## 10. Points de la liste de contrôle non cochés
 
 La liste de contrôle n'a pas été jointe à la consigne : non passée. Décomptes complets non applicables (pas de référentiel de codes produit).
+
+## Essai réel du jeu `reanalysis-era5-single-levels-timeseries` (orchestrateur, 2026-11-23)
+
+Requêtes faites avec la clé CDS du projet, un point (4,8 E ; 47,3 N), API `retrieve/v1`.
+
+- **Délai** : 2024 entière (12 variables demandées) → `accepted` à 13:31, `successful` à 13:33,
+  **2 minutes**, zip de 452 Ko. Un mois de 4 variables : 1 minute. À comparer aux ~4 h par mois
+  du jeu `reanalysis-era5-single-levels` (même compte, même jour).
+- **Point servi** : la maille la plus proche (4,75 E ; 47,25 N), une seule série. `mcera5`
+  télécharge une emprise et interpole ; ici il faudrait 4 requêtes pour les 4 mailles voisines.
+- **Pas de temps** : 8 784 valeurs pour 2024 (horaire, année bissextile complète), axe
+  `valid_time` en secondes depuis 1970.
+- **Variables servies** (9 sur les 12 de `mcera5::build_era5_request`) : `t2m`, `d2m`, `sp`,
+  `u10`, `v10`, `tp`, `tcc`, `ssrd`, `fdir`. Flux en J m⁻² **par heure** (ssrd max 3,2 MJ →
+  ~890 W m⁻²), pas en cumul depuis 00 h.
+- **Absentes, sans erreur** : `mean_surface_net_long_wave_radiation_flux`,
+  `mean_surface_downward_long_wave_radiation_flux`, `land_sea_mask` ; `surface_net_thermal_radiation`
+  aussi absente.
+- **Remplaçant trouvé** : `surface_thermal_radiation_downwards` (`strd`) est servie
+  (0,71 à 1,31 MJ m⁻² h⁻¹, soit ~197 à 365 W m⁻² en janvier) → `lwdown = strd / 3600`. Le
+  rayonnement thermique net se recalcule (lwdown − ε σ T⁴) ; le masque terre-mer est constant par
+  point (une requête unique sur le jeu classique, ou valeur 1 en forêt continentale).
+- **Piège constaté** : avant la purge de trois jobs ERA5 orphelins du compte (05:50, 07:40), les
+  deux premières requêtes ont été **rejetées** (« Maximum number queued requests for this dataset
+  has been reached ») ; `ecmwfr::wf_request` a continué d'interroger le job rejeté pendant
+  30 min sans le voir. Le moteur peut donc attendre un job mort.
+
+Conclusion : la piste est **réaliste** pour microclimf, à condition d'adapter côté cœur la
+construction du forçage (variables `strd` au lieu des flux moyens, 4 mailles au lieu d'une
+emprise, masque terre-mer à part) et de détecter les statuts `rejected`/`failed`.
