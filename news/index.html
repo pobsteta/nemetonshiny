@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.4.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.4.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.4.9002" id="nemetonshiny-20261149002-2026-11-23">nemetonshiny 2026.11.4.9002 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149002-2026-11-23"></a></h2>
+<blockquote>
+<p>Mission 046.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="ajouts-2026-11-4-9002">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-4-9002"></a></h3>
+<ul><li>
+<strong>reGénération : l’attente dans la file du CDS s’affiche.</strong> Pendant le téléchargement ERA5, la progression dit « mois 3/24 — en file CDS depuis 3 h 40 » (requête acceptée) ou « mois 3/24 — en cours au CDS » (requête en cours), au lieu d’un compteur figé pendant des heures. Le moteur traite <code>regen_expo:era5_attente</code> et <code>biljou:era5_attente</code> (un événement toutes les 5 min, sans notification ntfy).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-4-9002">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-4-9002"></a></h3>
+<ul><li>
+<code>nemeton (&gt;= 2026.11.40)</code> : émet l’événement <code>era5_attente</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.4.9001" id="nemetonshiny-20261149001-2026-11-23">nemetonshiny 2026.11.4.9001 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149001-2026-11-23"></a></h2>
 <blockquote>

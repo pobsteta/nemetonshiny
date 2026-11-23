@@ -1,5 +1,22 @@
 # Changelog
 
+## nemetonshiny 2026.11.4.9002 (2026-11-23)
+
+> Mission 046.
+
+### Ajouts
+
+- **reGénération : l’attente dans la file du CDS s’affiche.** Pendant le
+  téléchargement ERA5, la progression dit « mois 3/24 — en file CDS
+  depuis 3 h 40 » (requête acceptée) ou « mois 3/24 — en cours au CDS »
+  (requête en cours), au lieu d’un compteur figé pendant des heures. Le
+  moteur traite `regen_expo:era5_attente` et `biljou:era5_attente` (un
+  événement toutes les 5 min, sans notification ntfy).
+
+### Dépendances
+
+- `nemeton (>= 2026.11.40)` : émet l’événement `era5_attente`.
+
 ## nemetonshiny 2026.11.4.9001 (2026-11-23)
 
 > Mission 045.
