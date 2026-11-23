@@ -1,6 +1,31 @@
 # Changelog
 
-## nemetonshiny 2026.11.4.9002 (2026-11-23)
+## nemetonshiny 2026.11.5 (2026-11-23)
+
+Release stable qui regroupe le cycle dev `2026.11.4.9001` à `.9002`
+(missions 045 et 046, le détail de chaque entrée suit, plus bas). Elle
+demande le cœur **nemeton \>= 2026.11.40** (`Imports`). Aucun changement
+cassant.
+
+### Ajouts
+
+- **reGénération : l’attente dans la file du CDS s’affiche.** Pendant le
+  téléchargement ERA5, la progression dit « mois 3/24 — en file CDS
+  depuis 3 h 40 » ou « — en cours au CDS », au lieu d’un compteur figé
+  pendant des heures ; sans notification ntfy (`.9002`).
+
+### Correctifs
+
+- **reGénération : textes ERA5 justes.** La source est nommée « ERA5 »
+  (0,25°) et non ERA5-Land ; l’infobulle du moteur annonce plusieurs
+  heures à deux jours au premier calcul (file du CDS), quelques minutes
+  ensuite (`.9001`).
+
+### Dépendances
+
+- Plancher `Imports: nemeton (>= 2026.11.40)`.
+
+### Détail du cycle dev 2026.11.4.9002 (2026-11-23) — publié dans 2026.11.5
 
 > Mission 046.
 
@@ -17,7 +42,7 @@
 
 - `nemeton (>= 2026.11.40)` : émet l’événement `era5_attente`.
 
-## nemetonshiny 2026.11.4.9001 (2026-11-23)
+### Détail du cycle dev 2026.11.4.9001 (2026-11-23) — publié dans 2026.11.5
 
 > Mission 045.
 
@@ -32,10 +57,6 @@
   dans la file du CDS, ~12 requêtes par année), quelques minutes ensuite
   (cache partagé) » ; le message d’interruption ne parle plus de «
   throttle ».
-
-## nemetonshiny 2026.11.4.9000
-
-Cycle dev ouvert après la release 2026.11.4.
 
 ## nemetonshiny 2026.11.4 (2026-11-23)
 

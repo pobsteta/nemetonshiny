@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.4.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,37 +34,51 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.4.9002" id="nemetonshiny-20261149002-2026-11-23">nemetonshiny 2026.11.4.9002 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149002-2026-11-23"></a></h2>
+<h2 class="pkg-version" data-toc-text="2026.11.5" id="nemetonshiny-2026115-2026-11-23">nemetonshiny 2026.11.5 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026115-2026-11-23"></a></h2>
+<p>Release stable qui regroupe le cycle dev <code>2026.11.4.9001</code> à <code>.9002</code> (missions 045 et 046, le détail de chaque entrée suit, plus bas). Elle demande le cœur <strong>nemeton &gt;= 2026.11.40</strong> (<code>Imports</code>). Aucun changement cassant.</p>
+<div class="section level3">
+<h3 id="ajouts-2026-11-5">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-5"></a></h3>
+<ul><li>
+<strong>reGénération : l’attente dans la file du CDS s’affiche.</strong> Pendant le téléchargement ERA5, la progression dit « mois 3/24 — en file CDS depuis 3 h 40 » ou « — en cours au CDS », au lieu d’un compteur figé pendant des heures ; sans notification ntfy (<code>.9002</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="correctifs-2026-11-5">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-5"></a></h3>
+<ul><li>
+<strong>reGénération : textes ERA5 justes.</strong> La source est nommée « ERA5 » (0,25°) et non ERA5-Land ; l’infobulle du moteur annonce plusieurs heures à deux jours au premier calcul (file du CDS), quelques minutes ensuite (<code>.9001</code>).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-5">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-5"></a></h3>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 2026.11.40)</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-5">Détail du cycle dev 2026.11.4.9002 (2026-11-23) — publié dans 2026.11.5<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-5"></a></h3>
 <blockquote>
 <p>Mission 046.</p>
 </blockquote>
+</div>
 <div class="section level3">
-<h3 id="ajouts-2026-11-4-9002">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-4-9002"></a></h3>
+<h3 id="ajouts-2026-11-5-1">Ajouts<a class="anchor" aria-label="anchor" href="#ajouts-2026-11-5-1"></a></h3>
 <ul><li>
 <strong>reGénération : l’attente dans la file du CDS s’affiche.</strong> Pendant le téléchargement ERA5, la progression dit « mois 3/24 — en file CDS depuis 3 h 40 » (requête acceptée) ou « mois 3/24 — en cours au CDS » (requête en cours), au lieu d’un compteur figé pendant des heures. Le moteur traite <code>regen_expo:era5_attente</code> et <code>biljou:era5_attente</code> (un événement toutes les 5 min, sans notification ntfy).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-4-9002">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-4-9002"></a></h3>
+<h3 id="dépendances-2026-11-5-1">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-5-1"></a></h3>
 <ul><li>
 <code>nemeton (&gt;= 2026.11.40)</code> : émet l’événement <code>era5_attente</code>.</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.4.9001" id="nemetonshiny-20261149001-2026-11-23">nemetonshiny 2026.11.4.9001 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149001-2026-11-23"></a></h2>
+<div class="section level3">
+<h3 id="détail-du-cycle-dev--publié-dans-2026-11-5-1">Détail du cycle dev 2026.11.4.9001 (2026-11-23) — publié dans 2026.11.5<a class="anchor" aria-label="anchor" href="#d%C3%A9tail-du-cycle-dev--publi%C3%A9-dans-2026-11-5-1"></a></h3>
 <blockquote>
 <p>Mission 045.</p>
 </blockquote>
+</div>
 <div class="section level3">
-<h3 id="correctifs-2026-11-4-9001">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-4-9001"></a></h3>
+<h3 id="correctifs-2026-11-5-1">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-5-1"></a></h3>
 <ul><li>
 <strong>reGénération : la source ERA5 est nommée correctement.</strong> Le cœur télécharge <code>reanalysis-era5-single-levels</code> (ERA5, 0,25°), pas ERA5-Land : les textes (forçage, infobulle du moteur, aide, description BILJOU, commentaires) disent désormais « ERA5 ».</li>
 <li>
 <strong>reGénération : durée annoncée réaliste.</strong> L’infobulle du moteur annonce « plusieurs heures à deux jours au premier calcul (attente dans la file du CDS, ~12 requêtes par année), quelques minutes ensuite (cache partagé) » ; le message d’interruption ne parle plus de « throttle ».</li>
 </ul></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.4.9000" id="nemetonshiny-20261149000">nemetonshiny 2026.11.4.9000<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261149000"></a></h2>
-<p>Cycle dev ouvert après la release 2026.11.4.</p>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.4" id="nemetonshiny-2026114-2026-11-23">nemetonshiny 2026.11.4 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-2026114-2026-11-23"></a></h2>
