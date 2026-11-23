@@ -10,6 +10,24 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.11.5] - 2026-11-23
+
+Groups the dev cycle `2026.11.4.9001` to `.9002`. See NEWS.md for details.
+Requires `nemeton` >= 2026.11.40.
+
+### Added
+- Regeneration: while ERA5 waits in the CDS queue, the progress label shows
+  how long the request has been queued, or that it is running at the CDS
+  (`era5_attente` events, no ntfy notification).
+
+### Fixed
+- Regeneration: the forcing source is named ERA5 (0.25°), not ERA5-Land; the
+  engine tooltip announces several hours to two days on the first run (CDS
+  queue), a few minutes afterwards (shared cache).
+
+### Changed
+- `Imports: nemeton (>= 2026.11.40)`.
+
 ## [2026.11.4] - 2026-11-23
 
 Groups the dev cycle `2026.11.3.9001` to `.9003`. See NEWS.md for details.
