@@ -6268,23 +6268,23 @@ TRANSLATIONS <- list(
   regen_roots = list(fr = "Fractions racinaires", en = "Root fractions"),
   regen_forcing = list(fr = "For\u00e7age m\u00e9t\u00e9o", en = "Weather forcing"),
   regen_forcing_safran = list(fr = "SAFRAN (d\u00e9faut)", en = "SAFRAN (default)"),
-  regen_forcing_era5 = list(fr = "ERA5-Land", en = "ERA5-Land"),
+  regen_forcing_era5 = list(fr = "ERA5", en = "ERA5"),
   # Infobulle \u00ab i \u00bb du radio For\u00e7age (brief 035 \u00a77) : contenu v\u00e9rifi\u00e9 contre
   # nemeton::load_biljou_forcing (SAFRAN = OGC API-EDR G\u00e9oSAS, France seule, ETP
-  # fournie, sans cl\u00e9 ; ERA5-Land = mcera5 global, ETP Penman recalcul\u00e9e, cl\u00e9 CDS).
+  # fournie, sans cl\u00e9 ; ERA5 = mcera5 global, ETP Penman recalcul\u00e9e, cl\u00e9 CDS).
   regen_forcing_tip = list(
     fr = paste0(
       "SAFRAN (d\u00e9faut) : r\u00e9analyse M\u00e9t\u00e9o-France assimilant le r\u00e9seau ",
       "d'observation fran\u00e7ais, journali\u00e8re, ETP officielle fournie, sans cl\u00e9. ",
       "France uniquement \u2014 le plus pr\u00e9cis en m\u00e9tropole, y compris en montagne. ",
-      "ERA5-Land : r\u00e9analyse globale ECMWF, non recal\u00e9e sur les stations ",
+      "ERA5 : r\u00e9analyse globale ECMWF, non recal\u00e9e sur les stations ",
       "fran\u00e7aises, ETP reconstruite, cl\u00e9 CDS requise. \u00c0 r\u00e9server aux zones hors ",
       "France ou si SAFRAN est indisponible."),
     en = paste0(
       "SAFRAN (default): M\u00e9t\u00e9o-France reanalysis assimilating the French ",
       "observation network, daily, official PET provided, no key. France only \u2014 ",
       "most accurate in mainland France, including mountains. ",
-      "ERA5-Land: global ECMWF reanalysis, not bias-corrected to French ",
+      "ERA5: global ECMWF reanalysis, not bias-corrected to French ",
       "stations, PET recomputed, CDS key required. Use only outside France or ",
       "when SAFRAN is unavailable.")),
   regen_resolution = list(fr = "R\u00e9solution microclimat", en = "Microclimate resolution"),
@@ -6329,7 +6329,7 @@ TRANSLATIONS <- list(
   regen_guard_hydrique = list(fr = "Bilan hydrique non calcul\u00e9 : fournissez une sortie BILJOU via le cache du projet (precomputed), ou activez le moteur (entr\u00e9es m\u00e9t\u00e9o/sol).", en = "Water balance not computed: provide a BILJOU output via the project cache (precomputed), or enable the engine (weather/soil inputs)."),
   regen_engine_section = list(fr = "Moteur microclimf r\u00e9el", en = "Real microclimf engine"),
   regen_engine_run = list(fr = "Lancer le moteur r\u00e9el", en = "Run the real engine"),
-  regen_engine_tip = list(fr = "Lance le vrai mod\u00e8le microclimf (structure LiDAR HD + for\u00e7age ERA5-Land) pour calculer la sensibilit\u00e9 microclimatique. Co\u00fbteux (minutes \u00e0 heures) : s'ex\u00e9cute en arri\u00e8re-plan sans bloquer l'application.", en = "Runs the real microclimf model (LiDAR HD structure + ERA5-Land forcing) to compute microclimatic sensitivity. Expensive (minutes to hours): runs in the background without blocking the app."),
+  regen_engine_tip = list(fr = "Lance le vrai mod\u00e8le microclimf (structure LiDAR HD + for\u00e7age ERA5) pour calculer la sensibilit\u00e9 microclimatique. Co\u00fbteux : plusieurs heures \u00e0 deux jours au premier calcul (attente dans la file du CDS, ~12 requ\u00eates par ann\u00e9e), quelques minutes ensuite (cache partag\u00e9). S'ex\u00e9cute en arri\u00e8re-plan sans bloquer l'application.", en = "Runs the real microclimf model (LiDAR HD structure + ERA5 forcing) to compute microclimatic sensitivity. Expensive: several hours to two days on the first run (waiting in the CDS queue, ~12 requests per year), a few minutes afterwards (shared cache). Runs in the background without blocking the app."),
   regen_engine_running = list(fr = "Moteur microclimf en cours (LiDAR HD + ERA5) \u2014 cela peut prendre plusieurs minutes\u2026", en = "microclimf engine running (LiDAR HD + ERA5) \u2014 this can take several minutes\u2026"),
   regen_moteur_precedent_arrete = list(
     fr = "Un calcul reG\u00e9n\u00e9ration pr\u00e9c\u00e9dent tournait encore sur ce projet : il a \u00e9t\u00e9 arr\u00eat\u00e9.",
@@ -6350,7 +6350,7 @@ TRANSLATIONS <- list(
   regen_engine_prereq_lidar = list(fr = "Grille LiDAR HD absente : calculez d'abord les indices avec la source CHM \u00ab LiDAR HD \u00bb pour ce projet.", en = "LiDAR HD grid missing: first compute the indices with the \u201cLiDAR HD\u201d CHM source for this project."),
   regen_engine_prereq_cds = list(fr = "Identifiants Copernicus CDS non configur\u00e9s (ecmwfr::wf_set_key) \u2014 requis pour le for\u00e7age ERA5.", en = "Copernicus CDS credentials not configured (ecmwfr::wf_set_key) \u2014 required for the ERA5 forcing."),
   regen_engine_no_vegetation_structure = list(fr = "Sensibilit\u00e9 microclimatique : aucune structure de v\u00e9g\u00e9tation disponible (ni nuage LiDAR, ni LAI Sentinel-2).", en = "Microclimatic sensitivity: no vegetation structure available (neither LiDAR point cloud nor Sentinel-2 LAI)."),
-  regen_engine_era5_interrupted = list(fr = "Acquisition ERA5 interrompue (throttle CDS) \u2014 relancez \u00ab Lancer le moteur r\u00e9el \u00bb pour reprendre depuis le cache.", en = "ERA5 acquisition interrupted (CDS throttling) \u2014 click \u201cRun the real engine\u201d again to resume from cache."),
+  regen_engine_era5_interrupted = list(fr = "Acquisition ERA5 interrompue \u2014 relancez \u00ab Lancer le moteur r\u00e9el \u00bb pour reprendre depuis le cache.", en = "ERA5 acquisition interrupted \u2014 click \u201cRun the real engine\u201d again to resume from cache."),
   # Notifications ntfy du moteur reG\u00e9n\u00e9ration (jalons + granularit\u00e9 fine).
   regen_ntfy_start = list(fr = "Moteur reG\u00e9n\u00e9ration lanc\u00e9 (microclimf + BILJOU)\u2026", en = "Regeneration engine started (microclimf + BILJOU)\u2026"),
   regen_ntfy_micro_start = list(fr = "microclimf : acquisition ERA5 + exposition en cours\u2026", en = "microclimf: ERA5 acquisition + exposure running\u2026"),
@@ -6653,8 +6653,8 @@ TRANSLATIONS <- list(
     en = "Sum of the normalised deviations (z-scores) of \u0394T\u00b0max and \u0394VPD between heatwave and average summers. Unitless relative score, centred on the project's unit mean: positive = canopy buffering the heatwave poorly. Drives the sensitivity rank."
   ),
   regen_map_njstress_info = list(
-    fr = "Nombre moyen de jours d'\u00e9t\u00e9 o\u00f9 la r\u00e9serve en eau du sol (REW) passe sous le seuil de stress, mod\u00e8le BILJOU forc\u00e9 par SAFRAN (ou ERA5-Land). Valeur \u00e9lev\u00e9e = s\u00e9cheresse \u00e9daphique prolong\u00e9e.",
-    en = "Mean number of summer days when soil relative extractable water (REW) drops below the stress threshold, BILJOU model forced by SAFRAN (or ERA5-Land). High value = prolonged soil drought."
+    fr = "Nombre moyen de jours d'\u00e9t\u00e9 o\u00f9 la r\u00e9serve en eau du sol (REW) passe sous le seuil de stress, mod\u00e8le BILJOU forc\u00e9 par SAFRAN (ou ERA5). Valeur \u00e9lev\u00e9e = s\u00e9cheresse \u00e9daphique prolong\u00e9e.",
+    en = "Mean number of summer days when soil relative extractable water (REW) drops below the stress threshold, BILJOU model forced by SAFRAN (or ERA5). High value = prolonged soil drought."
   ),
   regen_map_dtmax_info = list(
     fr = "\u00c9cart de temp\u00e9rature maximale sous couvert (\u00e0 0,5 m du sol) entre les \u00e9t\u00e9s caniculaires et les \u00e9t\u00e9s moyens, en \u00b0C (mod\u00e8le microclimf, structure LiDAR HD). Valeur \u00e9lev\u00e9e = la canop\u00e9e prot\u00e8ge mal les semis pendant la canicule.",

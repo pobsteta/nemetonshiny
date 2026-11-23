@@ -560,7 +560,7 @@ regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC",
 #
 # Le chemin *moteur* de `nemeton::regen_sensibilite` (portage du prototype
 # valide sur donnees reelles) construit la grille LiDAR-HD, telecharge
-# ERA5-Land (mcera5/ecmwfr -> identifiants CDS) et lance microclimf par annee.
+# ERA5 (mcera5/ecmwfr -> identifiants CDS) et lance microclimf par annee.
 # On le cable en reutilisant la grille LiDAR HD deja produite par le pipeline
 # d'indices (`<project>/cache/layers/lidar_mnt` + `lidar_mnh`), en passant des
 # REPERTOIRES de tuiles (chemins serialisables pour un worker `future`) et en
@@ -661,7 +661,7 @@ resolve_regen_lidar_grid <- function(project_path) {
 
 #' Whether CDS/ERA5 credentials are configured for the microclimf engine
 #'
-#' The engine path downloads ERA5-Land through `mcera5`/`ecmwfr`, which needs a
+#' The engine path downloads ERA5 through `mcera5`/`ecmwfr`, which needs a
 #' Copernicus CDS key. Credentials are considered ready when `ecmwfr` is
 #' installed and a key is resolvable - from the environment (`CDSAPI_KEY` /
 #' `ECMWFR_CDS_KEY`) or from the user's `ecmwfr` keyring. No secret is stored in
