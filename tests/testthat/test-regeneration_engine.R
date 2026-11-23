@@ -536,6 +536,63 @@ test_that("engine shares the ERA5 cache and maps the ERA5 batch to one phase", {
   })
 })
 
+test_that("era5_attente (expo et BILJOU) ecrit l'attente CDS, sans ntfy", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    withr::local_envvar(R_USER_CACHE_DIR = file.path(p, "user_cache"))
+    seen <- new.env(); seen$phases <- list(); seen$ntfy <- character(0)
+    real_write <- nemetonshiny:::.regen_write_phase
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() list(topic = "t"),
+      .ntfy_send = function(cfg, msg, ...) {
+        seen$ntfy <- c(seen$ntfy, msg); TRUE },
+      .regen_write_phase = function(out_dir, phase, extra = list()) {
+        seen$phases[[length(seen$phases) + 1L]] <- c(list(phase = phase), extra)
+        real_write(out_dir, phase, extra)
+      },
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ..., progress_callback = NULL) {
+        n0 <- length(seen$ntfy)
+        progress_callback(list(current = "regen_expo:era5_attente", mois_i = 3,
+                               mois_n = 24, attente_file_s = 13200,
+                               etat_cds = "accepted"))
+        seen$ntfy_expo <- length(seen$ntfy) - n0
+        units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ..., progress_callback = NULL) {
+        n0 <- length(seen$ntfy)
+        progress_callback(list(current = "biljou:era5_attente", mois_i = 4,
+                               mois_n = 24, attente_file_s = 600,
+                               etat_cds = "running"))
+        seen$ntfy_biljou <- length(seen$ntfy) - n0
+        data.frame(year = 2018) },
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "era5"))
+
+    lot <- Filter(function(x) identical(x$phase, "era5_lot"), seen$phases)
+    expect_length(lot, 2L)
+    expect_equal(lot[[1]][c("mois_i", "mois_n", "attente_file_s", "etat_cds")],
+                 list(mois_i = 3, mois_n = 24, attente_file_s = 13200,
+                      etat_cds = "accepted"))
+    expect_equal(lot[[2]][c("mois_i", "attente_file_s", "etat_cds")],
+                 list(mois_i = 4, attente_file_s = 600, etat_cds = "running"))
+    # Rendu : 13200 s -> "3 h 40".
+    expect_match(nemetonshiny:::.regen_phase_label(get_i18n("fr"), lot[[1]]),
+                 "en file CDS depuis 3 h 40", fixed = TRUE)
+    expect_match(nemetonshiny:::.regen_phase_label(get_i18n("fr"), lot[[2]]),
+                 "mois 4/24 \u2014 en cours au CDS", fixed = TRUE)
+    # Aucun envoi ntfy pendant l'emission de ces evenements (compte avant/apres).
+    expect_identical(seen$ntfy_expo, 0L)
+    expect_identical(seen$ntfy_biljou, 0L)
+  })
+})
+
 test_that("run_regeneration_detect_years builds eobs then detects the years", {
   skip_if_not_installed("sf")
   withr::with_tempdir({
