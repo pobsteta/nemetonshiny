@@ -775,12 +775,29 @@ test_that("tous les appelants de la fenetre E-OBS passent par .regen_eobs_fin_fe
     .package = "nemeton")
   nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "tg")
   expect_identical(vu$years, nemetonshiny:::.regen_eobs_years())
-  # garde de source : plus de `format(Sys.Date(), "%Y")) - 1L` brut
-  src <- c("service_regeneration.R", "mod_regeneration_climat.R", "mod_regeneration.R")
-  chemins <- file.path(testthat::test_path("..", "..", "R"), src)
-  skip_if_not(all(file.exists(chemins)), "sources R/ absentes")
-  for (f in chemins) {
-    expect_false(any(grepl("\"%Y\"\\)\\) - 1L", readLines(f, warn = FALSE))),
-                 info = f)
-  }
+})
+
+test_that("la borne E-OBS ne s'applique qu'a la source eobs (SAFRAN et CHELSA gardent N-1)", {
+  # le coeur dit : donnee E-OBS jusqu'en 2023 seulement
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(...) 2023L, .package = "nemeton")
+  expect_identical(nemetonshiny:::.regen_climat_fin_periode("eobs", 2026L, 2027L), 2023L)
+  expect_identical(nemetonshiny:::.regen_climat_fin_periode("safran", 2026L, 2027L), 2026L)
+  expect_identical(nemetonshiny:::.regen_climat_fin_periode("chelsa", 2026L, 2027L), 2026L)
+  # periode complete de carte
+  expect_identical(nemetonshiny:::.regen_climat_periode_source(c(2006L, 2026L), "eobs", 2027L),
+                   c(2006L, 2023L))
+  expect_identical(nemetonshiny:::.regen_climat_periode_source(c(2006L, 2026L), "safran", 2027L),
+                   c(2006L, 2026L))
+  expect_identical(nemetonshiny:::.regen_climat_periode_source(c(2006L, 2026L), "chelsa", 2027L),
+                   c(2006L, 2026L))
+  expect_identical(nemetonshiny:::.regen_climat_periode_source("complete", "eobs", 2027L),
+                   "complete")
+  # la borne ne descend jamais sous le debut
+  expect_identical(nemetonshiny:::.regen_climat_periode_source(c(2025L, 2026L), "eobs", 2027L),
+                   c(2023L, 2023L))
+  # donnee plus recente que N-1 : N-1 reste le plafond
+  testthat::local_mocked_bindings(
+    eobs_last_complete_year = function(...) 2030L, .package = "nemeton")
+  expect_identical(nemetonshiny:::.regen_climat_fin_periode("eobs", 2026L, 2027L), 2026L)
 })

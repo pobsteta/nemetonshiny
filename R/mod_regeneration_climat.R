@@ -19,7 +19,7 @@
 #' @param i18n Translator.
 #' @noRd
 .regen_climat_ui <- function(ns, i18n) {
-  an_max <- .regen_eobs_fin_fenetre(as.integer(format(Sys.Date(), "%Y")))
+  an_max <- as.integer(format(Sys.Date(), "%Y")) - 1L
   onglet_carte <- function(source) {
     bslib::nav_panel(i18n$t(paste0("regen_climat_onglet_", source)), value = source,
       leaflet::leafletOutput(ns(paste0("climat_carte_", source)), height = "68vh"))
@@ -279,9 +279,11 @@
   }
   source_nuages <- function() input$climat_nuages_source %||% "chelsa"
   mode_nuages <- function() input$climat_nuages_mode %||% "anomalie"
+  # Periode de la source : la fin est bornee sur la donnee pour E-OBS seulement.
+  periode_src <- function(s) .regen_climat_periode_source(periode(), s)
   demande_carte <- function(s) {
-    list(type = "carte", source = s, choix = periode(),
-         cle = paste(projet(), s, rayon(), .regen_climat_periode(periode())$tag), etat = s)
+    list(type = "carte", source = s, choix = periode_src(s),
+         cle = paste(projet(), s, rayon(), .regen_climat_periode(periode_src(s))$tag), etat = s)
   }
   # Ce que le sous-onglet courant demande : type, source, choix, cle d'etat.
   demande <- function() {
@@ -371,7 +373,7 @@
     p <- pl(); if (is.null(p)) return(invisible(NULL))
     while (length(p$reste)) {
       s <- p$reste[1]; p$reste <- p$reste[-1]
-      if (!is.null(regeneration_climat_cached(projet(), s, rayon(), periode()))) {
+      if (!is.null(regeneration_climat_cached(projet(), s, rayon(), periode_src(s)))) {
         p$bilan[[s]] <- list(statut = "cache"); next
       }
       pl(p)
