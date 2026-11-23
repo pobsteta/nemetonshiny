@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.3.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.3.9003</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.3.9003" id="nemetonshiny-20261139003-2026-11-23">nemetonshiny 2026.11.3.9003 (2026-11-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139003-2026-11-23"></a></h2>
+<blockquote>
+<p><strong>Non publié.</strong></p>
+</blockquote>
+<div class="section level3">
+<h3 id="correctifs-2026-11-3-9003">Correctifs<a class="anchor" aria-label="anchor" href="#correctifs-2026-11-3-9003"></a></h3>
+<ul><li>
+<strong>E-OBS : nouveau format du CDS, cache partagé, plus de faux <code>ok</code></strong> (mission 044). Le CDS a retiré le champ <code>period</code> du jeu E-OBS : toutes les requêtes échouaient (« invalid request », run Colombière du 2026-11-22), <code>regen_annees</code> était sauté et <code>regen_eobs_rr</code> / <code>regen_eobs_tg</code> affichaient <code>ok</code> sans rien avoir téléchargé. L’app ne passe plus de <code>cache_dir</code> projet à <code>load_eobs_source()</code> : le cœur utilise son <strong>cache global</strong> (un seul jeu de fichiers, ~4,3 Go par variable, partagé entre projets) ; <code>eobs_status.json</code> reste dans le projet. <code>regen_eobs_cached_nc()</code> retrouve le fichier par <code><a href="https://pobsteta.github.io/nemeton/reference/eobs_cached_file.html" class="external-link">nemeton::eobs_cached_file()</a></code>, avec repli sur l’ancien cache du projet. La fenêtre d’années se termine à l’année courante − 1. Les étapes <code>regen_eobs_rr</code> / <code>regen_eobs_tg</code> du « Tout calculer » et les toasts des boutons tirent leur statut de la valeur rendue par la tâche : <code>FALSE</code> donne <code>error</code> (message du cœur repris), jamais <code>ok</code>. Libellés : « ~4,3 Go au premier téléchargement, puis partagé entre projets ». Le cache contenant désormais la série depuis 1950, le <strong>diagramme ombrothermique</strong> (climatologie mensuelle du clic sur la maille) est calculé sur la <strong>même fenêtre récente de dix ans</strong> que le pipeline, et non plus sur 1950-aujourd’hui ; l’étape <code>regen_eobs_tg</code> sans motif affiche son propre libellé d’échec.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dépendances-2026-11-3-9003">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-3-9003"></a></h3>
+<ul><li>
+<strong>Plancher <code>nemeton (&gt;= 2026.11.39)</code></strong> : nouvelle requête CDS (34.0e, <code>licence_type</code>), cache global par défaut (<code>cache_dir = NULL</code>) et export <code>eobs_cached_file()</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.3.9002" id="nemetonshiny-20261139002-2026-11-22">nemetonshiny 2026.11.3.9002 (2026-11-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261139002-2026-11-22"></a></h2>
 <blockquote>

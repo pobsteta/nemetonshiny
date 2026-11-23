@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 2026.11.3.9003 (2026-11-23)
+
+> **Non publié.**
+
+### Correctifs
+
+- **E-OBS : nouveau format du CDS, cache partagé, plus de faux `ok`**
+  (mission 044). Le CDS a retiré le champ `period` du jeu E-OBS : toutes
+  les requêtes échouaient (« invalid request », run Colombière du
+  2026-11-22), `regen_annees` était sauté et `regen_eobs_rr` /
+  `regen_eobs_tg` affichaient `ok` sans rien avoir téléchargé. L’app ne
+  passe plus de `cache_dir` projet à `load_eobs_source()` : le cœur
+  utilise son **cache global** (un seul jeu de fichiers, ~4,3 Go par
+  variable, partagé entre projets) ; `eobs_status.json` reste dans le
+  projet. `regen_eobs_cached_nc()` retrouve le fichier par
+  [`nemeton::eobs_cached_file()`](https://pobsteta.github.io/nemeton/reference/eobs_cached_file.html),
+  avec repli sur l’ancien cache du projet. La fenêtre d’années se
+  termine à l’année courante − 1. Les étapes `regen_eobs_rr` /
+  `regen_eobs_tg` du « Tout calculer » et les toasts des boutons tirent
+  leur statut de la valeur rendue par la tâche : `FALSE` donne `error`
+  (message du cœur repris), jamais `ok`. Libellés : « ~4,3 Go au premier
+  téléchargement, puis partagé entre projets ». Le cache contenant
+  désormais la série depuis 1950, le **diagramme ombrothermique**
+  (climatologie mensuelle du clic sur la maille) est calculé sur la
+  **même fenêtre récente de dix ans** que le pipeline, et non plus sur
+  1950-aujourd’hui ; l’étape `regen_eobs_tg` sans motif affiche son
+  propre libellé d’échec.
+
+### Dépendances
+
+- **Plancher `nemeton (>= 2026.11.39)`** : nouvelle requête CDS (34.0e,
+  `licence_type`), cache global par défaut (`cache_dir = NULL`) et
+  export `eobs_cached_file()`.
+
 ## nemetonshiny 2026.11.3.9002 (2026-11-22)
 
 > **Non publié.**
