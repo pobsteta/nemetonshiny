@@ -1,3 +1,13 @@
+# nemetonshiny 2026.11.5.9001 (2026-11-23)
+
+## Correctifs
+
+- **reGénération : la fenêtre d'années E-OBS suit la donnée.** Elle se terminait à l'année courante moins un ; elle se termine désormais à `min(année courante - 1, nemeton::eobs_last_complete_year(version, mois))`, avec la version et les mois de la réduction estivale (34.0e, 6:8, défauts du cœur que l'app ne surcharge pas). Au 1er janvier 2027, l'app ne demandera plus 2026 à une version 34.0e qui s'arrête au 2026-06-30. Si le cœur répond `NA`, on garde l'année courante moins un. Même borne pour la climatologie ombrothermique. Dans le contexte climatique, la fin de période n'est tronquée que pour la carte E-OBS ; le curseur, SAFRAN et CHELSA gardent l'année courante moins un (mission 047).
+
+## Dépendances
+
+- `nemeton (>= 2026.11.41)` (`eobs_last_complete_year()`).
+
 # nemetonshiny 2026.11.5 (2026-11-23)
 
 Release stable qui regroupe le cycle dev `2026.11.4.9001` à `.9002` (missions 045 et 046, le détail de chaque entrée suit, plus bas). Elle demande le cœur **nemeton >= 2026.11.40** (`Imports`). Aucun changement cassant.

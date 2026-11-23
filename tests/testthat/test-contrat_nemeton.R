@@ -61,6 +61,7 @@ EXPORTS <- list(
   delete_knowledge_document        = c("con", "document_id"),
   detect_ndp    = c("data"),
   enrich_parcels_bdforet           = c("parcels", "bdforet_sf"),
+  eobs_last_complete_year          = c("version", "months", "var", "resolution", "cache_dir", "min_frac"),
   eobs_monthly_climatology         = c("daily", "point", "var", "years"),
   eobs_summer_series               = c("stack", "point"),
   eobs_trend_fit                   = c("series"),
@@ -261,7 +262,7 @@ test_that("nemeton est installe a la version minimale du contrat", {
 
 test_that("le contrat est sans doublon", {
   expect_false(anyDuplicated(.contrat_noms()) > 0L)
-  expect_length(EXPORTS, 181L)
+  expect_length(EXPORTS, 182L)
   expect_length(INTERNES, 18L)
 })
 

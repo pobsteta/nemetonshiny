@@ -43,6 +43,36 @@
   list(arg = "complete", tag = "complete")
 }
 
+#' End of a climate-map period, bounded by the data of the source
+#'
+#' Only E-OBS is bounded by what the data holds
+#' (`.regen_eobs_fin_fenetre()`); SAFRAN and CHELSA keep `current year - 1`
+#' whatever the core says about E-OBS.
+#' @param source `"eobs"`, `"safran"` or `"chelsa"`.
+#' @param fin Requested last year.
+#' @param annee_courante Current calendar year.
+#' @return An integer year, never above `fin`.
+#' @noRd
+.regen_climat_fin_periode <- function(source, fin, annee_courante) {
+  fin <- as.integer(fin)
+  if (!identical(source, "eobs")) return(fin)
+  min(fin, .regen_eobs_fin_fenetre(annee_courante))
+}
+
+#' Period of a climate map for one source (end bounded for E-OBS)
+#'
+#' A `"complete"` period is left untouched. The start never exceeds the end.
+#' @noRd
+.regen_climat_periode_source <- function(periode, source,
+                                         annee_courante = as.integer(format(Sys.Date(), "%Y"))) {
+  p <- suppressWarnings(as.integer(periode))
+  if (length(p) != 2L || !all(is.finite(p))) return(periode)
+  p <- sort(p)
+  p[2] <- .regen_climat_fin_periode(source, p[2], annee_courante)
+  p[1] <- min(p[1], p[2])
+  p
+}
+
 #' Cache paths of a bivariate climate map
 #'
 #' `cache/regeneration/climat/carte_<source>_r<rayon>_<periode>.tif` ; the core
