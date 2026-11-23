@@ -202,7 +202,7 @@ info_popover <- function(..., placement = "auto") {
 #' there would SELECT the choice on its way to opening the popover. Informing
 #' oneself is not choosing, and the cost is real: on the map-layer radios, the
 #' selected layer triggers a raster read (and, in the regeneration context view,
-#' an ~800 MB E-OBS download).
+#' a ~4.3 GB E-OBS download).
 #'
 #' The popover's own handler runs first (capture-phase), then the label's
 #' default action is cancelled. Note it does NOT stop propagation: the document

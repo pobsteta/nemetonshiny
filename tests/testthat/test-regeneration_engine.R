@@ -553,7 +553,7 @@ test_that("run_regeneration_detect_years builds eobs then detects the years", {
     expect_equal(out$year_canicule, 2022)
     expect_equal(seen$eobs, "EOBS_RASTER")   # eobs construit puis passé à detect_years
     expect_equal(seen$var, "tx")
-    expect_true(grepl("eobs$", seen$cache))  # cache disque dédié
+    expect_null(seen$cache)                  # cache GLOBAL du cœur, pas celui du projet
   })
 })
 
