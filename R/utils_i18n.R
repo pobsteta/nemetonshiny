@@ -6329,7 +6329,7 @@ TRANSLATIONS <- list(
   regen_guard_hydrique = list(fr = "Bilan hydrique non calcul\u00e9 : fournissez une sortie BILJOU via le cache du projet (precomputed), ou activez le moteur (entr\u00e9es m\u00e9t\u00e9o/sol).", en = "Water balance not computed: provide a BILJOU output via the project cache (precomputed), or enable the engine (weather/soil inputs)."),
   regen_engine_section = list(fr = "Moteur microclimf r\u00e9el", en = "Real microclimf engine"),
   regen_engine_run = list(fr = "Lancer le moteur r\u00e9el", en = "Run the real engine"),
-  regen_engine_tip = list(fr = "Lance le vrai mod\u00e8le microclimf (structure LiDAR HD + for\u00e7age ERA5) pour calculer la sensibilit\u00e9 microclimatique. Co\u00fbteux : plusieurs heures \u00e0 deux jours au premier calcul (attente dans la file du CDS, ~12 requ\u00eates par ann\u00e9e), quelques minutes ensuite (cache partag\u00e9). S'ex\u00e9cute en arri\u00e8re-plan sans bloquer l'application.", en = "Runs the real microclimf model (LiDAR HD structure + ERA5 forcing) to compute microclimatic sensitivity. Expensive: several hours to two days on the first run (waiting in the CDS queue, ~12 requests per year), a few minutes afterwards (shared cache). Runs in the background without blocking the app."),
+  regen_engine_tip = list(fr = "Lance le vrai mod\u00e8le microclimf (structure LiDAR HD + for\u00e7age ERA5) pour calculer la sensibilit\u00e9 microclimatique. Co\u00fbteux : quelques minutes par ann\u00e9e et par point au premier calcul (4 requ\u00eates au CDS), quelques secondes ensuite (cache partag\u00e9). S'ex\u00e9cute en arri\u00e8re-plan sans bloquer l'application.", en = "Runs the real microclimf model (LiDAR HD structure + ERA5 forcing) to compute microclimatic sensitivity. Expensive: a few minutes per year and per point on the first run (4 requests to the CDS), a few seconds afterwards (shared cache). Runs in the background without blocking the app."),
   regen_engine_running = list(fr = "Moteur microclimf en cours (LiDAR HD + ERA5) \u2014 cela peut prendre plusieurs minutes\u2026", en = "microclimf engine running (LiDAR HD + ERA5) \u2014 this can take several minutes\u2026"),
   regen_moteur_precedent_arrete = list(
     fr = "Un calcul reG\u00e9n\u00e9ration pr\u00e9c\u00e9dent tournait encore sur ce projet : il a \u00e9t\u00e9 arr\u00eat\u00e9.",
@@ -6410,7 +6410,7 @@ TRANSLATIONS <- list(
   regen_cds_cours = list(fr = " \u2014 en cours au CDS", en = " \u2014 running at CDS"),
   regen_cds_duree_hm = list(fr = "%d h %02d", en = "%d h %02d min"),
   regen_cds_duree_min = list(fr = "%d min", en = "%d min"),
-  regen_phase_micro_mois = list(fr = " \u2014 mois %d/%d", en = " \u2014 month %d/%d"),
+  regen_phase_micro_requetes = list(fr = " \u2014 requ\u00eates %d/%d", en = " \u2014 requests %d/%d"),
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
   # Distincte de `..._structure` : sans grille, microclimf ne demarre meme pas,
   # et le repli LAI Sentinel-2 - qui ne vit qu'a l'INTERIEUR du bloc grille -

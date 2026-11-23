@@ -478,6 +478,44 @@ test_that("engine ntfy on_prog maps core events to messages", {
   })
 })
 
+test_that("un echec timeseries (rsen_era5ts_echec) remonte tel quel, sans repli", {
+  skip_if_not_installed("sf")
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    msg <- paste0("ERA5 timeseries : annee 2024 incomplete. Pour le chemin ",
+                  "classique : options(nemeton.era5_source = \"classique\")")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...)
+        stop(structure(class = c("rsen_era5ts_echec", "error", "condition"),
+                       list(message = msg, call = NULL))),
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+    old <- options(nemeton.era5_source = NULL); on.exit(options(old), add = TRUE)
+
+    i18n <- nemetonshiny:::get_i18n("fr")
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_true(msg %in% out$warnings)                       # message tel quel
+    expect_false(i18n$t("regen_engine_era5_interrupted") %in% out$warnings)
+    expect_false("sensibilite" %in% out$cached)
+    expect_null(getOption("nemeton.era5_source"))            # aucune bascule d'office
+  })
+})
+
+test_that("ntfy par annee reste juste avec le compteur de mailles-annees", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  # La notification `regen_ntfy_era5` repose sur year/i/n de `regen_expo:era5`,
+  # pas sur mois_i/mois_n : inchange par le jeu timeseries.
+  expect_equal(sprintf(i18n$t("regen_ntfy_era5"), 2024L, "moyen", 1L, 2L),
+               "ERA5 2024 (moyen) [1/2]\u2026")
+})
+
 test_that("engine shares the ERA5 cache and maps the ERA5 batch to one phase", {
   skip_if_not_installed("sf")
   withr::with_tempdir({
@@ -586,7 +624,7 @@ test_that("era5_attente (expo et BILJOU) ecrit l'attente CDS, sans ntfy", {
     expect_match(nemetonshiny:::.regen_phase_label(get_i18n("fr"), lot[[1]]),
                  "en file CDS depuis 3 h 40", fixed = TRUE)
     expect_match(nemetonshiny:::.regen_phase_label(get_i18n("fr"), lot[[2]]),
-                 "mois 4/24 \u2014 en cours au CDS", fixed = TRUE)
+                 "requ\u00eates 4/24 \u2014 en cours au CDS", fixed = TRUE)
     # Aucun envoi ntfy pendant l'emission de ces evenements (compte avant/apres).
     expect_identical(seen$ntfy_expo, 0L)
     expect_identical(seen$ntfy_biljou, 0L)

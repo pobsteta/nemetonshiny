@@ -107,7 +107,7 @@ test_that(".regen_silence_suffix ne parle qu'au-dela de deux minutes", {
                "last sign of life 5 min ago")
 })
 
-test_that(".regen_micro_lbl compte les MOIS quand le coeur les emet", {
+test_that(".regen_micro_lbl compte les requetes ERA5 (plus des mois)", {
   i18n <- get_i18n("fr")
   lbl <- function(st) nemetonshiny:::.regen_phase_label(i18n, st)
 
@@ -115,7 +115,7 @@ test_that(".regen_micro_lbl compte les MOIS quand le coeur les emet", {
   # `regen_expo:era5_mois` (le cœur ne connaît pas le rang de l'année là-bas).
   expect_match(lbl(list(phase = "microclimf_canicule", year = 2022,
                         mois_i = 3, mois_n = 12)),
-               "2022 \u2014 mois 3/12", fixed = TRUE)
+               "2022 \u2014 requ\u00eates 3/12", fixed = TRUE)
   # L'année seule reste rendue même sans (i/n) — l'ancienne version exigeait
   # les trois et retombait sur le libellé nu.
   expect_match(lbl(list(phase = "microclimf_moyenne", year = 2020)),
@@ -123,16 +123,16 @@ test_that(".regen_micro_lbl compte les MOIS quand le coeur les emet", {
   # Les deux compteurs cohabitent si le cœur les fournit ensemble.
   expect_match(lbl(list(phase = "microclimf_moyenne", year = 2020, i = 1, n = 2,
                         mois_i = 7, mois_n = 12)),
-               "2020 (1/2) \u2014 mois 7/12", fixed = TRUE)
+               "2020 (1/2) \u2014 requ\u00eates 7/12", fixed = TRUE)
 })
 
 test_that("le lot ERA5 affiche un compteur global, sans annee", {
   lbl <- function(st, lang = "fr")
     nemetonshiny:::.regen_phase_label(get_i18n(lang), st)
   expect_equal(lbl(list(phase = "era5_lot", mois_i = 5, mois_n = 24)),
-               "T\u00e9l\u00e9chargement ERA5 (Copernicus) \u2014 mois 5/24")
+               "T\u00e9l\u00e9chargement ERA5 (Copernicus) \u2014 requ\u00eates 5/24")
   expect_equal(lbl(list(phase = "era5_lot", mois_i = 5, mois_n = 24), "en"),
-               "ERA5 download (Copernicus) \u2014 month 5/24")
+               "ERA5 download (Copernicus) \u2014 requests 5/24")
   # Avant le premier mois termine : le libelle nu.
   expect_equal(lbl(list(phase = "era5_lot")),
                "T\u00e9l\u00e9chargement ERA5 (Copernicus)")
@@ -234,17 +234,29 @@ test_that("le lot ERA5 dit l'attente dans la file du CDS", {
     nemetonshiny:::.regen_phase_label(get_i18n(lang), st)
   base <- list(phase = "era5_lot", mois_i = 3, mois_n = 24)
   expect_equal(lbl(c(base, list(attente_file_s = 13200, etat_cds = "accepted"))),
-               paste0("Téléchargement ERA5 (Copernicus) — mois 3/24",
+               paste0("Téléchargement ERA5 (Copernicus) — requêtes 3/24",
                       " — en file CDS depuis 3 h 40"))
   expect_match(lbl(c(base, list(attente_file_s = 13200, etat_cds = "accepted")), "en"),
                "queued at CDS for 3 h 40 min", fixed = TRUE)
   expect_match(lbl(c(base, list(attente_file_s = 600, etat_cds = "accepted"))),
                "depuis 10 min", fixed = TRUE)
   run <- lbl(c(base, list(attente_file_s = 13200, etat_cds = "running")))
-  expect_match(run, "mois 3/24 — en cours au CDS", fixed = TRUE)
+  expect_match(run, "requêtes 3/24 — en cours au CDS", fixed = TRUE)
   expect_false(grepl("3 h", run, fixed = TRUE))
   # Sans etat (anciens fichiers, coeur anterieur) : libelle inchange.
-  expect_equal(lbl(base), "Téléchargement ERA5 (Copernicus) — mois 3/24")
+  expect_equal(lbl(base), "Téléchargement ERA5 (Copernicus) — requêtes 3/24")
   # accepted sans duree exploitable : pas de phrase tronquee.
   expect_equal(lbl(c(base, list(etat_cds = "accepted"))), lbl(base))
+})
+
+test_that("le compteur ERA5 ne dit plus « mois » (mailles-années du jeu timeseries)", {
+  for (l in c("fr", "en")) {
+    lbl <- nemetonshiny:::.regen_phase_label(get_i18n(l),
+      list(phase = "era5_lot", mois_i = 3, mois_n = 8))
+    expect_false(grepl("mois|month", lbl, ignore.case = TRUE))
+    expect_match(lbl, "3/8", fixed = TRUE)
+  }
+  expect_match(nemetonshiny:::.regen_phase_label(get_i18n("en"),
+    list(phase = "microclimf_moyenne", year = 2024, mois_i = 1, mois_n = 4)),
+    "requests 1/4", fixed = TRUE)
 })
