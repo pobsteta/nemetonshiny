@@ -1,3 +1,12 @@
+# nemetonshiny 2026.11.6.9000 (en développement)
+
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (mission 043).
+
+## Dépendances
+
+- Plancher relevé de 2026.11.42 à **2026.11.44** : les versions 2026.11.42 et 2026.11.43 échouent sur une vraie réponse du CDS (variables scalaires, mission 042).
+- Le test de contrat compare désormais la version de `nemeton` installée au plancher **lu dans `DESCRIPTION`** (et non plus à un chiffre recopié, 2026.11.35), pour que les deux ne divergent plus.
+
 # nemetonshiny 2026.11.6 (2026-11-23)
 
 Demande le cœur **nemeton >= 2026.11.42** (`Imports`). Aucun changement cassant.

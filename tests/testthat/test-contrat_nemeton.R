@@ -253,10 +253,26 @@ COLONNES_LIBELLES <- c("family", "code", "column_name", "label_fr", "label_en",
   }
 }
 
+# Plancher `nemeton (>= X)` lu dans le DESCRIPTION du paquet (source unique).
+.plancher_description <- function() {
+  desc <- system.file("DESCRIPTION", package = "nemetonshiny")
+  if (!nzchar(desc) || !file.exists(desc)) desc <- file.path("..", "..", "DESCRIPTION")
+  imports <- read.dcf(desc, fields = "Imports")[1, 1]
+  m <- regmatches(imports, regexpr("nemeton \\(>= *[0-9.]+\\)", imports))
+  stopifnot(length(m) == 1L)
+  numeric_version(sub("^.*>= *([0-9.]+)\\).*$", "\\1", m))
+}
+
 # nemeton est dans Imports (DESCRIPTION) : la CI l'installe, aucun skip ici.
 test_that("nemeton est installe a la version minimale du contrat", {
   expect_true(requireNamespace("nemeton", quietly = TRUE))
-  expect_gte(utils::packageVersion("nemeton"), "2026.11.35")
+  expect_gte(utils::packageVersion("nemeton"), .plancher_description())
+})
+
+test_that("le plancher nemeton est lu dans DESCRIPTION, pas recopie", {
+  plancher <- .plancher_description()
+  expect_s3_class(plancher, "numeric_version")
+  expect_gte(plancher, "2026.11.44")
 })
 
 test_that("le contrat est sans doublon", {
