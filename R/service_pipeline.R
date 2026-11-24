@@ -109,6 +109,65 @@ pipeline_step_def <- function(step_id) {
 }
 
 
+#' Count the indicators and families computed on a project
+#'
+#' The count is read from the project data, never hard-coded: it varies with
+#' the sources (conditional indicators of the core). `_norm` twins are not
+#' indicators of their own; a family counts when at least one of its columns
+#' (long name or short code) is present.
+#'
+#' @param data A data.frame / sf of indicators, or `NULL`.
+#' @param familles Family table (defaults to `INDICATOR_FAMILIES`).
+#' @return `list(n, familles)`; `n` is `NA_integer_` when nothing is computed.
+#' @noRd
+.pipeline_compte_indicateurs <- function(data, familles = INDICATOR_FAMILIES) {
+  vide <- list(n = NA_integer_, familles = length(familles))
+  if (is.null(data) || !is.data.frame(data)) return(vide)
+  cols <- tryCatch({
+    d <- if (inherits(data, "sf")) sf::st_drop_geometry(data) else data
+    get_indicator_cols(d)
+  }, error = function(e) character(0))
+  cols <- unique(sub("_norm$", "", cols))
+  if (length(cols) == 0L) return(vide)
+  nb_fam <- sum(vapply(familles, function(f) {
+    any(c(f$indicators, f$column_names) %in% cols)
+  }, logical(1)))
+  list(n = length(cols), familles = as.integer(nb_fam))
+}
+
+#' Indicator count of the current project (data frame read from the project)
+#' @noRd
+.pipeline_compte_projet <- function(project) {
+  data <- project$indicators
+  if (!is.data.frame(data) && !is.null(project$id)) {
+    data <- tryCatch(load_indicators(project$id), error = function(e) NULL)
+  }
+  .pipeline_compte_indicateurs(data)
+}
+
+#' Display label of a pipeline step
+#'
+#' Only the `indicateurs` step carries a count; every other label is the plain
+#' translated key.
+#'
+#' @param i18n i18n object.
+#' @param label i18n key of the step.
+#' @param compte Result of `.pipeline_compte_indicateurs()` (or `NULL`).
+#' @noRd
+pipeline_step_label <- function(i18n, label, compte = NULL) {
+  base <- i18n$t(label)
+  if (!identical(label, "pipeline_step_indicateurs") || is.null(compte)) {
+    return(base)
+  }
+  fam <- sprintf(i18n$t(if (identical(as.integer(compte$familles), 1L))
+    "pipeline_ind_famille_un" else "pipeline_ind_famille_n"), compte$familles)
+  if (is.na(compte$n)) return(sprintf("%s (%s)", base, fam))
+  ind <- sprintf(i18n$t(if (identical(as.integer(compte$n), 1L))
+    "pipeline_ind_indicateur_un" else "pipeline_ind_indicateur_n"), compte$n)
+  sprintf("%s (%s, %s)", base, ind, fam)
+}
+
+
 # =============================================================================
 # Etat d'un run
 # =============================================================================
