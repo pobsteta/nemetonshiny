@@ -10,6 +10,14 @@ leading zero, rank of the release in the month).
 For a narrative, per-feature description of each release, see
 [NEWS.md](NEWS.md). This file is the concise, categorised trail.
 
+## [2026.11.7] - 2026-11-24
+
+### Fixed
+- Chained run ("Run everything"): the "Indicators" step shows the project's real number of indicators and families (computed columns, `_norm` twins excluded) instead of a hard-coded "31 indicators, 12 families"; before any computation it shows the number of families only. The NDP help no longer quotes fixed counts (mission 048).
+
+### Changed
+- Requires `nemeton (>= 2026.11.44)`; the contract test reads the floor from `DESCRIPTION` (mission 043).
+
 ## [2026.11.6] - 2026-11-23
 
 ### Changed

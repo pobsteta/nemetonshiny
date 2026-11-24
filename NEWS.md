@@ -1,4 +1,4 @@
-# nemetonshiny 2026.11.6.9001 (en développement)
+# nemetonshiny 2026.11.7 (2026-11-24)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043 et 048).
 
