@@ -3536,8 +3536,8 @@ TRANSLATIONS <- list(
     en = "Measures input data quality, not analysis completeness"
   ),
   ndp_tip_intro = list(
-    fr = "Le NDP \u00e9value la fiabilit\u00e9 des donn\u00e9es utilis\u00e9es pour calculer les 31 indicateurs. Les 12 familles sont <strong>toujours</strong> calcul\u00e9es, mais avec une pr\u00e9cision croissante selon les sources disponibles.",
-    en = "The NDP evaluates the reliability of data used to compute the 31 indicators. All 12 families are <strong>always</strong> calculated, but with increasing precision as better data sources become available."
+    fr = "Le NDP \u00e9value la fiabilit\u00e9 des donn\u00e9es utilis\u00e9es pour calculer les indicateurs. Toutes les familles sont <strong>toujours</strong> calcul\u00e9es, mais avec une pr\u00e9cision croissante selon les sources disponibles.",
+    en = "The NDP evaluates the reliability of data used to compute the indicators. All families are <strong>always</strong> calculated, but with increasing precision as better data sources become available."
   ),
   ndp_tip_levels_title = list(fr = "Les 5 niveaux", en = "The 5 levels"),
   ndp_tip_levels = list(
@@ -6948,9 +6948,13 @@ TRANSLATIONS <- list(
     en = "Chain stopped. Running and upcoming steps are cancelled."
   ),
   pipeline_step_indicateurs = list(
-    fr = "Indicateurs (31 indicateurs, 12 familles)",
-    en = "Indicators (31 indicators, 12 families)"
+    fr = "Indicateurs",
+    en = "Indicators"
   ),
+  pipeline_ind_indicateur_un = list(fr = "%d indicateur", en = "%d indicator"),
+  pipeline_ind_indicateur_n = list(fr = "%d indicateurs", en = "%d indicators"),
+  pipeline_ind_famille_un = list(fr = "%d famille", en = "%d family"),
+  pipeline_ind_famille_n = list(fr = "%d familles", en = "%d families"),
   pipeline_step_accessibilite_correction = list(
     fr = "Terrain accessible \u2014 correction LiDAR du r\u00e9seau",
     en = "Accessible terrain \u2014 LiDAR network correction"

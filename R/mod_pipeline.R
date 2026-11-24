@@ -138,9 +138,12 @@ mod_pipeline_server <- function(id, app_state) {
         return()
       }
 
+      compte <- .pipeline_compte_projet(app_state$current_project)
       choix <- stats::setNames(
         pipeline_all_step_ids(),
-        vapply(PIPELINE_STEPS, function(s) i18n$t(s$label), character(1))
+        vapply(PIPELINE_STEPS,
+               function(s) pipeline_step_label(i18n, s$label, compte),
+               character(1))
       )
 
       shiny::showModal(shiny::modalDialog(
@@ -358,6 +361,7 @@ mod_pipeline_server <- function(id, app_state) {
       i18n <- i18n_r()
       rep <- pipeline_report(etat)
       en_cours <- !pipeline_is_done(etat)
+      compte <- .pipeline_compte_projet(shiny::isolate(app_state$current_project))
 
       lignes <- lapply(seq_len(nrow(rep)), function(i) {
         st <- rep$status[i]
@@ -365,7 +369,7 @@ mod_pipeline_server <- function(id, app_state) {
           class = "d-flex justify-content-between align-items-start smaller py-1",
           htmltools::div(
             htmltools::span(class = "me-1", .pipeline_icone(st)),
-            i18n$t(rep$label[i]),
+            pipeline_step_label(i18n, rep$label[i], compte),
             if (!is.na(rep$message[i])) {
               htmltools::div(class = "text-muted fst-italic", rep$message[i])
             }
@@ -390,7 +394,8 @@ mod_pipeline_server <- function(id, app_state) {
             if (en_cours) {
               sprintf(i18n$t("pipeline_running_fmt"),
                       etat$index, length(etat$steps),
-                      i18n$t(pipeline_step_def(pipeline_current_step(etat))$label))
+                      pipeline_step_label(i18n, pipeline_step_def(pipeline_current_step(etat))$label,
+                                          compte))
             } else {
               i18n$t("pipeline_report_title")
             }
