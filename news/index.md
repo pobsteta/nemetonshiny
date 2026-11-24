@@ -1,9 +1,22 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9000 (en développement)
+## nemetonshiny 2026.11.6.9001 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (mission 043).
+cassant (missions 043 et 048).
+
+### Corrections
+
+- **Étape « Indicateurs » de la chaîne : le nombre est celui du projet**
+  (mission 048). Le panneau de progression, le rapport final et la
+  modale de choix affichaient « 31 indicateurs, 12 familles » écrit en
+  dur ; ils disent maintenant « Indicateurs (36 indicateurs, 12
+  familles) » d’après les colonnes calculées du projet
+  (`get_indicator_cols()`, jumeaux `_norm` exclus), familles comptées si
+  elles ont au moins un indicateur. Avant tout calcul : « Indicateurs
+  (12 familles) », sans nombre d’indicateurs. Singulier/pluriel gérés en
+  FR et EN. L’aide du NDP ne cite plus « 31 indicateurs » ni « 12
+  familles ».
 
 ### Dépendances
 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
 
 <div class="section level2">
 <h2 id="identité-du-projet">Identité du projet<a class="anchor" aria-label="anchor" href="#identit%C3%A9-du-projet"></a></h2>
-<p><code>nemetonshiny</code> est l’<strong>application Shiny/golem</strong> de la plateforme Nemeton (analyse forestière systémique, 31 indicateurs / 12 familles / radar / perspectives IA par profil). Le repo cœur métier est <code>nemeton</code> (paquet R séparé) ; ici on <strong>n’écrit pas de logique métier</strong>, on appelle les fonctions exportées de <code>nemeton</code> (&gt;= 0.20.1.9004) et on présente les résultats à l’utilisateur.</p>
+<p><code>nemetonshiny</code> est l’<strong>application Shiny/golem</strong> de la plateforme Nemeton (analyse forestière systémique, indicateurs (31 de base, davantage selon les sources) / 12 familles / radar / perspectives IA par profil). Le repo cœur métier est <code>nemeton</code> (paquet R séparé) ; ici on <strong>n’écrit pas de logique métier</strong>, on appelle les fonctions exportées de <code>nemeton</code> (&gt;= 0.20.1.9004) et on présente les résultats à l’utilisateur.</p>
 <p>L’extraction <code>nemeton</code> ↔︎ <code>nemetonshiny</code> a eu lieu en v0.15.0 (ADR-009). Depuis, l’i18n, les profils experts, les modules Shiny, l’OAuth2, le LLM et les services applicatifs (cadastre, communes, projet, monitoring, sampling, export) vivent ici.</p>
 </div>
 <div class="section level2">
@@ -177,7 +177,7 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 <ol style="list-style-type: decimal"><li>
 <strong>Inventaire</strong> (<code>contexte_inventaire</code>) — collecte/validation données terrain et satellite (<code>mod_home</code>, <code>mod_search</code>, <code>mod_field_ingest</code>)</li>
 <li>
-<strong>Analyse systémique</strong> (<code>contexte_analyse</code>) — calcul des 31 indicateurs via <code>nemeton</code>, agrégation 12 familles, radar, Fibonacci (<code>mod_synthesis</code>, <code>mod_family</code>, <code>service_compute</code>)</li>
+<strong>Analyse systémique</strong> (<code>contexte_analyse</code>) — calcul des indicateurs (31 de base + conditionnels) via <code>nemeton</code>, agrégation 12 familles, radar, Fibonacci (<code>mod_synthesis</code>, <code>mod_family</code>, <code>service_compute</code>)</li>
 <li>
 <strong>Cartographie</strong> (<code>contexte_cartographie</code>) — Leaflet, parcelles, UGF, LiDAR, satellite (<code>mod_map</code>, <code>mod_ug</code>)</li>
 <li>

@@ -3,11 +3,12 @@
 ## Identité du projet
 
 `nemetonshiny` est l’**application Shiny/golem** de la plateforme
-Nemeton (analyse forestière systémique, 31 indicateurs / 12 familles /
-radar / perspectives IA par profil). Le repo cœur métier est `nemeton`
-(paquet R séparé) ; ici on **n’écrit pas de logique métier**, on appelle
-les fonctions exportées de `nemeton` (\>= 0.20.1.9004) et on présente
-les résultats à l’utilisateur.
+Nemeton (analyse forestière systémique, indicateurs (31 de base,
+davantage selon les sources) / 12 familles / radar / perspectives IA par
+profil). Le repo cœur métier est `nemeton` (paquet R séparé) ; ici on
+**n’écrit pas de logique métier**, on appelle les fonctions exportées de
+`nemeton` (\>= 0.20.1.9004) et on présente les résultats à
+l’utilisateur.
 
 L’extraction `nemeton` ↔︎ `nemetonshiny` a eu lieu en v0.15.0 (ADR-009).
 Depuis, l’i18n, les profils experts, les modules Shiny, l’OAuth2, le LLM
@@ -125,9 +126,9 @@ profil.
 
 1.  **Inventaire** (`contexte_inventaire`) — collecte/validation données
     terrain et satellite (`mod_home`, `mod_search`, `mod_field_ingest`)
-2.  **Analyse systémique** (`contexte_analyse`) — calcul des 31
-    indicateurs via `nemeton`, agrégation 12 familles, radar, Fibonacci
-    (`mod_synthesis`, `mod_family`, `service_compute`)
+2.  **Analyse systémique** (`contexte_analyse`) — calcul des indicateurs
+    (31 de base + conditionnels) via `nemeton`, agrégation 12 familles,
+    radar, Fibonacci (`mod_synthesis`, `mod_family`, `service_compute`)
 3.  **Cartographie** (`contexte_cartographie`) — Leaflet, parcelles,
     UGF, LiDAR, satellite (`mod_map`, `mod_ug`)
 4.  **Santé** (`contexte_sante`) — surveillance rapide (NDVI/NBR
