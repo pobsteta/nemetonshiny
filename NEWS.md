@@ -1,8 +1,10 @@
-# nemetonshiny 2026.11.6.9001 (en développement)
+# nemetonshiny 2026.11.6.9002 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043 et 048).
 
 ## Corrections
+
+- **reGénération : textes et test remis d'accord avec le forçage ERA5 `timeseries`** (mission 050). L'infobulle du moteur annonce « jusqu'à 4 requêtes au CDS » (une seule si le point tombe sur la grille 0,25°) et ne promet plus « quelques secondes ensuite », durée jamais mesurée (microclimf recalcule sur la grille même avec le forçage en cache), FR et EN. Les commentaires de `mod_regeneration.R` réservent les douze téléchargements mensuels au chemin classique. Le test d'échec `rsen_era5ts_echec` utilise la condition réellement levée par nemeton (message anglais). Aucun changement de comportement.
 
 - **Étape « Indicateurs » de la chaîne : le nombre est celui du projet** (mission 048). Le panneau de progression, le rapport final et la modale de choix affichaient « 31 indicateurs, 12 familles » écrit en dur ; ils disent maintenant « Indicateurs (36 indicateurs, 12 familles) » d'après les colonnes calculées du projet (`get_indicator_cols()`, jumeaux `_norm` exclus), familles comptées si elles ont au moins un indicateur. Avant tout calcul : « Indicateurs (12 familles) », sans nombre d'indicateurs. Singulier/pluriel gérés en FR et EN. L'aide du NDP ne cite plus « 31 indicateurs » ni « 12 familles ».
 

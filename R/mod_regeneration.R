@@ -21,7 +21,8 @@
 # Lit engine_status.json ; NULL si absent/illisible. Un fichier vieux n'est PLUS
 # jete : il l'etait, et la notif retombait alors sur " Moteur en cours... ", un
 # libelle qui ne dit rien de ce qui tourne. Or le coeur n'emet qu'UN evenement
-# par annee ERA5 (`.rsen_moyenne_categorie()`), et les douze telechargements
+# par annee ERA5 (`.rsen_moyenne_categorie()`), et, sur le chemin
+# classique (option `nemeton.era5_source = "classique"`), les douze telechargements
 # mensuels qui suivent durent plus d'une heure sans un mot : la phase reelle
 # etait effacee precisement pendant le plus long moment du run, celui ou
 # l'utilisateur se demande si ca tourne encore. On garde la derniere phase
@@ -82,7 +83,8 @@
 # " base {year} ({i}/{n}) - requetes {mois_i}/{mois_n} ", chaque morceau n'apparaissant
 # que si l'evenement l'a fourni. L'annee vient de `regen_expo:era5` ; le mois de
 # `regen_expo:era5_mois`, qu'un coeur assez recent emet pendant les douze
-# telechargements CDS d'une annee - cf. specs/BRIEF-nemeton-era5-progression-
+# telechargements CDS mensuels d'une annee du chemin classique (le jeu `timeseries`,
+# par defaut, n'en fait pas : voir `regen_phase_micro_requetes`) - cf. specs/BRIEF-nemeton-era5-progression-
 # mensuelle.md. Sans lui, une annee entiere tient en "(1/1)" pendant plus d'une
 # heure : le compteur est exact et n'apprend rien.
 .regen_micro_lbl <- function(i18n, key, st) {

@@ -485,12 +485,22 @@ test_that("un echec timeseries (rsen_era5ts_echec) remonte tel quel, sans repli"
     p <- getwd()
     .make_lidar_grid(p, with_nuage = TRUE)
     testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
-    msg <- paste0("ERA5 timeseries : annee 2024 incomplete. Pour le chemin ",
-                  "classique : options(nemeton.era5_source = \"classique\")")
-    testthat::local_mocked_bindings(
-      regen_sensibilite = function(units, ...)
+    # Condition telle que nemeton la leve : `.rsen_era5ts_abort()` (R/era5_timeseries.R
+    # du coeur), cli_abort de classe `rsen_era5ts_echec`, message ANGLAIS. A defaut
+    # de la fonction interne (coeur plus ancien), recopie fidele de son message.
+    cond <- tryCatch(
+      if (exists(".rsen_era5ts_abort", envir = asNamespace("nemeton"), inherits = FALSE))
+        nemeton:::.rsen_era5ts_abort("year 2024 is incomplete.")
+      else
         stop(structure(class = c("rsen_era5ts_echec", "error", "condition"),
-                       list(message = msg, call = NULL))),
+          list(message = paste0("ERA5 timeseries forcing failed: year 2024 is incomplete.\n",
+            "i To use the slower classic monthly path explicitly, set ",
+            "`options(nemeton.era5_source = \"classique\")`."), call = NULL))),
+      error = function(e) e)
+    expect_s3_class(cond, "rsen_era5ts_echec")
+    msg <- conditionMessage(cond)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) stop(cond),
       load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
       build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
       regen_bilan_hydrique = function(units, ...) units,
