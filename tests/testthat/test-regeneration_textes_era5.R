@@ -15,12 +15,13 @@ test_that("l'infobulle du moteur annonce la durée du jeu timeseries, FR et EN",
   fr <- TRANSLATIONS$regen_engine_tip$fr
   en <- TRANSLATIONS$regen_engine_tip$en
   expect_match(fr, "quelques minutes par année et par point", fixed = TRUE)
-  expect_match(fr, "4 requêtes", fixed = TRUE)
-  expect_match(fr, "quelques secondes ensuite", fixed = TRUE)
+  expect_match(fr, "jusqu'à 4 requêtes", fixed = TRUE)
+  # Aucune durée non mesurée promise pour les calculs suivants.
+  expect_false(grepl("quelques secondes", fr, fixed = TRUE))
   expect_false(grepl("deux jours|plusieurs heures|~12", fr))
   expect_match(en, "a few minutes per year and per point", fixed = TRUE)
-  expect_match(en, "4 requests", fixed = TRUE)
-  expect_match(en, "a few seconds afterwards", fixed = TRUE)
+  expect_match(en, "up to 4 requests", fixed = TRUE)
+  expect_false(grepl("a few seconds", en, fixed = TRUE))
   expect_false(grepl("two days|several hours|~12", en))
 })
 
