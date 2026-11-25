@@ -1666,6 +1666,34 @@ test_that("055 cas 5 : la ligne d'etat dit absent, codage non reconnu, et un ave
   })
 })
 
+test_that("055 : apres un refus, une generation sans refus ou un CVAT recalcule remet « joint »", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  cvat <- file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif")
+  # Sans CVAT au depart : le calcul de l'app part (cvat_projet est alors pose).
+  etat <- .cvat_module(pp, mnt, function(...) NULL)
+  local_mocked_bindings(showNotification = function(...) NULL, .package = "shiny")
+  texte <- function(out) paste(as.character(out$html), collapse = " ")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    file.create(cvat)
+    .noter_cvat_refuse(structure("/p/x.qgz", cvat_refuse = TRUE))
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "codage du fichier non reconnu", fixed = TRUE)
+    # Generation suivante reussie, CVAT accepte : la ligne revient a joint.
+    .noter_cvat_refuse("/p/y.qgz")
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+    expect_false(grepl("codage", texte(output$cvat_info), fixed = TRUE))
+    # Nouveau refus, puis fin d'un calcul de CVAT reussi par l'app.
+    .noter_cvat_refuse(structure("/p/z.qgz", cvat_refuse = TRUE))
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "codage", fixed = TRUE)
+    .cvat_terminer(echec = FALSE)
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+  })
+})
+
 test_that("055 : les deux cles i18n existent en FR et EN", {
   for (k in c("video_cvat_codage", "video_cvat_codage_avert")) {
     expect_lte(nchar(k), 30L)

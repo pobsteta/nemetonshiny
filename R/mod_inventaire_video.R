@@ -385,6 +385,8 @@ mod_inventaire_video_server <- function(id, app_state) {
       cvat_en_cours(FALSE)
       pret <- !echec && identical(cvat_plan()$etat, "joint")
       cvat_echec(!pret)
+      # Un nouveau CVAT calcule avec succes remplace celui que le coeur a refuse.
+      if (pret) cvat_refuse(FALSE)
       cvat_maj(cvat_maj() + 1L)
       shiny::showNotification(
         i18n()$t(if (pret) "video_cvat_pret" else "video_cvat_echec"),
@@ -497,9 +499,12 @@ mod_inventaire_video_server <- function(id, app_state) {
     # Le coeur a refuse le CVAT et le projet est reparti sans relief : la ligne
     # d'etat passe a " absent " et un avertissement le dit.
     .noter_cvat_refuse <- function(qgz) {
-      if (!isTRUE(attr(qgz, "cvat_refuse"))) return(invisible(FALSE))
-      cvat_refuse(TRUE)
+      # Chaque generation reussie dit l'etat : une reprise ulterieure avec un
+      # CVAT joint remet la ligne a " joint ".
+      refuse <- isTRUE(attr(qgz, "cvat_refuse"))
+      cvat_refuse(refuse)
       cvat_maj(cvat_maj() + 1L)
+      if (!refuse) return(invisible(FALSE))
       shiny::showNotification(i18n()$t("video_cvat_codage_avert"),
                               type = "warning", duration = 15)
       invisible(TRUE)
