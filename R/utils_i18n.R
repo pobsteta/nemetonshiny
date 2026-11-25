@@ -933,6 +933,14 @@ TRANSLATIONS <- list(
     fr = "le dernier calcul a \u00e9chou\u00e9 ; le relancer dans Accessibilit\u00e9.",
     en = "the last computation failed; run it again in Accessibility."
   ),
+  video_cvat_codage = list(
+    fr = "codage du fichier non reconnu",
+    en = "file encoding not recognised"
+  ),
+  video_cvat_codage_avert = list(
+    fr = "Le relief CVAT du projet n'a pas un codage reconnu : le projet QField est g\u00e9n\u00e9r\u00e9 sans relief.",
+    en = "The project's CVAT relief has an unrecognised encoding: the QField project was generated without relief."
+  ),
   video_cvat_toast = list(
     fr = "Relief CVAT : calcul en cours (quelques minutes).",
     en = "CVAT relief: computing (a few minutes)."

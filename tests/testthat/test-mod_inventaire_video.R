@@ -1564,3 +1564,140 @@ test_that("carte : un autre projet avec son plan recadre la carte, une selection
     expect_equal(cadres[[2]][2], 48.85, tolerance = 0.05)
   })
 })
+
+
+# ---- Mission 055 : le coeur refuse le codage du CVAT ----------------------------
+
+.erreur_codage <- function() {
+  structure(class = c("nemeton_erreur_cvat_codage", "error", "condition"),
+            list(message = "CVAT encoding unknown", call = NULL))
+}
+
+# Coeur simule : `reponses` est la suite des comportements (une erreur ou un chemin).
+.coeur_simule <- function(reponses, appels) {
+  function(nom, ...) {
+    appels$liste[[length(appels$liste) + 1L]] <- list(...)
+    r <- reponses[[length(appels$liste)]]
+    if (inherits(r, "condition")) stop(r)
+    r
+  }
+}
+
+test_that("055 cas 1 : codage refuse -> second appel sans cvat_path, projet rendu, marque", {
+  appels <- new.env(); appels$liste <- list()
+  local_mocked_bindings(.video_appeler = .coeur_simule(
+    list(.erreur_codage(), "/p/inventaire_video.qgz"), appels))
+  res <- video_creer_projet(project_path = "/p", cvat_path = "/p/cvat.tif", lang = "fr")
+  expect_identical(as.character(res), "/p/inventaire_video.qgz")
+  expect_true(isTRUE(attr(res, "cvat_refuse")))
+  expect_length(appels$liste, 2L)
+  expect_identical(appels$liste[[1]]$cvat_path, "/p/cvat.tif")
+  expect_false("cvat_path" %in% names(appels$liste[[2]]))
+  # Les autres arguments sont repris tels quels.
+  expect_identical(appels$liste[[2]]$project_path, "/p")
+  expect_identical(appels$liste[[2]]$lang, "fr")
+})
+
+test_that("055 cas 2 : une autre erreur ne declenche aucune reprise", {
+  appels <- new.env(); appels$liste <- list()
+  autre <- structure(class = c("simpleError", "error", "condition"),
+                     list(message = "disque plein", call = NULL))
+  local_mocked_bindings(.video_appeler = .coeur_simule(list(autre, "/p/x.qgz"), appels))
+  expect_error(video_creer_projet(cvat_path = "/p/cvat.tif"), "disque plein")
+  expect_length(appels$liste, 1L)
+})
+
+test_that("055 cas 3 : sans erreur, un seul appel avec cvat_path, sans marque", {
+  appels <- new.env(); appels$liste <- list()
+  local_mocked_bindings(.video_appeler = .coeur_simule(list("/p/x.qgz"), appels))
+  res <- video_creer_projet(cvat_path = "/p/cvat.tif")
+  expect_identical(res, "/p/x.qgz")
+  expect_null(attr(res, "cvat_refuse"))
+  expect_length(appels$liste, 1L)
+  expect_identical(appels$liste[[1]]$cvat_path, "/p/cvat.tif")
+})
+
+test_that("055 cas 4 : le second appel echoue aussi -> son erreur remonte, sans boucle", {
+  appels <- new.env(); appels$liste <- list()
+  seconde <- structure(class = c("simpleError", "error", "condition"),
+                       list(message = "MNT introuvable", call = NULL))
+  local_mocked_bindings(.video_appeler = .coeur_simule(
+    list(.erreur_codage(), seconde, "/p/jamais.qgz"), appels))
+  expect_error(video_creer_projet(cvat_path = "/p/cvat.tif"), "MNT introuvable")
+  expect_length(appels$liste, 2L)
+})
+
+test_that("055 : sans cvat_path, un refus de codage remonte tel quel (rien a retirer)", {
+  appels <- new.env(); appels$liste <- list()
+  local_mocked_bindings(.video_appeler = .coeur_simule(
+    list(.erreur_codage(), "/p/x.qgz"), appels))
+  expect_error(video_creer_projet(project_path = "/p"), class = "nemeton_erreur_cvat_codage")
+  expect_length(appels$liste, 1L)
+})
+
+test_that("055 cas 5 : la ligne d'etat dit absent, codage non reconnu, et un avertissement part", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  file.create(file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif"))
+  etat <- .cvat_module(pp, mnt, function(...) NULL)
+  notifs <- list()
+  local_mocked_bindings(
+    showNotification = function(ui, ..., type = "default") {
+      notifs[[length(notifs) + 1L]] <<- list(ui = ui, type = type)
+    }, .package = "shiny")
+  texte <- function(out) paste(as.character(out$html), collapse = " ")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+    # Un projet genere normalement ne change rien.
+    .noter_cvat_refuse("/p/x.qgz")
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+    expect_length(notifs, 0L)
+    # Le coeur a refuse le codage : absent, avec la raison, et un avertissement.
+    refuse <- structure("/p/x.qgz", cvat_refuse = TRUE)
+    .noter_cvat_refuse(refuse)
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "absent", fixed = TRUE)
+    expect_match(texte(output$cvat_info), "codage du fichier non reconnu", fixed = TRUE)
+    expect_false(grepl("joint au projet", texte(output$cvat_info), fixed = TRUE))
+    expect_length(notifs, 1L)
+    expect_identical(notifs[[1]]$type, "warning")
+    expect_match(notifs[[1]]$ui, "sans relief", fixed = TRUE)
+  })
+})
+
+test_that("055 : apres un refus, une generation sans refus ou un CVAT recalcule remet « joint »", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  cvat <- file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif")
+  # Sans CVAT au depart : le calcul de l'app part (cvat_projet est alors pose).
+  etat <- .cvat_module(pp, mnt, function(...) NULL)
+  local_mocked_bindings(showNotification = function(...) NULL, .package = "shiny")
+  texte <- function(out) paste(as.character(out$html), collapse = " ")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    file.create(cvat)
+    .noter_cvat_refuse(structure("/p/x.qgz", cvat_refuse = TRUE))
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "codage du fichier non reconnu", fixed = TRUE)
+    # Generation suivante reussie, CVAT accepte : la ligne revient a joint.
+    .noter_cvat_refuse("/p/y.qgz")
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+    expect_false(grepl("codage", texte(output$cvat_info), fixed = TRUE))
+    # Nouveau refus, puis fin d'un calcul de CVAT reussi par l'app.
+    .noter_cvat_refuse(structure("/p/z.qgz", cvat_refuse = TRUE))
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "codage", fixed = TRUE)
+    .cvat_terminer(echec = FALSE)
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+  })
+})
+
+test_that("055 : les deux cles i18n existent en FR et EN", {
+  for (k in c("video_cvat_codage", "video_cvat_codage_avert")) {
+    expect_lte(nchar(k), 30L)
+    for (l in c("fr", "en")) expect_true(nzchar(get_i18n(l)$t(k)))
+    expect_false(identical(get_i18n("fr")$t(k), get_i18n("en")$t(k)))
+  }
+})

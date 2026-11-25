@@ -50,10 +50,28 @@ video_coeur_disponible <- function() {
 #' Build the QField project of the video inventory
 #'
 #' Thin wrapper over `nemeton::creer_projet_inventaire_video()`.
-#' @return Path of the `.qgz`.
+#'
+#' When the core refuses the CVAT for its encoding (condition class
+#' `nemeton_erreur_cvat_codage`, raised by core releases that check it), the
+#' project is built once more **without** `cvat_path`: a badly encoded relief
+#' never deprives the forester of the project. The app converts nothing itself
+#' (the encoding is the core's business). Any other error, or a second failure,
+#' is raised as is (no loop). The retried result carries the attribute
+#' `cvat_refuse = TRUE` so the screen can say it.
+#' @return Path of the `.qgz` (attribute `cvat_refuse` when retried).
 #' @noRd
 video_creer_projet <- function(...) {
-  .video_appeler("creer_projet_inventaire_video", ...)
+  args <- list(...)
+  res <- tryCatch(
+    do.call(.video_appeler, c(list("creer_projet_inventaire_video"), args)),
+    nemeton_erreur_cvat_codage = function(e) e)
+  if (!inherits(res, "nemeton_erreur_cvat_codage")) return(res)
+  # Sans CVAT passe, un second appel serait identique : l'erreur remonte.
+  if (is.null(args$cvat_path)) stop(res)
+  args["cvat_path"] <- NULL
+  qgz <- do.call(.video_appeler, c(list("creer_projet_inventaire_video"), args))
+  attr(qgz, "cvat_refuse") <- TRUE
+  qgz
 }
 
 #' State of the plots on the Groma server
