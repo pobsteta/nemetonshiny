@@ -1,6 +1,6 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9010 (en développement)
+## nemetonshiny 2026.11.6.9011 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
 cassant (missions 043, 048, 063 et 066).
@@ -113,6 +113,14 @@ cassant (missions 043, 048, 063 et 066).
     moment-là part sans relief, et la ligne le dit.
 
 ### Corrections
+
+- **Tableau des actions : l’étape « Indicateurs » dit le même nombre que
+  le calcul** (`R/service_pipeline.R`, signalé par Pascal le 2026-11-25
+  : 37 dans le tableau, 36 dans « Calcul en cours »). Le compte reste lu
+  sur les colonnes du projet (mission 048), mais seules comptent celles
+  des indicateurs que le calcul traite (`list_available_indicators()`) :
+  une colonne laissée par un ancien calcul (par exemple A5 après
+  désactivation de sa source) n’est plus comptée.
 
 - **Planchers de dépendances relevés : `shiny (>= 1.8.1)`,
   `bslib (>= 0.7.0)`** (`DESCRIPTION`). L’app utilise

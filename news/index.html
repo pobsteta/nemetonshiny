@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9010</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9011</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,10 +34,10 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.6.9010" id="nemetonshiny-20261169010-en-développement">nemetonshiny 2026.11.6.9010 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169010-en-d%C3%A9veloppement"></a></h2>
+<h2 class="pkg-version" data-toc-text="2026.11.6.9011" id="nemetonshiny-20261169011-en-développement">nemetonshiny 2026.11.6.9011 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169011-en-d%C3%A9veloppement"></a></h2>
 <p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063 et 066).</p>
 <div class="section level3">
-<h3 id="changements-2026-11-6-9010">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9010"></a></h3>
+<h3 id="changements-2026-11-6-9011">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9011"></a></h3>
 <ul><li>
 <strong>Inventaire vidéo : carte des placettes agrandie</strong> (<code>R/mod_inventaire_video.R</code>, demande de Pascal du 2026-11-25) : 70 % de la hauteur de la fenêtre au lieu de 320 px.</li>
 <li>
@@ -65,15 +65,16 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="corrections-2026-11-6-9010">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9010"></a></h3>
-<ul><li><p><strong>Planchers de dépendances relevés : <code>shiny (&gt;= 1.8.1)</code>, <code>bslib (&gt;= 0.7.0)</code></strong> (<code>DESCRIPTION</code>). L’app utilise <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et <code><a href="https://rstudio.github.io/bslib/reference/input_task_button.html" class="external-link">bslib::input_task_button()</a></code> / <code>bind_task_button()</code> (apparus dans bslib 0.7.0, 25 appels hors commentaires au 2026-11-25) ; les anciens planchers (1.8.0, 0.6.0) laissaient installer une version où l’app ne démarre pas. Un test de contrat vérifie que le plancher déclaré dans <code>DESCRIPTION</code> est au moins la version qui introduit <code>ExtendedTask</code> (shiny 1.8.1) et <code>input_task_button()</code> / <code>bind_task_button()</code> (bslib 0.7.0) ; il ne vérifie pas que chaque fonction utilisée existe dans la version plancher.</p></li>
+<h3 id="corrections-2026-11-6-9011">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9011"></a></h3>
+<ul><li><p><strong>Tableau des actions : l’étape « Indicateurs » dit le même nombre que le calcul</strong> (<code>R/service_pipeline.R</code>, signalé par Pascal le 2026-11-25 : 37 dans le tableau, 36 dans « Calcul en cours »). Le compte reste lu sur les colonnes du projet (mission 048), mais seules comptent celles des indicateurs que le calcul traite (<code>list_available_indicators()</code>) : une colonne laissée par un ancien calcul (par exemple A5 après désactivation de sa source) n’est plus comptée.</p></li>
+<li><p><strong>Planchers de dépendances relevés : <code>shiny (&gt;= 1.8.1)</code>, <code>bslib (&gt;= 0.7.0)</code></strong> (<code>DESCRIPTION</code>). L’app utilise <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et <code><a href="https://rstudio.github.io/bslib/reference/input_task_button.html" class="external-link">bslib::input_task_button()</a></code> / <code>bind_task_button()</code> (apparus dans bslib 0.7.0, 25 appels hors commentaires au 2026-11-25) ; les anciens planchers (1.8.0, 0.6.0) laissaient installer une version où l’app ne démarre pas. Un test de contrat vérifie que le plancher déclaré dans <code>DESCRIPTION</code> est au moins la version qui introduit <code>ExtendedTask</code> (shiny 1.8.1) et <code>input_task_button()</code> / <code>bind_task_button()</code> (bslib 0.7.0) ; il ne vérifie pas que chaque fonction utilisée existe dans la version plancher.</p></li>
 <li><p><strong>Inventaire vidéo : la vue reprend le plan d’échantillonnage régénéré</strong> (<code>R/mod_inventaire_video.R</code>). La liste et la carte des placettes lisaient <code>data/samples.gpkg</code> une seule fois, à l’ouverture du projet : un plan régénéré dans « Export terrain » n’apparaissait qu’après avoir rouvert le projet. La vue relit maintenant le plan à chaque incrément de <code>app_state$samples_refresh</code> et ne le remplace que s’il a changé : un enregistrement d’une autre couche (observations du plan d’actions, reGénération) ne remet ni la sélection ni la carte à zéro.</p></li>
 <li><p><strong>Inventaire vidéo : un CVAT au codage inconnu ne prive plus du projet QField</strong> (mission 055, <code>R/service_inventaire_video.R</code>, <code>R/mod_inventaire_video.R</code>). Quand le cœur refuse le relief CVAT du projet (condition <code>nemeton_erreur_cvat_codage</code>, levée par <code>creer_projet_inventaire_video()</code> pour un fichier au codage inconnu, par exemple un <code>*_CVAT_8bit.tif</code> sans nodata déclaré), l’app relance la génération <strong>une fois sans relief</strong> au lieu d’échouer. Elle ne convertit rien : le codage reste l’affaire du cœur. La ligne d’état du relief passe à « absent — codage du fichier non reconnu » et une notification d’avertissement le dit. Toute autre erreur, ou un second échec, s’affiche comme avant. Sans effet avec le cœur 2026.11.45, qui ne lève pas cette condition.</p></li>
 <li><p><strong>reGénération : textes et test remis d’accord avec le forçage ERA5 <code>timeseries</code></strong> (mission 050). L’infobulle du moteur annonce « jusqu’à 4 requêtes au CDS » (une seule si le point tombe sur la grille 0,25°) et ne promet plus « quelques secondes ensuite », durée jamais mesurée (microclimf recalcule sur la grille même avec le forçage en cache), FR et EN. Les commentaires de <code>mod_regeneration.R</code> réservent les douze téléchargements mensuels au chemin classique. Le test d’échec <code>rsen_era5ts_echec</code> utilise la condition réellement levée par nemeton (message anglais). Aucun changement de comportement.</p></li>
 <li><p><strong>Étape « Indicateurs » de la chaîne : le nombre est celui du projet</strong> (mission 048). Le panneau de progression, le rapport final et la modale de choix affichaient « 31 indicateurs, 12 familles » écrit en dur ; ils disent maintenant « Indicateurs (36 indicateurs, 12 familles) » d’après les colonnes calculées du projet (<code>get_indicator_cols()</code>, jumeaux <code>_norm</code> exclus), familles comptées si elles ont au moins un indicateur. Avant tout calcul : « Indicateurs (12 familles) », sans nombre d’indicateurs. Singulier/pluriel gérés en FR et EN. L’aide du NDP ne cite plus « 31 indicateurs » ni « 12 familles ».</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-6-9010">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9010"></a></h3>
+<h3 id="dépendances-2026-11-6-9011">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9011"></a></h3>
 <ul><li>Plancher relevé de 2026.11.42 à <strong>2026.11.44</strong> : les versions 2026.11.42 et 2026.11.43 échouent sur une vraie réponse du CDS (variables scalaires, mission 042).</li>
 <li>Le test de contrat compare désormais la version de <code>nemeton</code> installée au plancher <strong>lu dans <code>DESCRIPTION</code></strong> (et non plus à un chiffre recopié, 2026.11.35), pour que les deux ne divergent plus.</li>
 </ul></div>
