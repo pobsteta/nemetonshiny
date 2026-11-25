@@ -1,4 +1,4 @@
-# nemetonshiny 2026.11.6.9006 (en développement)
+# nemetonshiny 2026.11.6.9007 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043 et 048).
 
@@ -13,6 +13,7 @@ Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant
 
 ## Corrections
 
+- **Planchers de dépendances relevés : `shiny (>= 1.8.1)`, `bslib (>= 0.7.0)`** (`DESCRIPTION`). L'app utilise `shiny::ExtendedTask` (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et `bslib::input_task_button()` / `bind_task_button()` (apparus dans bslib 0.7.0, 31 appels) ; les anciens planchers (1.8.0, 0.6.0) laissaient installer une version où l'app ne démarre pas. Un test de contrat vérifie que chaque fonction utilisée existe dans la version plancher déclarée.
 - **Inventaire vidéo : la vue reprend le plan d'échantillonnage régénéré** (`R/mod_inventaire_video.R`). La liste et la carte des placettes lisaient `data/samples.gpkg` une seule fois, à l'ouverture du projet : un plan régénéré dans « Export terrain » n'apparaissait qu'après avoir rouvert le projet. La vue relit maintenant le plan à chaque incrément de `app_state$samples_refresh` et ne le remplace que s'il a changé : un enregistrement d'une autre couche (observations du plan d'actions, reGénération) ne remet ni la sélection ni la carte à zéro.
 - **Inventaire vidéo : un CVAT au codage inconnu ne prive plus du projet QField** (mission 055, `R/service_inventaire_video.R`, `R/mod_inventaire_video.R`). Quand le cœur refuse le relief CVAT du projet (condition `nemeton_erreur_cvat_codage`, levée par `creer_projet_inventaire_video()` pour un fichier au codage inconnu, par exemple un `*_CVAT_8bit.tif` sans nodata déclaré), l'app relance la génération **une fois sans relief** au lieu d'échouer. Elle ne convertit rien : le codage reste l'affaire du cœur. La ligne d'état du relief passe à « absent — codage du fichier non reconnu » et une notification d'avertissement le dit. Toute autre erreur, ou un second échec, s'affiche comme avant. Sans effet avec le cœur 2026.11.45, qui ne lève pas cette condition.
 
