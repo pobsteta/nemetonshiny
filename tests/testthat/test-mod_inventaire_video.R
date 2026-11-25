@@ -13,9 +13,9 @@
                           sf::st_point(c(900750, 6500750)), crs = 2154))
 }
 
-.etat_video <- function(lang = "fr") {
+.etat_video <- function(lang = "fr", metadata = list()) {
   shiny::reactiveValues(
-    current_project = list(id = "p_video", metadata = list()),
+    current_project = list(id = "p_video", metadata = metadata),
     language = lang)
 }
 
@@ -129,9 +129,8 @@ test_that("Preparer : le formulaire arrive a la generation, et le .qgz est servi
     video_coeur_disponible = function() TRUE,
     video_lancer_generation = function(tache, args, dev_path = NULL) recu <<- args
   )
-  etat <- .etat_video()
-  etat$current_project$metadata <- list(video_params = list(
-    rayon_m = 18, seuil_diam_cm = 10, unite_azimut = "gr", declinaison_deg = -0.4))
+  etat <- .etat_video(metadata = list(video_params = list(
+    rayon_m = 18, seuil_diam_cm = 10, unite_azimut = "gr", declinaison_deg = -0.4)))
   shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
     session$setInputs(placettes = c("P001", "P002"), lidar = TRUE)
     session$setInputs(generer = 1)
@@ -1129,7 +1128,8 @@ test_that("carte : plan absent ou vide -> pas de carte, le message existant, san
     expect_null(carte_donnees())
     expect_null(output$carte_ui)
     html <- paste(as.character(output$placettes_ui$html), collapse = " ")
-    expect_match(html, get_i18n("fr")$t("video_sans_plan"), fixed = TRUE)
+    expect_match(html, htmltools::htmlEscape(get_i18n("fr")$t("video_sans_plan")),
+                 fixed = TRUE)
   })
   expect_null(video_carte_donnees(NULL, "P001"))
   expect_null(video_carte_donnees(.plan_video3()[0, ], "P001"))
@@ -1146,12 +1146,13 @@ test_that("carte : placettes sans geometrie ou sans CRS ecartees, le reste en WG
   # Une placette connue : Paris (Notre-Dame, ~ 652 400 / 6 862 000 en Lambert-93).
   paris <- sf::st_sf(plot_id = "P1", geometry = sf::st_sfc(
     sf::st_point(c(652400, 6862050)), crs = 2154))
-  xp <- sf::st_coordinates(video_carte_donnees(paris, "P1"))
+  xp <- unname(sf::st_coordinates(video_carte_donnees(paris, "P1")))
   expect_equal(xp[1, 1], 2.35, tolerance = 0.05)
   expect_equal(xp[1, 2], 48.85, tolerance = 0.05)
   # Placette dans un autre CRS : reprojetee au meme endroit.
   wgs <- sf::st_transform(paris, 4326)
-  expect_equal(sf::st_coordinates(video_carte_donnees(wgs, "P1")), xp, tolerance = 1e-6)
+  expect_equal(unname(sf::st_coordinates(video_carte_donnees(wgs, "P1"))), xp,
+               tolerance = 1e-6)
   # Geometrie vide : ecartee ; toutes vides : pas de carte.
   vide <- .plan_video3()
   sf::st_geometry(vide)[2] <- sf::st_sfc(sf::st_point(), crs = 2154)
@@ -1194,10 +1195,10 @@ test_that("parametres : la generation du module utilise ceux du projet", {
   pp <- withr::local_tempdir()
   recu <- NULL
   .local_video(pp, video_lancer_generation = function(tache, args, ...) recu <<- args)
-  etat <- .etat_video()
-  etat$current_project$metadata <- list(video_params = list(rayon_m = 22))
+  etat <- .etat_video(metadata = list(video_params = list(rayon_m = 22)))
   shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
-    session$setInputs(placettes = c("P001", "P002"), generer = 1)
+    session$setInputs(placettes = c("P001", "P002"))
+    session$setInputs(generer = 1)
     expect_identical(recu$rayon_m, 22)
     expect_identical(recu$seuil_diam_cm, 7.5)
     # Seules les placettes selectionnees partent.
@@ -1208,14 +1209,14 @@ test_that("parametres : la generation du module utilise ceux du projet", {
 test_that("parametres : le rappel de la vue donne les valeurs et ou les changer", {
   pp <- withr::local_tempdir()
   .local_video(pp)
-  etat <- .etat_video()
-  etat$current_project$metadata <- list(video_params = list(rayon_m = 22, unite_azimut = "gr"))
+  etat <- .etat_video(metadata = list(video_params = list(rayon_m = 22,
+                                                          unite_azimut = "gr")))
   shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
     html <- paste(as.character(output$params_rappel$html), collapse = " ")
     expect_match(html, "22 m", fixed = TRUE)
     expect_match(html, "grades", fixed = TRUE)
     expect_match(html, "WMM2025", fixed = TRUE)
-    expect_match(html, "Sources & param", fixed = TRUE)
+    expect_match(html, "Sources &amp; param", fixed = TRUE)
   })
 })
 
@@ -1249,8 +1250,8 @@ test_that("Sources & parametres : le bloc video s'affiche avec les valeurs du pr
   ), {
     session$setInputs(x = 1)
     html <- paste(as.character(output$vp_block), collapse = " ")
-    expect_match(html, 'id="vp_rayon"[^>]*value="21"')
-    expect_match(html, 'id="vp_decl"')
+    expect_match(html, 'vp_rayon"[^>]*value="21"')
+    expect_match(html, 'vp_decl"')
     session$setInputs(vp_rayon = 21, vp_seuil = 9,
                       vp_unite = "deg", vp_decl = NA, vp_save = 1)
     expect_identical(enreg$pid, "p1")
@@ -1324,8 +1325,8 @@ test_that("video_cvat_calculer delegue a build_cvat_precomputed avec l'AOI et le
   expect_identical(recu, list("/x/m.tif", "AOI", 300))
 })
 
-.cvat_module <- function(pp, mnt, lancer, onglet = TRUE, ...) {
-  .local_video(pp, .acc_rvt_mnt_path = function(...) mnt,
+.cvat_module <- function(pp, mnt, lancer, onglet = TRUE, env = parent.frame(), ...) {
+  .local_video(pp, env = env, .acc_rvt_mnt_path = function(...) mnt,
                .rvt_cvat_available = function() TRUE,
                .resolve_project_aoi_2154 = function(...) NULL,
                video_lancer_cvat = lancer, ...)
@@ -1391,11 +1392,13 @@ test_that("CVAT : la ligne d'etat dit joint, en cours, ou absent avec la raison"
     expect_false(grepl("joint au projet", texte(output$cvat_info), fixed = TRUE))
     # Fin du calcul sans fichier : absent, avec l'echec.
     .cvat_terminer(echec = FALSE)
+    session$flushReact()
     expect_match(texte(output$cvat_info), "absent", fixed = TRUE)
     expect_match(texte(output$cvat_info), "a \u00e9chou\u00e9", fixed = TRUE)
     # Le CVAT apparait : joint.
     file.create(file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif"))
     .cvat_terminer(echec = FALSE)
+    session$flushReact()
     expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
   })
   # Absent : MNT WMS, avec sa raison.

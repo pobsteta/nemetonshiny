@@ -145,14 +145,20 @@ mod_inventaire_video_server <- function(id, app_state) {
     # vues. `selection` suit la liste ; un clic sur la carte met la liste a
     # jour, qui renvoie la meme valeur (aller-retour sans effet).
     selection <- shiny::reactiveVal(character(0))
+    liste_vue <- FALSE   # la liste a deja envoye une valeur (sinon NULL = pas encore rendue)
     shiny::observeEvent(plan(), {
       p <- plan()
+      liste_vue <<- FALSE
       selection(if (is.null(p)) character(0) else as.character(p$plot_id))
     }, ignoreNULL = FALSE)
     shiny::observeEvent(input$placettes, {
+      # NULL avant le premier rendu de la liste n'est pas " tout decoche " ;
+      # apres, c'est bien une liste vide.
+      if (is.null(input$placettes) && !liste_vue) return()
+      liste_vue <<- TRUE
       sel <- as.character(input$placettes)
       if (!identical(sel, selection())) selection(sel)
-    }, ignoreNULL = FALSE, ignoreInit = TRUE)
+    }, ignoreNULL = FALSE)
 
     output$params_rappel <- shiny::renderUI({
       tr <- i18n()
