@@ -118,9 +118,15 @@ pipeline_step_def <- function(step_id) {
 #'
 #' @param data A data.frame / sf of indicators, or `NULL`.
 #' @param familles Family table (defaults to `INDICATOR_FAMILIES`).
+#' @param attendus Character vector of indicator function names the
+#'   computation runs (`list_available_indicators()`), or `NULL` for no filter.
+#'   A column left by an earlier run (an indicator since removed from the
+#'   list, e.g. A5 once its source is disabled) is then not counted, so the
+#'   step agrees with the progress panel.
 #' @return `list(n, familles)`; `n` is `NA_integer_` when nothing is computed.
 #' @noRd
-.pipeline_compte_indicateurs <- function(data, familles = INDICATOR_FAMILIES) {
+.pipeline_compte_indicateurs <- function(data, familles = INDICATOR_FAMILIES,
+                                         attendus = NULL) {
   vide <- list(n = NA_integer_, familles = length(familles))
   if (is.null(data) || !is.data.frame(data)) return(vide)
   cols <- tryCatch({
@@ -128,6 +134,14 @@ pipeline_step_def <- function(step_id) {
     get_indicator_cols(d)
   }, error = function(e) character(0))
   cols <- unique(sub("_norm$", "", cols))
+  if (!is.null(attendus)) {
+    # Codes courts (B5) et noms longs (indicateur_b5_...) des indicateurs
+    # que le calcul traite : meme liste que le panneau de progression.
+    codes <- unlist(lapply(familles, function(f) {
+      f$indicators[match(attendus, f$column_names, nomatch = 0L)]
+    }), use.names = FALSE)
+    cols <- cols[cols %in% c(attendus, codes)]
+  }
   if (length(cols) == 0L) return(vide)
   nb_fam <- sum(vapply(familles, function(f) {
     any(c(f$indicators, f$column_names) %in% cols)
@@ -142,7 +156,9 @@ pipeline_step_def <- function(step_id) {
   if (!is.data.frame(data) && !is.null(project$id)) {
     data <- tryCatch(load_indicators(project$id), error = function(e) NULL)
   }
-  .pipeline_compte_indicateurs(data)
+  attendus <- tryCatch(list_available_indicators(project$metadata),
+                       error = function(e) NULL)
+  .pipeline_compte_indicateurs(data, attendus = attendus)
 }
 
 #' Display label of a pipeline step
