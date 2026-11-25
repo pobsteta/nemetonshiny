@@ -72,3 +72,30 @@ test_that("panneau et modale passent par le meme libelle", {
   expect_false(grepl("i18n\\$t\\(s\\$label\\)|i18n\\$t\\(rep\\$label", src))
   expect_gte(lengths(regmatches(src, gregexpr("pipeline_step_label\\(", src))), 3L)
 })
+
+test_that("le compte suit la liste du calcul : une colonne d'un ancien calcul n'est pas comptee", {
+  # 37 colonnes dans le projet (dont A5, calcule avant que sa source soit
+  # desactivee), 36 indicateurs dans la liste du calcul : on affiche 36,
+  # comme le panneau de progression (signale par Pascal le 2026-11-25).
+  liste <- nemetonshiny:::list_available_indicators(NULL)
+  sans_a5 <- setdiff(liste, "indicateur_a5_rafraichissement")
+  cols <- unique(c(sans_a5, "indicateur_a5_rafraichissement"))
+  df <- as.data.frame(stats::setNames(rep(list(c(0.1, 0.2)), length(cols)), cols))
+  compte <- nemetonshiny:::.pipeline_compte_indicateurs(df, attendus = sans_a5)
+  expect_equal(compte$n, length(sans_a5))
+  # codes courts acceptes aussi
+  df2 <- data.frame(A1 = 1, A5 = 2)
+  expect_equal(nemetonshiny:::.pipeline_compte_indicateurs(
+    df2, attendus = "indicateur_a1_couverture")$n, 1L)
+  # sans filtre : comportement de la mission 048 inchange
+  expect_equal(nemetonshiny:::.pipeline_compte_indicateurs(df)$n, length(cols))
+})
+
+test_that(".pipeline_compte_projet filtre par la liste du calcul du projet", {
+  liste <- nemetonshiny:::list_available_indicators(NULL)
+  cols <- unique(c(liste, "indicateur_extra_ancien"))
+  df <- as.data.frame(stats::setNames(rep(list(c(0.1, 0.2)), length(cols)), cols))
+  testthat::local_mocked_bindings(list_available_indicators = function(metadata = NULL) liste)
+  expect_equal(nemetonshiny:::.pipeline_compte_projet(list(indicators = df))$n,
+               length(liste))
+})
