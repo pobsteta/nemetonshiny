@@ -34,6 +34,18 @@ test_that("l'UI expose les trois blocs et leurs commandes", {
   }
 })
 
+test_that("la liste des placettes est sous le bouton, la carte seule a droite", {
+  local_mocked_bindings(get_app_options = function() list(language = "fr"))
+  html <- as.character(mod_inventaire_video_ui("iv"))
+  p_gen <- regexpr('id="iv-generer"', html, fixed = TRUE)
+  p_pl <- regexpr('id="iv-placettes_ui"', html, fixed = TRUE)
+  p_carte <- regexpr('id="iv-carte_ui"', html, fixed = TRUE)
+  expect_true(p_gen > 0 && p_pl > 0 && p_carte > 0)
+  # ordre : bouton, puis liste (colonne de gauche), puis carte (colonne de droite)
+  expect_lt(p_gen, p_pl)
+  expect_lt(p_pl, p_carte)
+})
+
 test_that("aucun texte litteral : toutes les cles utilisees existent en FR et EN", {
   fichiers <- chemin_source("R", c("mod_inventaire_video.R",
                                    "service_inventaire_video.R",
@@ -147,6 +159,52 @@ test_that("Preparer : le formulaire arrive a la generation, et le .qgz est servi
     rv$qgz <- qgz
     session$flushReact()
     expect_match(output$telechargement$html, "Download|T\u00e9l\u00e9charger")
+  })
+})
+
+test_that("Preparer : un plan regenere (samples_refresh) est relu par la vue", {
+  pp <- withr::local_tempdir()
+  lectures <- 0L
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) {
+      lectures <<- lectures + 1L
+      if (lectures == 1L) .plan_video() else .plan_video()[1, ]
+    },
+    video_coeur_disponible = function() TRUE
+  )
+  etat <- .etat_video()
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_match(output$placettes_ui$html, "P002", fixed = TRUE)
+    # mod_sampling enregistre un nouveau plan et incremente samples_refresh
+    etat$samples_refresh <- 1L
+    session$flushReact()
+    expect_false(grepl("P002", output$placettes_ui$html, fixed = TRUE))
+    expect_match(output$placettes_ui$html, "P001", fixed = TRUE)
+  })
+})
+
+test_that("Preparer : un samples_refresh sans changement de plan garde la selection", {
+  pp <- withr::local_tempdir()
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_coeur_disponible = function() TRUE,
+    video_lancer_generation = function(tache, args, ...) recu <<- args
+  )
+  etat <- .etat_video()
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    session$setInputs(placettes = "P001")
+    # une autre vue enregistre une autre couche (observations, regeneration)
+    etat$samples_refresh <- 1L
+    session$flushReact()
+    session$setInputs(generer = 1)
+    expect_identical(recu$plot_ids, "P001")
   })
 })
 

@@ -38,11 +38,13 @@ mod_inventaire_video_ui <- function(id) {
                               icon = bsicons::bs_icon("phone"),
                               class = "btn-primary w-100 mb-2"),
           shiny::uiOutput(ns("progression_info")),
-          shiny::uiOutput(ns("telechargement"))
+          shiny::uiOutput(ns("telechargement")),
+          # Liste des placettes sous le bouton (Pascal, 2026-11-25) : la
+          # colonne de droite garde la carte seule.
+          shiny::uiOutput(ns("placettes_ui"))
         ),
         htmltools::div(
-          shiny::uiOutput(ns("carte_ui")),
-          shiny::uiOutput(ns("placettes_ui"))
+          shiny::uiOutput(ns("carte_ui"))
         )
       )
     ),
@@ -145,7 +147,16 @@ mod_inventaire_video_server <- function(id, app_state) {
       rv$envoi <- NULL; rv$srv <- NULL
     }, ignoreNULL = FALSE)
 
-    plan <- shiny::reactive(video_placettes_plan(project_path()))
+    # Relu a chaque enregistrement signale par `samples_refresh` (le plan est
+    # ecrit par mod_sampling ; le plan d'actions et la reGeneration
+    # incrementent aussi ce compteur pour d'autres couches). La valeur ne
+    # change que si le plan relu differe : une simple incrementation ne
+    # remet ni la selection a " tout " ni la carte a zero.
+    plan <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(list(project_path(), app_state$samples_refresh), {
+      p <- video_placettes_plan(project_path())
+      if (!identical(p, shiny::isolate(plan()))) plan(p)
+    }, ignoreNULL = FALSE)
     params <- shiny::reactive(
       project_video_params(app_state$current_project$metadata))
     chm <- shiny::reactive({
