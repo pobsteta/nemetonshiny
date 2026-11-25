@@ -1,6 +1,6 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9006 (en développement)
+## nemetonshiny 2026.11.6.9007 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
 cassant (missions 043 et 048).
@@ -52,6 +52,16 @@ cassant (missions 043 et 048).
     moment-là part sans relief, et la ligne le dit.
 
 ### Corrections
+
+- **Planchers de dépendances relevés : `shiny (>= 1.8.1)`,
+  `bslib (>= 0.7.0)`** (`DESCRIPTION`). L’app utilise
+  [`shiny::ExtendedTask`](https://rdrr.io/pkg/shiny/man/ExtendedTask.html)
+  (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et
+  [`bslib::input_task_button()`](https://rstudio.github.io/bslib/reference/input_task_button.html)
+  / `bind_task_button()` (apparus dans bslib 0.7.0, 31 appels) ; les
+  anciens planchers (1.8.0, 0.6.0) laissaient installer une version où
+  l’app ne démarre pas. Un test de contrat vérifie que chaque fonction
+  utilisée existe dans la version plancher déclarée.
 
 - **Inventaire vidéo : la vue reprend le plan d’échantillonnage
   régénéré** (`R/mod_inventaire_video.R`). La liste et la carte des
