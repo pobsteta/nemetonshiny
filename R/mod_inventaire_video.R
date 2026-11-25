@@ -147,7 +147,13 @@ mod_inventaire_video_server <- function(id, app_state) {
       rv$envoi <- NULL; rv$srv <- NULL
     }, ignoreNULL = FALSE)
 
-    plan <- shiny::reactive(video_placettes_plan(project_path()))
+    # Relu a chaque plan enregistre (mod_sampling, plan d'actions,
+    # reGeneration incrementent `samples_refresh`) : sans cette dependance,
+    # la vue gardait le plan lu a l'ouverture du projet.
+    plan <- shiny::reactive({
+      app_state$samples_refresh
+      video_placettes_plan(project_path())
+    })
     params <- shiny::reactive(
       project_video_params(app_state$current_project$metadata))
     chm <- shiny::reactive({

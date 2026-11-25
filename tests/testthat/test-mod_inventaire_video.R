@@ -162,6 +162,30 @@ test_that("Preparer : le formulaire arrive a la generation, et le .qgz est servi
   })
 })
 
+test_that("Preparer : un plan regenere (samples_refresh) est relu par la vue", {
+  pp <- withr::local_tempdir()
+  lectures <- 0L
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) {
+      lectures <<- lectures + 1L
+      if (lectures == 1L) .plan_video() else .plan_video()[1, ]
+    },
+    video_coeur_disponible = function() TRUE
+  )
+  etat <- .etat_video()
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_match(output$placettes_ui$html, "P002", fixed = TRUE)
+    # mod_sampling enregistre un nouveau plan et incremente samples_refresh
+    etat$samples_refresh <- 1L
+    session$flushReact()
+    expect_false(grepl("P002", output$placettes_ui$html, fixed = TRUE))
+    expect_match(output$placettes_ui$html, "P001", fixed = TRUE)
+  })
+})
+
 test_that("Preparer : sans declinaison, la generation part (Groma la calcule)", {
   pp <- withr::local_tempdir()
   recu <- NULL
