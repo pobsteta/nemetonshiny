@@ -236,7 +236,7 @@ itineraires_table_classement <- function(cmp, catalogue, i18n) {
   if (is.null(cmp) || !is.data.frame(cmp) || nrow(cmp) == 0L) return(NULL)
   cmp <- cmp[order(cmp$unit_id, cmp$rang), , drop = FALSE]
   pareto <- vapply(cmp$pareto, function(p) {
-    if (is.na(p)) "—" else i18n$t(if (isTRUE(p)) "itin_oui" else "itin_non")
+    if (is.na(p)) "\u2014" else i18n$t(if (isTRUE(p)) "itin_oui" else "itin_non")
   }, character(1), USE.NAMES = FALSE)
   data.frame(ugf = as.character(cmp$unit_id),
              rang = as.integer(cmp$rang),
