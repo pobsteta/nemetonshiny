@@ -1,4 +1,4 @@
-# nemetonshiny 2026.11.6.9003 (en développement)
+# nemetonshiny 2026.11.6.9004 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043 et 048).
 
@@ -10,6 +10,8 @@ Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant
   - Une ligne d'état sous cette coche dit si le relief CVAT sera joint (« joint au projet », « calcul en cours », ou « absent » avec la raison). **Le CVAT est calculé en tâche de fond à l'arrivée sur la vue** quand il manque et que le MNT est le LiDAR HD natif (jamais sur le repli WMS ; un échec récent n'est pas rejoué). Le bouton « Générer » reste utilisable pendant le calcul : un projet généré à ce moment-là part sans relief, et la ligne le dit.
 
 ## Corrections
+
+- **Inventaire vidéo : un CVAT au codage inconnu ne prive plus du projet QField** (mission 055, `R/service_inventaire_video.R`, `R/mod_inventaire_video.R`). Quand le cœur refuse le relief CVAT du projet (condition `nemeton_erreur_cvat_codage`, levée par `creer_projet_inventaire_video()` pour un fichier au codage inconnu, par exemple un `*_CVAT_8bit.tif` sans nodata déclaré), l'app relance la génération **une fois sans relief** au lieu d'échouer. Elle ne convertit rien : le codage reste l'affaire du cœur. La ligne d'état du relief passe à « absent — codage du fichier non reconnu » et une notification d'avertissement le dit. Toute autre erreur, ou un second échec, s'affiche comme avant. Sans effet avec le cœur 2026.11.45, qui ne lève pas cette condition.
 
 - **reGénération : textes et test remis d'accord avec le forçage ERA5 `timeseries`** (mission 050). L'infobulle du moteur annonce « jusqu'à 4 requêtes au CDS » (une seule si le point tombe sur la grille 0,25°) et ne promet plus « quelques secondes ensuite », durée jamais mesurée (microclimf recalcule sur la grille même avec le forçage en cache), FR et EN. Les commentaires de `mod_regeneration.R` réservent les douze téléchargements mensuels au chemin classique. Le test d'échec `rsen_era5ts_echec` utilise la condition réellement levée par nemeton (message anglais). Aucun changement de comportement.
 

@@ -308,6 +308,9 @@ mod_inventaire_video_server <- function(id, app_state) {
     # minutes un forestier qui n'en a pas besoin).
     cvat_en_cours <- shiny::reactiveVal(FALSE)
     cvat_echec <- shiny::reactiveVal(FALSE)
+    # Le coeur a refuse le CVAT du projet (codage inconnu) : le projet genere
+    # est parti sans relief, alors que le fichier existe toujours.
+    cvat_refuse <- shiny::reactiveVal(FALSE)
     cvat_maj <- shiny::reactiveVal(0L)
 
     cvat_task <- shiny::ExtendedTask$new(
@@ -354,6 +357,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       }
       cvat_en_cours(FALSE)
       cvat_echec(FALSE)
+      cvat_refuse(FALSE)
     }, ignoreNULL = FALSE)
 
     shiny::observeEvent(
@@ -400,7 +404,9 @@ mod_inventaire_video_server <- function(id, app_state) {
       # que cette vue est ouverte doit apparaitre (sortie suspendue masquee).
       shiny::invalidateLater(10000, session)
       pl <- cvat_plan()
-      texte <- if (identical(pl$etat, "joint")) {
+      texte <- if (cvat_refuse()) {
+        sprintf(tr$t("video_cvat_absent"), tr$t("video_cvat_codage"))
+      } else if (identical(pl$etat, "joint")) {
         tr$t("video_cvat_joint")
       } else if (cvat_en_cours()) {
         tr$t("video_cvat_encours")
@@ -409,7 +415,7 @@ mod_inventaire_video_server <- function(id, app_state) {
           pl$raison %||% "video_cvat_attente"
         sprintf(tr$t("video_cvat_absent"), tr$t(raison))
       }
-      classe <- if (identical(pl$etat, "joint")) "text-success" else "text-muted"
+      classe <- if (identical(pl$etat, "joint") && !cvat_refuse()) "text-success" else "text-muted"
       htmltools::p(class = paste("small", classe), texte)
     })
 
@@ -485,7 +491,19 @@ mod_inventaire_video_server <- function(id, app_state) {
       }
       rv$qgz <- qgz[1]
       shiny::showNotification(tr$t("qfield_ready"), type = "message", duration = 6)
+      .noter_cvat_refuse(qgz)
     })
+
+    # Le coeur a refuse le CVAT et le projet est reparti sans relief : la ligne
+    # d'etat passe a " absent " et un avertissement le dit.
+    .noter_cvat_refuse <- function(qgz) {
+      if (!isTRUE(attr(qgz, "cvat_refuse"))) return(invisible(FALSE))
+      cvat_refuse(TRUE)
+      cvat_maj(cvat_maj() + 1L)
+      shiny::showNotification(i18n()$t("video_cvat_codage_avert"),
+                              type = "warning", duration = 15)
+      invisible(TRUE)
+    }
 
     output$telechargement <- shiny::renderUI({
       if (is.null(rv$qgz)) return(NULL)
