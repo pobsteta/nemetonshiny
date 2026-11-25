@@ -232,7 +232,7 @@ mod_inventaire_video_server <- function(id, app_state) {
       htmltools::tagList(
         htmltools::tags$label(class = "form-label fw-semibold",
                               i18n()$t("video_carte_titre")),
-        leaflet::leafletOutput(ns("carte"), height = "320px"),
+        leaflet::leafletOutput(ns("carte"), height = "70vh"),  # carte agrandie (Pascal, 2026-11-25)
         htmltools::tags$small(class = "text-muted d-block mb-2",
                               i18n()$t("video_carte_aide")))
     })

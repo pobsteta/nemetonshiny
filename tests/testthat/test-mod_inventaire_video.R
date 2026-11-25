@@ -1481,6 +1481,21 @@ test_that("CVAT : sans CVAT, args n'a pas de cvat_path ; avec, il y pointe", {
 
 # ---- Mission 050, reprise 1 : carte stable, fin de calcul par projet, alertes ---
 
+test_that("carte : agrandie a 70 % de la hauteur de la fenetre", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  hauteur <- NULL
+  local_mocked_bindings(
+    leafletOutput = function(outputId, width = "100%", height = "400px") {
+      hauteur <<- height; htmltools::div("carte")
+    },
+    .package = "leaflet")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    output$carte_ui
+    expect_identical(hauteur, "70vh")
+  })
+})
+
 test_that("carte : la carte n'est rendue qu'une fois, quelles que soient les selections", {
   pp <- withr::local_tempdir()
   .local_video(pp)

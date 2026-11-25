@@ -1,9 +1,10 @@
-# nemetonshiny 2026.11.6.9009 (en développement)
+# nemetonshiny 2026.11.6.9010 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063 et 066).
 
 ## Changements
 
+- **Inventaire vidéo : carte des placettes agrandie** (`R/mod_inventaire_video.R`, demande de Pascal du 2026-11-25) : 70 % de la hauteur de la fenêtre au lieu de 320 px.
 - **Plan d'actions : onglet « Itinéraires », les itinéraires sylvicoles admissibles par UGF et leur classement sous un profil** (mission 066, spec 065 du cœur, brief `064-alphaearth-n5` § spec 065). Nouvel onglet à côté de « Carte + Tableau » et « Kanban » (`R/mod_itineraires.R`, calcul dans `R/service_itineraires.R`, aucune logique métier : tout vient de `nemeton::itineraires_admissibles()`, `comparer_itineraires()` et `profils_poids()`).
   - **Admissibles et exclus** : une ligne par UGF et par itinéraire du catalogue, aucune perdue ; la raison de chaque exclusion (`station_insuffisante`, `hors_ser`, `essence_absente`, `pente`, `desserte`, `statut_protection`, `source_manquante`, `donnee_manquante`) est traduite en FR et EN (clés `itin_r_*`), jamais le code brut. `donnee_manquante` garde sa ligne (« Donnée manquante »). Le détail du cœur (valeur contre seuil, en anglais, avec codes bruts) n'est pas repris.
   - **Classement sous le profil** : colonnes rang, familles évaluées, gagnantes, perdantes, front de Pareto. `score_global` n'est jamais affiché : seul le **rang** l'est, avec la mention qu'il n'est pas une note. Le sélecteur propose les 15 profils de `profils_poids()` (libellés des profils experts de l'app), par défaut `profil_gestionnaire_expert` (poids égaux).
