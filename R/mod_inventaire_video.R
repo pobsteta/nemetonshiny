@@ -105,8 +105,8 @@ mod_inventaire_video_ui <- function(id) {
     fillColor = ifelse(d$selectionnee, "#1B6B1B", "#FFFFFF"),
     fillOpacity = ifelse(d$selectionnee, 0.9, 0.05),
     opacity = ifelse(d$selectionnee, 1, 0.7),
-    labelOptions = leaflet::labelOptions(noHide = TRUE, direction = "top",
-                                         textsize = "11px"))
+    # Taille de l'infobulle : `.leaflet-tooltip` de custom.css, pas ici.
+    labelOptions = leaflet::labelOptions(noHide = TRUE, direction = "top"))
 }
 
 #' Video inventory sub-tab - server
