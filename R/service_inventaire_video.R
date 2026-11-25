@@ -141,10 +141,97 @@ video_integrer <- function(gpkg, resultats, project_path, terrain = NULL) {
   res
 }
 
+#' Default generation settings of the video inventory
+#'
+#' Radius 15 m, minimum diameter 7.5 cm, azimuths in degrees, and an empty
+#' magnetic declination (`NA`): Groma then computes it at each plot with its
+#' embedded WMM2025 model.
+#' @noRd
+VIDEO_PARAMS_DEFAULT <- list(rayon_m = 15, seuil_diam_cm = 7.5,
+                             unite_azimut = "deg", declinaison_deg = NA_real_)
+
+#' Generation settings of the video inventory, from the project metadata
+#'
+#' Set once per massif in Settings > Sources & parameters (`video_params`
+#' in the project metadata), like the other calibration blocks. A missing,
+#' malformed or out-of-range value falls back on its default, never on an error.
+#'
+#' @param metadata Project metadata list, or `NULL`.
+#' @return `list(rayon_m, seuil_diam_cm, unite_azimut, declinaison_deg)`;
+#'   `declinaison_deg` is `NA` when empty.
+#' @noRd
+project_video_params <- function(metadata) {
+  cfg <- metadata$video_params
+  d <- VIDEO_PARAMS_DEFAULT
+  num <- function(x, def, lo, hi) {
+    v <- suppressWarnings(as.numeric(x))
+    if (length(v) != 1L || !is.finite(v) || v < lo || v > hi) def else v
+  }
+  unite <- as.character(cfg$unite_azimut %||% d$unite_azimut)[1]
+  if (is.na(unite) || !unite %in% c("deg", "gr")) unite <- d$unite_azimut
+  list(
+    rayon_m = num(cfg$rayon_m, d$rayon_m, 5, 50),
+    seuil_diam_cm = num(cfg$seuil_diam_cm, d$seuil_diam_cm, 0, 100),
+    unite_azimut = unite,
+    declinaison_deg = num(cfg$declinaison_deg, NA_real_, -30, 30)
+  )
+}
+
+#' Persist the video inventory settings on a project
+#' @param project_id Character.
+#' @param rayon_m,seuil_diam_cm,unite_azimut,declinaison_deg Settings, validated
+#'   by [project_video_params()] (out of range -> default).
+#' @return Invisible `TRUE`.
+#' @noRd
+set_project_video_params <- function(project_id, rayon_m = NULL,
+                                     seuil_diam_cm = NULL, unite_azimut = NULL,
+                                     declinaison_deg = NULL) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+  cfg <- project_video_params(list(video_params = list(
+    rayon_m = rayon_m, seuil_diam_cm = seuil_diam_cm,
+    unite_azimut = unite_azimut, declinaison_deg = declinaison_deg)))
+  # Declinaison vide : la cle est omise (la liste remplace l'ancienne en bloc).
+  if (is.na(cfg$declinaison_deg)) cfg$declinaison_deg <- NULL
+  cfg$set_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+  update_project_metadata(project_id, list(video_params = cfg),
+                          project_path = project_path)
+  invisible(TRUE)
+}
+
+#' Settings that [project_video_params()] replaces by their default
+#'
+#' Tells the user which submitted values were out of range (or unreadable) and
+#' fell back on the default. An empty declination is legitimate (Groma computes
+#' it), not a replacement.
+#' @param rayon_m,seuil_diam_cm,unite_azimut,declinaison_deg Submitted values.
+#' @return Character vector of i18n label keys of the replaced settings.
+#' @noRd
+video_params_remplaces <- function(rayon_m = NULL, seuil_diam_cm = NULL,
+                                   unite_azimut = NULL, declinaison_deg = NULL) {
+  ok <- project_video_params(list(video_params = list(
+    rayon_m = rayon_m, seuil_diam_cm = seuil_diam_cm,
+    unite_azimut = unite_azimut, declinaison_deg = declinaison_deg)))
+  vide <- function(x) is.null(x) || !length(x) || is.na(x[1])
+  rem <- character(0)
+  if (!identical(ok$rayon_m, suppressWarnings(as.numeric(rayon_m))[1]))
+    rem <- c(rem, "video_rayon")
+  if (!identical(ok$seuil_diam_cm, suppressWarnings(as.numeric(seuil_diam_cm))[1]))
+    rem <- c(rem, "video_seuil_diam")
+  if (!identical(ok$unite_azimut, as.character(unite_azimut)[1]))
+    rem <- c(rem, "video_unite_azimut")
+  if (!vide(declinaison_deg) && is.na(ok$declinaison_deg)) rem <- c(rem, "video_declinaison")
+  rem
+}
+
 #' Arguments of `creer_projet_inventaire_video()` from the form
 #'
 #' Checks what the core cannot guess (project, plots) and passes the settings
-#' through unchanged. The magnetic declination is optional: left empty, it goes
+#' through unchanged. The settings (radius, minimum diameter, azimuth unit,
+#' declination) come from `metadata` ([project_video_params()]) unless given
+#' explicitly. The magnetic declination is optional: left empty, it goes
 #' as `NULL` (the core writes `NA`, never 0) and Groma computes it at the plot
 #' with its embedded WMM2025 model; a value typed in wins. Rasters are passed as file paths:
 #' a terra pointer does not survive the trip to the `future` worker.
@@ -152,19 +239,26 @@ video_integrer <- function(gpkg, resultats, project_path, terrain = NULL) {
 #' @param project_path Project directory, or `NULL`.
 #' @param placettes sf of the sampling plan, or `NULL`.
 #' @param plot_ids Character. Selected plots.
-#' @param rayon_m,seuil_diam_cm,unite_azimut,declinaison_deg Form settings.
+#' @param rayon_m,seuil_diam_cm,unite_azimut,declinaison_deg Settings; `NULL`
+#'   (default) reads them from `metadata`.
 #' @param avec_lidar Logical. Include DTM, CHM and crowns.
 #' @param dem,chm `SpatRaster` (or path) of the project, or `NULL`.
 #' @param lang Language code.
+#' @param metadata Project metadata list, or `NULL`.
 #' @return The argument list, or an i18n key naming what is missing.
 #' @noRd
 video_args_generation <- function(project_path, placettes, plot_ids,
-                                  rayon_m = 15, seuil_diam_cm = 7.5,
-                                  unite_azimut = "deg", declinaison_deg = NA,
+                                  rayon_m = NULL, seuil_diam_cm = NULL,
+                                  unite_azimut = NULL, declinaison_deg = NULL,
                                   avec_lidar = FALSE, dem = NULL, chm = NULL,
-                                  lang = "fr") {
+                                  lang = "fr", metadata = NULL) {
   if (is.null(project_path)) return("field_ingest_no_project")
   if (is.null(placettes) || !length(plot_ids)) return("video_sans_plan")
+  prm <- project_video_params(metadata)
+  rayon_m <- rayon_m %||% prm$rayon_m
+  seuil_diam_cm <- seuil_diam_cm %||% prm$seuil_diam_cm
+  unite_azimut <- unite_azimut %||% prm$unite_azimut
+  declinaison_deg <- declinaison_deg %||% prm$declinaison_deg
   decl <- suppressWarnings(as.numeric(declinaison_deg))
   decl <- if (length(decl) == 1L && is.finite(decl)) decl else NULL
   .source <- function(r) {
@@ -206,6 +300,112 @@ video_args_generation <- function(project_path, placettes, plot_ids,
   mnt <- .acc_rvt_mnt_path(project_path)
   if (is.null(mnt)) return(NULL)
   .rvt_precomputed_path(mnt)
+}
+
+#' What to do about the project's CVAT relief
+#'
+#' Decides, without computing anything, whether the QField project will carry
+#' the CVAT relief. Same prudence as the Accessibility tab: the relief is only
+#' computed on the native LiDAR HD DTM (`lidar_mnt_mosaic.tif`), never on the
+#' WMS fallback (its striping would be amplified), and a recent failure with
+#' the same parameters is not replayed.
+#'
+#' @param project_path Project directory, or `NULL`.
+#' @param aoi Project AOI (`sf`, EPSG:2154), or `NULL`.
+#' @param buffer_m Buffer around the AOI, in metres.
+#' @return A list: `etat` (`"joint"`, `"a_calculer"` or `"absent"`), `cvat`
+#'   (path when joined), `mnt`, `buffer_m` and, when absent, `raison` (an i18n
+#'   key).
+#' @noRd
+video_cvat_plan <- function(project_path, aoi = NULL, buffer_m = 250) {
+  cvat <- .video_cvat_path(project_path)
+  if (!is.null(cvat)) return(list(etat = "joint", cvat = cvat))
+  mnt <- .acc_rvt_mnt_path(project_path)
+  if (is.null(mnt)) return(list(etat = "absent", raison = "video_cvat_sans_mnt"))
+  if (!identical(basename(mnt), "lidar_mnt_mosaic.tif")) {
+    return(list(etat = "absent", raison = "video_cvat_mnt_wms"))
+  }
+  if (!isTRUE(.rvt_cvat_available())) {
+    return(list(etat = "absent", raison = "video_cvat_sans_outil"))
+  }
+  buffer_eff <- buffer_m
+  if (!is.null(aoi)) {
+    buffer_eff <- tryCatch(.cvat_buffer_plafonne(mnt, aoi, buffer_m),
+                           error = function(e) buffer_m)
+    res_m <- suppressWarnings(as.numeric(APP_CONFIG$cvat_res_m))
+    if (!isTRUE(is.finite(res_m)) || res_m <= 0) res_m <- 2
+    if (isTRUE(.cvat_failed_for(.rvt_cvat_out_path(mnt), aoi, buffer_eff, res_m))) {
+      return(list(etat = "absent", raison = "video_cvat_echec", mnt = mnt))
+    }
+  }
+  list(etat = "a_calculer", mnt = mnt, buffer_m = buffer_eff)
+}
+
+#' Compute the project's CVAT (runs in the background worker)
+#'
+#' Thin wrapper over [build_cvat_precomputed()], which is idempotent and
+#' atomic. Kept here so that the module holds no logic.
+#' @param mnt_path Native LiDAR DTM.
+#' @param aoi Project AOI, or `NULL`.
+#' @param buffer_m Buffer around the AOI, in metres.
+#' @return Path of the CVAT, or `NULL`.
+#' @noRd
+video_cvat_calculer <- function(mnt_path, aoi = NULL, buffer_m = 0) {
+  build_cvat_precomputed(mnt_path, aoi = aoi, buffer_m = buffer_m)
+}
+
+#' Start the CVAT computation in the background
+#' @param tache The module's CVAT `ExtendedTask`.
+#' @param plan Result of [video_cvat_plan()] (state `"a_calculer"`).
+#' @param aoi Project AOI, or `NULL`.
+#' @noRd
+video_lancer_cvat <- function(tache, plan, aoi, dev_path = NULL) {
+  tache$invoke(plan$mnt, aoi, plan$buffer_m, dev_path, get_app_options())
+}
+
+#' Plots of the plan ready for the map (EPSG:4326)
+#'
+#' One point per plot with a usable geometry. Plots without geometry (empty or
+#' missing) or without a declared CRS are left out: a position guessed would
+#' put a plot at the wrong place. Polygons are replaced by an interior point.
+#'
+#' @param placettes sf of the sampling plan, or `NULL`.
+#' @param selection Character. Selected `plot_id`s.
+#' @return An sf (`plot_id`, `selectionnee`, geometry) in EPSG:4326, or `NULL`.
+#' @noRd
+video_carte_donnees <- function(placettes, selection) {
+  if (is.null(placettes) || !nrow(placettes) || !"plot_id" %in% names(placettes)) {
+    return(NULL)
+  }
+  if (is.na(sf::st_crs(placettes))) return(NULL)
+  g <- sf::st_geometry(placettes)
+  ok <- !sf::st_is_empty(g)
+  if (!any(ok)) return(NULL)
+  p <- placettes[ok, "plot_id"]
+  if (!all(sf::st_geometry_type(p) == "POINT")) {
+    sf::st_geometry(p) <- suppressWarnings(
+      sf::st_point_on_surface(sf::st_geometry(p)))
+  }
+  p <- sf::st_transform(p, 4326)
+  p$plot_id <- as.character(p$plot_id)
+  p$selectionnee <- p$plot_id %in% as.character(selection)
+  p
+}
+
+#' Toggle one plot in the selection
+#'
+#' @param selection Character. Currently selected `plot_id`s.
+#' @param id The clicked plot.
+#' @param tous Character. All the plots of the plan, in plan order.
+#' @return The new selection, in plan order. An unknown `id` changes nothing.
+#' @noRd
+video_basculer_selection <- function(selection, id, tous) {
+  tous <- as.character(tous)
+  selection <- intersect(tous, as.character(selection))
+  id <- as.character(id)[1]
+  if (is.na(id) || !id %in% tous) return(selection)
+  nouvelle <- if (id %in% selection) setdiff(selection, id) else c(selection, id)
+  tous[tous %in% nouvelle]
 }
 
 #' Can the core send trees back to the field?

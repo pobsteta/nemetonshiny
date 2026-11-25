@@ -13,26 +13,31 @@
                           sf::st_point(c(900750, 6500750)), crs = 2154))
 }
 
-.etat_video <- function(lang = "fr") {
+.etat_video <- function(lang = "fr", metadata = list()) {
   shiny::reactiveValues(
-    current_project = list(id = "p_video", metadata = list()),
+    current_project = list(id = "p_video", metadata = metadata),
     language = lang)
 }
 
 test_that("l'UI expose les trois blocs et leurs commandes", {
   local_mocked_bindings(get_app_options = function() list(language = "fr"))
   html <- as.character(mod_inventaire_video_ui("iv"))
-  for (id in c("iv-rayon", "iv-seuil", "iv-unite", "iv-declinaison", "iv-lidar",
+  # Rayon, diametre, unite et declinaison ont quitte la vue (mission 050).
+  for (id in c("iv-params_rappel", "iv-cvat_info", "iv-carte_ui", "iv-lidar",
                "iv-generer", "iv-actualiser", "iv-gpkg_terrain", "iv-recuperer",
                "iv-gpkg_resultats", "iv-integrer")) {
     expect_match(html, id, fixed = TRUE)
   }
   expect_match(html, "Pr\u00e9parer", fixed = TRUE)
+  for (id in c("iv-rayon", "iv-seuil", "iv-unite", "iv-declinaison")) {
+    expect_false(grepl(sprintf('id="%s"', id), html, fixed = TRUE), info = id)
+  }
 })
 
 test_that("aucun texte litteral : toutes les cles utilisees existent en FR et EN", {
   fichiers <- chemin_source("R", c("mod_inventaire_video.R",
-                                   "service_inventaire_video.R"))
+                                   "service_inventaire_video.R",
+                                   "mod_sources_config.R"))
   skip_sans_sources(fichiers)
   code <- paste(unlist(lapply(fichiers, readLines)), collapse = "\n")
   cles <- c(regmatches(code, gregexpr('\\$t\\("[a-z0-9_]+"\\)', code))[[1]],
@@ -124,9 +129,10 @@ test_that("Preparer : le formulaire arrive a la generation, et le .qgz est servi
     video_coeur_disponible = function() TRUE,
     video_lancer_generation = function(tache, args, dev_path = NULL) recu <<- args
   )
-  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
-    session$setInputs(placettes = c("P001", "P002"), rayon = 18, seuil = 10,
-                      unite = "gr", declinaison = -0.4, lidar = TRUE)
+  etat <- .etat_video(metadata = list(video_params = list(
+    rayon_m = 18, seuil_diam_cm = 10, unite_azimut = "gr", declinaison_deg = -0.4)))
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$setInputs(placettes = c("P001", "P002"), lidar = TRUE)
     session$setInputs(generer = 1)
     expect_identical(recu$plot_ids, c("P001", "P002"))
     expect_identical(recu$rayon_m, 18)
@@ -155,7 +161,7 @@ test_that("Preparer : sans declinaison, la generation part (Groma la calcule)", 
     video_lancer_generation = function(tache, args, ...) recu <<- args
   )
   shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
-    session$setInputs(placettes = "P001", declinaison = NA, generer = 1)
+    session$setInputs(placettes = "P001", generer = 1)
     expect_false(is.null(recu))
     expect_true("declinaison_deg" %in% names(recu))
     expect_null(recu$declinaison_deg)
@@ -644,10 +650,8 @@ test_that("un changement de projet efface l'etat de l'envoi", {
 # ---- Schema Groma 1.6.0 (mission 030, coeur nemeton 2026.11.29) --------------
 
 test_that("le rayon propose par defaut est de 15 m", {
-  local_mocked_bindings(get_app_options = function() list(language = "fr"))
-  html <- as.character(mod_inventaire_video_ui("iv"))
-  expect_match(html, 'id="iv-rayon"[^>]*value="15"')
-  expect_false(grepl('id="iv-rayon"[^>]*value="20"', html))
+  expect_identical(project_video_params(NULL)$rayon_m, 15)
+  expect_false(identical(project_video_params(NULL)$rayon_m, 20))
   pp <- withr::local_tempdir()
   a <- video_args_generation(pp, .plan_video(), "P001")
   expect_identical(a$rayon_m, 15)
@@ -1041,5 +1045,522 @@ test_that("Recuperer reinterroge le serveur a chaque clic et passe l'etat frais"
     expect_identical(n_srv, 2L)
     expect_identical(recu$terrain_envoye_le, "2026-11-15T13:22:00Z")
     expect_identical(rv$srv$terrain_envoye_le, "2026-11-15T13:22:00Z")
+  })
+})
+
+
+# ---- Mission 050 : carte, parametres, CVAT ------------------------------------
+
+.plan_video3 <- function() {
+  sf::st_sf(
+    plot_id = c("P001", "P002", "P003"),
+    geometry = sf::st_sfc(sf::st_point(c(900250, 6500250)),
+                          sf::st_point(c(900750, 6500750)),
+                          sf::st_point(c(901250, 6501250)), crs = 2154))
+}
+
+.local_video <- function(pp, plan = .plan_video3(), env = parent.frame(), ...) {
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) plan,
+    video_coeur_disponible = function() TRUE,
+    .acc_cvat_overlay_raster = function(...) NULL,
+    ..., .env = env)
+}
+
+test_that("carte : une placette decochee passe en deselectionnee, et la carte suit la liste", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    d <- carte_donnees()
+    expect_identical(d$plot_id, c("P001", "P002", "P003"))
+    expect_true(all(d$selectionnee))
+    session$setInputs(placettes = c("P001", "P003"))
+    d <- carte_donnees()
+    expect_identical(d$selectionnee, c(TRUE, FALSE, TRUE))
+    # Tout decocher puis tout cocher : carte et liste d'accord.
+    session$setInputs(placettes = NULL)
+    expect_false(any(carte_donnees()$selectionnee))
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    expect_true(all(carte_donnees()$selectionnee))
+  })
+})
+
+test_that("carte : un clic sur un marqueur bascule la placette, dans la liste aussi", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  maj <- list()
+  local_mocked_bindings(
+    updateCheckboxGroupInput = function(session, inputId, ..., selected = NULL) {
+      maj[[length(maj) + 1L]] <<- selected
+    }, .package = "shiny")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    session$setInputs(carte_marker_click = list(id = "P003", .nonce = 1))
+    expect_identical(selection(), c("P001", "P002"))
+    expect_identical(maj[[1]], c("P001", "P002"))
+    expect_false(carte_donnees()$selectionnee[3])
+    session$setInputs(carte_marker_click = list(id = "P003", .nonce = 2))
+    expect_identical(selection(), c("P001", "P002", "P003"))
+    expect_identical(maj[[2]], c("P001", "P002", "P003"))
+    # Un identifiant inconnu ne change rien.
+    session$setInputs(carte_marker_click = list(id = "ZZZ", .nonce = 3))
+    expect_identical(selection(), c("P001", "P002", "P003"))
+  })
+})
+
+test_that("video_basculer_selection garde l'ordre du plan et ignore l'inconnu", {
+  tous <- c("P001", "P002", "P003")
+  expect_identical(video_basculer_selection(c("P003", "P001"), "P002", tous), tous)
+  expect_identical(video_basculer_selection(tous, "P002", tous), c("P001", "P003"))
+  expect_identical(video_basculer_selection(character(0), "P001", tous), "P001")
+  expect_identical(video_basculer_selection("P001", "X", tous), "P001")
+  expect_identical(video_basculer_selection(NULL, NA, tous), character(0))
+})
+
+test_that("carte : plan absent ou vide -> pas de carte, le message existant, sans erreur", {
+  pp <- withr::local_tempdir()
+  .local_video(pp, plan = NULL)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$flushReact()
+    expect_null(carte_donnees())
+    expect_null(output$carte_ui)
+    html <- paste(as.character(output$placettes_ui$html), collapse = " ")
+    expect_match(html, htmltools::htmlEscape(get_i18n("fr")$t("video_sans_plan")),
+                 fixed = TRUE)
+  })
+  expect_null(video_carte_donnees(NULL, "P001"))
+  expect_null(video_carte_donnees(.plan_video3()[0, ], "P001"))
+})
+
+test_that("carte : placettes sans geometrie ou sans CRS ecartees, le reste en WGS84 en France", {
+  d <- video_carte_donnees(.plan_video3(), "P002")
+  expect_identical(sf::st_crs(d)$epsg, 4326L)
+  xy <- sf::st_coordinates(d)
+  # Lambert-93 (900250, 6500250) tombe en France, longitude puis latitude.
+  expect_true(all(xy[, 1] > -5 & xy[, 1] < 10))
+  expect_true(all(xy[, 2] > 41 & xy[, 2] < 52))
+  expect_identical(d$selectionnee, c(FALSE, TRUE, FALSE))
+  # Une placette connue : Paris (Notre-Dame, ~ 652 400 / 6 862 000 en Lambert-93).
+  paris <- sf::st_sf(plot_id = "P1", geometry = sf::st_sfc(
+    sf::st_point(c(652400, 6862050)), crs = 2154))
+  xp <- unname(sf::st_coordinates(video_carte_donnees(paris, "P1")))
+  expect_equal(xp[1, 1], 2.35, tolerance = 0.05)
+  expect_equal(xp[1, 2], 48.85, tolerance = 0.05)
+  # Placette dans un autre CRS : reprojetee au meme endroit.
+  wgs <- sf::st_transform(paris, 4326)
+  expect_equal(unname(sf::st_coordinates(video_carte_donnees(wgs, "P1"))), xp,
+               tolerance = 1e-6)
+  # Geometrie vide : ecartee ; toutes vides : pas de carte.
+  vide <- .plan_video3()
+  sf::st_geometry(vide)[2] <- sf::st_sfc(sf::st_point(), crs = 2154)
+  expect_identical(video_carte_donnees(vide, character(0))$plot_id, c("P001", "P003"))
+  tout_vide <- vide[2, ]
+  expect_null(video_carte_donnees(tout_vide, "P002"))
+  # Sans CRS : on ne devine pas la position.
+  sans <- .plan_video3(); sf::st_crs(sans) <- NA
+  expect_null(video_carte_donnees(sans, "P001"))
+})
+
+test_that("parametres : lus des metadonnees par video_args_generation, defauts inchanges", {
+  pp <- withr::local_tempdir()
+  defaut <- video_args_generation(pp, .plan_video(), "P001")
+  expect_identical(defaut$rayon_m, 15)
+  expect_identical(defaut$seuil_diam_cm, 7.5)
+  expect_identical(defaut$unite_azimut, "deg")
+  expect_null(defaut$declinaison_deg)
+  md <- list(video_params = list(rayon_m = 20, seuil_diam_cm = 12.5,
+                                 unite_azimut = "gr", declinaison_deg = 1.2))
+  a <- video_args_generation(pp, .plan_video(), "P001", metadata = md)
+  expect_identical(a[c("rayon_m", "seuil_diam_cm", "unite_azimut", "declinaison_deg")],
+                   list(rayon_m = 20, seuil_diam_cm = 12.5, unite_azimut = "gr",
+                        declinaison_deg = 1.2))
+  # Declinaison vide ou illisible -> NULL (Groma la calcule), jamais 0.
+  md$video_params$declinaison_deg <- NULL
+  expect_null(video_args_generation(pp, .plan_video(), "P001", metadata = md)$declinaison_deg)
+  md$video_params$declinaison_deg <- "abc"
+  expect_null(video_args_generation(pp, .plan_video(), "P001", metadata = md)$declinaison_deg)
+  # Une valeur explicite l'emporte sur les metadonnees.
+  expect_identical(video_args_generation(pp, .plan_video(), "P001", metadata = md,
+                                         rayon_m = 9)$rayon_m, 9)
+  # Hors bornes ou inconnue -> defaut.
+  expect_identical(project_video_params(list(video_params = list(
+    rayon_m = 500, seuil_diam_cm = -1, unite_azimut = "rad", declinaison_deg = 99))),
+    VIDEO_PARAMS_DEFAULT)
+})
+
+test_that("parametres : la generation du module utilise ceux du projet", {
+  pp <- withr::local_tempdir()
+  recu <- NULL
+  .local_video(pp, video_lancer_generation = function(tache, args, ...) recu <<- args)
+  etat <- .etat_video(metadata = list(video_params = list(rayon_m = 22)))
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$setInputs(placettes = c("P001", "P002"))
+    session$setInputs(generer = 1)
+    expect_identical(recu$rayon_m, 22)
+    expect_identical(recu$seuil_diam_cm, 7.5)
+    # Seules les placettes selectionnees partent.
+    expect_identical(recu$plot_ids, c("P001", "P002"))
+  })
+})
+
+test_that("parametres : le rappel de la vue donne les valeurs et ou les changer", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  etat <- .etat_video(metadata = list(video_params = list(rayon_m = 22,
+                                                          unite_azimut = "gr")))
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    html <- paste(as.character(output$params_rappel$html), collapse = " ")
+    expect_match(html, "22 m", fixed = TRUE)
+    expect_match(html, "grades", fixed = TRUE)
+    expect_match(html, "WMM2025", fixed = TRUE)
+    expect_match(html, "Sources &amp; param", fixed = TRUE)
+  })
+})
+
+test_that("parametres : set_project_video_params persiste, et vider la declinaison l'efface", {
+  pp <- withr::local_tempdir()
+  writeLines('{"id":"pv","name":"x"}', file.path(pp, "metadata.json"))
+  local_mocked_bindings(get_project_path = function(id) pp)
+  set_project_video_params("pv", 18, 10, "gr", -0.4)
+  md <- jsonlite::read_json(file.path(pp, "metadata.json"))
+  expect_identical(project_video_params(md)$declinaison_deg, -0.4)
+  expect_identical(project_video_params(md)$unite_azimut, "gr")
+  set_project_video_params("pv", 18, 10, "gr", NA)
+  md <- jsonlite::read_json(file.path(pp, "metadata.json"))
+  expect_true(is.na(project_video_params(md)$declinaison_deg))
+  expect_identical(project_video_params(md)$rayon_m, 18)
+})
+
+test_that("Sources & parametres : le bloc video s'affiche avec les valeurs du projet et enregistre", {
+  pp <- withr::local_tempdir()
+  enreg <- NULL
+  local_mocked_bindings(
+    theia_api_key_configured = function() FALSE,
+    set_project_video_params = function(pid, ...) enreg <<- list(pid = pid, ...),
+    load_project = function(pid) NULL,
+    deny_if_readonly = function(...) FALSE)
+  shiny::testServer(mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list(
+        video_params = list(rayon_m = 21, seuil_diam_cm = 9))))
+  ), {
+    session$setInputs(x = 1)
+    html <- paste(as.character(output$vp_block), collapse = " ")
+    expect_match(html, 'vp_rayon"[^>]*value="21"')
+    expect_match(html, 'vp_decl"')
+    session$setInputs(vp_rayon = 21, vp_seuil = 9,
+                      vp_unite = "deg", vp_decl = NA, vp_save = 1)
+    expect_identical(enreg$pid, "p1")
+    expect_identical(enreg$rayon_m, 21)
+    expect_identical(enreg$unite_azimut, "deg")
+  })
+})
+
+# ---- CVAT : etat, calcul, trois etats de la ligne -------------------------------
+
+.mnt_projet <- function(pp, nom = "lidar_mnt_mosaic.tif", sous = c("cache", "layers")) {
+  d <- do.call(file.path, as.list(c(pp, sous)))
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  f <- file.path(d, nom)
+  file.create(f)
+  f
+}
+
+test_that("CVAT : MNT LiDAR sans CVAT -> a calculer ; avec CVAT -> joint", {
+  pp <- withr::local_tempdir()
+  mnt <- .mnt_projet(pp)
+  local_mocked_bindings(.acc_rvt_mnt_path = function(...) mnt,
+                        .rvt_cvat_available = function() TRUE)
+  p <- video_cvat_plan(pp, NULL, 250)
+  expect_identical(p$etat, "a_calculer")
+  expect_identical(p$mnt, mnt)
+  cvat <- file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif")
+  file.create(cvat)
+  p2 <- video_cvat_plan(pp, NULL, 250)
+  expect_identical(p2$etat, "joint")
+  expect_identical(p2$cvat, cvat)
+})
+
+test_that("CVAT : MNT WMS, absence de MNT ou foretaccess trop ancien -> jamais de calcul", {
+  pp <- withr::local_tempdir()
+  wms <- .mnt_projet(pp, "mnt_highres_1m.tif", c("cache", "accessibility", "emprise_250m"))
+  local_mocked_bindings(.acc_rvt_mnt_path = function(...) wms,
+                        .rvt_cvat_available = function() TRUE)
+  p <- video_cvat_plan(pp, NULL, 250)
+  expect_identical(c(p$etat, p$raison), c("absent", "video_cvat_mnt_wms"))
+  local_mocked_bindings(.acc_rvt_mnt_path = function(...) NULL)
+  p <- video_cvat_plan(pp, NULL, 250)
+  expect_identical(c(p$etat, p$raison), c("absent", "video_cvat_sans_mnt"))
+  lidar <- .mnt_projet(pp)
+  local_mocked_bindings(.acc_rvt_mnt_path = function(...) lidar,
+                        .rvt_cvat_available = function() FALSE)
+  p <- video_cvat_plan(pp, NULL, 250)
+  expect_identical(c(p$etat, p$raison), c("absent", "video_cvat_sans_outil"))
+})
+
+test_that("CVAT : un echec recent avec les memes parametres n'est pas rejoue", {
+  pp <- withr::local_tempdir()
+  mnt <- .mnt_projet(pp)
+  local_mocked_bindings(.acc_rvt_mnt_path = function(...) mnt,
+                        .rvt_cvat_available = function() TRUE,
+                        .cvat_buffer_plafonne = function(mnt, aoi, b) b,
+                        .cvat_failed_for = function(...) TRUE)
+  aoi <- sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(900250, 6500250)), crs = 2154))
+  p <- video_cvat_plan(pp, aoi, 250)
+  expect_identical(c(p$etat, p$raison), c("absent", "video_cvat_echec"))
+  local_mocked_bindings(.cvat_failed_for = function(...) FALSE)
+  expect_identical(video_cvat_plan(pp, aoi, 250)$etat, "a_calculer")
+})
+
+test_that("video_cvat_calculer delegue a build_cvat_precomputed avec l'AOI et le tampon", {
+  recu <- NULL
+  local_mocked_bindings(build_cvat_precomputed = function(mnt_path, aoi = NULL,
+                                                          buffer_m = 0, ...) {
+    recu <<- list(mnt_path, aoi, buffer_m); "/x/cvat.tif" })
+  expect_identical(video_cvat_calculer("/x/m.tif", aoi = "AOI", buffer_m = 300), "/x/cvat.tif")
+  expect_identical(recu, list("/x/m.tif", "AOI", 300))
+})
+
+.cvat_module <- function(pp, mnt, lancer, onglet = TRUE, env = parent.frame(), ...) {
+  .local_video(pp, env = env, .acc_rvt_mnt_path = function(...) mnt,
+               .rvt_cvat_available = function() TRUE,
+               .resolve_project_aoi_2154 = function(...) NULL,
+               video_lancer_cvat = lancer, ...)
+  etat <- .etat_video()
+  etat$active_main_tab <- if (onglet) "terrain" else "home"
+  etat$active_terrain_tab <- if (onglet) "inventaire_video" else "inventaire_video"
+  etat
+}
+
+test_that("CVAT : a l'arrivee sur la vue, MNT LiDAR sans CVAT -> le calcul part une fois", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  n <- 0L
+  etat <- .cvat_module(pp, mnt, function(tache, plan, aoi, dev_path = NULL) n <<- n + 1L)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_identical(n, 1L)
+    expect_true(cvat_en_cours())
+    # Revenir sur la vue pendant le calcul n'en relance pas un second.
+    app_state$active_terrain_tab <- "accessibility"
+    session$flushReact()
+    app_state$active_terrain_tab <- "inventaire_video"
+    session$flushReact()
+    expect_identical(n, 1L)
+  })
+})
+
+test_that("CVAT : pas de calcul si le CVAT existe, si le MNT est WMS, sans MNT, ou hors de la vue", {
+  n <- 0L
+  lancer <- function(tache, plan, aoi, dev_path = NULL) n <<- n + 1L
+  essayer <- function(pp, mnt, onglet = TRUE) {
+    n <<- 0L
+    etat <- .cvat_module(pp, mnt, lancer, onglet = onglet)
+    if (!onglet) etat$active_main_tab <- "home"
+    shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat),
+                      session$flushReact())
+    n
+  }
+  # CVAT deja la.
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  file.create(file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif"))
+  expect_identical(essayer(pp, mnt), 0L)
+  # MNT WMS.
+  pp2 <- withr::local_tempdir()
+  wms <- .mnt_projet(pp2, "mnt_highres_1m.tif", c("cache", "accessibility", "e"))
+  expect_identical(essayer(pp2, wms), 0L)
+  # Sans MNT.
+  expect_identical(essayer(withr::local_tempdir(), NULL), 0L)
+  # Contre-epreuve : MNT LiDAR sans CVAT, mais pas sur la vue -> rien non plus ;
+  # sur la vue -> part.
+  pp3 <- withr::local_tempdir(); mnt3 <- .mnt_projet(pp3)
+  expect_identical(essayer(pp3, mnt3, onglet = FALSE), 0L)
+  expect_identical(essayer(pp3, mnt3, onglet = TRUE), 1L)
+})
+
+test_that("CVAT : la ligne d'etat dit joint, en cours, ou absent avec la raison", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  etat <- .cvat_module(pp, mnt, function(...) NULL)
+  texte <- function(out) paste(as.character(out$html), collapse = " ")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    # En cours (le calcul vient de partir) : le projet genere maintenant part sans relief.
+    expect_match(texte(output$cvat_info), "calcul en cours", fixed = TRUE)
+    expect_false(grepl("joint au projet", texte(output$cvat_info), fixed = TRUE))
+    # Fin du calcul sans fichier : absent, avec l'echec.
+    .cvat_terminer(echec = FALSE)
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "absent", fixed = TRUE)
+    expect_match(texte(output$cvat_info), "a \u00e9chou\u00e9", fixed = TRUE)
+    # Le CVAT apparait : joint.
+    file.create(file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif"))
+    .cvat_terminer(echec = FALSE)
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "joint au projet", fixed = TRUE)
+  })
+  # Absent : MNT WMS, avec sa raison.
+  pp2 <- withr::local_tempdir()
+  wms <- .mnt_projet(pp2, "mnt_highres_1m.tif", c("cache", "accessibility", "e"))
+  etat2 <- .cvat_module(pp2, wms, function(...) NULL)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat2), {
+    session$flushReact()
+    expect_match(texte(output$cvat_info), "WMS", fixed = TRUE)
+    expect_match(texte(output$cvat_info), "absent", fixed = TRUE)
+  })
+})
+
+test_that("CVAT : sans CVAT, args n'a pas de cvat_path ; avec, il y pointe", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  local_mocked_bindings(.acc_rvt_mnt_path = function(...) mnt)
+  expect_false("cvat_path" %in% names(video_args_generation(pp, .plan_video(), "P001")))
+  cvat <- file.path(dirname(mnt), "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif")
+  file.create(cvat)
+  expect_identical(video_args_generation(pp, .plan_video(), "P001")$cvat_path, cvat)
+})
+
+# ---- Mission 050, reprise 1 : carte stable, fin de calcul par projet, alertes ---
+
+test_that("carte : la carte n'est rendue qu'une fois, quelles que soient les selections", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  n <- 0L
+  local_mocked_bindings(
+    leafletOutput = function(...) { n <<- n + 1L; htmltools::div("carte") },
+    .package = "leaflet")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    output$carte_ui
+    session$setInputs(placettes = "P001")
+    output$carte_ui
+    session$setInputs(placettes = NULL)
+    output$carte_ui
+    session$setInputs(carte_marker_click = list(id = "P002", .nonce = 1))
+    output$carte_ui
+    session$setInputs(placettes = c("P002", "P003"))
+    output$carte_ui
+    expect_identical(n, 1L)
+  })
+})
+
+test_that("carte : les marqueurs sont peints des le premier rendu, selection initiale comprise", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    w <- paste(as.character(output$carte), collapse = "")
+    expect_match(w, "addCircleMarkers", fixed = TRUE)
+    for (id in c("P001", "P002", "P003")) expect_match(w, id, fixed = TRUE)
+  })
+})
+
+test_that("CVAT : la fin du calcul d'un projet n'est pas attribuee a un autre", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  pp2 <- withr::local_tempdir()
+  n <- 0L
+  etat <- .cvat_module(pp, mnt, function(tache, plan, aoi, dev_path = NULL) n <<- n + 1L)
+  local_mocked_bindings(
+    get_project_path = function(id) if (identical(id, "p_video")) pp else pp2,
+    .acc_rvt_mnt_path = function(p) if (identical(p, pp)) mnt else NULL)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_identical(n, 1L)
+    app_state$current_project <- list(id = "p_autre", metadata = list())
+    session$flushReact()
+    # Le calcul de A se termine en echec pendant que B est ouvert.
+    .cvat_terminer(echec = TRUE)
+    session$flushReact()
+    expect_false(cvat_echec())
+    expect_false(cvat_en_cours())
+    expect_false(grepl("a échoué", paste(as.character(output$cvat_info$html), collapse = " ")))
+  })
+})
+
+test_that("CVAT : apres un echec, quitter puis revenir sur la vue ne relance pas le calcul", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  n <- 0L
+  etat <- .cvat_module(pp, mnt, function(tache, plan, aoi, dev_path = NULL) n <<- n + 1L)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_identical(n, 1L)
+    .cvat_terminer(echec = TRUE)
+    session$flushReact()
+    app_state$active_terrain_tab <- "accessibility"
+    session$flushReact()
+    app_state$active_terrain_tab <- "inventaire_video"
+    session$flushReact()
+    expect_identical(n, 1L)
+  })
+})
+
+test_that("parametres : video_params_remplaces nomme les valeurs hors bornes", {
+  expect_identical(video_params_remplaces(15, 7.5, "deg", NA), character(0))
+  expect_identical(video_params_remplaces(80, 7.5, "deg", NA), "video_rayon")
+  expect_identical(video_params_remplaces(15, -2, "rad", 99),
+                   c("video_seuil_diam", "video_unite_azimut", "video_declinaison"))
+  # Une declinaison vide est legitime ; un rayon efface (NA) retombe sur le defaut.
+  expect_identical(video_params_remplaces(NA, 7.5, "deg", NULL), "video_rayon")
+})
+
+test_that("Sources & parametres : un rayon hors bornes est signale, pas annonce comme enregistre tel quel", {
+  notifs <- character(0)
+  local_mocked_bindings(
+    theia_api_key_configured = function() FALSE,
+    set_project_video_params = function(...) invisible(TRUE),
+    load_project = function(pid) NULL,
+    deny_if_readonly = function(...) FALSE)
+  local_mocked_bindings(
+    showNotification = function(ui, ..., type = "default") {
+      notifs <<- c(notifs, paste(type, paste(as.character(ui), collapse = "")))
+    }, .package = "shiny")
+  shiny::testServer(mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    session$setInputs(vp_rayon = 80, vp_seuil = 7.5, vp_unite = "deg", vp_decl = NA)
+    session$setInputs(vp_save = 1)
+    expect_true(any(grepl("^warning .*rayon de placette", notifs)))
+    notifs <<- character(0)
+    session$setInputs(vp_rayon = 15)
+    session$setInputs(vp_save = 2)
+    expect_false(any(grepl("^warning", notifs)))
+  })
+})
+
+test_that("carte : un autre projet avec son plan recadre la carte, une selection non", {
+  ppA <- withr::local_tempdir(); ppB <- withr::local_tempdir()
+  planB <- sf::st_sf(plot_id = c("Q1", "Q2"), geometry = sf::st_sfc(
+    sf::st_point(c(652400, 6862050)), sf::st_point(c(652500, 6862150)), crs = 2154))
+  local_mocked_bindings(
+    get_project_path = function(id) if (identical(id, "p_video")) ppA else ppB,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path)
+      if (identical(project_path, ppA)) .plan_video3() else planB,
+    video_coeur_disponible = function() TRUE,
+    .acc_cvat_overlay_raster = function(...) NULL)
+  cadres <- list()
+  local_mocked_bindings(
+    fitBounds = function(map, lng1, lat1, lng2, lat2, ...) {
+      cadres[[length(cadres) + 1L]] <<- c(lng1, lat1); map
+    }, .package = "leaflet")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    invisible(output$carte)
+    expect_length(cadres, 1L)
+    # Une selection ne recadre pas.
+    session$setInputs(placettes = "P001")
+    invisible(output$carte)
+    expect_length(cadres, 1L)
+    # Un autre projet, avec son plan a Paris : nouveau cadrage sur B.
+    app_state$current_project <- list(id = "p_autre", metadata = list())
+    session$flushReact()
+    invisible(output$carte)
+    expect_length(cadres, 2L)
+    expect_equal(cadres[[2]][1], 2.35, tolerance = 0.05)
+    expect_equal(cadres[[2]][2], 48.85, tolerance = 0.05)
   })
 })

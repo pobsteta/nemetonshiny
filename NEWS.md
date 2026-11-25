@@ -1,6 +1,13 @@
-# nemetonshiny 2026.11.6.9002 (en développement)
+# nemetonshiny 2026.11.6.9003 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043 et 048).
+
+## Changements
+
+- **Inventaire vidéo : carte des placettes, paramètres déplacés, relief CVAT calculé s'il manque** (mission 050, `R/mod_inventaire_video.R`, `R/service_inventaire_video.R`, `R/mod_sources_config.R`).
+  - La vue « Préparer » montre une carte Leaflet des placettes du plan : point vert plein = sélectionnée, point gris creux = désélectionnée, étiquette = identifiant. Un clic bascule la sélection ; la liste à cocher et la carte restent d'accord dans les deux sens. Le relief CVAT sert de fond s'il existe déjà. Placettes sans géométrie ou sans SCR déclaré : écartées de la carte (aucune position devinée).
+  - Rayon, diamètre minimal, unité d'azimut et déclinaison quittent la vue pour **Paramètres › Sources & paramètres** (bloc « Inventaire vidéo », enregistré dans les métadonnées du projet sous `video_params`, comme les autres calibrages). Défauts inchangés : 15 m, 7,5 cm, degrés, déclinaison vide (WMM2025 par placette). La vue n'en garde qu'un rappel d'une ligne. La coche « Inclure MNT, MNH et houppiers » reste dans la vue.
+  - Une ligne d'état sous cette coche dit si le relief CVAT sera joint (« joint au projet », « calcul en cours », ou « absent » avec la raison). **Le CVAT est calculé en tâche de fond à l'arrivée sur la vue** quand il manque et que le MNT est le LiDAR HD natif (jamais sur le repli WMS ; un échec récent n'est pas rejoué). Le bouton « Générer » reste utilisable pendant le calcul : un projet généré à ce moment-là part sans relief, et la ligne le dit.
 
 ## Corrections
 
