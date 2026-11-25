@@ -47,6 +47,69 @@ video_coeur_disponible <- function() {
   f(...)
 }
 
+#' Does the installed core report the progress of the QField project build?
+#'
+#' True when `creer_projet_inventaire_video()` has a `progress_callback`
+#' argument (nemeton mission 056).
+#' @noRd
+video_coeur_accepte_progression <- function() {
+  f <- .video_coeur("creer_projet_inventaire_video")
+  !is.null(f) && "progress_callback" %in% names(formals(f))
+}
+
+#' Write one progress event of the core to the progress file (never fatal)
+#'
+#' One line `etape<TAB>i<TAB>n<TAB>secondes`, written to a temporary file then
+#' renamed so the session never reads a half-written line.
+#' @param evt List `list(etape, i, n, secondes)` of the core callback.
+#' @noRd
+video_progression_ecrire <- function(chemin, evt) {
+  tryCatch({
+    ligne <- paste(evt$etape, as.integer(evt$i), as.integer(evt$n),
+                   format(as.numeric(evt$secondes), digits = 6), sep = "\t")
+    tmp <- paste0(chemin, ".tmp")
+    writeLines(ligne, tmp)
+    file.rename(tmp, chemin)
+  }, error = function(e) NULL, warning = function(w) NULL)
+  invisible(NULL)
+}
+
+#' Read the last progress event, or `NULL` when absent or unreadable
+#' @return List `(etape, i, n, secondes)` or `NULL`.
+#' @noRd
+video_progression_lire <- function(chemin) {
+  if (is.null(chemin) || !length(chemin) || is.na(chemin[1]) || !file.exists(chemin[1])) {
+    return(NULL)
+  }
+  x <- tryCatch(readLines(chemin[1], n = 1L, warn = FALSE), error = function(e) character(0))
+  if (!length(x)) return(NULL)
+  p <- strsplit(x, "\t", fixed = TRUE)[[1]]
+  if (length(p) != 4L || !nzchar(p[1])) return(NULL)
+  v <- suppressWarnings(as.numeric(p[2:4]))
+  if (anyNA(v)) return(NULL)
+  list(etape = p[1], i = as.integer(v[1]), n = as.integer(v[2]), secondes = v[3])
+}
+
+#' Line shown under the "Build" button while the project is being built
+#'
+#' @param prog Event of [video_progression_lire()], or `NULL` (nothing received).
+#' @param ecoule Seconds since the click.
+#' @param tr i18n object.
+#' @noRd
+video_progression_ligne <- function(prog, ecoule, tr) {
+  mm <- floor(ecoule / 60)
+  duree <- sprintf("%d:%02d", as.integer(mm), as.integer(floor(ecoule - 60 * mm)))
+  if (is.null(prog)) {
+    return(sprintf(tr$t("video_pg_ligne"), tr$t("video_pg_attente"), duree))
+  }
+  cle <- paste("video", "pg", prog$etape, sep = "_")  # cle composee
+  nom <- if (cle %in% names(TRANSLATIONS)) tr$t(cle) else prog$etape
+  if (prog$etape %in% c("placettes", "dalles_mnt", "houppiers") && prog$n > 0L) {
+    nom <- sprintf("%s (%d/%d)", nom, prog$i, prog$n)
+  }
+  sprintf(tr$t("video_pg_ligne"), nom, duree)
+}
+
 #' Build the QField project of the video inventory
 #'
 #' Thin wrapper over `nemeton::creer_projet_inventaire_video()`.
@@ -62,6 +125,15 @@ video_coeur_disponible <- function() {
 #' @noRd
 video_creer_projet <- function(...) {
   args <- list(...)
+  # Relais de la progression : le worker ne peut pas toucher a l'interface, le
+  # rappel du coeur ecrit l'etape dans un petit fichier que la session lit. Le
+  # rappel n'est passe QUE si le coeur installe l'accepte (avant la mission 056
+  # de nemeton, rien ne change).
+  fichier <- args$progression_fichier
+  args["progression_fichier"] <- NULL
+  if (!is.null(fichier) && video_coeur_accepte_progression()) {
+    args$progress_callback <- function(evt) video_progression_ecrire(fichier, evt)
+  }
   res <- tryCatch(
     do.call(.video_appeler, c(list("creer_projet_inventaire_video"), args)),
     nemeton_erreur_cvat_codage = function(e) e)

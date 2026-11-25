@@ -1701,3 +1701,183 @@ test_that("055 : les deux cles i18n existent en FR et EN", {
     expect_false(identical(get_i18n("fr")$t(k), get_i18n("en")$t(k)))
   }
 })
+
+# ---- Mission 058 : progression de la creation du projet QField ------------
+
+.evts_058 <- function() {
+  e <- function(etape, i, n) list(etape = etape, i = i, n = n, secondes = 1.5)
+  c(list(e("sources", 0, 1), e("sources", 1, 1), e("placettes", 0, 3)),
+    lapply(1:3, function(i) e("placettes", i, 3)),
+    list(e("houppiers", 0, 4), e("houppiers", 2, 4), e("qgz", 1, 1)))
+}
+
+test_that("058 cas 1 : les evenements du coeur arrivent dans le fichier, dans l'ordre", {
+  fichier <- withr::local_tempfile(fileext = ".txt")
+  vus <- list()
+  local_mocked_bindings(
+    video_coeur_accepte_progression = function() TRUE,
+    .video_appeler = function(nom, ..., progress_callback = NULL) {
+      expect_true(is.function(progress_callback))
+      for (e in .evts_058()) {
+        progress_callback(e)
+        vus[[length(vus) + 1L]] <<- video_progression_lire(fichier)
+      }
+      "/p/x.qgz"
+    })
+  res <- video_creer_projet(project_path = "/p", progression_fichier = fichier)
+  expect_identical(res, "/p/x.qgz")
+  expect_identical(vus[[4]]$etape, "placettes")
+  expect_identical(c(vus[[4]]$i, vus[[4]]$n), c(1L, 3L))
+  expect_identical(vus[[8]]$etape, "houppiers")
+  expect_identical(c(vus[[8]]$i, vus[[8]]$n), c(2L, 4L))
+  expect_identical(video_progression_lire(fichier)$etape, "qgz")
+})
+
+test_that("058 cas 1 : la ligne affichee dit l'etape, le compteur i/n et le temps", {
+  tr <- get_i18n("fr")
+  l <- video_progression_ligne(list(etape = "houppiers", i = 2L, n = 4L, secondes = 3), 75, tr)
+  expect_match(l, "Segmentation des houppiers \\(2/4\\)")
+  expect_match(l, "1:15")
+  # Une etape a une seule unite n'affiche pas de compteur.
+  l2 <- video_progression_ligne(list(etape = "qgz", i = 1L, n = 1L, secondes = 3), 5, tr)
+  expect_false(grepl("1/1", l2))
+  # Le i = 0 ré-emis au repli sequentiel fait repartir le compteur.
+  l3 <- video_progression_ligne(list(etape = "houppiers", i = 0L, n = 4L, secondes = 0), 90, tr)
+  expect_match(l3, "\\(0/4\\)")
+})
+
+test_that("058 cas 1 : dans le module, la ligne suit le fichier de progression", {
+  pp <- withr::local_tempdir()
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_coeur_disponible = function() TRUE,
+    video_coeur_accepte_progression = function() TRUE,
+    video_lancer_generation = function(tache, args, ...) recu <<- args
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = "P001", generer = 1)
+    expect_true(nzchar(recu$progression_fichier))
+    video_progression_ecrire(recu$progression_fichier,
+      list(etape = "placettes", i = 2L, n = 3L, secondes = 1))
+    # Le minuteur de 500 ms relit le fichier.
+    session$elapse(600)
+    expect_match(output$progression_info$html, "2/3")
+    expect_match(output$progression_info$html, "Rasters et topographie|Plot rasters")
+  })
+})
+
+test_that("058 cas 2 : coeur sans progress_callback, rien en trop et generation inchangee", {
+  fichier <- withr::local_tempfile(fileext = ".txt")
+  appels <- new.env(); appels$liste <- list()
+  local_mocked_bindings(
+    video_coeur_accepte_progression = function() FALSE,
+    .video_appeler = .coeur_simule(list("/p/x.qgz"), appels))
+  res <- video_creer_projet(project_path = "/p", progression_fichier = fichier)
+  expect_identical(res, "/p/x.qgz")
+  expect_identical(names(appels$liste[[1]]), "project_path")
+  expect_false(file.exists(fichier))
+})
+
+test_that("058 cas 2 : le predicat lit la signature du coeur installe", {
+  local_mocked_bindings(.video_coeur = function(nom) function(a, progress_callback = NULL) NULL)
+  expect_true(video_coeur_accepte_progression())
+  local_mocked_bindings(.video_coeur = function(nom) function(a) NULL)
+  expect_false(video_coeur_accepte_progression())
+  local_mocked_bindings(.video_coeur = function(nom) NULL)
+  expect_false(video_coeur_accepte_progression())
+})
+
+test_that("058 cas 2 : coeur sans progression, le module n'affiche aucune ligne d'attente", {
+  pp <- withr::local_tempdir()
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_coeur_disponible = function() TRUE,
+    video_coeur_accepte_progression = function() FALSE,
+    video_lancer_generation = function(tache, args, ...) NULL
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = "P001", generer = 1)
+    expect_null(output$progression_info)
+  })
+})
+
+test_that("058 cas 3 : un fichier de progression illisible ne fait pas echouer la generation", {
+  # Dossier inexistant : l'ecriture echoue, la generation va au bout.
+  fichier <- file.path(withr::local_tempdir(), "absent", "p.txt")
+  local_mocked_bindings(
+    video_coeur_accepte_progression = function() TRUE,
+    .video_appeler = function(nom, ..., progress_callback = NULL) {
+      progress_callback(list(etape = "sources", i = 0L, n = 1L, secondes = 0))
+      "/p/x.qgz"
+    })
+  expect_no_error(res <- video_creer_projet(progression_fichier = fichier))
+  expect_identical(res, "/p/x.qgz")
+  # Lecture : contenu invalide ou absent -> NULL, jamais d'erreur.
+  f <- withr::local_tempfile(fileext = ".txt")
+  expect_null(video_progression_lire(f))
+  writeLines("n'importe quoi", f)
+  expect_null(video_progression_lire(f))
+  writeLines("houppiers\tx\t4\t1", f)
+  expect_null(video_progression_lire(f))
+  file.create(f)
+  expect_null(video_progression_lire(f))
+  expect_null(video_progression_lire(NULL))
+})
+
+test_that("058 : apres un refus de codage, la reprise garde le rappel de progression", {
+  fichier <- withr::local_tempfile(fileext = ".txt")
+  n <- 0L
+  local_mocked_bindings(
+    video_coeur_accepte_progression = function() TRUE,
+    .video_appeler = function(nom, ..., progress_callback = NULL) {
+      n <<- n + 1L
+      expect_true(is.function(progress_callback))
+      if (n == 1L) stop(.erreur_codage())
+      "/p/x.qgz"
+    })
+  res <- video_creer_projet(cvat_path = "/p/cvat.tif", progression_fichier = fichier)
+  expect_identical(n, 2L)
+  expect_true(isTRUE(attr(res, "cvat_refuse")))
+})
+
+test_that("058 cas 4 : tache lancee sans progression recue, la ligne dit l'attente", {
+  pp <- withr::local_tempdir()
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_coeur_disponible = function() TRUE,
+    video_coeur_accepte_progression = function() TRUE,
+    video_lancer_generation = function(tache, args, ...) NULL
+  )
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    expect_null(output$progression_info)
+    session$setInputs(placettes = "P001", generer = 1)
+    expect_match(output$progression_info$html, "processus libre|free process")
+  })
+})
+
+test_that("058 cas 5 : cles i18n FR/EN des sept etapes, de l'attente et de la ligne", {
+  cles <- paste0("video_pg_", c("sources", "placettes", "dalles_mnt", "houppiers",
+                                "cvat", "geopackage", "qgz", "attente", "ligne"))
+  expect_true(all(nchar(cles) <= 30))
+  for (k in cles) {
+    expect_true(k %in% names(TRANSLATIONS), info = k)
+    expect_true(nzchar(TRANSLATIONS[[k]]$fr) && nzchar(TRANSLATIONS[[k]]$en), info = k)
+  }
+  for (lang in c("fr", "en")) {
+    tr <- get_i18n(lang)
+    for (e in c("sources", "placettes", "dalles_mnt", "houppiers", "cvat", "geopackage", "qgz")) {
+      l <- video_progression_ligne(list(etape = e, i = 1L, n = 2L, secondes = 0), 1, tr)
+      expect_false(grepl("^video_pg_|^\\[", l), info = paste(lang, e))
+    }
+  }
+  # Pas de litteral dans le module : la ligne passe par video_progression_ligne.
+  src <- readLines(testthat::test_path("../../R/mod_inventaire_video.R"), encoding = "UTF-8")
+  expect_false(any(grepl("processus libre|free process", src)))
+})

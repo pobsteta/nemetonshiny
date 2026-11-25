@@ -994,6 +994,42 @@ TRANSLATIONS <- list(
     fr = "G\u00e9n\u00e9ration du projet QField de l'inventaire vid\u00e9o\u2026",
     en = "Building the video inventory QField project\u2026"
   ),
+  video_pg_ligne = list(
+    fr = "%s \u2014 %s \u00e9coul\u00e9es",
+    en = "%s \u2014 %s elapsed"
+  ),
+  video_pg_attente = list(
+    fr = "En attente d'un processus libre",
+    en = "Waiting for a free process"
+  ),
+  video_pg_sources = list(
+    fr = "Lecture des sources du projet",
+    en = "Reading the project sources"
+  ),
+  video_pg_placettes = list(
+    fr = "Rasters et topographie des placettes",
+    en = "Plot rasters and topography"
+  ),
+  video_pg_dalles_mnt = list(
+    fr = "Dalles du MNT",
+    en = "DTM tiles"
+  ),
+  video_pg_houppiers = list(
+    fr = "Segmentation des houppiers",
+    en = "Crown segmentation"
+  ),
+  video_pg_cvat = list(
+    fr = "Relief CVAT",
+    en = "CVAT relief"
+  ),
+  video_pg_geopackage = list(
+    fr = "\u00c9criture du GeoPackage",
+    en = "Writing the GeoPackage"
+  ),
+  video_pg_qgz = list(
+    fr = "Assemblage du projet QField",
+    en = "Assembling the QField project"
+  ),
   video_telecharger = list(
     fr = "T\u00e9l\u00e9charger le projet QField (.qgz + plugin Groma, zip)",
     en = "Download the QField project (.qgz + Groma plugin, zip)"
