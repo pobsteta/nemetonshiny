@@ -171,7 +171,11 @@ mod_sources_config_ui <- function(id) {
     # calibrages qui vivaient dans la barre d'actions de Carte UGF, a cote du
     # bouton qui les consomme - donc regles a chaque essai au lieu d'une fois
     # par massif.
-    shiny::uiOutput(ns("onf_block"))
+    shiny::uiOutput(ns("onf_block")),
+    # Idem pour la generation du projet QField de l'Inventaire video (rayon,
+    # diametre minimal, unite d'azimut, declinaison) : regles une fois par
+    # massif, rappelees dans la vue Terrain > Inventaire video.
+    shiny::uiOutput(ns("vp_block"))
   )
 }
 
@@ -199,7 +203,7 @@ mod_sources_config_server <- function(id, app_state) {
     # valeurs stockees et leurs modifications en cours disparaissaient.
     refresh <- shiny::reactiveValues(sufosat = 0, lst = 0, fast = 0, acc = 0,
                                      production = 0, desserte = 0, onf = 0,
-                                     regen = 0)
+                                     regen = 0, video = 0)
 
     # Identifiant du projet, qui ne change qu'avec le projet (pas a chaque
     # rechargement du meme projet).
@@ -1053,5 +1057,75 @@ mod_sources_config_server <- function(id, app_state) {
     })
 
     invisible(NULL)
+
+    # ========================================
+    # Inventaire video - parametres de generation du projet QField
+    # ========================================
+
+    output$vp_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh$video
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("video_params_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("video_params_hint"))
+
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(class = "mt-3 p-2 border rounded", header, hint,
+                              htmltools::tags$em(class = "text-muted small",
+                                                 i18n$t("sources_need_project"))))
+      }
+      vp <- project_video_params(shiny::isolate(app_state$current_project)$metadata)
+
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        bslib::layout_columns(
+          col_widths = c(4, 4, 4),
+          shiny::numericInput(ns("vp_rayon"), i18n$t("video_rayon"),
+                              value = vp$rayon_m, min = 5, max = 50, step = 1,
+                              width = "100%"),
+          shiny::numericInput(ns("vp_seuil"), i18n$t("video_seuil_diam"),
+                              value = vp$seuil_diam_cm, min = 0, max = 100,
+                              step = 0.5, width = "100%"),
+          shiny::radioButtons(
+            ns("vp_unite"), i18n$t("video_unite_azimut"), inline = TRUE,
+            choices = stats::setNames(
+              c("deg", "gr"), c(i18n$t("video_degres"), i18n$t("video_grades"))),
+            selected = vp$unite_azimut, width = "100%")),
+        shiny::numericInput(ns("vp_decl"), i18n$t("video_declinaison"),
+                            value = vp$declinaison_deg, min = -30, max = 30,
+                            step = 0.1, width = "100%"),
+        htmltools::tags$small(class = "text-muted d-block mb-2",
+                              i18n$t("video_declinaison_aide")),
+        shiny::actionButton(
+          ns("vp_save"), i18n$t("video_params_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$vp_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_video_params(
+          pid,
+          rayon_m         = input$vp_rayon,
+          seuil_diam_cm   = input$vp_seuil,
+          unite_azimut    = input$vp_unite,
+          declinaison_deg = input$vp_decl)
+        .refresh_project(pid, "video")
+        shiny::showNotification(i18n$t("video_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
   })
 }

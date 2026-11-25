@@ -27,27 +27,20 @@ mod_inventaire_video_ui <- function(id) {
       bslib::layout_columns(
         col_widths = c(5, 7),
         htmltools::div(
-          shiny::numericInput(ns("rayon"), i18n$t("video_rayon"),
-                              value = 15, min = 5, max = 50, step = 1),
-          shiny::numericInput(ns("seuil"), i18n$t("video_seuil_diam"),
-                              value = 7.5, min = 0, max = 100, step = 0.5),
-          shiny::radioButtons(ns("unite"), i18n$t("video_unite_azimut"),
-                              inline = TRUE,
-                              choices = stats::setNames(
-                                c("deg", "gr"),
-                                c(i18n$t("video_degres"), i18n$t("video_grades")))),
-          shiny::numericInput(ns("declinaison"), i18n$t("video_declinaison"),
-                              value = NA, min = -30, max = 30, step = 0.1),
-          htmltools::tags$p(class = "small text-muted mb-3",
-                            i18n$t("video_declinaison_aide")),
+          # Rayon, diametre minimal, unite d'azimut et declinaison : regles
+          # une fois par massif dans Parametres > Sources & parametres ; la
+          # vue n'en garde qu'un rappel.
+          shiny::uiOutput(ns("params_rappel")),
           shiny::checkboxInput(ns("lidar"), i18n$t("video_avec_lidar"), value = TRUE),
           shiny::uiOutput(ns("lidar_info")),
+          shiny::uiOutput(ns("cvat_info")),
           shiny::actionButton(ns("generer"), i18n$t("video_generer"),
                               icon = bsicons::bs_icon("phone"),
                               class = "btn-primary w-100 mb-2"),
           shiny::uiOutput(ns("telechargement"))
         ),
         htmltools::div(
+          shiny::uiOutput(ns("carte_ui")),
           shiny::uiOutput(ns("placettes_ui"))
         )
       )
@@ -132,6 +125,8 @@ mod_inventaire_video_server <- function(id, app_state) {
     }, ignoreNULL = FALSE)
 
     plan <- shiny::reactive(video_placettes_plan(project_path()))
+    params <- shiny::reactive(
+      project_video_params(app_state$current_project$metadata))
     chm <- shiny::reactive({
       p <- app_state$current_project
       if (is.null(p) || is.null(p$id)) return(NULL)
@@ -146,6 +141,33 @@ mod_inventaire_video_server <- function(id, app_state) {
     })
 
     # --- Preparer ------------------------------------------------------
+    # Selection des placettes : la liste a cocher et la carte en sont deux
+    # vues. `selection` suit la liste ; un clic sur la carte met la liste a
+    # jour, qui renvoie la meme valeur (aller-retour sans effet).
+    selection <- shiny::reactiveVal(character(0))
+    shiny::observeEvent(plan(), {
+      p <- plan()
+      selection(if (is.null(p)) character(0) else as.character(p$plot_id))
+    }, ignoreNULL = FALSE)
+    shiny::observeEvent(input$placettes, {
+      sel <- as.character(input$placettes)
+      if (!identical(sel, selection())) selection(sel)
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
+
+    output$params_rappel <- shiny::renderUI({
+      tr <- i18n()
+      pr <- params()
+      decl <- if (is.na(pr$declinaison_deg)) tr$t("video_decl_auto")
+              else format(pr$declinaison_deg)
+      unite <- tr$t(if (identical(pr$unite_azimut, "gr")) "video_grades" else "video_degres")
+      htmltools::div(
+        class = "small text-muted mb-3",
+        htmltools::p(class = "mb-1",
+                     sprintf(tr$t("video_params_rappel"), format(pr$rayon_m),
+                             format(pr$seuil_diam_cm), tolower(unite), decl)),
+        htmltools::p(class = "mb-0 fst-italic", tr$t("video_params_modifier")))
+    })
+
     output$placettes_ui <- shiny::renderUI({
       tr <- i18n()
       p <- plan()
@@ -156,6 +178,72 @@ mod_inventaire_video_server <- function(id, app_state) {
       ids <- as.character(p$plot_id)
       shiny::checkboxGroupInput(ns("placettes"), tr$t("video_placettes"),
                                 choices = ids, selected = ids, inline = TRUE)
+    })
+
+    # Carte des placettes : point vert plein = selectionnee, gris creux = non.
+    carte_donnees <- shiny::reactive(video_carte_donnees(plan(), selection()))
+
+    output$carte_ui <- shiny::renderUI({
+      if (is.null(carte_donnees())) return(NULL)
+      htmltools::tagList(
+        htmltools::tags$label(class = "form-label fw-semibold",
+                              i18n()$t("video_carte_titre")),
+        leaflet::leafletOutput(ns("carte"), height = "320px"),
+        htmltools::tags$small(class = "text-muted d-block mb-2",
+                              i18n()$t("video_carte_aide")))
+    })
+
+    output$carte <- leaflet::renderLeaflet({
+      d <- shiny::isolate(carte_donnees())
+      m <- leaflet::leaflet() |>
+        leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addMapPane("nemetonCvatBase", zIndex = 230)
+      # Relief CVAT en fond s'il existe deja (jamais calcule ici).
+      cvat_bg <- tryCatch(.acc_cvat_overlay_raster(shiny::isolate(project_path())),
+                          error = function(e) NULL)
+      if (!is.null(cvat_bg)) {
+        grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
+                                      domain = c(0, 1), na.color = "transparent")
+        m <- leaflet::addRasterImage(m, cvat_bg, colors = grey, opacity = 0.6,
+          group = "Relief CVAT", maxBytes = 16 * 1024^2,
+          options = leaflet::gridOptions(pane = "nemetonCvatBase"))
+      }
+      m <- leaflet::addLayersControl(
+        m, baseGroups = c("OSM", "Satellite"),
+        overlayGroups = if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
+        options = leaflet::layersControlOptions(collapsed = TRUE))
+      if (!is.null(d)) {
+        bb <- as.numeric(sf::st_bbox(d))
+        m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
+      }
+      m
+    })
+
+    # Marqueurs repeints par proxy : la carte ne se recree pas a chaque clic.
+    shiny::observe({
+      d <- carte_donnees()
+      if (is.null(d)) return()
+      xy <- sf::st_coordinates(d)
+      prox <- leaflet::leafletProxy("carte", session) |>
+        leaflet::clearGroup("placettes")
+      prox |> leaflet::addCircleMarkers(
+        lng = xy[, 1], lat = xy[, 2], layerId = d$plot_id, group = "placettes",
+        label = d$plot_id, radius = 8, weight = 2, color = "#1B6B1B",
+        fillColor = ifelse(d$selectionnee, "#1B6B1B", "#FFFFFF"),
+        fillOpacity = ifelse(d$selectionnee, 0.9, 0.05),
+        opacity = ifelse(d$selectionnee, 1, 0.7),
+        labelOptions = leaflet::labelOptions(noHide = TRUE, direction = "top",
+                                             textsize = "11px"))
+    })
+
+    shiny::observeEvent(input$carte_marker_click, {
+      p <- plan()
+      if (is.null(p)) return()
+      nouvelle <- video_basculer_selection(selection(), input$carte_marker_click$id,
+                                           as.character(p$plot_id))
+      selection(nouvelle)
+      shiny::updateCheckboxGroupInput(session, "placettes", selected = nouvelle)
     })
 
     shiny::observeEvent(chm(), {
@@ -175,6 +263,109 @@ mod_inventaire_video_server <- function(id, app_state) {
       if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
         find.package("nemetonshiny") else NULL,
       error = function(e) NULL)
+
+    # --- Relief CVAT : dit s'il sera joint, et le calcule s'il manque ---------
+    # Calcul en tache de fond, sur le seul MNT LiDAR HD natif, au meme patron
+    # que l'onglet Accessibilite. Il part a l'arrivee sur cette vue (jamais au
+    # simple chargement d'un projet depuis un autre onglet). Le bouton
+    # " Generer " reste utilisable : un projet genere pendant le calcul part sans
+    # relief, et la ligne d'etat le dit (le bloquer ferait attendre quelques
+    # minutes un forestier qui n'en a pas besoin).
+    cvat_en_cours <- shiny::reactiveVal(FALSE)
+    cvat_echec <- shiny::reactiveVal(FALSE)
+    cvat_maj <- shiny::reactiveVal(0L)
+
+    cvat_task <- shiny::ExtendedTask$new(
+      function(mnt_path, aoi, buffer_m, dev, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          asNamespace("nemetonshiny")$video_cvat_calculer(
+            mnt_path, aoi = aoi, buffer_m = buffer_m)
+        }, seed = TRUE)
+      })
+
+    cvat_aoi <- function() {
+      tryCatch(.resolve_project_aoi_2154(app_state$current_project),
+               error = function(e) NULL)
+    }
+    cvat_buffer <- function() {
+      .acc_buffer_m(project_accessibility_params(
+        app_state$current_project$metadata)$buffer_m)
+    }
+    cvat_plan <- function() {
+      video_cvat_plan(project_path(), cvat_aoi(), cvat_buffer())
+    }
+
+    # Changement de projet : l'etat du calcul de l'ancien ne vaut plus.
+    shiny::observeEvent(project_path(), {
+      cvat_echec(FALSE)
+    }, ignoreNULL = FALSE)
+
+    shiny::observeEvent(
+      list(app_state$active_main_tab, app_state$active_terrain_tab, project_path()), {
+        on_tab <- identical(app_state$active_main_tab, "terrain") &&
+          identical(app_state$active_terrain_tab, "inventaire_video")
+        if (!on_tab || is.null(project_path())) return()
+        if (shiny::isolate(cvat_en_cours()) || shiny::isolate(cvat_echec())) return()
+        if (identical(cvat_task$status(), "running")) return()
+        pl <- cvat_plan()
+        if (!identical(pl$etat, "a_calculer")) return()
+        cvat_en_cours(TRUE)
+        shiny::showNotification(i18n()$t("video_cvat_toast"), type = "message",
+                                duration = NULL, closeButton = FALSE,
+                                id = ns("cvat_calcul"), session = session)
+        tryCatch(video_lancer_cvat(cvat_task, pl, cvat_aoi(), dev_path),
+                 error = function(e) .cvat_terminer(echec = TRUE))
+      }, ignoreNULL = TRUE)
+
+    .cvat_terminer <- function(echec = FALSE) {
+      shiny::removeNotification(ns("cvat_calcul"), session = session)
+      cvat_en_cours(FALSE)
+      pret <- !echec && identical(cvat_plan()$etat, "joint")
+      cvat_echec(!pret)
+      cvat_maj(cvat_maj() + 1L)
+      shiny::showNotification(
+        i18n()$t(if (pret) "video_cvat_pret" else "video_cvat_echec"),
+        type = if (pret) "message" else "warning", duration = 6)
+    }
+
+    shiny::observeEvent(cvat_task$status(), {
+      st <- cvat_task$status()
+      if (st %in% c("success", "error")) .cvat_terminer(echec = identical(st, "error"))
+    })
+
+    output$cvat_info <- shiny::renderUI({
+      cvat_maj()
+      tr <- i18n()
+      if (is.null(project_path())) return(NULL)
+      # Relue de temps en temps : un CVAT calcule dans Accessibilite pendant
+      # que cette vue est ouverte doit apparaitre (sortie suspendue masquee).
+      shiny::invalidateLater(10000, session)
+      pl <- cvat_plan()
+      texte <- if (identical(pl$etat, "joint")) {
+        tr$t("video_cvat_joint")
+      } else if (cvat_en_cours()) {
+        tr$t("video_cvat_encours")
+      } else {
+        raison <- if (cvat_echec()) "video_cvat_echec" else
+          pl$raison %||% "video_cvat_attente"
+        sprintf(tr$t("video_cvat_absent"), tr$t(raison))
+      }
+      classe <- if (identical(pl$etat, "joint")) "text-success" else "text-muted"
+      htmltools::p(class = paste("small", classe), texte)
+    })
 
     tache <- shiny::ExtendedTask$new(function(args, dev, app_opts) {
       if (requireNamespace("future", quietly = TRUE)) {
@@ -201,11 +392,10 @@ mod_inventaire_video_server <- function(id, app_state) {
       pp <- project_path()
       # Le MNT est resolu par le coeur depuis `project_path`.
       res <- video_args_generation(
-        project_path = pp, placettes = plan(), plot_ids = input$placettes,
-        rayon_m = input$rayon, seuil_diam_cm = input$seuil,
-        unite_azimut = input$unite, declinaison_deg = input$declinaison,
+        project_path = pp, placettes = plan(), plot_ids = selection(),
         avec_lidar = isTRUE(input$lidar), chm = chm(),
-        lang = app_state$language %||% "fr")
+        lang = app_state$language %||% "fr",
+        metadata = app_state$current_project$metadata)
       if (is.character(res)) {
         shiny::showNotification(i18n()$t(res), type = "warning")
         return(NULL)

@@ -870,6 +870,70 @@ TRANSLATIONS <- list(
     fr = "Facultatif. Laisser vide : Groma la calcule \u00e0 chaque placette avec le mod\u00e8le WMM2025. Une valeur saisie reste prioritaire.",
     en = "Optional. Leave empty: Groma computes it at each plot with the WMM2025 model. A value typed in takes precedence."
   ),
+  video_carte_titre = list(fr = "Carte des placettes", en = "Plot map"),
+  video_carte_aide = list(
+    fr = "Point vert plein : placette s\u00e9lectionn\u00e9e. Point gris creux : d\u00e9s\u00e9lectionn\u00e9e. Un clic sur un point bascule sa s\u00e9lection.",
+    en = "Solid green dot: selected plot. Hollow grey dot: deselected plot. Click a dot to toggle its selection."
+  ),
+  video_params_section = list(
+    fr = "Inventaire vid\u00e9o : param\u00e8tres de g\u00e9n\u00e9ration",
+    en = "Video inventory: generation settings"
+  ),
+  video_params_hint = list(
+    fr = "R\u00e9gl\u00e9s une fois par massif ; la vue Inventaire vid\u00e9o les rappelle.",
+    en = "Set once per massif; the Video inventory view shows them as a reminder."
+  ),
+  video_params_save = list(fr = "Enregistrer", en = "Save"),
+  video_params_saved = list(
+    fr = "Param\u00e8tres de l'inventaire vid\u00e9o enregistr\u00e9s.",
+    en = "Video inventory settings saved."
+  ),
+  video_params_rappel = list(
+    fr = "Rayon %s m, diam\u00e8tre minimal %s cm, azimuts en %s, d\u00e9clinaison : %s.",
+    en = "Radius %s m, minimum diameter %s cm, azimuths in %s, declination: %s."
+  ),
+  video_decl_auto = list(fr = "WMM2025 par placette", en = "WMM2025 per plot"),
+  video_params_modifier = list(
+    fr = "\u00c0 modifier dans Param\u00e8tres \u203a Sources & param\u00e8tres.",
+    en = "Change them in Settings \u203a Sources & parameters."
+  ),
+  video_cvat_joint = list(
+    fr = "Relief CVAT : joint au projet",
+    en = "CVAT relief: included in the project"
+  ),
+  video_cvat_encours = list(
+    fr = "Relief CVAT : calcul en cours \u2014 un projet g\u00e9n\u00e9r\u00e9 maintenant part sans relief.",
+    en = "CVAT relief: computing \u2014 a project generated now goes without relief."
+  ),
+  video_cvat_absent = list(
+    fr = "Relief CVAT : absent \u2014 %s",
+    en = "CVAT relief: missing \u2014 %s"
+  ),
+  video_cvat_attente = list(
+    fr = "le calcul part \u00e0 l'ouverture de cette vue, ou se lance dans Accessibilit\u00e9.",
+    en = "the computation starts when this view opens, or can be run in Accessibility."
+  ),
+  video_cvat_sans_mnt = list(
+    fr = "pas de MNT dans le projet ; le calculer dans Accessibilit\u00e9 apr\u00e8s avoir acquis le LiDAR.",
+    en = "no DTM in the project; compute it in Accessibility once the LiDAR is acquired."
+  ),
+  video_cvat_mnt_wms = list(
+    fr = "le MNT du projet vient du WMS, pas du LiDAR HD (le relief y serait faussement ray\u00e9).",
+    en = "the project DTM comes from the WMS, not from LiDAR HD (the relief would show false stripes)."
+  ),
+  video_cvat_sans_outil = list(
+    fr = "le paquet foretaccess install\u00e9 est trop ancien (1.24.0 requis).",
+    en = "the installed foretaccess package is too old (1.24.0 required)."
+  ),
+  video_cvat_echec = list(
+    fr = "le dernier calcul a \u00e9chou\u00e9 ; le relancer dans Accessibilit\u00e9.",
+    en = "the last computation failed; run it again in Accessibility."
+  ),
+  video_cvat_toast = list(
+    fr = "Relief CVAT : calcul en cours (quelques minutes).",
+    en = "CVAT relief: computing (a few minutes)."
+  ),
+  video_cvat_pret = list(fr = "Relief CVAT pr\u00eat.", en = "CVAT relief ready."),
   video_infos_validation = list(fr = "Informations", en = "Information"),
   # Envoi du projet au telephone via le serveur Groma (brief 2026-10-17).
   video_envoyer_telephone = list(fr = "Envoyer au t\u00e9l\u00e9phone", en = "Send to phone"),
