@@ -340,6 +340,10 @@ list_available_indicators <- function(metadata = NULL) {
     # Biodiversity (B)
     "indicateur_b1_protection", "indicateur_b2_structure", "indicateur_b3_connectivite",
     "indicateur_b4_div_spectrale",
+    # B5 stratification verticale (spec 067) : lit le nuage de points du projet
+    # (`cache/layers/lidar_nuage`). Sans nuage : NA et `.b5_status`, famille B
+    # inchangee.
+    "indicateur_b5_stratification",
     # Water (W)
     "indicateur_w1_reseau", "indicateur_w2_zones_humides", "indicateur_w3_humidite",
     # Air (A)
@@ -1108,6 +1112,13 @@ start_computation <- function(project_id,
     if ("indicateur_t4_vitalite" %in% effective_indicators &&
         !"ser" %in% names(compute_unit)) {
       compute_unit <- ensure_ugf_ser(compute_unit, project_path)
+    }
+
+    # B5 (spec 067) : dossier du nuage de points du projet, passe tel quel au
+    # coeur par compute_single_indicator(). NULL sans dalle : B5 sera NA avec
+    # le statut `skipped_no_lidar`, sans erreur.
+    if ("indicateur_b5_stratification" %in% effective_indicators) {
+      layers$lidar_nuage_dir <- .b5_dossier_nuage(project_path)
     }
 
     # Spectral diversity (B4 alpha / L3 beta) - biodivMapR, spec 028.
@@ -5447,6 +5458,15 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       args$source <- "soilgrids"
     }
 
+    # B5 stratification verticale (spec 067) -> `nuage` : le DOSSIER des dalles
+    # du projet, lu dalle par dalle par le coeur (lidR). Les dalles brutes de
+    # l'IGN portent des altitudes, d'ou `normaliser = TRUE`. Sans dossier, rien
+    # n'est passe : le coeur rend NA et `skipped_no_lidar`.
+    if ("nuage" %in% func_args && !is.null(layers$lidar_nuage_dir)) {
+      args$nuage <- layers$lidar_nuage_dir
+      if ("normaliser" %in% func_args) args$normaliser <- TRUE
+    }
+
     # Call function with appropriate arguments
     result <- do.call(func, args)
 
@@ -5487,6 +5507,31 @@ compute_single_indicator <- function(indicator, parcels, layers) {
   # renvoyait `runif(0, 100)`, sauvegarde et affiche comme une valeur reelle.
   stop(sprintf("Indicator %s is unknown to the installed nemeton core.", indicator),
        call. = FALSE)
+}
+
+
+#' Folder of the project's LiDAR point cloud, when it holds tiles
+#'
+#' @description
+#' `<project>/cache/layers/lidar_nuage` is where the LiDAR HD COPC tiles are
+#' cached. B5 reads the folder itself; this only says whether it is worth
+#' passing (at least one non-trivial `.laz` / `.las`). A tile of a few bytes is
+#' a failed download, not a cloud.
+#'
+#' @param project_path Character. Project directory.
+#'
+#' @return The folder path, or `NULL` (no folder, no tile).
+#'
+#' @noRd
+.b5_dossier_nuage <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  dossier <- file.path(project_path, "cache", "layers", "lidar_nuage")
+  if (!dir.exists(dossier)) return(NULL)
+  dalles <- list.files(dossier, pattern = "\\.la[sz]$", full.names = TRUE,
+                       ignore.case = TRUE)
+  dalles <- dalles[file.info(dalles)$size > 1024]
+  if (length(dalles) == 0L) return(NULL)
+  dossier
 }
 
 

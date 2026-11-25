@@ -96,6 +96,7 @@ EXPORTS <- list(
   indicateur_b2_structure          = c("units", "layers", "strata_field", "age_class_field", "species_field", "method", "weights", "use_height_cv", "chm", "cv_chm_weight"),
   indicateur_b3_connectivite       = c("units", "bdforet", "dem", "max_distance"),
   indicateur_b4_div_spectrale      = c("units", "spectral", "reflectance", "embedding", "layers", "..."),
+  indicateur_b5_stratification     = c("units", "nuage", "layers", "strates", "profil", "normaliser", "hauteur_sol", "hauteur_max", "classes", "min_points", "resolution"),
   indicateur_c1_biomasse           = c("units", "layers", "species_col", "age_col", "density_col", "chm", "dbh_col", "stems_col", "h_dom_percentile", "bef"),
   indicateur_c2_ndvi               = c("units", "layers", "ndvi_layer", "trend", "fapar"),
   indicateur_e1_bois_energie       = c("units", "volume_field", "species_field", "harvest_rate", "residue_fraction", "coppice_area_field", "chm", "production_field", "taux_mobilisation", "ser_field"),
@@ -277,7 +278,7 @@ test_that("le plancher nemeton est lu dans DESCRIPTION, pas recopie", {
 
 test_that("le contrat est sans doublon", {
   expect_false(anyDuplicated(.contrat_noms()) > 0L)
-  expect_length(EXPORTS, 181L)
+  expect_length(EXPORTS, 182L)
   expect_length(INTERNES, 18L)
 })
 

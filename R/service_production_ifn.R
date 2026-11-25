@@ -57,6 +57,19 @@ PRODUCTION_ANNEX_COLS <- list(
     t4_accroissement_att = ".t4_accroissement_att",
     t4_h_dom             = ".t4_h_dom",
     t4_n_analogues       = ".t4_n_analogues"
+  ),
+  # B5 (spec 067) : profil vertical (parts des cinq strates, somme 1) et
+  # densite de retours, que la fiche de l'UGF affiche a cote du score. Le
+  # statut voyage en `.b5_status`.
+  indicateur_b5_stratification = c(
+    b5_densite = ".b5_densite",
+    b5_points  = ".b5_points",
+    b5_profil  = ".b5_profil",
+    b5_s1      = ".b5_s1",
+    b5_s2      = ".b5_s2",
+    b5_s3      = ".b5_s3",
+    b5_s4      = ".b5_s4",
+    b5_s5      = ".b5_s5"
   )
 )
 

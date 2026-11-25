@@ -12,8 +12,9 @@ test_that("list_available_indicators includes spectral diversity B4/L3 (spec 028
   expect_true("indicateur_t3_coupes_rases" %in% inds)  # SUFOSAT, spec 030
   expect_true("indicateur_a5_rafraichissement" %in% inds)  # LST, spec 032
   expect_true("indicateur_t4_vitalite" %in% inds)  # FORMS-T, spec 068
-  # 31 legacy indicators + B4 + L3 + T3 + A5 (source LST active par défaut) + T4
-  expect_equal(length(inds), 36L)
+  expect_true("indicateur_b5_stratification" %in% inds)  # nuage LiDAR, spec 067
+  # 31 legacy indicators + B4 + L3 + T3 + A5 (source LST active par défaut) + T4 + B5
+  expect_equal(length(inds), 37L)
 })
 
 test_that("B4/L3 are wired into the B and L family config (display)", {
