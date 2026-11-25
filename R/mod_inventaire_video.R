@@ -226,13 +226,22 @@ mod_inventaire_video_server <- function(id, app_state) {
     })
 
     output$carte <- leaflet::renderLeaflet({
-      d <- shiny::isolate(carte_donnees())
+      # Recree (cadrage, fond CVAT) quand le PROJET ou le PLAN change, jamais
+      # quand seule la selection change : `plan()` et `project_path()` sont lus
+      # ici sans isolate, la selection avec.
+      p <- plan()
+      pp <- project_path()
+      ids <- if (is.null(p)) character(0) else as.character(p$plot_id)
+      sel <- intersect(shiny::isolate(selection()), ids)
+      # Selection d'un autre plan (observateur pas encore passe) : tout.
+      if (!length(sel)) sel <- ids
+      d <- video_carte_donnees(p, sel)
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonCvatBase", zIndex = 230)
       # Relief CVAT en fond s'il existe deja (jamais calcule ici).
-      cvat_bg <- tryCatch(.acc_cvat_overlay_raster(shiny::isolate(project_path())),
+      cvat_bg <- tryCatch(.acc_cvat_overlay_raster(pp),
                           error = function(e) NULL)
       if (!is.null(cvat_bg)) {
         grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),

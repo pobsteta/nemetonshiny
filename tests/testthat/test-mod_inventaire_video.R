@@ -1530,3 +1530,37 @@ test_that("Sources & parametres : un rayon hors bornes est signale, pas annonce 
     expect_false(any(grepl("^warning", notifs)))
   })
 })
+
+test_that("carte : un autre projet avec son plan recadre la carte, une selection non", {
+  ppA <- withr::local_tempdir(); ppB <- withr::local_tempdir()
+  planB <- sf::st_sf(plot_id = c("Q1", "Q2"), geometry = sf::st_sfc(
+    sf::st_point(c(652400, 6862050)), sf::st_point(c(652500, 6862150)), crs = 2154))
+  local_mocked_bindings(
+    get_project_path = function(id) if (identical(id, "p_video")) ppA else ppB,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path)
+      if (identical(project_path, ppA)) .plan_video3() else planB,
+    video_coeur_disponible = function() TRUE,
+    .acc_cvat_overlay_raster = function(...) NULL)
+  cadres <- list()
+  local_mocked_bindings(
+    fitBounds = function(map, lng1, lat1, lng2, lat2, ...) {
+      cadres[[length(cadres) + 1L]] <<- c(lng1, lat1); map
+    }, .package = "leaflet")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    invisible(output$carte)
+    expect_length(cadres, 1L)
+    # Une selection ne recadre pas.
+    session$setInputs(placettes = "P001")
+    invisible(output$carte)
+    expect_length(cadres, 1L)
+    # Un autre projet, avec son plan a Paris : nouveau cadrage sur B.
+    app_state$current_project <- list(id = "p_autre", metadata = list())
+    session$flushReact()
+    invisible(output$carte)
+    expect_length(cadres, 2L)
+    expect_equal(cadres[[2]][1], 2.35, tolerance = 0.05)
+    expect_equal(cadres[[2]][2], 48.85, tolerance = 0.05)
+  })
+})
