@@ -1,12 +1,18 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9005 (en développement)
+## nemetonshiny 2026.11.6.9006 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
 cassant (missions 043 et 048).
 
 ### Changements
 
+- **Inventaire vidéo : la liste des placettes passe sous le bouton «
+  Générer le projet QField »** (`R/mod_inventaire_video.R`, demande de
+  Pascal du 2026-11-25). La colonne de gauche porte le rappel des
+  paramètres, la coche, l’état du relief, le bouton puis la liste à
+  cocher ; la colonne de droite garde la carte seule. Aucun changement
+  de comportement.
 - **Inventaire vidéo : la création du projet QField montre où elle en
   est** (mission 058, `R/service_inventaire_video.R`,
   `R/mod_inventaire_video.R`, `R/utils_i18n.R`). Sous le bouton «
@@ -46,6 +52,16 @@ cassant (missions 043 et 048).
     moment-là part sans relief, et la ligne le dit.
 
 ### Corrections
+
+- **Inventaire vidéo : la vue reprend le plan d’échantillonnage
+  régénéré** (`R/mod_inventaire_video.R`). La liste et la carte des
+  placettes lisaient `data/samples.gpkg` une seule fois, à l’ouverture
+  du projet : un plan régénéré dans « Export terrain » n’apparaissait
+  qu’après avoir rouvert le projet. La vue relit maintenant le plan à
+  chaque incrément de `app_state$samples_refresh` et ne le remplace que
+  s’il a changé : un enregistrement d’une autre couche (observations du
+  plan d’actions, reGénération) ne remet ni la sélection ni la carte à
+  zéro.
 
 - **Inventaire vidéo : un CVAT au codage inconnu ne prive plus du projet
   QField** (mission 055, `R/service_inventaire_video.R`,
