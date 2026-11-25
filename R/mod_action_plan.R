@@ -472,6 +472,17 @@ mod_action_plan_ui <- function(id) {
       ),
 
       bslib::nav_panel(
+        title = i18n$t("itin_titre"),
+        value = "itineraires",
+        icon = bsicons::bs_icon("signpost-split"),
+        bslib::card(
+          full_screen = TRUE,
+          bslib::card_header(i18n$t("itin_titre")),
+          bslib::card_body(mod_itineraires_ui(ns("itineraires")))
+        )
+      ),
+
+      bslib::nav_panel(
         title = i18n$t("action_plan_view_kanban"),
         value = "kanban",
         icon = bsicons::bs_icon("kanban"),
@@ -551,6 +562,9 @@ mod_action_plan_ui <- function(id) {
 mod_action_plan_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
+
+    # Onglet Itineraires (mission 066) : presentation des verdicts du coeur.
+    mod_itineraires_server("itineraires", app_state)
 
     # ============================================================
     # REACTIVES: plan, UGs, geometry

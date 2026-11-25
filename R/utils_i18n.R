@@ -1911,6 +1911,153 @@ TRANSLATIONS <- list(
     fr = "R\u00e9f\u00e9rence construite en Bourgogne-Franche-Comt\u00e9, climat 2019-2023.",
     en = "Reference built in Bourgogne-Franche-Comt\u00e9, 2019-2023 climate."
   ),
+  # Itineraires sylvicoles du plan d'actions (mission 066, specs 065 du coeur) :
+  # raisons d'exclusion `itin_r_<code>` (codes fermes du coeur), mentions
+  # « poids provisoires » et « catalogue en cours de sourcage ».
+  itin_titre = list(
+    fr = "Itin\u00e9raires",
+    en = "Itineraries"
+  ),
+  itin_profil_label = list(
+    fr = "Profil d'acteur :",
+    en = "Actor profile:"
+  ),
+  itin_poids_provisoires = list(
+    fr = "Poids provisoires : les poids des familles de chaque profil sont un point de d\u00e9part (familles prioritaires = 3, les autres = 1), pas une calibration. Le classement est un rang d'effets qualitatifs sourc\u00e9s, pas une mesure.",
+    en = "Provisional weights: each profile's family weights are a starting point (priority families = 3, others = 1), not a calibration. The ranking is an order of sourced qualitative effects, not a measurement."
+  ),
+  itin_catalogue_sourcage = list(
+    fr = "Catalogue en cours de sour\u00e7age : %d itin\u00e9raire(s) sur %d n'ont pas encore leurs sources et restent exclus.",
+    en = "Catalogue being sourced: %d of %d itineraries do not have their sources yet and stay excluded."
+  ),
+  itin_desserte_absente = list(
+    fr = "La distance de desserte n'est pas disponible pour ce projet : les itin\u00e9raires qui l'exigent restent en \u00ab donn\u00e9e manquante \u00bb.",
+    en = "Skidding distance is not available for this project: itineraries that require it stay as missing data."
+  ),
+  itin_aucun_projet = list(
+    fr = "Ouvrez un projet pour voir les itin\u00e9raires sylvicoles de ses UGF.",
+    en = "Open a project to see the silvicultural itineraries of its UGFs."
+  ),
+  itin_aucune_ugf = list(
+    fr = "Ce projet n'a pas encore d'UGF calcul\u00e9e : calculez les indicateurs pour voir les itin\u00e9raires.",
+    en = "This project has no computed UGF yet: compute the indicators to see the itineraries."
+  ),
+  itin_noyau_absent = list(
+    fr = "Le c\u0153ur nemeton install\u00e9 ne propose pas encore les itin\u00e9raires sylvicoles : mettez-le \u00e0 jour.",
+    en = "The installed nemeton core does not provide silvicultural itineraries yet: please update it."
+  ),
+  itin_erreur = list(
+    fr = "Les itin\u00e9raires n'ont pas pu \u00eatre calcul\u00e9s pour ce projet.",
+    en = "The itineraries could not be computed for this project."
+  ),
+  itin_aucun_comparable = list(
+    fr = "Aucun itin\u00e9raire admissible \u00e0 comparer.",
+    en = "No admissible itinerary to compare."
+  ),
+  itin_h_classement = list(
+    fr = "Classement sous le profil choisi",
+    en = "Ranking under the chosen profile"
+  ),
+  itin_h_admissibles = list(
+    fr = "Itin\u00e9raires admissibles et exclus, par UGF",
+    en = "Admissible and excluded itineraries, per UGF"
+  ),
+  itin_rang_note = list(
+    fr = "Le rang ordonne les itin\u00e9raires d'une UGF (1 = le mieux plac\u00e9). Ce n'est pas une note.",
+    en = "The rank orders the itineraries of a UGF (1 = best placed). It is not a score."
+  ),
+  itin_col_ugf = list(
+    fr = "UGF",
+    en = "UGF"
+  ),
+  itin_col_itineraire = list(
+    fr = "Itin\u00e9raire",
+    en = "Itinerary"
+  ),
+  itin_col_etat = list(
+    fr = "\u00c9tat",
+    en = "Status"
+  ),
+  itin_col_raison = list(
+    fr = "Raison",
+    en = "Reason"
+  ),
+  itin_col_rang = list(
+    fr = "Rang",
+    en = "Rank"
+  ),
+  itin_col_evaluees = list(
+    fr = "Familles \u00e9valu\u00e9es",
+    en = "Families assessed"
+  ),
+  itin_col_gagnantes = list(
+    fr = "Familles gagnantes",
+    en = "Winning families"
+  ),
+  itin_col_perdantes = list(
+    fr = "Familles perdantes",
+    en = "Losing families"
+  ),
+  itin_col_pareto = list(
+    fr = "Front de Pareto",
+    en = "Pareto front"
+  ),
+  itin_etat_adm = list(
+    fr = "Admissible",
+    en = "Admissible"
+  ),
+  itin_etat_exclu = list(
+    fr = "Exclu",
+    en = "Excluded"
+  ),
+  itin_etat_manque = list(
+    fr = "Donn\u00e9e manquante",
+    en = "Missing data"
+  ),
+  itin_oui = list(
+    fr = "Oui",
+    en = "Yes"
+  ),
+  itin_non = list(
+    fr = "Non",
+    en = "No"
+  ),
+  itin_r_station_insuffisante = list(
+    fr = "Station insuffisante pour cet itin\u00e9raire",
+    en = "Site quality too low for this itinerary"
+  ),
+  itin_r_hors_ser = list(
+    fr = "Hors des sylvo\u00e9cor\u00e9gions de cet itin\u00e9raire",
+    en = "Outside the sylvoecoregions of this itinerary"
+  ),
+  itin_r_essence_absente = list(
+    fr = "Essence de l'UGF absente des essences de l'itin\u00e9raire",
+    en = "UGF species not among the itinerary's species"
+  ),
+  itin_r_pente = list(
+    fr = "Pente trop forte pour cet itin\u00e9raire",
+    en = "Slope too steep for this itinerary"
+  ),
+  itin_r_desserte = list(
+    fr = "Desserte trop \u00e9loign\u00e9e ou absente",
+    en = "Skidding distance too long or no road access"
+  ),
+  itin_r_statut_protection = list(
+    fr = "Statut de protection incompatible",
+    en = "Incompatible protection status"
+  ),
+  itin_r_source_manquante = list(
+    fr = "Itin\u00e9raire sans source publi\u00e9e dans le catalogue",
+    en = "Itinerary without a published source in the catalogue"
+  ),
+  itin_r_donnee_manquante = list(
+    fr = "Donn\u00e9e manquante pour trancher",
+    en = "Data missing to decide"
+  ),
+  itin_r_inconnue = list(
+    fr = "Raison d'exclusion non reconnue",
+    en = "Unrecognised exclusion reason"
+  ),
   # B5 stratification verticale (spec 067, nemeton >= 2026.11.5) : un statut
   # par cause de NA (`b5_skipped_*`), `b5_statut_calculated` pour le cas nominal
   # (legende de l'histogramme : pas de cle `b5_calculated`, qui ferait afficher
