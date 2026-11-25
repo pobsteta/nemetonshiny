@@ -1,9 +1,10 @@
-# nemetonshiny 2026.11.6.9005 (en développement)
+# nemetonshiny 2026.11.6.9006 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043 et 048).
 
 ## Changements
 
+- **Inventaire vidéo : la liste des placettes passe sous le bouton « Générer le projet QField »** (`R/mod_inventaire_video.R`, demande de Pascal du 2026-11-25). La colonne de gauche porte le rappel des paramètres, la coche, l'état du relief, le bouton puis la liste à cocher ; la colonne de droite garde la carte seule. Aucun changement de comportement.
 - **Inventaire vidéo : la création du projet QField montre où elle en est** (mission 058, `R/service_inventaire_video.R`, `R/mod_inventaire_video.R`, `R/utils_i18n.R`). Sous le bouton « Générer », une ligne donne l'étape en cours (sources, placettes, dalles du MNT, houppiers, relief CVAT, GeoPackage, assemblage), le compteur `i/n` pour les placettes, les dalles et les houppiers, et le temps écoulé depuis le clic. Le worker écrit l'étape dans un petit fichier que la session relit toutes les 500 ms (patron de la génération des fiches du plan d'action). Tant que rien n'est arrivé, la ligne dit « En attente d'un processus libre ». Le rappel `progress_callback` n'est passé au cœur que s'il l'accepte (nemeton 056) : avec un cœur plus ancien, aucun argument en plus, aucune ligne, génération inchangée. Un fichier de progression illisible ne fait jamais échouer la génération.
 - **Inventaire vidéo : carte des placettes, paramètres déplacés, relief CVAT calculé s'il manque** (mission 050, `R/mod_inventaire_video.R`, `R/service_inventaire_video.R`, `R/mod_sources_config.R`).
   - La vue « Préparer » montre une carte Leaflet des placettes du plan : point vert plein = sélectionnée, point gris creux = désélectionnée, étiquette = identifiant. Un clic bascule la sélection ; la liste à cocher et la carte restent d'accord dans les deux sens. Le relief CVAT sert de fond s'il existe déjà. Placettes sans géométrie ou sans SCR déclaré : écartées de la carte (aucune position devinée).

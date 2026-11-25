@@ -34,6 +34,18 @@ test_that("l'UI expose les trois blocs et leurs commandes", {
   }
 })
 
+test_that("la liste des placettes est sous le bouton, la carte seule a droite", {
+  local_mocked_bindings(get_app_options = function() list(language = "fr"))
+  html <- as.character(mod_inventaire_video_ui("iv"))
+  p_gen <- regexpr('id="iv-generer"', html, fixed = TRUE)
+  p_pl <- regexpr('id="iv-placettes_ui"', html, fixed = TRUE)
+  p_carte <- regexpr('id="iv-carte_ui"', html, fixed = TRUE)
+  expect_true(p_gen > 0 && p_pl > 0 && p_carte > 0)
+  # ordre : bouton, puis liste (colonne de gauche), puis carte (colonne de droite)
+  expect_lt(p_gen, p_pl)
+  expect_lt(p_pl, p_carte)
+})
+
 test_that("aucun texte litteral : toutes les cles utilisees existent en FR et EN", {
   fichiers <- chemin_source("R", c("mod_inventaire_video.R",
                                    "service_inventaire_video.R",

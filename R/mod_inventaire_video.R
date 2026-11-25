@@ -38,11 +38,13 @@ mod_inventaire_video_ui <- function(id) {
                               icon = bsicons::bs_icon("phone"),
                               class = "btn-primary w-100 mb-2"),
           shiny::uiOutput(ns("progression_info")),
-          shiny::uiOutput(ns("telechargement"))
+          shiny::uiOutput(ns("telechargement")),
+          # Liste des placettes sous le bouton (Pascal, 2026-11-25) : la
+          # colonne de droite garde la carte seule.
+          shiny::uiOutput(ns("placettes_ui"))
         ),
         htmltools::div(
-          shiny::uiOutput(ns("carte_ui")),
-          shiny::uiOutput(ns("placettes_ui"))
+          shiny::uiOutput(ns("carte_ui"))
         )
       )
     ),
