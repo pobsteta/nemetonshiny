@@ -37,6 +37,7 @@ mod_inventaire_video_ui <- function(id) {
           shiny::actionButton(ns("generer"), i18n$t("video_generer"),
                               icon = bsicons::bs_icon("phone"),
                               class = "btn-primary w-100 mb-2"),
+          shiny::uiOutput(ns("progression_info")),
           shiny::uiOutput(ns("telechargement"))
         ),
         htmltools::div(
@@ -474,13 +475,36 @@ mod_inventaire_video_server <- function(id, app_state) {
         id = "video_en_cours", session = session)
       session$sendCustomMessage("nemetonSetDisabled",
                                 list(id = ns("generer"), disabled = TRUE))
+      # Progression relayee depuis le worker par un petit fichier (patron de
+      # mod_action_plan) ; l'argument n'a d'effet qu'avec un coeur qui la rapporte.
+      args$progression_fichier <- tempfile("progression_generation_", fileext = ".txt")
+      gen_fichier(args$progression_fichier)
+      gen_debut(Sys.time())
       video_lancer_generation(tache, args, dev_path)
+    })
+
+    # Fichier de progression et instant du clic : NULL hors generation.
+    gen_fichier <- shiny::reactiveVal(NULL)
+    gen_debut <- shiny::reactiveVal(NULL)
+
+    output$progression_info <- shiny::renderUI({
+      debut <- gen_debut()
+      if (is.null(debut) || !video_coeur_accepte_progression()) return(NULL)
+      # Minuteur actif SEULEMENT pendant la generation.
+      shiny::invalidateLater(500, session)
+      prog <- video_progression_lire(gen_fichier())
+      ecoule <- max(0, as.numeric(difftime(Sys.time(), debut, units = "secs")))
+      htmltools::p(class = "small text-muted",
+                   video_progression_ligne(prog, ecoule, i18n()))
     })
 
     shiny::observeEvent(tache$status(), {
       st <- tache$status()
       if (!st %in% c("success", "error")) return()
       tr <- i18n()
+      if (!is.null(gen_fichier())) unlink(c(gen_fichier(), paste0(gen_fichier(), ".tmp")))
+      gen_fichier(NULL)
+      gen_debut(NULL)
       shiny::removeNotification("video_en_cours", session = session)
       session$sendCustomMessage("nemetonSetDisabled",
                                 list(id = ns("generer"), disabled = FALSE))
