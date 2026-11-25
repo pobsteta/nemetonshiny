@@ -201,6 +201,31 @@ set_project_video_params <- function(project_id, rayon_m = NULL,
   invisible(TRUE)
 }
 
+#' Settings that [project_video_params()] replaces by their default
+#'
+#' Tells the user which submitted values were out of range (or unreadable) and
+#' fell back on the default. An empty declination is legitimate (Groma computes
+#' it), not a replacement.
+#' @param rayon_m,seuil_diam_cm,unite_azimut,declinaison_deg Submitted values.
+#' @return Character vector of i18n label keys of the replaced settings.
+#' @noRd
+video_params_remplaces <- function(rayon_m = NULL, seuil_diam_cm = NULL,
+                                   unite_azimut = NULL, declinaison_deg = NULL) {
+  ok <- project_video_params(list(video_params = list(
+    rayon_m = rayon_m, seuil_diam_cm = seuil_diam_cm,
+    unite_azimut = unite_azimut, declinaison_deg = declinaison_deg)))
+  vide <- function(x) is.null(x) || !length(x) || is.na(x[1])
+  rem <- character(0)
+  if (!identical(ok$rayon_m, suppressWarnings(as.numeric(rayon_m))[1]))
+    rem <- c(rem, "video_rayon")
+  if (!identical(ok$seuil_diam_cm, suppressWarnings(as.numeric(seuil_diam_cm))[1]))
+    rem <- c(rem, "video_seuil_diam")
+  if (!identical(ok$unite_azimut, as.character(unite_azimut)[1]))
+    rem <- c(rem, "video_unite_azimut")
+  if (!vide(declinaison_deg) && is.na(ok$declinaison_deg)) rem <- c(rem, "video_declinaison")
+  rem
+}
+
 #' Arguments of `creer_projet_inventaire_video()` from the form
 #'
 #' Checks what the core cannot guess (project, plots) and passes the settings

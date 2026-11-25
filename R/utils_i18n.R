@@ -883,6 +883,10 @@ TRANSLATIONS <- list(
     fr = "R\u00e9gl\u00e9s une fois par massif ; la vue Inventaire vid\u00e9o les rappelle.",
     en = "Set once per massif; the Video inventory view shows them as a reminder."
   ),
+  video_params_remplaces = list(
+    fr = "Valeur hors bornes remplac\u00e9e par le d\u00e9faut : %s.",
+    en = "Out-of-range value replaced by the default: %s."
+  ),
   video_params_save = list(fr = "Enregistrer", en = "Save"),
   video_params_saved = list(
     fr = "Param\u00e8tres de l'inventaire vid\u00e9o enregistr\u00e9s.",
@@ -922,8 +926,8 @@ TRANSLATIONS <- list(
     en = "the project DTM comes from the WMS, not from LiDAR HD (the relief would show false stripes)."
   ),
   video_cvat_sans_outil = list(
-    fr = "le paquet foretaccess install\u00e9 est trop ancien (1.24.0 requis).",
-    en = "the installed foretaccess package is too old (1.24.0 required)."
+    fr = "le moteur de relief (vat_combined) manque dans le paquet foretaccess install\u00e9.",
+    en = "the relief engine (vat_combined) is missing from the installed foretaccess package."
   ),
   video_cvat_echec = list(
     fr = "le dernier calcul a \u00e9chou\u00e9 ; le relancer dans Accessibilit\u00e9.",

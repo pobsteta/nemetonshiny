@@ -1420,3 +1420,113 @@ test_that("CVAT : sans CVAT, args n'a pas de cvat_path ; avec, il y pointe", {
   file.create(cvat)
   expect_identical(video_args_generation(pp, .plan_video(), "P001")$cvat_path, cvat)
 })
+
+# ---- Mission 050, reprise 1 : carte stable, fin de calcul par projet, alertes ---
+
+test_that("carte : la carte n'est rendue qu'une fois, quelles que soient les selections", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  n <- 0L
+  local_mocked_bindings(
+    leafletOutput = function(...) { n <<- n + 1L; htmltools::div("carte") },
+    .package = "leaflet")
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    output$carte_ui
+    session$setInputs(placettes = "P001")
+    output$carte_ui
+    session$setInputs(placettes = NULL)
+    output$carte_ui
+    session$setInputs(carte_marker_click = list(id = "P002", .nonce = 1))
+    output$carte_ui
+    session$setInputs(placettes = c("P002", "P003"))
+    output$carte_ui
+    expect_identical(n, 1L)
+  })
+})
+
+test_that("carte : les marqueurs sont peints des le premier rendu, selection initiale comprise", {
+  pp <- withr::local_tempdir()
+  .local_video(pp)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = .etat_video()), {
+    session$setInputs(placettes = c("P001", "P002", "P003"))
+    w <- paste(as.character(output$carte), collapse = "")
+    expect_match(w, "addCircleMarkers", fixed = TRUE)
+    for (id in c("P001", "P002", "P003")) expect_match(w, id, fixed = TRUE)
+  })
+})
+
+test_that("CVAT : la fin du calcul d'un projet n'est pas attribuee a un autre", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  pp2 <- withr::local_tempdir()
+  n <- 0L
+  etat <- .cvat_module(pp, mnt, function(tache, plan, aoi, dev_path = NULL) n <<- n + 1L)
+  local_mocked_bindings(
+    get_project_path = function(id) if (identical(id, "p_video")) pp else pp2,
+    .acc_rvt_mnt_path = function(p) if (identical(p, pp)) mnt else NULL)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_identical(n, 1L)
+    app_state$current_project <- list(id = "p_autre", metadata = list())
+    session$flushReact()
+    # Le calcul de A se termine en echec pendant que B est ouvert.
+    .cvat_terminer(echec = TRUE)
+    session$flushReact()
+    expect_false(cvat_echec())
+    expect_false(cvat_en_cours())
+    expect_false(grepl("a échoué", paste(as.character(output$cvat_info$html), collapse = " ")))
+  })
+})
+
+test_that("CVAT : apres un echec, quitter puis revenir sur la vue ne relance pas le calcul", {
+  pp <- withr::local_tempdir(); mnt <- .mnt_projet(pp)
+  n <- 0L
+  etat <- .cvat_module(pp, mnt, function(tache, plan, aoi, dev_path = NULL) n <<- n + 1L)
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    expect_identical(n, 1L)
+    .cvat_terminer(echec = TRUE)
+    session$flushReact()
+    app_state$active_terrain_tab <- "accessibility"
+    session$flushReact()
+    app_state$active_terrain_tab <- "inventaire_video"
+    session$flushReact()
+    expect_identical(n, 1L)
+  })
+})
+
+test_that("parametres : video_params_remplaces nomme les valeurs hors bornes", {
+  expect_identical(video_params_remplaces(15, 7.5, "deg", NA), character(0))
+  expect_identical(video_params_remplaces(80, 7.5, "deg", NA), "video_rayon")
+  expect_identical(video_params_remplaces(15, -2, "rad", 99),
+                   c("video_seuil_diam", "video_unite_azimut", "video_declinaison"))
+  # Une declinaison vide est legitime ; un rayon efface (NA) retombe sur le defaut.
+  expect_identical(video_params_remplaces(NA, 7.5, "deg", NULL), "video_rayon")
+})
+
+test_that("Sources & parametres : un rayon hors bornes est signale, pas annonce comme enregistre tel quel", {
+  notifs <- character(0)
+  local_mocked_bindings(
+    theia_api_key_configured = function() FALSE,
+    set_project_video_params = function(...) invisible(TRUE),
+    load_project = function(pid) NULL,
+    deny_if_readonly = function(...) FALSE)
+  local_mocked_bindings(
+    showNotification = function(ui, ..., type = "default") {
+      notifs <<- c(notifs, paste(type, paste(as.character(ui), collapse = "")))
+    }, .package = "shiny")
+  shiny::testServer(mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    session$setInputs(vp_rayon = 80, vp_seuil = 7.5, vp_unite = "deg", vp_decl = NA)
+    session$setInputs(vp_save = 1)
+    expect_true(any(grepl("^warning .*rayon de placette", notifs)))
+    notifs <<- character(0)
+    session$setInputs(vp_rayon = 15)
+    session$setInputs(vp_save = 2)
+    expect_false(any(grepl("^warning", notifs)))
+  })
+})

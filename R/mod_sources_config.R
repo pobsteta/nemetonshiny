@@ -1056,8 +1056,6 @@ mod_sources_config_server <- function(id, app_state) {
       })
     })
 
-    invisible(NULL)
-
     # ========================================
     # Inventaire video - parametres de generation du projet QField
     # ========================================
@@ -1122,10 +1120,21 @@ mod_sources_config_server <- function(id, app_state) {
           declinaison_deg = input$vp_decl)
         .refresh_project(pid, "video")
         shiny::showNotification(i18n$t("video_params_saved"), type = "message")
+        rem <- video_params_remplaces(input$vp_rayon, input$vp_seuil,
+                                      input$vp_unite, input$vp_decl)
+        if (length(rem)) {
+          shiny::showNotification(
+            sprintf(i18n$t("video_params_remplaces"),
+                    paste(tolower(vapply(rem, i18n$t, character(1))), collapse = ", ")),
+            type = "warning", duration = 10)
+        }
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")
       })
     })
+
+    invisible(NULL)
+
   })
 }

@@ -89,6 +89,26 @@ mod_inventaire_video_ui <- function(id) {
   ))
 }
 
+#' Paint the plots on a map or a map proxy
+#'
+#' Solid green dot = selected, hollow grey-ish dot = deselected; the label is
+#' the plot identifier.
+#' @param m A leaflet map or proxy.
+#' @param d Result of [video_carte_donnees()], or `NULL`.
+#' @noRd
+.peindre_placettes <- function(m, d) {
+  if (is.null(d)) return(m)
+  xy <- sf::st_coordinates(d)
+  leaflet::addCircleMarkers(
+    m, lng = xy[, 1], lat = xy[, 2], layerId = d$plot_id, group = "placettes",
+    label = d$plot_id, radius = 8, weight = 2, color = "#1B6B1B",
+    fillColor = ifelse(d$selectionnee, "#1B6B1B", "#FFFFFF"),
+    fillOpacity = ifelse(d$selectionnee, 0.9, 0.05),
+    opacity = ifelse(d$selectionnee, 1, 0.7),
+    labelOptions = leaflet::labelOptions(noHide = TRUE, direction = "top",
+                                         textsize = "11px"))
+}
+
 #' Video inventory sub-tab - server
 #'
 #' @param id Module namespace ID.
@@ -189,8 +209,14 @@ mod_inventaire_video_server <- function(id, app_state) {
     # Carte des placettes : point vert plein = selectionnee, gris creux = non.
     carte_donnees <- shiny::reactive(video_carte_donnees(plan(), selection()))
 
+    # La presence de la carte ne depend que du plan : lire `carte_donnees()`
+    # ici detruirait et recreerait la carte (zoom perdu, clignotement) a chaque
+    # case cochee ou clic.
+    carte_presente <- shiny::reactive(
+      !is.null(video_carte_donnees(plan(), character(0))))
+
     output$carte_ui <- shiny::renderUI({
-      if (is.null(carte_donnees())) return(NULL)
+      if (!carte_presente()) return(NULL)
       htmltools::tagList(
         htmltools::tags$label(class = "form-label fw-semibold",
                               i18n()$t("video_carte_titre")),
@@ -223,24 +249,18 @@ mod_inventaire_video_server <- function(id, app_state) {
         bb <- as.numeric(sf::st_bbox(d))
         m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
       }
-      m
+      # Marqueurs de la selection initiale peints ici : le proxy part dans le
+      # meme flush que le rendu de la carte, avant que le widget existe.
+      .peindre_placettes(m, d)
     })
 
     # Marqueurs repeints par proxy : la carte ne se recree pas a chaque clic.
     shiny::observe({
       d <- carte_donnees()
       if (is.null(d)) return()
-      xy <- sf::st_coordinates(d)
       prox <- leaflet::leafletProxy("carte", session) |>
         leaflet::clearGroup("placettes")
-      prox |> leaflet::addCircleMarkers(
-        lng = xy[, 1], lat = xy[, 2], layerId = d$plot_id, group = "placettes",
-        label = d$plot_id, radius = 8, weight = 2, color = "#1B6B1B",
-        fillColor = ifelse(d$selectionnee, "#1B6B1B", "#FFFFFF"),
-        fillOpacity = ifelse(d$selectionnee, 0.9, 0.05),
-        opacity = ifelse(d$selectionnee, 1, 0.7),
-        labelOptions = leaflet::labelOptions(noHide = TRUE, direction = "top",
-                                             textsize = "11px"))
+      .peindre_placettes(prox, d)
     })
 
     shiny::observeEvent(input$carte_marker_click, {
@@ -315,7 +335,15 @@ mod_inventaire_video_server <- function(id, app_state) {
     }
 
     # Changement de projet : l'etat du calcul de l'ancien ne vaut plus.
+    # Projet du calcul lance : sa fin ne vaut que pour lui. Un changement de
+    # projet remet l'etat a zero (la fin du calcul de A ne doit pas etre
+    # attribuee a B).
+    cvat_projet <- NULL
     shiny::observeEvent(project_path(), {
+      if (!identical(project_path(), cvat_projet) && shiny::isolate(cvat_en_cours())) {
+        shiny::removeNotification(ns("cvat_calcul"), session = session)
+      }
+      cvat_en_cours(FALSE)
       cvat_echec(FALSE)
     }, ignoreNULL = FALSE)
 
@@ -329,6 +357,7 @@ mod_inventaire_video_server <- function(id, app_state) {
         pl <- cvat_plan()
         if (!identical(pl$etat, "a_calculer")) return()
         cvat_en_cours(TRUE)
+        cvat_projet <<- project_path()
         shiny::showNotification(i18n()$t("video_cvat_toast"), type = "message",
                                 duration = NULL, closeButton = FALSE,
                                 id = ns("cvat_calcul"), session = session)
@@ -337,6 +366,8 @@ mod_inventaire_video_server <- function(id, app_state) {
       }, ignoreNULL = TRUE)
 
     .cvat_terminer <- function(echec = FALSE) {
+      # Fin d'un calcul lance pour un autre projet : ignoree.
+      if (is.null(cvat_projet) || !identical(cvat_projet, project_path())) return()
       shiny::removeNotification(ns("cvat_calcul"), session = session)
       cvat_en_cours(FALSE)
       pret <- !echec && identical(cvat_plan()$etat, "joint")
