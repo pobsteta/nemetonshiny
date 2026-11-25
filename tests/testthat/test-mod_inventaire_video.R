@@ -186,6 +186,28 @@ test_that("Preparer : un plan regenere (samples_refresh) est relu par la vue", {
   })
 })
 
+test_that("Preparer : un samples_refresh sans changement de plan garde la selection", {
+  pp <- withr::local_tempdir()
+  recu <- NULL
+  local_mocked_bindings(
+    get_project_path = function(id) pp,
+    .project_chm = function(id) NULL,
+    video_placettes_plan = function(project_path) .plan_video(),
+    video_coeur_disponible = function() TRUE,
+    video_lancer_generation = function(tache, args, ...) recu <<- args
+  )
+  etat <- .etat_video()
+  shiny::testServer(mod_inventaire_video_server, args = list(app_state = etat), {
+    session$flushReact()
+    session$setInputs(placettes = "P001")
+    # une autre vue enregistre une autre couche (observations, regeneration)
+    etat$samples_refresh <- 1L
+    session$flushReact()
+    session$setInputs(generer = 1)
+    expect_identical(recu$plot_ids, "P001")
+  })
+})
+
 test_that("Preparer : sans declinaison, la generation part (Groma la calcule)", {
   pp <- withr::local_tempdir()
   recu <- NULL

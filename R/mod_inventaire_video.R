@@ -147,13 +147,16 @@ mod_inventaire_video_server <- function(id, app_state) {
       rv$envoi <- NULL; rv$srv <- NULL
     }, ignoreNULL = FALSE)
 
-    # Relu a chaque plan enregistre (mod_sampling, plan d'actions,
-    # reGeneration incrementent `samples_refresh`) : sans cette dependance,
-    # la vue gardait le plan lu a l'ouverture du projet.
-    plan <- shiny::reactive({
-      app_state$samples_refresh
-      video_placettes_plan(project_path())
-    })
+    # Relu a chaque enregistrement signale par `samples_refresh` (le plan est
+    # ecrit par mod_sampling ; le plan d'actions et la reGeneration
+    # incrementent aussi ce compteur pour d'autres couches). La valeur ne
+    # change que si le plan relu differe : une simple incrementation ne
+    # remet ni la selection a " tout " ni la carte a zero.
+    plan <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(list(project_path(), app_state$samples_refresh), {
+      p <- video_placettes_plan(project_path())
+      if (!identical(p, shiny::isolate(plan()))) plan(p)
+    }, ignoreNULL = FALSE)
     params <- shiny::reactive(
       project_video_params(app_state$current_project$metadata))
     chm <- shiny::reactive({
