@@ -1878,6 +1878,10 @@ test_that("058 cas 5 : cles i18n FR/EN des sept etapes, de l'attente et de la li
     }
   }
   # Pas de litteral dans le module : la ligne passe par video_progression_ligne.
-  src <- readLines(testthat::test_path("../../R/mod_inventaire_video.R"), encoding = "UTF-8")
+  # Sources absentes sous R CMD check (paquet installé) : même garde que
+  # test-static_assets.R.
+  f_mod <- testthat::test_path("../../R/mod_inventaire_video.R")
+  skip_if_not(file.exists(f_mod), "sources R absentes (R CMD check)")
+  src <- readLines(f_mod, encoding = "UTF-8")
   expect_false(any(grepl("processus libre|free process", src)))
 })
