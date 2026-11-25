@@ -3031,6 +3031,9 @@ save_ug_data <- function(project_id, projet) {
     ugs <- .ug_onf_normaliser(ugs)
     vides <- UG_ONF_COLS[vapply(UG_ONF_COLS, function(col) all(is.na(ugs[[col]])),
                                 logical(1))]
+    # Type de gestion (mission 067) : meme principe, ecrit seulement quand au
+    # moins une UGF en declare un ; la lecture le remet a `non_renseigne`.
+    if (all(ugs$type_gestion == UG_TYPE_GESTION_DEFAUT)) vides <- c(vides, "type_gestion")
     ugs <- ugs[, setdiff(names(ugs), vides), drop = FALSE]
     .write_json_atomic(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE,
                        dataframe = "columns")
