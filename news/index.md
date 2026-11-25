@@ -1,12 +1,35 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9007 (en développement)
+## nemetonshiny 2026.11.6.9008 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043 et 048).
+cassant (missions 043, 048 et 063).
 
 ### Changements
 
+- **B5, stratification verticale du nuage LiDAR : calcul, statuts, carte
+  et fiche de l’UGF** (mission 063, spec 067 du cœur, brief
+  `067-forpt-lidar-latent`). B5 rejoint la famille B (conditionnel).
+  `R/service_compute.R` lui passe le dossier
+  `<projet>/cache/layers/lidar_nuage` en `nuage =` avec
+  `normaliser = TRUE` (dalles brutes de l’IGN, lidR requis) quand ce
+  dossier contient au moins une dalle de plus de 1 Ko ; sans nuage, rien
+  n’est passé et le cœur rend NA avec `skipped_no_lidar`, la famille B
+  reste inchangée. Les trois causes de NA (`skipped_no_lidar`,
+  `skipped_no_coverage`, `skipped_low_density`) sont traduites en FR et
+  EN (`b5_skipped_*`) et dites sous la carte grise. La couche B5
+  apparaît sur la carte de la famille B quand la colonne est renseignée,
+  comme tout indicateur. La fiche de l’UGF (fenêtre qui s’ouvre sur la
+  carte au clic d’une ligne du tableau) ajoute un histogramme horizontal
+  des cinq strates (0,5-2, 2-5, 5-10, 10-20, \> 20 m ; parts en %,
+  somme 1) et la densité de retours ; sous 10 retours/m², elle rappelle
+  que les sous-étages des peuplements fermés sont sous-estimés ; si B5
+  n’est pas calculé, le statut traduit remplace l’histogramme. Colonnes
+  annexes `.b5_s1` à `.b5_s5`, `.b5_densite`, `.b5_points`,
+  `.b5_profil`, `.b5_status`. Libellé, infobulle et sens viennent du
+  cœur. Hors mission : badge de dimensionnement drone, `t1_source`. Le
+  nuage n’est pas téléchargé par ce calcul : B5 lit celui que le projet
+  a déjà en cache.
 - **Inventaire vidéo : la liste des placettes passe sous le bouton «
   Générer le projet QField »** (`R/mod_inventaire_video.R`, demande de
   Pascal du 2026-11-25). La colonne de gauche porte le rappel des
@@ -58,10 +81,14 @@ cassant (missions 043 et 048).
   [`shiny::ExtendedTask`](https://rdrr.io/pkg/shiny/man/ExtendedTask.html)
   (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et
   [`bslib::input_task_button()`](https://rstudio.github.io/bslib/reference/input_task_button.html)
-  / `bind_task_button()` (apparus dans bslib 0.7.0, 31 appels) ; les
-  anciens planchers (1.8.0, 0.6.0) laissaient installer une version où
-  l’app ne démarre pas. Un test de contrat vérifie que chaque fonction
-  utilisée existe dans la version plancher déclarée.
+  / `bind_task_button()` (apparus dans bslib 0.7.0, 25 appels hors
+  commentaires au 2026-11-25) ; les anciens planchers (1.8.0, 0.6.0)
+  laissaient installer une version où l’app ne démarre pas. Un test de
+  contrat vérifie que le plancher déclaré dans `DESCRIPTION` est au
+  moins la version qui introduit `ExtendedTask` (shiny 1.8.1) et
+  `input_task_button()` / `bind_task_button()` (bslib 0.7.0) ; il ne
+  vérifie pas que chaque fonction utilisée existe dans la version
+  plancher.
 
 - **Inventaire vidéo : la vue reprend le plan d’échantillonnage
   régénéré** (`R/mod_inventaire_video.R`). La liste et la carte des
