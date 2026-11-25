@@ -546,12 +546,14 @@ test_that("init_compute_state handles resume with existing progress", {
 # Additional progress and compute state tests (full indicator list)
 # ==============================================================================
 
-test_that("list_available_indicators returns 36 indicators", {
+test_that("list_available_indicators returns 37 indicators", {
   indicators <- nemetonshiny:::list_available_indicators()
   # 31 base + B4 + L3 (diversité spectrale, spec 028) + T3 (coupes rases, spec
   # 030) + T4 (vitalité dynamique, spec 068) + A5 (rafraîchissement urbain,
-  # spec 032 — source active par défaut)
-  expect_length(indicators, 36)
+  # spec 032 — source active par défaut) + B5 (stratification verticale du
+  # nuage LiDAR, spec 067)
+  expect_length(indicators, 37)
+  expect_true("indicateur_b5_stratification" %in% indicators)
   expect_true("indicateur_c1_biomasse" %in% indicators)
   expect_true("indicateur_n3_naturalite" %in% indicators)
   expect_true("indicateur_b4_div_spectrale" %in% indicators)
@@ -560,7 +562,7 @@ test_that("list_available_indicators returns 36 indicators", {
   expect_true("indicateur_a5_rafraichissement" %in% indicators)
 })
 
-test_that("init_compute_state returns correct structure with all 36 indicators", {
+test_that("init_compute_state returns correct structure with all 37 indicators", {
   with_mocked_bindings(
     get_computation_progress = function(project_id) list(computed_indicators = character(0), last_saved_at = NULL),
     {
@@ -569,11 +571,11 @@ test_that("init_compute_state returns correct structure with all 36 indicators",
       expect_equal(state$status, "pending")
       expect_equal(state$phase, "init")
       expect_equal(state$progress, 0)
-      expect_equal(state$indicators_total, 36)
+      expect_equal(state$indicators_total, 37)
       expect_equal(state$indicators_completed, 0)
       expect_equal(state$indicators_failed, 0L)
       expect_type(state$indicators_status, "character")
-      expect_equal(length(state$indicators_status), 36)
+      expect_equal(length(state$indicators_status), 37)
       expect_true(all(state$indicators_status == "pending"))
     }
   )

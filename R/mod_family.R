@@ -378,6 +378,25 @@ mod_family_server <- function(id, family_code, app_state) {
       popup_html <- paste0("<strong>", htmltools::htmlEscape(ug_label),
                            "</strong><br/>",
                            paste(popup_lines, collapse = "<br/>"))
+      # B5 (spec 067) : profil vertical et densite dans la fiche de l'UGF, dans
+      # la famille qui porte B5 seulement. Les colonnes `.b5_*` ne sont que
+      # dans l'sf enrichi, d'ou la recherche par ug_id.
+      if ("indicateur_b5_stratification" %in%
+          c(family_config$indicators, family_config$column_names) &&
+          is.data.frame(full_sf) && ".b5_status" %in% names(full_sf)) {
+        ligne_b5 <- if ("ug_id" %in% names(full_sf) &&
+                        "ug_id" %in% names(dropped)) {
+          full_sf[full_sf[["ug_id"]] %in% dropped[["ug_id"]], , drop = FALSE]
+        } else {
+          NULL
+        }
+        b5_tag <- b5_profil_tag(
+          if (!is.null(ligne_b5)) sf::st_drop_geometry(ligne_b5) else NULL,
+          i18n)
+        if (!is.null(b5_tag)) {
+          popup_html <- paste0(popup_html, as.character(b5_tag))
+        }
+      }
 
       # Zoom all maps and show popup
       for (i in seq_along(ind_cols)) {
@@ -998,6 +1017,84 @@ t4_vitalite_banner <- function(data, ind_col, i18n) {
     class = "small text-muted fst-italic px-1 pb-1",
     bsicons::bs_icon("info-circle", class = "me-1"),
     txt, " ", i18n$t("t4_reference_bfc")
+  )
+}
+
+
+#' Vertical profile of one unit (B5), for the unit sheet
+#'
+#' @description
+#' B5 (spec 067) is the evenness of the LiDAR returns between five height
+#' strata. The score alone does not say how the returns are spread: this block
+#' draws the five shares as a small horizontal histogram and gives the density
+#' of returns beside it, with the caveat when it is under 10 returns/m2. When
+#' the core named a cause instead of a profile (`skipped_*`), the translated
+#' status replaces the histogram. Nothing is computed here: shares, density and
+#' status are the core's columns, carried as `.b5_*` annex columns.
+#'
+#' @param row One-row data.frame / sf carrying `.b5_status` and `.b5_s1`...
+#'   `.b5_s5` / `.b5_densite`.
+#' @param i18n Translator object.
+#'
+#' @return A [htmltools::div] or `NULL` (no B5 status on this row).
+#'
+#' @noRd
+b5_profil_tag <- function(row, i18n) {
+  if (is.null(row) || nrow(row) == 0L || !".b5_status" %in% names(row)) {
+    return(NULL)
+  }
+  statut <- as.character(row[[".b5_status"]][1])
+  if (is.na(statut) || !nzchar(statut)) return(NULL)
+
+  if (!identical(statut, "calculated")) {
+    cle <- paste0("b5_", statut)
+    txt <- if (isTRUE(i18n$has(cle))) i18n$t(cle) else i18n$t("indicator_all_na")
+    return(htmltools::div(class = "small text-muted fst-italic", txt))
+  }
+
+  parts <- vapply(1:5, function(k) {
+    v <- suppressWarnings(as.numeric(row[[paste0(".b5_s", k)]][1]))
+    if (length(v) == 0L || is.na(v)) NA_real_ else v
+  }, numeric(1))
+  if (all(is.na(parts))) return(NULL)
+
+  # Bornes des strates du coeur (0,5-2, 2-5, 5-10, 10-20, > 20 m) ; la
+  # virgule decimale suit la langue.
+  etiquettes <- c("0,5\u20132", "2\u20135", "5\u201310", "10\u201320", "> 20")
+  if (!identical(i18n$language, "fr")) etiquettes[1] <- "0.5\u20132"
+
+  barres <- lapply(5:1, function(k) {  # la strate haute en haut
+    pct <- if (is.na(parts[k])) 0 else round(100 * parts[k])
+    htmltools::div(
+      style = "display:flex; align-items:center; gap:4px; line-height:1.2;",
+      htmltools::span(style = "width:64px; text-align:right;",
+                      paste(etiquettes[k], "m")),
+      htmltools::div(
+        style = "flex:1; background:#e9ecef; height:10px;",
+        htmltools::div(style = sprintf(
+          "width:%d%%; height:10px; background:#1B6B1B;", as.integer(pct)))
+      ),
+      htmltools::span(style = "width:34px;", paste0(pct, "%"))
+    )
+  })
+
+  dens <- suppressWarnings(as.numeric(row[[".b5_densite"]][1]))
+  densite <- if (length(dens) == 1L && !is.na(dens)) {
+    htmltools::div(
+      class = "mt-1",
+      sprintf(i18n$t("b5_densite_fmt"), .fmt_num(dens, i18n, 1)),
+      if (dens < 10) {
+        htmltools::div(class = "text-muted fst-italic",
+                       i18n$t("b5_densite_faible"))
+      }
+    )
+  }
+
+  htmltools::div(
+    class = "small mt-2",
+    htmltools::div(class = "fw-semibold", i18n$t("b5_statut_calculated")),
+    barres,
+    densite
   )
 }
 

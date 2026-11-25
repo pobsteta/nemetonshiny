@@ -1911,6 +1911,34 @@ TRANSLATIONS <- list(
     fr = "R\u00e9f\u00e9rence construite en Bourgogne-Franche-Comt\u00e9, climat 2019-2023.",
     en = "Reference built in Bourgogne-Franche-Comt\u00e9, 2019-2023 climate."
   ),
+  # B5 stratification verticale (spec 067, nemeton >= 2026.11.5) : un statut
+  # par cause de NA (`b5_skipped_*`), `b5_statut_calculated` pour le cas nominal
+  # (legende de l'histogramme : pas de cle `b5_calculated`, qui ferait afficher
+  # le bandeau d'un indicateur pourtant calcule).
+  b5_skipped_no_lidar = list(
+    fr = "B5 non calcul\u00e9 : aucun nuage de points LiDAR n'est disponible pour ce projet.",
+    en = "B5 not computed: no LiDAR point cloud is available for this project."
+  ),
+  b5_skipped_no_coverage = list(
+    fr = "B5 non calcul\u00e9 : le nuage de points ne couvre pas cette unit\u00e9.",
+    en = "B5 not computed: the point cloud does not cover this unit."
+  ),
+  b5_skipped_low_density = list(
+    fr = "B5 non calcul\u00e9 : trop peu de points LiDAR dans cette unit\u00e9.",
+    en = "B5 not computed: too few LiDAR points in this unit."
+  ),
+  b5_statut_calculated = list(
+    fr = "Profil vertical : part des retours LiDAR par strate de hauteur",
+    en = "Vertical profile: share of LiDAR returns by height stratum"
+  ),
+  b5_densite_fmt = list(
+    fr = "Densit\u00e9 : %s retours/m\u00b2",
+    en = "Density: %s returns/m\u00b2"
+  ),
+  b5_densite_faible = list(
+    fr = "Sous ~10 retours/m\u00b2, les sous-\u00e9tages des peuplements ferm\u00e9s sont sous-estim\u00e9s.",
+    en = "Below ~10 returns/m\u00b2, the understorey of closed stands is underestimated."
+  ),
   b4_skipped_no_spectral = list(fr = "B4 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
                                 en = "B4 not computed: no spectral data for diversity (Sentinel-2)."),
   l3_skipped_no_spectral = list(fr = "L3 non calcul\u00e9 : pas de donn\u00e9es spectrales pour la diversit\u00e9 (Sentinel-2).",
