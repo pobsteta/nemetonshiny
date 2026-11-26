@@ -214,14 +214,7 @@ build_aef_layer <- function(aoi, project_path) {
 #' Is the extent already acquired (same key as the cache of the project)?
 #' @noRd
 .aef_en_cache <- function(aoi, project_path) {
-  dir <- .aef_cache_dir(project_path)
-  courant <- file.path(dir, "courant.json")
-  if (!file.exists(courant)) return(FALSE)
-  cle <- tryCatch(.aef_cle(aoi), error = function(e) NULL)
-  prec <- tryCatch(jsonlite::read_json(courant, simplifyVector = TRUE),
-                   error = function(e) NULL)
-  !is.null(cle) && !is.null(prec) && identical(as.character(prec$cle), cle) &&
-    file.exists(file.path(dir, as.character(prec$fichier)))
+  !is.null(.aef_relire_cache(aoi, project_path))
 }
 
 

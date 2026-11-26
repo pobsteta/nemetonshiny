@@ -73,15 +73,20 @@ sondes_embedding <- function(indicators_sf, project_path) {
 
 #' Signature de ce qui entre dans les sondes (detecte un resultat perime)
 #'
-#' Valeurs des indicateurs, geometries et embedding (fichier et annee) : si l'un
+#' Valeurs des indicateurs, geometries, embedding (fichier, taille, date, annee) et version du coeur : si l'un
 #' change, le resultat en cache n'est plus le bon.
 #' @noRd
 sondes_signature <- function(units, embedding) {
   if (is.null(units) || is.null(embedding)) return("")
+  info <- file.info(embedding$fichier)
   rlang::hash(list(
     sf::st_drop_geometry(units),
     sf::st_as_text(sf::st_geometry(units)),
-    basename(embedding$fichier), embedding$annee))
+    basename(embedding$fichier), embedding$annee,
+    # Le fichier lui-meme (taille et date) et la version du coeur : une autre
+    # version de `probe_indicator()` peut rendre un autre R2.
+    info$size, as.numeric(info$mtime),
+    as.character(utils::packageVersion("nemeton"))))
 }
 
 #' Fichier du cache des sondes d'un projet

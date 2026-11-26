@@ -213,6 +213,6 @@ mod_sondes_embedding_server <- function(id, app_state) {
   switch(as.character(erreur),
     sans_unites = i18n$t("sd_no_data"),
     sans_embedding = i18n$t("sd_no_embedding"),
-    reponse_inattendue = i18n$t("sd_st_inconnu"),
+    reponse_inattendue = i18n$t("sd_reponse_inattendue"),
     strip_ansi(as.character(erreur)))
 }

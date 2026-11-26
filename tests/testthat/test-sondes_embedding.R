@@ -332,3 +332,150 @@ test_that("cles i18n sd_ : FR et EN, 30 caracteres au plus", {
     expect_true(nzchar(nemetonshiny:::get_i18n("en")$t(k)), info = k)
   }
 })
+
+# --- 7. Revue de la mission 078 -----------------------------------------------------
+
+test_that("signature : geometrie deplacee, autre annee, autre fichier, autre version du coeur -> perime", {
+  p <- .sd_projet(TRUE)
+  units <- nemetonshiny:::sondes_unites(p$indicators_sf)
+  e <- nemetonshiny:::sondes_embedding(p$indicators_sf, p$path)
+  sig <- nemetonshiny:::sondes_signature(units, e)
+  expect_equal(nemetonshiny:::sondes_signature(units, e), sig)   # stable
+
+  deplace <- units
+  g <- sf::st_geometry(deplace); g[[1]] <- g[[1]] + c(30, 0)
+  sf::st_geometry(deplace) <- g; sf::st_crs(deplace) <- 2154
+  expect_false(identical(nemetonshiny:::sondes_signature(deplace, e), sig))
+
+  expect_false(identical(
+    nemetonshiny:::sondes_signature(units, list(fichier = e$fichier, annee = 2024L)), sig))
+
+  # autre fichier (meme nom, autre taille) : la taille compte
+  f2 <- file.path(withr::local_tempdir(), basename(e$fichier))
+  file.copy(e$fichier, f2, copy.date = TRUE)
+  expect_equal(nemetonshiny:::sondes_signature(units, list(fichier = f2, annee = e$annee)), sig)
+  cat("x", file = f2, append = TRUE)
+  expect_false(identical(
+    nemetonshiny:::sondes_signature(units, list(fichier = f2, annee = e$annee)), sig))
+  # meme taille, autre date
+  f3 <- file.path(withr::local_tempdir(), basename(e$fichier))
+  file.copy(e$fichier, f3)
+  Sys.setFileTime(f3, Sys.time() + 3600)
+  expect_false(identical(
+    nemetonshiny:::sondes_signature(units, list(fichier = f3, annee = e$annee)), sig))
+
+  # autre version du coeur
+  testthat::local_mocked_bindings(
+    packageVersion = function(pkg, ...) package_version("9999.1.1"), .package = "utils")
+  expect_false(identical(nemetonshiny:::sondes_signature(units, e), sig))
+})
+
+test_that("cache : une signature d'une autre version du coeur n'est pas relue", {
+  p <- .sd_projet(TRUE)
+  units <- nemetonshiny:::sondes_unites(p$indicators_sf)
+  e <- nemetonshiny:::sondes_embedding(p$indicators_sf, p$path)
+  sig <- nemetonshiny:::sondes_signature(units, e)
+  nemetonshiny:::sondes_cache_ecrire(p$path, sig, list(table = .sd_table(), erreur = NULL))
+  testthat::local_mocked_bindings(
+    packageVersion = function(pkg, ...) package_version("9999.1.1"), .package = "utils")
+  sig2 <- nemetonshiny:::sondes_signature(units, e)
+  expect_null(nemetonshiny:::sondes_cache_lire(p$path, sig2))
+})
+
+test_that("la notification de progression est retiree sous le meme id (succes et erreur)", {
+  for (mode in c("succes", "erreur")) {
+    ids_posees <- character(0); ids_retirees <- character(0)
+    testthat::local_mocked_bindings(
+      get_app_options = function() list(language = "fr"), .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      showNotification = function(ui, id = NULL, ...) {
+        if (!is.null(id)) ids_posees <<- c(ids_posees, id); invisible("id") },
+      removeNotification = function(id, ...) { ids_retirees <<- c(ids_retirees, id); invisible(NULL) },
+      .package = "shiny")
+    testthat::local_mocked_bindings(
+      probe_indicator = function(...) if (mode == "erreur") stop("x") else .sd_table(),
+      .package = "nemeton")
+    st <- .sd_state(.sd_projet(TRUE))
+    shiny::testServer(nemetonshiny:::mod_sondes_embedding_server, args = list(app_state = st), {
+      session$setInputs(run = 1L)
+      .sd_attendre(session)
+    })
+    expect_length(ids_posees, 1L)
+    expect_equal(ids_retirees, ids_posees, info = mode)
+  }
+})
+
+test_that("projet change pendant la tache : resultat ignore, table NULL, rien en cache", {
+  .sd_mocks()
+  testthat::local_mocked_bindings(
+    probe_indicator = function(...) .sd_table(), .package = "nemeton")
+  projet <- .sd_projet(TRUE)
+  st <- .sd_state(projet)
+  shiny::testServer(nemetonshiny:::mod_sondes_embedding_server, args = list(app_state = st), {
+    session$setInputs(run = 1L)
+    session$flushReact()
+    expect_equal(session$returned$status(), "running")
+    app_state$project_id <- "autre"
+    app_state$current_project <- list(id = "autre", path = NULL, indicators_sf = NULL)
+    .sd_attendre(session)
+    expect_null(session$returned$resultat())
+    expect_null(output$tableau)
+    expect_false(file.exists(nemetonshiny:::.sondes_cache_fichier(projet$path)))
+  })
+})
+
+test_that("reponse inattendue : libelle dedie, pas celui du refus du coeur", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  expect_equal(nemetonshiny:::.sd_erreur_lisible("reponse_inattendue", i18n),
+               i18n$t("sd_reponse_inattendue"))
+  expect_match(i18n$t("sd_reponse_inattendue"), "inattendue")
+  expect_match(i18n$t("sd_col_rmse"), "0-100")
+})
+
+# --- 8. Integration : le vrai coeur, sans simulacre ----------------------------------
+
+test_that("integration : vrai probe_indicator sur 60 UGF et un raster de 64 bandes", {
+  skip_if_not_installed("nemeton")
+  skip_if_not("probe_indicator" %in% getNamespaceExports("nemeton"))
+  set.seed(7)
+  n <- 60
+  g <- lapply(0:(n - 1), function(i) {
+    x <- 900000 + (i %% 10) * 2400 + 10; y <- 6800000 + (i %/% 10) * 2400 + 10
+    sf::st_polygon(list(matrix(c(x, y, x + 1000, y, x + 1000, y + 1000, x, y + 1000, x, y),
+                               ncol = 2, byrow = TRUE)))
+  })
+  geo <- sf::st_sfc(g, crs = 2154)
+  r <- terra::rast(nrows = 160, ncols = 160, nlyrs = 64, xmin = 900000, xmax = 925000,
+                   ymin = 6800000, ymax = 6815000, crs = "EPSG:2154")
+  terra::values(r) <- matrix(stats::rnorm(160 * 160 * 64), ncol = 64)
+  names(r) <- sprintf("A%02d", 0:63)
+  f <- withr::local_tempfile(fileext = ".tif")
+  terra::writeRaster(r, f)
+  emb <- terra::rast(f)
+  x <- nemeton::embedding_summary(sf::st_sf(geometry = geo), emb, stats = "mean")$mean
+  u <- sf::st_sf(
+    ug_id = seq_len(n),
+    # B1 = combinaison lineaire de l'embedding (le modele doit la voir) ;
+    # B2 = bruit (angle mort)
+    indicateur_b1_protection = as.numeric(scale(x[, 1:4] %*% c(1, 1, 1, 1))) * 20 + 50,
+    indicateur_b2_structure = stats::runif(n) * 100,
+    geometry = geo)
+  units <- nemetonshiny:::sondes_unites(u)
+  # noms de colonnes attendus par le coeur
+  expect_true(all(c("B1", "B2") %in% names(units)))
+  res <- nemetonshiny:::sondes_calculer(units, f, 2025L)
+  expect_null(res$erreur)
+  t <- res$table
+  expect_true(all(c("code", "famille", "n", "r2", "rmse", "lecture", "statut",
+                    "source_commune", "source_embedding") %in% names(t)))
+  expect_equal(sort(t$code), c("B1", "B2"))
+  expect_true(all(t$statut == "ok"))
+  expect_true(all(t$source_commune == FALSE))
+  expect_equal(unique(t$source_embedding), "aef")
+  expect_gt(t$r2[t$code == "B1"], 0.5)
+  expect_equal(t$lecture[t$code == "B1"], "voit")
+  expect_lt(t$r2[t$code == "B2"], 0.2)
+  expect_equal(t$lecture[t$code == "B2"], "angle_mort")
+  tab <- nemetonshiny:::sondes_tableau(t, nemetonshiny:::get_i18n("fr"))
+  expect_equal(sub(" - .*$", "", tab[[1]]), c("B1", "B2"))
+})
