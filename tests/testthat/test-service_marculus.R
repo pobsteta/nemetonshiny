@@ -316,7 +316,7 @@ test_that("un coeur sans segment_houppiers degrade en silence", {
   # tourner sur les deux, et un GeoPackage sans houppiers reste valide - le
   # telephone se contente de ne pas pre-remplir les hauteurs.
   testthat::local_mocked_bindings(
-    .project_chm = function(...) NULL)
+    .project_chm_detail = function(...) list(chemin = "p", chm = NULL, erreur = NULL))
   expect_null(nemetonshiny:::.marculus_houppiers("projet-sans-chm"))
 })
 
@@ -443,7 +443,7 @@ test_that("un echec de segmentation ne fait pas echouer le precalcul", {
   # en vrai le 2026-08-23 : le coeur de developpement rendait
   # `st_crs(x) == st_crs(y) is not TRUE`.
   testthat::local_mocked_bindings(
-    .project_chm = function(...) "chm.tif",
+    .project_chm_detail = function(...) list(chemin = "p", chm = "chm.tif", erreur = NULL),
     .marculus_segment_houppiers = function(...) NULL)
   withr::with_tempdir({
     with_mocked_bindings(
@@ -995,7 +995,7 @@ test_that("les contextes partent au diametre, classes 20 a 90 par pas de 5", {
 }
 
 test_that("houppiers : sans CHM, la trace le dit", {
-  testthat::local_mocked_bindings(.project_chm = function(...) NULL)
+  testthat::local_mocked_bindings(.project_chm_detail = function(...) list(chemin = "p", chm = NULL, erreur = NULL))
   out <- .houppiers_trace()
   expect_identical(out$n, 0L)
   expect_equal(out$trace$statut, "sans_chm")
@@ -1004,14 +1004,14 @@ test_that("houppiers : sans CHM, la trace le dit", {
 
 test_that("houppiers : une segmentation vide n'est pas une erreur", {
   testthat::local_mocked_bindings(
-    .project_chm = function(...) "chm.tif",
+    .project_chm_detail = function(...) list(chemin = "p", chm = "chm.tif", erreur = NULL),
     .marculus_segment_houppiers = function(...) NULL)
   expect_equal(.houppiers_trace()$trace$statut, "vide")
 })
 
 test_that("houppiers : une erreur de segmentation est consignee avec son message", {
   testthat::local_mocked_bindings(
-    .project_chm = function(...) "chm.tif",
+    .project_chm_detail = function(...) list(chemin = "p", chm = "chm.tif", erreur = NULL),
     .marculus_segment_houppiers = function(...) {
       structure(list(), class = "houppiers_erreur",
                 message = "st_crs(x) == st_crs(y) is not TRUE")
@@ -1026,7 +1026,7 @@ test_that("houppiers : un succes consigne le nombre ecrit", {
   hp <- sf::st_sf(h_max = c(20, 25), geometry = sf::st_sfc(
     sf::st_point(c(1.9, 47.9)), sf::st_point(c(1.91, 47.9)), crs = 4326))
   testthat::local_mocked_bindings(
-    .project_chm = function(...) "chm.tif",
+    .project_chm_detail = function(...) list(chemin = "p", chm = "chm.tif", erreur = NULL),
     .marculus_segment_houppiers = function(...) hp)
   out <- .houppiers_trace()
   expect_identical(out$n, 2L)
@@ -1182,4 +1182,61 @@ test_that("le bundle choisi n'exporte que les actions cochees", {
         expect_equal(res0$n_contexts, 0L)
       })
   })
+})
+
+
+test_that("houppiers : une erreur du coeur donne erreur_chm, pas sans_chm (mission 086)", {
+  cond <- structure(class = c("nemeton_mosaique_srs", "error", "condition"),
+                    list(message = "mosaique en deux SRS", call = NULL))
+  testthat::local_mocked_bindings(
+    resolve_project_chm = function(...) stop(cond), .package = "nemeton")
+  out <- .houppiers_trace()
+  expect_equal(out$trace$statut, "erreur_chm")
+  expect_match(out$trace$detail, "nemeton_mosaique_srs")
+  expect_match(out$trace$detail, "mosaique en deux SRS")
+})
+
+test_that("houppiers : .project_chm avertit avec le message du coeur, sans dire 'pas de LiDAR HD'", {
+  cond <- structure(class = c("nemeton_mosaique_srs", "error", "condition"),
+                    list(message = "mosaique en deux SRS", call = NULL))
+  testthat::local_mocked_bindings(
+    resolve_project_chm = function(...) stop(cond), .package = "nemeton")
+  testthat::local_mocked_bindings(get_project_path = function(...) "p")
+  msgs <- character()
+  res <- withCallingHandlers(
+    nemetonshiny:::.project_chm("x"),
+    warning = function(w) {
+      msgs <<- c(msgs, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+  expect_null(res)
+  txt <- paste(msgs, collapse = " ")
+  expect_match(txt, "mosaique en deux SRS")
+  expect_match(txt, "nemeton_mosaique_srs")
+  expect_no_match(txt, "pas de LiDAR HD")
+})
+
+test_that("houppiers : un NULL du coeur garde le message 'pas de LiDAR HD' et sans_chm", {
+  testthat::local_mocked_bindings(
+    resolve_project_chm = function(...) NULL, .package = "nemeton")
+  testthat::local_mocked_bindings(get_project_path = function(...) "p")
+  msgs <- character()
+  res <- withCallingHandlers(
+    nemetonshiny:::.project_chm("x"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+  expect_null(res)
+  expect_match(paste(msgs, collapse = " "), "pas de LiDAR HD")
+})
+
+test_that("houppiers : un NULL du coeur laisse le statut sans_chm (mission 086)", {
+  testthat::local_mocked_bindings(
+    resolve_project_chm = function(...) NULL, .package = "nemeton")
+  expect_equal(.houppiers_trace()$trace$statut, "sans_chm")
 })

@@ -373,7 +373,13 @@ mod_sampling_server <- function(id, app_state) {
     mnt_raster <- shiny::reactive({
       pp <- project_path_r()
       tryCatch(nemeton::resolve_project_dem(pp, verbose = TRUE),
-               error = function(e) NULL)
+               error = function(e) {
+                 cli::cli_warn(c(
+                   "MNT : la recherche du mod\u00e8le de terrain a \u00e9chou\u00e9.",
+                   x = "{conditionMessage(e)}",
+                   i = "Classe : {.cls {class(e)[1]}}."))
+                 NULL
+               })
     })
 
     # --- BD Foret v2 overlay (cached during project compute) ---------

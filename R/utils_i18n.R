@@ -678,6 +678,10 @@ TRANSLATIONS <- list(
     fr = "aucun mod\u00e8le de hauteur exploitable",
     en = "no usable canopy height model"
   ),
+  houppier_erreur_chm = list(
+    fr = "la recherche du mod\u00e8le de hauteur a \u00e9chou\u00e9 au dernier calcul",
+    en = "the canopy height model lookup failed at the last computation"
+  ),
   houppier_vide = list(
     fr = "la segmentation n'a trouv\u00e9 aucun houppier",
     en = "the segmentation found no crown"

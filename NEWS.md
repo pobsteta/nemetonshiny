@@ -1,8 +1,10 @@
-# nemetonshiny 2026.11.6.9023 (en développement)
+# nemetonshiny 2026.11.6.9024 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083 et 084).
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084 et 086).
 
 ## Changements
+
+- **Houppiers : une erreur du cœur est dite telle qu'elle est, plus déguisée en « pas de LiDAR HD »** (mission 086). `.project_chm()` avalait toute erreur de `nemeton::resolve_project_chm()` et affichait « aucun modèle de hauteur exploitable (pas de LiDAR HD…) » ; sur Couchey l'erreur réelle était `nemeton_mosaique_srs`. Désormais `.project_chm_detail()` distingue NULL (rien trouvé : message inchangé, statut `sans_chm`) de l'erreur (avertissement `cli_warn` avec le message et la classe du cœur ; `precompute_houppiers()` persiste le statut `erreur_chm` avec la classe et le message en détail ; clé i18n `houppier_erreur_chm` pour le récapitulatif d'export). Même correction pour `resolve_project_dem()` dans la Sélection (`mod_sampling`). Aucun changement de choix de source (mission 085, côté cœur).
 
 - **Synthèse : trois onglets, construits comme ceux de la Sélection** (mission 084, décision de Pascal). « Synthèse du projet » (par défaut), « Ce que la gestion a produit sur ce massif » (mission 067) et « Ce que les modèles voient » (mission 078) : `navset_card_tab`, déplacement d'UI seulement. Les modules gardent leurs identifiants (`effet_gestion`, `sondes_embedding`). Sorties d'un onglet masqué suspendues jusqu'à son affichage ; les calculs lancés se poursuivent.
 

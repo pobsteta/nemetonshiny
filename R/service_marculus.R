@@ -656,8 +656,20 @@ precompute_houppiers <- function(project_id) {
   }
   out_path <- .houppiers_cache_path(project_id)
   if (is.null(out_path)) return(fin("projet_absent"))
-  chm <- .project_chm(project_id)
-  if (is.null(chm)) return(fin("sans_chm"))
+  res_chm <- .project_chm_detail(project_id)
+  if (!is.null(res_chm$erreur)) {
+    return(fin("erreur_chm",
+               detail = paste0(class(res_chm$erreur)[1], " : ",
+                               conditionMessage(res_chm$erreur))))
+  }
+  chm <- res_chm$chm
+  if (is.null(chm)) {
+    cli::cli_alert_info(
+      "Houppiers : aucun mod\u00e8le de hauteur exploitable dans le cache du \
+       projet (pas de LiDAR HD, et le mod\u00e8le Open-Canopy ne porte aucune \
+       v\u00e9g\u00e9tation).")
+    return(fin("sans_chm"))
+  }
 
   projet <- load_project(project_id)
   aoi <- if (is.null(projet)) NULL else .marculus_aoi(projet)
@@ -694,7 +706,7 @@ precompute_houppiers <- function(project_id) {
 #' @description
 #' Writes `metadata$houppiers` = `statut`, `nombre`, `date` and, on failure,
 #' `detail` (the error message). The status is one of `"ok"`, `"coeur_ancien"`,
-#' `"projet_absent"`, `"sans_chm"`, `"vide"`, `"chm_suspect"`,
+#' `"projet_absent"`, `"sans_chm"`, `"erreur_chm"`, `"vide"`, `"chm_suspect"`,
 #' `"echec_segmentation"`, `"echec_ecriture"`; each calls for a different action,
 #' and the Marculus export names it when it ships a bundle without crowns.
 #' Never fails: a project that cannot be found simply keeps no trace.
@@ -936,20 +948,37 @@ precompute_houppiers <- function(project_id) {
 #'   `NULL` when no usable model exists.
 #' @noRd
 .project_chm <- function(project_id) {
-  path <- get_project_path(project_id)
-  if (is.null(path)) return(NULL)
-
-  r <- tryCatch(
-    nemeton::resolve_project_chm(path, validate = .chm_exploitable,
-                                 verbose = FALSE),
-    error = function(e) NULL)
-  if (inherits(r, "SpatRaster")) return(r)
+  res <- .project_chm_detail(project_id)
+  if (!is.null(res$erreur)) {
+    # Une erreur du coeur n'est pas « pas de LiDAR HD » : on dit la vraie cause.
+    cli::cli_warn(c(
+      "Houppiers : la recherche du mod\u00e8le de hauteur a \u00e9chou\u00e9.",
+      x = "{conditionMessage(res$erreur)}",
+      i = "Classe : {.cls {class(res$erreur)[1]}}."))
+    return(NULL)
+  }
+  if (inherits(res$chm, "SpatRaster")) return(res$chm)
+  if (is.null(res$chemin)) return(NULL)
 
   cli::cli_alert_info(
     "Houppiers : aucun mod\u00e8le de hauteur exploitable dans le cache du \
      projet (pas de LiDAR HD, et le mod\u00e8le Open-Canopy ne porte aucune \
      v\u00e9g\u00e9tation).")
   NULL
+}
+
+# Distingue « rien trouve » (NULL du coeur) de « erreur » (condition levee).
+# Rend list(chemin, chm, erreur) : `erreur` est la condition, sinon NULL.
+.project_chm_detail <- function(project_id) {
+  path <- get_project_path(project_id)
+  if (is.null(path)) return(list(chemin = NULL, chm = NULL, erreur = NULL))
+  err <- NULL
+  r <- tryCatch(
+    nemeton::resolve_project_chm(path, validate = .chm_exploitable,
+                                 verbose = FALSE),
+    error = function(e) { err <<- e; NULL })
+  if (!inherits(r, "SpatRaster")) r <- NULL
+  list(chemin = path, chm = r, erreur = err)
 }
 
 #' Reproject to WGS84, re-stamping a CRS that carries no authority block
