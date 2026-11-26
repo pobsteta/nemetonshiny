@@ -155,16 +155,17 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
   rlang::hash(list(as.character(ids), sf::st_as_text(geom), sf::st_crs(geom)$input))
 }
 
-#' MNT deja en cache du projet
+#' MNTs deja en cache du projet, par ordre de preference
 #'
-#' Le MNT LiDAR HD (mosaique) quand il existe, sinon le MNT IGN BD ALTI : l'ordre
-#' de `download_layers_for_parcels()`, qui promeut le MNT LiDAR au rang de `dem`.
-#' Rien n'est telecharge.
-#' @return Chemin ou `NULL`.
+#' Le MNT LiDAR HD (mosaique) **seulement s'il porte des pixels valides**
+#' (`.lidar_mnt_mosaique_valide()` : une mosaique NoData ne doit pas masquer le
+#' MNT IGN), puis `dem.tif` (BD ALTI). Rien n'est telecharge.
+#' @return Vecteur de chemins (peut etre vide).
 #' @noRd
-.itin_mnt_cache <- function(project_path) {
-  .itin_premier_fichier(file.path(project_path, "cache", "layers"),
-                        c("lidar_mnt_mosaic.tif", "dem.tif"))
+.itin_mnt_candidats <- function(project_path) {
+  lidar <- .lidar_mnt_mosaique_valide(project_path)
+  dem <- .itin_premier_fichier(file.path(project_path, "cache", "layers"), "dem.tif")
+  c(lidar, dem)
 }
 
 #' Pente moyenne (%) par UGF
@@ -216,14 +217,15 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
 
 #' Distance (m) de chaque UGF a la desserte
 #'
-#' Mesure retenue : distance du **centroide** de l'UGF a la desserte existante la
+#' Mesure retenue : distance d'un **point a l'interieur** de l'UGF (`st_point_on_surface`, le centroide d'une UGF concave pouvant tomber dehors) a la desserte existante la
 #' plus proche (Lambert-93). foretaccess n'expose pas de distance par UGF (ses
 #' sorties sont des rasters de classes de debardage) : la mesure est donc celle de
 #' l'app, dite ici.
 #' @noRd
 .itin_desserte_ugf <- function(ugf, lignes) {
   tryCatch({
-    c2 <- sf::st_centroid(sf::st_geometry(sf::st_transform(ugf, 2154)))
+    c2 <- suppressWarnings(
+      sf::st_point_on_surface(sf::st_geometry(sf::st_transform(ugf, 2154))))
     as.numeric(sf::st_distance(c2, sf::st_union(sf::st_geometry(lignes))))
   }, error = function(e) NULL)
 }
@@ -254,7 +256,7 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
 #' Ne telecharge rien. Une donnee absente du cache est **absente du resultat**
 #' (`NULL`) : le coeur dit alors « donnee manquante », jamais une valeur inventee.
 #' Pente et desserte, les deux calculs couteux, sont gardees dans
-#' `<projet>/cache/itineraires/donnees_ugf.rds`, chacune sous une cle (fichier
+#' `<projet>/cache/itineraires/donnees_ugf.rds`, chacune sous une cle (fichiers
 #' source : chemin, taille, date ; empreinte des UGF) : elles ne sont recalculees
 #' que si le MNT, la desserte ou les UGF ont change. Les aires protegees sont
 #' relues du GeoPackage de B1 (lecture seule, rapide).
@@ -280,27 +282,38 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
   if (!is.list(cache)) cache <- list()
   modifie <- FALSE
   # Une colonne : relue du cache si sa cle n'a pas change, sinon recalculee.
+  # Un echec (NULL) est memorise sous la meme cle : pas de calcul vain a chaque
+  # ouverture de la vue.
   colonne <- function(nom, cle, calcul) {
     if (is.null(cle)) {
       if (!is.null(cache[[nom]])) { cache[[nom]] <<- NULL; modifie <<- TRUE }
       return(NULL)
     }
     c0 <- cache[[nom]]
-    if (is.list(c0) && identical(c0$cle, cle) && length(c0$val) == nrow(ugf)) {
-      return(c0$val)
+    if (is.list(c0) && identical(c0$cle, cle)) {
+      if (isTRUE(c0$echec)) return(NULL)
+      if (length(c0$val) == nrow(ugf)) return(c0$val)
     }
     val <- calcul()
-    cache[[nom]] <<- if (is.null(val)) NULL else list(cle = cle, val = val)
+    cache[[nom]] <<- if (is.null(val)) list(cle = cle, echec = TRUE)
+                     else list(cle = cle, val = val)
     modifie <<- TRUE
     val
   }
-  if (is.null(deja$pente)) {
-    mnt <- .itin_mnt_cache(project_path)
-    sig <- .itin_sig_fichier(mnt)
-    sortie$pente <- colonne("pente", if (is.null(sig)) NULL else paste(sig, sig_ugf),
-                            function() .itin_pente_ugf(mnt, ugf))
+  complet <- function(x) !is.null(x) && all(is.finite(x))
+  if (!complet(deja$pente)) {
+    mnt <- .itin_mnt_candidats(project_path)
+    sigs <- vapply(mnt, .itin_sig_fichier, character(1))
+    sortie$pente <- colonne("pente", if (!length(mnt)) NULL else paste(c(sigs, sig_ugf), collapse = " "),
+                            function() {
+                              for (f in mnt) {
+                                v <- .itin_pente_ugf(f, ugf)
+                                if (!is.null(v)) return(v)
+                              }
+                              NULL
+                            })
   }
-  if (is.null(deja$desserte)) {
+  if (!complet(deja$desserte)) {
     d <- .itin_desserte_cache(project_path)
     sig <- if (is.null(d)) NULL else .itin_sig_fichier(d$gpkg)
     sortie$desserte <- colonne("desserte", if (is.null(sig)) NULL else paste(sig, sig_ugf),
@@ -364,13 +377,17 @@ itineraires_calculer <- function(project, profil, catalogue = NULL) {
   if (is.null(u$unites)) return(vide("sans_ugf"))
   tryCatch({
     if (is.null(catalogue)) catalogue <- nemeton::itineraires_catalogue()
-    deja <- list(pente = u$unites$pente_pct, desserte = if (u$desserte) u$unites$desserte_m)
+    deja <- list(pente = u$unites$pente_pct, desserte = u$unites$desserte_m)
     dp <- .itin_donnees_projet(project$path, u$unites$unit_id, u$geometrie, deja)
-    if (!is.null(dp$pente)) u$unites$pente_pct <- dp$pente
-    if (!is.null(dp$desserte)) {
-      u$unites$desserte_m <- dp$desserte
-      u$desserte <- any(is.finite(dp$desserte))
+    # Une valeur du projet prime UGF par UGF ; le cache complete les NA.
+    complete <- function(projet, cache) {
+      if (is.null(cache)) return(projet)
+      if (is.null(projet)) return(cache)
+      ifelse(is.finite(projet), projet, cache)
     }
+    if (!is.null(dp$pente)) u$unites$pente_pct <- complete(deja$pente, dp$pente)
+    if (!is.null(dp$desserte)) u$unites$desserte_m <- complete(deja$desserte, dp$desserte)
+    u$desserte <- "desserte_m" %in% names(u$unites) && any(is.finite(u$unites$desserte_m))
     donnees <- c(pente = "pente_pct" %in% names(u$unites) &&
                    any(is.finite(u$unites$pente_pct)),
                  desserte = isTRUE(u$desserte),

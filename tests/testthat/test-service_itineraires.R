@@ -371,7 +371,7 @@ test_that("les 15 profils ont leur nom complet FR et EN, aucun Â« Proprietaire Â
     sf::st_linestring(rbind(c(120, -50), c(120, 150))), crs = 2154))
   d <- file.path(chemin, "cache", "desserte")
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  sf::st_write(ligne, file.path(d, "desserte_glouton.gpkg"), layer = "desserte_existante",
+  sf::st_write(ligne, file.path(d, "desserte_glouton.gpkg"), layer = "desserte_existante", delete_dsn = TRUE,
                quiet = TRUE)
 }
 
@@ -395,7 +395,7 @@ test_that("069 cas 1 : un plan incline a 10 % donne pente_pct ~ 10 par UGF", {
   })
 })
 
-test_that("069 cas 2 : la distance de desserte est celle du centroide au reseau", {
+test_that("069 cas 2 : la distance de desserte est celle du point interieur au reseau", {
   withr::with_tempdir({
     .reseau_069(getwd())
     d <- nemetonshiny:::.itin_desserte_cache(getwd())
@@ -493,5 +493,100 @@ test_that("069 cache : la pente n'est pas recalculee tant que MNT et UGF ne chan
     Sys.sleep(1.1); .mnt_plan_069(getwd(), pente = 0.2)
     nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
     expect_equal(n, 2L)
+  })
+})
+
+
+# ---- Mission 069, relecture : MNT valide, echec memorise, priorite, gardes ------
+
+test_that("069 mosaique NoData : le dem.tif valide sert quand meme (10 %)", {
+  withr::with_tempdir({
+    .mnt_plan_069(getwd())
+    vide <- terra::rast(xmin = -50, xmax = 350, ymin = -50, ymax = 150,
+                        resolution = 10, crs = "EPSG:2154")
+    terra::values(vide) <- NA_real_
+    terra::writeRaster(vide, file.path("cache", "layers", "lidar_mnt_mosaic.tif"))
+    p <- .projet_069(getwd())
+    u <- nemetonshiny:::.itin_unites(p)
+    dp <- nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
+    expect_equal(dp$pente, c(10, 10), tolerance = 0.05)
+  })
+})
+
+test_that("069 un echec de pente est memorise : pas de calcul vain a chaque ouverture", {
+  withr::with_tempdir({
+    .mnt_plan_069(getwd())
+    u <- nemetonshiny:::.itin_unites(.projet_069(getwd()))
+    n <- 0L
+    testthat::local_mocked_bindings(
+      .itin_pente_ugf = function(mnt_path, ugf) { n <<- n + 1L; NULL },
+      .package = "nemetonshiny")
+    a <- nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
+    b <- nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
+    expect_null(a$pente); expect_null(b$pente)
+    expect_equal(n, 1L)
+  })
+})
+
+test_that("069 priorite : la valeur du projet prime UGF par UGF, le cache complete les NA", {
+  skip_si_noyau_ancien()
+  withr::with_tempdir({
+    .mnt_plan_069(getwd()); .reseau_069(getwd())
+    p <- .projet_069(getwd())
+    p$indicators_sf$pente_pct <- c(33, NA)
+    p$indicators_sf$desserte_m <- c(NA, 999)
+    res <- nemetonshiny:::itineraires_calculer(p, "profil_naturaliste",
+                                               catalogue = .catalogue_066())
+    expect_equal(res$unites$pente_pct[1], 33)
+    expect_equal(res$unites$pente_pct[2], 10, tolerance = 0.05)
+    expect_equal(res$unites$desserte_m, c(70, 999))
+  })
+})
+
+test_that("069 UGF concave : le point interieur reste dans l'UGF", {
+  l <- sf::st_sf(id = 1L, geometry = sf::st_sfc(
+    sf::st_linestring(rbind(c(0, 0), c(0, 10))), crs = 2154))
+  # un U dont le centroide tombe dans le vide
+  u <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+    c(0, 0), c(100, 0), c(100, 100), c(90, 100), c(90, 10), c(10, 10),
+    c(10, 100), c(0, 100), c(0, 0)))), crs = 2154))
+  expect_false(sf::st_within(sf::st_centroid(u), u, sparse = FALSE)[1, 1])
+  d <- nemetonshiny:::.itin_desserte_ugf(u, l)
+  expect_true(is.finite(d))
+  expect_lte(d, 50)   # un point dans le U, pas dans le vide a x = 50
+})
+
+test_that("069 cache : invalide par changement d'UGF et par changement du gpkg desserte", {
+  withr::with_tempdir({
+    .reseau_069(getwd())
+    u <- nemetonshiny:::.itin_unites(.projet_069(getwd()))
+    n <- 0L
+    testthat::local_mocked_bindings(
+      .itin_desserte_ugf = function(ugf, lignes) { n <<- n + 1L; c(1, 2) },
+      .package = "nemetonshiny")
+    f <- function(geom = u$geometrie) nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, geom)
+    f(); f(); expect_equal(n, 1L)
+    f(u$geometrie + c(1, 1)); expect_equal(n, 2L)      # UGF deplacees
+    Sys.sleep(1.1); .reseau_069(getwd()); f(); expect_equal(n, 3L)  # gpkg reecrit
+  })
+})
+
+test_that("069 pente : MNT en WGS84, UGF en Lambert-93 (~10 %)", {
+  withr::with_tempdir({
+    # plan incline de 10 % vers l'est, en degres : 1 m ~ 1/(111320 cos(lat)) deg
+    ugf <- sf::st_sf(unit_id = "A", geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(700000, 6500000), c(700400, 6500000),
+                                c(700400, 6500400), c(700000, 6500400),
+                                c(700000, 6500000)))), crs = 2154))
+    ctr <- sf::st_transform(sf::st_point_on_surface(sf::st_geometry(ugf)), 4326)
+    xy <- sf::st_coordinates(ctr)
+    r <- terra::rast(xmin = xy[1] - 0.01, xmax = xy[1] + 0.01, ymin = xy[2] - 0.01,
+                     ymax = xy[2] + 0.01, resolution = 0.0001, crs = "EPSG:4326")
+    cc <- terra::xyFromCell(r, seq_len(terra::ncell(r)))
+    m_par_deg <- 111320 * cos(xy[2] * pi / 180)
+    terra::values(r) <- 0.10 * (cc[, 1] - xy[1]) * m_par_deg
+    terra::writeRaster(r, "dem84.tif")
+    pente <- nemetonshiny:::.itin_pente_ugf("dem84.tif", ugf)
+    expect_equal(pente, 10, tolerance = 0.1)
   })
 })
