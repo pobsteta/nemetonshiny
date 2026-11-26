@@ -1,12 +1,32 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9016 (en développement)
+## nemetonshiny 2026.11.6.9017 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066, 067, 068, 072, 073 et 075).
+cassant (missions 043, 048, 063, 066, 067, 068, 069, 072, 073 et 075).
 
 ### Changements
 
+- **Itinéraires : pente, desserte et aires protégées fournies au cœur**
+  (mission 069, décision 3 de Pascal du 2026-11-26).
+  [`nemeton::itineraires_admissibles()`](https://pobsteta.github.io/nemeton/reference/itineraires_admissibles.html)
+  reçoit désormais, tirées des caches du projet (rien n’est téléchargé)
+  : `pente_pct`, moyenne par UGF de la pente en %
+  ([`terra::terrain`](https://rspatial.github.io/terra/reference/terrain.html)
+  sur le MNT en cache, LiDAR HD sinon BD ALTI, moyenne des pixels de
+  l’UGF) ; `desserte_m`, distance du centroïde de l’UGF à la desserte
+  existante la plus proche (couche `desserte_existante` du dernier
+  calcul de la vue Desserte ; le réseau créé par le moteur, qui n’est
+  qu’une proposition, n’est pas compté) ; et `protected_areas`, la
+  couche de zonages que B1 a déjà téléchargée. Une donnée absente du
+  cache reste absente (« donnée manquante » côté cœur), jamais inventée.
+  Pente et desserte sont gardées dans
+  `cache/itineraires/donnees_ugf.rds`, recalculées seulement si le MNT,
+  le réseau ou les UGF changent. Un bandeau de la vue dit, pour chacune
+  des trois, si elle est fournie ou manquante et comment l’obtenir (clé
+  `itin_desserte_absente` remplacée par `itin_don_*`). Une colonne
+  `pente_pct` ou `desserte_m` déjà portée par le projet prime sur le
+  cache.
 - **« Tout calculer » lance FORDEAD hors de la zone de calibration
   ONF/DSF** (mission 073, option A de Pascal du 2026-11-26). L’étape ne
   saute plus que si la part de résineux est insuffisante
