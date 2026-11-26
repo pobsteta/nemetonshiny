@@ -1,13 +1,50 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9018 (en développement)
+## nemetonshiny 2026.11.6.9019 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073 et
-075).
+cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075
+et 077).
 
 ### Changements
 
+- **Modèles de fondation : statuts de N5, méthode de B4/L3, drapeau NDP
+  `embedding_ml`** (mission 077, écarts 20, 21 et 22 du `PLAN.md` du
+  cœur ; cœur 2026.11.1). Aucune logique métier : tout vient de
+  `nemeton`.
+  - **N5** : les quatre statuts qui vident N5 (`skipped_no_embedding`,
+    `skipped_no_reference`, `skipped_reference_too_small`,
+    `skipped_no_coverage`) sont traduits FR/EN sous la carte (clés
+    `n5_skipped_*`, même mécanisme que `r5_status` ; un statut inconnu
+    retombe sur la phrase générique). N5 calculé dit que la famille N
+    compte un indicateur de plus et que son score peut différer d’un
+    calcul sans embedding (`n5_calculated`). Libellé et sens de N5
+    viennent déjà du cœur.
+  - **B4 / L3** : `b4_methode` / `l3_methode` (`biodivmapr`,
+    `embedding`) sont gardées en colonnes annexes `.b4_methode` /
+    `.l3_methode` et affichées sous la carte de la famille et dans la
+    fiche de l’UGF, à côté de la valeur ; sans méthode, rien n’est
+    affiché. Le statut `calculated_embedding` passait déjà à
+    `normalize_indicator(statut =)` par `.b4_status` / `.l3_status`
+    (même chemin que P2) : un test le verrouille. Aucun écran ne compare
+    les projets (écart n° 6 : l’interdit tient) ;
+    `methodes_comparables()` (`service_synthesis.R`) porte la règle pour
+    le jour où il y en aura un : comparables seulement si les deux
+    méthodes sont `embedding`.
+  - **NDP** : le badge « Embedding ML » s’affiche à côté du badge NDP
+    quand
+    [`nemeton::detect_ndp()`](https://pobsteta.github.io/nemeton/reference/detect_ndp.html)
+    rend `embedding_ml`, à partir de `metadata$embedding_source` (`aef`,
+    `maestro`, `forpt`), posée au calcul si `layers$embedding_source`
+    existe (sans source, la clé n’est pas écrite et celle d’un calcul
+    précédent est retirée). Les libellés de méthode sont « biodivMapR
+    (Sentinel-2) » et « AlphaEarth (modèle de fondation) » (décision de
+    Pascal).
+  - **Limite** : l’app n’a pas encore de source d’embedding (rien ne
+    renseigne `layers$embedding_source` ni la couche `aef_embedding`) ;
+    N5 n’est donc pas ajouté à la liste des indicateurs calculés
+    (mission 080), et le drapeau NDP reste éteint tant que cette source
+    n’existe pas.
 - **Marculus : choix des actions à l’export** (mission 070, décision 10
   de Pascal du 2026-11-26). « Télécharger vers Marculus » ouvre une
   fenêtre qui liste les actions éligibles (UGF, type, année, statut)
