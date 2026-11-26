@@ -248,3 +248,30 @@ test_that("la chaine s'arrete si un autre projet est ouvert entre deux etapes", 
     }
   ))
 })
+
+
+test_that("le rapport affiche la ligne d'avertissement d'une etape ok (mission 073)", {
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  etapes <- nemetonshiny:::pipeline_all_step_ids()[1]
+  app_state <- shiny::reactiveValues(
+    language = "fr", project_id = "p1",
+    current_project = list(id = "p1", path = withr::local_tempdir()),
+    pipeline_request = NULL, pipeline_answer = NULL)
+  avert <- nemetonshiny:::get_i18n("fr")$t("pipeline_warn_hors_calib")
+
+  suppressWarnings(shiny::testServer(
+    nemetonshiny:::mod_pipeline_server,
+    args = list(app_state = app_state),
+    {
+      session$setInputs(scope = etapes, profil = "generalist")
+      session$setInputs(start = 1)
+      app_state$pipeline_answer <- list(run_id = rv$state$run_id,
+                                        step_id = etapes[1], status = "ok",
+                                        message = avert, ts = Sys.time())
+      session$flushReact()
+      expect_identical(rv$state$results[[etapes[1]]]$status, "ok")
+      html <- paste(as.character(output$panel$html), collapse = " ")
+      expect_true(grepl(htmltools::htmlEscape(avert), html, fixed = TRUE))
+    }
+  ))
+})

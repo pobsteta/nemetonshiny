@@ -1,9 +1,10 @@
-# nemetonshiny 2026.11.6.9015 (en développement)
+# nemetonshiny 2026.11.6.9016 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 072 et 075).
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 072, 073 et 075).
 
 ## Changements
 
+- **« Tout calculer » lance FORDEAD hors de la zone de calibration ONF/DSF** (mission 073, option A de Pascal du 2026-11-26). L'étape ne saute plus que si la part de résineux est insuffisante (`species_valid` FALSE, motif `pipeline_skip_resineux`), comme R5 ; hors calibration (ou géographie indéterminable, par prudence), avec résineux suffisants ou espèce indéterminée, FORDEAD tourne et la réponse de l'étape (statut `ok`) porte l'avertissement « Hors zone de calibration ONF/DSF : classes extrapolées » (`pipeline_warn_hors_calib`). Lancement manuel depuis l'onglet : inchangé, la modale G3 reste. Clé `pipeline_skip_hors_domaine` retirée. Jusque-là, tout projet hors Vosges-Jura-Alpes du Nord perdait FORDEAD dans la chaîne.
 - **L'arrêt tue vraiment RECONFORT et FORDEAD** (mission 075, suite de la 072).
   - Les deux moteurs tournent dans un enfant plafonné (`run_memory_capped()`) que le seul drapeau coopératif n'atteignait qu'aux frontières de phase : un calcul « arrêté » continuait de télécharger et tenait son verrou. Chaque lancement dépose maintenant un marqueur de run propre au moteur et au projet (`cache/layers/<moteur>/engine_run.json`, `marker_path` du cœur, retiré sur un cœur qui ne le connaît pas), et l'arrêt (bouton de l'onglet Santé ou « Tout calculer ») appelle `stop_memory_capped()` en plus du drapeau, qui reste posé. Rien n'est appelé s'il ne vit aucun moteur.
   - Relancer RECONFORT ou FORDEAD pendant que le moteur du même type vit ne lance plus un second enfant : message clair (`monitoring_reconfort_verrou`, nouvelle clé `monitoring_fordead_verrou`) avec un lien « Arrêter ce calcul ».

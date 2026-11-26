@@ -522,6 +522,10 @@ mod_monitoring_server <- function(id, app_state) {
     # meme chaine, et chacun repond quand SA tache est tranchee.
     sante_fast_pipeline_req      <- shiny::reactiveVal(NULL)
     sante_fordead_pipeline_req   <- shiny::reactiveVal(NULL)
+    # Mission 073 : VRAI quand la chaine a lance FORDEAD hors de la zone de
+    # calibration ONF/DSF (classes extrapolees) ; la reponse de l'etape porte
+    # alors un avertissement, comme R5 (`eligible_fordead_out_of_calibration`).
+    sante_fordead_hors_calib     <- shiny::reactiveVal(FALSE)
     sante_reconfort_pipeline_req <- shiny::reactiveVal(NULL)
 
     # Repond au lancement enchaine des qu'un moteur sante est tranche.
@@ -534,7 +538,8 @@ mod_monitoring_server <- function(id, app_state) {
       i18n <- i18n_r()
       for (item in list(
         list(rv = sante_fast_pipeline_req,      st = fast_task$status(),      tk = fast_task),
-        list(rv = sante_fordead_pipeline_req,   st = fordead_task$status(),   tk = fordead_task),
+        list(rv = sante_fordead_pipeline_req,   st = fordead_task$status(),   tk = fordead_task,
+             avert = sante_fordead_hors_calib),
         list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status(), tk = reconfort_task)
       )) {
         req <- shiny::isolate(item$rv())
@@ -563,10 +568,16 @@ mod_monitoring_server <- function(id, app_state) {
           "cancelled")
 
         statut <- .sante_pipeline_statut(item$st, annule)
+        # Avertissement " hors calibration " : seulement si l'etape a abouti.
+        avert <- !is.null(item$avert) && isTRUE(shiny::isolate(item$avert()))
         pipeline_answer(
           app_state, req, statut,
           if (identical(statut, "error"))
-            pipeline_task_error(item$tk, i18n$t("error")) else NULL)
+            pipeline_task_error(item$tk, i18n$t("error"))
+          else if (identical(statut, "ok") && avert)
+            i18n$t("pipeline_warn_hors_calib")
+          else NULL)
+        if (!is.null(item$avert)) item$avert(FALSE)
         item$rv(NULL)
       }
     })
@@ -3160,6 +3171,7 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_health(FALSE)
+      sante_fordead_hors_calib(FALSE)
       # v0.71.1 - Reset le flag idempotence (parite FAST v0.70.4).
       # Le prochain `fordead_task$result()` doit etre traite (toast
       # success / error emis).
@@ -3197,10 +3209,15 @@ mod_monitoring_server <- function(id, app_state) {
       }
 
       v <- .validity_for(zone_id %||% input$zone_id)
-      if (!is.null(v) && isFALSE(v$overall_valid)) {
+      if (!is.null(zone_id) && !is.null(v)) {
         # Chaine (zone imposee) : pas de modale a valider en l'absence de
-        # l'utilisateur ; l'etape se saute avec son motif (garde-fou G3).
-        if (!is.null(zone_id)) return("hors_domaine")
+        # l'utilisateur. Meme regle que R5 : seule une part de resineux
+        # insuffisante saute l'etape ; hors zone de calibration, FORDEAD
+        # tourne et le rapport l'avertit (classes extrapolees).
+        if (isFALSE(v$species_valid)) return("resineux_insuffisants")
+        # Geographie fausse OU indeterminable (NA) : prudence, on avertit.
+        if (!isTRUE(v$geo_valid)) sante_fordead_hors_calib(TRUE)
+      } else if (!is.null(v) && isFALSE(v$overall_valid)) {
         shiny::showModal(shiny::modalDialog(
           title = i18n$t("monitoring_confirm_invalid_title"),
           i18n$t("monitoring_confirm_invalid_body"),
@@ -3250,8 +3267,8 @@ mod_monitoring_server <- function(id, app_state) {
       if (!isTRUE(res_lancement)) {
         sante_fordead_pipeline_req(NULL)
         pipeline_answer(app_state, req, "skipped",
-                        if (identical(res_lancement, "hors_domaine"))
-                          i18n$t("pipeline_skip_hors_domaine")
+                        if (identical(res_lancement, "resineux_insuffisants"))
+                          i18n$t("pipeline_skip_resineux")
                         else i18n$t("pipeline_skip_not_started"))
       }
     })
