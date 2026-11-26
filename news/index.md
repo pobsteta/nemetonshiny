@@ -1,16 +1,25 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9022 (en développement)
+## nemetonshiny 2026.11.6.9023 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
 cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
-077, 078, 080 et 083).
+077, 078, 080, 083 et 084).
 
 ### Changements
+
+- **Synthèse : trois onglets, construits comme ceux de la Sélection**
+  (mission 084, décision de Pascal). « Synthèse du projet » (par
+  défaut), « Ce que la gestion a produit sur ce massif » (mission 067)
+  et « Ce que les modèles voient » (mission 078) : `navset_card_tab`,
+  déplacement d’UI seulement. Les modules gardent leurs identifiants
+  (`effet_gestion`, `sondes_embedding`). Sorties d’un onglet masqué
+  suspendues jusqu’à son affichage ; les calculs lancés se poursuivent.
 
 - **Schéma SQL : une virgule de commentaire ne coupe plus
   l’initialisation ; la mosaïque MNT de la reGénération ne perd plus de
   dalle en silence** (mission 083). Défaut, pas un choix.
+
   - **Cause** :
     [`db_init_schema()`](https://pobsteta.github.io/nemetonshiny/reference/db_init_schema.md)
     découpait `schema.sql` sur `;` sans retirer les commentaires `--`.
@@ -34,11 +43,13 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     mission 082 du cœur), erreur nommant la dalle d’un autre système
     (classe `nemetonshiny_mosaique_srs`), contrôle du nombre de dalles
     retenues (`nemetonshiny_mosaique_sources`).
+
 - **Vue « Ce que les modèles voient » : les sondes d’embedding**
   (mission 078, écart n° 25 du `PLAN.md` du cœur ; cœur 2026.11.3, spec
   066 § 6). Aucune logique métier : R², lecture, statut et
   `source_commune` viennent de
   [`nemeton::probe_indicator()`](https://pobsteta.github.io/nemeton/reference/probe_indicator.html).
+
   - **Où** : une carte sous « l’effet de la gestion », dans l’onglet
     Synthèse (la spec 066 ne place pas la vue ; choix à confirmer par
     Pascal). Un bouton « Sonder les indicateurs » lance le calcul à la
@@ -80,11 +91,13 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     cœur (blocs de 2 km, 5 plis, 50 UGF minimum) ne sont pas exposés ;
     le critère n° 3 de la spec 066 (table AlphaEarth sur un projet réel
     d’au moins 50 UGF) reste à lancer sur le poste de Pascal.
+
 - **Source d’embedding AlphaEarth : N5 se calcule, B4/L3 passent en mode
   embedding, le badge « Embedding ML » s’allume** (mission 080, décision
   de Pascal du 2026-11-26 ; suite de la 077). Aucune logique métier :
   [`alphaearthnemeton::aef_fetch()`](https://rdrr.io/pkg/alphaearthnemeton/man/aef_fetch.html)
   rend l’embedding, le cœur calcule.
+
   - **Option « Embedding AlphaEarth » dans Sources & paramètres, éteinte
     par défaut** (`metadata$aef$enabled`). Au calcul,
     `aef_fetch(aoi, years = NULL, crs = 2154, cache_dir = <projet>/cache/layers/aef)`
@@ -138,10 +151,12 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     est en cache (le cœur ne bascule en embedding que sans `spectral`) ;
     la référence par défaut de N5 demande la forêt ancienne, construite
     quand N2 est calculé.
+
 - **Modèles de fondation : statuts de N5, méthode de B4/L3, drapeau NDP
   `embedding_ml`** (mission 077, écarts 20, 21 et 22 du `PLAN.md` du
   cœur ; cœur 2026.11.1). Aucune logique métier : tout vient de
   `nemeton`.
+
   - **N5** : les quatre statuts qui vident N5 (`skipped_no_embedding`,
     `skipped_no_reference`, `skipped_reference_too_small`,
     `skipped_no_coverage`) sont traduits FR/EN sous la carte (clés
@@ -175,6 +190,7 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     N5 n’est donc pas ajouté à la liste des indicateurs calculés
     (mission 080), et le drapeau NDP reste éteint tant que cette source
     n’existe pas. *(Levée par la mission 080, ci-dessus.)*
+
 - **Marculus : choix des actions à l’export** (mission 070, décision 10
   de Pascal du 2026-11-26). « Télécharger vers Marculus » ouvre une
   fenêtre qui liste les actions éligibles (UGF, type, année, statut)
@@ -188,6 +204,7 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   `marculus_export_bundle()`, figée par le contrat nemetonmcp, ne bouge
   pas). Jusque-là, toutes les actions éligibles partaient, quels que
   soient leur année et leur statut.
+
 - **Itinéraires : pente, desserte et aires protégées fournies au cœur**
   (mission 069, décision 3 de Pascal du 2026-11-26).
   [`nemeton::itineraires_admissibles()`](https://pobsteta.github.io/nemeton/reference/itineraires_admissibles.html)
@@ -208,6 +225,7 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   `itin_desserte_absente` remplacée par `itin_don_*`). Une colonne
   `pente_pct` ou `desserte_m` déjà portée par le projet prime sur le
   cache.
+
 - **« Tout calculer » lance FORDEAD hors de la zone de calibration
   ONF/DSF** (mission 073, option A de Pascal du 2026-11-26). L’étape ne
   saute plus que si la part de résineux est insuffisante
@@ -220,8 +238,10 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   inchangé, la modale G3 reste. Clé `pipeline_skip_hors_domaine`
   retirée. Jusque-là, tout projet hors Vosges-Jura-Alpes du Nord perdait
   FORDEAD dans la chaîne.
+
 - **L’arrêt tue vraiment RECONFORT et FORDEAD** (mission 075, suite de
   la 072).
+
   - Les deux moteurs tournent dans un enfant plafonné
     (`run_memory_capped()`) que le seul drapeau coopératif n’atteignait
     qu’aux frontières de phase : un calcul « arrêté » continuait de
@@ -249,9 +269,11 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   - Helpers communs `.capped_marker_alive()` / `.capped_marker_stop()`
     (`service_monitoring.R`), sur lesquels reGénération s’appuie
     désormais (comportement inchangé).
+
 - **Arrêt d’un calcul : les toasts de progression disparaissent et leur
   chrono s’arrête, l’arrêt dit « calcul arrêté », le moteur Open-Canopy
   est tué** (mission 072, constat de Pascal du 2026-11-26).
+
   - Le toast RECONFORT (« Scène 64/269 — téléchargement… ») restait à
     l’écran, chrono vivant, après l’arrêt de « Tout calculer » : le
     fichier de progression n’était pas lâché, donc un événement tardif
@@ -280,11 +302,13 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     (cœur) ; l’app ne peut pas le tuer d’ici, et le cœur ne sonde le
     drapeau d’annulation qu’aux frontières de phase, pas dans la boucle
     d’ingestion des scènes.
+
 - **Itinéraires et effet de la gestion : le détail des exclusions
   traduit, les 15 profils nommés en entier, la référence de comparaison
   choisie, les UGF exclues comptées** (mission 068, décisions de Pascal
   du 2026-11-26 ; suites des missions 066 et 067). Aucune logique métier
   : tout vient de `nemeton`.
+
   - **Itinéraires, détail traduit** : le `detail` du cœur s’affiche en
     infobulle sur la raison de chaque exclusion, en français et en
     anglais, valeur observée contre seuil (P2, pente, distance de
@@ -310,12 +334,14 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   - **Effet, bouton** : « Calculer l’effet de la gestion » passe en
     `btn-outline-primary` (le PDF reste l’action principale de la
     Synthèse), toujours lié à l’`ExtendedTask`.
+
 - **Type de gestion déclaré par UGF et tableau « ce que la gestion a
   produit sur ce massif » dans la Synthèse** (mission 067, spec 068 du
   cœur, brief `068-trajectoires-finn`, écart 27 ; décision de Pascal du
   2026-11-25). Aucune logique métier : l’effet, l’intervalle à 90 % et
   le statut viennent de
   [`nemeton::effet_gestion()`](https://pobsteta.github.io/nemeton/reference/effet_gestion.html).
+
   - **Saisie** (onglet Unités de gestion, volet du tableau) : un
     sélecteur « Type de gestion » à liste fermée (`reguliere`,
     `irreguliere`, `taillis`, `taillis_sous_futaie`, `libre_evolution`,
@@ -344,9 +370,11 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     causale. » Le tableau disparaît si les types déclarés changent après
     le calcul. Hors mission : déduire le type de la BD Forêt, le skill
     `aigora`.
+
 - **Inventaire vidéo : carte des placettes agrandie**
   (`R/mod_inventaire_video.R`, demande de Pascal du 2026-11-25) : 70 %
   de la hauteur de la fenêtre au lieu de 320 px.
+
 - **Plan d’actions : onglet « Itinéraires », les itinéraires sylvicoles
   admissibles par UGF et leur classement sous un profil** (mission 066,
   spec 065 du cœur, brief `064-alphaearth-n5` § spec 065). Nouvel onglet
@@ -355,6 +383,7 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   vient de
   [`nemeton::itineraires_admissibles()`](https://pobsteta.github.io/nemeton/reference/itineraires_admissibles.html),
   `comparer_itineraires()` et `profils_poids()`).
+
   - **Admissibles et exclus** : une ligne par UGF et par itinéraire du
     catalogue, aucune perdue ; la raison de chaque exclusion
     (`station_insuffisante`, `hors_ser`, `essence_absente`, `pente`,
@@ -382,6 +411,7 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
     `statut_protection` reste `donnee_manquante` tant qu’elles ne le
     sont pas. Hors mission : type de gestion (écart 27), remplissage du
     catalogue, poids.
+
 - **B5, stratification verticale du nuage LiDAR : calcul, statuts, carte
   et fiche de l’UGF** (mission 063, spec 067 du cœur, brief
   `067-forpt-lidar-latent`). B5 rejoint la famille B (conditionnel).
@@ -405,12 +435,14 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   cœur. Hors mission : badge de dimensionnement drone, `t1_source`. Le
   nuage n’est pas téléchargé par ce calcul : B5 lit celui que le projet
   a déjà en cache.
+
 - **Inventaire vidéo : la liste des placettes passe sous le bouton «
   Générer le projet QField »** (`R/mod_inventaire_video.R`, demande de
   Pascal du 2026-11-25). La colonne de gauche porte le rappel des
   paramètres, la coche, l’état du relief, le bouton puis la liste à
   cocher ; la colonne de droite garde la carte seule. Aucun changement
   de comportement.
+
 - **Inventaire vidéo : la création du projet QField montre où elle en
   est** (mission 058, `R/service_inventaire_video.R`,
   `R/mod_inventaire_video.R`, `R/utils_i18n.R`). Sous le bouton «
@@ -425,9 +457,11 @@ cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
   (nemeton 056) : avec un cœur plus ancien, aucun argument en plus,
   aucune ligne, génération inchangée. Un fichier de progression
   illisible ne fait jamais échouer la génération.
+
 - **Inventaire vidéo : carte des placettes, paramètres déplacés, relief
   CVAT calculé s’il manque** (mission 050, `R/mod_inventaire_video.R`,
   `R/service_inventaire_video.R`, `R/mod_sources_config.R`).
+
   - La vue « Préparer » montre une carte Leaflet des placettes du plan :
     point vert plein = sélectionnée, point gris creux = désélectionnée,
     étiquette = identifiant. Un clic bascule la sélection ; la liste à
