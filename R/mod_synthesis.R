@@ -13,6 +13,10 @@
 mod_synthesis_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
 
+    # Effet de la gestion declaree par UGF (mission 067) : sous-module, calcul
+    # a la demande seulement.
+    mod_effet_gestion_server("effet_gestion", app_state)
+
     # v0.56.0 - RAG context du dernier `ai_generate` (perspective
     # sourcee). Stocke en reactiveVal pour que `output$ai_sources`
     # puisse l'afficher en aval de la generation. NULL tant qu'aucune

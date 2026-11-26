@@ -411,6 +411,27 @@ mod_ug_table_actions_bar <- function(id) {
 
     shiny::hr(),
 
+    # Type de gestion declare (liste fermee, mission 067) : alimente le
+    # tableau "effet de la gestion" de la Synthese.
+    htmltools::div(
+      class = "mb-3",
+      shiny::selectInput(
+        ns("sel_type_gestion"),
+        label = i18n$t("ug_gestion"),
+        choices = .ug_gestion_choix(i18n),
+        selected = UG_TYPE_GESTION_DEFAUT
+      ),
+      shiny::actionButton(
+        ns("btn_set_type_gestion"),
+        label = i18n$t("ug_gestion_apply"),
+        icon = shiny::icon("tree"),
+        class = "btn-outline-primary",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
     # UG detail panel
     htmltools::div(
       id = ns("detail_panel"),
@@ -418,6 +439,13 @@ mod_ug_table_actions_bar <- function(id) {
       shiny::uiOutput(ns("ug_detail"))
     )
   )
+}
+
+
+#' Choix du selecteur de type de gestion (cle stable -> libelle i18n)
+#' @noRd
+.ug_gestion_choix <- function(i18n) {
+  stats::setNames(UG_TYPES_GESTION, effet_gestion_libelle_type(UG_TYPES_GESTION, i18n))
 }
 
 
@@ -519,6 +547,16 @@ mod_ug_server <- function(id, app_state) {
         "sel_groupe",
         label = get_groupes_field_label(pk, lang = lang()),
         choices = get_groupes_choices(pk, lang = lang(), include_empty = TRUE)
+      )
+    })
+
+    # Libelles du type de gestion dans la langue courante.
+    shiny::observe({
+      shiny::updateSelectInput(
+        session, "sel_type_gestion",
+        label = i18n()$t("ug_gestion"),
+        choices = .ug_gestion_choix(i18n()),
+        selected = shiny::isolate(input$sel_type_gestion) %||% UG_TYPE_GESTION_DEFAUT
       )
     })
 
@@ -1987,6 +2025,40 @@ mod_ug_server <- function(id, app_state) {
 
       shiny::showNotification(
         sprintf(i18n()$t("ug_groupe_maj_fmt"), length(sel)),
+        type = "message"
+      )
+    })
+
+    # ================================================================
+    # ACTION: Set the declared management type (closed list)
+    # ================================================================
+    shiny::observeEvent(input$btn_set_type_gestion, {
+      if (deny_if_readonly(app_state)) return()
+      sel <- input$ug_table_rows_selected
+      listing <- ug_listing()
+      type <- input$sel_type_gestion
+
+      if (is.null(sel) || length(sel) == 0 || is.null(listing)) {
+        shiny::showNotification(i18n()$t("ug_select_one"), type = "warning")
+        return()
+      }
+      # Valeur hors liste : refusee, rien n'est ecrit.
+      if (is.null(type) || !type %in% UG_TYPES_GESTION) {
+        shiny::showNotification(i18n()$t("ug_gestion_refuse"), type = "error")
+        return()
+      }
+
+      projet <- rv$projet_ug
+      for (idx in sel) {
+        projet <- ug_set_type_gestion(projet, listing$ug_id[idx], type)
+      }
+
+      if (!is.null(projet$metadata$id) && !isTRUE(.sauver_ug(projet))) return()
+      rv$projet_ug <- projet
+      app_state$current_project$ugs <- projet$ugs
+
+      shiny::showNotification(
+        sprintf(i18n()$t("ug_gestion_maj_fmt"), length(sel)),
         type = "message"
       )
     })

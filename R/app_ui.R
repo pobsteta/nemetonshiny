@@ -334,7 +334,7 @@ mod_synthesis_ui <- function(id) {
     # deux rangees a parts egales et laisse un grand vide sous l'en-tete.
     # On force la 1re rangee a la hauteur de son contenu (auto) et on
     # laisse la 2e (radar / recap / commentaires) prendre le reste (1fr).
-    row_heights = c("auto", 1),
+    row_heights = c("auto", 1, "auto"),
 
     # Top row: Downloads, summary, and global score
     #
@@ -646,7 +646,10 @@ mod_synthesis_ui <- function(id) {
           shiny::uiOutput(ns("ai_sources"))
         )
       )
-    )
+    ),
+
+    # Effet de la gestion declaree (mission 067) : a la demande, sous le recap.
+    mod_effet_gestion_ui(ns("effet_gestion"))
   )
 }
 

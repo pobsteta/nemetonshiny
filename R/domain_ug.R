@@ -159,6 +159,50 @@ UG_ONF_COLS <- c("onf_foret_id", "onf_foret_nom", "onf_parcelle",
     as.character(x))
 }
 
+# ==============================================================================
+# Declared management type (mission 067, spec 068 of the core)
+# ==============================================================================
+
+#' Closed list of the management types a forester can declare for a UGF
+#'
+#' Stable NMT keys (labels in `R/utils_i18n.R`, keys `ug_gestion_<type>`).
+#' `non_renseigne` is the default and is never compared by
+#' `nemeton::effet_gestion()`: a UGF without a declared type is left out of the
+#' contrast, not treated as a type of its own.
+#' @noRd
+UG_TYPES_GESTION <- c("reguliere", "irreguliere", "taillis",
+                      "taillis_sous_futaie", "libre_evolution", "non_renseigne")
+
+#' Default management type of a UGF
+#' @noRd
+UG_TYPE_GESTION_DEFAUT <- "non_renseigne"
+
+#' Make sure a UGF table carries `type_gestion`, valid
+#'
+#' Missing column: added at `non_renseigne` (a `ugs.json` written before it
+#' reads without error). A value outside `UG_TYPES_GESTION` (empty, `NA`, a
+#' type that no longer exists, a hand-edited file) goes back to
+#' `non_renseigne`: it is never kept, so no unknown level can reach the core.
+#' Idempotent.
+#'
+#' @param ugs data.frame of UGF, or `NULL`.
+#' @return The data.frame with a character column `type_gestion`.
+#' @noRd
+.ug_gestion_normaliser <- function(ugs) {
+  if (is.null(ugs) || !is.data.frame(ugs)) return(ugs)
+  x <- ugs[["type_gestion"]]
+  if (is.null(x)) x <- rep(UG_TYPE_GESTION_DEFAUT, nrow(ugs))
+  if (is.list(x)) {
+    x <- vapply(x, function(v) {
+      if (is.null(v) || length(v) == 0L) NA_character_ else as.character(v[[1L]])
+    }, character(1))
+  }
+  x <- as.character(x)
+  x[is.na(x) | !x %in% UG_TYPES_GESTION] <- UG_TYPE_GESTION_DEFAUT
+  ugs[["type_gestion"]] <- x
+  ugs
+}
+
 #' Make sure a UGF table carries the ONF columns, typed
 #'
 #' Missing columns are added at `NA`: a `ugs.json` written before them reads
@@ -171,7 +215,7 @@ UG_ONF_COLS <- c("onf_foret_id", "onf_foret_nom", "onf_parcelle",
   if (is.null(ugs) || !is.data.frame(ugs)) return(ugs)
   n <- nrow(ugs)
   for (col in UG_ONF_COLS) ugs[[col]] <- .ug_onf_coerce(ugs[[col]], col, n)
-  ugs
+  .ug_gestion_normaliser(ugs)
 }
 
 #' ONF values of a UGF made of several others
@@ -212,10 +256,13 @@ UG_ONF_COLS <- c("onf_foret_id", "onf_foret_nom", "onf_parcelle",
 #' @param groupe Character. Management group code (optional).
 #' @param onf Optional list or one-row data.frame of ONF values
 #'   (`UG_ONF_COLS`); missing ones are `NA`.
+#' @param type_gestion Character. Declared management type, one of
+#'   `UG_TYPES_GESTION` (default `non_renseigne`).
 #'
 #' @return A one-row data.frame representing the UG.
 #' @noRd
-new_ug <- function(id, label, groupe = NA_character_, onf = NULL) {
+new_ug <- function(id, label, groupe = NA_character_, onf = NULL,
+                   type_gestion = UG_TYPE_GESTION_DEFAUT) {
   if (is.null(id) || nchar(id) == 0) {
     cli::cli_abort("UG id is required")
   }
@@ -227,6 +274,7 @@ new_ug <- function(id, label, groupe = NA_character_, onf = NULL) {
     ug_id = id,
     label = trimws(label),
     groupe = as.character(groupe),
+    type_gestion = as.character(type_gestion)[1L],
     stringsAsFactors = FALSE
   )
   if (!is.null(onf)) {
@@ -419,7 +467,12 @@ ug_merge <- function(projet, ug_ids, nouveau_label) {
 
   # Create new merged UG
   new_ug_id <- generate_id("ug")
-  new_ug_row <- new_ug(new_ug_id, nouveau_label, merged_groupe, onf = merged_onf)
+  # Type de gestion : garde si toutes les UGF fusionnees le declarent pareil,
+  # sinon non renseigne (on ne devine pas le type d'un melange).
+  types <- unique(ugs$type_gestion[ugs$ug_id %in% ug_ids])
+  merged_type <- if (length(types) == 1L) types else UG_TYPE_GESTION_DEFAUT
+  new_ug_row <- new_ug(new_ug_id, nouveau_label, merged_groupe, onf = merged_onf,
+                       type_gestion = merged_type)
 
   # Reassign all tenements
   tenements$ug_id[tenements$tenement_id %in% merged_tenement_ids] <- new_ug_id
@@ -490,8 +543,10 @@ ug_split <- function(projet, ug_id, partition_tenements = NULL) {
 
     tenements$ug_id[tenements$tenement_id %in% group_ids] <- new_id
     # Chaque morceau reste dans la parcelle ONF de l'UGF d'origine.
+    # ... et gardent le type de gestion declare de l'UGF d'origine.
     ugs <- rbind(ugs, new_ug(new_id, new_label, old_ug$groupe,
-                             onf = old_ug[, UG_ONF_COLS, drop = FALSE]))
+                             onf = old_ug[, UG_ONF_COLS, drop = FALSE],
+                             type_gestion = old_ug$type_gestion))
   }
 
   projet$tenements <- tenements
@@ -571,6 +626,38 @@ ug_set_groupe <- function(projet, ug_id, groupe) {
   ugs$groupe[ugs$ug_id == ug_id] <- groupe
   projet$ugs <- ugs
 
+  projet
+}
+
+
+#' Set the declared management type of a UG
+#'
+#' The value is declared by the forester, from a closed list
+#' (`UG_TYPES_GESTION`). A value outside the list is refused, not corrected:
+#' the caller shows the error.
+#'
+#' @param projet List. Project.
+#' @param ug_id Character. UG to update.
+#' @param type_gestion Character. One of `UG_TYPES_GESTION`.
+#'
+#' @return Updated projet.
+#' @noRd
+ug_set_type_gestion <- function(projet, ug_id, type_gestion) {
+  ugs <- .ug_onf_normaliser(projet$ugs)
+
+  if (!ug_id %in% ugs$ug_id) {
+    cli::cli_abort("Unknown UG ID: {ug_id}")
+  }
+  if (length(type_gestion) != 1L || is.na(type_gestion) ||
+      !type_gestion %in% UG_TYPES_GESTION) {
+    cli::cli_abort(c(
+      "Unknown management type: {.val {as.character(type_gestion)}}.",
+      "i" = "Allowed: {paste(UG_TYPES_GESTION, collapse = ', ')}."
+    ))
+  }
+
+  ugs$type_gestion[ugs$ug_id == ug_id] <- type_gestion
+  projet$ugs <- ugs
   projet
 }
 
@@ -791,7 +878,7 @@ ug_cadastral_refs <- function(projet, ug_id) {
 #' @param filter_groupe Character. Optional filter by management group.
 #'
 #' @return Data.frame with ug_id, label, groupe, n_tenements, surface_m2,
-#'   surface_sig_m2 and the `UG_ONF_COLS`.
+#'   surface_sig_m2, the `UG_ONF_COLS` and `type_gestion`.
 #' @noRd
 ug_list <- function(projet, filter_groupe = NULL) {
   ugs <- .ug_onf_normaliser(projet$ugs)
@@ -834,6 +921,7 @@ ug_list <- function(projet, filter_groupe = NULL) {
     stringsAsFactors = FALSE
   )
   for (col in UG_ONF_COLS) result[[col]] <- ugs[[col]]
+  result$type_gestion <- ugs$type_gestion
 
   result
 }
