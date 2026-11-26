@@ -2089,11 +2089,96 @@ mod_action_plan_server <- function(id, app_state) {
                                 list(id = session$ns("download_marculus")))
     }
 
+    # Actions cochees dans la fenetre d'export (NULL = aucune fenetre validee).
+    marculus_ids_rv <- shiny::reactiveVal(NULL)
+
     shiny::observeEvent(input$prepare_marculus, {
       i18n <- get_i18n(app_state$language)
       if (identical(marculus_ortho_task$status(), "running")) return()
       project <- app_state$current_project
-      actions <- marculus_eligible_actions(plan_rv() %||% list())
+      plan <- plan_rv() %||% list()
+      actions <- marculus_eligible_actions(plan)
+      if (is.null(project) || length(actions) == 0L) {
+        shiny::showNotification(i18n$t("marculus_export_empty"),
+                                type = "warning", duration = 10)
+        return()
+      }
+      lignes <- marculus_choix_lignes(plan, project)
+      defaut <- marculus_selection_defaut(plan)
+      ns <- session$ns
+      choix_noms <- lapply(seq_len(nrow(lignes)), function(i) {
+        st <- lignes$statut[i]
+        st_txt <- if (st %in% ACTION_PLAN_STATUTS)
+          i18n$t(paste0("action_plan_status_", st)) else st
+        htmltools::span(
+          class = "d-inline-flex gap-3",
+          htmltools::span(lignes$ug[i]),
+          htmltools::span(lignes$type[i]),
+          htmltools::span(if (is.na(lignes$annee[i])) "?" else lignes$annee[i]),
+          htmltools::span(class = "text-muted", st_txt))
+      })
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("marculus_choix_title"), size = "l", easyClose = TRUE,
+        shiny::p(class = "text-muted", i18n$t("marculus_choix_help")),
+        htmltools::div(
+          class = "mb-2",
+          shiny::actionButton(ns("marculus_choix_tout"),
+                              i18n$t("marculus_choix_tout"),
+                              class = "btn-sm btn-outline-secondary"),
+          shiny::actionButton(ns("marculus_choix_aucun"),
+                              i18n$t("marculus_choix_aucun"),
+                              class = "btn-sm btn-outline-secondary")),
+        htmltools::div(
+          class = "fw-bold d-inline-flex gap-3 mb-1",
+          htmltools::span(i18n$t("action_plan_col_ug_label")),
+          htmltools::span(i18n$t("action_plan_col_type")),
+          htmltools::span(i18n$t("action_plan_col_annee")),
+          htmltools::span(i18n$t("action_plan_col_statut"))),
+        shiny::checkboxGroupInput(
+          ns("marculus_choix"), label = NULL,
+          choiceNames = choix_noms, choiceValues = as.list(lignes$id),
+          selected = defaut, width = "100%"),
+        footer = htmltools::tagList(
+          # modalButton() rend btn-default : l'annulation est explicitement
+          # secondaire (brun), comme le veut la hierarchie des boutons.
+          htmltools::tags$button(
+            type = "button", class = "btn btn-secondary",
+            `data-dismiss` = "modal", `data-bs-dismiss` = "modal",
+            i18n$t("cancel")),
+          shiny::uiOutput(ns("marculus_choix_export_ui"), inline = TRUE))
+      ))
+    })
+
+    # "Exporter" reste inactif tant que rien n'est coche.
+    output$marculus_choix_export_ui <- shiny::renderUI({
+      i18n <- get_i18n(app_state$language)
+      vide <- length(input$marculus_choix) == 0L
+      btn <- shiny::actionButton(
+        session$ns("marculus_choix_go"), i18n$t("marculus_choix_export"),
+        icon = shiny::icon("mobile-screen"), class = "btn-primary")
+      if (vide) htmltools::tagAppendAttributes(btn, disabled = "disabled") else btn
+    })
+
+    shiny::observeEvent(input$marculus_choix_tout, {
+      ids <- marculus_choix_lignes(plan_rv() %||% list(),
+                                   app_state$current_project)$id
+      shiny::updateCheckboxGroupInput(session, "marculus_choix", selected = ids)
+    })
+    shiny::observeEvent(input$marculus_choix_aucun, {
+      shiny::updateCheckboxGroupInput(session, "marculus_choix",
+                                      selected = character(0))
+    })
+
+    shiny::observeEvent(input$marculus_choix_go, {
+      ids <- as.character(input$marculus_choix %||% character(0))
+      if (length(ids) == 0L) return()
+      if (identical(marculus_ortho_task$status(), "running")) return()
+      shiny::removeModal()
+      marculus_ids_rv(ids)
+      i18n <- get_i18n(app_state$language)
+      project <- app_state$current_project
+      actions <- marculus_filtrer_actions(
+        marculus_eligible_actions(plan_rv() %||% list()), ids)
       if (is.null(project) || length(actions) == 0L) {
         shiny::showNotification(i18n$t("marculus_export_empty"),
                                 type = "warning", duration = 10)
@@ -2441,7 +2526,9 @@ mod_action_plan_server <- function(id, app_state) {
           writeLines("No project", file)
           return()
         }
-        res <- tryCatch(marculus_export_bundle(pid, file),
+        res <- tryCatch(
+          marculus_export_bundle_choix(
+            pid, file, ids_actions = shiny::isolate(marculus_ids_rv())),
                         error = function(e) {
                           cli::cli_warn("Export Marculus : {conditionMessage(e)}")
                           structure(list(erreur = conditionMessage(e)),

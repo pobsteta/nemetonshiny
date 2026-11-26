@@ -1255,6 +1255,17 @@ TRANSLATIONS <- list(
     fr = "Aucune action ne d\u00e9signe de tiges (\u00e9claircie, coupe rase, d\u00e9pressage, observation) : rien \u00e0 envoyer.",
     en = "No action designates stems (thinning, clear-cut, respacing, observation): nothing to send."
   ),
+  marculus_choix_title = list(
+    fr = "Actions \u00e0 envoyer vers Marculus",
+    en = "Actions to send to Marculus"
+  ),
+  marculus_choix_help = list(
+    fr = "Cochez les actions que le marteleur emporte sur le terrain. Par d\u00e9faut : celles de l'ann\u00e9e en cours et des suivantes qui ne sont pas termin\u00e9es.",
+    en = "Tick the actions the marker takes into the field. By default: those of the current year and later that are not finished."
+  ),
+  marculus_choix_tout = list(fr = "Tout cocher", en = "Tick all"),
+  marculus_choix_aucun = list(fr = "Tout d\u00e9cocher", en = "Untick all"),
+  marculus_choix_export = list(fr = "Exporter", en = "Export"),
   action_plan_sheets_download = list(
     fr = "Fiches PDF par UGF",
     en = "PDF sheets per UGF"

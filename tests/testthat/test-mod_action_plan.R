@@ -364,6 +364,144 @@ test_that("fonds deja en cache : aucune tache de fond n'est lancee", {
   )
 })
 
+# ---- Choix a l'export Marculus (mission 070) ----------------------------
+
+.plan_choix_export <- function(project_id) {
+  plan <- init_empty_action_plan(project_id)
+  # Decalages relatifs a l'annee du jour : le module lit l'horloge.
+  plan$annee_base <- .annee_courante() - 2L
+  def <- list(
+    list("f25", 1L, "realisee"), list("t26", 2L, "validee"),
+    list("f26", 2L, "realisee"), list("t27", 3L, "proposee"))
+  for (d in def) {
+    plan <- add_action_to_plan(plan, list(
+      id = d[[1]], ug_id = "ug1", type = "eclaircie", annee_cible = d[[2]],
+      priorite = "moyenne", statut = d[[3]]), ug_ids = "ug1")
+  }
+  plan
+}
+
+.mock_choix <- function(plan_fn, env = parent.frame()) {
+  testthat::local_mocked_bindings(
+    ug_build_sf      = function(projet) .action_plan_ug_sf(5),
+    load_action_plan = plan_fn,
+    marculus_ortho_manquants = function(project, actions) {
+      assign("ids_recus", vapply(actions, function(a) a$id, ""), envir = .env_choix)
+      list()
+    },
+    marculus_tarifs_travail = function(project) NULL,
+    .env = env
+  )
+  shiny::reactiveValues(
+    language = "fr", active_main_tab = "action_plan",
+    current_project = list(id = "p1", x0 = 5))
+}
+.env_choix <- new.env()
+
+test_that("le clic ouvre la fenetre, cochees par defaut les actions a faire", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  modale <- NULL
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) modale <<- ui, .package = "shiny")
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    session$setInputs(prepare_marculus = 1)
+    html <- as.character(modale)
+    expect_match(html, "-marculus_choix", fixed = TRUE)
+    coches <- regmatches(html, gregexpr('<input[^>]*checked="checked"[^>]*>', html))[[1]]
+    expect_length(coches, 2L)
+    expect_true(all(grepl('value="(t26|t27)"', coches)))
+    # Annuler en btn-secondary ; Exporter (btn-primary) rendu par uiOutput
+    expect_match(html, 'class="btn btn-secondary"', fixed = TRUE)
+    expect_match(html, "-marculus_choix_export_ui", fixed = TRUE)
+    expect_null(.env_choix$ids_recus)
+  })
+})
+
+test_that("Exporter n'envoie que les actions cochees a la suite", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) NULL, .package = "shiny")
+  .env_choix$ids_recus <- NULL
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    session$setInputs(prepare_marculus = 1)
+    session$setInputs(marculus_choix = c("t27"), marculus_choix_go = 1)
+    expect_identical(.env_choix$ids_recus, "t27")
+    expect_identical(marculus_ids_rv(), "t27")
+  })
+})
+
+test_that("rien de coche : aucun export, Exporter est desactive", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) NULL, .package = "shiny")
+  .env_choix$ids_recus <- NULL
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    session$setInputs(prepare_marculus = 1)
+    session$setInputs(marculus_choix = character(0))
+    expect_match(as.character(output$marculus_choix_export_ui$html),
+                 'disabled="disabled"', fixed = TRUE)
+    session$setInputs(marculus_choix_go = 1)
+    expect_null(.env_choix$ids_recus)
+    expect_null(marculus_ids_rv())
+  })
+})
+
+test_that("aucune action eligible : message existant, pas de fenetre", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  ouvert <- FALSE
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) ouvert <<- TRUE, .package = "shiny")
+  app_state <- .mock_choix(function(project_id) init_empty_action_plan(project_id))
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    session$setInputs(prepare_marculus = 1)
+    expect_false(ouvert)
+  })
+})
+
+test_that("annuler : rien ne part", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) NULL, .package = "shiny")
+  .env_choix$ids_recus <- NULL
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    session$setInputs(prepare_marculus = 1)
+    # Annuler = modalButton cote client : aucun evenement serveur
+    expect_null(.env_choix$ids_recus)
+    expect_null(marculus_ids_rv())
+  })
+})
+
+test_that("l'export lit la selection (marculus_export_bundle_choix) et non le plan entier", {
+  f <- testthat::test_path("..", "..", "R", "mod_action_plan.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes")
+  code <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_true(grepl("marculus_export_bundle_choix(", code, fixed = TRUE))
+  expect_false(grepl("marculus_export_bundle(pid", code, fixed = TRUE))
+})
+
 test_that("le lien Marculus masque est rendu malgre son masquage", {
   # Sans `suspendWhenHidden = FALSE`, Shiny ne rendait pas le lien cache : il
   # restait `disabled` sans href, et le clic du serveur ne telechargeait rien
