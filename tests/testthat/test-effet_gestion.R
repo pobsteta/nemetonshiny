@@ -332,3 +332,94 @@ test_that("l'UI de la synthese porte le bouton de calcul (tache lie) et le selec
   expect_match(ug, "ug-sel_type_gestion", fixed = TRUE)
   expect_match(ug, "taillis_sous_futaie", fixed = TRUE)
 })
+
+# --- Mission 068 : reference, UGF exclues, bouton a bordure ----------------------
+
+.eg_mocks <- function(env = parent.frame()) {
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    project_family_scores = function(p) .eg_fam(),
+    .package = "nemetonshiny", .env = env)
+  testthat::local_mocked_bindings(
+    showNotification = function(...) invisible("id"), removeNotification = function(...) invisible(NULL),
+    .package = "shiny", .env = env)
+}
+
+test_that("reference par defaut : le type le plus frequent, hors non_renseigne", {
+  f <- nemetonshiny:::effet_gestion_reference_defaut
+  expect_equal(f(.eg_ugs(c("taillis", "taillis", "reguliere", "non_renseigne", "non_renseigne", "non_renseigne"))),
+               "taillis")
+  expect_equal(f(.eg_ugs(c("reguliere", "taillis", "non_renseigne"))), "reguliere")  # egalite : ordre de la liste
+  expect_true(is.na(f(.eg_ugs(c("non_renseigne", "non_renseigne")))))
+  expect_equal(nemetonshiny:::effet_gestion_ugf_exclues(.eg_ugs(c("taillis", "non_renseigne", "non_renseigne"))), 2L)
+  expect_equal(nemetonshiny:::effet_gestion_ugf_exclues(NULL), 0L)
+})
+
+test_that("le coeur recoit la reference choisie ; defaut = le plus frequent ; changer efface le tableau", {
+  recu <- list()
+  .eg_mocks()
+  testthat::local_mocked_bindings(
+    effet_gestion = function(units, traitement, reference, ...) {
+      recu[[length(recu) + 1L]] <<- reference
+      structure(list(resume = .eg_resume(), reference = reference, apprenant = "ranger",
+                     covariables = c("P2", "ser")), class = "effet_gestion")
+    },
+    .package = "nemeton")
+  # taillis x3, reguliere x2, irreguliere x1
+  st <- .eg_state(c("taillis", "taillis", "taillis", "reguliere", "reguliere", "irreguliere"))
+  shiny::testServer(nemetonshiny:::mod_effet_gestion_server, args = list(app_state = st), {
+    # le selecteur propose les types renseignes, avec le plus frequent choisi
+    sel <- output$reference$html
+    expect_match(sel, "syn-test|reference", fixed = FALSE)
+    expect_match(sel, "value=\"taillis\" selected", fixed = TRUE)
+    expect_false(grepl("non_renseigne", sel, fixed = TRUE))
+    session$setInputs(run = 1L)
+    .eg_attendre(session)
+    expect_identical(recu[[1]], "taillis")                       # defaut
+    expect_match(output$tableau, "2,1", fixed = TRUE)
+    # un autre choix : le tableau s'efface, le calcul suivant recoit ce choix
+    session$setInputs(reference = "reguliere")
+    session$flushReact()
+    expect_null(output$tableau)
+    session$setInputs(run = 2L)
+    .eg_attendre(session)
+    expect_identical(recu[[2]], "reguliere")
+    expect_match(output$tableau, "2,1", fixed = TRUE)
+    # revenir sur une autre reference l'efface a nouveau
+    session$setInputs(reference = "irreguliere")
+    session$flushReact()
+    expect_null(output$tableau)
+  })
+})
+
+test_that("UGF sans type declare : « n UGF ... exclues » si n > 0, rien si 0", {
+  .eg_mocks()
+  i18n <- nemetonshiny:::get_i18n("fr")
+  st3 <- .eg_state(c("reguliere", "taillis", "non_renseigne", "non_renseigne", "non_renseigne", "reguliere"))
+  shiny::testServer(nemetonshiny:::mod_effet_gestion_server, args = list(app_state = st3), {
+    expect_match(output$exclues$html, sprintf(i18n$t("eg_exclues_fmt"), 3L), fixed = TRUE)
+    expect_match(output$exclues$html, "3 UGF sans type", fixed = TRUE)
+  })
+  st1 <- .eg_state(c("reguliere", "taillis", "non_renseigne", "reguliere", "taillis", "reguliere"))
+  shiny::testServer(nemetonshiny:::mod_effet_gestion_server, args = list(app_state = st1), {
+    expect_match(output$exclues$html, "1 UGF sans type", fixed = TRUE)
+  })
+  st0 <- .eg_state(c("reguliere", "taillis", "reguliere", "reguliere", "taillis", "reguliere"))
+  shiny::testServer(nemetonshiny:::mod_effet_gestion_server, args = list(app_state = st0), {
+    expect_null(output$exclues)
+  })
+  expect_match(nemetonshiny:::get_i18n("en")$t("eg_exclues_fmt"), "excluded", fixed = TRUE)
+})
+
+test_that("le bouton « Calculer l'effet » est a bordure (outline-primary), lie a la tache", {
+  h <- testthat::with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_effet_gestion_ui("eg")),
+    .package = "nemetonshiny")
+  expect_match(h, "bslib-task-button", fixed = TRUE)
+  expect_match(h, "btn-outline-primary", fixed = TRUE)
+  tag <- regmatches(h, regexpr("<button[^>]*eg-run[^>]*>", h))
+  expect_length(tag, 1L)
+  expect_match(tag, "btn-outline-primary", fixed = TRUE)
+  expect_false(grepl("btn-primary", tag, fixed = TRUE))
+})

@@ -18,15 +18,18 @@ mod_effet_gestion_ui <- function(id) {
     bslib::card_header(i18n$t("eg_title")),
     bslib::card_body(
       shiny::uiOutput(ns("intro")),
+      shiny::uiOutput(ns("exclues")),
       htmltools::div(
         class = "mb-3",
         bslib::input_task_button(
           ns("run"), i18n$t("eg_run"),
           icon = shiny::icon("scale-balanced"),
           label_busy = i18n$t("eg_busy"),
-          class = "btn-primary"
+          # Bouton a bordure : le PDF reste l'action principale de la Synthese.
+          type = "outline-primary"
         )
       ),
+      shiny::uiOutput(ns("reference")),
       shiny::uiOutput(ns("etat")),
       shiny::tableOutput(ns("tableau")),
       shiny::uiOutput(ns("mention"))
@@ -51,7 +54,8 @@ mod_effet_gestion_ui <- function(id) {
 #' @noRd
 mod_effet_gestion_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
-    rv <- shiny::reactiveValues(resultat = NULL, pid = NULL, signature = NULL)
+    rv <- shiny::reactiveValues(resultat = NULL, pid = NULL, signature = NULL,
+                                ref_calc = NULL)
 
     i18n_r <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
     ugs_r <- shiny::reactive(app_state$current_project$ugs)
@@ -94,6 +98,21 @@ mod_effet_gestion_server <- function(id, app_state) {
     # Le bouton reste grise pendant tout le calcul, meme apres un flush reactif.
     bslib::bind_task_button(task, "run")
 
+    # Reference choisie : l'entree si elle est encore un type renseigne, sinon le
+    # plus frequent (le meme que le coeur prendrait).
+    reference_r <- shiny::reactive({
+      tp <- types_r()
+      if (length(tp) < 1L) return(NULL)
+      choix <- input$reference
+      if (!is.null(choix) && choix %in% names(tp)) choix
+      else effet_gestion_reference_defaut(ugs_r())
+    })
+
+    # Changer de reference : le tableau calcule sous l'autre reference s'efface.
+    shiny::observeEvent(input$reference, {
+      if (!identical(input$reference, rv$ref_calc)) rv$resultat <- NULL
+    }, ignoreInit = TRUE)
+
     # Un autre projet, ou d'autres types declares : le resultat n'est plus le bon.
     shiny::observeEvent(list(app_state$project_id, signature_r()), {
       if (!identical(rv$signature, signature_r()) || !identical(rv$pid, app_state$project_id)) {
@@ -116,10 +135,12 @@ mod_effet_gestion_server <- function(id, app_state) {
       }
       rv$pid <- shiny::isolate(app_state$project_id %||% project$id)
       rv$signature <- shiny::isolate(signature_r())
+      reference <- shiny::isolate(reference_r())
+      rv$ref_calc <- reference
       rv$resultat <- NULL
       shiny::showNotification(i18n$t("eg_running"), id = session$ns("notif"),
                               type = "message", duration = NULL)
-      task$invoke(units, NULL, .dev_pkg_path, get_app_options())
+      task$invoke(units, reference, .dev_pkg_path, get_app_options())
     })
 
     shiny::observeEvent(task$status(), {
@@ -160,12 +181,36 @@ mod_effet_gestion_server <- function(id, app_state) {
       )
     })
 
-    # Le tableau n'existe que si au moins deux types sont renseignes ET que le
-    # resultat correspond aux types declares maintenant.
+    output$reference <- shiny::renderUI({
+      i18n <- i18n_r()
+      tp <- types_r()
+      if (length(tp) < 2L) return(NULL)
+      choix <- stats::setNames(
+        names(tp), sprintf("%s (%d)", effet_gestion_libelle_type(names(tp), i18n), tp))
+      htmltools::div(
+        class = "d-flex align-items-center gap-2 flex-wrap mb-2",
+        htmltools::tags$label(`for` = session$ns("reference"), class = "mb-0 fw-semibold",
+                              i18n$t("eg_ref_label")),
+        shiny::selectInput(session$ns("reference"), label = NULL, choices = choix,
+                           selected = shiny::isolate(reference_r()), width = "auto"))
+    })
+
+    # UGF sans type declare : laissees hors du contraste, et dit avant le calcul.
+    output$exclues <- shiny::renderUI({
+      n <- effet_gestion_ugf_exclues(ugs_r())
+      if (n < 1L) return(NULL)
+      i18n <- i18n_r()
+      htmltools::p(class = "small text-muted", shiny::icon("circle-info"), " ",
+                   if (n == 1L) i18n$t("eg_exclues_un") else sprintf(i18n$t("eg_exclues_fmt"), n))
+    })
+
+    # Le tableau n'existe que si au moins deux types sont renseignes, que le
+    # resultat correspond aux types declares maintenant ET a la reference choisie.
     resultat_valide <- shiny::reactive({
       if (!effet_gestion_calculable(ugs_r())) return(NULL)
       res <- rv$resultat
       if (is.null(res) || !identical(rv$signature, signature_r())) return(NULL)
+      if (!identical(rv$ref_calc, reference_r())) return(NULL)
       res
     })
 

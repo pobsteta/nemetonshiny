@@ -2054,6 +2054,156 @@ TRANSLATIONS <- list(
     fr = "Donn\u00e9e manquante pour trancher",
     en = "Data missing to decide"
   ),
+  # Noms complets des 15 profils du selecteur des itineraires (mission 068).
+  itin_prof_proprietaire_prive = list(
+    fr = "Propri\u00e9taire priv\u00e9",
+    en = "Private owner"
+  ),
+  itin_prof_proprietaire_public = list(
+    fr = "Propri\u00e9taire public",
+    en = "Public owner"
+  ),
+  itin_prof_gestionnaire_onf = list(
+    fr = "Gestionnaire ONF",
+    en = "ONF manager"
+  ),
+  itin_prof_gestionnaire_coop = list(
+    fr = "Gestionnaire coop\u00e9rative",
+    en = "Cooperative manager"
+  ),
+  itin_prof_gestionnaire_expert = list(
+    fr = "Gestionnaire expert",
+    en = "Expert manager"
+  ),
+  itin_prof_technicien = list(
+    fr = "Technicien terrain",
+    en = "Field technician"
+  ),
+  itin_prof_naturaliste = list(
+    fr = "Naturaliste",
+    en = "Naturalist"
+  ),
+  itin_prof_elu_local = list(
+    fr = "\u00c9lu local",
+    en = "Local elected official"
+  ),
+  itin_prof_elu_regional = list(
+    fr = "\u00c9lu r\u00e9gional",
+    en = "Regional elected official"
+  ),
+  itin_prof_chasseur = list(
+    fr = "Chasseur",
+    en = "Hunter"
+  ),
+  itin_prof_industrie_bois = list(
+    fr = "Industrie bois",
+    en = "Timber industry"
+  ),
+  itin_prof_bucheron = list(
+    fr = "B\u00fbcheron / ETF",
+    en = "Logger / forest contractor"
+  ),
+  itin_prof_chercheur = list(
+    fr = "Chercheur",
+    en = "Researcher"
+  ),
+  itin_prof_citoyen = list(
+    fr = "Citoyen",
+    en = "Citizen"
+  ),
+  itin_prof_investisseur = list(
+    fr = "Investisseur",
+    en = "Investor"
+  ),
+  # Detail des exclusions, traduit (mission 068) : valeur observee contre seuil.
+  itin_d_p2_min = list(
+    fr = "P2 observ\u00e9 : %s, inf\u00e9rieur au seuil minimal de %s.",
+    en = "Observed P2: %s, below the minimum threshold of %s."
+  ),
+  itin_d_p2_max = list(
+    fr = "P2 observ\u00e9 : %s, sup\u00e9rieur au seuil maximal de %s.",
+    en = "Observed P2: %s, above the maximum threshold of %s."
+  ),
+  itin_d_ser = list(
+    fr = "Sylvo\u00e9cor\u00e9gion de l'UGF : %s ; sylvo\u00e9cor\u00e9gions de l'itin\u00e9raire : %s.",
+    en = "UGF sylvoecoregion: %s; itinerary sylvoecoregions: %s."
+  ),
+  itin_d_essence = list(
+    fr = "Essence de l'UGF : %s ; essences de l'itin\u00e9raire : %s.",
+    en = "UGF species: %s; itinerary species: %s."
+  ),
+  itin_d_essence_mot = list(
+    fr = "essence",
+    en = "species"
+  ),
+  itin_d_pente = list(
+    fr = "Pente observ\u00e9e : %s %%, sup\u00e9rieure au maximum de %s %%.",
+    en = "Observed slope: %s %%, above the maximum of %s %%."
+  ),
+  itin_d_desserte = list(
+    fr = "Distance de d\u00e9bardage observ\u00e9e : %s m, sup\u00e9rieure au maximum de %s m.",
+    en = "Observed skidding distance: %s m, above the maximum of %s m."
+  ),
+  itin_d_protection = list(
+    fr = "Statuts de protection qui excluent l'itin\u00e9raire : %s.",
+    en = "Protection statuses that exclude the itinerary: %s."
+  ),
+  itin_d_source = list(
+    fr = "Itin\u00e9raire encore \u00e0 sourcer dans le catalogue.",
+    en = "Itinerary still to be sourced in the catalogue."
+  ),
+  itin_d_manque = list(
+    fr = "Donn\u00e9e manquante : %s.",
+    en = "Missing data: %s."
+  ),
+  itin_q_P2 = list(
+    fr = "l'indicateur P2 (station)",
+    en = "the P2 indicator (site)"
+  ),
+  itin_q_ser = list(
+    fr = "la sylvo\u00e9cor\u00e9gion",
+    en = "the sylvoecoregion"
+  ),
+  itin_q_essence = list(
+    fr = "l'essence",
+    en = "the species"
+  ),
+  itin_q_pente = list(
+    fr = "la pente",
+    en = "the slope"
+  ),
+  itin_q_desserte = list(
+    fr = "la distance de desserte",
+    en = "the skidding distance"
+  ),
+  itin_q_protected_areas = list(
+    fr = "les aires prot\u00e9g\u00e9es",
+    en = "the protected areas"
+  ),
+  itin_prot_rnn = list(
+    fr = "R\u00e9serve naturelle nationale",
+    en = "National nature reserve"
+  ),
+  itin_prot_rnr = list(
+    fr = "R\u00e9serve naturelle r\u00e9gionale",
+    en = "Regional nature reserve"
+  ),
+  itin_prot_apb = list(
+    fr = "Arr\u00eat\u00e9 de protection de biotope",
+    en = "Biotope protection order"
+  ),
+  itin_prot_rb = list(
+    fr = "R\u00e9serve biologique",
+    en = "Biological reserve"
+  ),
+  itin_prot_coeur = list(
+    fr = "C\u0153ur de parc national",
+    en = "National park core zone"
+  ),
+  itin_prot_natura = list(
+    fr = "Natura 2000",
+    en = "Natura 2000"
+  ),
   itin_r_inconnue = list(
     fr = "Raison d'exclusion non reconnue",
     en = "Unrecognised exclusion reason"
@@ -3913,6 +4063,18 @@ TRANSLATIONS <- list(
     fr = "Trop peu d'UGF pour ce type de gestion : pas de conclusion.",
     en = "Too few units for this management type: no conclusion."),
   eg_st_inconnu = list(fr = "Calcul refus\u00e9 par le c\u0153ur.", en = "Computation refused by the core."),
+  eg_ref_label = list(
+    fr = "R\u00e9f\u00e9rence de la comparaison :",
+    en = "Comparison reference:"
+  ),
+  eg_exclues_fmt = list(
+    fr = "%d UGF sans type d\u00e9clar\u00e9, exclues.",
+    en = "%d UGF with no declared type, excluded."
+  ),
+  eg_exclues_un = list(
+    fr = "1 UGF sans type d\u00e9clar\u00e9, exclue.",
+    en = "1 UGF with no declared type, excluded."
+  ),
   eg_mention = list(fr = "Association ajust\u00e9e sur la station, pas une preuve causale.",
                     en = "Association adjusted for site, not causal proof."),
   eg_perime = list(fr = "Les types de gestion ont chang\u00e9 depuis le calcul : relancez-le.",

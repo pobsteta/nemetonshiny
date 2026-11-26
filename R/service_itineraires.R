@@ -59,9 +59,10 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
 
 #' Profils d'acteur proposes a la comparaison
 #'
-#' Les quinze cles de `nemeton::profils_poids()` (`profil_<x>`), libelles pris
-#' dans les profils experts de l'app (`inst/experts/<x>.yml`) quand ils
-#' existent. Retombe sur la cle sans prefixe, jamais sur une erreur.
+#' Les quinze cles de `nemeton::profils_poids()` (`profil_<x>`), chacune avec
+#' son nom complet (cle i18n `itin_prof_<x>`, FR et EN), jamais un alias des
+#' profils experts (« Proprietaire » seul est ambigu : prive ou public ?). Une
+#' cle que l'app ne connait pas retombe sur son nom sans prefixe.
 #'
 #' @param lang `"fr"` ou `"en"`.
 #' @return Named character vector (noms = libelles, valeurs = cles du coeur).
@@ -69,15 +70,12 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
 .itin_profils_choix <- function(lang = "fr") {
   cles <- tryCatch(names(nemeton::profils_poids()), error = function(e) character())
   if (!length(cles)) return(stats::setNames(character(), character()))
-  experts <- tryCatch(get_expert_profiles(), error = function(e) list())
-  alias <- c(proprietaire_prive = "owner", chasseur = "hunter")
+  i18n <- get_i18n(lang)
   libelle <- vapply(cles, function(k) {
     court <- sub("^profil_", "", k)
-    cand <- c(court, unname(alias[court]))
-    cand <- cand[!is.na(cand) & cand %in% names(experts)]
-    lbl <- if (length(cand)) experts[[cand[1]]]$label[[lang]] %||%
-      experts[[cand[1]]]$label[["en"]] else NULL
-    if (is.null(lbl) || !nzchar(lbl)) gsub("_", " ", court) else lbl
+    cle <- paste0("itin_prof_", court)
+    lbl <- if (cle %in% names(TRANSLATIONS)) i18n$t(cle) else ""
+    if (!nzchar(lbl)) gsub("_", " ", court) else lbl
   }, character(1))
   stats::setNames(cles, libelle)
 }
@@ -191,6 +189,112 @@ itineraires_calculer <- function(project, profil, catalogue = NULL) {
 }
 
 
+#' Libelles des essences (code ESPAR -> nom) lus dans le coeur
+#' @return Named character vector (noms = codes ESPAR); vide si indisponible.
+#' @noRd
+.itin_essences_noms <- function() {
+  tab <- tryCatch(nemeton::ifn_espar_correspondance(), error = function(e) NULL)
+  if (is.null(tab) || !all(c("espar", "lib_espar") %in% names(tab))) {
+    return(stats::setNames(character(), character()))
+  }
+  stats::setNames(as.character(tab$lib_espar), as.character(tab$espar))
+}
+
+
+#' Noms des sylvoecoregions (code SER -> nom) lus dans le coeur
+#'
+#' Le fichier `extdata/ser.csv` du coeur (colonnes `code`, `nom`, separateur
+#' point-virgule). Vide s'il manque : le code s'affiche alors avec « SER ».
+#' @noRd
+.itin_ser_noms <- function() {
+  vide <- stats::setNames(character(), character())
+  f <- tryCatch(system.file("extdata", "ser.csv", package = "nemeton"),
+                error = function(e) "")
+  if (!nzchar(f)) return(vide)
+  tab <- tryCatch(utils::read.csv2(f, stringsAsFactors = FALSE, encoding = "UTF-8"),
+                  error = function(e) NULL)
+  if (is.null(tab) || !all(c("code", "nom") %in% names(tab))) return(vide)
+  stats::setNames(as.character(tab$nom), as.character(tab$code))
+}
+
+
+#' Traduit le `detail` d'une exclusion du coeur
+#'
+#' Le coeur ecrit `detail` en anglais, avec des codes bruts (valeur observee
+#' contre seuil). Ici il est relu motif par motif, en francais ou en anglais,
+#' les codes remplaces par des noms lisibles (essence : son libelle ; SER : son
+#' nom, sinon « SER <code> »). Un `detail` de forme inconnue est rendu **tel
+#' quel** plutot que perdu.
+#'
+#' @param raison Code de raison du coeur.
+#' @param detail Texte `detail` du coeur (`NA` si admissible).
+#' @param i18n Traducteur.
+#' @param essences,sers Noms (codes -> libelles), injectables pour les tests.
+#' @return Character scalaire ; `""` sans detail.
+#' @noRd
+itineraires_detail_traduit <- function(raison, detail, i18n,
+                                       essences = .itin_essences_noms(),
+                                       sers = .itin_ser_noms()) {
+  if (length(detail) != 1L || is.na(detail) || !nzchar(detail)) return("")
+  lang <- i18n$language %||% "fr"
+  nb <- function(x) if (identical(lang, "en")) x else sub(".", ",", x, fixed = TRUE)
+  liste <- function(x) strsplit(x, ", ", fixed = TRUE)[[1]]
+  nom_ess <- function(cd) {
+    n <- unname(essences[cd])
+    if (length(n) == 1L && !is.na(n) && nzchar(n)) n else paste(i18n$t("itin_d_essence_mot"), cd)
+  }
+  nom_ser <- function(cd) {
+    n <- unname(sers[cd])
+    if (length(n) == 1L && !is.na(n) && nzchar(n)) n else paste("SER", cd)
+  }
+  m <- function(motif) regmatches(detail, regexec(motif, detail))[[1]]
+  raison <- if (length(raison) == 1L && !is.na(raison)) raison else ""
+  if (identical(raison, "station_insuffisante")) {
+    x <- m("^P2 (\\S+) ([<>]) (\\S+)$")
+    if (length(x) == 4L) {
+      return(sprintf(i18n$t(if (x[3] == "<") "itin_d_p2_min" else "itin_d_p2_max"),
+                     nb(x[2]), nb(x[4])))
+    }
+  } else if (identical(raison, "hors_ser")) {
+    x <- m("^SER (\\S+) not in (.+)$")
+    if (length(x) == 3L) {
+      return(sprintf(i18n$t("itin_d_ser"), nom_ser(x[2]),
+                     paste(vapply(liste(x[3]), nom_ser, character(1)), collapse = ", ")))
+    }
+  } else if (identical(raison, "essence_absente")) {
+    x <- m("^essence (\\S+) not in (.+)$")
+    if (length(x) == 3L) {
+      return(sprintf(i18n$t("itin_d_essence"), nom_ess(x[2]),
+                     paste(vapply(liste(x[3]), nom_ess, character(1)), collapse = ", ")))
+    }
+  } else if (identical(raison, "pente")) {
+    x <- m("^slope (\\S+) % > (\\S+) %$")
+    if (length(x) == 3L) return(sprintf(i18n$t("itin_d_pente"), nb(x[2]), nb(x[3])))
+  } else if (identical(raison, "desserte")) {
+    x <- m("^skidding (\\S+) m > (\\S+) m$")
+    if (length(x) == 3L) return(sprintf(i18n$t("itin_d_desserte"), nb(x[2]), nb(x[3])))
+  } else if (identical(raison, "statut_protection")) {
+    x <- m("^protection: (.+)$")
+    if (length(x) == 2L) {
+      noms <- vapply(liste(x[2]), function(cd) {
+        cle <- paste0("itin_prot_", cd)
+        if (cle %in% names(TRANSLATIONS)) i18n$t(cle) else toupper(cd)
+      }, character(1))
+      return(sprintf(i18n$t("itin_d_protection"), paste(noms, collapse = ", ")))
+    }
+  } else if (identical(raison, "source_manquante")) {
+    if (identical(detail, "statut_source = a_sourcer")) return(i18n$t("itin_d_source"))
+  } else if (identical(raison, "donnee_manquante")) {
+    x <- m("^missing: (\\S+)$")
+    if (length(x) == 2L) {
+      cle <- paste0("itin_q_", x[2])
+      if (cle %in% names(TRANSLATIONS)) return(sprintf(i18n$t("itin_d_manque"), i18n$t(cle)))
+    }
+  }
+  detail
+}
+
+
 #' Table des admissibles et des exclusions, traduite
 #'
 #' Une ligne par UGF x itineraire, **toutes** conservees : un itineraire exclu
@@ -199,9 +303,10 @@ itineraires_calculer <- function(project, profil, catalogue = NULL) {
 #' @param adm Sortie de `nemeton::itineraires_admissibles()`.
 #' @param catalogue Catalogue.
 #' @param i18n Traducteur.
-#' @return data.frame : `ugf`, `itineraire`, `etat`, `raison`, `statut`
-#'   (`"admissible"`, `"exclu"`, `"manquant"`). Le `detail` du coeur (valeur
-#'   observee contre seuil, en anglais, avec des codes bruts) n'est pas repris.
+#' @return data.frame : `ugf`, `itineraire`, `etat`, `raison`, `detail`
+#'   (le detail du coeur traduit, valeur observee contre seuil : voir
+#'   [itineraires_detail_traduit()] ; infobulle de la raison), `statut`
+#'   (`"admissible"`, `"exclu"`, `"manquant"`).
 #' @noRd
 itineraires_table_admissibles <- function(adm, catalogue, i18n) {
   if (is.null(adm) || nrow(adm) == 0L) return(NULL)
@@ -214,9 +319,16 @@ itineraires_table_admissibles <- function(adm, catalogue, i18n) {
     k <- .itin_cle_raison(r)
     if (is.na(k)) "" else i18n$t(k)
   }, character(1), USE.NAMES = FALSE)
+  detail <- if ("detail" %in% names(adm)) {
+    essences <- .itin_essences_noms()
+    sers <- .itin_ser_noms()
+    vapply(seq_len(nrow(adm)), function(i) {
+      itineraires_detail_traduit(adm$raison[i], adm$detail[i], i18n, essences, sers)
+    }, character(1))
+  } else rep("", nrow(adm))
   data.frame(ugf = as.character(adm$unit_id),
              itineraire = .itin_libelle(catalogue, adm$itineraire, i18n$language),
-             etat = etat, raison = raison,
+             etat = etat, raison = raison, detail = detail,
              statut = statut, stringsAsFactors = FALSE)
 }
 

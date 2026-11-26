@@ -29,12 +29,20 @@ mod_itineraires_ui <- function(id) {
 
 
 # Une table HTML simple (pas de DT : le contenu est court et testable).
-.itin_html_table <- function(df, colonnes, entetes, classes_ligne = NULL) {
+# `infobulles` : liste nommee colonne -> vecteur de textes, poses en `title`
+# (infobulle) sur les cellules de cette colonne quand le texte n'est pas vide.
+.itin_html_table <- function(df, colonnes, entetes, classes_ligne = NULL,
+                             infobulles = list()) {
   tete <- htmltools::tags$tr(lapply(entetes, htmltools::tags$th))
   lignes <- lapply(seq_len(nrow(df)), function(i) {
     htmltools::tags$tr(
       class = if (!is.null(classes_ligne)) classes_ligne[i],
-      lapply(colonnes, function(cn) htmltools::tags$td(as.character(df[[cn]][i]))))
+      lapply(colonnes, function(cn) {
+        tip <- infobulles[[cn]][i]
+        htmltools::tags$td(
+          title = if (!is.null(tip) && !is.na(tip) && nzchar(tip)) tip,
+          as.character(df[[cn]][i]))
+      }))
   })
   htmltools::div(
     class = "table-responsive",
@@ -84,7 +92,8 @@ itineraires_rendre <- function(res, i18n) {
     .itin_html_table(adm, c("ugf", "itineraire", "etat", "raison"),
                      c(i18n$t("itin_col_ugf"), i18n$t("itin_col_itineraire"),
                        i18n$t("itin_col_etat"), i18n$t("itin_col_raison")),
-                     unname(cls[adm$statut]))
+                     unname(cls[adm$statut]),
+                     infobulles = list(raison = adm$detail))
   clas <- itineraires_table_classement(res$comparaison, res$catalogue, i18n)
   bloc_cmp <- if (is.null(clas)) info("itin_aucun_comparable") else
     .itin_html_table(clas, c("ugf", "rang", "itineraire", "evaluees", "gagnantes",
