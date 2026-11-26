@@ -4785,7 +4785,9 @@ mod_monitoring_server <- function(id, app_state) {
 # tourne encore. Le coeur l'enrobe dans " failed in its capped child process "
 # suivi de la fin du journal de l'enfant ; brut, c'est une pile d'appels.
 .monitoring_is_verrou_reconfort <- function(msg) {
-  msg <- as.character(msg %||% "")
+  # `cli::cli_abort()` replie le message a 80 colonnes : " in use by\nanother
+  # process " des qu'un chemin depasse ~24 caracteres. On normalise d'abord.
+  msg <- gsub("[[:space:]]+", " ", paste(as.character(msg %||% ""), collapse = " "))
   if (!nzchar(msg)) return(FALSE)
   grepl("working directory", msg, fixed = TRUE) &&
     grepl("in use by another process", msg, fixed = TRUE)
