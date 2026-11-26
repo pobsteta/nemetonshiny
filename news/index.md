@@ -1,12 +1,26 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9017 (en développement)
+## nemetonshiny 2026.11.6.9018 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066, 067, 068, 069, 072, 073 et 075).
+cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073 et
+075).
 
 ### Changements
 
+- **Marculus : choix des actions à l’export** (mission 070, décision 10
+  de Pascal du 2026-11-26). « Télécharger vers Marculus » ouvre une
+  fenêtre qui liste les actions éligibles (UGF, type, année, statut)
+  avec une case chacune, et « Tout cocher » / « Tout décocher ». Cochées
+  par défaut : les actions de l’année en cours et des suivantes qui ne
+  sont ni réalisées ni abandonnées (`marculus_selection_defaut()`, date
+  injectable ; une année illisible reste cochée). « Exporter » est
+  inactif tant que rien n’est coché ; seules les actions cochées passent
+  à la préparation des fonds ortho, aux tarifs et au fichier
+  (`marculus_export_bundle_choix()` ; la signature de
+  `marculus_export_bundle()`, figée par le contrat nemetonmcp, ne bouge
+  pas). Jusque-là, toutes les actions éligibles partaient, quels que
+  soient leur année et leur statut.
 - **Itinéraires : pente, desserte et aires protégées fournies au cœur**
   (mission 069, décision 3 de Pascal du 2026-11-26).
   [`nemeton::itineraires_admissibles()`](https://pobsteta.github.io/nemeton/reference/itineraires_admissibles.html)
