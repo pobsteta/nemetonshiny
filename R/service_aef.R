@@ -6,8 +6,14 @@
 # coeur fait le reste (N5, B4/L3 en mode embedding, drapeau NDP `embedding_ml`).
 #
 # Source FACULTATIVE : le paquet n'est qu'en `Suggests` (aucun tag de release a
-# ce jour, `Remotes` sans tag) et l'option est eteinte par defaut. Sans l'un ou
+# ce jour sur `main`, `Remotes` en `@*release`) et l'option est eteinte par defaut. Sans l'un ou
 # l'autre, rien ne change.
+
+# Seuil d'avertissement (decision de Pascal, 2026-11-26) : au-dela de cette
+# emprise, l'app previent avant de telecharger. Taille estimee : ~1 Mo par km2
+# (mesure : 14,5 Mo pour 18 km2 en 21 s).
+AEF_SEUIL_KM2 <- 100
+AEF_MO_PAR_KM2 <- 1
 
 #' Is the `alphaearthnemeton` package installed?
 #' @return Logical scalar.
@@ -171,6 +177,88 @@ build_aef_layer <- function(aoi, project_path) {
 }
 
 
+#' Extent of the computation units, in km2 (bounding box, Lambert-93)
+#'
+#' The download is asked for the extent, not for the polygons: the box is what
+#' is paid for.
+#' @param aoi sf object.
+#' @return Numeric scalar, `NA` if unreadable.
+#' @noRd
+.aef_emprise_km2 <- function(aoi) {
+  tryCatch({
+    bb <- sf::st_bbox(sf::st_transform(aoi, 2154))
+    as.numeric((bb[["xmax"]] - bb[["xmin"]]) * (bb[["ymax"]] - bb[["ymin"]])) / 1e6
+  }, error = function(e) NA_real_)
+}
+
+
+#' Is the extent already acquired (same key as the cache of the project)?
+#' @noRd
+.aef_en_cache <- function(aoi, project_path) {
+  dir <- .aef_cache_dir(project_path)
+  courant <- file.path(dir, "courant.json")
+  if (!file.exists(courant)) return(FALSE)
+  cle <- tryCatch(.aef_cle(aoi), error = function(e) NULL)
+  prec <- tryCatch(jsonlite::read_json(courant, simplifyVector = TRUE),
+                   error = function(e) NULL)
+  !is.null(cle) && !is.null(prec) && identical(as.character(prec$cle), cle) &&
+    file.exists(file.path(dir, as.character(prec$fichier)))
+}
+
+
+#' Warning before a heavy download (extent above [AEF_SEUIL_KM2])
+#'
+#' @param aoi sf. The computation units.
+#' @param project_path Character.
+#' @return A warning entry for the UI (same shape as `aef_fetch_echec`), or
+#'   `NULL` when the extent is small, unreadable, or already in the cache (no
+#'   download to announce).
+#' @noRd
+.aef_avertissement_taille <- function(aoi, project_path) {
+  km2 <- .aef_emprise_km2(aoi)
+  if (is.na(km2) || km2 <= AEF_SEUIL_KM2) return(NULL)
+  if (.aef_en_cache(aoi, project_path)) return(NULL)
+  args <- list(format(round(km2), big.mark = " ", trim = TRUE),
+               format(AEF_SEUIL_KM2, trim = TRUE),
+               format(round(km2 * AEF_MO_PAR_KM2), big.mark = " ", trim = TRUE))
+  list(type = "warning", source = "AlphaEarth",
+       key = "aef_taille_avertissement", args = args,
+       message = sprintf(
+         "AlphaEarth: extent of %s km2 (above %s km2), download estimated at about %s MB",
+         args[[1]], args[[2]], args[[3]]),
+       time = format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
+}
+
+
+#' Year of the AlphaEarth embedding used by a project
+#'
+#' @description
+#' Read from the `annee` attribute of the raster when one is given, else from
+#' the cache record (`courant.json`). `NA` when unknown (no acquisition yet, or
+#' a package that does not tell the year).
+#'
+#' @param project_path Character or `NULL`.
+#' @param raster SpatRaster or `NULL`.
+#' @return Integer scalar (possibly `NA`).
+#' @noRd
+aef_annee <- function(project_path = NULL, raster = NULL) {
+  an <- NA_integer_
+  if (!is.null(raster)) {
+    an <- suppressWarnings(as.integer(attr(raster, "annee")[1]))
+  }
+  if (is.na(an) && is.character(project_path) && length(project_path) == 1L &&
+      !is.na(project_path)) {
+    f <- file.path(.aef_cache_dir(project_path), "courant.json")
+    if (file.exists(f)) {
+      prec <- tryCatch(jsonlite::read_json(f, simplifyVector = TRUE),
+                       error = function(e) NULL)
+      an <- suppressWarnings(as.integer(prec$annee[1]))
+    }
+  }
+  if (length(an) != 1L) NA_integer_ else an
+}
+
+
 #' Stage the AlphaEarth source of a computation
 #'
 #' @description
@@ -179,16 +267,25 @@ build_aef_layer <- function(aoi, project_path) {
 #' `layers$embedding_source` when it succeeds. When the source is on and the
 #' fetch fails, the layer stays absent (N5 then reports
 #' `skipped_no_embedding`, B4/L3 keep their other method) and a warning entry
-#' is returned for the UI.
+#' is returned for the UI. When the extent is above [AEF_SEUIL_KM2] and not yet
+#' in the cache, a warning is raised BEFORE the download (through `prevenir`
+#' when given, so the UI shows it at once; else it is returned in `warnings`).
 #'
 #' @param layers `nemeton_layers`.
 #' @param aoi sf. The computation units.
 #' @param project_path Character.
 #' @param metadata List. Project metadata.
+#' @param prevenir Function taking a warning entry, or `NULL`.
 #' @return `list(layers = <layers>, warnings = <list>)`.
 #' @noRd
-.aef_etape <- function(layers, aoi, project_path, metadata) {
+.aef_etape <- function(layers, aoi, project_path, metadata, prevenir = NULL) {
   if (!project_aef_active(metadata)) return(list(layers = layers, warnings = list()))
+
+  avertissements <- list()
+  taille <- .aef_avertissement_taille(aoi, project_path)
+  if (!is.null(taille)) {
+    if (is.function(prevenir)) prevenir(taille) else avertissements <- list(taille)
+  }
 
   res <- build_aef_layer(aoi, project_path)
   if (is.null(res$raster)) {
@@ -196,16 +293,16 @@ build_aef_layer <- function(aoi, project_path) {
     cli::cli_warn("AlphaEarth embedding unavailable: {msg}")
     return(list(
       layers = layers,
-      warnings = list(list(
+      warnings = c(avertissements, list(list(
         type = "warning", source = "AlphaEarth",
         key = "aef_fetch_echec", args = list(msg),
         message = paste0("Embedding AlphaEarth non disponible: ", msg),
         time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-      ))))
+      )))))
   }
   layers$rasters$aef_embedding <- res$raster
   layers$embedding_source <- "aef"
-  list(layers = layers, warnings = list())
+  list(layers = layers, warnings = avertissements)
 }
 
 

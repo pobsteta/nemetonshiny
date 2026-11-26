@@ -24,7 +24,7 @@ Suggests: shinyOAuth, knitr, rmarkdown, RPostgres, RSQLite, DBI, uuid,
     png, viridisLite, reticulate, callr, shinytest2 (>= 0.3.0), webshot2,
     meteoland, ecmwfr, mcptools, alphaearthnemeton
 Remotes: pobsteta/nemeton@*release, pobsteta/foretaccess@*release, r-lidar/lasR,
-    pobsteta/alphaearthnemeton
+    pobsteta/alphaearthnemeton@*release
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.1

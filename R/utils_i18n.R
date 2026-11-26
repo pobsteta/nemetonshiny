@@ -3692,6 +3692,22 @@ TRANSLATIONS <- list(
     fr = "Non activ\u00e9 \u2014 N5 absent, B4 et L3 inchang\u00e9s",
     en = "Not enabled \u2014 N5 absent, B4 and L3 unchanged"
   ),
+  aef_taille_avertissement = list(
+    fr = "AlphaEarth : l'emprise des UGF couvre %s km\u00b2 (au-del\u00e0 de %s km\u00b2). Le t\u00e9l\u00e9chargement est estim\u00e9 \u00e0 environ %s Mo et peut \u00eatre long.",
+    en = "AlphaEarth: the extent of the units covers %s km\u00b2 (above %s km\u00b2). The download is estimated at about %s MB and may take a while."
+  ),
+  aef_annee_utilisee = list(
+    fr = "Ann\u00e9e AlphaEarth utilis\u00e9e : %s",
+    en = "AlphaEarth year used: %s"
+  ),
+  aef_annee_n5 = list(
+    fr = "N5 : embedding AlphaEarth de l'ann\u00e9e %s.",
+    en = "N5: AlphaEarth embedding of year %s."
+  ),
+  aef_annee_etiq = list(
+    fr = "AlphaEarth %s",
+    en = "AlphaEarth %s"
+  ),
   aef_fetch_echec = list(
     fr = "Embedding AlphaEarth non disponible, N5 non calcul\u00e9 : %s",
     en = "AlphaEarth embedding unavailable, N5 not computed: %s"

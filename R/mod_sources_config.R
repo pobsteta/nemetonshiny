@@ -467,9 +467,15 @@ mod_sources_config_server <- function(id, app_state) {
         htmltools::div(class = "small text-muted mb-2 fst-italic",
                        i18n$t("aef_none"))
       }
+      # Annee de l'embedding deja acquis (cache du projet), quand elle est connue.
+      an <- aef_annee(proj$path)
+      annee <- if (enabled && !is.na(an)) {
+        htmltools::div(class = "small text-muted mb-2",
+                       sprintf(i18n$t("aef_annee_utilisee"), an))
+      }
       htmltools::div(
         class = "mb-3 p-2 border rounded",
-        header, hint, status,
+        header, hint, status, annee,
         shiny::checkboxInput(ns("aef_enabled"), i18n$t("aef_enable"),
                              value = enabled),
         shiny::actionButton(

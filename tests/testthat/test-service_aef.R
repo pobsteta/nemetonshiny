@@ -231,7 +231,8 @@ test_that("N5 lit N1 des unites : .COMPOSANTES_LUES le relie a l'indicateur N1",
 test_that("les cles i18n AlphaEarth existent en FR et EN et tiennent en 30 caracteres", {
   cles <- c("aef_section", "aef_enable", "aef_hint", "aef_save", "aef_saved",
             "aef_need_pkg", "aef_active", "aef_none", "aef_fetch_echec",
-            "task_aef_embedding")
+            "task_aef_embedding", "aef_taille_avertissement",
+            "aef_annee_utilisee", "aef_annee_n5", "aef_annee_etiq")
   tr <- nemetonshiny:::TRANSLATIONS
   for (k in cles) {
     expect_lte(nchar(k), 30L)
@@ -245,12 +246,12 @@ test_that("les cles i18n AlphaEarth existent en FR et EN et tiennent en 30 carac
 
 # ---- start_computation : de bout en bout, tout simule ---------------------
 
-.lance_calcul_aef <- function(actif, fetch) {
+.lance_calcul_aef <- function(actif, fetch, cote = 0.001) {
   temp_dir <- tempfile("nemeton_aef_")
   project_dir <- file.path(temp_dir, "test_project")
   dir.create(file.path(project_dir, "data"), recursive = TRUE)
   geom <- sf::st_sfc(
-    sf::st_polygon(list(matrix(c(0, 0, 0.001, 0, 0.001, 0.001, 0, 0.001, 0, 0),
+    sf::st_polygon(list(matrix(c(0, 0, cote, 0, cote, cote, 0, cote, 0, 0),
                                ncol = 2, byrow = TRUE))), crs = 4326)
   sf::st_write(sf::st_sf(id = "p1", geometry = geom),
                file.path(project_dir, "data", "parcels.gpkg"), quiet = TRUE)
@@ -329,6 +330,26 @@ test_that("start_computation : source eteinte, rien ne change et le paquet n'est
   expect_null(vu$emb)
   expect_null(vu$attr)
   expect_length(vu$erreurs, 0L)
+})
+
+test_that("start_computation : grande emprise, l'avertissement est dans les messages et le calcul continue", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  ordre <- character(0)
+  vu <- .lance_calcul_aef(TRUE, function(aoi, years, crs, cache_dir, ...) {
+    ordre <<- c(ordre, "fetch")
+    .aef_faux_raster(cache_dir)
+  }, cote = 0.2)   # environ 20 km x 15 km en France : plus de 100 km2
+  cles <- vapply(vu$erreurs, function(e) as.character(e$key %||% ""), "")
+  expect_true("aef_taille_avertissement" %in% cles)
+  expect_identical(ordre, "fetch")
+  expect_identical(vu$attr, "aef")
+  # Petite emprise : pas d'avertissement.
+  vu2 <- .lance_calcul_aef(TRUE, function(aoi, years, crs, cache_dir, ...) {
+    .aef_faux_raster(cache_dir)
+  })
+  expect_false("aef_taille_avertissement" %in%
+                 vapply(vu2$erreurs, function(e) as.character(e$key %||% ""), ""))
 })
 
 # ---- Relecture : arret, progression, reprise ------------------------------
@@ -460,4 +481,166 @@ test_that("reprise : etat inchange, ou projet sans AlphaEarth, rien n'est recalc
   expect_length(.aef_reprise("aef:2025", .aef_couches(TRUE))$calcules, 0L)
   expect_length(.aef_reprise(NULL, .aef_couches(FALSE))$calcules, 0L)
   expect_length(.aef_reprise("none", .aef_couches(FALSE))$calcules, 0L)
+})
+
+
+# ---- Avertissement de taille avant telechargement (decision du 2026-11-26) ---
+
+# Emprise carree de `cote` metres, en Lambert-93.
+.aef_unites_cote <- function(cote) {
+  g <- sf::st_polygon(list(matrix(
+    c(900000, 6800000, 900000 + cote, 6800000, 900000 + cote, 6800000 + cote,
+      900000, 6800000 + cote, 900000, 6800000), ncol = 2, byrow = TRUE)))
+  sf::st_sf(id = "u1", geometry = sf::st_sfc(g, crs = 2154))
+}
+
+test_that("le seuil d'avertissement est une constante nommee de 100 km2", {
+  expect_identical(nemetonshiny:::AEF_SEUIL_KM2, 100)
+  expect_identical(nemetonshiny:::AEF_MO_PAR_KM2, 1)
+})
+
+test_that("emprise au-dela de 100 km2 : l'avertissement part AVANT l'appel au paquet", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  proj <- .aef_projet()
+  ordre <- character(0)
+  couches <- structure(list(rasters = list(), vectors = list()),
+                       class = "nemeton_layers")
+  with_mocked_bindings(
+    aef_disponible = function() TRUE,
+    .aef_fetch_fn = function() function(aoi, years, crs, cache_dir, ...) {
+      ordre <<- c(ordre, "fetch")
+      .aef_faux_raster(cache_dir)
+    }, {
+      out <- nemetonshiny:::.aef_etape(
+        couches, .aef_unites_cote(12000), proj,
+        list(aef = list(enabled = TRUE)),
+        prevenir = function(w) {
+          ordre <<- c(ordre, "avertissement")
+          expect_identical(w$key, "aef_taille_avertissement")
+          expect_identical(w$args[[1]], "144")   # surface en km2
+          expect_identical(w$args[[3]], "144")   # ~1 Mo par km2
+        })
+      expect_identical(ordre, c("avertissement", "fetch"))
+      # Le telechargement n'est pas bloque.
+      expect_identical(out$layers$embedding_source, "aef")
+      # Le texte traduit porte surface, seuil et taille.
+      txt <- nemetonshiny:::.message_calcul(
+        list(key = "aef_taille_avertissement", args = list("144", "100", "144")),
+        get_i18n("fr"))
+      expect_match(txt, "144 km", fixed = TRUE)
+      expect_match(txt, "100 km", fixed = TRUE)
+      expect_match(txt, "144 Mo", fixed = TRUE)
+    })
+})
+
+test_that("sans `prevenir`, l'avertissement revient dans les warnings de l'etape", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  couches <- structure(list(rasters = list(), vectors = list()),
+                       class = "nemeton_layers")
+  with_mocked_bindings(
+    aef_disponible = function() TRUE,
+    .aef_fetch_fn = function() function(aoi, years, crs, cache_dir, ...) {
+      .aef_faux_raster(cache_dir)
+    }, {
+      out <- nemetonshiny:::.aef_etape(couches, .aef_unites_cote(12000),
+                                       .aef_projet(),
+                                       list(aef = list(enabled = TRUE)))
+      expect_identical(vapply(out$warnings, `[[`, "", "key"),
+                       "aef_taille_avertissement")
+    })
+})
+
+test_that("emprise de 100 km2 ou moins, ou deja en cache : aucun avertissement", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  # Pile au seuil (10 km x 10 km) : pas d'avertissement (strictement au-dela).
+  expect_null(nemetonshiny:::.aef_avertissement_taille(.aef_unites_cote(10000),
+                                                       .aef_projet()))
+  expect_null(nemetonshiny:::.aef_avertissement_taille(.aef_unites(), .aef_projet()))
+  # Grande emprise deja acquise : rien a telecharger, rien a annoncer.
+  proj <- .aef_projet()
+  vus <- 0L
+  with_mocked_bindings(
+    aef_disponible = function() TRUE,
+    .aef_fetch_fn = function() function(aoi, years, crs, cache_dir, ...) {
+      .aef_faux_raster(cache_dir)
+    }, {
+      nemetonshiny:::build_aef_layer(.aef_unites_cote(12000), proj)
+      expect_null(nemetonshiny:::.aef_avertissement_taille(
+        .aef_unites_cote(12000), proj))
+    })
+})
+
+# ---- Annee AlphaEarth affichee (decision du 2026-11-26) ---------------------
+
+test_that("aef_annee : lue dans le cache (courant.json), sinon dans l'attribut", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  proj <- .aef_projet()
+  expect_true(is.na(nemetonshiny:::aef_annee(proj)))
+  with_mocked_bindings(
+    aef_disponible = function() TRUE,
+    .aef_fetch_fn = function() function(aoi, years, crs, cache_dir, ...) {
+      .aef_faux_raster(cache_dir)
+    }, nemetonshiny:::build_aef_layer(.aef_unites(), proj))
+  expect_identical(nemetonshiny:::aef_annee(proj), 2025L)
+  # L'attribut du raster prime, et sert sans cache.
+  r <- terra::rast(nrows = 2, ncols = 2)
+  attr(r, "annee") <- 2023L
+  expect_identical(nemetonshiny:::aef_annee(NULL, r), 2023L)
+  expect_identical(nemetonshiny:::aef_annee(proj, r), 2023L)
+  expect_true(is.na(nemetonshiny:::aef_annee(NULL, NULL)))
+})
+
+test_that("l'annee s'affiche a cote de N5 seulement, et seulement si connue", {
+  i18n <- get_i18n("fr")
+  d <- data.frame(indicateur_n5_distance_reference = c(0.2, NA),
+                  indicateur_b4_div_spectrale = c(1, 2))
+  b <- nemetonshiny:::n5_annee_banner(d, "indicateur_n5_distance_reference",
+                                      2025L, i18n)
+  expect_match(as.character(b), "AlphaEarth de l'ann", fixed = TRUE)
+  expect_match(as.character(b), "2025", fixed = TRUE)
+  expect_null(nemetonshiny:::n5_annee_banner(d, "indicateur_b4_div_spectrale",
+                                             2025L, i18n))
+  expect_null(nemetonshiny:::n5_annee_banner(d, "indicateur_n5_distance_reference",
+                                             NA_integer_, i18n))
+  d$indicateur_n5_distance_reference <- NA_real_
+  expect_null(nemetonshiny:::n5_annee_banner(d, "indicateur_n5_distance_reference",
+                                             2025L, i18n))
+  expect_identical(nemetonshiny:::.n5_annee_etiquette(
+    "indicateur_n5_distance_reference_norm", 2025L, i18n), "AlphaEarth 2025")
+  expect_identical(nemetonshiny:::.n5_annee_etiquette(
+    "indicateur_b4_div_spectrale", 2025L, i18n), "")
+})
+
+test_that("Sources & parametres dit l'annee utilisee quand elle est connue", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  proj <- .aef_projet()
+  with_mocked_bindings(
+    aef_disponible = function() TRUE,
+    .aef_fetch_fn = function() function(aoi, years, crs, cache_dir, ...) {
+      .aef_faux_raster(cache_dir)
+    }, nemetonshiny:::build_aef_layer(.aef_unites(), proj))
+  rendre <- function(path, enabled) {
+    html <- NULL
+    testthat::local_mocked_bindings(aef_disponible = function() TRUE)
+    shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+      app_state = shiny::reactiveValues(
+        language = "fr", project_id = "p1",
+        current_project = list(id = "p1", path = path,
+                               metadata = list(aef = list(enabled = enabled))))
+    ), {
+      session$setInputs(x = 1)
+      html <<- paste(as.character(output$aef_block), collapse = " ")
+    })
+    html
+  }
+  attendu <- sprintf(get_i18n("fr")$t("aef_annee_utilisee"), 2025L)
+  expect_true(grepl(attendu, rendre(proj, TRUE), fixed = TRUE))
+  # Source eteinte, ou aucune acquisition : pas d'annee affichee.
+  expect_false(grepl(attendu, rendre(proj, FALSE), fixed = TRUE))
+  expect_false(grepl("Ann\u00e9e AlphaEarth", rendre(.aef_projet(), TRUE), fixed = TRUE))
 })

@@ -945,8 +945,13 @@ start_computation <- function(project_id,
     if (project_aef_active(projet_for_ug$metadata) && !is_cancelled(project_id)) {
       state$current_task <- "aef_embedding"
       report_progress(state)
-      aef_out <- .aef_etape(layers, compute_unit, project_path,
-                            projet_for_ug$metadata)
+      # Emprise > AEF_SEUIL_KM2 : l'avertissement part AVANT le telechargement.
+      aef_out <- .aef_etape(
+        layers, compute_unit, project_path, projet_for_ug$metadata,
+        prevenir = function(w) {
+          state$errors <<- c(state$errors, list(w))
+          report_progress(state)
+        })
       layers <- aef_out$layers
       if (length(aef_out$warnings) > 0) {
         state$errors <- c(state$errors, aef_out$warnings)
