@@ -2940,6 +2940,45 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
+    # --- Moteurs plafonnes : arret dur et verrou (mission 075) -----------------
+    # Tue les moteurs `moteurs` encore vivants du projet courant (marqueur de run
+    # du coeur) ; rend ceux qui ont ete arretes. N'ecrit pas le drapeau
+    # cooperatif : c'est le role de chaque `.reset_*_run()`.
+    .arreter_moteur_dur <- function(moteurs) {
+      tryCatch(
+        .moteurs_sante_arreter(app_state$current_project$path, moteurs),
+        error = function(e) character(0))
+    }
+
+    # Un moteur du meme type vit encore sur le projet : pas de second lancement.
+    # Message clair, avec l'option de l'arreter (lien -> observer plus bas).
+    .moteur_deja_vivant <- function(moteur) {
+      if (is.null(.moteur_sante_vivant(app_state$current_project$path, moteur)))
+        return(FALSE)
+      i18n <- i18n_r()
+      shiny::showNotification(
+        shiny::tagList(
+          i18n$t(paste0("monitoring_", moteur, "_verrou")),
+          shiny::tags$br(),
+          shiny::actionLink(session$ns(paste0("arreter_moteur_", moteur)),
+                            i18n$t("monitoring_moteur_arreter"))),
+        id = session$ns(paste0("moteur_vivant_", moteur)),
+        type = "warning", duration = 15)
+      TRUE
+    }
+
+    lapply(.moteurs_sante_plafonnes, function(moteur) {
+      shiny::observeEvent(input[[paste0("arreter_moteur_", moteur)]], {
+        if (length(.arreter_moteur_dur(moteur))) {
+          shiny::removeNotification(session$ns(paste0("moteur_vivant_", moteur)))
+          shiny::showNotification(
+            i18n_r()$t("monitoring_moteur_arrete"),
+            id = session$ns(paste0("moteur_arrete_", moteur)),
+            type = "default", duration = 6)
+        }
+      }, ignoreInit = TRUE)
+    })
+
     # Arret d'un run FORDEAD. Extrait en helper : appele par le bouton
     # de l'onglet ET par le signal d'arret partage (cf. plus bas).
     .reset_fordead_run <- function() {
@@ -2954,6 +2993,8 @@ mod_monitoring_server <- function(id, app_state) {
         tryCatch(file.create(cancel_path),
                  error = function(e) NULL)
       }
+      # Arret DUR (mission 075), comme RECONFORT : tuer l'enfant plafonne.
+      if (length(.arreter_moteur_dur("fordead"))) fordead_result_consumed(TRUE)
       actif <- !is.null(shiny::isolate(fordead_run_start()))
       force_unlock_health(TRUE)
       .retirer_toasts_progression(session, "fordead")
@@ -3000,6 +3041,9 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 8)
         return(invisible(FALSE))
       }
+      # Un enfant plafonne du meme type vit encore (marqueur de run du coeur) :
+      # le relancer ferait deux moteurs sur le meme dossier de travail.
+      if (.moteur_deja_vivant("fordead")) return(invisible(FALSE))
       if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -3069,7 +3113,11 @@ mod_monitoring_server <- function(id, app_state) {
                             app_state$current_project$name,
         # v0.52.0 - cancel cooperatif (polled entre phases reticulate
         # par nemeton@v0.53.0+).
-        cancel_path       = .fordead_cancel_flag
+        cancel_path       = .fordead_cancel_flag,
+        # Arret dur de l'enfant plafonne (mission 075).
+        marker_path       = .moteur_sante_marker_path(
+                              app_state$current_project$path, "fordead",
+                              creer = TRUE)
       )
       .persist_monitoring_metadata()
       invisible(TRUE)
@@ -3723,6 +3771,11 @@ mod_monitoring_server <- function(id, app_state) {
       if (!is.null(cancel_path)) {
         tryCatch(file.create(cancel_path), error = function(e) NULL)
       }
+      # Arret DUR (mission 075) : le flag n'est lu qu'aux frontieres de phase,
+      # alors que l'enfant plafonne continue de telecharger et tient son verrou.
+      # On le tue par son marqueur de run. Son erreur de sortie (" killed ")
+      # n'est pas une panne : le gestionnaire de resultat l'ignore.
+      if (length(.arreter_moteur_dur("reconfort"))) reconfort_result_consumed(TRUE)
       actif <- !is.null(shiny::isolate(reconfort_run_start()))
       force_unlock_reconfort(TRUE)
       .retirer_toasts_progression(session, "reconfort")
@@ -3767,6 +3820,9 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 8)
         return(invisible(FALSE))
       }
+      # Un enfant plafonne RECONFORT vit encore (marqueur de run du coeur) :
+      # il tient le verrou du dossier de travail.
+      if (.moteur_deja_vivant("reconfort")) return(invisible(FALSE))
       if (is.null(zone_id) && !isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -3846,6 +3902,9 @@ mod_monitoring_server <- function(id, app_state) {
         lang          = app_state$language %||% "fr",
         output_dir    = out,
         cancel_path   = .reconfort_cancel_flag,
+        # Arret dur de l'enfant plafonne (mission 075).
+        marker_path   = .moteur_sante_marker_path(proj$path, "reconfort",
+                                                  creer = TRUE),
         # Nom de projet (a jour) pour l'en-tete ntfy - cf. FAST.
         project_name  = proj$metadata$name %||% proj$name
       )

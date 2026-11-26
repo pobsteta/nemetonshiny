@@ -77,13 +77,103 @@
   "log_path" %in% names(formals(nemeton::run_memory_capped))
 }
 
-# Appelle `run_memory_capped()` en laissant tomber `log_path` sur un coeur qui
-# ne le connait pas. Sans ce filtre, passer l'argument a un coeur < 0.195.0
-# leverait " unused argument " et casserait un chemin qui marchait.
+# Le coeur installe accepte-t-il `marker_path` (coeur >= 2026.11.38) ? Meme
+# motif de garde que `log_path` : un coeur plus ancien perd seulement l'arret dur.
+.capped_accepts_marker_path <- function() {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(FALSE)
+  "marker_path" %in% names(formals(nemeton::run_memory_capped))
+}
+
+# Appelle `run_memory_capped()` en laissant tomber `log_path` et `marker_path`
+# sur un coeur qui ne les connait pas. Sans ce filtre, passer l'argument a un
+# coeur trop ancien leverait " unused argument " et casserait un chemin qui
+# marchait.
 .run_capped <- function(...) {
   a <- list(...)
   if (!.capped_accepts_log_path()) a$log_path <- NULL
+  if (!.capped_accepts_marker_path()) a$marker_path <- NULL
   do.call(nemeton::run_memory_capped, a)
+}
+
+# --- Arret reel des moteurs plafonnes (mission 075) --------------------------
+# RECONFORT et FORDEAD tournent dans un enfant lance par `run_memory_capped()`.
+# Le drapeau `cancel_path` n'est lu qu'aux frontieres de phase : pour qu'un
+# calcul arrete cesse vraiment (telechargements, verrou), l'app tue l'enfant par
+# son marqueur de run (`stop_memory_capped()`), comme pour reGeneration. Helpers
+# communs aux trois moteurs ; tous mockables, aucun ne leve.
+
+# Resout une fonction exportee du coeur si elle existe, sinon NULL.
+.capped_core_fn <- function(nom) {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
+  ns <- asNamespace("nemeton")
+  if (!exists(nom, envir = ns, inherits = FALSE)) return(NULL)
+  get(nom, envir = ns, inherits = FALSE)
+}
+
+# Le moteur du marqueur vit-il ? Liste du marqueur, ou NULL (absent, perime, ou
+# coeur sans la fonction).
+.capped_marker_alive <- function(marker, core_fn = .capped_core_fn) {
+  f <- core_fn("capped_run_alive")
+  if (is.null(f) || is.null(marker) || !nzchar(marker)) return(NULL)
+  tryCatch(f(marker), error = function(e) NULL)
+}
+
+# Arrete le moteur du marqueur. TRUE si quelque chose a ete arrete. `timeout`
+# (secondes d'attente avant SIGKILL) n'est transmis que si le coeur l'accepte
+# (garde `formals()`) ; NULL = defaut du coeur.
+.capped_marker_stop <- function(marker, core_fn = .capped_core_fn,
+                                timeout = NULL) {
+  f <- core_fn("stop_memory_capped")
+  if (is.null(f) || is.null(marker) || !nzchar(marker)) return(FALSE)
+  args <- list(marker)
+  if (!is.null(timeout) && "timeout" %in% names(formals(f))) args$timeout <- timeout
+  isTRUE(tryCatch(do.call(f, args), error = function(e) FALSE))
+}
+
+# Arret des moteurs Sante : attente courte (3 s) avant SIGKILL, car l'appel
+# bloque la session Shiny. reGeneration garde le defaut du coeur.
+.sante_marker_stop <- function(marker) .capped_marker_stop(marker, timeout = 3)
+
+# Moteurs Sante plafonnes dont l'app tient un marqueur de run.
+.moteurs_sante_plafonnes <- c("reconfort", "fordead")
+
+# Marqueur de run d'un moteur Sante : `<projet>/cache/layers/<moteur>/
+# engine_run.json`. NULL sans projet. `creer` : cree le dossier (le coeur ecrit
+# le marqueur sans le creer).
+.moteur_sante_marker_path <- function(project_path, moteur, creer = FALSE) {
+  if (is.null(project_path) || length(project_path) != 1L ||
+      is.na(project_path) || !nzchar(project_path)) return(NULL)
+  moteur <- match.arg(moteur, .moteurs_sante_plafonnes)
+  mp <- file.path(project_path, "cache", "layers", moteur, "engine_run.json")
+  if (isTRUE(creer)) {
+    tryCatch(dir.create(dirname(mp), recursive = TRUE, showWarnings = FALSE),
+             error = function(e) NULL)
+  }
+  mp
+}
+
+# Un moteur du meme type vit-il encore sur ce projet ? Marqueur (liste) ou NULL.
+.moteur_sante_vivant <- function(project_path, moteur,
+                                 alive = .capped_marker_alive) {
+  mp <- .moteur_sante_marker_path(project_path, moteur)
+  if (is.null(mp)) return(NULL)
+  alive(mp)
+}
+
+# Arret dur : tue les moteurs Sante vivants du projet. Renvoie les moteurs
+# effectivement arretes (character(0) si rien ne vivait : `arreter` n'est alors
+# jamais appele). Le drapeau cooperatif reste pose par l'appelant.
+.moteurs_sante_arreter <- function(project_path,
+                                   moteurs = .moteurs_sante_plafonnes,
+                                   alive = .capped_marker_alive,
+                                   arreter = .sante_marker_stop) {
+  arretes <- character(0)
+  for (m in moteurs) {
+    mp <- .moteur_sante_marker_path(project_path, m)
+    if (is.null(mp) || is.null(alive(mp))) next
+    if (isTRUE(arreter(mp))) arretes <- c(arretes, m)
+  }
+  arretes
 }
 
 
@@ -628,6 +718,9 @@ run_fordead_async <- function() {
                                    output_dir = NULL,
                                    keep_output = TRUE,
                                    cancel_path = NULL,
+                                   # Marqueur de run de l'enfant plafonne (mission
+                                   # 075) : permet de le tuer pour de vrai.
+                                   marker_path = NULL,
                                    # Nom d'affichage (projet) resolu cote parent
                                    # - cf. run_ingestion_async. NULL -> repli DB.
                                    project_name = NULL) {
@@ -746,6 +839,7 @@ run_fordead_async <- function() {
         .run_capped(
           fun = "run_fordead_dieback",
           log_path = child_log,
+          marker_path = marker_path,
           args = list(
             zone_id           = zone_id,
             cache_dir         = cache_dir,
@@ -854,6 +948,9 @@ run_reconfort_async <- function() {
                                    progress_path = NULL, lang = "fr",
                                    output_dir = NULL,
                                    cancel_path = NULL,
+                                   # Marqueur de run de l'enfant plafonne (mission
+                                   # 075) : permet de le tuer pour de vrai.
+                                   marker_path = NULL,
                                    # Nom d'affichage (projet) resolu cote parent
                                    # - cf. run_ingestion_async. NULL -> repli DB.
                                    project_name = NULL) {
@@ -957,6 +1054,7 @@ run_reconfort_async <- function() {
         .run_capped(
           fun = "run_reconfort_dieback",
           log_path = child_log,
+          marker_path = marker_path,
           args = list(
             zone_id     = zone_id,
             cache_dir   = cache_dir,
