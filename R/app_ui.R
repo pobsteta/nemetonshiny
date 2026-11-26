@@ -327,332 +327,348 @@ mod_synthesis_ui <- function(id) {
   opts <- get_app_options()
   i18n <- get_i18n(opts$language)
 
-  bslib::layout_columns(
-    col_widths = c(12),
-    # La carte " Synthese du projet " (1re rangee) ne porte que quelques
-    # lignes : sans contrainte, la grille fillable du nav_panel etire ses
-    # deux rangees a parts egales et laisse un grand vide sous l'en-tete.
-    # On force la 1re rangee a la hauteur de son contenu (auto) et on
-    # laisse la 2e (radar / recap / commentaires) prendre le reste (1fr).
-    row_heights = c("auto", 1, "auto"),
+  # Deux sous-onglets (mission 084) : la synthese du projet, puis ce que la
+  # gestion a produit sur le massif. Deplacement d'UI seulement : les modules
+  # gardent leurs identifiants. Les sorties d'un sous-onglet masque restent
+  # suspendues jusqu'a son affichage ; les calculs (ExtendedTask) se poursuivent.
+  bslib::navset_card_underline(
+    id = ns("synthese_nav"),
+    selected = "synthese_projet",
+    bslib::nav_panel(
+      title = i18n$t("synthese_sous_projet"),
+      value = "synthese_projet",
+      icon = bsicons::bs_icon("pie-chart"),
+      bslib::layout_columns(
+        col_widths = c(12),
+        # La carte " Synthese du projet " (1re rangee) ne porte que quelques
+        # lignes : sans contrainte, la grille fillable du nav_panel etire ses
+        # deux rangees a parts egales et laisse un grand vide sous l'en-tete.
+        # On force la 1re rangee a la hauteur de son contenu (auto) et on
+        # laisse la 2e (radar / recap / commentaires) prendre le reste (1fr).
+        row_heights = c("auto", 1),
 
-    # Top row: Downloads, summary, and global score
-    #
-    # `summary_card` est l'ancre du tour guide. Elle porte la CARTE, pas le
-    # `uiOutput("project_summary")` qu'elle contient : un output suspendu sur
-    # un onglet masque ne rend rien avant un aller-retour serveur, donc il
-    # mesure 0 de haut a l'instant ou driver.js cadre l'etape - qui serait
-    # alors sautee en silence. Une ancre de tour doit etre STATIQUE.
-    bslib::card(
-      id = ns("summary_card"),
-      bslib::card_header(i18n$t("synthesis_title")),
-      bslib::card_body(
-        bslib::layout_columns(
-          col_widths = c(4, 4, 4),
+        # Top row: Downloads, summary, and global score
+        #
+        # `summary_card` est l'ancre du tour guide. Elle porte la CARTE, pas le
+        # `uiOutput("project_summary")` qu'elle contient : un output suspendu sur
+        # un onglet masque ne rend rien avant un aller-retour serveur, donc il
+        # mesure 0 de haut a l'instant ou driver.js cadre l'etape - qui serait
+        # alors sautee en silence. Une ancre de tour doit etre STATIQUE.
+        bslib::card(
+          id = ns("summary_card"),
+          bslib::card_header(i18n$t("synthesis_title")),
+          bslib::card_body(
+            bslib::layout_columns(
+              col_widths = c(4, 4, 4),
 
-          # Project summary
-          shiny::uiOutput(ns("project_summary")),
+              # Project summary
+              shiny::uiOutput(ns("project_summary")),
 
-          # Download buttons
-          htmltools::div(
-            class = "d-grid gap-2",
-            shiny::downloadButton(
-              ns("download_pdf"),
-              label = i18n$t("download_pdf"),
-              icon = shiny::icon("file-pdf"),
-              class = "btn-primary btn-lg"
-            ),
-            shiny::downloadButton(
-              ns("download_gpkg"),
-              label = i18n$t("download_gpkg"),
-              icon = shiny::icon("database"),
-              # Une seule action principale par vue : le rapport PDF ;
-              # l'export GeoPackage est secondaire (regle des boutons).
-              class = "btn-outline-primary btn-lg"
-            ),
-            # Cover image upload for PDF
-            #
-            # v0.52.3 - La legende " Taille image Max 5 Mo, PNG/JPG "
-            # est a DROITE du fileInput, alignee verticalement au
-            # NIVEAU DU BOUTON (et donc de la ligne des badges
-            # `NDP / Hauteur LiDAR / Inventaire ML` de la colonne de
-            # droite). Pourquoi `align-items: flex-start` + un
-            # `padding-top` plutot que `align-items: center` :
-            #   * Le `shiny::fileInput` rend bouton + placeholder +
-            #     barre de progression. La barre de progression
-            #     s'affiche des qu'un upload est en cours/complet,
-            #     ce qui change la hauteur totale du fileInput.
-            #   * `align-items: center` aurait centre le texte sur la
-            #     hauteur totale (incluant la barre quand visible),
-            #     donc plus bas que le bouton des qu'on a charge une
-            #     image - exactement le decalage qu'on essaie de
-            #     supprimer.
-            #   * `flex-start` ancre le texte en haut du flex (donc
-            #     au niveau du haut du bouton), et un `padding-top`
-            #     de ~0.55rem (~= la moitie de la hauteur du bouton
-            #     38px) le descend pile au centre du bouton.
-            htmltools::div(
-              class = "mt-2 d-flex gap-2",
-              style = "align-items: flex-start;",
+              # Download buttons
               htmltools::div(
-                style = "flex: 1;",
-                shiny::fileInput(
-                  ns("cover_image"),
-                  label = NULL,
-                  accept = c("image/png", "image/jpeg", "image/jpg"),
-                  buttonLabel = htmltools::tagList(
-                    shiny::icon("image"),
-                    paste0(" ", i18n$t("image_couverture"))
+                class = "d-grid gap-2",
+                shiny::downloadButton(
+                  ns("download_pdf"),
+                  label = i18n$t("download_pdf"),
+                  icon = shiny::icon("file-pdf"),
+                  class = "btn-primary btn-lg"
+                ),
+                shiny::downloadButton(
+                  ns("download_gpkg"),
+                  label = i18n$t("download_gpkg"),
+                  icon = shiny::icon("database"),
+                  # Une seule action principale par vue : le rapport PDF ;
+                  # l'export GeoPackage est secondaire (regle des boutons).
+                  class = "btn-outline-primary btn-lg"
+                ),
+                # Cover image upload for PDF
+                #
+                # v0.52.3 - La legende " Taille image Max 5 Mo, PNG/JPG "
+                # est a DROITE du fileInput, alignee verticalement au
+                # NIVEAU DU BOUTON (et donc de la ligne des badges
+                # `NDP / Hauteur LiDAR / Inventaire ML` de la colonne de
+                # droite). Pourquoi `align-items: flex-start` + un
+                # `padding-top` plutot que `align-items: center` :
+                #   * Le `shiny::fileInput` rend bouton + placeholder +
+                #     barre de progression. La barre de progression
+                #     s'affiche des qu'un upload est en cours/complet,
+                #     ce qui change la hauteur totale du fileInput.
+                #   * `align-items: center` aurait centre le texte sur la
+                #     hauteur totale (incluant la barre quand visible),
+                #     donc plus bas que le bouton des qu'on a charge une
+                #     image - exactement le decalage qu'on essaie de
+                #     supprimer.
+                #   * `flex-start` ancre le texte en haut du flex (donc
+                #     au niveau du haut du bouton), et un `padding-top`
+                #     de ~0.55rem (~= la moitie de la hauteur du bouton
+                #     38px) le descend pile au centre du bouton.
+                htmltools::div(
+                  class = "mt-2 d-flex gap-2",
+                  style = "align-items: flex-start;",
+                  htmltools::div(
+                    style = "flex: 1;",
+                    shiny::fileInput(
+                      ns("cover_image"),
+                      label = NULL,
+                      accept = c("image/png", "image/jpeg", "image/jpg"),
+                      buttonLabel = htmltools::tagList(
+                        shiny::icon("image"),
+                        paste0(" ", i18n$t("image_couverture"))
+                      ),
+                      placeholder = i18n$t("aucune_image")
+                    )
                   ),
-                  placeholder = i18n$t("aucune_image")
+                  htmltools::span(
+                    class = "text-muted small",
+                    # v0.52.6 - padding-top ajuste de 0.55rem (centre du
+                    # bouton 38px) a 1rem. v0.52.3 avait cale le centre
+                    # vertical du texte sur le centre du bouton ; mais la
+                    # ligne des badges (`NDP / Hauteur LiDAR / Inventaire
+                    # ML`) a droite tombe en realite ~8 px plus bas que le
+                    # centre du bouton, parce que le flux de la colonne
+                    # droite (`Score global` -> `54.8` -> `/100 (12
+                    # familles)`) ne donne pas exactement la meme hauteur
+                    # cumulee que les 2 boutons PDF/GeoPackage de la
+                    # colonne du milieu. 1rem (~= 16 px) descend le texte
+                    # juste au niveau du centre des badges, ce que voulait
+                    # l'utilisateur.
+                    style = "white-space: nowrap; padding-top: 1rem;",
+                    i18n$t("image_couverture_limite")
+                  )
                 )
               ),
-              htmltools::span(
-                class = "text-muted small",
-                # v0.52.6 - padding-top ajuste de 0.55rem (centre du
-                # bouton 38px) a 1rem. v0.52.3 avait cale le centre
-                # vertical du texte sur le centre du bouton ; mais la
-                # ligne des badges (`NDP / Hauteur LiDAR / Inventaire
-                # ML`) a droite tombe en realite ~8 px plus bas que le
-                # centre du bouton, parce que le flux de la colonne
-                # droite (`Score global` -> `54.8` -> `/100 (12
-                # familles)`) ne donne pas exactement la meme hauteur
-                # cumulee que les 2 boutons PDF/GeoPackage de la
-                # colonne du milieu. 1rem (~= 16 px) descend le texte
-                # juste au niveau du centre des badges, ce que voulait
-                # l'utilisateur.
-                style = "white-space: nowrap; padding-top: 1rem;",
-                i18n$t("image_couverture_limite")
+
+              # Global score
+              shiny::uiOutput(ns("global_score"))
+            )
+          )
+        ),
+
+        # Radar + Summary table + Comments (3 columns)
+        bslib::layout_columns(
+          col_widths = c(4, 4, 4),
+          bslib::card(
+            bslib::card_header(
+              class = "d-flex align-items-center gap-2",
+              i18n$t("radar_title"),
+              bslib::popover(
+                htmltools::tags$span(
+                  class = "text-info",
+                  style = "cursor: help;",
+                  shiny::icon("circle-info", class = "fa-sm")
+                ),
+                htmltools::div(
+                  style = "max-height: 450px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5;",
+                  # Title
+                  htmltools::div(
+                    style = "border-left: 4px solid #4a7c3f; padding: 10px 12px; background: #f4f8f2; margin-bottom: 10px;",
+                    htmltools::tags$div(
+                      style = "font-weight: bold; font-size: 1rem; color: #3a6330; margin-bottom: 2px;",
+                      htmltools::HTML("&#9670; "), i18n$t("radar_tip_title")
+                    ),
+                    htmltools::tags$em(style = "color: #555;", i18n$t("radar_tip_subtitle"))
+                  ),
+                  # Intro
+                  htmltools::p(
+                    style = "margin: 8px 0; text-align: justify;",
+                    htmltools::HTML(i18n$t("radar_tip_intro"))
+                  ),
+                  # Section: Ce que le radar ne dit pas
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    htmltools::HTML("&#10006; &nbsp;"), i18n$t("radar_tip_not_title")
+                  ),
+                  htmltools::p(
+                    style = "margin: 0 0 8px 0; text-align: justify;",
+                    i18n$t("radar_tip_not_text")
+                  ),
+                  # Section: Ce que le radar dit
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    htmltools::HTML("&#10004; &nbsp;"), i18n$t("radar_tip_yes_title")
+                  ),
+                  htmltools::p(
+                    style = "margin: 0 0 8px 0; text-align: justify;",
+                    htmltools::HTML(i18n$t("radar_tip_yes_text"))
+                  ),
+                  # Section: Comment l'utiliser
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    htmltools::HTML("&#9658; &nbsp;"), i18n$t("radar_tip_how_title")
+                  ),
+                  htmltools::p(
+                    style = "margin: 0 0 10px 0; text-align: justify;",
+                    htmltools::HTML(i18n$t("radar_tip_how_text"))
+                  ),
+                  # Conclusion
+                  htmltools::tags$p(
+                    style = "font-style: italic; color: #555; margin: 10px 0 0 0; padding-top: 8px; border-top: 1px solid #ddd; text-align: justify;",
+                    htmltools::HTML(i18n$t("radar_tip_conclusion"))
+                  )
+                ),
+                options = list(customClass = "popover-lg"),
+                title = NULL
+              )
+            ),
+            bslib::card_body(
+              shiny::plotOutput(ns("radar_plot"), height = "500px")
+            )
+          ),
+          bslib::card(
+            bslib::card_header(
+              class = "d-flex align-items-center gap-2",
+              i18n$t("summary_table_title"),
+              bslib::popover(
+                htmltools::tags$span(
+                  class = "text-info",
+                  style = "cursor: help;",
+                  shiny::icon("circle-info", class = "fa-sm")
+                ),
+                htmltools::div(
+                  style = "max-height: 450px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5;",
+                  # Title
+                  htmltools::div(
+                    style = "border-left: 4px solid #4a7c3f; padding: 10px 12px; background: #f4f8f2; margin-bottom: 10px;",
+                    htmltools::tags$div(
+                      style = "font-weight: bold; font-size: 1rem; color: #3a6330; margin-bottom: 2px; text-transform: uppercase;",
+                      htmltools::HTML("&#9670; "), i18n$t("summary_tip_title")
+                    ),
+                    htmltools::tags$em(style = "color: #555;", i18n$t("summary_tip_subtitle"))
+                  ),
+                  # Intro
+                  htmltools::p(
+                    style = "margin: 8px 0; text-align: justify;",
+                    htmltools::HTML(i18n$t("summary_tip_intro"))
+                  ),
+                  # Section: Carre de base
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 4px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    i18n$t("summary_tip_base_title")
+                  ),
+                  htmltools::p(style = "margin: 0 0 4px 0;", htmltools::HTML(i18n$t("summary_tip_base_text"))),
+                  # Section: Supports du vivant
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 6px 0 4px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    i18n$t("summary_tip_support_title")
+                  ),
+                  htmltools::p(style = "margin: 0 0 4px 0;", htmltools::HTML(i18n$t("summary_tip_support_text"))),
+                  # Section: Dimensions humaines
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 6px 0 4px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    i18n$t("summary_tip_human_title")
+                  ),
+                  htmltools::p(style = "margin: 0 0 8px 0;", htmltools::HTML(i18n$t("summary_tip_human_text"))),
+                  # Section: Acrostiche VIVREENFORET
+                  htmltools::div(
+                    style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
+                    htmltools::HTML("&#9733; &nbsp;"), i18n$t("summary_tip_acrostic_title")
+                  ),
+                  htmltools::p(
+                    style = "margin: 0 0 10px 0; line-height: 1.7;",
+                    htmltools::HTML(i18n$t("summary_tip_acrostic"))
+                  ),
+                  # Conclusion
+                  htmltools::tags$p(
+                    style = "font-style: italic; color: #555; margin: 10px 0 0 0; padding-top: 8px; border-top: 1px solid #ddd; text-align: justify;",
+                    i18n$t("summary_tip_conclusion")
+                  )
+                ),
+                options = list(customClass = "popover-lg"),
+                title = NULL
+              )
+            ),
+            bslib::card_body(
+              shiny::tableOutput(ns("summary_table")),
+              # Sens de lecture de la colonne Score, sous le tableau et non dans un
+              # " i " : c'est la cle de lecture des douze lignes. Depuis l'inversion
+              # de R1-R4 (spec 048), " Risques & Resilience " avec un score eleve se
+              # lit spontanement " beaucoup de risque " - c'est l'inverse.
+              htmltools::tags$p(
+                class = "text-muted small fst-italic mb-0 mt-2",
+                i18n$t("summary_score_direction")
               )
             )
           ),
-
-          # Global score
-          shiny::uiOutput(ns("global_score"))
-        )
-      )
-    ),
-
-    # Radar + Summary table + Comments (3 columns)
-    bslib::layout_columns(
-      col_widths = c(4, 4, 4),
-      bslib::card(
-        bslib::card_header(
-          class = "d-flex align-items-center gap-2",
-          i18n$t("radar_title"),
-          bslib::popover(
-            htmltools::tags$span(
-              class = "text-info",
-              style = "cursor: help;",
-              shiny::icon("circle-info", class = "fa-sm")
-            ),
-            htmltools::div(
-              style = "max-height: 450px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5;",
-              # Title
+          bslib::card(
+            bslib::card_header(
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
               htmltools::div(
-                style = "border-left: 4px solid #4a7c3f; padding: 10px 12px; background: #f4f8f2; margin-bottom: 10px;",
-                htmltools::tags$div(
-                  style = "font-weight: bold; font-size: 1rem; color: #3a6330; margin-bottom: 2px;",
-                  htmltools::HTML("&#9670; "), i18n$t("radar_tip_title")
+                class = "d-flex align-items-center gap-2",
+                i18n$t("comments_title"),
+                bslib::popover(
+                  htmltools::tags$span(
+                    class = "text-info",
+                    style = "cursor: help;",
+                    shiny::icon("circle-info", class = "fa-sm")
+                  ),
+                  htmltools::HTML(i18n$t("comments_markdown_tooltip")),
+                  title = i18n$t("comments_markdown_tooltip_title")
                 ),
-                htmltools::tags$em(style = "color: #555;", i18n$t("radar_tip_subtitle"))
+                bslib::tooltip(
+                  shiny::tags$div(
+                    class = "form-check form-switch mb-0 ms-1",
+                    shiny::tags$input(type = "checkbox", class = "form-check-input",
+                                      id = ns("fill_all_comments"), role = "switch"),
+                    shiny::tags$label(class = "form-check-label small text-muted",
+                                      `for` = ns("fill_all_comments"),
+                                      i18n$t("fill_all_label"))
+                  ),
+                  i18n$t("fill_all_tooltip")
+                )
               ),
-              # Intro
-              htmltools::p(
-                style = "margin: 8px 0; text-align: justify;",
-                htmltools::HTML(i18n$t("radar_tip_intro"))
-              ),
-              # Section: Ce que le radar ne dit pas
               htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                htmltools::HTML("&#10006; &nbsp;"), i18n$t("radar_tip_not_title")
-              ),
-              htmltools::p(
-                style = "margin: 0 0 8px 0; text-align: justify;",
-                i18n$t("radar_tip_not_text")
-              ),
-              # Section: Ce que le radar dit
-              htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                htmltools::HTML("&#10004; &nbsp;"), i18n$t("radar_tip_yes_title")
-              ),
-              htmltools::p(
-                style = "margin: 0 0 8px 0; text-align: justify;",
-                htmltools::HTML(i18n$t("radar_tip_yes_text"))
-              ),
-              # Section: Comment l'utiliser
-              htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                htmltools::HTML("&#9658; &nbsp;"), i18n$t("radar_tip_how_title")
-              ),
-              htmltools::p(
-                style = "margin: 0 0 10px 0; text-align: justify;",
-                htmltools::HTML(i18n$t("radar_tip_how_text"))
-              ),
-              # Conclusion
-              htmltools::tags$p(
-                style = "font-style: italic; color: #555; margin: 10px 0 0 0; padding-top: 8px; border-top: 1px solid #ddd; text-align: justify;",
-                htmltools::HTML(i18n$t("radar_tip_conclusion"))
+                class = "d-flex align-items-center gap-2",
+                htmltools::div(
+                  class = "expert-select-inline",
+                  shiny::selectInput(
+                    ns("expert_profile"),
+                    label = NULL,
+                    choices = get_expert_choices(opts$language),
+                    selected = "generalist",
+                    width = "auto"
+                  )
+                ),
+                # Accent IA : ambre + trois etoiles. Cette couleur ne suit PAS la
+                # palette semantique des boutons (vert = action principale, brun =
+                # secondaire) parce qu'elle ne dit pas un niveau d'action : elle dit
+                # une PROVENANCE - ce que ce bouton produit est genere, pas mesure.
+                shiny::actionButton(
+                  ns("ai_generate"),
+                  label = i18n$t("ai_generate"),
+                  icon = bsicons::bs_icon("stars"),
+                  class = "btn-ia btn-sm"
+                )
               )
             ),
-            options = list(customClass = "popover-lg"),
-            title = NULL
-          )
-        ),
-        bslib::card_body(
-          shiny::plotOutput(ns("radar_plot"), height = "500px")
-        )
-      ),
-      bslib::card(
-        bslib::card_header(
-          class = "d-flex align-items-center gap-2",
-          i18n$t("summary_table_title"),
-          bslib::popover(
-            htmltools::tags$span(
-              class = "text-info",
-              style = "cursor: help;",
-              shiny::icon("circle-info", class = "fa-sm")
-            ),
-            htmltools::div(
-              style = "max-height: 450px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5;",
-              # Title
-              htmltools::div(
-                style = "border-left: 4px solid #4a7c3f; padding: 10px 12px; background: #f4f8f2; margin-bottom: 10px;",
-                htmltools::tags$div(
-                  style = "font-weight: bold; font-size: 1rem; color: #3a6330; margin-bottom: 2px; text-transform: uppercase;",
-                  htmltools::HTML("&#9670; "), i18n$t("summary_tip_title")
-                ),
-                htmltools::tags$em(style = "color: #555;", i18n$t("summary_tip_subtitle"))
-              ),
-              # Intro
-              htmltools::p(
-                style = "margin: 8px 0; text-align: justify;",
-                htmltools::HTML(i18n$t("summary_tip_intro"))
-              ),
-              # Section: Carre de base
-              htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 4px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                i18n$t("summary_tip_base_title")
-              ),
-              htmltools::p(style = "margin: 0 0 4px 0;", htmltools::HTML(i18n$t("summary_tip_base_text"))),
-              # Section: Supports du vivant
-              htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 6px 0 4px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                i18n$t("summary_tip_support_title")
-              ),
-              htmltools::p(style = "margin: 0 0 4px 0;", htmltools::HTML(i18n$t("summary_tip_support_text"))),
-              # Section: Dimensions humaines
-              htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 6px 0 4px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                i18n$t("summary_tip_human_title")
-              ),
-              htmltools::p(style = "margin: 0 0 8px 0;", htmltools::HTML(i18n$t("summary_tip_human_text"))),
-              # Section: Acrostiche VIVREENFORET
-              htmltools::div(
-                style = "background: #eaf1e6; padding: 5px 10px; margin: 10px 0 6px 0; border-radius: 3px; font-weight: bold; color: #3a6330;",
-                htmltools::HTML("&#9733; &nbsp;"), i18n$t("summary_tip_acrostic_title")
-              ),
-              htmltools::p(
-                style = "margin: 0 0 10px 0; line-height: 1.7;",
-                htmltools::HTML(i18n$t("summary_tip_acrostic"))
-              ),
-              # Conclusion
-              htmltools::tags$p(
-                style = "font-style: italic; color: #555; margin: 10px 0 0 0; padding-top: 8px; border-top: 1px solid #ddd; text-align: justify;",
-                i18n$t("summary_tip_conclusion")
-              )
-            ),
-            options = list(customClass = "popover-lg"),
-            title = NULL
-          )
-        ),
-        bslib::card_body(
-          shiny::tableOutput(ns("summary_table")),
-          # Sens de lecture de la colonne Score, sous le tableau et non dans un
-          # " i " : c'est la cle de lecture des douze lignes. Depuis l'inversion
-          # de R1-R4 (spec 048), " Risques & Resilience " avec un score eleve se
-          # lit spontanement " beaucoup de risque " - c'est l'inverse.
-          htmltools::tags$p(
-            class = "text-muted small fst-italic mb-0 mt-2",
-            i18n$t("summary_score_direction")
-          )
-        )
-      ),
-      bslib::card(
-        bslib::card_header(
-          class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-          htmltools::div(
-            class = "d-flex align-items-center gap-2",
-            i18n$t("comments_title"),
-            bslib::popover(
-              htmltools::tags$span(
-                class = "text-info",
-                style = "cursor: help;",
-                shiny::icon("circle-info", class = "fa-sm")
-              ),
-              htmltools::HTML(i18n$t("comments_markdown_tooltip")),
-              title = i18n$t("comments_markdown_tooltip_title")
-            ),
-            bslib::tooltip(
-              shiny::tags$div(
-                class = "form-check form-switch mb-0 ms-1",
-                shiny::tags$input(type = "checkbox", class = "form-check-input",
-                                  id = ns("fill_all_comments"), role = "switch"),
-                shiny::tags$label(class = "form-check-label small text-muted",
-                                  `for` = ns("fill_all_comments"),
-                                  i18n$t("fill_all_label"))
-              ),
-              i18n$t("fill_all_tooltip")
-            )
-          ),
-          htmltools::div(
-            class = "d-flex align-items-center gap-2",
-            htmltools::div(
-              class = "expert-select-inline",
-              shiny::selectInput(
-                ns("expert_profile"),
+            bslib::card_body(
+              shiny::textAreaInput(
+                ns("synthesis_comments"),
                 label = NULL,
-                choices = get_expert_choices(opts$language),
-                selected = "generalist",
-                width = "auto"
-              )
-            ),
-            # Accent IA : ambre + trois etoiles. Cette couleur ne suit PAS la
-            # palette semantique des boutons (vert = action principale, brun =
-            # secondaire) parce qu'elle ne dit pas un niveau d'action : elle dit
-            # une PROVENANCE - ce que ce bouton produit est genere, pas mesure.
-            shiny::actionButton(
-              ns("ai_generate"),
-              label = i18n$t("ai_generate"),
-              icon = bsicons::bs_icon("stars"),
-              class = "btn-ia btn-sm"
+                placeholder = i18n$t("synthesis_comments_placeholder"),
+                rows = 12,
+                width = "100%"
+              ),
+              # v0.56.0 - RAG " perspectives sourcees " : bloc " Sources
+              # documentaires " rendu en dessous du commentaire IA quand
+              # la recuperation corpus a renvoye >= 1 chunk. Le format
+              # markdown vient de `nemeton::format_citations()` (titre i18n
+              # gere cote coeur). uiOutput vide quand pas de sources ->
+              # zero impact visuel sur le layout existant.
+              shiny::uiOutput(ns("ai_sources"))
             )
           )
-        ),
-        bslib::card_body(
-          shiny::textAreaInput(
-            ns("synthesis_comments"),
-            label = NULL,
-            placeholder = i18n$t("synthesis_comments_placeholder"),
-            rows = 12,
-            width = "100%"
-          ),
-          # v0.56.0 - RAG " perspectives sourcees " : bloc " Sources
-          # documentaires " rendu en dessous du commentaire IA quand
-          # la recuperation corpus a renvoye >= 1 chunk. Le format
-          # markdown vient de `nemeton::format_citations()` (titre i18n
-          # gere cote coeur). uiOutput vide quand pas de sources ->
-          # zero impact visuel sur le layout existant.
-          shiny::uiOutput(ns("ai_sources"))
         )
       )
     ),
-
-    # Effet de la gestion declaree (mission 067) : a la demande, sous le recap.
-    mod_effet_gestion_ui(ns("effet_gestion")),
-
-    # Ce que les modeles de fondation voient des indicateurs (mission 078).
-    mod_sondes_embedding_ui(ns("sondes_embedding"))
+    bslib::nav_panel(
+      title = i18n$t("synthese_sous_gestion"),
+      value = "gestion_massif",
+      icon = bsicons::bs_icon("tree"),
+      # Effet de la gestion declaree (mission 067).
+      mod_effet_gestion_ui(ns("effet_gestion")),
+      # Ce que les modeles de fondation voient des indicateurs (mission 078).
+      mod_sondes_embedding_ui(ns("sondes_embedding"))
+    )
   )
 }
 

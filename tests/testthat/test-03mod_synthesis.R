@@ -1202,3 +1202,45 @@ test_that("R5 n'est pas re-inverse par l'app : plus de deperissement, famille R 
   # Ecart lineaire : R5 entre dans la moyenne pour 1/k, inverse (100 - R5).
   expect_equal(sain - severe, 2 * (sain - moyen), tolerance = 1e-6)
 })
+
+# ==============================================================================
+# Sous-onglets (mission 084)
+# ==============================================================================
+
+.html_synthese <- function(lang) {
+  with_mocked_bindings(
+    get_app_options = function() list(language = lang),
+    as.character(nemetonshiny:::mod_synthesis_ui("synthesis"))
+  )
+}
+
+test_that("la Synthese a deux sous-onglets ordonnes, titres FR et EN", {
+  skip_if_not_installed("bslib")
+  fr <- .html_synthese("fr")
+  p1 <- regexpr("synthese_projet", fr, fixed = TRUE)
+  p2 <- regexpr("gestion_massif", fr, fixed = TRUE)
+  expect_true(p1 > 0 && p2 > p1)
+  expect_match(fr, "Synthèse du projet", fixed = TRUE)
+  expect_match(fr, "Gestion sur ce massif", fixed = TRUE)
+  en <- .html_synthese("en")
+  expect_match(en, "Project summary", fixed = TRUE)
+  expect_match(en, "Management on this forest", fixed = TRUE)
+})
+
+test_that("effet_gestion et sondes_embedding sont dans le 2e sous-onglet seulement", {
+  skip_if_not_installed("bslib")
+  fr <- .html_synthese("fr")
+  # Les panneaux : le contenu du 2e commence au `tab-pane` de gestion_massif.
+  m <- regexpr('<div class="tab-pane[^>]*data-value="gestion_massif"', fr)
+  expect_true(m > 0)
+  avant <- substr(fr, 1, m - 1)
+  apres <- substr(fr, m, nchar(fr))
+  expect_false(grepl("effet_gestion", avant, fixed = TRUE))
+  expect_false(grepl("sondes_embedding", avant, fixed = TRUE))
+  i1 <- regexpr("effet_gestion", apres, fixed = TRUE)
+  i2 <- regexpr("sondes_embedding", apres, fixed = TRUE)
+  expect_true(i1 > 0 && i2 > i1)
+  # Le 1er sous-onglet garde le reste de la synthese.
+  expect_match(avant, "summary_card", fixed = TRUE)
+  expect_match(avant, "ai_generate", fixed = TRUE)
+})
