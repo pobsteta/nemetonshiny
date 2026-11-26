@@ -649,7 +649,10 @@ mod_synthesis_ui <- function(id) {
     ),
 
     # Effet de la gestion declaree (mission 067) : a la demande, sous le recap.
-    mod_effet_gestion_ui(ns("effet_gestion"))
+    mod_effet_gestion_ui(ns("effet_gestion")),
+
+    # Ce que les modeles de fondation voient des indicateurs (mission 078).
+    mod_sondes_embedding_ui(ns("sondes_embedding"))
   )
 }
 

@@ -1,9 +1,17 @@
-# nemetonshiny 2026.11.6.9020 (en développement)
+# nemetonshiny 2026.11.6.9021 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077 et 080).
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078 et 080).
 
 ## Changements
 
+- **Vue « Ce que les modèles voient » : les sondes d'embedding** (mission 078, écart n° 25 du `PLAN.md` du cœur ; cœur 2026.11.3, spec 066 § 6). Aucune logique métier : R², lecture, statut et `source_commune` viennent de `nemeton::probe_indicator()`.
+  - **Où** : une carte sous « l'effet de la gestion », dans l'onglet Synthèse (la spec 066 ne place pas la vue ; choix à confirmer par Pascal). Un bouton « Sonder les indicateurs » lance le calcul à la demande (`ExtendedTask`, bouton lié à la tâche, toast de progression).
+  - **Entrées** : les indicateurs déjà calculés du projet (colonnes `indicateur_*` renommées par code, statuts `.xx_status` en `xx_status`) et l'embedding AlphaEarth **déjà en cache** (`cache/layers/aef/courant.json`, mission 080) : la vue ne télécharge rien et n'exige pas que `alphaearthnemeton` soit installé. L'année de l'embedding est dite au-dessus du bouton.
+  - **Table** triée par R² décroissant, sondes non calculées à la suite : indicateur, famille, nombre d'UGF, R² en validation croisée, RMSE, lecture (« Le modèle le voit » / « en partie » / « Angle mort du modèle », ou le statut du cœur traduit : trop peu d'UGF, aucune variation, indicateur absent) et colonne « Source commune » (« Oui : le R² ne prouve rien » pour C2, B4, L3, A1, R5, T2 d'après le cœur). Sous la table : les seuils 0,5 et 0,2 donnés comme des conventions, le piège de la source commune et la mention « une sonde est un diagnostic, pas un estimateur ».
+  - **Sans embedding en cache** : message (activer la source dans Sources & paramètres puis relancer le calcul), aucune table, aucun appel au cœur. **Erreur du cœur** (par exemple toutes les UGF dans un seul bloc de 2 km) : message, pas de plantage, rien en cache.
+  - **Cache par projet** : `cache/sondes/courant.rds`, valable tant que les valeurs des indicateurs, les géométries et l'embedding (fichier, année) sont les mêmes ; un second clic relit le cache sans rappeler le cœur. Si les données changent après le calcul, la table disparaît et l'écran dit de relancer.
+  - **Refactor** : `.aef_relire_cache()` (relecture du cache AlphaEarth) est extrait de `build_aef_layer()`, sans changement de comportement.
+  - **Limites** : l'embedding est celui d'AlphaEarth seul (MAESTRO et ForPT ne sont pas encore branchés dans l'app) ; les paramètres du cœur (blocs de 2 km, 5 plis, 50 UGF minimum) ne sont pas exposés ; le critère n° 3 de la spec 066 (table AlphaEarth sur un projet réel d'au moins 50 UGF) reste à lancer sur le poste de Pascal.
 - **Source d'embedding AlphaEarth : N5 se calcule, B4/L3 passent en mode embedding, le badge « Embedding ML » s'allume** (mission 080, décision de Pascal du 2026-11-26 ; suite de la 077). Aucune logique métier : `alphaearthnemeton::aef_fetch()` rend l'embedding, le cœur calcule.
   - **Option « Embedding AlphaEarth » dans Sources & paramètres, éteinte par défaut** (`metadata$aef$enabled`). Au calcul, `aef_fetch(aoi, years = NULL, crs = 2154, cache_dir = <projet>/cache/layers/aef)` prend l'année la plus récente disponible sur l'emprise des UGF ; la couche passe au cœur comme `aef_embedding`, `embedding_source = "aef"` est posé (attribut et métadonnées : `detect_ndp()` rend `embedding_ml`), N5 entre dans la liste des indicateurs (en dernier ; `N1` lui est donné par `.COMPOSANTES_LUES`) et B4/L3 reçoivent `embedding =`.
   - **Mesure réelle** (réseau de la session, accès anonyme HTTP) : 0,9 km² en 17 s et 1,0 Mo ; 18 km² en 21 s et 14,5 Mo (environ 1 Mo/km²), d'où l'option éteinte.

@@ -107,6 +107,37 @@ set_project_aef <- function(project_id, enabled) {
 }
 
 
+#' Read the AlphaEarth embedding back from the cache of a project
+#'
+#' @description
+#' Reads `cache/layers/aef/courant.json` and the COG it names, when they hold
+#' the same extent as `aoi`. Never calls the package and never downloads: the
+#' package need not be installed.
+#'
+#' @param aoi sf. The computation units.
+#' @param project_path Character.
+#' @return `list(raster, annee, depuis_cache = TRUE)`, or `NULL` when the cache
+#'   does not hold this extent (or cannot be read).
+#' @noRd
+.aef_relire_cache <- function(aoi, project_path) {
+  dir <- .aef_cache_dir(project_path)
+  courant <- file.path(dir, "courant.json")
+  if (!file.exists(courant)) return(NULL)
+  cle <- tryCatch(.aef_cle(aoi), error = function(e) NULL)
+  if (is.null(cle)) return(NULL)
+  prec <- tryCatch(jsonlite::read_json(courant, simplifyVector = TRUE),
+                   error = function(e) NULL)
+  if (is.null(prec) || !identical(as.character(prec$cle), cle)) return(NULL)
+  fichier <- file.path(dir, as.character(prec$fichier))
+  if (!file.exists(fichier)) return(NULL)
+  r <- tryCatch(terra::rast(fichier), error = function(e) NULL)
+  if (is.null(r)) return(NULL)
+  annee <- suppressWarnings(as.integer(prec$annee))
+  list(raster = .aef_etiqueter(r, annee), annee = annee, depuis_cache = TRUE,
+       fichier = fichier)
+}
+
+
 #' Fetch the AlphaEarth embedding over the project's extent
 #'
 #' @description
@@ -134,20 +165,8 @@ build_aef_layer <- function(aoi, project_path) {
   if (is.null(cle)) return(echec("emprise illisible"))
 
   # 1. Deja acquis pour cette emprise : relecture sans appel au paquet.
-  if (file.exists(courant)) {
-    prec <- tryCatch(jsonlite::read_json(courant, simplifyVector = TRUE),
-                     error = function(e) NULL)
-    fichier <- if (!is.null(prec)) file.path(dir, as.character(prec$fichier))
-    if (!is.null(prec) && identical(as.character(prec$cle), cle) &&
-        file.exists(fichier)) {
-      r <- tryCatch(terra::rast(fichier), error = function(e) NULL)
-      if (!is.null(r)) {
-        annee <- suppressWarnings(as.integer(prec$annee))
-        return(list(raster = .aef_etiqueter(r, annee), annee = annee,
-                    depuis_cache = TRUE))
-      }
-    }
-  }
+  rel <- .aef_relire_cache(aoi, project_path)
+  if (!is.null(rel)) return(rel)
 
   # 2. Acquisition : l'annee la plus recente disponible (years = NULL).
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
