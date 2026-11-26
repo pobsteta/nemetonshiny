@@ -441,7 +441,7 @@ test_that("start_computation calls progress_callback", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       if (!is.null(progress_callback)) {
         progress_callback(list(completed = 5, current = "test_download"))
       }
@@ -2142,7 +2142,7 @@ test_that("start_computation handles cancellation during download phase", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       structure(
         list(rasters = list(), vectors = list(), point_clouds = list(),
              bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
@@ -4386,7 +4386,7 @@ test_that("start_computation succeeds with all mocked functions", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       structure(
         list(rasters = list(), vectors = list(), point_clouds = list(),
              bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
@@ -4444,7 +4444,7 @@ test_that("start_computation uses provided project_path", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       structure(
         list(rasters = list(), vectors = list(), point_clouds = list(),
              bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
@@ -4501,7 +4501,7 @@ test_that("start_computation propagates download warnings", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       structure(
         list(rasters = list(), vectors = list(), point_clouds = list(),
              bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
@@ -4560,7 +4560,7 @@ test_that("start_computation handles cancellation after compute phase", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       structure(
         list(rasters = list(), vectors = list(), point_clouds = list(),
              bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
@@ -4615,7 +4615,7 @@ test_that("start_computation with use_file_progress writes progress file", {
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
-    download_layers_for_parcels = function(parcels, project_path, progress_callback) {
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
       structure(
         list(rasters = list(), vectors = list(), point_clouds = list(),
              bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
