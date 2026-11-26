@@ -1,12 +1,24 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9015 (en développement)
+## nemetonshiny 2026.11.6.9016 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066, 067, 068, 072 et 075).
+cassant (missions 043, 048, 063, 066, 067, 068, 072, 073 et 075).
 
 ### Changements
 
+- **« Tout calculer » lance FORDEAD hors de la zone de calibration
+  ONF/DSF** (mission 073, option A de Pascal du 2026-11-26). L’étape ne
+  saute plus que si la part de résineux est insuffisante
+  (`species_valid` FALSE, motif `pipeline_skip_resineux`), comme R5 ;
+  hors calibration (ou géographie indéterminable, par prudence), avec
+  résineux suffisants ou espèce indéterminée, FORDEAD tourne et la
+  réponse de l’étape (statut `ok`) porte l’avertissement « Hors zone de
+  calibration ONF/DSF : classes extrapolées »
+  (`pipeline_warn_hors_calib`). Lancement manuel depuis l’onglet :
+  inchangé, la modale G3 reste. Clé `pipeline_skip_hors_domaine`
+  retirée. Jusque-là, tout projet hors Vosges-Jura-Alpes du Nord perdait
+  FORDEAD dans la chaîne.
 - **L’arrêt tue vraiment RECONFORT et FORDEAD** (mission 075, suite de
   la 072).
   - Les deux moteurs tournent dans un enfant plafonné
