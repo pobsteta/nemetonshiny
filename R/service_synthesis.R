@@ -248,3 +248,21 @@ project_synthesis_summary <- function(project, language = "fr", family_sf = NULL
     families = families
   )
 }
+
+
+#' Can two B4 / L3 values be compared?
+#'
+#' @description
+#' The two methods are on different scales (spec 064; gap no. 6 of the core's
+#' `PLAN.md`): a biodivMapR value and an embedding value never compare. The
+#' ban lifts only when **both** sides are `embedding` - the embedding mode has
+#' fixed bounds that make two projects comparable. No screen compares projects
+#' today; this is the rule such a screen must call.
+#'
+#' @param a,b Method codes (`"biodivmapr"`, `"embedding"` or `NA`).
+#' @return `TRUE` only for `embedding` on both sides.
+#' @noRd
+methodes_comparables <- function(a, b) {
+  identical(as.character(a), "embedding") &&
+    identical(as.character(b), "embedding")
+}

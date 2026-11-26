@@ -2451,8 +2451,8 @@ TRANSLATIONS <- list(
     en = "biodivMapR (Sentinel-2)"
   ),
   methode_embedding = list(
-    fr = "embedding (mod\u00e8le de fondation)",
-    en = "embedding (foundation model)"
+    fr = "AlphaEarth (mod\u00e8le de fondation)",
+    en = "AlphaEarth (foundation model)"
   ),
   methode_non_comparable = list(
     fr = "Les valeurs issues de m\u00e9thodes diff\u00e9rentes ne se comparent pas entre elles.",

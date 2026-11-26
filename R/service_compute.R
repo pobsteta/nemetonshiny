@@ -965,8 +965,11 @@ start_computation <- function(project_id,
     tryCatch(
       update_project_metadata(
         project_id,
+        # `embedding_source` n'est ecrit que si une source est donnee ; sans
+        # source, NULL retire la cle d'un calcul precedent (jamais "none"), pour
+        # qu'un recalcul sans embedding n'allume pas un badge perime.
         list(chm_source = layers$chm_source %||% "none",
-             embedding_source = attr(compute_unit, "embedding_source") %||% "none")
+             embedding_source = attr(compute_unit, "embedding_source"))
       ),
       error = function(e) {
         cli::cli_warn("Failed to persist chm_source outcome: {e$message}")

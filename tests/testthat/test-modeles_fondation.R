@@ -190,3 +190,112 @@ test_that("les nouvelles cles i18n tiennent en 30 caracteres", {
   expect_true(all(nchar(cles) <= 30L))
   expect_true(all(cles %in% names(TRANSLATIONS)))
 })
+
+test_that("les libelles de methode nomment AlphaEarth", {
+  expect_identical(get_i18n("fr")$t("methode_embedding"),
+                   "AlphaEarth (mod\u00e8le de fondation)")
+  expect_identical(get_i18n("en")$t("methode_embedding"),
+                   "AlphaEarth (foundation model)")
+})
+
+# ---- start_computation : la source d'embedding ----------------------------
+
+.lance_calcul_embedding <- function(embedding_source) {
+  temp_dir <- tempfile("nemeton_emb_")
+  project_dir <- file.path(temp_dir, "test_project")
+  data_dir <- file.path(project_dir, "data")
+  dir.create(data_dir, recursive = TRUE)
+  geom <- sf::st_sfc(
+    sf::st_polygon(list(matrix(c(0, 0, 0.001, 0, 0.001, 0.001, 0, 0.001, 0, 0),
+                               ncol = 2, byrow = TRUE))), crs = 4326)
+  sf::st_write(sf::st_sf(id = "p1", geometry = geom),
+               file.path(data_dir, "parcels.gpkg"), quiet = TRUE)
+  vu <- new.env()
+  vu$attr <- "pas_appele"
+  vu$maj <- list()
+  with_mocked_bindings(
+    get_project_path = function(id) project_dir,
+    get_app_options = function() list(project_dir = temp_dir),
+    clear_cancel = function(id) invisible(NULL),
+    get_computation_progress = function(id) list(computed_indicators = character(0)),
+    update_project_status = function(id, status) invisible(NULL),
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
+      l <- list(rasters = list(), vectors = list(), point_clouds = list(),
+                bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
+                cache_dir = tempdir(), warnings = list())
+      if (!is.null(embedding_source)) l$embedding_source <- embedding_source
+      structure(l, class = "nemeton_layers")
+    },
+    is_cancelled = function(id) FALSE,
+    compute_all_indicators = function(parcels, layers, indicators, progress_callback, project_id) {
+      vu$attr <- attr(parcels, "embedding_source")
+      parcels$indicateur_c1_biomasse <- 75.5
+      parcels
+    },
+    save_indicators = function(project_id, results) TRUE,
+    update_project_metadata = function(id, updates) {
+      vu$maj <- c(vu$maj, list(updates)); invisible(NULL)
+    },
+    nemetonshiny:::start_computation("test_project",
+                                     indicators = "indicateur_c1_biomasse")
+  )
+  vu
+}
+
+test_that("start_computation pose embedding_source en attribut et dans les metadonnees", {
+  skip_if_not_installed("sf")
+  vu <- .lance_calcul_embedding("aef")
+  expect_identical(vu$attr, "aef")
+  maj <- Filter(function(u) "chm_source" %in% names(u), vu$maj)
+  expect_length(maj, 1L)
+  expect_identical(maj[[1]]$embedding_source, "aef")
+})
+
+test_that("sans source d'embedding, ni attribut ni valeur `none` ecrite", {
+  skip_if_not_installed("sf")
+  for (src in list(NULL, "none", "", NA_character_)) {
+    vu <- .lance_calcul_embedding(src)
+    expect_null(vu$attr)
+    maj <- Filter(function(u) "chm_source" %in% names(u), vu$maj)
+    expect_null(maj[[1]]$embedding_source)
+    expect_false(identical(maj[[1]]$embedding_source, "none"))
+  }
+})
+
+# ---- Badge dans la synthese ------------------------------------------------
+
+.rend_score_global <- function(metadata_extra) {
+  geom <- sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)))
+  indicators <- sf::st_sf(nemeton_id = c("p1", "p2"),
+                          indicateur_c1_biomasse = c(50, 60),
+                          indicateur_c2_ndvi = c(0.7, 0.8), geometry = geom)
+  rendu <- NULL
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_all_column_names = function() c("indicateur_c1_biomasse", "indicateur_c2_ndvi"),
+    create_family_index = function(data, ...) { data$famille_carbone <- 75; data },
+    {
+      st <- shiny::reactiveValues(
+        current_project = list(
+          metadata = c(list(name = "T", description = "", created_at = "2024-01-01",
+                            status = "completed"), metadata_extra),
+          parcels = sf::st_sf(nemeton_id = c("p1", "p2"), geometry = geom),
+          indicators = indicators, indicators_sf = indicators),
+        language = "fr", family_comments = NULL)
+      shiny::testServer(nemetonshiny:::mod_synthesis_server,
+                        args = list(app_state = st),
+                        { rendu <<- as.character(output$global_score$html) })
+    })
+  rendu
+}
+
+test_that("le badge Embedding ML est insere dans la synthese quand embedding_ml est leve", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("bslib")
+  i18n <- get_i18n("fr")
+  avec <- .rend_score_global(list(embedding_source = "aef"))
+  expect_match(avec, i18n$t("augmented_embedding_ml_badge"), fixed = TRUE)
+  sans <- .rend_score_global(list())
+  expect_false(grepl(i18n$t("augmented_embedding_ml_badge"), sans, fixed = TRUE))
+  expect_match(sans, "NDP", fixed = TRUE)  # le rendu a bien eu lieu
+})
