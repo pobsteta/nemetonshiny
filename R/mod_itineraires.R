@@ -52,6 +52,29 @@ mod_itineraires_ui <- function(id) {
 }
 
 
+# Bandeau : pour chacune des trois donnees (pente, desserte, aires protegees),
+# fournie au coeur ou manquante, et comment l'obtenir (mission 069).
+.itin_bandeau_donnees <- function(donnees, i18n) {
+  if (is.null(donnees)) return(NULL)
+  ligne <- function(nom, label, comment) {
+    ok <- isTRUE(donnees[[nom]])
+    htmltools::tags$li(
+      htmltools::tags$strong(label), " : ",
+      if (ok) i18n$t("itin_don_fournie")
+      else paste(i18n$t("itin_don_manque"), "-", comment))
+  }
+  tout <- all(vapply(donnees, isTRUE, logical(1)))
+  htmltools::div(
+    class = paste("alert small mb-2", if (tout) "alert-success" else "alert-secondary"),
+    htmltools::tags$strong(i18n$t("itin_don_titre")),
+    htmltools::tags$ul(
+      class = "mb-0",
+      ligne("pente", i18n$t("itin_don_pente"), i18n$t("itin_don_how_pente")),
+      ligne("desserte", i18n$t("itin_don_desserte"), i18n$t("itin_don_how_desserte")),
+      ligne("protection", i18n$t("itin_don_protection"), i18n$t("itin_don_how_protect"))))
+}
+
+
 #' Contenu de l'onglet Itineraires
 #'
 #' Pur (testable hors session) : prend le resultat de [itineraires_calculer()].
@@ -84,7 +107,7 @@ itineraires_rendre <- function(res, i18n) {
         sprintf(i18n$t("itin_catalogue_sourcage"),
                 cat_etat[["a_sourcer"]], cat_etat[["total"]]))
     },
-    if (!isTRUE(res$desserte)) info("itin_desserte_absente", "alert alert-secondary small mb-2")
+    .itin_bandeau_donnees(res$donnees, i18n)
   )
   adm <- itineraires_table_admissibles(res$admissibles, res$catalogue, i18n)
   cls <- c(admissible = "", exclu = "text-muted", manquant = "table-warning")
