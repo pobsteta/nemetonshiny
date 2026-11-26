@@ -1923,3 +1923,142 @@ test_that("RECONFORT (feuillus) porte un pictogramme feuillu, pas le resineux de
   src <- paste(deparse(nemetonshiny:::mod_monitoring_ui), collapse = "\n")
   expect_false(grepl("tree-fill", src, fixed = TRUE))
 })
+
+
+# ---- Mission 073 : FORDEAD dans " Tout calculer ", hors calibration ----------
+# Meme regle que R5 : seule une part de resineux insuffisante saute l'etape ;
+# hors zone de calibration ONF/DSF, FORDEAD tourne et la reponse avertit.
+
+# Tache FORDEAD simulee dont le statut est REACTIF (l'observateur de reponse
+# de la chaine se reveille sur ses transitions).
+make_fake_fordead_task_reactive <- function() {
+  st <- shiny::reactiveVal("initial")
+  calls <- new.env(parent = emptyenv()); calls$n <- 0L
+  list(
+    invoke = function(...) { calls$n <- calls$n + 1L; invisible(NULL) },
+    result = function() list(status = "completed"),
+    status = function() st(),
+    .set_status = function(s) st(s),
+    .n_calls = function() calls$n
+  )
+}
+
+.mission073_run <- function(validity, test_expr) {
+  fake_task <- make_fake_fordead_task_reactive()
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_fast_task(),
+    run_fordead_async              = function() fake_task,
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...)
+      validity,
+    update_project_metadata        = function(...) TRUE,
+    {
+      testthat::with_mocked_bindings(
+        find_zones_by_project = function(con, project_uuid)
+          data.frame(id = c(1L, 9L), name = c("Foret", "proj_tot"),
+                     stringsAsFactors = FALSE),
+        .package = "nemeton",
+        {
+          app_state <- shiny::reactiveValues(
+            language = "fr", current_project = list(id = "fake-project-id"),
+            pipeline_request = NULL, pipeline_answer = NULL)
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = app_state),
+            {
+              session$setInputs(
+                mode              = "health",
+                zone_id           = "1",
+                date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+                dates_observation = c(as.Date("2019-01-01"), as.Date("2025-06-30")),
+                dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+                vegetation_index  = "CRSWIR",
+                threshold_anomaly = 0.16
+              )
+              app_state$pipeline_request <- list(run_id = "r073",
+                                                 step_id = "sante_fordead")
+              session$flushReact()
+              test_expr(app_state, fake_task, session)
+            }
+          )
+        }
+      )
+    }
+  )
+}
+
+.mission073_validity <- function(geo, species) {
+  list(geo_valid = geo, geo_intersection_pct = 0.1,
+       species_valid = species, species_resineux_pct = 0.8,
+       overall_valid = if (isFALSE(geo) || isFALSE(species)) FALSE
+                       else if (is.na(geo) || is.na(species)) NA else TRUE,
+       thresholds = list())
+}
+
+.mission073_termine <- function(app_state, fake_task, session) {
+  fake_task$.set_status("success")
+  session$flushReact()
+  app_state$pipeline_answer
+}
+
+test_that("chaine : hors calibration, resineux suffisants -> FORDEAD lance + avertissement", {
+  skip_if_not_installed("shiny")
+  .mission073_run(.mission073_validity(FALSE, TRUE),
+    function(app_state, fake_task, session) {
+      expect_identical(fake_task$.n_calls(), 1L)
+      rep <- .mission073_termine(app_state, fake_task, session)
+      expect_identical(rep$status, "ok")
+      expect_identical(rep$message,
+                       nemetonshiny:::get_i18n("fr")$t("pipeline_warn_hors_calib"))
+    })
+})
+
+test_that("chaine : hors calibration, espece inconnue (NA) -> lance + avertissement", {
+  skip_if_not_installed("shiny")
+  .mission073_run(.mission073_validity(FALSE, NA),
+    function(app_state, fake_task, session) {
+      expect_identical(fake_task$.n_calls(), 1L)
+      rep <- .mission073_termine(app_state, fake_task, session)
+      expect_identical(rep$status, "ok")
+      expect_false(is.null(rep$message))
+    })
+})
+
+test_that("chaine : resineux insuffisants -> etape sautee avec le motif resineux", {
+  skip_if_not_installed("shiny")
+  .mission073_run(.mission073_validity(FALSE, FALSE),
+    function(app_state, fake_task, session) {
+      expect_identical(fake_task$.n_calls(), 0L)
+      rep <- app_state$pipeline_answer
+      expect_identical(rep$status, "skipped")
+      expect_identical(rep$message,
+                       nemetonshiny:::get_i18n("fr")$t("pipeline_skip_resineux"))
+    })
+  # Meme motif en zone de calibration mais resineux insuffisants.
+  .mission073_run(.mission073_validity(TRUE, FALSE),
+    function(app_state, fake_task, session) {
+      expect_identical(fake_task$.n_calls(), 0L)
+      expect_identical(app_state$pipeline_answer$status, "skipped")
+    })
+})
+
+test_that("chaine : zone valide (geo et especes) -> lance, sans avertissement", {
+  skip_if_not_installed("shiny")
+  .mission073_run(.mission073_validity(TRUE, TRUE),
+    function(app_state, fake_task, session) {
+      expect_identical(fake_task$.n_calls(), 1L)
+      rep <- .mission073_termine(app_state, fake_task, session)
+      expect_identical(rep$status, "ok")
+      expect_null(rep$message)
+    })
+})
+
+test_that("les cles i18n de la mission 073 existent en FR et EN, l'ancien motif est retire", {
+  for (k in c("pipeline_skip_resineux", "pipeline_warn_hors_calib")) {
+    expect_true(all(c("fr", "en") %in% names(nemetonshiny:::TRANSLATIONS[[k]])))
+    expect_lte(nchar(k), 30L)
+  }
+  expect_null(nemetonshiny:::TRANSLATIONS$pipeline_skip_hors_domaine)
+})

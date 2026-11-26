@@ -1688,9 +1688,13 @@ TRANSLATIONS <- list(
     fr = "Un diagnostic sanitaire tourne : les zones ne peuvent pas \u00eatre recr\u00e9\u00e9es avant sa fin.",
     en = "A health diagnosis is running: zones cannot be recreated until it ends."
   ),
-  pipeline_skip_hors_domaine = list(
-    fr = "Zone hors du domaine de validit\u00e9 de FORDEAD (garde-fou G3) : lancer depuis l'onglet Suivi pour confirmer.",
-    en = "Zone outside FORDEAD's validity domain (safeguard G3): run it from the Monitoring tab to confirm."
+  pipeline_skip_resineux = list(
+    fr = "Part de r\u00e9sineux insuffisante pour FORDEAD (garde-fou G3) : lancer depuis l'onglet Suivi pour confirmer.",
+    en = "Conifer share too low for FORDEAD (safeguard G3): run it from the Monitoring tab to confirm."
+  ),
+  pipeline_warn_hors_calib = list(
+    fr = "Hors zone de calibration ONF/DSF : classes extrapol\u00e9es.",
+    en = "Outside the ONF/DSF calibration zone: classes are extrapolated."
   ),
   monitoring_run_precedent_actif = list(
     fr = "Le run pr\u00e9c\u00e9dent n'est pas encore termin\u00e9 (il finit son \u00e9tape apr\u00e8s une annulation) : relancer une fois qu'il s'est arr\u00eat\u00e9.",
