@@ -7524,6 +7524,18 @@ TRANSLATIONS <- list(
     fr = "Un calcul RECONFORT tourne encore sur ce projet\u00a0: attendez sa fin ou arr\u00eatez-le.",
     en = "A RECONFORT run is still running on this project: wait for it to finish or stop it."
   ),
+  monitoring_fordead_verrou = list(
+    fr = "Un calcul FORDEAD tourne encore sur ce projet\u00a0: attendez sa fin ou arr\u00eatez-le.",
+    en = "A FORDEAD run is still running on this project: wait for it to finish or stop it."
+  ),
+  monitoring_moteur_arreter = list(
+    fr = "Arr\u00eater ce calcul",
+    en = "Stop this run"
+  ),
+  monitoring_moteur_arrete = list(
+    fr = "Calcul arr\u00eat\u00e9 : le processus a \u00e9t\u00e9 tu\u00e9, vous pouvez relancer.",
+    en = "Run stopped: the process was killed, you can relaunch."
+  ),
   monitoring_reconfort_cancelled = list(
     fr = "RECONFORT arr\u00eat\u00e9 apr\u00e8s l'\u00e9tape \u00ab {label} \u00bb. Les sorties de cette \u00e9tape et des pr\u00e9c\u00e9dentes sont conserv\u00e9es.",
     en = "RECONFORT stopped after the \u201c{label}\u201d step. That step's outputs and the earlier ones are kept."

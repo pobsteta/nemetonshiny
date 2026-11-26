@@ -199,28 +199,20 @@
 }
 
 # Resout une fonction exportee du coeur si elle existe, sinon NULL (coeur
-# anterieur : comportement actuel, sans erreur).
-.regen_core_fn <- function(nom) {
-  if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
-  ns <- asNamespace("nemeton")
-  if (!exists(nom, envir = ns, inherits = FALSE)) return(NULL)
-  get(nom, envir = ns, inherits = FALSE)
-}
+# anterieur : comportement actuel, sans erreur). Logique commune aux trois
+# moteurs : `.capped_core_fn()` (service_monitoring.R).
+.regen_core_fn <- function(nom) .capped_core_fn(nom)
 
 # Le moteur du marqueur vit-il encore ? Liste du marqueur, ou NULL (absent,
 # perime, ou coeur sans la fonction). Ne leve jamais. Enveloppe mockable.
 .regen_marker_alive <- function(marker) {
-  f <- .regen_core_fn("capped_run_alive")
-  if (is.null(f) || is.null(marker) || !nzchar(marker)) return(NULL)
-  tryCatch(f(marker), error = function(e) NULL)
+  .capped_marker_alive(marker, core_fn = .regen_core_fn)
 }
 
 # Arrete le moteur du marqueur. TRUE si quelque chose a ete arrete, sinon FALSE
 # (coeur sans la fonction compris). Ne leve jamais. Enveloppe mockable.
 .regen_marker_stop <- function(marker) {
-  f <- .regen_core_fn("stop_memory_capped")
-  if (is.null(f) || is.null(marker) || !nzchar(marker)) return(FALSE)
-  isTRUE(tryCatch(f(marker), error = function(e) FALSE))
+  .capped_marker_stop(marker, core_fn = .regen_core_fn)
 }
 
 # Arrete le moteur precedent d'un projet s'il vit. TRUE si un moteur vivant a
