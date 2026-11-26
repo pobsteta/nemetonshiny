@@ -1,13 +1,71 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9019 (en développement)
+## nemetonshiny 2026.11.6.9020 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075
-et 077).
+cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
+077 et 080).
 
 ### Changements
 
+- **Source d’embedding AlphaEarth : N5 se calcule, B4/L3 passent en mode
+  embedding, le badge « Embedding ML » s’allume** (mission 080, décision
+  de Pascal du 2026-11-26 ; suite de la 077). Aucune logique métier :
+  [`alphaearthnemeton::aef_fetch()`](https://rdrr.io/pkg/alphaearthnemeton/man/aef_fetch.html)
+  rend l’embedding, le cœur calcule.
+  - **Option « Embedding AlphaEarth » dans Sources & paramètres, éteinte
+    par défaut** (`metadata$aef$enabled`). Au calcul,
+    `aef_fetch(aoi, years = NULL, crs = 2154, cache_dir = <projet>/cache/layers/aef)`
+    prend l’année la plus récente disponible sur l’emprise des UGF ; la
+    couche passe au cœur comme `aef_embedding`,
+    `embedding_source = "aef"` est posé (attribut et métadonnées :
+    `detect_ndp()` rend `embedding_ml`), N5 entre dans la liste des
+    indicateurs (en dernier ; `N1` lui est donné par
+    `.COMPOSANTES_LUES`) et B4/L3 reçoivent `embedding =`.
+  - **Mesure réelle** (réseau de la session, accès anonyme HTTP) : 0,9
+    km² en 17 s et 1,0 Mo ; 18 km² en 21 s et 14,5 Mo (environ 1
+    Mo/km²), d’où l’option éteinte.
+  - **Cache** : l’emprise (Lambert-93) et le fichier sont notés dans
+    `cache/layers/aef/courant.json` ; un second calcul sur la même
+    emprise relit le COG sans rappeler le paquet.
+  - **Échec** (réseau, tuile absente) : message traduit
+    (`aef_fetch_echec`) dans les avertissements du calcul, calcul
+    poursuivi, N5 `skipped_no_embedding`, aucun drapeau NDP.
+  - **Sans le paquet ou option éteinte : rien ne change.**
+    `alphaearthnemeton` est en `Suggests`, et
+    `Remotes: pobsteta/alphaearthnemeton@*release` (décision de Pascal
+    du 2026-11-26 : release 2026.11.1 publiée par la mission 081,
+    `@*release` ne tire que le tag le plus élevé ; tant que ce tag
+    n’existe pas, `@*release` ne résout rien pour ce seul paquet, il
+    reste facultatif) ; la vue dit alors que N5 demande AlphaEarth. Le
+    toast de récupération suit les règles des calculs longs
+    (`task_aef_embedding`, arrêt vérifié avant et après).
+  - **Avertissement avant téléchargement** (décision de Pascal du
+    2026-11-26) : si l’emprise des UGF (boîte englobante, Lambert-93)
+    dépasse `AEF_SEUIL_KM2` (100 km²) et n’est pas déjà dans le cache,
+    une notification traduite (`aef_taille_avertissement`) donne la
+    surface et la taille estimée (`AEF_MO_PAR_KM2`, environ 1 Mo/km²)
+    AVANT l’appel à `aef_fetch()` ; le téléchargement n’est pas bloqué.
+  - **Année affichée** (décision de Pascal du 2026-11-26) : l’année de
+    l’embedding utilisé est lue dans le cache (`courant.json`) ou
+    l’attribut `annee` du raster (`aef_annee()`) ; elle est dite dans
+    Sources & paramètres (« Année AlphaEarth utilisée ») et à côté de N5
+    (bandeau sous la carte, fiche de l’UGF). Année inconnue : rien n’est
+    affiché.
+  - **B4 / L3 : règle du cœur gardée** (décision de Pascal du
+    2026-11-26) : biodivMapR prime quand son cube Sentinel-2 est
+    disponible ; AlphaEarth ne sert à B4/L3 qu’en son absence.
+  - **Reprise** : B4, L3 et N5 déjà calculés sont recalculés quand
+    l’état AlphaEarth du projet change (source activée, coupée ou autre
+    année ; marqueur `data/aef_etat.json`, écrit en fin de calcul non
+    arrêté) ; un projet sans marqueur compte comme « sans source ».
+  - **Limites** : `aef_fetch()` est synchrone et ne s’interrompt pas en
+    cours de route : l’arrêt n’agit qu’avant l’étape (l’étape n’est pas
+    lancée si l’arrêt est demandé) et après (contrôle existant après les
+    téléchargements) ; B4/L3 gardent biodivMapR si un cube Sentinel-2
+    est en cache (le cœur ne bascule en embedding que sans `spectral`) ;
+    la référence par défaut de N5 demande la forêt ancienne, construite
+    quand N2 est calculé.
 - **Modèles de fondation : statuts de N5, méthode de B4/L3, drapeau NDP
   `embedding_ml`** (mission 077, écarts 20, 21 et 22 du `PLAN.md` du
   cœur ; cœur 2026.11.1). Aucune logique métier : tout vient de
@@ -44,7 +102,7 @@ et 077).
     renseigne `layers$embedding_source` ni la couche `aef_embedding`) ;
     N5 n’est donc pas ajouté à la liste des indicateurs calculés
     (mission 080), et le drapeau NDP reste éteint tant que cette source
-    n’existe pas.
+    n’existe pas. *(Levée par la mission 080, ci-dessus.)*
 - **Marculus : choix des actions à l’export** (mission 070, décision 10
   de Pascal du 2026-11-26). « Télécharger vers Marculus » ouvre une
   fenêtre qui liste les actions éligibles (UGF, type, année, statut)
