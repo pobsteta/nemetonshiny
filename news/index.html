@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9012</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9013</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,25 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.6.9012" id="nemetonshiny-20261169012-en-développement">nemetonshiny 2026.11.6.9012 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169012-en-d%C3%A9veloppement"></a></h2>
-<p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066 et 067).</p>
+<h2 class="pkg-version" data-toc-text="2026.11.6.9013" id="nemetonshiny-20261169013-en-développement">nemetonshiny 2026.11.6.9013 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169013-en-d%C3%A9veloppement"></a></h2>
+<p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066, 067 et 068).</p>
 <div class="section level3">
-<h3 id="changements-2026-11-6-9012">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9012"></a></h3>
+<h3 id="changements-2026-11-6-9013">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9013"></a></h3>
 <ul><li>
+<strong>Itinéraires et effet de la gestion : le détail des exclusions traduit, les 15 profils nommés en entier, la référence de comparaison choisie, les UGF exclues comptées</strong> (mission 068, décisions de Pascal du 2026-11-26 ; suites des missions 066 et 067). Aucune logique métier : tout vient de <code>nemeton</code>.
+<ul><li>
+<strong>Itinéraires, détail traduit</strong> : le <code>detail</code> du cœur s’affiche en infobulle sur la raison de chaque exclusion, en français et en anglais, valeur observée contre seuil (P2, pente, distance de débardage, essence, sylvoécorégion, protection, source, donnée manquante). Les codes sont remplacés par des noms : essence par son libellé (<code><a href="https://pobsteta.github.io/nemeton/reference/ifn_espar_correspondance.html" class="external-link">nemeton::ifn_espar_correspondance()</a></code>), sylvoécorégion par son nom (<code>ser.csv</code> du cœur) ou, à défaut, « SER <code> ». Un <code>detail</code> de forme inconnue s’affiche tel quel. Clés <code>itin_d_*</code>, <code>itin_q_*</code>, <code>itin_prot_*</code>.</code>
+</li>
+<li>
+<strong>Itinéraires, libellés complets</strong> : les 15 profils du sélecteur portent leur nom entier (« Propriétaire privé », « Propriétaire public », « Chasseur »…), FR et EN, par des clés propres à la vue (<code>itin_prof_*</code>) et non plus par l’alias des profils experts, qui rendait « Propriétaire » seul.</li>
+<li>
+<strong>Effet, référence de comparaison</strong> : un sélecteur liste les types de gestion renseignés (hors <code>non_renseigne</code>, effectif entre parenthèses), par défaut le plus fréquent ; sa valeur est passée en <code>reference =</code> à <code><a href="https://pobsteta.github.io/nemeton/reference/effet_gestion.html" class="external-link">nemeton::effet_gestion()</a></code>. Changer de référence efface le tableau.</li>
+<li>
+<strong>Effet, UGF exclues</strong> : sous le texte d’introduction, « n UGF sans type déclaré, exclues » quand n &gt; 0.</li>
+<li>
+<strong>Effet, bouton</strong> : « Calculer l’effet de la gestion » passe en <code>btn-outline-primary</code> (le PDF reste l’action principale de la Synthèse), toujours lié à l’<code>ExtendedTask</code>.</li>
+</ul></li>
+<li>
 <strong>Type de gestion déclaré par UGF et tableau « ce que la gestion a produit sur ce massif » dans la Synthèse</strong> (mission 067, spec 068 du cœur, brief <code>068-trajectoires-finn</code>, écart 27 ; décision de Pascal du 2026-11-25). Aucune logique métier : l’effet, l’intervalle à 90 % et le statut viennent de <code><a href="https://pobsteta.github.io/nemeton/reference/effet_gestion.html" class="external-link">nemeton::effet_gestion()</a></code>.
 <ul><li>
 <strong>Saisie</strong> (onglet Unités de gestion, volet du tableau) : un sélecteur « Type de gestion » à liste fermée (<code>reguliere</code>, <code>irreguliere</code>, <code>taillis</code>, <code>taillis_sous_futaie</code>, <code>libre_evolution</code>, <code>non_renseigne</code> par défaut), appliqué aux UGF sélectionnées. Enregistré dans <code>ugs.json</code> (colonne <code>type_gestion</code>, écrite seulement si au moins une UGF en déclare un) et relu avec le projet ; une valeur hors liste est refusée à la saisie et ramenée à <code>non_renseigne</code> à la lecture. Une fusion garde le type si les UGF fusionnées le déclarent pareil, une scission le laisse aux morceaux. Libellés FR/EN (<code>ug_gestion_*</code>).</li>
@@ -74,7 +88,7 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="corrections-2026-11-6-9012">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9012"></a></h3>
+<h3 id="corrections-2026-11-6-9013">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9013"></a></h3>
 <ul><li><p><strong>Tableau des actions : l’étape « Indicateurs » dit le même nombre que le calcul</strong> (<code>R/service_pipeline.R</code>, signalé par Pascal le 2026-11-25 : 37 dans le tableau, 36 dans « Calcul en cours »). Le compte reste lu sur les colonnes du projet (mission 048), mais seules comptent celles des indicateurs que le calcul traite (<code>list_available_indicators()</code>) : une colonne laissée par un ancien calcul (par exemple A5 après désactivation de sa source) n’est plus comptée.</p></li>
 <li><p><strong>Planchers de dépendances relevés : <code>shiny (&gt;= 1.8.1)</code>, <code>bslib (&gt;= 0.7.0)</code></strong> (<code>DESCRIPTION</code>). L’app utilise <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et <code><a href="https://rstudio.github.io/bslib/reference/input_task_button.html" class="external-link">bslib::input_task_button()</a></code> / <code>bind_task_button()</code> (apparus dans bslib 0.7.0, 25 appels hors commentaires au 2026-11-25) ; les anciens planchers (1.8.0, 0.6.0) laissaient installer une version où l’app ne démarre pas. Un test de contrat vérifie que le plancher déclaré dans <code>DESCRIPTION</code> est au moins la version qui introduit <code>ExtendedTask</code> (shiny 1.8.1) et <code>input_task_button()</code> / <code>bind_task_button()</code> (bslib 0.7.0) ; il ne vérifie pas que chaque fonction utilisée existe dans la version plancher.</p></li>
 <li><p><strong>Inventaire vidéo : la vue reprend le plan d’échantillonnage régénéré</strong> (<code>R/mod_inventaire_video.R</code>). La liste et la carte des placettes lisaient <code>data/samples.gpkg</code> une seule fois, à l’ouverture du projet : un plan régénéré dans « Export terrain » n’apparaissait qu’après avoir rouvert le projet. La vue relit maintenant le plan à chaque incrément de <code>app_state$samples_refresh</code> et ne le remplace que s’il a changé : un enregistrement d’une autre couche (observations du plan d’actions, reGénération) ne remet ni la sélection ni la carte à zéro.</p></li>
@@ -83,7 +97,7 @@
 <li><p><strong>Étape « Indicateurs » de la chaîne : le nombre est celui du projet</strong> (mission 048). Le panneau de progression, le rapport final et la modale de choix affichaient « 31 indicateurs, 12 familles » écrit en dur ; ils disent maintenant « Indicateurs (36 indicateurs, 12 familles) » d’après les colonnes calculées du projet (<code>get_indicator_cols()</code>, jumeaux <code>_norm</code> exclus), familles comptées si elles ont au moins un indicateur. Avant tout calcul : « Indicateurs (12 familles) », sans nombre d’indicateurs. Singulier/pluriel gérés en FR et EN. L’aide du NDP ne cite plus « 31 indicateurs » ni « 12 familles ».</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-6-9012">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9012"></a></h3>
+<h3 id="dépendances-2026-11-6-9013">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9013"></a></h3>
 <ul><li>Plancher relevé de 2026.11.42 à <strong>2026.11.44</strong> : les versions 2026.11.42 et 2026.11.43 échouent sur une vraie réponse du CDS (variables scalaires, mission 042).</li>
 <li>Le test de contrat compare désormais la version de <code>nemeton</code> installée au plancher <strong>lu dans <code>DESCRIPTION</code></strong> (et non plus à un chiffre recopié, 2026.11.35), pour que les deux ne divergent plus.</li>
 </ul></div>

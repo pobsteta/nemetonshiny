@@ -1,12 +1,42 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9012 (en développement)
+## nemetonshiny 2026.11.6.9013 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066 et 067).
+cassant (missions 043, 048, 063, 066, 067 et 068).
 
 ### Changements
 
+- **Itinéraires et effet de la gestion : le détail des exclusions
+  traduit, les 15 profils nommés en entier, la référence de comparaison
+  choisie, les UGF exclues comptées** (mission 068, décisions de Pascal
+  du 2026-11-26 ; suites des missions 066 et 067). Aucune logique métier
+  : tout vient de `nemeton`.
+  - **Itinéraires, détail traduit** : le `detail` du cœur s’affiche en
+    infobulle sur la raison de chaque exclusion, en français et en
+    anglais, valeur observée contre seuil (P2, pente, distance de
+    débardage, essence, sylvoécorégion, protection, source, donnée
+    manquante). Les codes sont remplacés par des noms : essence par son
+    libellé
+    ([`nemeton::ifn_espar_correspondance()`](https://pobsteta.github.io/nemeton/reference/ifn_espar_correspondance.html)),
+    sylvoécorégion par son nom (`ser.csv` du cœur) ou, à défaut, « SER
+    ` ». Un ``detail`` de forme inconnue s’affiche tel quel. Clés ``itin_d_*``, ``itin_q_*``, ``itin_prot_*``.`
+  - **Itinéraires, libellés complets** : les 15 profils du sélecteur
+    portent leur nom entier (« Propriétaire privé », « Propriétaire
+    public », « Chasseur »…), FR et EN, par des clés propres à la vue
+    (`itin_prof_*`) et non plus par l’alias des profils experts, qui
+    rendait « Propriétaire » seul.
+  - **Effet, référence de comparaison** : un sélecteur liste les types
+    de gestion renseignés (hors `non_renseigne`, effectif entre
+    parenthèses), par défaut le plus fréquent ; sa valeur est passée en
+    `reference =` à
+    [`nemeton::effet_gestion()`](https://pobsteta.github.io/nemeton/reference/effet_gestion.html).
+    Changer de référence efface le tableau.
+  - **Effet, UGF exclues** : sous le texte d’introduction, « n UGF sans
+    type déclaré, exclues » quand n \> 0.
+  - **Effet, bouton** : « Calculer l’effet de la gestion » passe en
+    `btn-outline-primary` (le PDF reste l’action principale de la
+    Synthèse), toujours lié à l’`ExtendedTask`.
 - **Type de gestion déclaré par UGF et tableau « ce que la gestion a
   produit sur ce massif » dans la Synthèse** (mission 067, spec 068 du
   cœur, brief `068-trajectoires-finn`, écart 27 ; décision de Pascal du
