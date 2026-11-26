@@ -2337,18 +2337,14 @@ mod_monitoring_server <- function(id, app_state) {
                  error = function(e) NULL)
       }
       # Force-unlock the button immediately so the user can relaunch.
+      actif <- !is.null(shiny::isolate(fast_run_start()))
       force_unlock_quick(TRUE)
       # Wipe every in-flight ingestion toast so the screen stops being
       # polluted by the old worker's stream of 403/404 warnings.
       # `fast_prewarm_progress` est du lot : elle n'etait retiree que par
       # l'event `fast_prewarm:complete`, donc un arret pendant le
       # prechauffage la laissait elle aussi a l'ecran.
-      for (nid in c("ingest_progress", "ingest_band_failed",
-                    "ingest_pc_token", "ingest_error",
-                    "ingest_warns", "ingest_zero", "ingest_success",
-                    "ingest_cache_lookup", "fast_prewarm_progress")) {
-        shiny::removeNotification(session$ns(nid))
-      }
+      .retirer_toasts_progression(session, "fast")
       # Cleanup local progress + log files so the next run starts on a
       # blank slate (poll observers will treat NULL as "no run").
       fast_run_start(NULL); fast_run_msg(NULL)   # stoppe le chrono
@@ -2357,7 +2353,7 @@ mod_monitoring_server <- function(id, app_state) {
       .cleanup_progress_file(ingest_log_path())
       ingest_log_path(NULL)
       ingest_log_offset(0L)
-      invisible(TRUE)
+      invisible(actif)
     }
 
     shiny::observeEvent(input$run_cancel, {
@@ -2388,9 +2384,17 @@ mod_monitoring_server <- function(id, app_state) {
     # Les helpers ne reposent JAMAIS `cancel_computation` - seuls les
     # boutons le font. Sans cette regle, ce simple observer bouclerait.
     shiny::observeEvent(app_state$cancel_computation, {
-      .reset_fast_run()
-      .reset_fordead_run()
-      .reset_reconfort_run()
+      actifs <- c(.reset_fast_run(), .reset_fordead_run(),
+                  .reset_reconfort_run())
+      # Un run etait vivant : l'ecran le dit, au lieu de se contenter de faire
+      # disparaitre ses toasts. Meme id que le toast de mod_home, pour qu'un
+      # arret de " Tout calculer " n'en affiche qu'un. Les boutons d'arret ont
+      # deja remis leur run a zero : pas de doublon.
+      if (any(actifs)) {
+        shiny::showNotification(
+          i18n_r()$t("computation_cancelled"),
+          id = "calcul_arrete", type = "warning", duration = 6)
+      }
     }, ignoreInit = TRUE)
 
     # v0.85.2.9000 - Sequence d'invocation FAST factorisee : toast
@@ -2950,15 +2954,13 @@ mod_monitoring_server <- function(id, app_state) {
         tryCatch(file.create(cancel_path),
                  error = function(e) NULL)
       }
+      actif <- !is.null(shiny::isolate(fordead_run_start()))
       force_unlock_health(TRUE)
-      for (nid in c("fordead_progress", "fordead_error",
-                    "fordead_success", "fordead_warns")) {
-        shiny::removeNotification(session$ns(nid))
-      }
+      .retirer_toasts_progression(session, "fordead")
       fordead_run_start(NULL); fordead_run_msg(NULL)   # stoppe le chrono
       .cleanup_progress_file(fordead_progress_path())
       fordead_progress_path(NULL)
-      invisible(TRUE)
+      invisible(actif)
     }
 
     shiny::observeEvent(input$run_health_cancel, {
@@ -3606,9 +3608,10 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       ev <- reconfort_progress()
       if (is.null(ev)) return()
-      .reconfort_handle_progress_event(ev, session, i18n_r(),
-                                       start = reconfort_run_start(),
-                                       on_msg = reconfort_run_msg)
+      .reconfort_handle_progress_event(
+        ev, session, i18n_r(),
+        start = reconfort_run_start(), on_msg = reconfort_run_msg,
+        est_actif = function() !is.null(shiny::isolate(reconfort_run_start())))
     })
 
     # Chrono qui defile (RECONFORT) : cf. les observe FAST/FORDEAD.
@@ -3720,13 +3723,17 @@ mod_monitoring_server <- function(id, app_state) {
       if (!is.null(cancel_path)) {
         tryCatch(file.create(cancel_path), error = function(e) NULL)
       }
+      actif <- !is.null(shiny::isolate(reconfort_run_start()))
       force_unlock_reconfort(TRUE)
-      for (nid in c("reconfort_progress", "reconfort_error",
-                    "reconfort_complete", "reconfort_cancelled")) {
-        shiny::removeNotification(session$ns(nid))
-      }
+      .retirer_toasts_progression(session, "reconfort")
       reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
-      invisible(TRUE)
+      # Comme FAST et FORDEAD : on lache le fichier de progression. Le worker
+      # (ingestion de plusieurs centaines de scenes) peut ecrire encore apres
+      # l'arret ; sans cela le poll relisait ces evenements tardifs et reposait
+      # le toast, chrono vivant, pour un calcul arrete (mission 072).
+      .cleanup_progress_file(reconfort_progress_path())
+      reconfort_progress_path(NULL)
+      invisible(actif)
     }
 
     shiny::observeEvent(input$run_reconfort_cancel, {
@@ -4239,6 +4246,41 @@ mod_monitoring_server <- function(id, app_state) {
 #
 # Sur SUCCES et sur ANNULATION on efface comme avant : il n'y a rien a
 # comprendre, et l'annulation est un geste delibere de l'utilisateur.
+# Toasts PERSISTANTS de progression (`duration = NULL`, sans bouton de
+# fermeture) des chaines sante, par mode. Source unique de la liste : l'arret,
+# l'annulation, l'erreur et la fin d'un run passent tous par
+# `.retirer_toasts_progression()`, au lieu de repeter chacun sa boucle
+# `removeNotification()` (mission 072 : `reconfort_progress` restait a l'ecran,
+# chrono vivant, apres l'arret de " Tout calculer ").
+.TOASTS_PROGRESSION <- list(
+  fast      = c("ingest_progress", "ingest_band_failed", "ingest_pc_token",
+                "ingest_error", "ingest_warns", "ingest_zero",
+                "ingest_success", "ingest_cache_lookup",
+                "fast_prewarm_progress"),
+  fordead   = c("fordead_progress", "fordead_error", "fordead_success",
+                "fordead_warns"),
+  reconfort = c("reconfort_progress", "reconfort_error",
+                "reconfort_complete", "reconfort_cancelled")
+)
+
+# Retire les toasts de progression d'un mode (`fast`, `fordead`, `reconfort`)
+# ou de tous (`mode = NULL`). `session` porte `ns()`. Effet de bord seul.
+.retirer_toasts_progression <- function(session, mode = NULL) {
+  ids <- if (is.null(mode)) unlist(.TOASTS_PROGRESSION, use.names = FALSE)
+         else .TOASTS_PROGRESSION[[mode]]
+  for (nid in ids) shiny::removeNotification(session$ns(nid))
+  invisible(ids)
+}
+
+# Un evenement de progression PERSISTANT (celui qui pose ou rafraichit le toast
+# a chrono) est-il a ignorer ? Oui quand l'appelant fournit `est_actif` et que
+# le run n'est plus actif : le processus asynchrone peut emettre encore apres
+# l'arret, et un toast ne doit pas reapparaitre pour un calcul arrete. Les
+# evenements terminaux (complete, cancelled, error) passent toujours.
+.evenement_tardif <- function(est_actif, current, persistants) {
+  is.function(est_actif) && !isTRUE(est_actif()) && current %in% persistants
+}
+
 .cleanup_progress_file <- function(path, archive = FALSE) {
   if (is.null(path)) return(invisible(NULL))
   ndjson <- if (grepl("\\.json$", path)) {
@@ -4572,8 +4614,16 @@ mod_monitoring_server <- function(id, app_state) {
 # directly with a fake session + i18n. Side effects only. `start` / `on_msg`
 # alimentent le chrono unifie (cf. .fordead_handle_progress_event).
 .reconfort_handle_progress_event <- function(ev, session, i18n,
-                                              start = NULL, on_msg = NULL) {
+                                              start = NULL, on_msg = NULL,
+                                              est_actif = NULL) {
   current <- as.character(ev$current %||% "")
+
+  # Evenement tardif d'un run arrete : ni toast, ni chrono (mission 072).
+  if (.evenement_tardif(est_actif, current,
+                        c("reconfort:phase", "reconfort:ingest_listed",
+                          "reconfort:ingest_item"))) {
+    return(invisible(NULL))
+  }
 
   if (identical(current, "reconfort:start")) {
     return(invisible(NULL))  # silent - disabled button is enough
@@ -4681,7 +4731,7 @@ mod_monitoring_server <- function(id, app_state) {
     if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
     shiny::removeNotification(session$ns("reconfort_progress"))
     shiny::showNotification(
-      sprintf("%s : %s", i18n$t("monitoring_reconfort_error"), err_msg),
+      .monitoring_run_error_msg(err_msg, i18n, "monitoring_reconfort_error"),
       id          = session$ns("reconfort_error"),
       type        = "error",
       duration    = NULL,
@@ -4730,9 +4780,24 @@ mod_monitoring_server <- function(id, app_state) {
   grepl("exit 137|\\bkilled\\b", msg, ignore.case = TRUE)
 }
 
+# Le dossier de travail RECONFORT est tenu par un processus VIVANT (verrou
+# `<workdir>/.lock` du coeur, `.reconfort_lock_workdir()`) : un run precedent
+# tourne encore. Le coeur l'enrobe dans " failed in its capped child process "
+# suivi de la fin du journal de l'enfant ; brut, c'est une pile d'appels.
+.monitoring_is_verrou_reconfort <- function(msg) {
+  # `cli::cli_abort()` replie le message a 80 colonnes : " in use by\nanother
+  # process " des qu'un chemin depasse ~24 caracteres. On normalise d'abord.
+  msg <- gsub("[[:space:]]+", " ", paste(as.character(msg %||% ""), collapse = " "))
+  if (!nzchar(msg)) return(FALSE)
+  grepl("working directory", msg, fixed = TRUE) &&
+    grepl("in use by another process", msg, fixed = TRUE)
+}
+
 .monitoring_run_error_msg <- function(msg, i18n, title_key) {
   msg <- as.character(msg %||% "")
-  if (.monitoring_is_oom(msg)) {
+  if (.monitoring_is_verrou_reconfort(msg)) {
+    i18n$t("monitoring_reconfort_verrou")
+  } else if (.monitoring_is_oom(msg)) {
     sprintf("%s : %s", i18n$t("monitoring_error_oom_short"),
             i18n$t("monitoring_error_oom"))
   } else {

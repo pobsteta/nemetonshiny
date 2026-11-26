@@ -1,9 +1,16 @@
-# nemetonshiny 2026.11.6.9013 (en développement)
+# nemetonshiny 2026.11.6.9014 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067 et 068).
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068 et 072).
 
 ## Changements
 
+- **Arrêt d'un calcul : les toasts de progression disparaissent et leur chrono s'arrête, l'arrêt dit « calcul arrêté », le moteur Open-Canopy est tué** (mission 072, constat de Pascal du 2026-11-26).
+  - Le toast RECONFORT (« Scène 64/269 — téléchargement… ») restait à l'écran, chrono vivant, après l'arrêt de « Tout calculer » : le fichier de progression n'était pas lâché, donc un événement tardif du worker reposait le toast. L'arrêt lâche désormais ce fichier (comme FAST et FORDEAD), et le dispatcher ignore les événements de phase, `ingest_listed` et `ingest_item` d'un run arrêté. Les événements terminaux (`complete`, `cancelled`, `error`) restent traités.
+  - Une fonction unique, `.retirer_toasts_progression()`, tient la liste des toasts persistants de FAST, FORDEAD et RECONFORT ; les trois arrêts l'utilisent.
+  - Un arrêt qui trouve un run vivant affiche « Calculs annulés » (clé existante `computation_cancelled`), sous un id commun avec le toast de « Tout calculer » : un seul toast.
+  - `run_with_python()` reçoit `annule` (lu à chaque tour du sondage) : sur arrêt de l'utilisateur, il tue l'arbre de processus de l'enfant et lève une erreur de classe `nemeton_arret_utilisateur` (« arrêté par l'utilisateur »). Branché sur le CHM Open-Canopy via le drapeau `cancel_requested` de `cancel_computation()`.
+  - Verrou du dossier de travail RECONFORT tenu par un processus vivant : message clair `monitoring_reconfort_verrou` (« Un calcul RECONFORT tourne encore sur ce projet : attendez sa fin ou arrêtez-le ») au lieu de la pile d'appels.
+  - **Limite** : le processus enfant RECONFORT/FORDEAD est lancé par `nemeton::run_memory_capped()` (cœur) ; l'app ne peut pas le tuer d'ici, et le cœur ne sonde le drapeau d'annulation qu'aux frontières de phase, pas dans la boucle d'ingestion des scènes.
 - **Itinéraires et effet de la gestion : le détail des exclusions traduit, les 15 profils nommés en entier, la référence de comparaison choisie, les UGF exclues comptées** (mission 068, décisions de Pascal du 2026-11-26 ; suites des missions 066 et 067). Aucune logique métier : tout vient de `nemeton`.
   - **Itinéraires, détail traduit** : le `detail` du cœur s'affiche en infobulle sur la raison de chaque exclusion, en français et en anglais, valeur observée contre seuil (P2, pente, distance de débardage, essence, sylvoécorégion, protection, source, donnée manquante). Les codes sont remplacés par des noms : essence par son libellé (`nemeton::ifn_espar_correspondance()`), sylvoécorégion par son nom (`ser.csv` du cœur) ou, à défaut, « SER <code> ». Un `detail` de forme inconnue s'affiche tel quel. Clés `itin_d_*`, `itin_q_*`, `itin_prot_*`.
   - **Itinéraires, libellés complets** : les 15 profils du sélecteur portent leur nom entier (« Propriétaire privé », « Propriétaire public », « Chasseur »…), FR et EN, par des clés propres à la vue (`itin_prof_*`) et non plus par l'alias des profils experts, qui rendait « Propriétaire » seul.

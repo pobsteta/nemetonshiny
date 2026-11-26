@@ -121,6 +121,12 @@ engine_python <- function(engine) {
 #'   Option `nemetonshiny.python_timeout_inactivite`, default 30 min.
 #' @param timeout_total_s Overall ceiling, seconds. Option
 #'   `nemetonshiny.python_timeout_total`, default 12 h.
+#' @param annule Optional function returning `TRUE` once the user has stopped
+#'   the computation (e.g. `function() is_cancelled(project_id)`, the flag
+#'   written by `cancel_computation()`). Read at every turn of the polling
+#'   loop; when it fires the child's whole process tree is killed and an error
+#'   of class `nemeton_arret_utilisateur` is raised. Without it a stopped
+#'   computation kept downloading in the background.
 #' @return The child's return value. A child error is re-raised here.
 #' @noRd
 run_with_python <- function(engine, func, args = list(),
@@ -128,7 +134,8 @@ run_with_python <- function(engine, func, args = list(),
                             timeout_inactivite_s = getOption(
                               "nemetonshiny.python_timeout_inactivite", 1800),
                             timeout_total_s = getOption(
-                              "nemetonshiny.python_timeout_total", 12 * 3600)) {
+                              "nemetonshiny.python_timeout_total", 12 * 3600),
+                            annule = NULL) {
   py <- engine_python(engine)
   if (is.na(py)) {
     cli::cli_abort(c(
@@ -164,6 +171,12 @@ run_with_python <- function(engine, func, args = list(),
     px$poll_io(poll_ms)
     drain()
     if (!px$is_alive()) break
+    if (is.function(annule) && isTRUE(tryCatch(annule(), error = function(e) FALSE))) {
+      tryCatch(px$kill_tree(), error = function(e) px$kill())
+      cli::cli_abort(
+        "Moteur {.val {engine}} arr\u00eat\u00e9 par l'utilisateur.",
+        class = "nemeton_arret_utilisateur")
+    }
     motif <- .python_timeout_motif(debut, derniere_sortie, Sys.time(),
                                    timeout_inactivite_s, timeout_total_s)
     if (!is.null(motif)) {

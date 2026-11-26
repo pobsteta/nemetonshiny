@@ -920,7 +920,10 @@ start_computation <- function(project_id,
         }
         state$current_task <<- layer_progress$current
         report_progress(state)
-      }
+      },
+      # L'arret de l'utilisateur tue aussi le moteur Python en arriere-plan
+      # (Open-Canopy), au lieu de le laisser telecharger jusqu'au bout.
+      annule = function() is_cancelled(project_id)
     )
 
     # Propagate download warnings to state errors (for UI display)
@@ -1637,13 +1640,15 @@ build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
 #' @param parcels sf object. Parcels to compute indicators for.
 #' @param project_path Character. Path to project directory.
 #' @param progress_callback Function. Progress callback.
+#' @param annule Optional function; `TRUE` once the user stopped the run.
 #'
 #' @return nemeton_layers object with downloaded data.
 #'
 #' @noRd
 download_layers_for_parcels <- function(parcels,
                                         project_path,
-                                        progress_callback = NULL) {
+                                        progress_callback = NULL,
+                                        annule = NULL) {
 
   cache_dir <- file.path(project_path, "cache", "layers")
   if (!dir.exists(cache_dir)) {
@@ -2126,7 +2131,8 @@ download_layers_for_parcels <- function(parcels,
 
     chm_out <- tryCatch(
       download_chm_opencanopy(parcels, cache_dir, rasters, vectors,
-                              progress_callback = chm_progress),
+                              progress_callback = chm_progress,
+                              annule = annule),
       error = function(e) {
         cli::cli_warn("Open-Canopy CHM fetch failed: {e$message}")
         download_warnings <<- c(download_warnings, list(list(
@@ -2696,7 +2702,8 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 # opencanopy's progress events as tagged JSON lines, which the parent replays
 # through `progress_callback` (the app bottom-right messages). Falls back to
 # in-process when callr or the env Python is unavailable.
-.run_opencanopy_chm <- function(aoi_path, oc_dir, chm_path, progress_callback) {
+.run_opencanopy_chm <- function(aoi_path, oc_dir, chm_path, progress_callback,
+                                annule = NULL) {
   # Le corps de l'enfant DOIT etre auto-suffisant : il traverse une frontiere
   # de processus et ne capture rien d'ici. Les evenements de progression
   # repartent en lignes JSON taguees, que `.chm_forward_line()` rejoue cote
@@ -2725,7 +2732,8 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
     run_with_python(
       "opencanopy", enfant,
       args    = list(aoi_path = aoi_path, output_dir = oc_dir, chm_path = chm_path),
-      on_line = function(ln) .chm_forward_line(ln, progress_callback)
+      on_line = function(ln) .chm_forward_line(ln, progress_callback),
+      annule  = annule
     ),
     error = function(e) e
   )
@@ -2736,7 +2744,8 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
   # que si l'isolation n'a pas pu avoir lieu du tout (env introuvable, callr
   # absent) - pas si le pipeline lui-meme a echoue, auquel cas le rejouer ici
   # echouerait pareil en abimant la session au passage.
-  if (!grepl("not found|is required", conditionMessage(res))) stop(res)
+  if (inherits(res, "nemeton_arret_utilisateur") ||
+      !grepl("not found|is required", conditionMessage(res))) stop(res)
 
   cli::cli_alert_warning(
     "Isolation impossible ({conditionMessage(res)}) ; execution EN PROCESSUS. \\
@@ -2760,7 +2769,7 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 
 
 download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
-                                    progress_callback = NULL) {
+                                    progress_callback = NULL, annule = NULL) {
   if (!requireNamespace(.OPENCANOPY_PKG, quietly = TRUE)) {
     stop("Package 'opencanopy' is not installed")
   }
@@ -2815,7 +2824,8 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
     )
     # Isolated subprocess (pinned RETICULATE_PYTHON) so Open-Canopy and
     # FORDEAD reticulate envs can coexist in the same app session.
-    .run_opencanopy_chm(aoi_path, oc_dir, chm_path, progress_callback)
+    .run_opencanopy_chm(aoi_path, oc_dir, chm_path, progress_callback,
+                        annule = annule)
   }
 
   chm <- terra::rast(chm_path)

@@ -1637,7 +1637,7 @@ mod_home_server <- function(id, app_state) {
       if (!is.null(project_id)) {
         shiny::showNotification(
           i18n$t("computation_cancelled") %||% "Calcul annul\u00e9",
-          type = "warning"
+          id = "calcul_arrete", type = "warning"
         )
       }
     }, ignoreInit = TRUE)
