@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9014</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9015</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,19 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.6.9014" id="nemetonshiny-20261169014-en-développement">nemetonshiny 2026.11.6.9014 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169014-en-d%C3%A9veloppement"></a></h2>
-<p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068 et 072).</p>
+<h2 class="pkg-version" data-toc-text="2026.11.6.9015" id="nemetonshiny-20261169015-en-développement">nemetonshiny 2026.11.6.9015 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169015-en-d%C3%A9veloppement"></a></h2>
+<p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 072 et 075).</p>
 <div class="section level3">
-<h3 id="changements-2026-11-6-9014">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9014"></a></h3>
+<h3 id="changements-2026-11-6-9015">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9015"></a></h3>
 <ul><li>
+<strong>L’arrêt tue vraiment RECONFORT et FORDEAD</strong> (mission 075, suite de la 072).
+<ul><li>Les deux moteurs tournent dans un enfant plafonné (<code>run_memory_capped()</code>) que le seul drapeau coopératif n’atteignait qu’aux frontières de phase : un calcul « arrêté » continuait de télécharger et tenait son verrou. Chaque lancement dépose maintenant un marqueur de run propre au moteur et au projet (<code>cache/layers/&lt;moteur&gt;/engine_run.json</code>, <code>marker_path</code> du cœur, retiré sur un cœur qui ne le connaît pas), et l’arrêt (bouton de l’onglet Santé ou « Tout calculer ») appelle <code>stop_memory_capped()</code> en plus du drapeau, qui reste posé. Rien n’est appelé s’il ne vit aucun moteur.</li>
+<li>Relancer RECONFORT ou FORDEAD pendant que le moteur du même type vit ne lance plus un second enfant : message clair (<code>monitoring_reconfort_verrou</code>, nouvelle clé <code>monitoring_fordead_verrou</code>) avec un lien « Arrêter ce calcul ».</li>
+<li>L’erreur de sortie de l’enfant tué (« killed », que l’app lit comme un dépassement mémoire) est ignorée après un arrêt dur, au lieu d’afficher un faux « mémoire insuffisante ».</li>
+<li>Limites : entre le clic sur « Lancer » et le démarrage de l’enfant il n’existe pas encore de marqueur, donc un arrêt dans cette courte fenêtre ne dispose que du drapeau coopératif ; et <code>capped_run_alive()</code> / <code>stop_memory_capped()</code> sont « Experimental » dans le cœur (leur signature peut changer). L’arrêt des moteurs Santé attend au plus 3 s avant SIGKILL (<code>timeout</code> du cœur, si accepté) ; reGénération garde le défaut.</li>
+<li>Helpers communs <code>.capped_marker_alive()</code> / <code>.capped_marker_stop()</code> (<code>service_monitoring.R</code>), sur lesquels reGénération s’appuie désormais (comportement inchangé).</li>
+</ul></li>
+<li>
 <strong>Arrêt d’un calcul : les toasts de progression disparaissent et leur chrono s’arrête, l’arrêt dit « calcul arrêté », le moteur Open-Canopy est tué</strong> (mission 072, constat de Pascal du 2026-11-26).
 <ul><li>Le toast RECONFORT (« Scène 64/269 — téléchargement… ») restait à l’écran, chrono vivant, après l’arrêt de « Tout calculer » : le fichier de progression n’était pas lâché, donc un événement tardif du worker reposait le toast. L’arrêt lâche désormais ce fichier (comme FAST et FORDEAD), et le dispatcher ignore les événements de phase, <code>ingest_listed</code> et <code>ingest_item</code> d’un run arrêté. Les événements terminaux (<code>complete</code>, <code>cancelled</code>, <code>error</code>) restent traités.</li>
 <li>Une fonction unique, <code>.retirer_toasts_progression()</code>, tient la liste des toasts persistants de FAST, FORDEAD et RECONFORT ; les trois arrêts l’utilisent.</li>
@@ -99,7 +107,7 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="corrections-2026-11-6-9014">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9014"></a></h3>
+<h3 id="corrections-2026-11-6-9015">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9015"></a></h3>
 <ul><li><p><strong>Tableau des actions : l’étape « Indicateurs » dit le même nombre que le calcul</strong> (<code>R/service_pipeline.R</code>, signalé par Pascal le 2026-11-25 : 37 dans le tableau, 36 dans « Calcul en cours »). Le compte reste lu sur les colonnes du projet (mission 048), mais seules comptent celles des indicateurs que le calcul traite (<code>list_available_indicators()</code>) : une colonne laissée par un ancien calcul (par exemple A5 après désactivation de sa source) n’est plus comptée.</p></li>
 <li><p><strong>Planchers de dépendances relevés : <code>shiny (&gt;= 1.8.1)</code>, <code>bslib (&gt;= 0.7.0)</code></strong> (<code>DESCRIPTION</code>). L’app utilise <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et <code><a href="https://rstudio.github.io/bslib/reference/input_task_button.html" class="external-link">bslib::input_task_button()</a></code> / <code>bind_task_button()</code> (apparus dans bslib 0.7.0, 25 appels hors commentaires au 2026-11-25) ; les anciens planchers (1.8.0, 0.6.0) laissaient installer une version où l’app ne démarre pas. Un test de contrat vérifie que le plancher déclaré dans <code>DESCRIPTION</code> est au moins la version qui introduit <code>ExtendedTask</code> (shiny 1.8.1) et <code>input_task_button()</code> / <code>bind_task_button()</code> (bslib 0.7.0) ; il ne vérifie pas que chaque fonction utilisée existe dans la version plancher.</p></li>
 <li><p><strong>Inventaire vidéo : la vue reprend le plan d’échantillonnage régénéré</strong> (<code>R/mod_inventaire_video.R</code>). La liste et la carte des placettes lisaient <code>data/samples.gpkg</code> une seule fois, à l’ouverture du projet : un plan régénéré dans « Export terrain » n’apparaissait qu’après avoir rouvert le projet. La vue relit maintenant le plan à chaque incrément de <code>app_state$samples_refresh</code> et ne le remplace que s’il a changé : un enregistrement d’une autre couche (observations du plan d’actions, reGénération) ne remet ni la sélection ni la carte à zéro.</p></li>
@@ -108,7 +116,7 @@
 <li><p><strong>Étape « Indicateurs » de la chaîne : le nombre est celui du projet</strong> (mission 048). Le panneau de progression, le rapport final et la modale de choix affichaient « 31 indicateurs, 12 familles » écrit en dur ; ils disent maintenant « Indicateurs (36 indicateurs, 12 familles) » d’après les colonnes calculées du projet (<code>get_indicator_cols()</code>, jumeaux <code>_norm</code> exclus), familles comptées si elles ont au moins un indicateur. Avant tout calcul : « Indicateurs (12 familles) », sans nombre d’indicateurs. Singulier/pluriel gérés en FR et EN. L’aide du NDP ne cite plus « 31 indicateurs » ni « 12 familles ».</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-6-9014">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9014"></a></h3>
+<h3 id="dépendances-2026-11-6-9015">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9015"></a></h3>
 <ul><li>Plancher relevé de 2026.11.42 à <strong>2026.11.44</strong> : les versions 2026.11.42 et 2026.11.43 échouent sur une vraie réponse du CDS (variables scalaires, mission 042).</li>
 <li>Le test de contrat compare désormais la version de <code>nemeton</code> installée au plancher <strong>lu dans <code>DESCRIPTION</code></strong> (et non plus à un chiffre recopié, 2026.11.35), pour que les deux ne divergent plus.</li>
 </ul></div>

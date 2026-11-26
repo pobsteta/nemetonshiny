@@ -1,12 +1,41 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9014 (en développement)
+## nemetonshiny 2026.11.6.9015 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063, 066, 067, 068 et 072).
+cassant (missions 043, 048, 063, 066, 067, 068, 072 et 075).
 
 ### Changements
 
+- **L’arrêt tue vraiment RECONFORT et FORDEAD** (mission 075, suite de
+  la 072).
+  - Les deux moteurs tournent dans un enfant plafonné
+    (`run_memory_capped()`) que le seul drapeau coopératif n’atteignait
+    qu’aux frontières de phase : un calcul « arrêté » continuait de
+    télécharger et tenait son verrou. Chaque lancement dépose maintenant
+    un marqueur de run propre au moteur et au projet
+    (`cache/layers/<moteur>/engine_run.json`, `marker_path` du cœur,
+    retiré sur un cœur qui ne le connaît pas), et l’arrêt (bouton de
+    l’onglet Santé ou « Tout calculer ») appelle `stop_memory_capped()`
+    en plus du drapeau, qui reste posé. Rien n’est appelé s’il ne vit
+    aucun moteur.
+  - Relancer RECONFORT ou FORDEAD pendant que le moteur du même type vit
+    ne lance plus un second enfant : message clair
+    (`monitoring_reconfort_verrou`, nouvelle clé
+    `monitoring_fordead_verrou`) avec un lien « Arrêter ce calcul ».
+  - L’erreur de sortie de l’enfant tué (« killed », que l’app lit comme
+    un dépassement mémoire) est ignorée après un arrêt dur, au lieu
+    d’afficher un faux « mémoire insuffisante ».
+  - Limites : entre le clic sur « Lancer » et le démarrage de l’enfant
+    il n’existe pas encore de marqueur, donc un arrêt dans cette courte
+    fenêtre ne dispose que du drapeau coopératif ; et
+    `capped_run_alive()` / `stop_memory_capped()` sont « Experimental »
+    dans le cœur (leur signature peut changer). L’arrêt des moteurs
+    Santé attend au plus 3 s avant SIGKILL (`timeout` du cœur, si
+    accepté) ; reGénération garde le défaut.
+  - Helpers communs `.capped_marker_alive()` / `.capped_marker_stop()`
+    (`service_monitoring.R`), sur lesquels reGénération s’appuie
+    désormais (comportement inchangé).
 - **Arrêt d’un calcul : les toasts de progression disparaissent et leur
   chrono s’arrête, l’arrêt dit « calcul arrêté », le moteur Open-Canopy
   est tué** (mission 072, constat de Pascal du 2026-11-26).
