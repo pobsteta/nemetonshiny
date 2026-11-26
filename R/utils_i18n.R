@@ -1263,6 +1263,10 @@ TRANSLATIONS <- list(
     fr = "Cochez les actions que le marteleur emporte sur le terrain. Par d\u00e9faut : celles de l'ann\u00e9e en cours et des suivantes qui ne sont pas termin\u00e9es.",
     en = "Tick the actions the marker takes into the field. By default: those of the current year and later that are not finished."
   ),
+  marculus_choix_rien = list(
+    fr = "Aucune action choisie : cliquez sur \u00ab T\u00e9l\u00e9charger vers Marculus \u00bb et cochez les actions \u00e0 envoyer.",
+    en = "No action chosen: click \"Download to Marculus\" and tick the actions to send."
+  ),
   marculus_choix_tout = list(fr = "Tout cocher", en = "Tick all"),
   marculus_choix_aucun = list(fr = "Tout d\u00e9cocher", en = "Untick all"),
   marculus_choix_export = list(fr = "Exporter", en = "Export"),

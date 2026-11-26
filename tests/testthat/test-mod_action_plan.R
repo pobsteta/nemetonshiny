@@ -457,7 +457,7 @@ test_that("rien de coche : aucun export, Exporter est desactive", {
                  'disabled="disabled"', fixed = TRUE)
     session$setInputs(marculus_choix_go = 1)
     expect_null(.env_choix$ids_recus)
-    expect_null(marculus_ids_rv())
+    expect_identical(marculus_ids_rv(), character(0))
   })
 })
 
@@ -482,24 +482,128 @@ test_that("annuler : rien ne part", {
   testthat::local_mocked_bindings(
     showModal = function(ui, session = NULL) NULL, .package = "shiny")
   .env_choix$ids_recus <- NULL
+  construit <- 0L
+  testthat::local_mocked_bindings(
+    marculus_export_bundle_choix = function(...) { construit <<- construit + 1L; list() })
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    app_state$project_id <- "p1"
+    session$setInputs(prepare_marculus = 1)
+    invisible(output$download_marculus)
+    # Annuler = bouton de fermeture cote client : aucun evenement serveur ;
+    # ni les fonds ni la construction ne sont appeles.
+    expect_null(.env_choix$ids_recus)
+    expect_identical(construit, 0L)
+    expect_identical(marculus_ids_rv(), character(0))
+  })
+})
+
+test_that("le telechargement recoit exactement les ids coches, puis la selection est videe", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) NULL, .package = "shiny")
+  recu <- list()
+  testthat::local_mocked_bindings(
+    marculus_export_bundle_choix = function(project_id, file, essences = NULL,
+                                            ids_actions = NULL) {
+      recu[[length(recu) + 1L]] <<- ids_actions
+      list(n_contexts = 0L)
+    })
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    app_state$project_id <- "p1"
+    session$setInputs(prepare_marculus = 1)
+    session$setInputs(marculus_choix = c("t26", "t27"), marculus_choix_go = 1)
+    expect_identical(marculus_ids_rv(), c("t26", "t27"))
+    invisible(output$download_marculus)
+    expect_length(recu, 1L)
+    expect_identical(recu[[1]], c("t26", "t27"))
+    expect_identical(marculus_ids_rv(), character(0))
+    # second telechargement sans nouvelle fenetre : rien n'est construit
+    invisible(output$download_marculus)
+    expect_length(recu, 1L)
+  })
+})
+
+test_that("telechargement sans fenetre validee : rien n'est exporte", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  appels <- 0L
+  testthat::local_mocked_bindings(
+    marculus_export_bundle_choix = function(...) { appels <<- appels + 1L; list() })
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    app_state$project_id <- "p1"
+    expect_identical(marculus_ids_rv(), character(0))
+    invisible(output$download_marculus)
+    expect_identical(appels, 0L)
+  })
+})
+
+test_that("changer de projet vide la selection", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) NULL, .package = "shiny")
   app_state <- .mock_choix(.plan_choix_export)
   shiny::testServer(nemetonshiny:::mod_action_plan_server,
                     args = list(app_state = app_state), {
     session$flushReact()
     plan_rv(.plan_choix_export("p1"))
     session$setInputs(prepare_marculus = 1)
-    # Annuler = modalButton cote client : aucun evenement serveur
-    expect_null(.env_choix$ids_recus)
-    expect_null(marculus_ids_rv())
+    session$setInputs(marculus_choix = "t27", marculus_choix_go = 1)
+    expect_identical(marculus_ids_rv(), "t27")
+    app_state$current_project <- list(id = "p2", x0 = 5)
+    session$flushReact()
+    expect_identical(marculus_ids_rv(), character(0))
   })
 })
 
-test_that("l'export lit la selection (marculus_export_bundle_choix) et non le plan entier", {
-  f <- testthat::test_path("..", "..", "R", "mod_action_plan.R")
-  testthat::skip_if_not(file.exists(f), "sources R absentes")
-  code <- paste(readLines(f, warn = FALSE), collapse = "\n")
-  expect_true(grepl("marculus_export_bundle_choix(", code, fixed = TRUE))
-  expect_false(grepl("marculus_export_bundle(pid", code, fixed = TRUE))
+test_that("Exporter s'active des qu'une case est cochee", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    showModal = function(ui, session = NULL) NULL, .package = "shiny")
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    session$setInputs(prepare_marculus = 1)
+    session$setInputs(marculus_choix = character(0))
+    expect_match(as.character(output$marculus_choix_export_ui$html), "disabled", fixed = TRUE)
+    session$setInputs(marculus_choix = "t26")
+    expect_false(grepl("disabled", as.character(output$marculus_choix_export_ui$html), fixed = TRUE))
+  })
+})
+
+test_that("tout cocher / tout decocher envoient les bons ids a la case", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  vus <- list()
+  testthat::local_mocked_bindings(
+    updateCheckboxGroupInput = function(session, inputId, ..., selected = NULL) {
+      vus[[length(vus) + 1L]] <<- selected
+    }, .package = "shiny")
+  app_state <- .mock_choix(.plan_choix_export)
+  shiny::testServer(nemetonshiny:::mod_action_plan_server,
+                    args = list(app_state = app_state), {
+    session$flushReact()
+    plan_rv(.plan_choix_export("p1"))
+    session$setInputs(marculus_choix_tout = 1)
+    expect_identical(vus[[1]], c("f25", "t26", "f26", "t27"))
+    session$setInputs(marculus_choix_aucun = 1)
+    expect_identical(vus[[2]], character(0))
+  })
 })
 
 test_that("le lien Marculus masque est rendu malgre son masquage", {

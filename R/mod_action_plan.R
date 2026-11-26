@@ -2089,8 +2089,12 @@ mod_action_plan_server <- function(id, app_state) {
                                 list(id = session$ns("download_marculus")))
     }
 
-    # Actions cochees dans la fenetre d'export (NULL = aucune fenetre validee).
-    marculus_ids_rv <- shiny::reactiveVal(NULL)
+    # Actions cochees dans la fenetre d'export. VIDE par defaut : un
+    # telechargement sans fenetre validee n'exporte rien (jamais "tout").
+    marculus_ids_rv <- shiny::reactiveVal(character(0))
+    shiny::observeEvent(app_state$current_project, {
+      marculus_ids_rv(character(0))
+    }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$prepare_marculus, {
       i18n <- get_i18n(app_state$language)
@@ -2526,9 +2530,18 @@ mod_action_plan_server <- function(id, app_state) {
           writeLines("No project", file)
           return()
         }
+        ids <- shiny::isolate(marculus_ids_rv())
+        # La selection ne sert qu'une fois : remise a vide apres le
+        # telechargement, pour qu'un clic ulterieur ne reparte pas dessus.
+        on.exit(marculus_ids_rv(character(0)), add = TRUE)
+        if (length(ids) == 0L) {
+          shiny::showNotification(i18n$t("marculus_choix_rien"),
+                                  type = "warning", duration = 10)
+          writeLines("", file)
+          return()
+        }
         res <- tryCatch(
-          marculus_export_bundle_choix(
-            pid, file, ids_actions = shiny::isolate(marculus_ids_rv())),
+          marculus_export_bundle_choix(pid, file, ids_actions = ids),
                         error = function(e) {
                           cli::cli_warn("Export Marculus : {conditionMessage(e)}")
                           structure(list(erreur = conditionMessage(e)),
