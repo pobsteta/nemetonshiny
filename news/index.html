@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9020</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9021</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,28 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="2026.11.6.9020" id="nemetonshiny-20261169020-en-développement">nemetonshiny 2026.11.6.9020 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169020-en-d%C3%A9veloppement"></a></h2>
-<p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077 et 080).</p>
+<h2 class="pkg-version" data-toc-text="2026.11.6.9021" id="nemetonshiny-20261169021-en-développement">nemetonshiny 2026.11.6.9021 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169021-en-d%C3%A9veloppement"></a></h2>
+<p>Demande le cœur <strong>nemeton &gt;= 2026.11.44</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078 et 080).</p>
 <div class="section level3">
-<h3 id="changements-2026-11-6-9020">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9020"></a></h3>
+<h3 id="changements-2026-11-6-9021">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9021"></a></h3>
 <ul><li>
+<strong>Vue « Ce que les modèles voient » : les sondes d’embedding</strong> (mission 078, écart n° 25 du <code>PLAN.md</code> du cœur ; cœur 2026.11.3, spec 066 § 6). Aucune logique métier : R², lecture, statut et <code>source_commune</code> viennent de <code><a href="https://pobsteta.github.io/nemeton/reference/probe_indicator.html" class="external-link">nemeton::probe_indicator()</a></code>.
+<ul><li>
+<strong>Où</strong> : une carte sous « l’effet de la gestion », dans l’onglet Synthèse (la spec 066 ne place pas la vue ; choix à confirmer par Pascal). Un bouton « Sonder les indicateurs » lance le calcul à la demande (<code>ExtendedTask</code>, bouton lié à la tâche, toast de progression).</li>
+<li>
+<strong>Entrées</strong> : les indicateurs déjà calculés du projet (colonnes <code>indicateur_*</code> renommées par code, statuts <code>.xx_status</code> en <code>xx_status</code>) et l’embedding AlphaEarth <strong>déjà en cache</strong> (<code>cache/layers/aef/courant.json</code>, mission 080) : la vue ne télécharge rien. <strong>L’option AlphaEarth du projet est respectée</strong> (décision de Pascal du 2026-11-26) : option éteinte (ou paquet absent, <code>project_aef_active()</code> faux), la vue ne sonde pas même si un ancien cache existe, dit « Activez AlphaEarth dans Sources &amp; paramètres » et n’appelle pas le cœur. L’année de l’embedding est dite au-dessus du bouton.</li>
+<li>
+<strong>Table</strong> triée par R² décroissant, sondes non calculées à la suite : indicateur, famille, nombre d’UGF, R² en validation croisée, RMSE, lecture (« Le modèle le voit » / « en partie » / « Angle mort du modèle », ou le statut du cœur traduit : trop peu d’UGF, aucune variation, indicateur absent) et colonne « Source commune » (« Oui : le R² ne prouve rien » pour C2, B4, L3, A1, R5, T2 d’après le cœur). Sous la table : les seuils 0,5 et 0,2 donnés comme des conventions, le piège de la source commune et la mention « une sonde est un diagnostic, pas un estimateur ».</li>
+<li>
+<strong>Sans embedding en cache</strong> : message (activer la source dans Sources &amp; paramètres puis relancer le calcul), aucune table, aucun appel au cœur. <strong>Erreur du cœur</strong> (par exemple toutes les UGF dans un seul bloc de 2 km) : message, pas de plantage, rien en cache.</li>
+<li>
+<strong>Cache par projet</strong> : <code>cache/sondes/courant.rds</code>, valable tant que les valeurs des indicateurs, les géométries, l’embedding (fichier, taille, date, année) et la version du cœur sont les mêmes ; un second clic relit le cache sans rappeler le cœur. Si les données changent après le calcul, la table disparaît et l’écran dit de relancer.</li>
+<li>
+<strong>Refactor</strong> : <code>.aef_relire_cache()</code> (relecture du cache AlphaEarth) est extrait de <code>build_aef_layer()</code>, sans changement de comportement.</li>
+<li>
+<strong>Limites</strong> : l’embedding est celui d’AlphaEarth seul (MAESTRO et ForPT ne sont pas encore branchés dans l’app) ; les paramètres du cœur (blocs de 2 km, 5 plis, 50 UGF minimum) ne sont pas exposés ; le critère n° 3 de la spec 066 (table AlphaEarth sur un projet réel d’au moins 50 UGF) reste à lancer sur le poste de Pascal.</li>
+</ul></li>
+<li>
 <strong>Source d’embedding AlphaEarth : N5 se calcule, B4/L3 passent en mode embedding, le badge « Embedding ML » s’allume</strong> (mission 080, décision de Pascal du 2026-11-26 ; suite de la 077). Aucune logique métier : <code><a href="https://rdrr.io/pkg/alphaearthnemeton/man/aef_fetch.html" class="external-link">alphaearthnemeton::aef_fetch()</a></code> rend l’embedding, le cœur calcule.
 <ul><li>
 <strong>Option « Embedding AlphaEarth » dans Sources &amp; paramètres, éteinte par défaut</strong> (<code>metadata$aef$enabled</code>). Au calcul, <code>aef_fetch(aoi, years = NULL, crs = 2154, cache_dir = &lt;projet&gt;/cache/layers/aef)</code> prend l’année la plus récente disponible sur l’emprise des UGF ; la couche passe au cœur comme <code>aef_embedding</code>, <code>embedding_source = "aef"</code> est posé (attribut et métadonnées : <code>detect_ndp()</code> rend <code>embedding_ml</code>), N5 entre dans la liste des indicateurs (en dernier ; <code>N1</code> lui est donné par <code>.COMPOSANTES_LUES</code>) et B4/L3 reçoivent <code>embedding =</code>.</li>
@@ -148,7 +165,7 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="corrections-2026-11-6-9020">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9020"></a></h3>
+<h3 id="corrections-2026-11-6-9021">Corrections<a class="anchor" aria-label="anchor" href="#corrections-2026-11-6-9021"></a></h3>
 <ul><li><p><strong>Tableau des actions : l’étape « Indicateurs » dit le même nombre que le calcul</strong> (<code>R/service_pipeline.R</code>, signalé par Pascal le 2026-11-25 : 37 dans le tableau, 36 dans « Calcul en cours »). Le compte reste lu sur les colonnes du projet (mission 048), mais seules comptent celles des indicateurs que le calcul traite (<code>list_available_indicators()</code>) : une colonne laissée par un ancien calcul (par exemple A5 après désactivation de sa source) n’est plus comptée.</p></li>
 <li><p><strong>Planchers de dépendances relevés : <code>shiny (&gt;= 1.8.1)</code>, <code>bslib (&gt;= 0.7.0)</code></strong> (<code>DESCRIPTION</code>). L’app utilise <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> (apparu dans shiny 1.8.1) dans une vingtaine de fichiers et <code><a href="https://rstudio.github.io/bslib/reference/input_task_button.html" class="external-link">bslib::input_task_button()</a></code> / <code>bind_task_button()</code> (apparus dans bslib 0.7.0, 25 appels hors commentaires au 2026-11-25) ; les anciens planchers (1.8.0, 0.6.0) laissaient installer une version où l’app ne démarre pas. Un test de contrat vérifie que le plancher déclaré dans <code>DESCRIPTION</code> est au moins la version qui introduit <code>ExtendedTask</code> (shiny 1.8.1) et <code>input_task_button()</code> / <code>bind_task_button()</code> (bslib 0.7.0) ; il ne vérifie pas que chaque fonction utilisée existe dans la version plancher.</p></li>
 <li><p><strong>Inventaire vidéo : la vue reprend le plan d’échantillonnage régénéré</strong> (<code>R/mod_inventaire_video.R</code>). La liste et la carte des placettes lisaient <code>data/samples.gpkg</code> une seule fois, à l’ouverture du projet : un plan régénéré dans « Export terrain » n’apparaissait qu’après avoir rouvert le projet. La vue relit maintenant le plan à chaque incrément de <code>app_state$samples_refresh</code> et ne le remplace que s’il a changé : un enregistrement d’une autre couche (observations du plan d’actions, reGénération) ne remet ni la sélection ni la carte à zéro.</p></li>
@@ -157,7 +174,7 @@
 <li><p><strong>Étape « Indicateurs » de la chaîne : le nombre est celui du projet</strong> (mission 048). Le panneau de progression, le rapport final et la modale de choix affichaient « 31 indicateurs, 12 familles » écrit en dur ; ils disent maintenant « Indicateurs (36 indicateurs, 12 familles) » d’après les colonnes calculées du projet (<code>get_indicator_cols()</code>, jumeaux <code>_norm</code> exclus), familles comptées si elles ont au moins un indicateur. Avant tout calcul : « Indicateurs (12 familles) », sans nombre d’indicateurs. Singulier/pluriel gérés en FR et EN. L’aide du NDP ne cite plus « 31 indicateurs » ni « 12 familles ».</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="dépendances-2026-11-6-9020">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9020"></a></h3>
+<h3 id="dépendances-2026-11-6-9021">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-2026-11-6-9021"></a></h3>
 <ul><li>Plancher relevé de 2026.11.42 à <strong>2026.11.44</strong> : les versions 2026.11.42 et 2026.11.43 échouent sur une vraie réponse du CDS (variables scalaires, mission 042).</li>
 <li>Le test de contrat compare désormais la version de <code>nemeton</code> installée au plancher <strong>lu dans <code>DESCRIPTION</code></strong> (et non plus à un chiffre recopié, 2026.11.35), pour que les deux ne divergent plus.</li>
 </ul></div>
