@@ -1089,3 +1089,97 @@ test_that(".marculus_nom_fichier rend un nom de fichier sur (audit 1.0)", {
   expect_identical(f(NULL, "pid"), "pid")
   expect_identical(f("../../etc", "pid"), "etc")
 })
+
+
+# ---- Choix a l'export (mission 070) ---------------------------------------
+
+.plan_choix <- function() {
+  mk <- function(id, annee, statut, type = "eclaircie")
+    list(id = id, ug_id = "ug_1", type = type, annee_cible = annee,
+         priorite = "haute", statut = statut)
+  list(annee_base = 2026L, actions = list(
+    mk("a2025_faite", 2025L, "realisee"),
+    mk("a2026_afaire", 2026L, "validee"),
+    mk("a2026_faite", 2026L, "realisee"),
+    mk("a2027_afaire", 2027L, "proposee"),
+    mk("a2027_abandon", 2027L, "abandonnee"),
+    mk("plantation", 2027L, "proposee", type = "plantation")))
+}
+
+test_that("la presélection coche l'annee en cours et les suivantes non faites", {
+  ids <- nemetonshiny:::marculus_selection_defaut(
+    .plan_choix(), aujourd_hui = as.Date("2026-06-15"))
+  expect_identical(ids, c("a2026_afaire", "a2027_afaire"))
+})
+
+test_that("la presélection suit la date injectee et lit les decalages", {
+  plan <- .plan_choix()
+  expect_identical(
+    nemetonshiny:::marculus_selection_defaut(plan, aujourd_hui = as.Date("2027-01-02")),
+    "a2027_afaire")
+  # annee_cible est un decalage depuis annee_base quand il est petit
+  plan2 <- list(annee_base = 2026L, actions = list(
+    list(id = "x", ug_id = "u", type = "eclaircie", annee_cible = 1L, statut = "validee"),
+    list(id = "y", ug_id = "u", type = "eclaircie", annee_cible = 0L, statut = "validee")))
+  expect_identical(
+    nemetonshiny:::marculus_selection_defaut(plan2, aujourd_hui = as.Date("2027-03-01")),
+    "x")
+  expect_identical(nemetonshiny:::marculus_selection_defaut(list()), character(0))
+})
+
+test_that("les lignes du dialogue ne portent que les actions eligibles", {
+  l <- nemetonshiny:::marculus_choix_lignes(.plan_choix(), NULL)
+  expect_identical(nrow(l), 5L)
+  expect_identical(l$annee[1:2], c(2025L, 2026L))
+  expect_false("plantation" %in% l$id)
+})
+
+test_that("le filtre garde l'ordre du plan et NULL ne filtre pas", {
+  el <- nemetonshiny:::marculus_eligible_actions(.plan_choix())
+  f <- nemetonshiny:::marculus_filtrer_actions(el, c("a2027_afaire", "a2026_afaire"))
+  expect_identical(vapply(f, function(a) a$id, ""), c("a2026_afaire", "a2027_afaire"))
+  expect_length(nemetonshiny:::marculus_filtrer_actions(el, NULL), 5L)
+  expect_length(nemetonshiny:::marculus_filtrer_actions(el, character(0)), 0L)
+})
+
+test_that("le bundle choisi n'exporte que les actions cochees", {
+  skip_if_not_installed("sf")
+  poly <- function(dx) sf::st_polygon(list(rbind(
+    c(dx, 0), c(dx + 1, 0), c(dx + 1, 1), c(dx, 1), c(dx, 0))))
+  withr::with_tempdir({
+    racine <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = racine),
+      {
+        parcels <- sf::st_sf(
+          id = "p1", section = "A", numero = "1", commune = "1",
+          contenance = 1e4, geometry = sf::st_sfc(poly(0), crs = 4326))
+        pid <- nemetonshiny:::create_project(name = "Lot", parcels = parcels)$id
+        chemin <- nemetonshiny:::get_project_path(pid)
+        jsonlite::write_json(list(
+          version = 1L, project_id = pid, horizon_annees = 20L,
+          actions = list(
+            list(id = "a1", ug_id = "ug_1", type = "eclaircie",
+                 annee_cible = 2028L, priorite = "haute", statut = "validee"),
+            list(id = "a2", ug_id = "ug_1", type = "coupe_rase",
+                 annee_cible = 2030L, priorite = "basse", statut = "proposee")),
+          audit = list()),
+          file.path(chemin, "data", "action_plan.json"), auto_unbox = TRUE)
+        z <- file.path(racine, "choix.zip")
+        res <- nemetonshiny:::marculus_export_bundle_choix(
+          pid, z, ids_actions = "a2")
+        expect_equal(res$n_contexts, 1L)
+        d <- file.path(racine, "ouvert")
+        dir.create(d)
+        utils::unzip(z, exdir = d)
+        ms <- list.files(d, pattern = "[.]marsync$", full.names = TRUE)
+        j <- jsonlite::fromJSON(ms, simplifyVector = FALSE)
+        expect_length(j$contextes, 1L)
+        expect_length(list.files(d, pattern = "[.]gpkg$"), 1L)
+        # rien de coche : rien n'est construit
+        res0 <- nemetonshiny:::marculus_export_bundle_choix(
+          pid, file.path(racine, "zero.zip"), ids_actions = character(0))
+        expect_equal(res0$n_contexts, 0L)
+      })
+  })
+})

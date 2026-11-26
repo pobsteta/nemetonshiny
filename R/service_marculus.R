@@ -1161,6 +1161,56 @@ marculus_eligible_actions <- function(plan) {
   }, actions)
 }
 
+#' Rows of the Marculus export dialog
+#'
+#' @param plan The action plan.
+#' @param project The project (for the UGF labels), may be `NULL`.
+#' @return A data frame: `id`, `ug`, `type`, `annee` (calendar year, `NA`
+#'   when unreadable), `statut`; one row per eligible action, in plan order.
+#' @noRd
+marculus_choix_lignes <- function(plan, project = NULL) {
+  actions <- marculus_eligible_actions(plan %||% list())
+  base <- action_plan_annee_base(plan)
+  chr <- function(f) vapply(actions, f, character(1))
+  data.frame(
+    id = chr(function(a) as.character(a$id %||% "")),
+    ug = chr(function(a) .marculus_ug_label(project, a$ug_id)),
+    type = chr(function(a) as.character(a$type %||% "")),
+    annee = vapply(actions, function(a)
+      .marculus_annee_civile(a$annee_cible, base = base), integer(1)),
+    statut = chr(function(a) as.character(a$statut %||% "")),
+    stringsAsFactors = FALSE)
+}
+
+#' Statuses of an action that is over (nothing left to do on the ground)
+#' @noRd
+MARCULUS_STATUTS_TERMINES <- c("realisee", "abandonnee")
+
+#' Actions ticked by default in the Marculus export dialog
+#'
+#' @description
+#' The marker only takes to the field what is still to do: the eligible
+#' actions of the current year and of the following years, whose status is not
+#' over (`realisee`, `abandonnee`). An action whose year cannot be read is
+#' kept (ticked): losing it silently would cost more than showing it.
+#'
+#' @param plan The action plan.
+#' @param aujourd_hui Date. "Today", injectable for the tests.
+#' @return Character vector of the ids of the actions to tick.
+#' @noRd
+marculus_selection_defaut <- function(plan, aujourd_hui = Sys.Date()) {
+  actions <- marculus_eligible_actions(plan %||% list())
+  if (length(actions) == 0L) return(character(0))
+  annee_courante <- as.integer(format(as.Date(aujourd_hui), "%Y"))
+  base <- action_plan_annee_base(plan)
+  garde <- vapply(actions, function(a) {
+    if ((a$statut %||% "") %in% MARCULUS_STATUTS_TERMINES) return(FALSE)
+    annee <- .marculus_annee_civile(a$annee_cible, base = base)
+    is.na(annee) || annee >= annee_courante
+  }, logical(1))
+  vapply(actions[garde], function(a) as.character(a$id %||% ""), character(1))
+}
+
 #' Build the whole Marculus bundle of a project
 #'
 #' @description
@@ -1180,6 +1230,35 @@ marculus_eligible_actions <- function(plan) {
 #'   ([.marculus_tarifs_comptes()]).
 #' @noRd
 marculus_export_bundle <- function(project_id, file, essences = NULL) {
+  marculus_export_bundle_choix(project_id, file, essences = essences,
+                               ids_actions = NULL)
+}
+
+#' Keep the actions whose id is in a selection
+#'
+#' @param actions List of actions.
+#' @param ids Character vector of ids, or `NULL` for no filtering.
+#' @return The kept actions, in plan order.
+#' @noRd
+marculus_filtrer_actions <- function(actions, ids) {
+  if (is.null(ids)) return(actions)
+  Filter(function(a) as.character(a$id %||% "") %in% as.character(ids), actions)
+}
+
+#' Build the Marculus bundle of the chosen actions only
+#'
+#' @description
+#' Same bundle as [marculus_export_bundle()], restricted to the actions the
+#' user ticked in the export dialog. Kept apart so that the signature of
+#' `marculus_export_bundle()`, pinned by the nemetonmcp contract, does not move.
+#'
+#' @param project_id,file,essences As [marculus_export_bundle()].
+#' @param ids_actions Character vector of action ids to export. `NULL` keeps
+#'   every eligible action; `character(0)` exports nothing.
+#' @return As [marculus_export_bundle()].
+#' @noRd
+marculus_export_bundle_choix <- function(project_id, file, essences = NULL,
+                                         ids_actions = NULL) {
   project <- load_project(project_id)
   plan    <- load_action_plan(project_id)
   vide    <- list(n_contexts = 0L, n_gpkg = 0L, has_desserte = FALSE)
@@ -1194,6 +1273,7 @@ marculus_export_bundle <- function(project_id, file, essences = NULL) {
   }
 
   actions <- marculus_eligible_actions(plan)
+  actions <- marculus_filtrer_actions(actions, ids_actions)
   if (length(actions) == 0L) return(invisible(vide))
   annee_base <- action_plan_annee_base(plan)
 
