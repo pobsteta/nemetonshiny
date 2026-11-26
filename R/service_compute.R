@@ -380,6 +380,12 @@ list_available_indicators <- function(metadata = NULL) {
   if (project_lst_enabled(metadata)) {
     base <- c(base, "indicateur_a5_rafraichissement")
   }
+  # N5 distance a la reference (embedding AlphaEarth, spec 064) : source
+  # FACULTATIVE, eteinte par defaut et sans effet sans le paquet. En DERNIER :
+  # sa reference par defaut lit N1 / N2 deja calcules.
+  if (project_aef_active(metadata)) {
+    base <- c(base, "indicateur_n5_distance_reference")
+  }
   base
 }
 
@@ -930,6 +936,22 @@ start_computation <- function(project_id,
     if (length(layers$warnings) > 0) {
       state$errors <- c(state$errors, layers$warnings)
       report_progress(state)
+    }
+
+    # Embedding AlphaEarth (spec 064, mission 080) : source facultative, eteinte
+    # par defaut. Pose `layers$rasters$aef_embedding` et
+    # `layers$embedding_source = "aef"` ; un echec ne bloque pas le calcul
+    # (N5 sort alors `skipped_no_embedding`), il est remonte a l'interface.
+    if (project_aef_active(projet_for_ug$metadata) && !is_cancelled(project_id)) {
+      state$current_task <- "aef_embedding"
+      report_progress(state)
+      aef_out <- .aef_etape(layers, compute_unit, project_path,
+                            projet_for_ug$metadata)
+      layers <- aef_out$layers
+      if (length(aef_out$warnings) > 0) {
+        state$errors <- c(state$errors, aef_out$warnings)
+        report_progress(state)
+      }
     }
 
     # Tag compute_unit with the CHM provenance so nemeton::detect_ndp()
@@ -5371,6 +5393,14 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("forms_t" %in% func_args) {
       ft <- resolve_raster_layer(layers, "forms_t")
       if (!is.null(ft)) args$forms_t <- ft
+    }
+    # Embedding de modele de fondation (spec 064) -> N5, B4, L3 : couche
+    # `aef_embedding` posee par .aef_etape(). Absente -> rien n'est passe et le
+    # coeur garde son comportement (N5 `skipped_no_embedding`, B4/L3 sans
+    # embedding).
+    if ("embedding" %in% func_args) {
+      emb <- resolve_raster_layer(layers, "aef_embedding")
+      if (!is.null(emb)) args$embedding <- emb
     }
     if ("buffer_m" %in% func_args && !is.null(layers$lst_buffer_m)) {
       args$buffer_m <- layers$lst_buffer_m
