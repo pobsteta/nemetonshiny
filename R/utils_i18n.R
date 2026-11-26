@@ -4256,6 +4256,7 @@ TRANSLATIONS <- list(
   sd_col_n = list(fr = "UGF", en = "Units"),
   sd_col_r2 = list(fr = "R\u00b2 (validation crois\u00e9e)", en = "R\u00b2 (cross-validated)"),
   sd_col_rmse = list(fr = "Erreur (RMSE, points sur 0-100)", en = "Error (RMSE, points on 0-100)"),
+  sd_aef_eteint = list(fr = "Activez AlphaEarth dans Sources & param\u00e8tres pour sonder les indicateurs.", en = "Switch AlphaEarth on in Sources & parameters to probe the indicators."),
   sd_reponse_inattendue = list(fr = "R\u00e9ponse inattendue du c\u0153ur.", en = "Unexpected answer from the core."),
   sd_col_lecture = list(fr = "Lecture", en = "Reading"),
   sd_col_commune = list(fr = "Source commune", en = "Shared source"),

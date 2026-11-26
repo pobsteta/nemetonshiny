@@ -51,7 +51,11 @@ mod_sondes_embedding_server <- function(id, app_state) {
     indicators_r <- shiny::reactive(app_state$current_project$indicators_sf)
     chemin_r <- shiny::reactive(app_state$current_project$path)
     unites_r <- shiny::reactive(sondes_unites(indicators_r()))
-    embedding_r <- shiny::reactive(sondes_embedding(indicators_r(), chemin_r()))
+    # Option AlphaEarth du projet (Sources & parametres) : eteinte, la vue ne
+    # sonde pas, meme si un ancien cache existe.
+    actif_r <- shiny::reactive(isTRUE(project_aef_active(app_state$current_project$metadata)))
+    embedding_r <- shiny::reactive(
+      if (actif_r()) sondes_embedding(indicators_r(), chemin_r()) else NULL)
     signature_r <- shiny::reactive(sondes_signature(unites_r(), embedding_r()))
 
     # Tache longue : worker `future` (jamais dans la boucle Shiny).
@@ -106,6 +110,11 @@ mod_sondes_embedding_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("sd_no_data"), type = "warning", duration = 8)
         return()
       }
+      if (!shiny::isolate(actif_r())) {
+        # Option eteinte : message, aucun appel au coeur.
+        shiny::showNotification(i18n$t("sd_aef_eteint"), type = "warning", duration = 8)
+        return()
+      }
       emb <- shiny::isolate(embedding_r())
       if (is.null(emb)) {
         # Sans embedding : message, aucun appel au coeur.
@@ -155,7 +164,10 @@ mod_sondes_embedding_server <- function(id, app_state) {
       emb <- embedding_r()
       htmltools::tagList(
         htmltools::p(class = "text-muted", i18n$t("sd_intro")),
-        if (is.null(emb)) {
+        if (!actif_r()) {
+          htmltools::div(class = "alert alert-info", shiny::icon("circle-info"), " ",
+                         i18n$t("sd_aef_eteint"))
+        } else if (is.null(emb)) {
           htmltools::div(class = "alert alert-info", shiny::icon("circle-info"), " ",
                          i18n$t("sd_no_embedding"))
         } else if (!is.na(emb$annee)) {

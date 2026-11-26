@@ -71,7 +71,9 @@ withr::local_options(nemetonshiny.sondes_inline = TRUE,
 
 .sd_mocks <- function(env = parent.frame()) {
   testthat::local_mocked_bindings(
-    get_app_options = function() list(language = "fr"), .package = "nemetonshiny", .env = env)
+    get_app_options = function() list(language = "fr"),
+    project_aef_active = function(metadata) TRUE,
+    .package = "nemetonshiny", .env = env)
   testthat::local_mocked_bindings(
     showNotification = function(...) invisible("id"),
     removeNotification = function(...) invisible(NULL),
@@ -386,7 +388,8 @@ test_that("la notification de progression est retiree sous le meme id (succes et
   for (mode in c("succes", "erreur")) {
     ids_posees <- character(0); ids_retirees <- character(0)
     testthat::local_mocked_bindings(
-      get_app_options = function() list(language = "fr"), .package = "nemetonshiny")
+      get_app_options = function() list(language = "fr"),
+      project_aef_active = function(metadata) TRUE, .package = "nemetonshiny")
     testthat::local_mocked_bindings(
       showNotification = function(ui, id = NULL, ...) {
         if (!is.null(id)) ids_posees <<- c(ids_posees, id); invisible("id") },
@@ -478,4 +481,47 @@ test_that("integration : vrai probe_indicator sur 60 UGF et un raster de 64 band
   expect_equal(t$lecture[t$code == "B2"], "angle_mort")
   tab <- nemetonshiny:::sondes_tableau(t, nemetonshiny:::get_i18n("fr"))
   expect_equal(sub(" - .*$", "", tab[[1]]), c("B1", "B2"))
+})
+
+# --- 9. Option AlphaEarth respectee (decision de Pascal du 2026-11-26) -------------------
+
+test_that("option eteinte + cache present : message, aucun appel au coeur, pas de table", {
+  appele <- FALSE
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    project_aef_active = function(metadata) FALSE,
+    .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    probe_indicator = function(...) { appele <<- TRUE; .sd_table() }, .package = "nemeton")
+  notes <- character(0)
+  testthat::local_mocked_bindings(
+    showNotification = function(ui, ...) { notes <<- c(notes, as.character(ui)); invisible("id") },
+    removeNotification = function(...) invisible(NULL), .package = "shiny")
+  i18n <- nemetonshiny:::get_i18n("fr")
+  projet <- .sd_projet(TRUE)
+  expect_false(is.null(nemetonshiny:::sondes_embedding(projet$indicators_sf, projet$path)))
+  shiny::testServer(nemetonshiny:::mod_sondes_embedding_server,
+                    args = list(app_state = .sd_state(projet)), {
+    expect_match(output$intro$html, "Activez AlphaEarth dans Sources", fixed = TRUE)
+    session$setInputs(run = 1L)
+    .sd_attendre(session, 5L)
+    expect_false(appele)
+    expect_true(i18n$t("sd_aef_eteint") %in% notes)
+    expect_null(output$tableau)
+    expect_equal(session$returned$status(), "initial")
+  })
+})
+
+test_that("option active + cache present : le coeur est appele", {
+  .sd_mocks()   # project_aef_active = TRUE
+  appele <- 0L
+  testthat::local_mocked_bindings(
+    probe_indicator = function(...) { appele <<- appele + 1L; .sd_table() }, .package = "nemeton")
+  shiny::testServer(nemetonshiny:::mod_sondes_embedding_server,
+                    args = list(app_state = .sd_state(.sd_projet(TRUE))), {
+    session$setInputs(run = 1L)
+    .sd_attendre(session)
+    expect_equal(appele, 1L)
+    expect_match(output$tableau, "C2 - ", fixed = TRUE)
+  })
 })
