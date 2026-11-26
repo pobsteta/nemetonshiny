@@ -88,19 +88,22 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
 #' `essence`, `pente_pct`, `desserte_m`. Une colonne que le projet n'a pas est
 #' **laissee absente** : le coeur rend alors `donnee_manquante` pour les
 #' itineraires qui l'exigent, au lieu d'une valeur inventee. La distance de
-#' desserte (spec 065 D-3) n'est aujourd'hui calculee nulle part dans l'app :
-#' elle n'est lue que si le projet porte deja `desserte_m`.
+#' desserte (spec 065 D-3) et la pente ne sont lues ici que si le projet porte
+#' deja `desserte_m` / `pente_pct` ; sinon [.itin_donnees_projet()] les tire des
+#' caches du projet (mission 069).
 #'
 #' @param project Projet courant (liste avec `indicators_sf` ou `indicators`).
-#' @return Une liste `unites` (data.frame sans geometrie, ou `NULL`) et
+#' @return Une liste `unites` (data.frame sans geometrie, ou `NULL`),
+#'   `geometrie` (`sfc` des UGF dans le meme ordre, ou `NULL`) et
 #'   `desserte` (logical : la colonne `desserte_m` est-elle renseignee ?).
 #' @noRd
 .itin_unites <- function(project) {
   src <- project$indicators_sf
   if (is.null(src) || !is.data.frame(src)) src <- project$indicators
   if (is.null(src) || !is.data.frame(src) || nrow(src) == 0L) {
-    return(list(unites = NULL, desserte = FALSE))
+    return(list(unites = NULL, geometrie = NULL, desserte = FALSE))
   }
+  geom <- if (inherits(src, "sf")) sf::st_geometry(src) else NULL
   if (inherits(src, "sf")) src <- sf::st_drop_geometry(src)
   src <- as.data.frame(src, stringsAsFactors = FALSE)
   col_id <- intersect(c("ug_id", "id", "nemeton_id"), names(src))[1]
@@ -123,8 +126,194 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
   if (!is.null(des)) u$desserte_m <- suppressWarnings(as.numeric(des))
   actuel <- pris("itineraire_actuel")
   if (!is.null(actuel)) u$itineraire_actuel <- as.character(actuel)
-  list(unites = u,
+  list(unites = u, geometrie = geom,
        desserte = !is.null(des) && any(is.finite(suppressWarnings(as.numeric(des)))))
+}
+
+
+# ---- Donnees tirees des caches du projet (mission 069) ------------------------
+
+#' Premier fichier existant parmi des candidats
+#' @noRd
+.itin_premier_fichier <- function(dossier, noms) {
+  f <- file.path(dossier, noms)
+  f <- f[file.exists(f)]
+  if (length(f)) f[1] else NULL
+}
+
+#' Signature d'un fichier de cache (chemin, taille, date) ou `NULL`
+#' @noRd
+.itin_sig_fichier <- function(f) {
+  if (is.null(f) || !file.exists(f)) return(NULL)
+  i <- file.info(f)
+  paste(normalizePath(f, mustWork = FALSE), i$size, format(i$mtime, "%Y%m%d%H%M%OS3"))
+}
+
+#' Empreinte des UGF (identifiants et geometries)
+#' @noRd
+.itin_sig_ugf <- function(ids, geom) {
+  rlang::hash(list(as.character(ids), sf::st_as_text(geom), sf::st_crs(geom)$input))
+}
+
+#' MNT deja en cache du projet
+#'
+#' Le MNT LiDAR HD (mosaique) quand il existe, sinon le MNT IGN BD ALTI : l'ordre
+#' de `download_layers_for_parcels()`, qui promeut le MNT LiDAR au rang de `dem`.
+#' Rien n'est telecharge.
+#' @return Chemin ou `NULL`.
+#' @noRd
+.itin_mnt_cache <- function(project_path) {
+  .itin_premier_fichier(file.path(project_path, "cache", "layers"),
+                        c("lidar_mnt_mosaic.tif", "dem.tif"))
+}
+
+#' Pente moyenne (%) par UGF
+#'
+#' `terra::terrain(v = "slope", unit = "degrees")` sur le MNT recadre sur les UGF,
+#' converti en pourcent (`100 * tan`), puis **moyenne des pixels** de chaque UGF
+#' (`terra::extract`, `exactextractr` n'etant pas une dependance). La moyenne est
+#' celle de la pente en %, pixel par pixel, pas la pente du MNT moyen.
+#'
+#' @param mnt_path Chemin d'un MNT.
+#' @param ugf `sf` des UGF.
+#' @return Numeric (une valeur par UGF, `NA` hors MNT) ou `NULL` si le MNT est
+#'   illisible ou ne couvre aucune UGF.
+#' @noRd
+.itin_pente_ugf <- function(mnt_path, ugf) {
+  tryCatch({
+    r <- terra::rast(mnt_path)[[1]]
+    v <- terra::vect(sf::st_transform(ugf, terra::crs(r)))
+    r <- terra::crop(r, terra::extend(terra::ext(v), 3 * max(terra::res(r))))
+    pct <- 100 * tan(terra::terrain(r, v = "slope", unit = "degrees") * pi / 180)
+    ex <- terra::extract(pct, v, fun = mean, na.rm = TRUE)
+    val <- as.numeric(ex[[2]])
+    val[is.nan(val)] <- NA_real_
+    if (!any(is.finite(val))) NULL else val
+  }, error = function(e) NULL)
+}
+
+#' Reseau de desserte existante deja en cache (vue Desserte)
+#'
+#' Couche `desserte_existante` du GeoPackage du dernier calcul de la vue Desserte
+#' (`cache/desserte/`). Le reseau cree par le moteur est une proposition, pas une
+#' route : il n'est pas compte.
+#' @return `sf` de lignes en Lambert-93 et chemin du GeoPackage, ou `NULL`.
+#' @noRd
+.itin_desserte_cache <- function(project_path) {
+  gpkg <- tryCatch(.desserte_gpkg_courant(.desserte_cache_dir(project_path)),
+                   error = function(e) NULL)
+  if (is.null(gpkg) || !file.exists(gpkg)) return(NULL)
+  lignes <- tryCatch({
+    if (!"desserte_existante" %in% sf::st_layers(gpkg)$name) NULL
+    else sf::st_read(gpkg, layer = "desserte_existante", quiet = TRUE)
+  }, error = function(e) NULL)
+  if (is.null(lignes) || nrow(lignes) == 0L) return(NULL)
+  lignes <- sf::st_zm(lignes, drop = TRUE, what = "ZM")
+  lignes <- lignes[!sf::st_is_empty(lignes), ]
+  if (nrow(lignes) == 0L) return(NULL)
+  list(lignes = sf::st_transform(lignes, 2154), gpkg = gpkg)
+}
+
+#' Distance (m) de chaque UGF a la desserte
+#'
+#' Mesure retenue : distance du **centroide** de l'UGF a la desserte existante la
+#' plus proche (Lambert-93). foretaccess n'expose pas de distance par UGF (ses
+#' sorties sont des rasters de classes de debardage) : la mesure est donc celle de
+#' l'app, dite ici.
+#' @noRd
+.itin_desserte_ugf <- function(ugf, lignes) {
+  tryCatch({
+    c2 <- sf::st_centroid(sf::st_geometry(sf::st_transform(ugf, 2154)))
+    as.numeric(sf::st_distance(c2, sf::st_union(sf::st_geometry(lignes))))
+  }, error = function(e) NULL)
+}
+
+#' Zonages de protection deja telecharges pour B1
+#'
+#' `cache/layers/protected_areas.gpkg` (colonne de type `zone_type`), recoupe a
+#' l'emprise des UGF. Rien n'est telecharge.
+#' @return `sf` ou `NULL`.
+#' @noRd
+.itin_protections_cache <- function(project_path, ugf) {
+  f <- file.path(project_path, "cache", "layers", "protected_areas.gpkg")
+  if (!file.exists(f)) return(NULL)
+  tryCatch({
+    pa <- sf::st_read(f, quiet = TRUE)
+    if (nrow(pa) == 0L ||
+        is.na(intersect(c("type_protection", "zone_type", "type", "statut"), names(pa))[1])) {
+      return(NULL)
+    }
+    pa <- sf::st_zm(pa, drop = TRUE, what = "ZM")
+    pa <- sf::st_transform(pa, sf::st_crs(ugf))
+    pa[lengths(sf::st_intersects(pa, sf::st_union(sf::st_geometry(ugf)))) > 0L, ]
+  }, error = function(e) NULL)
+}
+
+#' Pente, desserte et aires protegees du projet, depuis ses caches
+#'
+#' Ne telecharge rien. Une donnee absente du cache est **absente du resultat**
+#' (`NULL`) : le coeur dit alors « donnee manquante », jamais une valeur inventee.
+#' Pente et desserte, les deux calculs couteux, sont gardees dans
+#' `<projet>/cache/itineraires/donnees_ugf.rds`, chacune sous une cle (fichier
+#' source : chemin, taille, date ; empreinte des UGF) : elles ne sont recalculees
+#' que si le MNT, la desserte ou les UGF ont change. Les aires protegees sont
+#' relues du GeoPackage de B1 (lecture seule, rapide).
+#'
+#' @param project_path Dossier du projet, ou `NULL`.
+#' @param ids Identifiants des UGF.
+#' @param geom `sfc` des UGF (meme ordre que `ids`), ou `NULL`.
+#' @param deja `list(pente = , desserte = )` : colonnes que le projet porte deja
+#'   (non recalculees).
+#' @return Liste `pente`, `desserte` (numeric ou `NULL`), `protections` (`sf` ou
+#'   `NULL`).
+#' @noRd
+.itin_donnees_projet <- function(project_path, ids, geom, deja = list()) {
+  sortie <- list(pente = NULL, desserte = NULL, protections = NULL)
+  if (is.null(project_path) || !nzchar(project_path) || is.null(geom) ||
+      !dir.exists(project_path)) {
+    return(sortie)
+  }
+  ugf <- sf::st_sf(unit_id = as.character(ids), geometry = geom)
+  sig_ugf <- .itin_sig_ugf(ids, geom)
+  f_cache <- file.path(project_path, "cache", "itineraires", "donnees_ugf.rds")
+  cache <- if (file.exists(f_cache)) tryCatch(readRDS(f_cache), error = function(e) list()) else list()
+  if (!is.list(cache)) cache <- list()
+  modifie <- FALSE
+  # Une colonne : relue du cache si sa cle n'a pas change, sinon recalculee.
+  colonne <- function(nom, cle, calcul) {
+    if (is.null(cle)) {
+      if (!is.null(cache[[nom]])) { cache[[nom]] <<- NULL; modifie <<- TRUE }
+      return(NULL)
+    }
+    c0 <- cache[[nom]]
+    if (is.list(c0) && identical(c0$cle, cle) && length(c0$val) == nrow(ugf)) {
+      return(c0$val)
+    }
+    val <- calcul()
+    cache[[nom]] <<- if (is.null(val)) NULL else list(cle = cle, val = val)
+    modifie <<- TRUE
+    val
+  }
+  if (is.null(deja$pente)) {
+    mnt <- .itin_mnt_cache(project_path)
+    sig <- .itin_sig_fichier(mnt)
+    sortie$pente <- colonne("pente", if (is.null(sig)) NULL else paste(sig, sig_ugf),
+                            function() .itin_pente_ugf(mnt, ugf))
+  }
+  if (is.null(deja$desserte)) {
+    d <- .itin_desserte_cache(project_path)
+    sig <- if (is.null(d)) NULL else .itin_sig_fichier(d$gpkg)
+    sortie$desserte <- colonne("desserte", if (is.null(sig)) NULL else paste(sig, sig_ugf),
+                               function() .itin_desserte_ugf(ugf, d$lignes))
+  }
+  if (modifie) {
+    tryCatch({
+      dir.create(dirname(f_cache), recursive = TRUE, showWarnings = FALSE)
+      saveRDS(cache, f_cache)
+    }, error = function(e) NULL, warning = function(w) NULL)
+  }
+  sortie$protections <- .itin_protections_cache(project_path, ugf)
+  sortie
 }
 
 
@@ -162,27 +351,44 @@ ITIN_RAISONS <- c("station_insuffisante", "hors_ser", "essence_absente",
 #' @param catalogue Catalogue (defaut : celui du coeur). Injectable pour les tests.
 #' @return Liste : `statut` (`"ok"`, `"sans_projet"`, `"sans_ugf"`,
 #'   `"noyau_absent"`, `"erreur"`), `admissibles`, `comparaison`, `catalogue`,
-#'   `desserte`, `message` (erreur).
+#'   `desserte` (logical), `donnees` (`c(pente, desserte, protection)`, logical :
+#'   chaque donnee est-elle fournie au coeur ?), `message` (erreur).
 #' @noRd
 itineraires_calculer <- function(project, profil, catalogue = NULL) {
   vide <- function(statut, ...) c(list(statut = statut, admissibles = NULL,
                                        comparaison = NULL, catalogue = NULL,
-                                       desserte = FALSE), list(...))
+                                       desserte = FALSE, donnees = NULL), list(...))
   if (!.itin_noyau_disponible()) return(vide("noyau_absent"))
   if (is.null(project) || is.null(project$id)) return(vide("sans_projet"))
   u <- .itin_unites(project)
   if (is.null(u$unites)) return(vide("sans_ugf"))
   tryCatch({
     if (is.null(catalogue)) catalogue <- nemeton::itineraires_catalogue()
+    deja <- list(pente = u$unites$pente_pct, desserte = if (u$desserte) u$unites$desserte_m)
+    dp <- .itin_donnees_projet(project$path, u$unites$unit_id, u$geometrie, deja)
+    if (!is.null(dp$pente)) u$unites$pente_pct <- dp$pente
+    if (!is.null(dp$desserte)) {
+      u$unites$desserte_m <- dp$desserte
+      u$desserte <- any(is.finite(dp$desserte))
+    }
+    donnees <- c(pente = "pente_pct" %in% names(u$unites) &&
+                   any(is.finite(u$unites$pente_pct)),
+                 desserte = isTRUE(u$desserte),
+                 protection = !is.null(dp$protections))
+    # Les aires protegees exigent des unites `sf` (le coeur les recoupe).
+    unites_core <- if (!is.null(dp$protections) && !is.null(u$geometrie)) {
+      sf::st_sf(u$unites, geometry = u$geometrie)
+    } else u$unites
     adm <- suppressMessages(nemeton::itineraires_admissibles(
-      u$unites, catalogue = catalogue,
+      unites_core, catalogue = catalogue, protected_areas = dp$protections,
       colonnes = list(id = "unit_id", p2 = "P2", ser = "ser", essence = "essence",
                       pente = "pente_pct", desserte = "desserte_m")))
     cmp <- suppressMessages(nemeton::comparer_itineraires(
       u$unites, poids = nemeton::profils_poids(profil), catalogue = catalogue,
       admissibles = adm))
     list(statut = "ok", admissibles = adm, comparaison = cmp,
-         catalogue = catalogue, desserte = u$desserte, unites = u$unites)
+         catalogue = catalogue, desserte = u$desserte, donnees = donnees,
+         unites = u$unites)
   }, error = function(e) {
     vide("erreur", message = conditionMessage(e))
   })

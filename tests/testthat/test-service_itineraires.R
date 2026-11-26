@@ -121,7 +121,7 @@ test_that("sans desserte, la ligne reste avec « donnee manquante »", {
   expect_true(all(d$raison == i18n$t("itin_r_donnee_manquante")))
   expect_true(all(d$etat == i18n$t("itin_etat_manque")))
   html <- .html(res)
-  expect_match(html, i18n$t("itin_desserte_absente"), fixed = TRUE)
+  expect_match(html, i18n$t("itin_don_how_desserte"), fixed = TRUE)
   # avec la colonne desserte_m, le verdict est rendu et la mention disparait
   res2 <- nemetonshiny:::itineraires_calculer(.projet_066(avec_desserte = TRUE),
                                               "profil_naturaliste",
@@ -129,7 +129,7 @@ test_that("sans desserte, la ligne reste avec « donnee manquante »", {
   expect_true(res2$desserte)
   tab2 <- nemetonshiny:::itineraires_table_admissibles(res2$admissibles, res2$catalogue, i18n)
   expect_true(all(tab2$statut[tab2$itineraire == "Libelle x desserte"] == "admissible"))
-  expect_false(grepl(i18n$t("itin_desserte_absente"), .html(res2), fixed = TRUE))
+  expect_false(grepl(i18n$t("itin_don_how_desserte"), .html(res2), fixed = TRUE))
 })
 
 # ---- Cas 3 : le profil change le classement ; un rang, jamais une note ---------
@@ -342,4 +342,156 @@ test_that("les 15 profils ont leur nom complet FR et EN, aucun « Proprietaire �
   expect_true(all(c("Private owner", "Public owner", "Hunter") %in% names(en)))
   cles <- grep("^itin_(prof|d|q|prot)_", names(nemetonshiny:::TRANSLATIONS), value = TRUE)
   expect_true(all(nchar(cles) <= 30L))
+})
+
+
+# ---- Mission 069 : pente, desserte et aires protegees tirees des caches --------
+# Fixtures fabriquees (sans reseau) : un MNT en plan incline, un reseau d'une
+# ligne, une couche de zonages ; deux UGF de 100 m en Lambert-93.
+
+.projet_069 <- function(chemin = NULL) {
+  p <- .projet_066()
+  p$indicators_sf$pente_pct <- NULL            # a tirer du MNT, pas du tableau
+  p$path <- chemin
+  p
+}
+
+.mnt_plan_069 <- function(chemin, pente = 0.10) {
+  r <- terra::rast(xmin = -50, xmax = 350, ymin = -50, ymax = 150,
+                   resolution = 10, crs = "EPSG:2154")
+  xy <- terra::xyFromCell(r, seq_len(terra::ncell(r)))
+  terra::values(r) <- pente * xy[, 1]            # 10 % vers l'est
+  dir.create(file.path(chemin, "cache", "layers"), recursive = TRUE, showWarnings = FALSE)
+  terra::writeRaster(r, file.path(chemin, "cache", "layers", "dem.tif"), overwrite = TRUE)
+}
+
+.reseau_069 <- function(chemin) {
+  # ligne verticale a x = 120 : centroides en x = 50 et x = 250 -> 70 m et 130 m.
+  ligne <- sf::st_sf(id = 1L, geometry = sf::st_sfc(
+    sf::st_linestring(rbind(c(120, -50), c(120, 150))), crs = 2154))
+  d <- file.path(chemin, "cache", "desserte")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  sf::st_write(ligne, file.path(d, "desserte_glouton.gpkg"), layer = "desserte_existante",
+               quiet = TRUE)
+}
+
+.zonages_069 <- function(chemin) {
+  # touche UGF1 seule (x de 80 a 90, dans UGF1) ; type connu du coeur : rnn
+  z <- sf::st_sf(zone_type = "rnn", geometry = sf::st_sfc(
+    sf::st_polygon(list(rbind(c(80, 20), c(90, 20), c(90, 30), c(80, 30), c(80, 20)))),
+    crs = 2154))
+  dir.create(file.path(chemin, "cache", "layers"), recursive = TRUE, showWarnings = FALSE)
+  sf::st_write(z, file.path(chemin, "cache", "layers", "protected_areas.gpkg"), quiet = TRUE)
+}
+
+test_that("069 cas 1 : un plan incline a 10 % donne pente_pct ~ 10 par UGF", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    .mnt_plan_069(getwd())
+    ugf <- .projet_066()$indicators_sf
+    pente <- nemetonshiny:::.itin_pente_ugf(file.path("cache", "layers", "dem.tif"), ugf)
+    expect_length(pente, 2L)
+    expect_equal(pente, c(10, 10), tolerance = 0.5 / 10)
+  })
+})
+
+test_that("069 cas 2 : la distance de desserte est celle du centroide au reseau", {
+  withr::with_tempdir({
+    .reseau_069(getwd())
+    d <- nemetonshiny:::.itin_desserte_cache(getwd())
+    ugf <- .projet_066()$indicators_sf
+    expect_equal(nemetonshiny:::.itin_desserte_ugf(ugf, d$lignes), c(70, 130))
+  })
+})
+
+test_that("069 cas 3 + 5 : le coeur recoit les trois donnees ; l'exclusion tombe sur l'UGF touchee", {
+  skip_si_noyau_ancien()
+  withr::with_tempdir({
+    .mnt_plan_069(getwd()); .reseau_069(getwd()); .zonages_069(getwd())
+    vu <- NULL
+    testthat::local_mocked_bindings(
+      itineraires_admissibles = function(units, catalogue, protected_areas = NULL, colonnes) {
+        vu <<- list(units = units, protected_areas = protected_areas)
+        data.frame(unit_id = "UGF1", itineraire = "production", admissible = TRUE,
+                   raison = NA_character_, detail = NA_character_)
+      },
+      comparer_itineraires = function(...) NULL,
+      .package = "nemeton")
+    res <- nemetonshiny:::itineraires_calculer(.projet_069(getwd()), "profil_naturaliste",
+                                               catalogue = .catalogue_066())
+    expect_equal(res$statut, "ok")
+    expect_s3_class(vu$protected_areas, "sf")
+    expect_s3_class(vu$units, "sf")                        # le coeur recoupe des sf
+    expect_equal(vu$units$pente_pct, c(10, 10), tolerance = 0.05)
+    expect_equal(vu$units$desserte_m, c(70, 130))
+    expect_equal(unname(res$donnees), c(TRUE, TRUE, TRUE))
+  })
+})
+
+test_that("069 cas 3 : avec le vrai coeur, statut_protection sort pour la seule UGF touchee", {
+  skip_si_noyau_ancien()
+  withr::with_tempdir({
+    .mnt_plan_069(getwd()); .reseau_069(getwd()); .zonages_069(getwd())
+    cat <- c(.catalogue_066()[c("production")],
+             list(x_prot = .it("x_prot", domaine = list(protections_exclues = list("rnn")))))
+    res <- nemetonshiny:::itineraires_calculer(.projet_069(getwd()), "profil_naturaliste",
+                                               catalogue = cat)
+    expect_equal(res$statut, "ok")
+    a <- res$admissibles
+    a <- a[a$itineraire == "x_prot", ]
+    expect_equal(a$raison[a$unit_id == "UGF1"], "statut_protection")
+    expect_true(a$admissible[a$unit_id == "UGF2"])
+  })
+})
+
+test_that("069 cas 4 : rien en cache -> colonnes absentes, bandeau « manquant », aucune erreur", {
+  skip_si_noyau_ancien()
+  withr::with_tempdir({
+    res <- nemetonshiny:::itineraires_calculer(.projet_069(getwd()), "profil_naturaliste",
+                                               catalogue = .catalogue_066())
+    expect_equal(res$statut, "ok")
+    expect_false(any(c("pente_pct", "desserte_m") %in% names(res$unites)))
+    expect_equal(unname(res$donnees), c(FALSE, FALSE, FALSE))
+    i18n <- nemetonshiny:::get_i18n("fr")
+    html <- .html(res)
+    expect_match(html, i18n$t("itin_don_how_pente"), fixed = TRUE)
+    expect_match(html, i18n$t("itin_don_how_desserte"), fixed = TRUE)
+    expect_match(html, i18n$t("itin_don_how_protect"), fixed = TRUE)
+    # une UGF sans pente : la ligne reste, en donnee manquante
+    tab <- nemetonshiny:::itineraires_table_admissibles(res$admissibles, res$catalogue, i18n)
+    expect_true(all(tab$statut[tab$itineraire == "Libelle x pente"] == "manquant"))
+  })
+})
+
+test_that("069 bandeau : les trois donnees fournies -> « fournie » trois fois", {
+  skip_si_noyau_ancien()
+  withr::with_tempdir({
+    .mnt_plan_069(getwd()); .reseau_069(getwd()); .zonages_069(getwd())
+    res <- nemetonshiny:::itineraires_calculer(.projet_069(getwd()), "profil_naturaliste",
+                                               catalogue = .catalogue_066())
+    html <- .html(res, "en")
+    expect_equal(lengths(regmatches(html, gregexpr(" : \\s+supplied", html))), 3L)
+    expect_false(grepl("missing \\(", html))
+  })
+})
+
+test_that("069 cache : la pente n'est pas recalculee tant que MNT et UGF ne changent pas", {
+  withr::with_tempdir({
+    .mnt_plan_069(getwd())
+    p <- .projet_069(getwd())
+    u <- nemetonshiny:::.itin_unites(p)
+    n <- 0L
+    testthat::local_mocked_bindings(
+      .itin_pente_ugf = function(mnt_path, ugf) { n <<- n + 1L; c(10, 10) },
+      .package = "nemetonshiny")
+    a <- nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
+    b <- nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
+    expect_equal(n, 1L)
+    expect_equal(a$pente, b$pente)
+    expect_true(file.exists(file.path("cache", "itineraires", "donnees_ugf.rds")))
+    # le MNT change -> recalcul
+    Sys.sleep(1.1); .mnt_plan_069(getwd(), pente = 0.2)
+    nemetonshiny:::.itin_donnees_projet(getwd(), u$unites$unit_id, u$geometrie)
+    expect_equal(n, 2L)
+  })
 })

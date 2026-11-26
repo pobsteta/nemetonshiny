@@ -1934,9 +1934,41 @@ TRANSLATIONS <- list(
     fr = "Catalogue en cours de sour\u00e7age : %d itin\u00e9raire(s) sur %d n'ont pas encore leurs sources et restent exclus.",
     en = "Catalogue being sourced: %d of %d itineraries do not have their sources yet and stay excluded."
   ),
-  itin_desserte_absente = list(
-    fr = "La distance de desserte n'est pas disponible pour ce projet : les itin\u00e9raires qui l'exigent restent en \u00ab donn\u00e9e manquante \u00bb.",
-    en = "Skidding distance is not available for this project: itineraries that require it stay as missing data."
+  itin_don_titre = list(
+    fr = "Donn\u00e9es de terrain fournies aux itin\u00e9raires",
+    en = "Field data supplied to the itineraries"
+  ),
+  itin_don_pente = list(
+    fr = "Pente moyenne de l'UGF",
+    en = "Mean slope of the UGF"
+  ),
+  itin_don_desserte = list(
+    fr = "Distance de desserte",
+    en = "Skidding distance"
+  ),
+  itin_don_protection = list(
+    fr = "Aires prot\u00e9g\u00e9es",
+    en = "Protected areas"
+  ),
+  itin_don_fournie = list(
+    fr = "fournie",
+    en = "supplied"
+  ),
+  itin_don_manque = list(
+    fr = "manquante (les itin\u00e9raires qui l'exigent restent en \u00ab donn\u00e9e manquante \u00bb)",
+    en = "missing (itineraries that require it stay as missing data)"
+  ),
+  itin_don_how_pente = list(
+    fr = "lancez le calcul des indicateurs du projet pour t\u00e9l\u00e9charger le MNT",
+    en = "run the project's indicator computation to download the DEM"
+  ),
+  itin_don_how_desserte = list(
+    fr = "lancez le calcul de la vue Desserte (r\u00e9seau existant)",
+    en = "run the Road network view (existing network)"
+  ),
+  itin_don_how_protect = list(
+    fr = "lancez le calcul des indicateurs du projet (zonages de B1)",
+    en = "run the project's indicator computation (B1 zonings)"
   ),
   itin_aucun_projet = list(
     fr = "Ouvrez un projet pour voir les itin\u00e9raires sylvicoles de ses UGF.",
