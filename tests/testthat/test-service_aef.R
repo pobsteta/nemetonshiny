@@ -330,3 +330,134 @@ test_that("start_computation : source eteinte, rien ne change et le paquet n'est
   expect_null(vu$attr)
   expect_length(vu$erreurs, 0L)
 })
+
+# ---- Relecture : arret, progression, reprise ------------------------------
+
+test_that("arret demande apres les telechargements : AlphaEarth n'est pas appele", {
+  skip_if_not_installed("sf")
+  appels <- 0L
+  temp_dir <- tempfile("nemeton_aef_stop_")
+  project_dir <- file.path(temp_dir, "test_project")
+  dir.create(file.path(project_dir, "data"), recursive = TRUE)
+  geom <- sf::st_sfc(
+    sf::st_polygon(list(matrix(c(0, 0, 0.001, 0, 0.001, 0.001, 0, 0.001, 0, 0),
+                               ncol = 2, byrow = TRUE))), crs = 4326)
+  sf::st_write(sf::st_sf(id = "p1", geometry = geom),
+               file.path(project_dir, "data", "parcels.gpkg"), quiet = TRUE)
+  vu <- new.env()
+  vu$telecharge <- FALSE
+  res <- NULL
+  with_mocked_bindings(
+    get_project_path = function(id) project_dir,
+    get_app_options = function() list(project_dir = temp_dir),
+    clear_cancel = function(id) invisible(NULL),
+    get_computation_progress = function(id) list(computed_indicators = character(0)),
+    update_project_status = function(id, status) invisible(NULL),
+    project_aef_active = function(metadata) TRUE,
+    aef_disponible = function() TRUE,
+    .aef_fetch_fn = function() function(...) { appels <<- appels + 1L; NULL },
+    download_layers_for_parcels = function(parcels, project_path, progress_callback, annule = NULL) {
+      vu$telecharge <- TRUE   # l'arret est demande pendant le telechargement
+      structure(list(rasters = list(), vectors = list(), point_clouds = list(),
+                     bbox = c(0, 0, 1, 1), crs = sf::st_crs(4326),
+                     cache_dir = tempdir(), warnings = list()),
+                class = "nemeton_layers")
+    },
+    is_cancelled = function(id) isTRUE(vu$telecharge),
+    update_project_metadata = function(id, updates, ...) invisible(NULL),
+    {
+      res <- nemetonshiny:::start_computation(
+        "test_project", indicators = "indicateur_c1_biomasse")
+    })
+  expect_identical(appels, 0L)
+  expect_true(isTRUE(res$cancelled))
+})
+
+test_that("N5 compte dans computed_indicators du fichier de progression", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("arrow")
+  d <- tempfile("aef_prog_")
+  dir.create(file.path(d, "data"), recursive = TRUE)
+  g <- sf::st_sfc(
+    sf::st_polygon(list(matrix(c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0), ncol = 2, byrow = TRUE))),
+    crs = 4326)
+  res <- sf::st_sf(id = "p1", indicateur_c1_biomasse = 50,
+                   indicateur_n5_distance_reference = 70, geometry = g)
+  with_mocked_bindings(
+    get_project_path = function(id) d, {
+      expect_true(nemetonshiny:::save_indicators_incremental(
+        "p", res, "indicateur_n5_distance_reference"))
+    })
+  prog <- jsonlite::read_json(file.path(d, "data", "compute_progress.json"),
+                              simplifyVector = TRUE)
+  expect_true("indicateur_n5_distance_reference" %in% prog$computed_indicators)
+  expect_true("indicateur_c1_biomasse" %in% prog$computed_indicators)
+})
+
+# Reprise : colonnes deja remplies, recalcul demande.
+.aef_reprise <- function(etat_stocke, layers) {
+  skip_if_not_installed("sf")
+  d <- tempfile("aef_reprise_")
+  dir.create(file.path(d, "data"), recursive = TRUE)
+  if (!is.null(etat_stocke)) {
+    jsonlite::write_json(list(etat = etat_stocke),
+                         file.path(d, "data", "aef_etat.json"), auto_unbox = TRUE)
+  }
+  unites <- .aef_unites()
+  ind <- c("indicateur_b4_div_spectrale", "indicateur_l3_het_spectrale",
+           "indicateur_c2_ndvi")
+  stocke <- sf::st_drop_geometry(unites)
+  for (i in ind) stocke[[i]] <- 1
+  calcules <- character(0)
+  with_mocked_bindings(
+    get_project_path = function(id) d,
+    load_indicators = function(id) stocke,
+    is_cancelled = function(id) FALSE,
+    compute_single_indicator = function(indicator, parcels, layers) {
+      calcules <<- c(calcules, indicator)
+      rep(2, nrow(parcels))
+    },
+    save_indicators_incremental = function(...) TRUE,
+    {
+      suppressMessages(nemetonshiny:::compute_all_indicators(
+        unites, layers, ind, project_id = "p"))
+    })
+  list(calcules = calcules, etat = jsonlite::read_json(
+    file.path(d, "data", "aef_etat.json"), simplifyVector = TRUE)$etat)
+}
+
+.aef_couches <- function(avec) {
+  l <- structure(list(rasters = list(), vectors = list()), class = "nemeton_layers")
+  if (avec) {
+    r <- terra::rast(nrows = 2, ncols = 2, nlyrs = 2, crs = "EPSG:2154")
+    attr(r, "annee") <- 2025L
+    l$rasters$aef_embedding <- r
+    l$embedding_source <- "aef"
+  }
+  l
+}
+
+test_that("reprise : activer AlphaEarth sur un projet deja calcule recalcule B4 et L3", {
+  skip_if_not_installed("terra")
+  r <- .aef_reprise(NULL, .aef_couches(TRUE))   # pas de marqueur = sans source
+  expect_setequal(r$calcules, c("indicateur_b4_div_spectrale",
+                                "indicateur_l3_het_spectrale"))
+  expect_identical(r$etat, "aef:2025")
+})
+
+test_that("reprise : couper la source, ou changer d'annee, recalcule aussi", {
+  skip_if_not_installed("terra")
+  r <- .aef_reprise("aef:2025", .aef_couches(FALSE))
+  expect_setequal(r$calcules, c("indicateur_b4_div_spectrale",
+                                "indicateur_l3_het_spectrale"))
+  expect_identical(r$etat, "none")
+  r <- .aef_reprise("aef:2024", .aef_couches(TRUE))
+  expect_length(r$calcules, 2L)
+})
+
+test_that("reprise : etat inchange, ou projet sans AlphaEarth, rien n'est recalcule", {
+  skip_if_not_installed("terra")
+  expect_length(.aef_reprise("aef:2025", .aef_couches(TRUE))$calcules, 0L)
+  expect_length(.aef_reprise(NULL, .aef_couches(FALSE))$calcules, 0L)
+  expect_length(.aef_reprise("none", .aef_couches(FALSE))$calcules, 0L)
+})

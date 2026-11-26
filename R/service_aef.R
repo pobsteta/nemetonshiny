@@ -207,3 +207,73 @@ build_aef_layer <- function(aoi, project_path) {
   layers$embedding_source <- "aef"
   list(layers = layers, warnings = list())
 }
+
+
+# ---- Etat AlphaEarth d'un calcul : invalidation de B4 / L3 / N5 -----------
+
+# Indicateurs dont le resultat depend de l'etat de la source.
+.AEF_INDICATEURS <- c("indicateur_b4_div_spectrale", "indicateur_l3_het_spectrale",
+                      "indicateur_n5_distance_reference")
+
+#' AlphaEarth state of a computation, as a string
+#' @param layers `nemeton_layers`.
+#' @return `"none"` without embedding, else `"aef:<year>"` (year `NA` if unknown).
+#' @noRd
+.aef_etat_courant <- function(layers) {
+  src <- layers$embedding_source
+  if (!is.character(src) || length(src) != 1L || is.na(src) || !identical(src, "aef") ||
+      is.null(layers$rasters$aef_embedding)) {
+    return("none")
+  }
+  an <- suppressWarnings(as.integer(attr(layers$rasters$aef_embedding, "annee")))
+  paste0("aef:", if (length(an) == 1L && !is.na(an)) an else "NA")
+}
+
+#' Marker file holding the AlphaEarth state of the stored results
+#' @param project_id Character.
+#' @return Path, or `NULL` when the project has no directory.
+#' @noRd
+.aef_etat_chemin <- function(project_id) {
+  pp <- get_project_path(project_id)
+  if (is.null(pp)) return(NULL)
+  file.path(pp, "data", "aef_etat.json")
+}
+
+#' Stored AlphaEarth state (`"none"` when no marker: projects before the source)
+#' @noRd
+.aef_etat_lire <- function(project_id) {
+  f <- .aef_etat_chemin(project_id)
+  if (is.null(f) || !file.exists(f)) return("none")
+  v <- tryCatch(jsonlite::read_json(f, simplifyVector = TRUE)$etat,
+                error = function(e) NULL)
+  if (is.character(v) && length(v) == 1L && nzchar(v)) v else "none"
+}
+
+#' Record the AlphaEarth state of the results just computed
+#' @noRd
+.aef_etat_ecrire <- function(project_id, etat) {
+  f <- .aef_etat_chemin(project_id)
+  if (is.null(f) || !dir.exists(dirname(f))) return(invisible(FALSE))
+  tryCatch({
+    jsonlite::write_json(list(etat = etat), f, auto_unbox = TRUE)
+    invisible(TRUE)
+  }, error = function(e) invisible(FALSE))
+}
+
+#' B4 / L3 / N5 already computed under another AlphaEarth state
+#'
+#' @description
+#' The resume skips every column that already holds data. Switching the source
+#' on (or off, or to another year) changes what B4, L3 and N5 mean, so they are
+#' recomputed. A project with no marker counts as `"none"`: nothing changes for
+#' projects that never used the source.
+#'
+#' @param project_id Character.
+#' @param computed Character. Indicators considered already computed.
+#' @param etat Character. Current state ([.aef_etat_courant()]).
+#' @return Subset of `computed` to recompute.
+#' @noRd
+.aef_stale <- function(project_id, computed, etat) {
+  if (identical(.aef_etat_lire(project_id), etat)) return(character(0))
+  intersect(computed, .AEF_INDICATEURS)
+}
