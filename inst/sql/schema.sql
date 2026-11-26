@@ -194,7 +194,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_project ON nemeton.comments(project_id);
 
 -- ============================================================
 -- Archives des etats de reGeneration et du plan d'actions
--- (une ligne par version ; creees aussi a la volee par l'application)
+-- (une ligne par version, creees aussi a la volee par l'application)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS nemeton.regeneration_states (
   id           BIGSERIAL PRIMARY KEY,

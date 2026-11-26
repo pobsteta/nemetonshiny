@@ -1,8 +1,13 @@
-# nemetonshiny 2026.11.6.9021 (en développement)
+# nemetonshiny 2026.11.6.9022 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078 et 080).
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080 et 083).
 
 ## Changements
+
+- **Schéma SQL : une virgule de commentaire ne coupe plus l'initialisation ; la mosaïque MNT de la reGénération ne perd plus de dalle en silence** (mission 083). Défaut, pas un choix.
+  - **Cause** : `db_init_schema()` découpait `schema.sql` sur `;` sans retirer les commentaires `--`. Le commentaire de la ligne 197 (« une ligne par version ; creees aussi... ») coupait une instruction, la suite partait en SQL (`syntax error at or near "creees"`), et le `tryCatch` unique arrêtait la boucle : les quatre dernières instructions (tables `nemeton.regeneration_states` et `nemeton.action_plan_states` et leurs deux index) n'étaient jamais exécutées par l'initialisation.
+  - **Correctif** : `.sql_decouper()` retire les commentaires `--` avant de couper ; le `;` du commentaire est aussi retiré de `schema.sql`. Les chaînes SQL du fichier ne contiennent ni `--` ni `;` (vérifié par un test).
+  - **Mosaïque** : `.regen_vrt_dalles()` remplace `terra::vrt()` dans `.regen_grille_pai()` : VRT construit par `sf::gdal_utils("buildvrt")` avec `-allow_projection_difference` (terra 1.7 ne transmet pas l'option), SRS équivalents si `terra::same.crs()` ou chaînes PROJ identiques sans `+towgs84` nul (alignement sur la mission 082 du cœur), erreur nommant la dalle d'un autre système (classe `nemetonshiny_mosaique_srs`), contrôle du nombre de dalles retenues (`nemetonshiny_mosaique_sources`).
 
 - **Vue « Ce que les modèles voient » : les sondes d'embedding** (mission 078, écart n° 25 du `PLAN.md` du cœur ; cœur 2026.11.3, spec 066 § 6). Aucune logique métier : R², lecture, statut et `source_commune` viennent de `nemeton::probe_indicator()`.
   - **Où** : une carte sous « l'effet de la gestion », dans l'onglet Synthèse (la spec 066 ne place pas la vue ; choix à confirmer par Pascal). Un bouton « Sonder les indicateurs » lance le calcul à la demande (`ExtendedTask`, bouton lié à la tâche, toast de progression).

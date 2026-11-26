@@ -721,3 +721,53 @@ test_that(".regen_eobs_monthly_clim limite la climatologie à la fenêtre récen
     eobs_monthly_climatology = function(...) stop("boom"), .package = "nemeton")
   expect_null(nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "rr"))
 })
+
+# ---- Mosaique des dalles MNT (mission 083) ----
+
+.proj_l93_083 <- paste(
+  "+proj=lcc +lat_0=46.5 +lon_0=3 +lat_1=49 +lat_2=44 +x_0=700000",
+  "+y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
+
+.dalle_083 <- function(dir, nom, x0, crs, srs_ecrit = NULL) {
+  r <- terra::rast(nrows = 10, ncols = 10, xmin = x0, xmax = x0 + 100,
+                   ymin = 6e6, ymax = 6e6 + 100, crs = crs)
+  terra::values(r) <- 1
+  f <- file.path(dir, nom)
+  if (is.null(srs_ecrit)) {
+    terra::writeRaster(r, f)
+  } else {
+    tmp <- file.path(dir, paste0("tmp_", nom))
+    terra::writeRaster(r, tmp)
+    sf::gdal_utils("translate", tmp, f, options = c("-a_srs", srs_ecrit), quiet = TRUE)
+    unlink(tmp)
+  }
+  f
+}
+
+test_that(".regen_vrt_dalles garde les deux dalles d'un meme SRS ecrit autrement", {
+  d <- withr::local_tempdir()
+  a <- .dalle_083(d, "a.tif", 0, "EPSG:2154")
+  b <- .dalle_083(d, "b.tif", 100, "EPSG:2154", srs_ecrit = .proj_l93_083)
+  expect_false(terra::same.crs(terra::rast(a), terra::rast(b)))
+  # contre-epreuve : l'ancien appel n'en garde qu'une
+  vieux <- suppressWarnings(terra::vrt(c(a, b)))
+  expect_equal(as.numeric(terra::ext(vieux)[2]), 100)
+  m <- .regen_vrt_dalles(c(a, b))
+  expect_equal(as.numeric(terra::ext(m)[2]), 200)
+})
+
+test_that(".regen_vrt_dalles refuse une dalle d'un autre SRS en la nommant", {
+  d <- withr::local_tempdir()
+  f <- c(.dalle_083(d, "a.tif", 0, "EPSG:2154"),
+         .dalle_083(d, "dalle_wgs.tif", 0, "EPSG:4326"))
+  expect_error(.regen_vrt_dalles(f), "dalle_wgs", class = "nemetonshiny_mosaique_srs")
+})
+
+test_that(".regen_vrt_dalles controle le nombre de dalles retenues", {
+  d <- withr::local_tempdir()
+  f <- c(.dalle_083(d, "a.tif", 0, "EPSG:2154"),
+         .dalle_083(d, "b.tif", 100, "EPSG:2154"))
+  testthat::local_mocked_bindings(.vrt_sources_utilisees = function(...) 1L)
+  expect_error(.regen_vrt_dalles(f), "uses\\s+1\\s+of\\s+2",
+               class = "nemetonshiny_mosaique_sources")
+})

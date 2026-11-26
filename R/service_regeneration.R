@@ -633,6 +633,77 @@ resolve_regen_lidar_grid <- function(project_path) {
   NULL
 }
 
+#' Normalised spelling of a CRS (PROJ string without an all-zero `+towgs84`)
+#'
+#' Internal copy of the core's helper (not exported there).
+#' @noRd
+.srs_normalise <- function(crs_wkt) {
+  if (is.na(crs_wkt) || !nzchar(crs_wkt)) return(NA_character_)
+  p <- terra::crs(crs_wkt, proj = TRUE)
+  if (!nzchar(p)) return(NA_character_)
+  p <- gsub("\\+towgs84=0(,0){6}\\s*", "", p)
+  trimws(gsub("\\s+", " ", p))
+}
+
+#' Do two CRS (WKT) have the same meaning, whatever their spelling?
+#' @noRd
+.srs_deux_equivalents <- function(a, b) {
+  a_vide <- is.na(a) || !nzchar(a)
+  b_vide <- is.na(b) || !nzchar(b)
+  if (a_vide || b_vide) return(a_vide && b_vide)
+  if (isTRUE(terra::same.crs(a, b))) return(TRUE)
+  na <- .srs_normalise(a)
+  nb <- .srs_normalise(b)
+  !is.na(na) && !is.na(nb) && identical(na, nb)
+}
+
+#' Number of distinct source files kept by a VRT
+#' @noRd
+.vrt_sources_utilisees <- function(vrt_path) {
+  x <- readLines(vrt_path, warn = FALSE)
+  m <- regmatches(x, regexpr("(?<=<SourceFilename)[^>]*>[^<]+", x, perl = TRUE))
+  length(unique(sub("^[^>]*>", "", m)))
+}
+
+#' Mosaic of DTM tiles that keeps every tile of one coordinate system
+#'
+#' `terra::vrt()` silently drops the tiles whose CRS spelling differs from the
+#' first one (e.g. Lambert-93 as a PROJ string with a null `+towgs84`), and
+#' terra 1.7.x does not pass `-allow_projection_difference`. The VRT is built
+#' with `sf::gdal_utils("buildvrt")`. A tile in a really different CRS is an
+#' error naming it (class `nemetonshiny_mosaique_srs`); a mosaic that does not
+#' use every file is an error (class `nemetonshiny_mosaique_sources`).
+#'
+#' @param fich Character vector of raster file paths.
+#' @return A `SpatRaster` (VRT).
+#' @noRd
+.regen_vrt_dalles <- function(fich) {
+  fich <- as.character(fich)
+  if (!length(fich)) {
+    cli::cli_abort("No DTM tile to mosaic.")
+  }
+  if (length(fich) == 1L) return(terra::rast(fich))
+  srs <- vapply(fich, function(f) terra::crs(terra::rast(f)), character(1))
+  ok <- vapply(srs, .srs_deux_equivalents, logical(1), b = srs[[1L]])
+  if (!all(ok)) {
+    autres <- fich[!ok]
+    cli::cli_abort(c(
+      "DTM tiles do not share one coordinate system: {length(autres)} of {length(fich)} differ from {.file {basename(fich[[1L]])}}.",
+      x = "Different CRS: {.file {basename(autres)}}."),
+      class = "nemetonshiny_mosaique_srs")
+  }
+  sortie <- tempfile("mosaique_mnt_", fileext = ".vrt")
+  sf::gdal_utils("buildvrt", source = normalizePath(fich, winslash = "/"),
+                 destination = sortie,
+                 options = c("-allow_projection_difference"), quiet = TRUE)
+  n <- .vrt_sources_utilisees(sortie)
+  if (n != length(unique(fich))) {
+    cli::cli_abort("The DTM mosaic uses {n} of {length(unique(fich))} tiles.",
+                   class = "nemetonshiny_mosaique_sources")
+  }
+  terra::rast(sortie)
+}
+
 #' Target grid of the PAI when microclimf does not run (brief lai-lidar)
 #'
 #' `nemeton::pai_depuis_nuage()` needs a target grid. It is built here exactly as
@@ -652,7 +723,7 @@ resolve_regen_lidar_grid <- function(project_path) {
   emprise <- terra::ext(terra::buffer(parc, tampon))
   fich <- list.files(grid$mnt_dir, pattern = "\\.tif$", full.names = TRUE,
                      ignore.case = TRUE)
-  dtm <- terra::crop(terra::vrt(fich), emprise)
+  dtm <- terra::crop(.regen_vrt_dalles(fich), emprise)
   f <- max(1, round(res / terra::res(dtm)[1]))
   if (f > 1) dtm <- terra::aggregate(dtm, f, fun = "mean", na.rm = TRUE)
   names(dtm) <- "dtm"

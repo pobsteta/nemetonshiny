@@ -249,6 +249,22 @@ close_db_connection <- function(con) {
 # Schema Initialization
 # ============================================================
 
+#' Split a SQL script into statements
+#'
+#' Strips `--` comments (to the end of the line) before splitting on `;`, so
+#' that a semicolon written inside a comment cuts nothing. The script is
+#' assumed to hold no string literal containing `--` or `;` (checked by a test
+#' on `inst/sql/schema.sql`); dollar-quoted bodies are not supported.
+#'
+#' @param sql_text Character(1). The script.
+#' @return Character vector of non-empty, trimmed statements (no final `;`).
+#' @noRd
+.sql_decouper <- function(sql_text) {
+  sans_commentaires <- gsub("--[^\n]*", "", sql_text, perl = TRUE)
+  statements <- trimws(strsplit(sans_commentaires, ";", fixed = TRUE)[[1]])
+  statements[nzchar(statements)]
+}
+
 #' Initialize database schema
 #'
 #' Creates the nemeton schema, tables, and indexes if they don't exist.
@@ -276,9 +292,7 @@ db_init_schema <- function(con = NULL) {
   sql_text <- paste(sql, collapse = "\n")
 
   # Executer chaque statement separement
-  statements <- strsplit(sql_text, ";")[[1]]
-  statements <- trimws(statements)
-  statements <- statements[nchar(statements) > 0]
+  statements <- .sql_decouper(sql_text)
 
   # PostgreSQL renvoie une rafale de NOTICEs `... already exists,
   # skipping` quand on rejoue les `CREATE ... IF NOT EXISTS`
@@ -290,8 +304,6 @@ db_init_schema <- function(con = NULL) {
   tryCatch({
     suppressMessages({
       for (stmt in statements) {
-        # Ignorer les commentaires seuls
-        if (grepl("^\\s*--", stmt) && !grepl("CREATE|ALTER|INSERT", stmt)) next
         DBI::dbExecute(con, paste0(stmt, ";"))
       }
     })
