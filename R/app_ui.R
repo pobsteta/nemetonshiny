@@ -327,13 +327,12 @@ mod_synthesis_ui <- function(id) {
   opts <- get_app_options()
   i18n <- get_i18n(opts$language)
 
-  # Deux sous-onglets (mission 084) : la synthese du projet, puis ce que la
-  # gestion a produit sur le massif. Deplacement d'UI seulement : les modules
+  # Trois onglets (mission 084), comme la Selection : la synthese du projet, ce
+  # que la gestion a produit sur le massif, ce que les modeles voient. Deplacement d'UI seulement : les modules
   # gardent leurs identifiants. Les sorties d'un sous-onglet masque restent
   # suspendues jusqu'a son affichage ; les calculs (ExtendedTask) se poursuivent.
-  bslib::navset_card_underline(
+  bslib::navset_card_tab(
     id = ns("synthese_nav"),
-    selected = "synthese_projet",
     bslib::nav_panel(
       title = i18n$t("synthese_sous_projet"),
       value = "synthese_projet",
@@ -661,11 +660,16 @@ mod_synthesis_ui <- function(id) {
       )
     ),
     bslib::nav_panel(
-      title = i18n$t("synthese_sous_gestion"),
+      title = i18n$t("eg_title"),
       value = "gestion_massif",
       icon = bsicons::bs_icon("tree"),
       # Effet de la gestion declaree (mission 067).
-      mod_effet_gestion_ui(ns("effet_gestion")),
+      mod_effet_gestion_ui(ns("effet_gestion"))
+    ),
+    bslib::nav_panel(
+      title = i18n$t("sd_title"),
+      value = "modeles_voient",
+      icon = bsicons::bs_icon("search"),
       # Ce que les modeles de fondation voient des indicateurs (mission 078).
       mod_sondes_embedding_ui(ns("sondes_embedding"))
     )

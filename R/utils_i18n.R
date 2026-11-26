@@ -2698,7 +2698,6 @@ TRANSLATIONS <- list(
   # ============================================================
   synthesis_title = list(fr = "Synth\u00e8se du projet", en = "Project Synthesis"),
   synthese_sous_projet = list(fr = "Synth\u00e8se du projet", en = "Project summary"),
-  synthese_sous_gestion = list(fr = "Gestion sur ce massif", en = "Management on this forest"),
   radar_title = list(fr = "Radar des 12 familles", en = "12 Families Radar"),
   radar_tip_title = list(
     fr = "LIRE LE RADAR N\u00c9M\u00c9TON",
