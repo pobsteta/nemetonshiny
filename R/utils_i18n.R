@@ -2418,6 +2418,55 @@ TRANSLATIONS <- list(
     fr = "L'applicabilit\u00e9 de A5 n'a pas pu \u00eatre \u00e9valu\u00e9e.",
     en = "A5 applicability could not be assessed."
   ),
+  # N5, distance a la reference (spec 064) : causes nommees d'un N5 vide
+  # (`n5_status`), meme mecanique que `r5_skipped_*` (cle `<code>_<statut>`).
+  n5_skipped_no_embedding = list(
+    fr = "Aucun embedding de mod\u00e8le de fondation fourni : N5 n'a pas pu \u00eatre calcul\u00e9.",
+    en = "No foundation-model embedding supplied: N5 could not be computed."
+  ),
+  n5_skipped_no_reference = list(
+    fr = "Aucune r\u00e9f\u00e9rence peu perturb\u00e9e disponible sur cette emprise : N5 n'a pas pu \u00eatre calcul\u00e9.",
+    en = "No low-disturbance reference available over this area: N5 could not be computed."
+  ),
+  n5_skipped_reference_too_small = list(
+    fr = "La r\u00e9f\u00e9rence peu perturb\u00e9e est trop petite pour servir de point de comparaison : N5 n'a pas pu \u00eatre calcul\u00e9.",
+    en = "The low-disturbance reference is too small to serve as a baseline: N5 could not be computed."
+  ),
+  n5_skipped_no_coverage = list(
+    fr = "L'embedding ne couvre pas ces unit\u00e9s : N5 n'a pas pu \u00eatre calcul\u00e9.",
+    en = "The embedding does not cover these units: N5 could not be computed."
+  ),
+  # N5 calcule : la famille N compte un indicateur de plus que sans embedding.
+  n5_calculated = list(
+    fr = "N5 est calcul\u00e9 \u00e0 partir d'un embedding : la famille N compte un indicateur de plus, son score peut donc diff\u00e9rer d'un calcul fait sans embedding.",
+    en = "N5 is computed from an embedding: the N family counts one more indicator, so its score may differ from a run made without an embedding."
+  ),
+  # B4 / L3 : methode de calcul, affichee a cote de la valeur (spec 064).
+  methode_calcul_fmt = list(
+    fr = "M\u00e9thode : %s",
+    en = "Method: %s"
+  ),
+  methode_biodivmapr = list(
+    fr = "biodivMapR (Sentinel-2)",
+    en = "biodivMapR (Sentinel-2)"
+  ),
+  methode_embedding = list(
+    fr = "embedding (mod\u00e8le de fondation)",
+    en = "embedding (foundation model)"
+  ),
+  methode_non_comparable = list(
+    fr = "Les valeurs issues de m\u00e9thodes diff\u00e9rentes ne se comparent pas entre elles.",
+    en = "Values from different methods are not comparable with each other."
+  ),
+  # Badge NDP augmente : embedding de modele de fondation (`embedding_ml`).
+  augmented_embedding_ml_badge = list(
+    fr = "Embedding ML",
+    en = "ML embedding"
+  ),
+  augmented_embedding_ml_tooltip = list(
+    fr = "ML = Machine Learning. Un embedding de mod\u00e8le de fondation (AlphaEarth, MAESTRO ou ForPT) a \u00e9t\u00e9 fourni : B4, L3 et N5 peuvent \u00eatre calcul\u00e9s \u00e0 partir de lui. NDP augment\u00e9 par rapport aux donn\u00e9es publiques de base.",
+    en = "ML = Machine Learning. A foundation-model embedding (AlphaEarth, MAESTRO or ForPT) was supplied: B4, L3 and N5 can be computed from it. Augmented NDP compared to baseline public data."
+  ),
   # Causes nommees d'un R5 vide (`r5_status`, spec 008). Meme mecanique que
   # `a5_skipped_no_lst` : la cle est `<code>_<status>`.
   r5_skipped_no_fordead = list(

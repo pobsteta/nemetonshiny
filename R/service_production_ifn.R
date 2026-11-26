@@ -45,6 +45,15 @@ PRODUCTION_ANNEX_COLS <- list(
   indicateur_e1_bois_energie = c(
     E1_mode = ".e1_mode"
   ),
+  # B4 / L3 (spec 064) : la methode (`biodivmapr`, `embedding` ou NA) qui dit
+  # laquelle des deux echelles la valeur porte ; le statut voyage en
+  # `.b4_status` / `.l3_status` (dont `calculated_embedding`).
+  indicateur_b4_div_spectrale = c(
+    b4_methode = ".b4_methode"
+  ),
+  indicateur_l3_het_spectrale = c(
+    l3_methode = ".l3_methode"
+  ),
   indicateur_t2_changement = c(
     t2_perte_pct       = ".t2_perte_pct",
     t2_croissance_m_an = ".t2_croissance_m_an",

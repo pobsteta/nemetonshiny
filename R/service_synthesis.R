@@ -82,6 +82,28 @@ project_ndp_level <- function(project) {
   as.integer(project$metadata$ndp_level %||% 0L)
 }
 
+#' Augmented-NDP flags of a project (`detect_ndp()$augmented`)
+#'
+#' @description
+#' The flag `embedding_ml` (spec 064) is the core's call: `detect_ndp()` raises
+#' it when the data carries an `embedding_source` (`aef`, `maestro`, `forpt`).
+#' The app keeps that source in the project metadata, as it does `chm_source`,
+#' and hands it to the core on a probe - it never decides the flag itself.
+#'
+#' @param project A project list.
+#' @return Character vector of flags (possibly empty).
+#' @noRd
+project_augmented_flags <- function(project) {
+  src <- project$metadata$embedding_source
+  if (!is.character(src) || length(src) != 1L || is.na(src) || !nzchar(src)) {
+    return(character(0))
+  }
+  probe <- data.frame(x = 1)
+  attr(probe, "embedding_source") <- src
+  as.character(tryCatch(nemeton::detect_ndp(probe)$augmented,
+                        error = function(e) character(0)))
+}
+
 #' Global score of a project (Fibonacci-weighted via the NDP system)
 #'
 #' @param family_means Output of [project_family_means()].

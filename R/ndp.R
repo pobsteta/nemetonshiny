@@ -51,6 +51,27 @@ ndp_badge <- function(ndp, lang = "fr") {
 }
 
 
+#' Badge of the `embedding_ml` augmented-NDP flag
+#'
+#' Same family as the "ML height" badge: shown next to the NDP badge when
+#' `detect_ndp()$augmented` contains `embedding_ml` (foundation-model embedding).
+#'
+#' @param i18n Translator object.
+#' @return An htmltools tag (badge with tooltip).
+#' @noRd
+ndp_embedding_badge <- function(i18n) {
+  bslib::tooltip(
+    htmltools::tags$span(
+      class = "badge text-bg-info",
+      style = "font-size: 0.75rem;",
+      htmltools::HTML("&#9889;"),
+      " ", i18n$t("augmented_embedding_ml_badge")
+    ),
+    i18n$t("augmented_embedding_ml_tooltip")
+  )
+}
+
+
 #' Clamp an NDP level to 0..4 (NA or out of range -> 0)
 #' @noRd
 .ndp_borne <- function(ndp) {

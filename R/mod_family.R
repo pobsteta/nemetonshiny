@@ -203,7 +203,10 @@ mod_family_server <- function(id, family_code, app_state) {
           t2_forms_t_banner(enriched_sf(), ind_cols[i], i18n),
           # T4 vitalite dynamique (spec 068) : accroissement observe / attendu
           # et la reference sur laquelle le score est centre.
-          t4_vitalite_banner(enriched_sf(), ind_cols[i], i18n)
+          t4_vitalite_banner(enriched_sf(), ind_cols[i], i18n),
+          # B4 / L3 (spec 064) : la methode qui a produit la valeur, a lire
+          # avant de la comparer.
+          methode_banner(enriched_sf(), ind_cols[i], i18n)
         )
       })
 
@@ -372,7 +375,10 @@ mod_family_server <- function(id, family_code, app_state) {
       popup_lines <- vapply(ind_cols, function(col) {
         label <- indicator_display_label(full_sf, col, i18n)
         val <- dropped[[col]]
-        sprintf("%s: %s", label, if (is.na(val)) "NA" else round(val, 3))
+        # B4 / L3 : la methode de calcul a cote de la valeur (rien si absente).
+        meth <- .methode_pour_unite(full_sf, dropped, col, i18n)
+        sprintf("%s: %s%s", label, if (is.na(val)) "NA" else round(val, 3),
+                if (nzchar(meth)) paste0(" (", meth, ")") else "")
       }, character(1))
       # Le libelle d'UGF est une saisie de l'utilisateur : echappe.
       popup_html <- paste0("<strong>", htmltools::htmlEscape(ug_label),
@@ -920,6 +926,109 @@ indicator_na_banner <- function(sf_data, ind_col, i18n) {
 
   htmltools::div(
     class = "small text-muted fst-italic px-1 pb-1",
+    bsicons::bs_icon("info-circle", class = "me-1"),
+    txt
+  )
+}
+
+
+#' Methods that can produce a B4 / L3 value
+#'
+#' @description
+#' `b4_methode` / `l3_methode` (spec 064) say which scale a value is on:
+#' `biodivmapr` (Sentinel-2 cube) or `embedding` (foundation model). The
+#' labels are the app's; the codes are the core's.
+#'
+#' @noRd
+.METHODES_B4_L3 <- c(
+  indicateur_b4_div_spectrale = ".b4_methode",
+  indicateur_l3_het_spectrale = ".l3_methode"
+)
+
+
+#' Display label of a B4 / L3 method code
+#'
+#' @param code Character. Method code from the core.
+#' @param i18n Translator object.
+#' @return Label; an unknown code is returned as is, `NA` / empty gives `""`
+#'   (nothing is invented).
+#' @noRd
+.methode_label <- function(code, i18n) {
+  code <- as.character(code)
+  if (length(code) != 1L || is.na(code) || !nzchar(code)) return("")
+  cle <- paste0("methode_", code)
+  if (isTRUE(i18n$has(cle))) i18n$t(cle) else code
+}
+
+
+#' Method of one unit for a B4 / L3 column (`""` otherwise)
+#'
+#' @param full_sf Enriched sf / data.frame carrying the `.b4_methode` annex.
+#' @param unit One-row data.frame of the unit (looked up by `ug_id`).
+#' @param ind_col Indicator column (raw or `_norm`).
+#' @param i18n Translator object.
+#' @noRd
+.methode_pour_unite <- function(full_sf, unit, ind_col, i18n) {
+  col <- .METHODES_B4_L3[sub("_norm$", "", ind_col)]
+  if (is.na(col) || !is.data.frame(full_sf) || !col %in% names(full_sf)) {
+    return("")
+  }
+  ligne <- full_sf
+  if ("ug_id" %in% names(full_sf) && "ug_id" %in% names(unit)) {
+    ligne <- full_sf[full_sf[["ug_id"]] %in% unit[["ug_id"]], , drop = FALSE]
+  }
+  if (nrow(ligne) != 1L) return("")
+  .methode_label(ligne[[col]][1], i18n)
+}
+
+
+#' Can two B4 / L3 values be compared?
+#'
+#' @description
+#' The two methods are on different scales (spec 064; gap no. 6 of the core's
+#' `PLAN.md`): a biodivMapR value and an embedding value never compare. The
+#' ban lifts only when **both** sides are `embedding` - the embedding mode has
+#' fixed bounds that make two projects comparable. No screen compares projects
+#' today; this is the rule such a screen must call.
+#'
+#' @param a,b Method codes (`"biodivmapr"`, `"embedding"` or `NA`).
+#' @return `TRUE` only for `embedding` on both sides.
+#' @noRd
+methodes_comparables <- function(a, b) {
+  identical(as.character(a), "embedding") &&
+    identical(as.character(b), "embedding")
+}
+
+
+#' Banner naming the method behind a B4 / L3 value
+#'
+#' @description
+#' Under the map of B4 or L3: the method that produced the values, and the
+#' reminder that values of different methods do not compare. `NULL` for any
+#' other indicator, and when no unit carries a method (nothing is invented).
+#'
+#' @param data data.frame / sf carrying the `.b4_methode` / `.l3_methode`
+#'   annex columns.
+#' @param ind_col Character. Indicator column (raw or `_norm`).
+#' @param i18n Translator object.
+#'
+#' @return A [htmltools::div] or `NULL`.
+#'
+#' @noRd
+methode_banner <- function(data, ind_col, i18n) {
+  col <- .METHODES_B4_L3[sub("_norm$", "", ind_col)]
+  if (is.na(col) || is.null(data) || !col %in% names(data)) return(NULL)
+  codes <- .annex_values(data, col)
+  if (length(codes) == 0L) return(NULL)
+
+  etiquettes <- vapply(codes, .methode_label, character(1), i18n = i18n,
+                       USE.NAMES = FALSE)
+  txt <- sprintf(i18n$t("methode_calcul_fmt"), paste(etiquettes, collapse = ", "))
+  # Deux methodes dans un meme projet : l'avertissement n'a de sens que la.
+  if (length(codes) > 1L) txt <- paste(txt, i18n$t("methode_non_comparable"))
+
+  htmltools::div(
+    class = "small text-muted px-1 pb-1",
     bsicons::bs_icon("info-circle", class = "me-1"),
     txt
   )
