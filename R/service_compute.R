@@ -380,6 +380,12 @@ list_available_indicators <- function(metadata = NULL) {
   if (project_lst_enabled(metadata)) {
     base <- c(base, "indicateur_a5_rafraichissement")
   }
+  # N5 distance a la reference (embedding AlphaEarth, spec 064) : source
+  # FACULTATIVE, eteinte par defaut et sans effet sans le paquet. En DERNIER :
+  # sa reference par defaut lit N1 / N2 deja calcules.
+  if (project_aef_active(metadata)) {
+    base <- c(base, "indicateur_n5_distance_reference")
+  }
   base
 }
 
@@ -930,6 +936,27 @@ start_computation <- function(project_id,
     if (length(layers$warnings) > 0) {
       state$errors <- c(state$errors, layers$warnings)
       report_progress(state)
+    }
+
+    # Embedding AlphaEarth (spec 064, mission 080) : source facultative, eteinte
+    # par defaut. Pose `layers$rasters$aef_embedding` et
+    # `layers$embedding_source = "aef"` ; un echec ne bloque pas le calcul
+    # (N5 sort alors `skipped_no_embedding`), il est remonte a l'interface.
+    if (project_aef_active(projet_for_ug$metadata) && !is_cancelled(project_id)) {
+      state$current_task <- "aef_embedding"
+      report_progress(state)
+      # Emprise > AEF_SEUIL_KM2 : l'avertissement part AVANT le telechargement.
+      aef_out <- .aef_etape(
+        layers, compute_unit, project_path, projet_for_ug$metadata,
+        prevenir = function(w) {
+          state$errors <<- c(state$errors, list(w))
+          report_progress(state)
+        })
+      layers <- aef_out$layers
+      if (length(aef_out$warnings) > 0) {
+        state$errors <- c(state$errors, aef_out$warnings)
+        report_progress(state)
+      }
     }
 
     # Tag compute_unit with the CHM provenance so nemeton::detect_ndp()
@@ -5048,6 +5075,19 @@ compute_all_indicators <- function(parcels,
     }
   }
 
+  # Un B4 / L3 / N5 calcule sous un autre etat AlphaEarth (source activee ou
+  # coupee, autre annee) ne se reprend pas : sans cela, activer la source sur un
+  # projet deja calcule laisserait B4 / L3 sur leur ancienne methode (mission 080).
+  aef_etat <- .aef_etat_courant(layers)
+  if (!is.null(project_id) && length(computed_indicators) > 0) {
+    perimes <- .aef_stale(project_id, computed_indicators, aef_etat)
+    if (length(perimes) > 0) {
+      cli::cli_alert_info(
+        "AlphaEarth state changed, recomputing: {paste(perimes, collapse = ', ')}")
+      computed_indicators <- setdiff(computed_indicators, perimes)
+    }
+  }
+
   # Filter out already computed indicators
   indicators_to_compute <- setdiff(indicators, computed_indicators)
   n_indicators <- length(indicators)
@@ -5208,6 +5248,13 @@ compute_all_indicators <- function(parcels,
     for (err in errors) {
       cli::cli_alert_danger("{err$indicator} : {err$message}")
     }
+  }
+
+  # L'etat AlphaEarth du calcul n'est note qu'une fois B4 / L3 / N5 refaits :
+  # un calcul arrete ou interrompu laisse l'ancien etat, et le suivant les
+  # recalcule encore.
+  if (!is.null(project_id) && !is_cancelled(project_id)) {
+    .aef_etat_ecrire(project_id, aef_etat)
   }
 
   # Marquer les sources de donnees disponibles pour detect_ndp()
@@ -5371,6 +5418,17 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("forms_t" %in% func_args) {
       ft <- resolve_raster_layer(layers, "forms_t")
       if (!is.null(ft)) args$forms_t <- ft
+    }
+    # Embedding de modele de fondation (spec 064) -> N5, B4, L3 : couche
+    # `aef_embedding` posee par .aef_etape(). Absente -> rien n'est passe et le
+    # coeur garde son comportement (N5 `skipped_no_embedding`, B4/L3 sans
+    # embedding).
+    # Ceinture : cet argument est REDONDANT avec `layers$rasters$aef_embedding`,
+    # que le coeur lit lui-meme quand `embedding = NULL` (il recoit `layers`).
+    # On le passe explicitement pour ne pas dependre de cette lecture implicite.
+    if ("embedding" %in% func_args) {
+      emb <- resolve_raster_layer(layers, "aef_embedding")
+      if (!is.null(emb)) args$embedding <- emb
     }
     if ("buffer_m" %in% func_args && !is.null(layers$lst_buffer_m)) {
       args$buffer_m <- layers$lst_buffer_m
@@ -5724,8 +5782,11 @@ save_indicators_incremental <- function(project_id, results, indicator) {
         vapply(names(results), function(col) {
           # A5 LST reconnu inconditionnellement ici (le garde !all(is.na) suffit :
           # un A5 rural est tout-NA -> non compte), evite un load metadata par save.
+          # Meme motif pour N5 (source AlphaEarth, mission 080) : la liste sans
+          # metadonnees ne le contient jamais.
           (col %in% list_available_indicators() ||
-             col == "indicateur_a5_rafraichissement") &&
+             col == "indicateur_a5_rafraichissement" ||
+             col == "indicateur_n5_distance_reference") &&
             !all(is.na(results[[col]]))
         }, logical(1))
       ]

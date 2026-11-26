@@ -152,6 +152,7 @@ mod_sources_config_ui <- function(id) {
     # Calibrages du Suivi sanitaire (spec 013). Ce ne sont pas des sources,
     # d'ou un bloc distinct sur toute la largeur plutot qu'une troisieme
     # colonne : le lecteur ne doit pas croire qu'il active une donnee.
+    shiny::uiOutput(ns("aef_block")),
     shiny::uiOutput(ns("fast_block")),
     # Meme raison pour la zone tampon de l'Accessibilite : un calibrage
     # d'emprise, regle une fois par massif, pas une source a activer.
@@ -201,7 +202,7 @@ mod_sources_config_server <- function(id, app_state) {
     # compteur unique (et la dependance a l'objet projet, recharge apres
     # chaque enregistrement), les sept autres blocs etaient re-rendus avec les
     # valeurs stockees et leurs modifications en cours disparaissaient.
-    refresh <- shiny::reactiveValues(sufosat = 0, lst = 0, fast = 0, acc = 0,
+    refresh <- shiny::reactiveValues(sufosat = 0, lst = 0, aef = 0, fast = 0, acc = 0,
                                      production = 0, desserte = 0, onf = 0,
                                      regen = 0, video = 0)
 
@@ -424,6 +425,77 @@ mod_sources_config_server <- function(id, app_state) {
           buffer_m = input$lst_buffer %||% 500)
         .refresh_project(pid, "lst")
         shiny::showNotification(i18n$t("lst_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Embedding AlphaEarth -> N5, B4, L3 (spec 064, mission 080)
+    # ========================================
+
+    output$aef_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh$aef
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("aef_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("aef_hint"))
+      if (is.null(.pid())) {
+        return(htmltools::div(
+          class = "mb-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+      if (!aef_disponible()) {
+        return(htmltools::div(
+          class = "mb-3 p-2 border rounded", header, hint,
+          htmltools::div(
+            class = "small text-warning fst-italic",
+            bsicons::bs_icon("exclamation-triangle", class = "me-1"),
+            i18n$t("aef_need_pkg"))))
+      }
+      proj    <- shiny::isolate(app_state$current_project)
+      enabled <- project_aef_enabled(proj$metadata)
+      status <- if (enabled) {
+        htmltools::div(
+          class = "small mb-2",
+          bsicons::bs_icon("check-circle-fill", class = "text-success me-1"),
+          i18n$t("aef_active"))
+      } else {
+        htmltools::div(class = "small text-muted mb-2 fst-italic",
+                       i18n$t("aef_none"))
+      }
+      # Annee de l'embedding deja acquis (cache du projet), quand elle est connue.
+      an <- aef_annee(proj$path)
+      annee <- if (enabled && !is.na(an)) {
+        htmltools::div(class = "small text-muted mb-2",
+                       sprintf(i18n$t("aef_annee_utilisee"), an))
+      }
+      htmltools::div(
+        class = "mb-3 p-2 border rounded",
+        header, hint, status, annee,
+        shiny::checkboxInput(ns("aef_enabled"), i18n$t("aef_enable"),
+                             value = enabled),
+        shiny::actionButton(
+          ns("aef_save"), i18n$t("aef_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$aef_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_aef(pid, enabled = isTRUE(input$aef_enabled))
+        .refresh_project(pid, "aef")
+        shiny::showNotification(i18n$t("aef_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

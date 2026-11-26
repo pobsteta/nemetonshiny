@@ -181,7 +181,9 @@ PRODUCTION_ANNEX_COLS <- list(
                                L1 = "indicateur_l1_effet_lisiere",
                                B3 = "indicateur_b3_connectivite"),
   # T4 ecarte les unites coupees (`T3 > 0`) : T3 brut, non inverse.
-  indicateur_t4_vitalite = c(T3 = "indicateur_t3_coupes_rases")
+  indicateur_t4_vitalite = c(T3 = "indicateur_t3_coupes_rases"),
+  # N5 : sa reference par defaut croise `foret_ancienne` et `N1 >= n1_min`.
+  indicateur_n5_distance_reference = c(N1 = "indicateur_n1_distance")
 )
 
 

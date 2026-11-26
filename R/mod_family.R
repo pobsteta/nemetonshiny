@@ -206,7 +206,10 @@ mod_family_server <- function(id, family_code, app_state) {
           t4_vitalite_banner(enriched_sf(), ind_cols[i], i18n),
           # B4 / L3 (spec 064) : la methode qui a produit la valeur, a lire
           # avant de la comparer.
-          methode_banner(enriched_sf(), ind_cols[i], i18n)
+          methode_banner(enriched_sf(), ind_cols[i], i18n),
+          # N5 (spec 064) : l'annee de l'embedding AlphaEarth lu.
+          n5_annee_banner(sf_data, ind_cols[i],
+                          aef_annee(app_state$current_project$path), i18n)
         )
       })
 
@@ -377,6 +380,11 @@ mod_family_server <- function(id, family_code, app_state) {
         val <- dropped[[col]]
         # B4 / L3 : la methode de calcul a cote de la valeur (rien si absente).
         meth <- .methode_pour_unite(full_sf, dropped, col, i18n)
+        # N5 : l'annee de l'embedding AlphaEarth (cache du projet).
+        if (!nzchar(meth)) {
+          meth <- .n5_annee_etiquette(
+            col, aef_annee(app_state$current_project$path), i18n)
+        }
         sprintf("%s: %s%s", label, if (is.na(val)) "NA" else round(val, 3),
                 if (nzchar(meth)) paste0(" (", meth, ")") else "")
       }, character(1))
@@ -1013,6 +1021,48 @@ methode_banner <- function(data, ind_col, i18n) {
     class = "small text-muted px-1 pb-1",
     bsicons::bs_icon("info-circle", class = "me-1"),
     txt
+  )
+}
+
+
+#' Label of the AlphaEarth year next to N5 (`""` for any other indicator)
+#'
+#' @param ind_col Character. Indicator column (raw or `_norm`).
+#' @param annee Integer. Year of the embedding, `NA` when unknown.
+#' @param i18n Translator object.
+#' @noRd
+.n5_annee_etiquette <- function(ind_col, annee, i18n) {
+  if (!identical(sub("_norm$", "", ind_col), "indicateur_n5_distance_reference")) {
+    return("")
+  }
+  if (length(annee) != 1L || is.na(annee)) return("")
+  sprintf(i18n$t("aef_annee_etiq"), annee)
+}
+
+
+#' Banner naming the AlphaEarth year behind N5
+#'
+#' @description
+#' N5 is read on one yearly embedding; the year is in the project cache
+#' (`aef_annee()`). `NULL` for another indicator, when N5 holds no value, and
+#' when the year is unknown (nothing is invented).
+#'
+#' @param data data.frame / sf carrying the indicator column.
+#' @param ind_col Character. Indicator column (raw or `_norm`).
+#' @param annee Integer. Year of the embedding, `NA` when unknown.
+#' @param i18n Translator object.
+#' @return A [htmltools::div] or `NULL`.
+#' @noRd
+n5_annee_banner <- function(data, ind_col, annee, i18n) {
+  txt <- .n5_annee_etiquette(ind_col, annee, i18n)
+  if (!nzchar(txt) || is.null(data) || !ind_col %in% names(data) ||
+      all(is.na(data[[ind_col]]))) {
+    return(NULL)
+  }
+  htmltools::div(
+    class = "small text-muted px-1 pb-1",
+    bsicons::bs_icon("info-circle", class = "me-1"),
+    sprintf(i18n$t("aef_annee_n5"), annee)
   )
 }
 

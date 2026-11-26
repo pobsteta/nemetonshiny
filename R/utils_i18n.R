@@ -3659,6 +3659,59 @@ TRANSLATIONS <- list(
     fr = "T2 : chargement de la s\u00e9rie FORMS-T des hauteurs de canop\u00e9e...",
     en = "T2: loading the FORMS-T canopy-height series..."
   ),
+  task_aef_embedding = list(
+    fr = "AlphaEarth : r\u00e9cup\u00e9ration de l'embedding annuel (N5, B4, L3)...",
+    en = "AlphaEarth: fetching the annual embedding (N5, B4, L3)..."
+  ),
+  aef_section = list(
+    fr = "Embedding AlphaEarth (N5, B4, L3)",
+    en = "AlphaEarth embedding (N5, B4, L3)"
+  ),
+  aef_enable = list(
+    fr = "R\u00e9cup\u00e9rer l'embedding AlphaEarth au calcul",
+    en = "Fetch the AlphaEarth embedding at computation"
+  ),
+  aef_hint = list(
+    fr = "Mod\u00e8le de fondation (Google DeepMind, 64 dimensions, 10 m), ann\u00e9e la plus r\u00e9cente disponible sur l'emprise. Active N5 (distance \u00e0 la r\u00e9f\u00e9rence) et le mode embedding de B4 et L3 (si Sentinel-2 / biodivMapR n'est pas disponible). T\u00e9l\u00e9chargement d'environ 1 Mo par km\u00b2 (mesur\u00e9 : 15 Mo et 20 s pour 18 km\u00b2), gard\u00e9 dans le projet.",
+    en = "Foundation model (Google DeepMind, 64 dimensions, 10 m), latest year available over the extent. Enables N5 (distance to reference) and the embedding mode of B4 and L3 (when Sentinel-2 / biodivMapR is unavailable). Download of about 1 MB per km\u00b2 (measured: 15 MB and 20 s for 18 km\u00b2), kept in the project."
+  ),
+  aef_save = list(fr = "Enregistrer", en = "Save"),
+  aef_saved = list(
+    fr = "AlphaEarth : pr\u00e9f\u00e9rence enregistr\u00e9e, relancez le calcul",
+    en = "AlphaEarth: preference saved, rerun the computation"
+  ),
+  aef_need_pkg = list(
+    fr = "N5 demande AlphaEarth : installez le paquet alphaearthnemeton (pobsteta/alphaearthnemeton) pour activer cette source.",
+    en = "N5 needs AlphaEarth: install the alphaearthnemeton package (pobsteta/alphaearthnemeton) to enable this source."
+  ),
+  aef_active = list(
+    fr = "Activ\u00e9 \u2014 N5 calcul\u00e9, B4 et L3 en mode embedding si Sentinel-2 est absent",
+    en = "Enabled \u2014 N5 computed, B4 and L3 in embedding mode if Sentinel-2 is absent"
+  ),
+  aef_none = list(
+    fr = "Non activ\u00e9 \u2014 N5 absent, B4 et L3 inchang\u00e9s",
+    en = "Not enabled \u2014 N5 absent, B4 and L3 unchanged"
+  ),
+  aef_taille_avertissement = list(
+    fr = "AlphaEarth : l'emprise des UGF couvre %s km\u00b2 (au-del\u00e0 de %s km\u00b2). Le t\u00e9l\u00e9chargement est estim\u00e9 \u00e0 environ %s Mo et peut \u00eatre long.",
+    en = "AlphaEarth: the extent of the units covers %s km\u00b2 (above %s km\u00b2). The download is estimated at about %s MB and may take a while."
+  ),
+  aef_annee_utilisee = list(
+    fr = "Ann\u00e9e AlphaEarth utilis\u00e9e : %s",
+    en = "AlphaEarth year used: %s"
+  ),
+  aef_annee_n5 = list(
+    fr = "N5 : embedding AlphaEarth de l'ann\u00e9e %s.",
+    en = "N5: AlphaEarth embedding of year %s."
+  ),
+  aef_annee_etiq = list(
+    fr = "AlphaEarth %s",
+    en = "AlphaEarth %s"
+  ),
+  aef_fetch_echec = list(
+    fr = "Embedding AlphaEarth non disponible, N5 non calcul\u00e9 : %s",
+    en = "AlphaEarth embedding unavailable, N5 not computed: %s"
+  ),
   task_production_ifn = list(
     fr = "Production IFN : localisation des sylvo\u00e9cor\u00e9gions et production du massif...",
     en = "IFN production: locating sylvoecoregions and massif production..."
@@ -7956,6 +8009,11 @@ translate_task_message <- function(task, i18n) {
   # Production IFN par SER (spec 054) - localisation SER + production du massif
   if (task == "production_ifn") {
     return(i18n$t("task_production_ifn"))
+  }
+
+  # Embedding AlphaEarth (N5, B4/L3 ; mission 080)
+  if (task == "aef_embedding") {
+    return(i18n$t("task_aef_embedding"))
   }
 
   # Serie FORMS-T de T2 (spec 060)
