@@ -1,12 +1,46 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9011 (en développement)
+## nemetonshiny 2026.11.6.9012 (en développement)
 
 Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
-cassant (missions 043, 048, 063 et 066).
+cassant (missions 043, 048, 063, 066 et 067).
 
 ### Changements
 
+- **Type de gestion déclaré par UGF et tableau « ce que la gestion a
+  produit sur ce massif » dans la Synthèse** (mission 067, spec 068 du
+  cœur, brief `068-trajectoires-finn`, écart 27 ; décision de Pascal du
+  2026-11-25). Aucune logique métier : l’effet, l’intervalle à 90 % et
+  le statut viennent de
+  [`nemeton::effet_gestion()`](https://pobsteta.github.io/nemeton/reference/effet_gestion.html).
+  - **Saisie** (onglet Unités de gestion, volet du tableau) : un
+    sélecteur « Type de gestion » à liste fermée (`reguliere`,
+    `irreguliere`, `taillis`, `taillis_sous_futaie`, `libre_evolution`,
+    `non_renseigne` par défaut), appliqué aux UGF sélectionnées.
+    Enregistré dans `ugs.json` (colonne `type_gestion`, écrite seulement
+    si au moins une UGF en déclare un) et relu avec le projet ; une
+    valeur hors liste est refusée à la saisie et ramenée à
+    `non_renseigne` à la lecture. Une fusion garde le type si les UGF
+    fusionnées le déclarent pareil, une scission le laisse aux morceaux.
+    Libellés FR/EN (`ug_gestion_*`).
+  - **Calcul à la demande** (`R/mod_effet_gestion.R`,
+    `R/service_effet_gestion.R`) : nouveau bloc sous le récapitulatif de
+    la Synthèse, un bouton lié à une `ExtendedTask` (grisé pendant le
+    calcul, notification, jamais à l’affichage). Le cœur reçoit
+    `traitement = "type_gestion"` ; les UGF `non_renseigne` sont
+    laissées hors du contraste. Covariables passées au cœur : P2
+    (`indicateur_p2_station`), SER (`.p2_ser`), altitude et pente si le
+    projet les porte ; sans aucune, le calcul est refusé et le dit.
+  - **Affichage** : seulement si au moins deux types sont renseignés,
+    sinon un message qui dit quoi saisir et aucun appel au cœur. Une
+    ligne par famille, l’intervalle à 90 % avant l’effet,
+    `n_traite / n_reference` ; un contraste dont le statut n’est pas
+    `calcule` (`recouvrement_insuffisant`, `trop_peu_unites`) tient en
+    une ligne avec le statut traduit et rien d’autre. Mention fixe sous
+    le tableau : « Association ajustée sur la station, pas une preuve
+    causale. » Le tableau disparaît si les types déclarés changent après
+    le calcul. Hors mission : déduire le type de la BD Forêt, le skill
+    `aigora`.
 - **Inventaire vidéo : carte des placettes agrandie**
   (`R/mod_inventaire_video.R`, demande de Pascal du 2026-11-25) : 70 %
   de la hauteur de la fenêtre au lieu de 320 px.
