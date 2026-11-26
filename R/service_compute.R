@@ -942,6 +942,14 @@ start_computation <- function(project_id,
         !identical(layers$chm_source, "none")) {
       attr(compute_unit, "chm_source") <- layers$chm_source
     }
+    # Embedding de modele de fondation (spec 064) : sa provenance (`aef`,
+    # `maestro`, `forpt`) fait lever `embedding_ml` a detect_ndp(). Rien n'est
+    # pose sans source nommee : pas d'embedding, pas de drapeau.
+    emb_src <- layers$embedding_source
+    if (is.character(emb_src) && length(emb_src) == 1L && !is.na(emb_src) &&
+        nzchar(emb_src) && !identical(emb_src, "none")) {
+      attr(compute_unit, "embedding_source") <- emb_src
+    }
     # NDP lifts to 1 ("Observation") as soon as ANY LiDAR HD product
     # is available for the AOI (MNH canopy, MNT terrain, or both).
     # Open-Canopy ML predictions leave the NDP at 0 and are only
@@ -957,7 +965,11 @@ start_computation <- function(project_id,
     tryCatch(
       update_project_metadata(
         project_id,
-        list(chm_source = layers$chm_source %||% "none")
+        # `embedding_source` n'est ecrit que si une source est donnee ; sans
+        # source, NULL retire la cle d'un calcul precedent (jamais "none"), pour
+        # qu'un recalcul sans embedding n'allume pas un badge perime.
+        list(chm_source = layers$chm_source %||% "none",
+             embedding_source = attr(compute_unit, "embedding_source"))
       ),
       error = function(e) {
         cli::cli_warn("Failed to persist chm_source outcome: {e$message}")

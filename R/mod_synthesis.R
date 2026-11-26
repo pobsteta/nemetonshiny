@@ -410,6 +410,12 @@ mod_synthesis_server <- function(id, app_state) {
                   ))
                 }
               }
+              # Embedding de modele de fondation (spec 064) : le drapeau est celui
+              # du coeur (`detect_ndp()$augmented`), pas une deduction locale.
+              if ("embedding_ml" %in%
+                  project_augmented_flags(app_state$current_project)) {
+                badges <- c(badges, list(ndp_embedding_badge(i18n)))
+              }
               do.call(htmltools::tagList, badges)
             },
             bslib::popover(
