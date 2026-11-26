@@ -40,12 +40,17 @@ test_that(".run_capped retire marker_path quand le coeur ne le connait pas", {
 })
 
 test_that("les deux moteurs passent marker_path a .run_capped et au worker", {
-  src <- paste(readLines(testthat::test_path("../../R/service_monitoring.R"),
+  # Sources absentes sous R CMD check (paquet installe) : meme garde que
+  # test-mod_inventaire_video.R.
+  f_srv <- testthat::test_path("../../R/service_monitoring.R")
+  f_mod <- testthat::test_path("../../R/mod_monitoring.R")
+  skip_if_not(file.exists(f_srv) && file.exists(f_mod), "sources R absentes (R CMD check)")
+  src <- paste(readLines(f_srv,
                          encoding = "UTF-8"), collapse = "\n")
   expect_true(grepl('fun = "run_reconfort_dieback",\\s*log_path = child_log,\\s*marker_path = marker_path', src))
   expect_true(grepl('fun = "run_fordead_dieback",\\s*log_path = child_log,\\s*marker_path = marker_path', src))
   expect_length(gregexpr("marker_path = NULL,", src, fixed = TRUE)[[1]], 2L)
-  mod <- paste(readLines(testthat::test_path("../../R/mod_monitoring.R"),
+  mod <- paste(readLines(f_mod,
                          encoding = "UTF-8"), collapse = "\n")
   expect_true(grepl('\\.moteur_sante_marker_path\\(proj\\$path, "reconfort"', mod))
   expect_true(grepl('"fordead",\\s*creer = TRUE', mod))
@@ -258,7 +263,7 @@ test_that("le verrou RECONFORT d'un enfant tue est perime et repris par le coeur
   wd2 <- withr::local_tempdir()
   writeLines(as.character(vivant$get_pid()), file.path(wd2, ".lock"))
   expect_error(getFromNamespace(".reconfort_lock_workdir", "nemeton")(wd2),
-               "in use by another process")
+               "in\\s+use\\s+by\\s+another\\s+process")
 })
 
 # --- Vrai processus --------------------------------------------------------------
