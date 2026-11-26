@@ -349,7 +349,9 @@ test_that("reference par defaut : le type le plus frequent, hors non_renseigne",
   f <- nemetonshiny:::effet_gestion_reference_defaut
   expect_equal(f(.eg_ugs(c("taillis", "taillis", "reguliere", "non_renseigne", "non_renseigne", "non_renseigne"))),
                "taillis")
-  expect_equal(f(.eg_ugs(c("reguliere", "taillis", "non_renseigne"))), "reguliere")  # egalite : ordre de la liste
+  expect_equal(f(.eg_ugs(c("reguliere", "taillis", "non_renseigne"))), "reguliere")  # egalite : ordre alphabetique, comme le coeur
+  expect_equal(f(.eg_ugs(c("reguliere", "irreguliere", "non_renseigne"))), "irreguliere")  # reguliere = irreguliere
+  expect_equal(f(.eg_ugs(c("reguliere", "irreguliere", "taillis", "taillis"))), "taillis")
   expect_true(is.na(f(.eg_ugs(c("non_renseigne", "non_renseigne")))))
   expect_equal(nemetonshiny:::effet_gestion_ugf_exclues(.eg_ugs(c("taillis", "non_renseigne", "non_renseigne"))), 2L)
   expect_equal(nemetonshiny:::effet_gestion_ugf_exclues(NULL), 0L)

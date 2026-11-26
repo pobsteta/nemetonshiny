@@ -32,14 +32,16 @@ effet_gestion_types_renseignes <- function(ugs) {
 
 #' Type de reference par defaut : le plus frequent parmi les renseignes
 #'
-#' Meme regle que le coeur (`reference = NULL`) : en cas d'egalite, le premier
-#' dans l'ordre de `UG_TYPES_GESTION`.
+#' Meme regle que le coeur (`reference = NULL`, `names(sort(table(tr),
+#' decreasing = TRUE))[1]`) : en cas d'egalite, le premier par ordre
+#' alphabetique.
 #' @param ugs data.frame des UGF du projet.
 #' @return Un type (character scalaire), ou `NA_character_` sans type renseigne.
 #' @noRd
 effet_gestion_reference_defaut <- function(ugs) {
   tp <- effet_gestion_types_renseignes(ugs)
   if (!length(tp)) return(NA_character_)
+  tp <- tp[order(names(tp))]
   names(tp)[which.max(tp)]
 }
 
