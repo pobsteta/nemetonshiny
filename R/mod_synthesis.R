@@ -17,6 +17,9 @@ mod_synthesis_server <- function(id, app_state) {
     # a la demande seulement.
     mod_effet_gestion_server("effet_gestion", app_state)
 
+    # Ce que les modeles de fondation voient des indicateurs (mission 078).
+    mod_sondes_embedding_server("sondes_embedding", app_state)
+
     # v0.56.0 - RAG context du dernier `ai_generate` (perspective
     # sourcee). Stocke en reactiveVal pour que `output$ai_sources`
     # puisse l'afficher en aval de la generation. NULL tant qu'aucune
