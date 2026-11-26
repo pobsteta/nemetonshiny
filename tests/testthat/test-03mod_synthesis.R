@@ -1202,3 +1202,44 @@ test_that("R5 n'est pas re-inverse par l'app : plus de deperissement, famille R 
   # Ecart lineaire : R5 entre dans la moyenne pour 1/k, inverse (100 - R5).
   expect_equal(sain - severe, 2 * (sain - moyen), tolerance = 1e-6)
 })
+
+# ==============================================================================
+# Sous-onglets (mission 084)
+# ==============================================================================
+
+.html_synthese <- function(lang) {
+  with_mocked_bindings(
+    get_app_options = function() list(language = lang),
+    as.character(nemetonshiny:::mod_synthesis_ui("synthesis"))
+  )
+}
+
+test_that("la Synthese a trois onglets ordonnes, titres FR et EN", {
+  skip_if_not_installed("bslib")
+  fr <- .html_synthese("fr")
+  p <- vapply(c("synthese_projet", "gestion_massif", "modeles_voient"),
+              function(v) regexpr(paste0('data-value="', v, '"'), fr, fixed = TRUE)[1],
+              numeric(1))
+  expect_true(all(p > 0) && !is.unsorted(p, strictly = TRUE))
+  expect_match(fr, "Synth\u00e8se du projet", fixed = TRUE)
+  expect_match(fr, "Ce que la gestion a produit sur ce massif", fixed = TRUE)
+  expect_match(fr, "Ce que les mod\u00e8les voient", fixed = TRUE)
+  en <- .html_synthese("en")
+  expect_match(en, "Project summary", fixed = TRUE)
+  expect_match(en, "What management has produced on this forest", fixed = TRUE)
+  expect_match(en, "What the models see", fixed = TRUE)
+})
+
+test_that("chaque module est dans son propre onglet, dans l'ordre", {
+  skip_if_not_installed("bslib")
+  fr <- .html_synthese("fr")
+  pos <- function(v) regexpr(paste0('<div class="tab-pane[^>]*data-value="', v, '"'), fr)[1]
+  m2 <- pos("gestion_massif"); m3 <- pos("modeles_voient")
+  expect_true(m2 > 0 && m3 > m2)
+  o1 <- substr(fr, 1, m2 - 1); o2 <- substr(fr, m2, m3 - 1); o3 <- substr(fr, m3, nchar(fr))
+  expect_false(grepl("effet_gestion|sondes_embedding", o1))
+  expect_true(grepl("effet_gestion", o2) && !grepl("sondes_embedding", o2))
+  expect_true(grepl("sondes_embedding", o3) && !grepl("effet_gestion", o3))
+  expect_match(o1, "summary_card", fixed = TRUE)
+  expect_match(o1, "ai_generate", fixed = TRUE)
+})

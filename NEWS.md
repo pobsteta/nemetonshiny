@@ -1,8 +1,10 @@
-# nemetonshiny 2026.11.6.9022 (en développement)
+# nemetonshiny 2026.11.6.9023 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080 et 083).
+Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083 et 084).
 
 ## Changements
+
+- **Synthèse : trois onglets, construits comme ceux de la Sélection** (mission 084, décision de Pascal). « Synthèse du projet » (par défaut), « Ce que la gestion a produit sur ce massif » (mission 067) et « Ce que les modèles voient » (mission 078) : `navset_card_tab`, déplacement d'UI seulement. Les modules gardent leurs identifiants (`effet_gestion`, `sondes_embedding`). Sorties d'un onglet masqué suspendues jusqu'à son affichage ; les calculs lancés se poursuivent.
 
 - **Schéma SQL : une virgule de commentaire ne coupe plus l'initialisation ; la mosaïque MNT de la reGénération ne perd plus de dalle en silence** (mission 083). Défaut, pas un choix.
   - **Cause** : `db_init_schema()` découpait `schema.sql` sur `;` sans retirer les commentaires `--`. Le commentaire de la ligne 197 (« une ligne par version ; creees aussi... ») coupait une instruction, la suite partait en SQL (`syntax error at or near "creees"`), et le `tryCatch` unique arrêtait la boucle : les quatre dernières instructions (tables `nemeton.regeneration_states` et `nemeton.action_plan_states` et leurs deux index) n'étaient jamais exécutées par l'initialisation.
