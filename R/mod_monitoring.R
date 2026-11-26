@@ -3215,7 +3215,8 @@ mod_monitoring_server <- function(id, app_state) {
         # insuffisante saute l'etape ; hors zone de calibration, FORDEAD
         # tourne et le rapport l'avertit (classes extrapolees).
         if (isFALSE(v$species_valid)) return("resineux_insuffisants")
-        if (isFALSE(v$geo_valid)) sante_fordead_hors_calib(TRUE)
+        # Geographie fausse OU indeterminable (NA) : prudence, on avertit.
+        if (!isTRUE(v$geo_valid)) sante_fordead_hors_calib(TRUE)
       } else if (!is.null(v) && isFALSE(v$overall_valid)) {
         shiny::showModal(shiny::modalDialog(
           title = i18n$t("monitoring_confirm_invalid_title"),
