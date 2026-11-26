@@ -633,6 +633,38 @@ resolve_regen_lidar_grid <- function(project_path) {
   NULL
 }
 
+#' Mosaic of DTM tiles that keeps every tile of one coordinate system
+#'
+#' `terra::vrt()` drops (silently) the tiles whose CRS string differs from the
+#' first one, even when the system is the same (`EPSG:2154` against its full
+#' WKT). The tiles are compared with `terra::same.crs()` and the VRT is built
+#' with `-allow_projection_difference`. A tile in a really different system
+#' stops with an error naming it; the number of files used is then checked.
+#'
+#' @param fich Character vector of raster file paths.
+#' @return A `SpatRaster` (VRT).
+#' @noRd
+.regen_vrt_dalles <- function(fich) {
+  if (!length(fich)) {
+    cli::cli_abort("No DTM tile to mosaic.")
+  }
+  ref <- terra::crs(terra::rast(fich[[1]]))
+  for (f in fich[-1]) {
+    if (!terra::same.crs(terra::crs(terra::rast(f)), ref)) {
+      cli::cli_abort(
+        "DTM tile {.file {basename(f)}} is not in the coordinate system of {.file {basename(fich[[1]])}}.")
+    }
+  }
+  mos <- terra::vrt(fich, options = c("-allow_projection_difference"))
+  # `sources()` d'un VRT rend le .vrt lui-meme : on compte ses <SourceFilename>
+  n <- sum(grepl("<SourceFilename", readLines(terra::sources(mos)[1], warn = FALSE),
+                 fixed = TRUE))
+  if (n != length(fich)) {
+    cli::cli_abort("DTM mosaic kept {n} of {length(fich)} tiles.")
+  }
+  mos
+}
+
 #' Target grid of the PAI when microclimf does not run (brief lai-lidar)
 #'
 #' `nemeton::pai_depuis_nuage()` needs a target grid. It is built here exactly as
@@ -652,7 +684,7 @@ resolve_regen_lidar_grid <- function(project_path) {
   emprise <- terra::ext(terra::buffer(parc, tampon))
   fich <- list.files(grid$mnt_dir, pattern = "\\.tif$", full.names = TRUE,
                      ignore.case = TRUE)
-  dtm <- terra::crop(terra::vrt(fich), emprise)
+  dtm <- terra::crop(.regen_vrt_dalles(fich), emprise)
   f <- max(1, round(res / terra::res(dtm)[1]))
   if (f > 1) dtm <- terra::aggregate(dtm, f, fun = "mean", na.rm = TRUE)
   names(dtm) <- "dtm"

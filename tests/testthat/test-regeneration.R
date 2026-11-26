@@ -721,3 +721,29 @@ test_that(".regen_eobs_monthly_clim limite la climatologie à la fenêtre récen
     eobs_monthly_climatology = function(...) stop("boom"), .package = "nemeton")
   expect_null(nemetonshiny:::.regen_eobs_monthly_clim("f.nc", c(6, 47), "rr"))
 })
+
+# ---- Mosaique des dalles MNT (mission 083) ----
+
+.dalle_083 <- function(dir, nom, x0, crs) {
+  r <- terra::rast(nrows = 10, ncols = 10, xmin = x0, xmax = x0 + 100,
+                   ymin = 6e6, ymax = 6e6 + 100, crs = crs)
+  terra::values(r) <- 1
+  f <- file.path(dir, nom)
+  terra::writeRaster(r, f)
+  f
+}
+
+test_that(".regen_vrt_dalles garde toutes les dalles d'un meme SRS ecrit de deux facons", {
+  d <- withr::local_tempdir()
+  f <- c(.dalle_083(d, "a.tif", 0, "EPSG:2154"),
+         .dalle_083(d, "b.tif", 100, sf::st_as_text(sf::st_crs(2154))))
+  m <- .regen_vrt_dalles(f)
+  expect_equal(as.numeric(terra::ext(m)[2]), 200)
+})
+
+test_that(".regen_vrt_dalles refuse une dalle d'un autre SRS en la nommant", {
+  d <- withr::local_tempdir()
+  f <- c(.dalle_083(d, "a.tif", 0, "EPSG:2154"),
+         .dalle_083(d, "dalle_wgs.tif", 0, "EPSG:4326"))
+  expect_error(.regen_vrt_dalles(f), "dalle_wgs")
+})
