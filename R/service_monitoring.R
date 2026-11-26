@@ -118,12 +118,21 @@
   tryCatch(f(marker), error = function(e) NULL)
 }
 
-# Arrete le moteur du marqueur. TRUE si quelque chose a ete arrete.
-.capped_marker_stop <- function(marker, core_fn = .capped_core_fn) {
+# Arrete le moteur du marqueur. TRUE si quelque chose a ete arrete. `timeout`
+# (secondes d'attente avant SIGKILL) n'est transmis que si le coeur l'accepte
+# (garde `formals()`) ; NULL = defaut du coeur.
+.capped_marker_stop <- function(marker, core_fn = .capped_core_fn,
+                                timeout = NULL) {
   f <- core_fn("stop_memory_capped")
   if (is.null(f) || is.null(marker) || !nzchar(marker)) return(FALSE)
-  isTRUE(tryCatch(f(marker), error = function(e) FALSE))
+  args <- list(marker)
+  if (!is.null(timeout) && "timeout" %in% names(formals(f))) args$timeout <- timeout
+  isTRUE(tryCatch(do.call(f, args), error = function(e) FALSE))
 }
+
+# Arret des moteurs Sante : attente courte (3 s) avant SIGKILL, car l'appel
+# bloque la session Shiny. reGeneration garde le defaut du coeur.
+.sante_marker_stop <- function(marker) .capped_marker_stop(marker, timeout = 3)
 
 # Moteurs Sante plafonnes dont l'app tient un marqueur de run.
 .moteurs_sante_plafonnes <- c("reconfort", "fordead")
@@ -157,7 +166,7 @@
 .moteurs_sante_arreter <- function(project_path,
                                    moteurs = .moteurs_sante_plafonnes,
                                    alive = .capped_marker_alive,
-                                   arreter = .capped_marker_stop) {
+                                   arreter = .sante_marker_stop) {
   arretes <- character(0)
   for (m in moteurs) {
     mp <- .moteur_sante_marker_path(project_path, m)

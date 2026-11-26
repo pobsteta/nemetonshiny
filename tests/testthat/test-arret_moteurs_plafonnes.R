@@ -288,3 +288,91 @@ test_that("un vrai run_memory_capped est tue par le chemin d'arret de l'app", {
   expect_lt(as.numeric(difftime(Sys.time(), t1, units = "secs")), 20)
   expect_null(nemetonshiny:::.moteur_sante_vivant(p, "reconfort"))   # plus de marqueur
 })
+
+# --- Timeout court de l'arret Sante ----------------------------------------------
+
+test_that("l'arret Sante passe timeout = 3 si le coeur l'accepte, reGeneration non", {
+  vu <- NULL
+  testthat::local_mocked_bindings(
+    .capped_core_fn = function(nom) function(marker, timeout = 10) { vu <<- timeout; TRUE })
+  expect_true(nemetonshiny:::.sante_marker_stop("/m"))
+  expect_identical(vu, 3)
+  expect_true(nemetonshiny:::.regen_marker_stop("/m"))
+  expect_identical(vu, 10)                       # defaut du coeur, inchange
+})
+
+test_that("l'arret Sante ne passe pas timeout a un coeur qui ne l'a pas", {
+  testthat::local_mocked_bindings(
+    .capped_core_fn = function(nom) function(marker) TRUE)
+  expect_true(nemetonshiny:::.sante_marker_stop("/m"))
+})
+
+# --- Erreur de sortie de l'enfant tue : masquee seulement apres arret dur --------
+
+.task_erreur_075 <- function() {
+  rv <- shiny::reactiveVal(NULL)
+  list(invoke = function(...) invisible(NULL),
+       result = function() { e <- rv(); if (!is.null(e)) stop(e); NULL },
+       status = function() "initial", erreur = function(m) rv(m),
+       .calls = function() list())
+}
+
+for (cas in list(
+  list(moteur = "reconfort", bouton = "run_reconfort_cancel", arg = "reconfort", cle = "monitoring_reconfort_error"),
+  list(moteur = "fordead",   bouton = "run_health_cancel",     arg = "fordead",   cle = "monitoring_health_error"))) {
+  local({
+    cas <- cas
+    mk <- function(tache) if (cas$arg == "reconfort") list(reconfort = tache) else list(fordead = tache)
+    killed <- "\"run_x\" was killed (signal 15; systemd's verdict unavailable)."
+
+    test_that(paste(cas$moteur, ": erreur killed apres arret dur effectif -> pas de toast d'erreur"), {
+      p <- withr::local_tempdir(); i18n <- get_i18n("fr")
+      t <- .task_erreur_075()
+      r <- do.call(.run_monitoring_075, c(mk(t), list(
+        project = list(id = "p", path = p, metadata = list(name = "P")),
+        vivants = cas$moteur,
+        expr = function(session, input, app_state, env) {
+          session$setInputs(zone_id = "1", reconfort_s2_year = 2025L)
+          do.call(session$setInputs, setNames(list(1L), cas$bouton))
+          t$erreur(killed)
+          session$flushReact()
+        })))
+      expect_length(r$stops, 1L)
+      expect_false(any(grepl(i18n$t("monitoring_error_oom_short"), r$notes, fixed = TRUE)))
+      expect_false(any(grepl(i18n$t(cas$cle), r$notes, fixed = TRUE)))
+    })
+
+    test_that(paste(cas$moteur, ": erreur OOM sans arret -> toast present"), {
+      p <- withr::local_tempdir(); i18n <- get_i18n("fr")
+      t <- .task_erreur_075()
+      r <- do.call(.run_monitoring_075, c(mk(t), list(
+        project = list(id = "p", path = p, metadata = list(name = "P")),
+        expr = function(session, input, app_state, env) {
+          t$erreur("child failed (exit 137)")
+          session$flushReact()
+        })))
+      expect_length(r$stops, 0L)
+      expect_true(any(grepl(i18n$t("monitoring_error_oom_short"), r$notes, fixed = TRUE)))
+    })
+  })
+}
+
+test_that("apres l'arret dur le bouton est de nouveau lancable (RECONFORT, garde FORDEAD levee)", {
+  p <- withr::local_tempdir()
+  rec <- .fake_task_075(); fd <- .fake_task_075()
+  r <- .run_monitoring_075(
+    reconfort = rec, fordead = fd, vivants = c("reconfort", "fordead"),
+    project = list(id = "p", path = p, metadata = list(name = "P")),
+    expr = function(session, input, app_state, env) {
+      session$setInputs(zone_id = "1", reconfort_s2_year = 2025L)
+      session$setInputs(run_reconfort_cancel = 1L)
+      session$setInputs(run_health_cancel = 1L)
+      get(".invoke_reconfort", envir = env)(zone_id = 1L)
+      get(".invoke_fordead", envir = env)(zone_id = 1L)
+    })
+  expect_length(r$stops, 2L)
+  expect_length(rec$.calls(), 1L)
+  # FORDEAD vise la zone `_tot` lue en base (absente ici) : le lancement ne part
+  # pas, mais la garde du moteur vivant ne doit plus le refuser.
+  expect_false(any(grepl(get_i18n("fr")$t("monitoring_fordead_verrou"), r$notes, fixed = TRUE)))
+})
