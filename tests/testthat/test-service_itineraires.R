@@ -237,3 +237,109 @@ test_that("l'UI du module et l'onglet du plan d'actions se construisent", {
   ap <- as.character(htmltools::renderTags(nemetonshiny:::mod_action_plan_ui("ap"))$html)
   expect_match(ap, "ap-itineraires-profil")
 })
+
+# ---- Mission 068, decision 1 : detail des exclusions traduit -------------------
+
+.detail <- function(raison, detail, lang = "fr", essences = c("03" = "Chene sessile", "09" = "Hetre"),
+                    sers = c(A1 = "Nom de A1")) {
+  nemetonshiny:::itineraires_detail_traduit(
+    raison, detail, nemetonshiny:::get_i18n(lang), essences = essences, sers = sers)
+}
+
+test_that("le detail de chaque motif est traduit en FR et EN, sans code brut", {
+  # formes reelles du coeur (nemeton/R/itineraires.R, .itin_verdict)
+  cas <- list(
+    list("station_insuffisante", "P2 5 < 8", "5", "8"),
+    list("station_insuffisante", "P2 12.5 > 10", "12", "10"),
+    list("pente", "slope 50 % > 30 %", "50", "30"),
+    list("desserte", "skidding 450 m > 300 m", "450", "300"))
+  for (cs in cas) for (l in c("fr", "en")) {
+    d <- .detail(cs[[1]], cs[[2]], l)
+    expect_true(nzchar(d), info = cs[[2]])
+    expect_false(grepl("[a-z]+_[a-z_]+|skidding [0-9]|slope [0-9]|^P2 [0-9]| [<>] ", d), info = d)
+    expect_true(grepl(cs[[3]], d, fixed = TRUE) || grepl(sub(".", ",", cs[[3]], fixed = TRUE), d, fixed = TRUE))
+    expect_true(grepl(cs[[4]], d, fixed = TRUE), info = d)
+  }
+  # virgule decimale en francais, point en anglais
+  expect_match(.detail("station_insuffisante", "P2 12.5 > 10", "fr"), "12,5", fixed = TRUE)
+  expect_match(.detail("station_insuffisante", "P2 12.5 > 10", "en"), "12.5", fixed = TRUE)
+})
+
+test_that("essence_absente : libelles d'essence ; code inconnu garde son code avec « essence »", {
+  d <- .detail("essence_absente", "essence 03 not in 09, 77")
+  expect_match(d, "Chene sessile", fixed = TRUE)
+  expect_match(d, "Hetre", fixed = TRUE)
+  expect_match(d, "essence 77", fixed = TRUE)
+  expect_false(grepl("not in", d))
+  expect_match(.detail("essence_absente", "essence 77 not in 09", "en"), "species 77", fixed = TRUE)
+})
+
+test_that("hors_ser : nom de la SER si l'app l'a, sinon le code avec « SER »", {
+  d <- .detail("hors_ser", "SER A1 not in B2, C3")
+  expect_match(d, "Nom de A1", fixed = TRUE)
+  expect_match(d, "SER B2, SER C3", fixed = TRUE)
+  expect_false(grepl("not in", d))
+  # avec le vrai fichier du coeur
+  noms <- nemetonshiny:::.itin_ser_noms()
+  skip_if(length(noms) == 0L, "ser.csv absent du coeur installe")
+  code <- names(noms)[1]
+  d2 <- nemetonshiny:::itineraires_detail_traduit(
+    "hors_ser", sprintf("SER %s not in ZZ9", code), nemetonshiny:::get_i18n("fr"))
+  expect_match(d2, noms[[1]], fixed = TRUE)
+  expect_match(d2, "SER ZZ9", fixed = TRUE)
+})
+
+test_that("source manquante, protection, donnee manquante : traduits ; forme inconnue : tel quel", {
+  expect_match(.detail("source_manquante", "statut_source = a_sourcer"), "sourcer")
+  expect_match(.detail("donnee_manquante", "missing: desserte"), "distance de desserte")
+  expect_match(.detail("donnee_manquante", "missing: desserte", "en"), "skidding distance")
+  expect_match(.detail("statut_protection", "protection: rnn, apb"), "Réserve naturelle nationale", fixed = TRUE)
+  # forme inconnue (motif ou raison) : rendue telle quelle plutot que perdue
+  expect_identical(.detail("pente", "quelque chose d'inattendu"), "quelque chose d'inattendu")
+  expect_identical(.detail("raison_nouvelle", "foo bar"), "foo bar")
+  expect_identical(.detail("donnee_manquante", "missing: truc"), "missing: truc")
+  # pas de detail : vide
+  expect_identical(.detail(NA_character_, NA_character_), "")
+})
+
+test_that("la table porte le detail traduit en infobulle de la raison, FR et EN", {
+  skip_si_noyau_ancien()
+  res <- nemetonshiny:::itineraires_calculer(.projet_066(), "profil_naturaliste",
+                                             catalogue = .catalogue_066())
+  tab <- nemetonshiny:::itineraires_table_admissibles(
+    res$admissibles, res$catalogue, nemetonshiny:::get_i18n("fr"))
+  expect_true("detail" %in% names(tab))
+  u1 <- tab[tab$ugf == "UGF1", ]
+  expect_match(u1$detail[u1$itineraire == "Libelle x station"], "P2 observ", fixed = FALSE)
+  expect_match(u1$detail[u1$itineraire == "Libelle x pente"], "Pente observ")
+  expect_match(u1$detail[u1$itineraire == "Libelle x essence"], "essence", ignore.case = TRUE)
+  expect_false(any(grepl("slope|P2 5 <|not in", tab$detail)))
+  for (l in c("fr", "en")) {
+    html <- .html(res, l)
+    expect_match(html, "<td title=\"", fixed = TRUE)
+    expect_false(grepl("title=\"[^\"]*(not in|slope [0-9]|skidding [0-9])", html), info = l)
+  }
+  expect_match(.html(res, "en"), "Observed slope", fixed = TRUE)
+})
+
+# ---- Mission 068, decision 2 : libelles complets des 15 profils ----------------
+
+test_that("les 15 profils ont leur nom complet FR et EN, aucun « Proprietaire » seul", {
+  skip_si_noyau_ancien()
+  for (l in c("fr", "en")) {
+    ch <- nemetonshiny:::.itin_profils_choix(l)
+    expect_length(ch, 15L)
+    expect_setequal(unname(ch), names(nemeton::profils_poids()))
+    expect_equal(anyDuplicated(names(ch)), 0L, info = l)
+    expect_false(any(names(ch) %in% c("Propriétaire", "Owner", "Producteur", "Producer",
+                                      "Gestionnaire", "Manager")), info = l)
+    expect_false(any(grepl("_", names(ch))), info = l)
+  }
+  fr <- nemetonshiny:::.itin_profils_choix("fr")
+  expect_true(all(c("Propriétaire privé", "Propriétaire public", "Gestionnaire ONF",
+                    "Chasseur") %in% names(fr)))
+  en <- nemetonshiny:::.itin_profils_choix("en")
+  expect_true(all(c("Private owner", "Public owner", "Hunter") %in% names(en)))
+  cles <- grep("^itin_(prof|d|q|prot)_", names(nemetonshiny:::TRANSLATIONS), value = TRUE)
+  expect_true(all(nchar(cles) <= 30L))
+})
