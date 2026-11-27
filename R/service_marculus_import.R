@@ -57,7 +57,13 @@ MARCULUS_STATUTS_RETOUR <- stats::setNames(names(MARCULUS_STATUTS),
              # Volumes calcules sur le telephone (Marculus, format 3) : valeurs
              # UNITAIRES, pour une tige. NA quand le fichier n'en porte pas.
              volumeTigeM3 = numeric(0), volumeHouppierM3 = numeric(0),
-             volumeTotalM3 = numeric(0), surfaceTerriereM2 = numeric(0),
+             # Bois fort TOTAL (tige + houppier, decoupe 7 cm) : `VolumeTotalM3`
+             # jusqu'au format 8, `VolumeBoisFortTotalM3` au format 9 (meme sens).
+             volumeBoisFortTotalM3 = numeric(0),
+             # Volume aerien total EMERGE sans decoupe (format 9), NA hors EMERGE
+             # ou dans un fichier plus ancien : jamais somme avec du Schaeffer.
+             volumeAerienTotalM3 = numeric(0),
+             surfaceTerriereM2 = numeric(0),
              cubage = character(0),
              # Mode de mesure du CONTEXTE (DIAMETRE / CIRCONFERENCE), recopie
              # sur chaque tige a l'import : il dit comment lire `classe`.
@@ -111,10 +117,39 @@ MARCULUS_REGLAGES_CONTEXTE <- list(
 }
 
 # Colonnes de volume d'un contexte (totaux NETS calcules sur le telephone).
-MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeTotalM3",
+# `volumeBoisFortTotalM3` est le bois fort total (ancien `volumeTotalM3`) ;
+# `volumeAerienTotalM3` et `nbTigesVolumeAerien` (tiges EMERGE sommees) : format 9.
+MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeBoisFortTotalM3",
                                "surfaceTerriereTotaleM2", "nbTigesNonCubees",
                                # Format 5.
-                               "volumeHouppierTotalM3", "affouageLotTotalM3")
+                               "volumeHouppierTotalM3", "affouageLotTotalM3",
+                               # Format 9.
+                               "volumeAerienTotalM3", "nbTigesVolumeAerien")
+
+# Ancien nom (formats <= 8, `.marsync` anterieurs) -> nom du format 9 : meme
+# contenu (bois fort total), jamais le volume aerien.
+MARCULUS_ANCIEN_VOLUME_TOTAL <- "volumeTotalM3"
+
+#' Rename the legacy `volumeTotalM3` column to `volumeBoisFortTotalM3`
+#'
+#' Applied to stored stems (`marculus_tiges.json` written before format 9) and
+#' to `.marsync` stems/contexts. The new name wins when both are present.
+#' @noRd
+.marculus_ancien_volume <- function(df) {
+  if (!is.data.frame(df)) return(df)
+  ancien <- MARCULUS_ANCIEN_VOLUME_TOTAL
+  if (ancien %in% names(df)) {
+    if ("volumeBoisFortTotalM3" %in% names(df)) {
+      nv <- suppressWarnings(as.numeric(df$volumeBoisFortTotalM3))
+      df$volumeBoisFortTotalM3 <- ifelse(is.na(nv),
+        suppressWarnings(as.numeric(df[[ancien]])), nv)
+    } else {
+      df$volumeBoisFortTotalM3 <- df[[ancien]]
+    }
+    df[[ancien]] <- NULL
+  }
+  df
+}
 
 #' Encode the `partHouppier` object of `.marsync` contexts as the CSV does
 #'
@@ -282,6 +317,7 @@ MARCULUS_VOLUMES_CONTEXTE <- c("volumeTigeTotalM3", "volumeTotalM3",
 .marculus_tiges_normaliser <- function(df) {
   modele <- .marculus_tiges_vides()
   if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(modele)
+  df <- .marculus_ancien_volume(df)
   for (col in names(modele)) {
     if (!col %in% names(df)) df[[col]] <- rep(NA, nrow(df))
     df[[col]] <- methods::as(df[[col]], class(modele[[col]]))
@@ -331,7 +367,7 @@ marculus_lire_exports <- function(chemins) {
       illisibles <- c(illisibles, basename(p))
       next
     }
-    c0 <- j$contextes
+    c0 <- .marculus_ancien_volume(j$contextes)
     d0 <- data.frame(
       id            = as.character(c0$id),
       nom           = as.character(c0$nom %||% NA_character_),
@@ -471,6 +507,11 @@ MARCULUS_QUALITE_FIX <- c(
       cle <- paste0(toupper(substr(v, 1, 1)), substring(v, 2))
       contexte[[v]] <- suppressWarnings(as.numeric(entete[[cle]] %||% NA))
     }
+    # Formats <= 8 : `VolumeTotalM3` est le bois fort total (jamais l'aerien).
+    if (is.na(contexte$volumeBoisFortTotalM3)) {
+      contexte$volumeBoisFortTotalM3 <- suppressWarnings(
+        as.numeric(entete[["VolumeTotalM3"]] %||% NA))
+    }
     # Format 4 : affouage, volume maximal par lot, nature du journal.
     journal <- toupper(trimws(entete$Journal %||% "COMPLET"))
     if (!journal %in% c("COMPLET", "NET")) journal <- "COMPLET"
@@ -518,7 +559,10 @@ MARCULUS_QUALITE_FIX <- c(
           precisionM = num(jr$Precision_m), modifie = num(jr$Modifie),
           volumeTigeM3 = num(jr$VolumeTigeM3 %||% NA),
           volumeHouppierM3 = num(jr$VolumeHouppierM3 %||% NA),
-          volumeTotalM3 = num(jr$VolumeTotalM3 %||% NA),
+          # Lecture par NOM : l'aerien est en derniere colonne au format 9.
+          volumeBoisFortTotalM3 = num(
+            jr[["VolumeBoisFortTotalM3"]] %||% jr[["VolumeTotalM3"]] %||% NA),
+          volumeAerienTotalM3 = num(jr[["VolumeAerienTotalM3"]] %||% NA),
           surfaceTerriereM2 = num(jr$SurfaceTerriereM2 %||% NA),
           cubage = jr$Cubage %||% NA_character_,
           mode = entete$Mode %||% NA_character_,
@@ -716,6 +760,7 @@ marculus_nb_biodiversite <- function(tiges) {
 #' @noRd
 marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
                                       annee_base = action_plan_annee_base(plan)) {
+  contextes <- .marculus_ancien_volume(contextes)
   ids_plan <- vapply(plan$actions %||% list(), function(a) a$id %||% "", "")
   horizon <- as.integer(plan$horizon_annees %||% 20L)
   # Comptes nets par contexte calcules AVANT le filtre des cases nulles de
@@ -755,13 +800,23 @@ marculus_appliquer_retour <- function(plan, contextes, tiges, user = NULL,
       q_vol <- list(
         volume_m3 = round(vt, 4),
         volume_martele_m3 = round(vt, 4),
-        volume_total_m3 = round(contextes$volumeTotalM3[i], 4),
+        # Cle conservee (projets deja enregistres) : c'est le bois fort total.
+        volume_total_m3 = round(contextes$volumeBoisFortTotalM3[i], 4),
         surface_terriere_m2 = round(contextes$surfaceTerriereTotaleM2[i], 4),
         nb_tiges_non_cubees = as.integer(contextes$nbTigesNonCubees[i]))
       # Format 5 : n'ajouter que ce que le fichier porte, pour qu'un retour
       # au format 4 laisse la quantite telle qu'avant.
       vh <- contextes$volumeHouppierTotalM3[i] %||% NA
       if (length(vh) == 1L && !is.na(vh)) q_vol$volume_houppier_m3 <- round(vh, 4)
+      # Format 9 : aerien EMERGE sans decoupe, sur les seules tiges EMERGE.
+      va <- contextes$volumeAerienTotalM3[i] %||% NA
+      if (length(va) == 1L && !is.na(va)) {
+        q_vol$volume_aerien_total_m3 <- round(va, 4)
+        na <- contextes$nbTigesVolumeAerien[i] %||% NA
+        if (length(na) == 1L && !is.na(na)) {
+          q_vol$nb_tiges_volume_aerien <- as.integer(na)
+        }
+      }
       vl <- contextes$affouageLotTotalM3[i] %||% NA
       if (isTRUE(contextes$affouage[i]) && length(vl) == 1L && !is.na(vl)) {
         q_vol$volume_lots_affouage_m3 <- round(vl, 4)
