@@ -81,6 +81,9 @@ PIPELINE_STEPS <- list(
   list(id = "sante_fast",      module = "monitoring",    label = "pipeline_step_sante_fast"),
   list(id = "sante_fordead",   module = "monitoring",    label = "pipeline_step_sante_fordead"),
   list(id = "sante_reconfort", module = "monitoring",    label = "pipeline_step_sante_reconfort"),
+  # ICD (indicateur composite de decoloration) : lit le cache Sentinel-2 que
+  # l'ingest FAST remplit, d'ou sa place apres lui ; independant des deux autres.
+  list(id = "sante_icd",       module = "monitoring",    label = "pipeline_step_sante_icd"),
   list(id = "ia_synthese",     module = "synthesis",     label = "pipeline_step_ia_synthese"),
   list(id = "ia_plan",         module = "action_plan",   label = "pipeline_step_ia_plan")
 )

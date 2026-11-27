@@ -283,3 +283,105 @@ test_that("reloading the same project does not re-render the other blocks (audit
     expect_gt(n_dess, d0)
   })
 })
+
+# --- Poids de l'ICD ----------------------------------------------------------
+
+test_that("le bloc ICD demande un projet, puis rend 4 essences x 5 indices", {
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(language = "fr", current_project = NULL,
+                                      project_id = NULL)
+  ), {
+    session$setInputs(x = 1)
+    expect_true(grepl(get_i18n("fr")$t("sources_need_project"),
+                      .render_html(output$icd_block), fixed = TRUE))
+  })
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    html <- .render_html(output$icd_block)
+    # 4 essences x 5 indices, moins CRre des deux resineux (cases figees).
+    expect_equal(lengths(regmatches(html, gregexpr('<input[^>]*id="[^"]*icd_w_', html))), 18L)
+    expect_false(grepl("icd_w_douglas_CRre", html, fixed = TRUE))
+    expect_false(grepl("icd_w_sapin_epicea_CRre", html, fixed = TRUE))
+    expect_true(grepl("icd_w_chene_CRre", html, fixed = TRUE))
+    expect_true(grepl("disabled", html, fixed = TRUE))
+    expect_true(grepl("btn-outline-secondary", html, fixed = TRUE))   # defauts
+    expect_true(grepl("btn-primary", html, fixed = TRUE))             # enregistrer
+    expect_true(grepl(get_i18n("fr")$t("icd_poids_formule"), html, fixed = TRUE))
+  })
+})
+
+test_that("une somme differente de 1 est montree, avec les poids utilises", {
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    session$setInputs(icd_w_chene_GRVI = 0.30)    # somme chene : 1.15
+    html <- .render_html(output$icd_apercu)
+    expect_true(grepl("1.15", html, fixed = TRUE))
+    expect_true(grepl("0.261", html, fixed = TRUE))   # 0.30 / 1.15 renormalise
+    # Les autres essences, a 1, n'affichent pas de poids corriges.
+    expect_equal(lengths(regmatches(html, gregexpr("text-warning", html))), 1L)
+  })
+})
+
+test_that("Enregistrer passe les poids saisis au service puis recharge le projet", {
+  vu <- NULL
+  testthat::local_mocked_bindings(
+    set_project_icd_poids = function(project_id, poids) { vu <<- list(id = project_id, p = poids); TRUE },
+    load_project = function(project_id) list(id = project_id, metadata = list()))
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    session$setInputs(icd_w_hetre_GRVI = 0.5)
+    session$setInputs(icd_save = 1)
+    expect_equal(vu$id, "p1")
+    expect_equal(vu$p$GRVI[vu$p$essence == "hetre"], 0.5)
+    expect_equal(vu$p$CRre[vu$p$essence == "douglas"], 0)   # figee
+  })
+})
+
+test_that("Valeurs par defaut remet les poids du coeur dans les champs", {
+  maj <- list()
+  testthat::local_mocked_bindings(
+    updateNumericInput = function(session, inputId, value = NULL, ...) {
+      maj[[inputId]] <<- value; invisible(NULL) },
+    .package = "shiny")
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    session$setInputs(icd_defaut = 1)
+    d <- nemeton::icd_poids_defaut()
+    expect_equal(maj[["icd_w_chene_GRVI"]], d$GRVI[d$essence == "chene"])
+    expect_equal(maj[["icd_w_douglas_GRVI"]], d$GRVI[d$essence == "douglas"])
+    expect_null(maj[["icd_w_douglas_CRre"]])
+    expect_length(maj, 18L)
+  })
+})
+
+test_that("en lecture seule, Enregistrer ne sauve rien", {
+  appele <- FALSE
+  testthat::local_mocked_bindings(
+    set_project_icd_poids = function(...) { appele <<- TRUE; TRUE },
+    deny_if_readonly = function(...) TRUE)
+  shiny::testServer(nemetonshiny:::mod_sources_config_server, args = list(
+    app_state = shiny::reactiveValues(
+      language = "fr", project_id = "p1",
+      current_project = list(id = "p1", metadata = list()))
+  ), {
+    session$setInputs(x = 1)
+    session$setInputs(icd_save = 1)
+  })
+  expect_false(appele)
+})

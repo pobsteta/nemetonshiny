@@ -154,6 +154,9 @@ mod_sources_config_ui <- function(id) {
     # colonne : le lecteur ne doit pas croire qu'il active une donnee.
     shiny::uiOutput(ns("aef_block")),
     shiny::uiOutput(ns("fast_block")),
+    # Poids de la formule de l'ICD (indicateur composite de decoloration) :
+    # un calibrage par projet, a cote des seuils FAST et FORDEAD.
+    shiny::uiOutput(ns("icd_block")),
     # Meme raison pour la zone tampon de l'Accessibilite : un calibrage
     # d'emprise, regle une fois par massif, pas une source a activer.
     shiny::uiOutput(ns("acc_block")),
@@ -204,7 +207,7 @@ mod_sources_config_server <- function(id, app_state) {
     # valeurs stockees et leurs modifications en cours disparaissaient.
     refresh <- shiny::reactiveValues(sufosat = 0, lst = 0, aef = 0, fast = 0, acc = 0,
                                      production = 0, desserte = 0, onf = 0,
-                                     regen = 0, video = 0)
+                                     regen = 0, video = 0, icd = 0)
 
     # Identifiant du projet, qui ne change qu'avec le projet (pas a chaque
     # rechargement du meme projet).
@@ -600,6 +603,142 @@ mod_sources_config_server <- function(id, app_state) {
           pid, threshold_anomaly = input$fordead_threshold_anomaly)
         .refresh_project(pid, "fast")
         shiny::showNotification(i18n$t("fast_params_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Poids de l'ICD (indicateur composite de decoloration)
+    # ========================================
+    #
+    # Seuls les poids se reglent (pas les seuils ni les mois : ceux de la note de
+    # methode). Une somme differente de 1 est acceptee et ramenee a 1 par le
+    # coeur : on affiche la somme saisie ET les poids effectivement utilises.
+
+    .icd_id <- function(ess, idx) sprintf("icd_w_%s_%s", ess, idx)
+
+    # Table lue dans les champs (repli sur les poids du projet tant qu'un champ
+    # n'est pas encore remonte au serveur).
+    .icd_table_saisie <- function() {
+      base <- project_icd_poids(shiny::isolate(app_state$current_project)$metadata)
+      figees <- .icd_cases_figees()
+      for (i in seq_len(nrow(base))) {
+        for (k in .icd_indices_noms()) {
+          if (isTRUE(figees[base$essence[i], k])) { base[i, k] <- 0; next }
+          v <- suppressWarnings(as.numeric(input[[.icd_id(base$essence[i], k)]]))
+          if (length(v) == 1L && is.finite(v)) base[i, k] <- v
+        }
+      }
+      base
+    }
+
+    output$icd_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh$icd
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("icd_poids_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("icd_poids_hint"))
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+      w <- project_icd_poids(shiny::isolate(app_state$current_project)$metadata)
+      figees <- .icd_cases_figees()
+      idx <- .icd_indices_noms()
+      ligne <- function(i) {
+        ess <- w$essence[i]
+        htmltools::tags$tr(
+          htmltools::tags$th(scope = "row", i18n$t(paste0("icd_ess_", ess))),
+          lapply(idx, function(k) htmltools::tags$td(
+            if (isTRUE(figees[ess, k])) {
+              htmltools::tags$input(
+                type = "number", value = 0, disabled = NA,
+                class = "form-control form-control-sm",
+                `aria-label` = sprintf("%s %s", ess, k))
+            } else {
+              shiny::numericInput(
+                ns(.icd_id(ess, k)), label = NULL, value = w[i, k],
+                min = 0, max = 1, step = 0.05, width = "100%")
+            })))
+      }
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        htmltools::tags$p(class = "small fst-italic mb-2",
+                          i18n$t("icd_poids_formule")),
+        htmltools::tags$table(
+          class = "table table-sm align-middle mb-2",
+          htmltools::tags$thead(htmltools::tags$tr(
+            htmltools::tags$th(i18n$t("icd_poids_essence")),
+            lapply(idx, function(k) htmltools::tags$th(k)))),
+          htmltools::tags$tbody(lapply(seq_len(nrow(w)), ligne))),
+        shiny::uiOutput(ns("icd_apercu")),
+        htmltools::div(
+          class = "d-flex gap-2",
+          shiny::actionButton(
+            ns("icd_defaut"), i18n$t("icd_poids_defaut"),
+            class = "btn-outline-secondary btn-sm",
+            icon = bsicons::bs_icon("arrow-counterclockwise")),
+          shiny::actionButton(
+            ns("icd_save"), i18n$t("icd_poids_save"),
+            class = "btn-primary btn-sm", icon = bsicons::bs_icon("save")))
+      )
+    })
+
+    # Somme saisie et poids utilises, par essence, en direct.
+    output$icd_apercu <- shiny::renderUI({
+      i18n <- i18n_r()
+      r <- icd_poids_resume(.icd_table_saisie())
+      if (is.null(r$valide)) {
+        return(htmltools::div(class = "alert alert-warning small",
+                              paste(i18n$t("icd_poids_refuses"), r$erreur)))
+      }
+      idx <- .icd_indices_noms()
+      lignes <- lapply(seq_len(nrow(r$valide)), function(i) {
+        ess <- r$valide$essence[i]
+        somme <- unname(r$somme_saisie[ess])
+        utilises <- paste(sprintf("%s %s", idx,
+                                  format(round(unlist(r$valide[i, idx]), 3),
+                                         nsmall = 2)), collapse = " \u00b7 ")
+        htmltools::tags$li(
+          sprintf(i18n$t("icd_poids_somme"), i18n$t(paste0("icd_ess_", ess)),
+                  format(round(somme, 3), nsmall = 2)),
+          if (ess %in% r$renormalise)
+            htmltools::tags$span(
+              class = "text-warning ms-1",
+              sprintf(i18n$t("icd_poids_utilises"), utilises)))
+      })
+      htmltools::tags$ul(class = "small mb-2", lignes)
+    })
+
+    shiny::observeEvent(input$icd_defaut, {
+      d <- nemeton::icd_poids_defaut()
+      figees <- .icd_cases_figees()
+      for (i in seq_len(nrow(d))) for (k in .icd_indices_noms()) {
+        if (isTRUE(figees[d$essence[i], k])) next
+        shiny::updateNumericInput(session, .icd_id(d$essence[i], k),
+                                  value = d[i, k])
+      }
+    })
+
+    shiny::observeEvent(input$icd_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_icd_poids(pid, .icd_table_saisie())
+        .refresh_project(pid, "icd")
+        shiny::showNotification(i18n$t("icd_poids_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

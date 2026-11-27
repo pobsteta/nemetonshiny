@@ -135,7 +135,7 @@
 .sante_marker_stop <- function(marker) .capped_marker_stop(marker, timeout = 3)
 
 # Moteurs Sante plafonnes dont l'app tient un marqueur de run.
-.moteurs_sante_plafonnes <- c("reconfort", "fordead")
+.moteurs_sante_plafonnes <- c("reconfort", "fordead", "icd")
 
 # Marqueur de run d'un moteur Sante : `<projet>/cache/layers/<moteur>/
 # engine_run.json`. NULL sans projet. `creer` : cree le dossier (le coeur ecrit

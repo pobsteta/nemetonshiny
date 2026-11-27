@@ -7800,6 +7800,351 @@ TRANSLATIONS <- list(
   pipeline_skip_desserte_ko = list(
     fr = "Desserte indisponible : l'\u00e9tape pr\u00e9c\u00e9dente a \u00e9chou\u00e9.",
     en = "Road network unavailable: the previous step failed."
+  ),
+  # --- ICD : indicateur composite de decoloration (spec 071) ---
+  icd_onglet = list(
+    fr = "ICD",
+    en = "ICD"
+  ),
+  icd_onglet_info = list(
+    fr = "Indicateur composite de d\u00e9coloration du feuillage (Sentinel-2, 5 indices)",
+    en = "Composite foliage discoloration indicator (Sentinel-2, 5 indices)"
+  ),
+  icd_subtab_carte = list(
+    fr = "Carte ICD",
+    en = "ICD map"
+  ),
+  icd_mode_help = list(
+    fr = "Suivi de la d\u00e9coloration anormale du feuillage : cinq indices spectraux combin\u00e9s en un indicateur par pixel, pour ch\u00eane, h\u00eatre, sapin/\u00e9pic\u00e9a et douglas purs. Compl\u00e8te FAST, sans le remplacer.",
+    en = "Monitoring of abnormal foliage discoloration: five spectral indices combined into one indicator per pixel, for pure oak, beech, fir/spruce and Douglas stands. Complements FAST, does not replace it."
+  ),
+  icd_lancer_btn = list(
+    fr = "Calculer l'ICD",
+    en = "Compute the ICD"
+  ),
+  icd_en_cours = list(
+    fr = "Calcul de l'ICD en cours",
+    en = "ICD computation running"
+  ),
+  icd_starting = list(
+    fr = "D\u00e9marrage du calcul de l'ICD\u2026",
+    en = "Starting the ICD computation\u2026"
+  ),
+  icd_phase_scenes = list(
+    fr = "Images Sentinel-2 {n}/{total}",
+    en = "Sentinel-2 scenes {n}/{total}"
+  ),
+  icd_phase_composites = list(
+    fr = "Composites mensuels {n}/{total}",
+    en = "Monthly composites {n}/{total}"
+  ),
+  icd_phase_anomalies = list(
+    fr = "Anomalies standardis\u00e9es et ICD",
+    en = "Standardised anomalies and ICD"
+  ),
+  icd_phase_annuel = list(
+    fr = "Classe et niveau de l'ann\u00e9e {annee}",
+    en = "Class and level of year {annee}"
+  ),
+  icd_phase_alertes = list(
+    fr = "Enregistrement des alertes",
+    en = "Writing alerts"
+  ),
+  icd_complete = list(
+    fr = "ICD calcul\u00e9 : %d pixels avec ICD, en %s.",
+    en = "ICD computed: %d pixels with ICD, in %s."
+  ),
+  icd_cancelled = list(
+    fr = "Calcul de l'ICD arr\u00eat\u00e9. Ce qui est d\u00e9j\u00e0 \u00e9crit reste valide.",
+    en = "ICD computation stopped. What is already written stays valid."
+  ),
+  icd_arret_demande = list(
+    fr = "Arr\u00eat demand\u00e9 : le calcul s'arr\u00eate avant la prochaine sc\u00e8ne ou le prochain mois.",
+    en = "Stop requested: the computation stops before the next scene or month."
+  ),
+  icd_error = list(
+    fr = "Erreur lors du calcul de l'ICD",
+    en = "Error during the ICD computation"
+  ),
+  icd_bdforet_absente = list(
+    fr = "L'ICD a besoin de la BD For\u00eat V2 du projet (les essences) : calculez d'abord les indicateurs du projet.",
+    en = "The ICD needs the project's BD For\u00eat V2 (species): compute the project indicators first."
+  ),
+  icd_poids_refuses = list(
+    fr = "Poids de l'ICD refus\u00e9s :",
+    en = "ICD weights refused:"
+  ),
+  icd_poids_ou = list(
+    fr = "Les poids de la formule se r\u00e8glent dans Param\u00e8tres, onglet Sources & param\u00e8tres.",
+    en = "The formula weights are set in Settings, Sources & parameters tab."
+  ),
+  icd_annee_lbl = list(
+    fr = "Ann\u00e9e",
+    en = "Year"
+  ),
+  icd_provisoire = list(
+    fr = "provisoire",
+    en = "provisional"
+  ),
+  icd_opacite = list(
+    fr = "Opacit\u00e9",
+    en = "Opacity"
+  ),
+  icd_carte_vide_titre = list(
+    fr = "Aucun r\u00e9sultat ICD",
+    en = "No ICD result"
+  ),
+  icd_carte_vide_corps = list(
+    fr = "Lancez \u00ab Calculer l'ICD \u00bb pour produire la carte de la zone.",
+    en = "Run \u201cCompute the ICD\u201d to produce the zone map."
+  ),
+  icd_poids_modifies = list(
+    fr = "Poids modifi\u00e9s depuis ce calcul : la carte est celle du dernier calcul, relancez le calcul de l'ICD.",
+    en = "Weights changed since this computation: the map is that of the last run, run the ICD again."
+  ),
+  icd_legende_titre = list(
+    fr = "Niveau ICD",
+    en = "ICD level"
+  ),
+  icd_niv_0 = list(
+    fr = "0 \u00b7 normal",
+    en = "0 \u00b7 normal"
+  ),
+  icd_niv_1 = list(
+    fr = "1 \u00b7 surveillance",
+    en = "1 \u00b7 watch"
+  ),
+  icd_niv_2 = list(
+    fr = "2 \u00b7 alerte",
+    en = "2 \u00b7 alert"
+  ),
+  icd_niv_3 = list(
+    fr = "3 \u00b7 alerte forte",
+    en = "3 \u00b7 strong alert"
+  ),
+  icd_niv_4 = list(
+    fr = "4 \u00b7 alerte r\u00e9p\u00e9t\u00e9e",
+    en = "4 \u00b7 repeated alert"
+  ),
+  icd_sans_icd = list(
+    fr = "%s pixels sans ICD sur %s : hors des quatre peuplements purs (ch\u00eane, h\u00eatre, sapin/\u00e9pic\u00e9a, douglas), on n'invente aucune valeur.",
+    en = "%s pixels without ICD out of %s: outside the four pure stands (oak, beech, fir/spruce, Douglas), no value is invented."
+  ),
+  icd_pixel_hors_grille = list(
+    fr = "Ce point est hors de la grille de calcul de l'ICD.",
+    en = "This point is outside the ICD computation grid."
+  ),
+  icd_modal_titre = list(
+    fr = "ICD du pixel (%s, %s)",
+    en = "Pixel ICD (%s, %s)"
+  ),
+  icd_pas_icd = list(
+    fr = "Ce pixel n'a pas d'ICD : il est hors des quatre peuplements purs (ch\u00eane, h\u00eatre, sapin/\u00e9pic\u00e9a, douglas).",
+    en = "This pixel has no ICD: it is outside the four pure stands (oak, beech, fir/spruce, Douglas)."
+  ),
+  icd_entete_essence = list(
+    fr = "Essence",
+    en = "Species"
+  ),
+  icd_entete_poids = list(
+    fr = "Poids utilis\u00e9s",
+    en = "Weights used"
+  ),
+  icd_entete_annee = list(
+    fr = "Ann\u00e9e",
+    en = "Year"
+  ),
+  icd_entete_niveau = list(
+    fr = "niveau",
+    en = "level"
+  ),
+  icd_entete_alerte = list(
+    fr = "Date d'alerte",
+    en = "Alert date"
+  ),
+  icd_val_lbl = list(
+    fr = "Valeurs",
+    en = "Values"
+  ),
+  icd_val_z = list(
+    fr = "Anomalies z",
+    en = "z anomalies"
+  ),
+  icd_val_brut = list(
+    fr = "Valeurs brutes",
+    en = "Raw values"
+  ),
+  icd_g1_titre = list(
+    fr = "Les indices, par mois et par ann\u00e9e (mois sensibles en gris)",
+    en = "Indices by month and year (sensitive months in grey)"
+  ),
+  icd_g2_titre = list(
+    fr = "ICD mensuel et seuils",
+    en = "Monthly ICD and thresholds"
+  ),
+  icd_axe_z = list(
+    fr = "Anomalie z",
+    en = "z anomaly"
+  ),
+  icd_axe_brut = list(
+    fr = "Valeur brute",
+    en = "Raw value"
+  ),
+  icd_axe_icd = list(
+    fr = "ICD",
+    en = "ICD"
+  ),
+  icd_mois_alerte = list(
+    fr = "Mois d'alerte",
+    en = "Alert month"
+  ),
+  icd_seuil_surv = list(
+    fr = "surveillance",
+    en = "watch"
+  ),
+  icd_seuil_alerte = list(
+    fr = "alerte",
+    en = "alert"
+  ),
+  icd_seuil_forte = list(
+    fr = "alerte forte",
+    en = "strong alert"
+  ),
+  icd_cls_0 = list(
+    fr = "normal",
+    en = "normal"
+  ),
+  icd_cls_1 = list(
+    fr = "surveillance",
+    en = "watch"
+  ),
+  icd_cls_2 = list(
+    fr = "alerte",
+    en = "alert"
+  ),
+  icd_ess_chene = list(
+    fr = "Ch\u00eane",
+    en = "Oak"
+  ),
+  icd_ess_hetre = list(
+    fr = "H\u00eatre",
+    en = "Beech"
+  ),
+  icd_ess_sapin_epicea = list(
+    fr = "Sapin / \u00e9pic\u00e9a",
+    en = "Fir / spruce"
+  ),
+  icd_ess_douglas = list(
+    fr = "Douglas",
+    en = "Douglas fir"
+  ),
+  icd_cmp_btn = list(
+    fr = "Comparer avec FAST",
+    en = "Compare with FAST"
+  ),
+  icd_cmp_calcul = list(
+    fr = "Comparaison avec FAST en cours\u2026",
+    en = "Comparing with FAST\u2026"
+  ),
+  icd_cmp_titre = list(
+    fr = "Comparaison avec FAST",
+    en = "Comparison with FAST"
+  ),
+  icd_cmp_fast_icd = list(
+    fr = "Surfaces (ha)",
+    en = "Areas (ha)"
+  ),
+  icd_cmp_fast_absent = list(
+    fr = "FAST n'a pas tourn\u00e9 sur cette zone : aucune comparaison possible.",
+    en = "FAST has not run on this zone: no comparison possible."
+  ),
+  icd_cmp_icd_absent = list(
+    fr = "L'ICD n'est pas calcul\u00e9 pour cette ann\u00e9e.",
+    en = "The ICD is not computed for this year."
+  ),
+  icd_cmp_sans_pixel_commun = list(
+    fr = "FAST et l'ICD n'ont aucun pixel en commun sur cette zone.",
+    en = "FAST and the ICD share no pixel on this zone."
+  ),
+  icd_cmp_accord = list(
+    fr = "Accord global : %s ; kappa : %s.",
+    en = "Overall agreement: %s; kappa: %s."
+  ),
+  icd_cmp_kappa_note = list(
+    fr = "Le kappa est un indicateur, pas une validation : les deux m\u00e9thodes ont leurs erreurs.",
+    en = "Kappa is an indicator, not a validation: both methods have their own errors."
+  ),
+  icd_cmp_egale_titre = list(
+    fr = "\u00c0 surface alert\u00e9e \u00e9gale",
+    en = "At equal alerted area"
+  ),
+  icd_cmp_egale = list(
+    fr = "Part alert\u00e9e %s (ICD niveau 2 ou plus) ; accord %s ; kappa %s.",
+    en = "Alerted share %s (ICD level 2 or more); agreement %s; kappa %s."
+  ),
+  icd_cmp_egale_ha = list(
+    fr = "Alerte des deux : %s ha ; FAST seul : %s ha ; ICD seul : %s ha.",
+    en = "Alert in both: %s ha; FAST only: %s ha; ICD only: %s ha."
+  ),
+  icd_poids_section = list(
+    fr = "ICD \u2014 poids de la formule",
+    en = "ICD \u2014 formula weights"
+  ),
+  icd_poids_hint = list(
+    fr = "Seuls les poids se r\u00e8glent ; les seuils et les mois sont ceux de la note de m\u00e9thode. Une somme diff\u00e9rente de 1 est ramen\u00e9e \u00e0 1 au calcul.",
+    en = "Only the weights can be set; thresholds and months are those of the method note. A sum other than 1 is rescaled to 1 at computation."
+  ),
+  icd_poids_formule = list(
+    fr = "ICD = w1\u00b7z(GRVI) + w2\u00b7z(CIre) \u2212 w3\u00b7z(CRSWIR) \u2212 w4\u00b7z(CRre) + w5\u00b7z(NDVI). Un ICD n\u00e9gatif signale une d\u00e9coloration (CRSWIR et CRre entrent avec un signe moins). CRre ne sert qu'aux feuillus.",
+    en = "ICD = w1\u00b7z(GRVI) + w2\u00b7z(CIre) \u2212 w3\u00b7z(CRSWIR) \u2212 w4\u00b7z(CRre) + w5\u00b7z(NDVI). A negative ICD flags discoloration (CRSWIR and CRre enter with a minus sign). CRre is for broadleaves only."
+  ),
+  icd_poids_essence = list(
+    fr = "Essence",
+    en = "Species"
+  ),
+  icd_poids_somme = list(
+    fr = "%s : somme saisie %s",
+    en = "%s: entered sum %s"
+  ),
+  icd_poids_utilises = list(
+    fr = "\u2192 poids utilis\u00e9s : %s",
+    en = "\u2192 weights used: %s"
+  ),
+  icd_poids_defaut = list(
+    fr = "Valeurs par d\u00e9faut",
+    en = "Default values"
+  ),
+  icd_poids_save = list(
+    fr = "Enregistrer",
+    en = "Save"
+  ),
+  icd_poids_saved = list(
+    fr = "Poids de l'ICD enregistr\u00e9s. Relancez le calcul pour en tenir compte.",
+    en = "ICD weights saved. Run the ICD again to apply them."
+  ),
+  icd_cls_na = list(
+    fr = "sans classe",
+    en = "no class"
+  ),
+  icd_cmp_ent_fast = list(
+    fr = "FAST %s",
+    en = "FAST %s"
+  ),
+  icd_cmp_ent_icd = list(
+    fr = "ICD %s",
+    en = "ICD %s"
+  ),
+  icd_coupes_non_retirees = list(
+    fr = "Coupes rases non retir\u00e9es : aucune couche SUFOSAT n'a servi \u00e0 ce calcul.",
+    en = "Clear-cuts not removed: no SUFOSAT layer was used for this computation."
+  ),
+  monitoring_icd_verrou = list(
+    fr = "Un calcul de l'ICD tourne d\u00e9j\u00e0 sur ce projet (processus actif).",
+    en = "An ICD computation is already running on this project (active process)."
+  ),
+  pipeline_step_sante_icd = list(
+    fr = "Sant\u00e9 \u2014 ICD",
+    en = "Health \u2014 ICD"
   )
 )
 
