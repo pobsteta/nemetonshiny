@@ -7721,6 +7721,10 @@ TRANSLATIONS <- list(
     fr = "Arr\u00eat demand\u00e9. RECONFORT termine l'\u00e9tape en cours puis s'arr\u00eate \u2014 IOTA2 d\u00e9coupe c\u00f4t\u00e9 Python, il n'y a pas de point d'arr\u00eat plus fin, et une classification peut demander plusieurs dizaines de minutes. Ce qui a d\u00e9j\u00e0 \u00e9t\u00e9 produit (sc\u00e8nes ing\u00e9r\u00e9es, sorties IOTA2) est conserv\u00e9 et relu par une relance.",
     en = "Stop requested. RECONFORT finishes the current step then exits \u2014 IOTA2 chunks on the Python side, there is no finer checkpoint, and a classification can take tens of minutes. Whatever was already produced (ingested scenes, IOTA2 outputs) is kept and re-read on a relaunch."
   ),
+  erreur_journal_prefixe = list(
+    fr = "Journal\u00a0:",
+    en = "Log:"
+  ),
   monitoring_reconfort_verrou = list(
     fr = "Un calcul RECONFORT tourne encore sur ce projet\u00a0: attendez sa fin ou arr\u00eatez-le.",
     en = "A RECONFORT run is still running on this project: wait for it to finish or stop it."

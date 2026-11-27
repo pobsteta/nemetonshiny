@@ -4871,13 +4871,18 @@ mod_monitoring_server <- function(id, app_state) {
 
 .monitoring_run_error_msg <- function(msg, i18n, title_key) {
   msg <- as.character(msg %||% "")
+  # Le message COMPLET reste en console ; la notification recoit la version
+  # lisible (sans codes de terminal ni pile d'appels, avec la cause racine).
+  if (nzchar(paste(msg, collapse = ""))) {
+    try(cli::cli_verbatim(cli::ansi_strip(paste(msg, collapse = "\n"))), silent = TRUE)
+  }
   if (.monitoring_is_verrou_reconfort(msg)) {
     i18n$t("monitoring_reconfort_verrou")
   } else if (.monitoring_is_oom(msg)) {
     sprintf("%s : %s", i18n$t("monitoring_error_oom_short"),
             i18n$t("monitoring_error_oom"))
   } else {
-    sprintf("%s : %s", i18n$t(title_key), msg)
+    sprintf("%s : %s", i18n$t(title_key), .message_erreur_lisible(msg, i18n))
   }
 }
 
