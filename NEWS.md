@@ -1,8 +1,17 @@
-# nemetonshiny 2026.11.6.9025 (en développement)
+# nemetonshiny 2026.11.6.9026 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.44** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084 et 086).
+Demande le cœur **nemeton >= 2026.11.46** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084, 086 et 088).
 
 ## Changements
+
+- **Onglet ICD du suivi sanitaire : l'indicateur composite de décoloration** (mission 088, décisions de Pascal du 2026-11-26 ; cœur 2026.11.46, spec 071). Aucune logique métier : tout passe par `R/service_icd.R`, qui appelle `nemeton::run_icd_decoloration()`, `icd_poids_defaut()`, `icd_poids_valider()`, `read_icd_raster()`, `read_icd_pixel_series()` et `comparer_fast_icd()`. FAST est inchangé.
+  - **Onglet « ICD » après RECONFORT** (`R/mod_monitoring.R`, `R/mod_monitoring_icd.R`) : bouton « Calculer l'ICD » (`input_task_button` lié à un `ExtendedTask`, vert), toast de progression alimenté par les événements `s2:*` et `icd:*`, chrono, bouton d'arrêt (drapeau coopératif lu par le cœur). Le toast et le chrono sont retirés à la fin, à l'arrêt, à l'annulation et sur erreur ; l'arrêt pose aussi `app_state$cancel_computation`. Le calcul porte sur la zone `_tot` ; il refuse de partir sans la BD Forêt V2 du projet (les essences).
+  - **Carte** : niveau 0 à 4 de l'année choisie (l'année en cours est dite « provisoire »), palette ordonnée et légende, pixels sans ICD transparents avec une ligne qui dit combien et pourquoi (hors des quatre peuplements purs).
+  - **Clic** : modale à deux graphiques plotly. 1) les anomalies z (ou les valeurs brutes) des indices de la formule, par mois et par année, mois sensibles en gris, CRre absent pour sapin/épicéa et douglas ; 2) l'ICD mensuel avec les seuils −1,5, −2 et −3, l'année courante en pointillé à points creux, les mois d'alerte en losange rouge. En tête : essence, poids utilisés, classe et niveau de l'année, date d'alerte.
+  - **Comparaison avec FAST** (bouton, à la demande) : tableau croisé FAST 0-4 × ICD 0-4 en hectares, accord global, kappa (présenté comme indicateur, pas comme validation), comparaison à surface alertée égale ; message si FAST n'a pas tourné ou si l'ICD n'est pas calculé.
+  - **Poids dans Sources & paramètres** : tableau 4 essences × 5 indices (pas 0,05 ; CRre figé à 0 pour les résineux), somme saisie et poids effectivement utilisés affichés en direct, « Valeurs par défaut » et « Enregistrer », enregistrés par projet (`metadata$icd_poids`). Un témoin `app_icd.json` à côté des sorties du cœur garde les poids du dernier calcul : s'ils changent, la carte se masque et dit « relancer le calcul ».
+  - **« Tout calculer »** : étape `sante_icd` après `sante_reconfort` (sautée sans zone, sans BD Forêt ou si le calcul tourne déjà).
+  - **Limites** : le calcul tourne dans le worker, pas dans un enfant plafonné en mémoire (`run_memory_capped`) ; pas d'arrêt dur par marqueur (le drapeau coopératif seul) ; SUFOSAT n'est pas branché (le cœur dit que les coupes ne sont pas retirées).
 
 - **Erreurs des calculs longs : un texte lisible, avec la cause racine** (mission 090). La notification « Erreur lors du diagnostic RECONFORT » (et FORDEAD, FAST) affichait des codes de terminal et la pile d'appels, sans la cause réelle (délai dépassé vers `api.stac.teledetection.fr`, visible seulement dans le journal de l'enfant). Nouveau `.message_erreur_lisible()` (`R/utils_notif.R`), utilisé par `.monitoring_run_error_msg()` : retire l'ANSI et la pile, ajoute la cause « Caused by » la plus profonde lue dans la fin (bornée, lecture seule) du journal indiqué, et la ligne « Journal : chemin » (clé i18n `erreur_journal_prefixe`). Le message complet reste en console (`cli_verbatim`).
 

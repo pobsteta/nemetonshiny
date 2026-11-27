@@ -59,6 +59,14 @@ mod_monitoring_ui <- function(id) {
       value = "reconfort",
       icon  = .icone_feuillu()
     ),
+    # Indicateur composite de decoloration (ICD), apres RECONFORT. Meme logique
+    # que les trois autres : un mode, ses controles dans la sidebar, sa carte.
+    bslib::nav_panel(
+      title = htmltools::tags$span(title = i18n$t("icd_onglet_info"),
+                                   i18n$t("icd_onglet")),
+      value = "icd",
+      icon  = bsicons::bs_icon("graph-down-arrow")
+    ),
     header = .monitoring_contenu_ui(ns, i18n, lang)
   )
 }
@@ -309,6 +317,22 @@ mod_monitoring_ui <- function(id) {
               # meme ou il a clique. Le toast reste (il porte l'etape en cours).
               shiny::uiOutput(ns("run_reconfort_status")),
               shiny::uiOutput(ns("run_reconfort_cancel_panel"))
+            ),
+            # ----- ICD (spec 071) --------------------------------------
+            # Indicateur composite de decoloration : calcul sur la zone `_tot`
+            # (UGF du projet), annees de 2017 a l'annee en cours. Les poids se
+            # reglent dans " Sources & parametres ".
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'icd'", ns("mode")),
+              shiny::uiOutput(ns("icd_params_recap")),
+              bslib::input_task_button(
+                ns("run_icd"), i18n$t("icd_lancer_btn"),
+                icon  = bsicons::bs_icon("activity"),
+                label_busy = i18n$t("icd_en_cours"),
+                class = "btn-primary w-100"
+              ),
+              shiny::uiOutput(ns("run_icd_status")),
+              shiny::uiOutput(ns("run_icd_cancel_panel"))
             )
           )
         )
@@ -463,6 +487,15 @@ mod_monitoring_ui <- function(id) {
           icon  = .icone_feuillu(),
           mod_monitoring_reconfort_map_ui(ns("reconfort_map"))
         ),
+        # ----- Sub-tab - Carte ICD (spec 071) -------------------------
+        # Niveau de l'annee choisie ; le clic ouvre les graphiques des cinq
+        # indices et de l'ICD. Masque hors mode "icd".
+        bslib::nav_panel(
+          title = i18n$t("icd_subtab_carte"),
+          value = "pixel_map_icd",
+          icon  = bsicons::bs_icon("graph-down-arrow"),
+          mod_monitoring_icd_ui(ns("icd_map"))
+        ),
         # ----- Sub-tabs - Plan de validation (spec 014, v0.43.0) -----
         # v0.43.3 - passe de 1 onglet single avec radio a 2 sous-onglets
         # mode-driven, symetriques avec les couples Alertes/Carte :
@@ -527,6 +560,7 @@ mod_monitoring_server <- function(id, app_state) {
     # alors un avertissement, comme R5 (`eligible_fordead_out_of_calibration`).
     sante_fordead_hors_calib     <- shiny::reactiveVal(FALSE)
     sante_reconfort_pipeline_req <- shiny::reactiveVal(NULL)
+    sante_icd_pipeline_req       <- shiny::reactiveVal(NULL)
 
     # Repond au lancement enchaine des qu'un moteur sante est tranche.
     # `shiny::observe()` sur les trois statuts : ils sont reactifs, donc cet
@@ -540,7 +574,8 @@ mod_monitoring_server <- function(id, app_state) {
         list(rv = sante_fast_pipeline_req,      st = fast_task$status(),      tk = fast_task),
         list(rv = sante_fordead_pipeline_req,   st = fordead_task$status(),   tk = fordead_task,
              avert = sante_fordead_hors_calib),
-        list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status(), tk = reconfort_task)
+        list(rv = sante_reconfort_pipeline_req, st = reconfort_task$status(), tk = reconfort_task),
+        list(rv = sante_icd_pipeline_req,       st = icd_task$status(),       tk = icd_task)
       )) {
         req <- shiny::isolate(item$rv())
         if (is.null(req)) next
@@ -716,10 +751,11 @@ mod_monitoring_server <- function(id, app_state) {
       fordead_tabs  <- c("pixel_map_fordead",
                          "validation_sampling_fordead")
       reconfort_tabs <- c("pixel_map_reconfort", "validation_sampling_reconfort")
+      icd_tabs       <- "pixel_map_icd"
 
       if (identical(mode, "quick")) {
         .show(fast_tabs)
-        .hide(c(fordead_tabs, reconfort_tabs))
+        .hide(c(fordead_tabs, reconfort_tabs, icd_tabs))
         # v0.37.1 - re-anchor the active tab onto a visible one.
         # Without this, when the user toggles mode the navset keeps
         # its previously-active pane - which may now be hidden -
@@ -727,14 +763,19 @@ mod_monitoring_server <- function(id, app_state) {
         bslib::nav_select("subtab", selected = "alerts_fast",
                           session = session)
       } else if (identical(mode, "health")) {
-        .hide(c(fast_tabs, reconfort_tabs))
+        .hide(c(fast_tabs, reconfort_tabs, icd_tabs))
         .show(fordead_tabs)
         bslib::nav_select("subtab", selected = "pixel_map_fordead",
                           session = session)
       } else if (identical(mode, "reconfort")) {
-        .hide(c(fast_tabs, fordead_tabs))
+        .hide(c(fast_tabs, fordead_tabs, icd_tabs))
         .show(reconfort_tabs)
         bslib::nav_select("subtab", selected = "pixel_map_reconfort",
+                          session = session)
+      } else if (identical(mode, "icd")) {
+        .hide(c(fast_tabs, fordead_tabs, reconfort_tabs))
+        .show(icd_tabs)
+        bslib::nav_select("subtab", selected = "pixel_map_icd",
                           session = session)
       }
     })
@@ -931,6 +972,7 @@ mod_monitoring_server <- function(id, app_state) {
       key <- switch(input$mode %||% "quick",
                     health    = "monitoring_mode_health_help",
                     reconfort = "monitoring_mode_reconfort_help",
+                    icd       = "icd_mode_help",
                     "monitoring_mode_quick_help")
       htmltools::tags$p(class = "text-muted small fst-italic", i18n$t(key))
     })
@@ -1375,7 +1417,8 @@ mod_monitoring_server <- function(id, app_state) {
         !is.null(t) && identical(tryCatch(shiny::isolate(t$status()),
                                           error = function(e) NA), "running")
       }
-      any(vapply(c("fast_task", "fordead_task", "reconfort_task"), en_cours, logical(1)))
+      any(vapply(c("fast_task", "fordead_task", "reconfort_task",
+                 "icd_task"), en_cours, logical(1)))
     }
 
     .enregistrer_zones_suivi <- function() {
@@ -2396,7 +2439,7 @@ mod_monitoring_server <- function(id, app_state) {
     # boutons le font. Sans cette regle, ce simple observer bouclerait.
     shiny::observeEvent(app_state$cancel_computation, {
       actifs <- c(.reset_fast_run(), .reset_fordead_run(),
-                  .reset_reconfort_run())
+                  .reset_reconfort_run(), .reset_icd_run())
       # Un run etait vivant : l'ecran le dit, au lieu de se contenter de faire
       # disparaitre ses toasts. Meme id que le toast de mod_home, pour qu'un
       # arret de " Tout calculer " n'en affiche qu'un. Les boutons d'arret ont
@@ -4033,6 +4076,261 @@ mod_monitoring_server <- function(id, app_state) {
       }
     })
 
+    # ===== ICD : indicateur composite de decoloration (spec 071) =========
+    # Meme machinerie que RECONFORT (tache asynchrone, fichier de progression
+    # relu par un poll, chrono, arret), sans calcul dans l'app : le coeur fait
+    # tout (`nemeton::run_icd_decoloration()`, via `R/service_icd.R`).
+    icd_refresh <- shiny::reactiveVal(0L)
+    icd_task <- run_icd_async()
+    # Le bouton suit l'etat de la tache (occupe pendant le calcul). Gardee : les
+    # tests injectent une fausse tache qui n'est pas une `ExtendedTask`.
+    if (inherits(icd_task, "ExtendedTask")) bslib::bind_task_button(icd_task, "run_icd")
+    icd_progress_path <- shiny::reactiveVal(NULL)
+    icd_run_start <- shiny::reactiveVal(NULL)
+    icd_run_msg   <- shiny::reactiveVal(NULL)
+    icd_result_consumed <- shiny::reactiveVal(FALSE)
+    force_unlock_icd <- shiny::reactiveVal(FALSE)
+
+    # Les calculs se font sur la zone `_tot`, comme RECONFORT : la strate du menu
+    # ne sert qu'a l'affichage.
+    icd_map_ret <- mod_monitoring_icd_server(
+      "icd_map", app_state = app_state,
+      zone_id_r = shiny::reactive(fordead_zone_id()),
+      refresh_r = shiny::reactive(icd_refresh()))
+
+    # Rappel des poids en vigueur et du chemin pour les changer.
+    output$icd_params_recap <- shiny::renderUI({
+      i18n <- i18n_r()
+      htmltools::div(
+        class = "small text-muted border rounded p-2 mb-3",
+        htmltools::div(
+          class = "fw-semibold mb-1",
+          bsicons::bs_icon("sliders", class = "me-1"),
+          i18n$t("icd_poids_section")),
+        htmltools::tags$div(class = "fst-italic", i18n$t("icd_poids_ou")))
+    })
+
+    icd_progress <- shiny::reactivePoll(
+      intervalMillis = 500L, session,
+      checkFunc = function() {
+        p <- icd_progress_path()
+        if (is.null(p) || !file.exists(p)) return("0")
+        as.character(file.info(p)$mtime)
+      },
+      valueFunc = function() {
+        p <- icd_progress_path()
+        if (is.null(p) || !file.exists(p)) return(NULL)
+        tryCatch(jsonlite::read_json(p, simplifyVector = TRUE),
+                 error = function(e) NULL)
+      }
+    )
+
+    shiny::observe({
+      ev <- icd_progress()
+      if (is.null(ev)) return()
+      .icd_handle_progress_event(
+        ev, session, i18n_r(),
+        start = icd_run_start(), on_msg = icd_run_msg,
+        est_actif = function() !is.null(shiny::isolate(icd_run_start())))
+    })
+
+    # Chrono qui defile, tant que le calcul est actif.
+    shiny::observe({
+      st  <- icd_run_start()
+      msg <- icd_run_msg()
+      if (is.null(st) || is.null(msg)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .monitoring_spinning_msg(msg, st),
+        id = session$ns("icd_progress"), type = "message",
+        duration = NULL, closeButton = FALSE)
+    })
+
+    output$run_icd_status <- .run_status_output(
+      icd_run_start, icd_run_msg, "icd_starting")
+    shiny::outputOptions(output, "run_icd_status", suspendWhenHidden = FALSE)
+
+    output$run_icd_cancel_panel <- shiny::renderUI({
+      i18n <- i18n_r()
+      if (!identical(icd_task$status(), "running")) return(NULL)
+      if (isTRUE(force_unlock_icd())) return(NULL)
+      shiny::actionButton(
+        session$ns("run_icd_cancel"), i18n$t("monitoring_run_cancel_btn"),
+        icon = bsicons::bs_icon("x-circle"),
+        class = "btn-outline-secondary btn-sm w-100 mt-1")
+    })
+
+    # Arret : drapeau cooperatif (lu par le coeur avant chaque scene et chaque
+    # mois), puis liberation de l'interface, toast et chrono retires, fichier de
+    # progression lache (meme regle que les trois autres moteurs, mission 072).
+    # Renvoie TRUE si un calcul etait actif.
+    .reset_icd_run <- function() {
+      cancel_path <- .resolve_progress_path(app_state$current_project,
+                                            "icd_cancel.flag")
+      if (!is.null(cancel_path)) {
+        tryCatch(file.create(cancel_path), error = function(e) NULL)
+      }
+      actif <- !is.null(shiny::isolate(icd_run_start()))
+      force_unlock_icd(TRUE)
+      .retirer_toasts_progression(session, "icd")
+      icd_run_start(NULL); icd_run_msg(NULL)
+      .cleanup_progress_file(icd_progress_path())
+      icd_progress_path(NULL)
+      invisible(actif)
+    }
+
+    shiny::observeEvent(input$run_icd_cancel, {
+      .reset_icd_run()
+      shiny::showNotification(
+        i18n_r()$t("icd_arret_demande"), id = session$ns("icd_cancelled"),
+        type = "warning", duration = 10)
+      app_state$cancel_computation <- Sys.time()
+    })
+
+    # `zone_id` : le lancement enchaine l'impose (cf. `.invoke_reconfort`).
+    .invoke_icd <- function(zone_id = NULL) {
+      i18n <- i18n_r()
+      if (identical(icd_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_run_precedent_actif"),
+                                type = "warning", duration = 8)
+        return(invisible(FALSE))
+      }
+      if (.moteur_sante_en_cours()) {
+        shiny::showNotification(i18n$t("pipeline_skip_busy"),
+                                type = "warning", duration = 8)
+        return(invisible(FALSE))
+      }
+      proj <- app_state$current_project
+      zid <- suppressWarnings(as.integer(zone_id %||% fordead_zone_id()))
+      if (is.null(proj) || is.null(proj$path) || length(zid) != 1L || is.na(zid)) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return(invisible(FALSE))
+      }
+      bd <- .icd_bdforet_path(proj$path)
+      if (is.null(bd)) {
+        shiny::showNotification(i18n$t("icd_bdforet_absente"),
+                                type = "warning", duration = 10)
+        return(invisible(FALSE))
+      }
+      poids <- project_icd_poids(proj$metadata)
+      resume <- icd_poids_resume(poids)
+      if (is.null(resume$valide)) {
+        shiny::showNotification(
+          paste(i18n$t("icd_poids_refuses"), resume$erreur),
+          type = "error", duration = 10)
+        return(invisible(FALSE))
+      }
+      cd <- .resolve_s2_cache_dir(proj)
+      rd <- .icd_result_dir(proj$path, creer = TRUE)
+
+      icd_result_consumed(FALSE)
+      force_unlock_icd(FALSE)
+      shiny::showNotification(
+        i18n$t("icd_starting"), id = session$ns("icd_progress"),
+        type = "message", duration = NULL, closeButton = FALSE)
+      icd_run_start(Sys.time())
+      icd_run_msg(i18n$t("icd_starting"))
+      ppath <- .resolve_progress_path(proj, "icd_progress.json")
+      if (!is.null(ppath) && file.exists(ppath)) {
+        tryCatch(unlink(ppath), error = function(e) NULL)
+      }
+      icd_progress_path(ppath)
+      # Purge d'un drapeau residuel : le coeur le lirait comme un arret.
+      flag <- .resolve_progress_path(proj, "icd_cancel.flag")
+      if (!is.null(flag) && file.exists(flag)) {
+        tryCatch(unlink(flag, force = TRUE), error = function(e) NULL)
+      }
+      icd_task$invoke(
+        zone_id = zid, cache_dir = cd, result_dir = rd, poids = poids,
+        bdforet_path = bd, db_url = .resolve_monitoring_db_url(proj),
+        progress_path = ppath, cancel_path = flag)
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_icd, {
+      if (deny_if_readonly(app_state)) return()
+      .invoke_icd()
+    })
+
+    # --- Lancement enchaine : etape " sante_icd " ---
+    shiny::observeEvent(app_state$pipeline_request, {
+      req <- app_state$pipeline_request
+      if (!pipeline_targets(req, "sante_icd")) return()
+      i18n <- i18n_r()
+      if (is.null(app_state$current_project)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_no_project"))
+        return()
+      }
+      zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))
+      if (is.na(zid_pipeline)) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_no_zone"))
+        return()
+      }
+      if (identical(icd_task$status(), "running")) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_busy"))
+        return()
+      }
+      if (is.null(.icd_bdforet_path(app_state$current_project$path))) {
+        pipeline_answer(app_state, req, "skipped", i18n$t("icd_bdforet_absente"))
+        return()
+      }
+      sante_icd_pipeline_req(req)
+      if (!isTRUE(.invoke_icd(zone_id = zid_pipeline))) {
+        sante_icd_pipeline_req(NULL)
+        pipeline_answer(app_state, req, "skipped", i18n$t("pipeline_skip_not_started"))
+      }
+    })
+
+    # Fin du calcul : succes, annulation ou erreur. Dans tous les cas le toast
+    # a chrono est retire et le chrono arrete.
+    shiny::observe({
+      i18n <- i18n_r()
+      .fin <- function() {
+        shiny::removeNotification(session$ns("icd_progress"))
+        duree <- if (!is.null(shiny::isolate(icd_run_start()))) {
+          as.numeric(difftime(Sys.time(), shiny::isolate(icd_run_start()),
+                              units = "secs"))
+        } else 0
+        icd_run_start(NULL); icd_run_msg(NULL)
+        duree
+      }
+      result <- tryCatch(
+        icd_task$result(),
+        error = function(e) {
+          if (inherits(e, "shiny.silent.error")) stop(e)
+          if (isTRUE(shiny::isolate(icd_result_consumed()))) return(NULL)
+          icd_result_consumed(TRUE)
+          .fin()
+          .cleanup_progress_file(icd_progress_path(), archive = TRUE)
+          icd_progress_path(NULL)
+          shiny::showNotification(
+            .monitoring_run_error_msg(conditionMessage(e), i18n, "icd_error"),
+            id = session$ns("icd_error"), type = "error", duration = 10)
+          force_unlock_icd(FALSE)
+          NULL
+        }
+      )
+      if (is.null(result)) return()
+      if (isTRUE(shiny::isolate(icd_result_consumed()))) return()
+      icd_result_consumed(TRUE)
+      duree <- .fin()
+      .cleanup_progress_file(icd_progress_path())
+      icd_progress_path(NULL)
+      force_unlock_icd(FALSE)
+      if (identical(result$status, "cancelled")) {
+        shiny::showNotification(
+          i18n$t("icd_cancelled"), id = session$ns("icd_cancelled"),
+          type = "warning", duration = 8)
+        return()
+      }
+      shiny::showNotification(
+        sprintf(i18n$t("icd_complete"),
+                as.integer(result$n_pixels_icd %||% 0L), format_elapsed(duree)),
+        id = session$ns("icd_complete"), type = "message", duration = 8)
+      icd_refresh(icd_refresh() + 1L)
+    })
+
     # v0.43.3 - Plan de validation : 2 instances mode-driven (FAST +
     # FORDEAD), source figee par instance. Symetrique avec les couples
     # Alertes/Carte FAST/FORDEAD. Threading des reactives sidebar (zone,
@@ -4336,7 +4634,8 @@ mod_monitoring_server <- function(id, app_state) {
   fordead   = c("fordead_progress", "fordead_error", "fordead_success",
                 "fordead_warns"),
   reconfort = c("reconfort_progress", "reconfort_error",
-                "reconfort_complete", "reconfort_cancelled")
+                "reconfort_complete", "reconfort_cancelled"),
+  icd       = c("icd_progress", "icd_error", "icd_complete", "icd_cancelled")
 )
 
 # Retire les toasts de progression d'un mode (`fast`, `fordead`, `reconfort`)

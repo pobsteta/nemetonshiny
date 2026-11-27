@@ -156,6 +156,8 @@ test_that("l'ingest sante precede les moteurs qui lisent son cache", {
   rang <- function(x) which(ids == x)
   expect_true(rang("sante_fast") < rang("sante_fordead"))
   expect_true(rang("sante_fast") < rang("sante_reconfort"))
+  # L'ICD lit lui aussi les scenes du cache Sentinel-2.
+  expect_true(rang("sante_fast") < rang("sante_icd"))
 })
 
 test_that("les indicateurs precedent tout, et les IA ferment la marche", {
@@ -253,6 +255,7 @@ test_that("la creation des zones de suivi precede les moteurs sante", {
   expect_true(rang("sante_zone") < rang("sante_fast"))
   expect_true(rang("sante_zone") < rang("sante_fordead"))
   expect_true(rang("sante_zone") < rang("sante_reconfort"))
+  expect_true(rang("sante_zone") < rang("sante_icd"))
 })
 
 test_that("les moteurs sante nomment la zone manquante, pas un prerequis vague", {
@@ -263,7 +266,7 @@ test_that("les moteurs sante nomment la zone manquante, pas un prerequis vague",
   skip_sans_sources(f)
   src <- paste(readLines(f, warn = FALSE), collapse = "\n")
   expect_equal(
-    length(gregexpr("pipeline_skip_no_zone", src, fixed = TRUE)[[1]]), 3L)
+    length(gregexpr("pipeline_skip_no_zone", src, fixed = TRUE)[[1]]), 4L)
 })
 
 test_that("la generation IA impose le remplissage des 12 familles", {
@@ -299,10 +302,10 @@ test_that("les moteurs sante resolvent leur zone en base, pas dans le menu", {
   # Chacune des trois etapes sante resout la zone via la lecture en base.
   expect_equal(
     length(gregexpr("zid_pipeline <- suppressWarnings(as.integer(fordead_zone_id()))",
-                    src, fixed = TRUE)[[1]]), 3L)
+                    src, fixed = TRUE)[[1]]), 4L)
   # ... et la transmet au moteur, qui la prefere a son menu.
   expect_equal(
-    length(gregexpr("zone_id = zid_pipeline", src, fixed = TRUE)[[1]]), 3L)
+    length(gregexpr("zone_id = zid_pipeline", src, fixed = TRUE)[[1]]), 4L)
 })
 
 test_that("aucune raison de saut ne transite par un <<- depuis un bloc tryCatch", {
