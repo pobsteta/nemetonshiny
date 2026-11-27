@@ -446,8 +446,8 @@ test_that("l'arret d'un calcul actif retire le toast, pose le drapeau et le sign
 
 test_that("l'etape sante_icd existe, tient son ecouteur et saute sans zone", {
   expect_true("sante_icd" %in% nemetonshiny:::pipeline_all_step_ids())
-  src <- paste(readLines(testthat::test_path("..", "..", "R", "mod_monitoring.R"),
-                         warn = FALSE), collapse = "\n")
+  f <- skip_sans_sources(chemin_source("R", "mod_monitoring.R"))
+  src <- paste(readLines(f, warn = FALSE), collapse = "\n")
   expect_true(grepl('pipeline_targets(req, "sante_icd")', src, fixed = TRUE))
 })
 
