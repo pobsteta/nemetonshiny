@@ -92,14 +92,14 @@
   lignes <- lignes[nzchar(lignes)]
   if (!length(lignes)) return("")
   # Une ligne de pile d'appels n'est jamais une cause.
-  lignes <- lignes[!grepl("^(→|->)?\\s*[0-9]+\\.\\s", lignes)]
+  lignes <- lignes[!grepl("^(\u2192|->)?\\s*[0-9]+\\.\\s", lignes)]
   lignes <- lignes[!grepl("^(Execution halted|Backtrace:)", lignes)]
   idx <- grep("Caused by", lignes, fixed = TRUE)
   if (length(idx)) {
     i <- max(idx)
     bloc <- lignes[max(1L, i - 1L):min(length(lignes), i + 2L)]
   } else {
-    idx <- grep("^(✖|x |Error)", lignes)
+    idx <- grep("^(\u2716|x |Error)", lignes)
     if (!length(idx)) return("")
     bloc <- lignes[max(idx)]
   }
@@ -112,7 +112,7 @@
 #' cause racine (lue dans le message, a defaut dans la fin du journal de
 #' l'enfant) et le chemin du journal. Un message simple reste inchange.
 #' @param msg Message d'erreur brut.
-#' @param i18n Objet i18n (libelle « Journal »); sinon libelle neutre.
+#' @param i18n Objet i18n (libelle \u00ab Journal \u00bb); sinon libelle neutre.
 #' @param max_chars Longueur maximale du resultat.
 #' @noRd
 .message_erreur_lisible <- function(msg, i18n = NULL, max_chars = 700L) {
@@ -126,7 +126,7 @@
   # Pile d'appels : tout depuis `Backtrace:`, et les lignes `-> N. ...`.
   bt <- grep("^\\s*Backtrace:", lignes)
   if (length(bt)) lignes <- lignes[seq_len(min(bt) - 1L)]
-  pile <- grepl("^\\s*(→|->)", lignes) | grepl("^\\s*Execution halted", lignes)
+  pile <- grepl("^\\s*(\u2192|->)", lignes) | grepl("^\\s*Execution halted", lignes)
   lignes <- lignes[!pile]
   # Mention du journal (ligne `i The child's output was kept in` + chemin).
   k <- grep("output was kept in", lignes, fixed = TRUE)
@@ -154,7 +154,7 @@
     reste <- if (nzchar(journal)) paste0("\n", etiquette, " ", journal) else ""
     tete <- substr(sub(paste0(gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", reste), "$"), "", corps),
                    1L, max(40L, max_chars - nchar(reste) - 1L))
-    corps <- paste0(tete, "…", reste)
+    corps <- paste0(tete, "\u2026", reste)
   }
   corps
 }

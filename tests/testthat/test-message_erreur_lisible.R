@@ -4,18 +4,18 @@
 .msg_pascal <- function(journal) {
   paste0(
     "! \"", .esc, "[36mrun_reconfort_dieback", .esc, "[39m\" failed in its capped child process (exit 1).\n",
-    "ℹ The child's output was kept in\n  '", .esc, "[34m", journal, .esc, "[39m'.\n",
-    "→  15.  └─nemeton:::.stac_search_paginate(...)\n",
-    "→  16.  └─httr2::req_perform(req)\n",
-    "→  17.  └─httr2:::handle_resp(req, resp, error_call = error_call)\n",
-    "→  18.  └─rlang::cnd_signal(resp)\n",
-    "→ Execution halted")
+    "\u2139 The child's output was kept in\n  '", .esc, "[34m", journal, .esc, "[39m'.\n",
+    "\u2192  15.  \u2514\u2500nemeton:::.stac_search_paginate(...)\n",
+    "\u2192  16.  \u2514\u2500httr2::req_perform(req)\n",
+    "\u2192  17.  \u2514\u2500httr2:::handle_resp(req, resp, error_call = error_call)\n",
+    "\u2192  18.  \u2514\u2500rlang::cnd_signal(resp)\n",
+    "\u2192 Execution halted")
 }
 
 test_that("message reel : sans ANSI ni pile, cause racine lue dans le journal, chemin du journal", {
   withr::with_tempdir({
     journal <- file.path(getwd(), "reconfort_child.log")
-    writeLines(c("debut", "✖ Failed to perform HTTP request.",
+    writeLines(c("debut", "\u2716 Failed to perform HTTP request.",
                  "Caused by error in `curl::curl_fetch_memory()`:",
                  "! Timeout was reached [api.stac.teledetection.fr]: Connection timed out after 60006 milliseconds",
                  "Execution halted"), journal)
