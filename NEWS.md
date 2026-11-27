@@ -1,8 +1,12 @@
-# nemetonshiny 2026.11.6.9026 (en développement)
+# nemetonshiny 2026.11.6.9027 (en développement)
 
-Demande le cœur **nemeton >= 2026.11.46** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084, 086 et 088).
+Demande le cœur **nemeton >= 2026.11.46** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084, 086, 088 et 097).
 
 ## Changements
+
+- **Import Marculus : format CSV 9, bois fort renommé et volume aérien EMERGE** (mission 097 ; Marculus v2026.11.4, brief `brief-nemetonshiny-marculus-format-csv-9`). `R/service_marculus_import.R` lit `VolumeBoisFortTotalM3` / `volumeBoisFortTotalM3` en priorité, sinon l'ancien `VolumeTotalM3` / `volumeTotalM3`, toujours compris comme le bois fort total (tige + houppier, découpe 7 cm) : un fichier des formats 2 à 8 s'importe à l'identique. Le champ interne est renommé `volumeBoisFortTotalM3` ; les tiges déjà enregistrées dans `marculus_tiges.json` sous l'ancien nom sont reprises à la lecture. La clé `volume_total_m3` de l'action est gardée (projets existants).
+  - **Volume aérien** : `VolumeAerienTotalM3` (tige, 23e colonne du journal, lue par nom, et contexte) et `NbTigesVolumeAerien` (contexte) sont lus, NA quand absents (formats <= 8, contexte sans EMERGE) ; copiés dans l'action (`volume_aerien_total_m3`, `nb_tiges_volume_aerien`) seulement s'ils sont présents, jamais sommés avec du Schaeffer. Aucun affichage n'est ajouté.
+  - **`FormatCsv;9`** est accepté (un format plus récent ne l'est pas moins : seul le format 1 est refusé) ; texte d'aide « FormatCsv;2 à 9 ». Le CSV foncier n'est pas lu par l'application : rien à changer.
 
 - **Onglet ICD du suivi sanitaire : l'indicateur composite de décoloration** (mission 088, décisions de Pascal du 2026-11-26 ; cœur 2026.11.46, spec 071). Aucune logique métier : tout passe par `R/service_icd.R`, qui appelle `nemeton::run_icd_decoloration()`, `icd_poids_defaut()`, `icd_poids_valider()`, `read_icd_raster()`, `read_icd_pixel_series()` et `comparer_fast_icd()`. FAST est inchangé.
   - **Onglet « ICD » après RECONFORT** (`R/mod_monitoring.R`, `R/mod_monitoring_icd.R`) : bouton « Calculer l'ICD » (`input_task_button` lié à un `ExtendedTask`, vert), toast de progression alimenté par les événements `s2:*` et `icd:*`, chrono, bouton d'arrêt (drapeau coopératif lu par le cœur). Le toast et le chrono sont retirés à la fin, à l'arrêt, à l'annulation et sur erreur ; l'arrêt pose aussi `app_state$cancel_computation`. Le calcul porte sur la zone `_tot` ; il refuse de partir sans la BD Forêt V2 du projet (les essences).

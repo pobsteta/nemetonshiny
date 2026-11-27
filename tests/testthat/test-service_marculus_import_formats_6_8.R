@@ -222,7 +222,7 @@ test_that("un .marsync avec partsLot date ses tiges au format 8", {
   expect_true(is.na(nemetonshiny:::marculus_lire_exports(g)$tiges$formatCsv))
 })
 
-test_that("le texte d'aide dit FormatCsv;2 a 8", {
-  expect_match(nemetonshiny:::get_i18n("fr")$t("marculus_import_help"), "2 à 8", fixed = TRUE)
-  expect_match(nemetonshiny:::get_i18n("en")$t("marculus_import_help"), "2 to 8", fixed = TRUE)
+test_that("le texte d'aide dit FormatCsv;2 a 9", {
+  expect_match(nemetonshiny:::get_i18n("fr")$t("marculus_import_help"), "2 à 9", fixed = TRUE)
+  expect_match(nemetonshiny:::get_i18n("en")$t("marculus_import_help"), "2 to 9", fixed = TRUE)
 })

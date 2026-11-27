@@ -770,8 +770,8 @@ TRANSLATIONS <- list(
     en = "Import Marculus marking"
   ),
   marculus_import_help = list(
-    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (FormatCsv;2 \u00e0 8). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
-    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2 to 8). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
+    fr = "Fichiers .marsync partag\u00e9s depuis le t\u00e9l\u00e9phone, sauvegarde compl\u00e8te (JSON) ou CSV de contexte au format 2 ou sup\u00e9rieur (FormatCsv;2 \u00e0 9). Plusieurs fichiers possibles ; un nouvel import n'ajoute que les tiges nouvelles. Le terrain fait foi : statut et date de martelage remplacent ceux du plan.",
+    en = ".marsync files shared from the phone, a full backup (JSON) or context CSV files in format 2 or later (FormatCsv;2 to 9). Several files allowed; a new import only adds new stems. The field wins: status and marking date replace those of the plan."
   ),
   marculus_import_fichiers = list(fr = "Fichiers Marculus", en = "Marculus files"),
   marculus_import_run = list(fr = "Importer", en = "Import"),
