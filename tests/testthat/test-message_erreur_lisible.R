@@ -54,3 +54,58 @@ test_that("cle i18n FR/EN, 30 caracteres au plus", {
   expect_lte(nchar("erreur_journal_prefixe"), 30L)
   for (l in c("fr", "en")) expect_true(nemetonshiny:::get_i18n(l)$has("erreur_journal_prefixe"))
 })
+
+test_that("journal en octets invalides ou binaire : pas d'erreur, message rendu", {
+  withr::with_tempdir({
+    journal <- file.path(getwd(), "x.log")
+    set.seed(1)
+    writeBin(as.raw(sample(0:255, 20000, replace = TRUE)), journal)
+    i18n <- nemetonshiny:::get_i18n("fr")
+    out <- expect_no_error(nemetonshiny:::.message_erreur_lisible(.msg_pascal(journal), i18n))
+    expect_match(out, "capped child process", fixed = TRUE)
+    # Coupe au milieu d'un caractere multioctet.
+    brut <- c(charToRaw(strrep("a", 16383)), as.raw(c(0xc3)), charToRaw("\nCaused by x\n! Timeout\n"))
+    brut <- c(as.raw(c(0xe2, 0x9c)), brut)
+    writeBin(brut, journal)
+    out <- expect_no_error(nemetonshiny:::.message_erreur_lisible(.msg_pascal(journal), i18n))
+    expect_match(out, "Timeout", fixed = TRUE)
+    expect_no_error(nemetonshiny:::.monitoring_run_error_msg(.msg_pascal(journal), i18n, "monitoring_reconfort_error"))
+  })
+})
+
+test_that("rien d'actif dans la notification : HTML echappe", {
+  withr::with_tempdir({
+    journal <- file.path(getwd(), "h.log")
+    writeLines(c("Caused by error:", "! <b>boom</b> <img src=x onerror=alert(1)> <script>x()</script>"), journal)
+    i18n <- nemetonshiny:::get_i18n("fr")
+    out <- nemetonshiny:::.monitoring_run_error_msg(.msg_pascal(journal), i18n, "monitoring_reconfort_error")
+    expect_false(grepl("<script|<img|<b>", out))
+    expect_match(out, "&lt;script&gt;", fixed = TRUE)
+  })
+})
+
+test_that("chemin du journal avec apostrophe et espace ; lecture limitee a .log", {
+  withr::with_tempdir({
+    dir.create("l'a b")
+    journal <- file.path(getwd(), "l'a b", "c.log")
+    writeLines(c("Caused by error:", "! Timeout was reached"), journal)
+    out <- nemetonshiny:::.message_erreur_lisible(.msg_pascal(journal))
+    expect_match(out, journal, fixed = TRUE)
+    expect_match(out, "Timeout was reached", fixed = TRUE)
+    autre <- file.path(getwd(), "l'a b", "c.txt")
+    writeLines(c("Caused by error:", "! Secret"), autre)
+    out2 <- nemetonshiny:::.message_erreur_lisible(.msg_pascal(autre))
+    expect_match(out2, autre, fixed = TRUE)
+    expect_false(grepl("Secret", out2))
+  })
+})
+
+test_that("journal + troncature : la ligne Journal reste entiere", {
+  withr::with_tempdir({
+    journal <- file.path(getwd(), "t.log")
+    writeLines(c("Caused by error:", paste("!", strrep("mot ", 400))), journal)
+    out <- nemetonshiny:::.message_erreur_lisible(.msg_pascal(journal), max_chars = 300L)
+    expect_match(out, paste0(journal, "$"))
+    expect_lte(nchar(out), 301L + nchar(journal))
+  })
+})

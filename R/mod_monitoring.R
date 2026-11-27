@@ -4882,7 +4882,11 @@ mod_monitoring_server <- function(id, app_state) {
     sprintf("%s : %s", i18n$t("monitoring_error_oom_short"),
             i18n$t("monitoring_error_oom"))
   } else {
-    sprintf("%s : %s", i18n$t(title_key), .message_erreur_lisible(msg, i18n))
+    # showNotification() rend une chaine en HTML : tout morceau est echappe,
+    # les sauts de ligne deviennent des <br> construits ici.
+    lis <- strsplit(.message_erreur_lisible(msg, i18n), "\r?\n")[[1]]
+    sprintf("%s : %s", htmltools::htmlEscape(i18n$t(title_key)),
+            paste(htmltools::htmlEscape(lis), collapse = "<br>"))
   }
 }
 

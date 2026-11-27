@@ -78,7 +78,7 @@
     if (taille > max_bytes) seek(con, taille - max_bytes)
     brut <- readBin(con, what = "raw", n = max_bytes)
     brut <- brut[brut != as.raw(0L)]
-    txt <- iconv(rawToChar(brut), from = "UTF-8", to = "UTF-8", sub = "")
+    txt <- iconv(rawToChar(brut), from = "UTF-8", to = "UTF-8", sub = "byte")
     if (is.na(txt)) return(character())
     strsplit(txt, "\r?\n")[[1]]
   }, error = function(e) character())
@@ -98,6 +98,7 @@
   if (length(idx)) {
     i <- max(idx)
     bloc <- lignes[max(1L, i - 1L):min(length(lignes), i + 2L)]
+    bloc <- bloc[nchar(bloc, type = "bytes") <= 400L]   # ligne geante : ignoree
   } else {
     idx <- grep("^(\u2716|x |Error)", lignes)
     if (!length(idx)) return("")
@@ -116,11 +117,20 @@
 #' @param max_chars Longueur maximale du resultat.
 #' @noRd
 .message_erreur_lisible <- function(msg, i18n = NULL, max_chars = 700L) {
+  # Jamais d'erreur ici : elle masquerait la notification d'erreur elle-meme.
+  tryCatch(.message_erreur_lisible_impl(msg, i18n, max_chars),
+           error = function(e) {
+             brut <- paste(as.character(msg %||% ""), collapse = "\n")
+             tryCatch(cli::ansi_strip(brut), error = function(e2) brut)
+           })
+}
+
+.message_erreur_lisible_impl <- function(msg, i18n = NULL, max_chars = 700L) {
   brut <- paste(as.character(msg %||% ""), collapse = "\n")
   if (!nzchar(brut)) return("")
   txt <- cli::ansi_strip(brut)
   # Chemin du journal de l'enfant (le message le replie sur deux lignes).
-  m <- regmatches(txt, regexec("kept in\\s+'([^']+)'", txt))[[1]]
+  m <- regmatches(txt, regexec("kept in\\s+'(.+)'", txt, perl = TRUE))[[1]]
   journal <- if (length(m) == 2L) m[2] else ""
   lignes <- strsplit(txt, "\r?\n")[[1]]
   # Pile d'appels : tout depuis `Backtrace:`, et les lignes `-> N. ...`.
@@ -142,7 +152,11 @@
   # Cause racine : dans le message sinon dans le journal.
   cause <- ""
   if (!grepl("Caused by", corps, fixed = TRUE)) {
-    cause <- .cause_racine_journal(.lire_fin_journal(journal))
+    # On ne lit que ce qui ressemble a un journal (`.log`).
+    cause <- if (grepl("\\.log$", journal, ignore.case = TRUE)) {
+      tryCatch(.cause_racine_journal(.lire_fin_journal(journal)),
+               error = function(e) "")
+    } else ""
     if (nzchar(cause) && grepl(cause, corps, fixed = TRUE)) cause <- ""
   }
   if (nzchar(cause)) corps <- paste0(corps, "\n", cause)
