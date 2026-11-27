@@ -54,3 +54,121 @@
     )
   )
 }
+
+# ---------------------------------------------------------------------------
+# Message d'erreur lisible (mission 090)
+# ---------------------------------------------------------------------------
+# Un calcul long en processus enfant plafonne remonte une erreur du genre
+# `"run_x" failed in its capped child process (exit 1).` suivie du chemin du
+# journal de l'enfant puis d'une pile d'appels (`-> 15. +-nemeton:::...`), le
+# tout entoure de codes de terminal. Brut, c'est illisible et la cause racine
+# (ex. delai depasse vers un hote) n'y figure pas : elle n'est que dans le
+# journal. Le message COMPLET reste en console (voir `.monitoring_run_error_msg`).
+
+# Fin d'un fichier texte, lecture seule, bornee a `max_bytes` octets ; "" si
+# absent ou illisible.
+.lire_fin_journal <- function(path, max_bytes = 16384L) {
+  if (!is.character(path) || length(path) != 1L || is.na(path) ||
+      !nzchar(path) || !file.exists(path)) return(character())
+  tryCatch({
+    taille <- file.size(path)
+    if (is.na(taille) || taille <= 0) return(character())
+    con <- file(path, open = "rb")
+    on.exit(close(con), add = TRUE)
+    if (taille > max_bytes) seek(con, taille - max_bytes)
+    brut <- readBin(con, what = "raw", n = max_bytes)
+    brut <- brut[brut != as.raw(0L)]
+    txt <- iconv(rawToChar(brut), from = "UTF-8", to = "UTF-8", sub = "byte")
+    if (is.na(txt)) return(character())
+    strsplit(txt, "\r?\n")[[1]]
+  }, error = function(e) character())
+}
+
+# Cause la plus profonde d'un journal : la derniere ligne `Caused by ...`
+# (avec la ligne precedente et les deux suivantes), a defaut la derniere
+# ligne d'erreur (`x ...` / `Error ...`). "" si rien.
+.cause_racine_journal <- function(lignes) {
+  lignes <- trimws(cli::ansi_strip(lignes))
+  lignes <- lignes[nzchar(lignes)]
+  if (!length(lignes)) return("")
+  # Une ligne de pile d'appels n'est jamais une cause.
+  lignes <- lignes[!grepl("^(\u2192|->)?\\s*[0-9]+\\.\\s", lignes)]
+  lignes <- lignes[!grepl("^(Execution halted|Backtrace:)", lignes)]
+  idx <- grep("Caused by", lignes, fixed = TRUE)
+  if (length(idx)) {
+    i <- max(idx)
+    bloc <- lignes[max(1L, i - 1L):min(length(lignes), i + 2L)]
+    bloc <- bloc[nchar(bloc, type = "bytes") <= 400L]   # ligne geante : ignoree
+  } else {
+    idx <- grep("^(\u2716|x |Error)", lignes)
+    if (!length(idx)) return("")
+    bloc <- lignes[max(idx)]
+  }
+  trimws(gsub("\\s+", " ", paste(bloc, collapse = " ")))
+}
+
+#' Message d'erreur d'un calcul long, en texte lisible
+#'
+#' Retire les codes de terminal et la pile d'appels, garde l'en-tete, ajoute la
+#' cause racine (lue dans le message, a defaut dans la fin du journal de
+#' l'enfant) et le chemin du journal. Un message simple reste inchange.
+#' @param msg Message d'erreur brut.
+#' @param i18n Objet i18n (libelle \u00ab Journal \u00bb); sinon libelle neutre.
+#' @param max_chars Longueur maximale du resultat.
+#' @noRd
+.message_erreur_lisible <- function(msg, i18n = NULL, max_chars = 700L) {
+  # Jamais d'erreur ici : elle masquerait la notification d'erreur elle-meme.
+  tryCatch(.message_erreur_lisible_impl(msg, i18n, max_chars),
+           error = function(e) {
+             brut <- paste(as.character(msg %||% ""), collapse = "\n")
+             tryCatch(cli::ansi_strip(brut), error = function(e2) brut)
+           })
+}
+
+.message_erreur_lisible_impl <- function(msg, i18n = NULL, max_chars = 700L) {
+  brut <- paste(as.character(msg %||% ""), collapse = "\n")
+  if (!nzchar(brut)) return("")
+  txt <- cli::ansi_strip(brut)
+  # Chemin du journal de l'enfant (le message le replie sur deux lignes).
+  m <- regmatches(txt, regexec("kept in\\s+'(.+)'", txt, perl = TRUE))[[1]]
+  journal <- if (length(m) == 2L) m[2] else ""
+  lignes <- strsplit(txt, "\r?\n")[[1]]
+  # Pile d'appels : tout depuis `Backtrace:`, et les lignes `-> N. ...`.
+  bt <- grep("^\\s*Backtrace:", lignes)
+  if (length(bt)) lignes <- lignes[seq_len(min(bt) - 1L)]
+  pile <- grepl("^\\s*(\u2192|->)", lignes) | grepl("^\\s*Execution halted", lignes)
+  lignes <- lignes[!pile]
+  # Mention du journal (ligne `i The child's output was kept in` + chemin).
+  k <- grep("output was kept in", lignes, fixed = TRUE)
+  if (length(k)) {
+    sauf <- unique(c(k, k + 1L))
+    sauf <- sauf[sauf <= length(lignes) &
+                   (sauf %in% k | grepl("^\\s+'?/|^\\s+'?[A-Za-z]:", lignes[sauf]))]
+    lignes <- lignes[-sauf]
+  }
+  lignes <- trimws(lignes, which = "right")
+  while (length(lignes) && !nzchar(lignes[length(lignes)])) lignes <- lignes[-length(lignes)]
+  corps <- paste(lignes, collapse = "\n")
+  # Cause racine : dans le message sinon dans le journal.
+  cause <- ""
+  if (!grepl("Caused by", corps, fixed = TRUE)) {
+    # On ne lit que ce qui ressemble a un journal (`.log`).
+    cause <- if (grepl("\\.log$", journal, ignore.case = TRUE)) {
+      tryCatch(.cause_racine_journal(.lire_fin_journal(journal)),
+               error = function(e) "")
+    } else ""
+    if (nzchar(cause) && grepl(cause, corps, fixed = TRUE)) cause <- ""
+  }
+  if (nzchar(cause)) corps <- paste0(corps, "\n", cause)
+  etiquette <- if (!is.null(i18n)) i18n$t("erreur_journal_prefixe") else "Log"
+  if (nzchar(journal)) corps <- paste0(corps, "\n", etiquette, " ", journal)
+  corps <- trimws(corps)
+  if (nchar(corps) > max_chars) {
+    # On coupe le corps, jamais la ligne du journal.
+    reste <- if (nzchar(journal)) paste0("\n", etiquette, " ", journal) else ""
+    tete <- substr(sub(paste0(gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", reste), "$"), "", corps),
+                   1L, max(40L, max_chars - nchar(reste) - 1L))
+    corps <- paste0(tete, "\u2026", reste)
+  }
+  corps
+}
