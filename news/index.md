@@ -1,12 +1,103 @@
 # Changelog
 
-## nemetonshiny 2026.11.6.9025 (en développement)
+## nemetonshiny 2026.11.6.9027 (en développement)
 
-Demande le cœur **nemeton \>= 2026.11.44** (`Imports`). Aucun changement
+Demande le cœur **nemeton \>= 2026.11.46** (`Imports`). Aucun changement
 cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075,
-077, 078, 080, 083, 084 et 086).
+077, 078, 080, 083, 084, 086, 088 et 097).
 
 ### Changements
+
+- **Import Marculus : format CSV 9, bois fort renommé et volume aérien
+  EMERGE** (mission 097 ; Marculus v2026.11.4, brief
+  `brief-nemetonshiny-marculus-format-csv-9`).
+  `R/service_marculus_import.R` lit `VolumeBoisFortTotalM3` /
+  `volumeBoisFortTotalM3` en priorité, sinon l’ancien `VolumeTotalM3` /
+  `volumeTotalM3`, toujours compris comme le bois fort total (tige +
+  houppier, découpe 7 cm) : un fichier des formats 2 à 8 s’importe à
+  l’identique. Le champ interne est renommé `volumeBoisFortTotalM3` ;
+  les tiges déjà enregistrées dans `marculus_tiges.json` sous l’ancien
+  nom sont reprises à la lecture. La clé `volume_total_m3` de l’action
+  est gardée (projets existants).
+
+  - **Volume aérien** : `VolumeAerienTotalM3` (tige, 23e colonne du
+    journal, lue par nom, et contexte) et `NbTigesVolumeAerien`
+    (contexte) sont lus, NA quand absents (formats \<= 8, contexte sans
+    EMERGE) ; copiés dans l’action (`volume_aerien_total_m3`,
+    `nb_tiges_volume_aerien`) seulement s’ils sont présents, jamais
+    sommés avec du Schaeffer. Aucun affichage n’est ajouté.
+  - **`FormatCsv;9`** est accepté (un format plus récent ne l’est pas
+    moins : seul le format 1 est refusé) ; texte d’aide « FormatCsv;2 à
+    9 ». Le CSV foncier n’est pas lu par l’application : rien à changer.
+
+- **Onglet ICD du suivi sanitaire : l’indicateur composite de
+  décoloration** (mission 088, décisions de Pascal du 2026-11-26 ; cœur
+  2026.11.46, spec 071). Aucune logique métier : tout passe par
+  `R/service_icd.R`, qui appelle
+  [`nemeton::run_icd_decoloration()`](https://pobsteta.github.io/nemeton/reference/run_icd_decoloration.html),
+  `icd_poids_defaut()`, `icd_poids_valider()`, `read_icd_raster()`,
+  `read_icd_pixel_series()` et `comparer_fast_icd()`. FAST est inchangé.
+
+  - **Onglet « ICD » après RECONFORT** (`R/mod_monitoring.R`,
+    `R/mod_monitoring_icd.R`) : bouton « Calculer l’ICD »
+    (`input_task_button` lié à un `ExtendedTask`, vert), toast de
+    progression alimenté par les événements `s2:*` et `icd:*`, chrono,
+    bouton d’arrêt (drapeau coopératif lu par le cœur). Le toast et le
+    chrono sont retirés à la fin, à l’arrêt, à l’annulation et sur
+    erreur ; l’arrêt pose aussi `app_state$cancel_computation`. Le
+    calcul porte sur la zone `_tot` ; il refuse de partir sans la BD
+    Forêt V2 du projet (les essences).
+  - **Carte** : niveau 0 à 4 de l’année choisie (l’année en cours est
+    dite « provisoire »), palette ordonnée et légende, pixels sans ICD
+    transparents avec une ligne qui dit combien et pourquoi (hors des
+    quatre peuplements purs).
+  - **Clic** : modale à deux graphiques plotly. 1) les anomalies z (ou
+    les valeurs brutes) des indices de la formule, par mois et par
+    année, mois sensibles en gris, CRre absent pour sapin/épicéa et
+    douglas ; 2) l’ICD mensuel avec les seuils −1,5, −2 et −3, l’année
+    courante en pointillé à points creux, les mois d’alerte en losange
+    rouge. En tête : essence, poids utilisés, classe et niveau de
+    l’année, date d’alerte.
+  - **Comparaison avec FAST** (bouton, à la demande) : tableau croisé
+    FAST 0-4 × ICD 0-4 en hectares, accord global, kappa (présenté comme
+    indicateur, pas comme validation), comparaison à surface alertée
+    égale ; message si FAST n’a pas tourné ou si l’ICD n’est pas
+    calculé.
+  - **Poids dans Sources & paramètres** : tableau 4 essences × 5 indices
+    (pas 0,05 ; CRre figé à 0 pour les résineux), somme saisie et poids
+    effectivement utilisés affichés en direct, « Valeurs par défaut » et
+    « Enregistrer », enregistrés par projet (`metadata$icd_poids`). Un
+    témoin `app_icd.json` à côté des sorties du cœur garde les poids du
+    dernier calcul : s’ils changent, la carte se masque et dit «
+    relancer le calcul ».
+  - **« Tout calculer »** : étape `sante_icd` après `sante_reconfort`
+    (sautée sans zone, sans BD Forêt ou si le calcul tourne déjà).
+  - **Mémoire plafonnée, comme RECONFORT et FORDEAD** (décision de
+    Pascal) : le calcul tourne dans un enfant R sous cgroup
+    (`nemeton::run_memory_capped(fun = ".icd_enfant", package = "nemetonshiny")`
+    via `.run_capped()`), qui ouvre sa connexion depuis `db_url` et
+    écrit la progression dans le fichier relu par l’app ; journal de
+    l’enfant (`icd`), marqueur de run `cache/layers/icd/engine_run.json`
+    et **arrêt dur** (`stop_memory_capped`, en plus du drapeau
+    coopératif, `icd` rejoint `.moteurs_sante_plafonnes`) ; second
+    lancement refusé tant qu’un enfant vit (`monitoring_icd_verrou`).
+    Repli : appel direct dans le worker sur un cœur qui ne sait pas
+    lancer une fonction d’un autre paquet. Les erreurs de l’enfant
+    passent par `.monitoring_run_error_msg` (texte lisible, cause
+    racine).
+  - **Poids modifiés : la carte reste visible**, avec un bandeau « poids
+    modifiés depuis ce calcul : relancez ».
+  - **SUFOSAT branché** : si le projet a le couple `dates_*.tif` /
+    `proba_*.tif` déjà en cache (`cache/layers/sufosat/`, écrit par le
+    calcul des indicateurs) et la source activée, il est passé au cœur
+    (`sufosat_dates`, `sufosat_proba`) ; l’ICD ne télécharge rien. Sinon
+    la carte et la modale disent « coupes rases non retirées » (le
+    témoin `app_icd.json` garde `coupes_retirees`).
+  - **Alertes en base** : `write_alerts` reste au défaut du cœur (TRUE)
+    : les alertes de la dernière année sont écrites dans la table
+    `alert` (`alert_type = "icd_decoloration"`).
+  - **Limites** : le calcul de l’ICD n’est pas prouvé sur imagerie
+    réelle (voir le rapport de la mission 088).
 
 - **Erreurs des calculs longs : un texte lisible, avec la cause racine**
   (mission 090). La notification « Erreur lors du diagnostic RECONFORT »
