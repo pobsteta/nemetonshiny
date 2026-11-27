@@ -165,7 +165,7 @@ reset_project_icd_poids <- function(project_id) {
 # Ecrit le temoin apres un calcul abouti. `poids` : la table VALIDEE rendue par
 # le coeur dans le resultat du run.
 .icd_ecrire_temoin <- function(result_dir, zone_id, poids, annees,
-                               annee_provisoire) {
+                               annee_provisoire, coupes_retirees = NA) {
   p <- .icd_temoin_path(result_dir, zone_id)
   if (is.null(p)) return(invisible(FALSE))
   idx <- .icd_indices_noms()
@@ -177,6 +177,7 @@ reset_project_icd_poids <- function(project_id) {
     jsonlite::write_json(
       list(poids = w, annees = as.integer(annees),
            annee_provisoire = as.integer(annee_provisoire),
+           coupes_retirees = if (is.na(coupes_retirees)) NULL else isTRUE(coupes_retirees),
            calcule_le = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")),
       p, auto_unbox = TRUE, pretty = TRUE)
     invisible(TRUE)
@@ -283,24 +284,67 @@ icd_comparer_fast <- function(zone_id, annee, result_dir, con = NULL,
     })
 }
 
-# --- Calcul (worker) ----------------------------------------------------------
+# --- SUFOSAT (coupes rases) ---------------------------------------------------
 
-# Corps du calcul, execute dans le worker asynchrone. `progress_callback` ecrit
-# le fichier d'evenements lu par le parent. Une erreur du coeur (`status =
-# "error"` : le coeur l'attrape et la rend en valeur) est relevee ici, pour que
-# la tache passe en erreur et que l'interface le dise ; une annulation reste une
-# valeur.
-.icd_executer <- function(con, zone_id, cache_dir, result_dir, poids,
-                          bdforet_path, progress_callback = NULL,
-                          cancel_path = NULL) {
+# Rasters SUFOSAT deja en cache dans le projet (ecrits par le calcul des
+# indicateurs, `build_sufosat_layer()`) : `dates_<cle>.tif` et `proba_<cle>.tif`.
+# On prend le couple le plus recent ; l'ICD ne telecharge rien. NULL quand la
+# source est eteinte dans les parametres du projet ou qu'aucun couple n'existe :
+# le coeur dit alors que les coupes ne sont pas retirees, et l'app le repete.
+.icd_sufosat_chemins <- function(project_path, metadata = NULL) {
+  if (!project_sufosat_enabled(metadata)) return(NULL)
+  if (is.null(project_path) || length(project_path) != 1L ||
+      is.na(project_path) || !nzchar(project_path)) return(NULL)
+  d <- file.path(project_path, "cache", "layers", "sufosat")
+  if (!dir.exists(d)) return(NULL)
+  dates <- list.files(d, "^dates_.*\\.tif$", full.names = TRUE)
+  if (!length(dates)) return(NULL)
+  proba <- file.path(d, sub("^dates_", "proba_", basename(dates)))
+  ok <- file.exists(proba)
+  if (!any(ok)) return(NULL)
+  dates <- dates[ok]; proba <- proba[ok]
+  i <- which.max(file.mtime(dates))
+  list(dates = dates[i], proba = proba[i])
+}
+
+# Les coupes ont-elles ete retirees au dernier calcul ? TRUE / FALSE, NA sans
+# temoin (resultats produits ailleurs).
+icd_coupes_retirees <- function(result_dir, zone_id) {
+  t <- .icd_lire_temoin(result_dir, zone_id)
+  if (is.null(t) || is.null(t$coupes_retirees)) return(NA)
+  isTRUE(t$coupes_retirees)
+}
+
+# --- Calcul (enfant plafonne en memoire) --------------------------------------
+
+# Corps du calcul. Execute DANS l'enfant plafonne (`run_memory_capped()` lui
+# injecte `con`, ouverte depuis `db_url`, et `progress_callback`, ecrit dans le
+# fichier de progression) ; ou directement dans le worker sur un coeur qui ne
+# sait pas lancer une fonction d'un autre paquet. Rien ne traverse la frontiere
+# de process que des chemins et des tables. Une erreur du coeur (`status =
+# "error"`, qu'il attrape et rend en valeur) est relevee ici pour que la tache
+# passe en erreur ; une annulation reste une valeur.
+.icd_enfant <- function(con, zone_id, cache_dir, result_dir, poids,
+                        bdforet_path, sufosat_dates_path = NULL,
+                        sufosat_proba_path = NULL, progress_callback = NULL,
+                        cancel_path = NULL) {
   bd <- tryCatch(sf::st_read(bdforet_path, quiet = TRUE),
                  error = function(e) NULL)
   if (is.null(bd) || !nrow(bd)) {
     stop("BD Foret V2 illisible ou vide : ", bdforet_path, call. = FALSE)
   }
+  sd <- sp <- NULL
+  if (!is.null(sufosat_dates_path) && !is.null(sufosat_proba_path)) {
+    sd <- tryCatch(terra::rast(sufosat_dates_path), error = function(e) NULL)
+    sp <- tryCatch(terra::rast(sufosat_proba_path), error = function(e) NULL)
+    if (is.null(sd) || is.null(sp)) sd <- sp <- NULL
+  }
+  # `write_alerts` reste au defaut du coeur (TRUE) : les alertes de la derniere
+  # annee vont dans la table `alert` (`alert_type = "icd_decoloration"`).
   res <- nemeton::run_icd_decoloration(
     con = con, zone_id = as.integer(zone_id), cache_dir = cache_dir,
     result_dir = result_dir, poids = poids, bdforet = bd,
+    sufosat_dates = sd, sufosat_proba = sp,
     progress_callback = progress_callback, cancel_path = cancel_path)
   if (identical(res$status, "error")) {
     stop(res$message %||% "ICD run failed", call. = FALSE)
@@ -308,16 +352,52 @@ icd_comparer_fast <- function(zone_id, annee, result_dir, con = NULL,
   if (identical(res$status, "success")) {
     .icd_ecrire_temoin(
       result_dir, zone_id, res$poids, res$annees,
-      annee_provisoire = as.integer(format(Sys.Date(), "%Y")))
+      annee_provisoire = as.integer(format(Sys.Date(), "%Y")),
+      coupes_retirees = isTRUE(res$coupes_retirees))
   }
   res
+}
+
+# Le coeur installe sait-il lancer une fonction d'un autre paquet sous plafond
+# (`package=`, nemeton >= 0.158.0) ? Meme garde que la reGeneration.
+.icd_plafond_possible <- function() {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(FALSE)
+  "package" %in% names(formals(nemeton::run_memory_capped))
+}
+
+# Execute le calcul sous plafond memoire : enfant R dans un cgroup, marqueur de
+# run (arret dur par `stop_memory_capped()`), journal de l'enfant. Repli : appel
+# direct dans le worker, avec sa propre connexion.
+.icd_executer <- function(db_url, zone_id, cache_dir, result_dir, poids,
+                          bdforet_path, sufosat = NULL, progress_path = NULL,
+                          cancel_path = NULL, marker_path = NULL,
+                          log_path = NULL, plafonne = .icd_plafond_possible()) {
+  args <- list(zone_id = zone_id, cache_dir = cache_dir, result_dir = result_dir,
+               poids = poids, bdforet_path = bdforet_path,
+               sufosat_dates_path = sufosat$dates,
+               sufosat_proba_path = sufosat$proba, cancel_path = cancel_path)
+  if (isTRUE(plafonne)) {
+    return(.run_capped(
+      fun = ".icd_enfant", package = "nemetonshiny", args = args,
+      db_url = db_url, progress_path = progress_path, log_path = log_path,
+      marker_path = marker_path, quiet = FALSE))
+  }
+  con <- get_monitoring_db_connection(db_url = db_url)
+  if (is.null(con)) {
+    stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
+  }
+  on.exit(close_monitoring_db_connection(con), add = TRUE)
+  do.call(.icd_enfant, c(list(con = con,
+                              progress_callback = .build_progress_writer(progress_path)),
+                         args))
 }
 
 #' ExtendedTask running the ICD for a monitoring zone
 #'
 #' Same machinery as the RECONFORT task: a `future_promise` worker that
-#' re-loads the package, opens its own database connection, and writes its
-#' progress events to a file the parent polls.
+#' re-loads the package; the heavy part runs in a memory-capped child process
+#' (see `.icd_executer()`), which writes its progress events to a file the
+#' parent polls.
 #'
 #' @return A `shiny::ExtendedTask`.
 #' @noRd
@@ -332,8 +412,9 @@ run_icd_async <- function() {
 
   shiny::ExtendedTask$new(function(zone_id = NULL, cache_dir = NULL,
                                    result_dir = NULL, poids = NULL,
-                                   bdforet_path = NULL, db_url = "",
-                                   progress_path = NULL, cancel_path = NULL) {
+                                   bdforet_path = NULL, sufosat = NULL,
+                                   db_url = "", progress_path = NULL,
+                                   cancel_path = NULL, marker_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -347,16 +428,13 @@ run_icd_async <- function() {
       } else {
         loadNamespace("nemetonshiny")
       }
-      con <- get_monitoring_db_connection(db_url = db_url)
-      if (is.null(con)) {
-        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
-      }
-      on.exit(close_monitoring_db_connection(con), add = TRUE, after = FALSE)
+      child_db_url <- if (nzchar(db_url %||% "")) db_url else .resolve_monitoring_db_url(NULL)
       .icd_executer(
-        con = con, zone_id = zone_id, cache_dir = cache_dir,
+        db_url = child_db_url, zone_id = zone_id, cache_dir = cache_dir,
         result_dir = result_dir, poids = poids, bdforet_path = bdforet_path,
-        progress_callback = .build_progress_writer(progress_path),
-        cancel_path = cancel_path)
+        sufosat = sufosat, progress_path = progress_path,
+        cancel_path = cancel_path, marker_path = marker_path,
+        log_path = .child_log_path(dirname(progress_path %||% "."), "icd"))
     }, seed = TRUE)
   })
 }

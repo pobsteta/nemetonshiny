@@ -159,21 +159,77 @@ test_that("un pixel hors des quatre peuplements ouvre une modale qui le dit", {
   expect_false(grepl("icd_g1", modale, fixed = TRUE))
 })
 
-test_that("des poids modifies invalident la carte et le disent", {
-  lue <- FALSE
-  testthat::local_mocked_bindings(
-    icd_lire_carte = function(...) { lue <<- TRUE; .niveau_raster() })
+test_that("des poids modifies gardent la carte et affichent le bandeau", {
+  testthat::local_mocked_bindings(icd_lire_carte = function(...) .niveau_raster())
   app_state <- shiny::reactiveValues(language = "fr",
                                      current_project = .etat_icd(poids_obsoletes = TRUE))
   shiny::testServer(nemetonshiny:::mod_monitoring_icd_server,
     args = list(app_state = app_state, zone_id_r = shiny::reactive(9L)), {
       session$setInputs(annee = "2026")
       expect_true(obsolete_r())
-      expect_null(raster_r())
-      expect_false(lue)
-      html <- paste(as.character(output$overlay), collapse = " ")
+      expect_false(is.null(raster_r()))             # la carte reste
+      html <- paste(as.character(output$bandeau), collapse = " ")
       expect_match(html, get_i18n("fr")$t("icd_poids_modifies"), fixed = TRUE)
   })
+})
+
+test_that("sans bandeau quand les poids n'ont pas change", {
+  testthat::local_mocked_bindings(icd_lire_carte = function(...) .niveau_raster())
+  app_state <- shiny::reactiveValues(language = "fr", current_project = .etat_icd())
+  shiny::testServer(nemetonshiny:::mod_monitoring_icd_server,
+    args = list(app_state = app_state, zone_id_r = shiny::reactive(9L)), {
+      session$setInputs(annee = "2026")
+      expect_false(grepl("alert-warning",
+                         paste(as.character(output$bandeau), collapse = " ")))
+  })
+})
+
+test_that("carte et modale disent que les coupes rases ne sont pas retirees", {
+  modale <- NULL
+  testthat::local_mocked_bindings(
+    showModal = function(ui, ...) { modale <<- paste(as.character(ui), collapse = " ") },
+    .package = "shiny")
+  testthat::local_mocked_bindings(
+    icd_lire_carte = function(...) .niveau_raster(),
+    icd_lire_pixel = function(...) .serie_icd(),
+    icd_coupes_retirees = function(...) FALSE)
+  app_state <- shiny::reactiveValues(language = "fr", current_project = .etat_icd())
+  msg <- get_i18n("fr")$t("icd_coupes_non_retirees")
+  shiny::testServer(nemetonshiny:::mod_monitoring_icd_server,
+    args = list(app_state = app_state, zone_id_r = shiny::reactive(9L)), {
+      session$setInputs(annee = "2026")
+      expect_match(paste(as.character(output$sans_icd), collapse = " "), msg, fixed = TRUE)
+      session$setInputs(map_click = list(lat = 45.1, lng = 5.2))
+  })
+  expect_match(modale, msg, fixed = TRUE)
+})
+
+test_that("coupes retirees : aucune mention", {
+  testthat::local_mocked_bindings(
+    icd_lire_carte = function(...) .niveau_raster(),
+    icd_coupes_retirees = function(...) TRUE)
+  app_state <- shiny::reactiveValues(language = "fr", current_project = .etat_icd())
+  shiny::testServer(nemetonshiny:::mod_monitoring_icd_server,
+    args = list(app_state = app_state, zone_id_r = shiny::reactive(9L)), {
+      session$setInputs(annee = "2026")
+      expect_false(grepl(get_i18n("fr")$t("icd_coupes_non_retirees"),
+                         paste(as.character(output$sans_icd), collapse = " "), fixed = TRUE))
+  })
+})
+
+test_that("une annee sans classe ne cherche pas de cle icd_cls_NA", {
+  s <- .serie_icd(); s$annuel$classe[3] <- NA; s$annuel$niveau[3] <- NA
+  i18n <- get_i18n("fr")
+  expect_silent(e <- nemetonshiny:::icd_entete_pixel(s, 2026L, i18n))
+  expect_match(paste(e, collapse = " "), i18n$t("icd_cls_na"), fixed = TRUE)
+})
+
+test_that("les en-tetes du tableau croise passent par i18n", {
+  cr <- expand.grid(fast = 0:1, icd = 0:1); cr$surface_ha <- 1
+  html <- as.character(nemetonshiny:::.icd_table_croisement(cr, get_i18n("en")))
+  expect_match(html, "FAST 0", fixed = TRUE)
+  expect_match(html, "ICD 1", fixed = TRUE)
+  expect_true(all(c("icd_cmp_ent_fast", "icd_cmp_ent_icd") %in% names(nemetonshiny:::TRANSLATIONS)))
 })
 
 test_that("des poids inchanges laissent la carte et disent combien de pixels sans ICD", {
@@ -370,11 +426,16 @@ test_that("une erreur du calcul est dite lisiblement et retire le toast", {
   expect_true(any(grepl("icd_progress", r$retires)))
 })
 
-test_that("l'arret retire le toast et pose le signal d'arret de l'app", {
+test_that("l'arret d'un calcul actif retire le toast, pose le drapeau et le signal d'arret", {
   proj <- list(path = withr::local_tempdir(), id = "p", metadata = list())
+  bd <- file.path(proj$path, "bd.gpkg")
+  testthat::local_mocked_bindings(.icd_bdforet_path = function(...) bd)
+  .avec_zone_tot()
   r <- .run_monitoring_icd(
-    icd = .fake_task_icd(status = "running"), project = proj,
+    project = proj, con = structure(list(), class = "fausse"),
     expr = function(session, input, st) {
+      session$flushReact()
+      session$setInputs(run_icd = 1)             # calcul lance : le chrono demarre
       session$setInputs(run_icd_cancel = 1)
       expect_false(is.null(shiny::isolate(st$cancel_computation)))
     })
@@ -388,4 +449,50 @@ test_that("l'etape sante_icd existe, tient son ecouteur et saute sans zone", {
   src <- paste(readLines(testthat::test_path("..", "..", "R", "mod_monitoring.R"),
                          warn = FALSE), collapse = "\n")
   expect_true(grepl('pipeline_targets(req, "sante_icd")', src, fixed = TRUE))
+})
+
+test_that("sans calcul ICD actif, l'arret ne pose pas de drapeau", {
+  proj <- list(path = withr::local_tempdir(), id = "p", metadata = list())
+  .run_monitoring_icd(
+    icd = .fake_task_icd(status = "initial"), project = proj,
+    expr = function(session, input, st) session$setInputs(run_icd_cancel = 1))
+  expect_false(file.exists(file.path(proj$path, "data", "icd_cancel.flag")))
+})
+
+test_that("l'arret tue l'enfant plafonne par son marqueur", {
+  proj <- list(path = withr::local_tempdir(), id = "p", metadata = list())
+  tues <- NULL
+  testthat::local_mocked_bindings(
+    .moteurs_sante_arreter = function(path, moteurs, ...) { tues <<- c(tues, moteurs); moteurs })
+  .run_monitoring_icd(
+    icd = .fake_task_icd(status = "running"), project = proj,
+    expr = function(session, input, st) session$setInputs(run_icd_cancel = 1))
+  expect_true("icd" %in% tues)
+})
+
+test_that("un enfant ICD encore vivant empeche un second lancement", {
+  proj <- list(path = withr::local_tempdir(), id = "p", metadata = list())
+  bd <- file.path(proj$path, "bd.gpkg")
+  testthat::local_mocked_bindings(
+    .icd_bdforet_path = function(...) bd,
+    .moteur_sante_vivant = function(path, moteur, ...) if (moteur == "icd") list(pid = 1L) else NULL)
+  .avec_zone_tot()
+  r <- .run_monitoring_icd(project = proj, con = structure(list(), class = "fausse"),
+    expr = function(session, input, st) { session$flushReact(); session$setInputs(run_icd = 1) })
+  expect_length(r$task$.calls(), 0L)
+  expect_true(any(grepl(get_i18n("fr")$t("monitoring_icd_verrou"), r$notes, fixed = TRUE)))
+})
+
+test_that("le couple SUFOSAT du cache part avec le calcul", {
+  proj <- list(path = withr::local_tempdir(), id = "p", metadata = list())
+  bd <- file.path(proj$path, "bd.gpkg")
+  suf <- list(dates = "d.tif", proba = "p.tif")
+  testthat::local_mocked_bindings(
+    .icd_bdforet_path = function(...) bd, .icd_sufosat_chemins = function(...) suf)
+  .avec_zone_tot()
+  r <- .run_monitoring_icd(project = proj, con = structure(list(), class = "fausse"),
+    expr = function(session, input, st) { session$flushReact(); session$setInputs(run_icd = 1) })
+  a <- r$task$.calls()[[1]]
+  expect_identical(a$sufosat, suf)
+  expect_match(a$marker_path, "layers/icd/engine_run.json", fixed = TRUE)
 })

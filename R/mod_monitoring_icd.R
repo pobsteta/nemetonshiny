@@ -20,6 +20,7 @@ mod_monitoring_icd_ui <- function(id) {
         width = 250L, position = "right", open = "always",
         shiny::uiOutput(ns("controls"))
       ),
+      shiny::uiOutput(ns("bandeau")),
       htmltools::div(
         style = "position: relative;",
         leaflet::leafletOutput(ns("map"), height = "55vh"),
@@ -37,9 +38,9 @@ mod_monitoring_icd_ui <- function(id) {
   ent <- htmltools::tags$tr(
     htmltools::tags$th(i18n$t("icd_cmp_fast_icd")),
     lapply(colnames(tab), function(j) htmltools::tags$th(
-      class = "text-end", sprintf("ICD %s", j))))
+      class = "text-end", sprintf(i18n$t("icd_cmp_ent_icd"), j))))
   lignes <- lapply(rownames(tab), function(i) htmltools::tags$tr(
-    htmltools::tags$th(sprintf("FAST %s", i)),
+    htmltools::tags$th(sprintf(i18n$t("icd_cmp_ent_fast"), i)),
     lapply(colnames(tab), function(j) htmltools::tags$td(
       class = "text-end", format(round(tab[i, j], 2), nsmall = 2)))))
   htmltools::tags$table(
@@ -137,15 +138,12 @@ mod_monitoring_icd_server <- function(id, app_state, zone_id_r,
       refresh_r()
       rd <- result_dir_r(); z <- zone_r(); an <- input$annee
       if (is.null(rd) || is.na(z) || is.null(an) || !nzchar(an)) return(NULL)
-      if (isTRUE(obsolete_r())) return(NULL)
       icd_lire_carte(z, an, rd)
     })
 
     output$overlay <- shiny::renderUI({
       i18n <- i18n_r()
-      msg <- if (isTRUE(obsolete_r())) {
-        list(t = "icd_poids_modifies_t", b = "icd_poids_modifies")
-      } else if (is.null(raster_r())) {
+      msg <- if (is.null(raster_r())) {
         list(t = "icd_carte_vide_titre", b = "icd_carte_vide_corps")
       } else NULL
       if (is.null(msg)) return(NULL)
@@ -160,16 +158,37 @@ mod_monitoring_icd_server <- function(id, app_state, zone_id_r,
           htmltools::p(class = "mb-0", i18n$t(msg$b))))
     })
 
+    # Poids modifies depuis le calcul : la carte reste visible (c'est celle du
+    # dernier calcul), un bandeau dit de relancer.
+    output$bandeau <- shiny::renderUI({
+      if (!isTRUE(obsolete_r())) return(NULL)
+      htmltools::div(class = "alert alert-warning py-2 mb-2",
+                     bsicons::bs_icon("exclamation-triangle", class = "me-1"),
+                     i18n_r()$t("icd_poids_modifies"))
+    })
+    shiny::outputOptions(output, "bandeau", suspendWhenHidden = FALSE)
+
+    # Coupes rases : retirees ou non au dernier calcul (dit par le temoin).
+    .note_coupes <- function() {
+      rd <- result_dir_r(); z <- zone_r()
+      if (is.null(rd) || is.na(z)) return(NULL)
+      if (isFALSE(icd_coupes_retirees(rd, z)))
+        htmltools::p(class = "small text-muted mb-0",
+                     i18n_r()$t("icd_coupes_non_retirees"))
+    }
+
     # Pixels sans ICD : combien et pourquoi.
     output$sans_icd <- shiny::renderUI({
       r <- raster_r()
       if (is.null(r)) return(NULL)
       n <- attr(r, "n_pixels_sans_icd"); tot <- attr(r, "n_pixels_zone")
       if (is.null(n) || is.na(n)) return(NULL)
-      htmltools::p(class = "small text-muted mt-2 mb-0",
-                   sprintf(i18n_r()$t("icd_sans_icd"),
-                           format(as.integer(n), big.mark = " "),
-                           format(as.integer(tot), big.mark = " ")))
+      htmltools::tagList(
+        htmltools::p(class = "small text-muted mt-2 mb-0",
+                     sprintf(i18n_r()$t("icd_sans_icd"),
+                             format(as.integer(n), big.mark = " "),
+                             format(as.integer(tot), big.mark = " "))),
+        .note_coupes())
     })
 
     output$map <- leaflet::renderLeaflet({
@@ -261,7 +280,8 @@ mod_monitoring_icd_server <- function(id, app_state, zone_id_r,
         title = titre, size = "xl", easyClose = TRUE,
         footer = shiny::modalButton(i18n$t("close")),
         htmltools::div(class = "small mb-2",
-                       lapply(entete, function(l) htmltools::div(l))),
+                       lapply(entete, function(l) htmltools::div(l)),
+                       .note_coupes()),
         shiny::radioButtons(
           session$ns("valeur"), i18n$t("icd_val_lbl"), inline = TRUE,
           choiceNames = list(i18n$t("icd_val_z"), i18n$t("icd_val_brut")),

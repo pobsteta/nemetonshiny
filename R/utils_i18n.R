@@ -7898,13 +7898,9 @@ TRANSLATIONS <- list(
     fr = "Lancez \u00ab Calculer l'ICD \u00bb pour produire la carte de la zone.",
     en = "Run \u201cCompute the ICD\u201d to produce the zone map."
   ),
-  icd_poids_modifies_t = list(
-    fr = "Poids modifi\u00e9s",
-    en = "Weights changed"
-  ),
   icd_poids_modifies = list(
-    fr = "Les poids de la formule ont chang\u00e9 depuis le dernier calcul : relancez le calcul de l'ICD.",
-    en = "The formula weights changed since the last computation: run the ICD again."
+    fr = "Poids modifi\u00e9s depuis ce calcul : la carte est celle du dernier calcul, relancez le calcul de l'ICD.",
+    en = "Weights changed since this computation: the map is that of the last run, run the ICD again."
   ),
   icd_legende_titre = list(
     fr = "Niveau ICD",
@@ -8125,6 +8121,26 @@ TRANSLATIONS <- list(
   icd_poids_saved = list(
     fr = "Poids de l'ICD enregistr\u00e9s. Relancez le calcul pour en tenir compte.",
     en = "ICD weights saved. Run the ICD again to apply them."
+  ),
+  icd_cls_na = list(
+    fr = "sans classe",
+    en = "no class"
+  ),
+  icd_cmp_ent_fast = list(
+    fr = "FAST %s",
+    en = "FAST %s"
+  ),
+  icd_cmp_ent_icd = list(
+    fr = "ICD %s",
+    en = "ICD %s"
+  ),
+  icd_coupes_non_retirees = list(
+    fr = "Coupes rases non retir\u00e9es : aucune couche SUFOSAT n'a servi \u00e0 ce calcul.",
+    en = "Clear-cuts not removed: no SUFOSAT layer was used for this computation."
+  ),
+  monitoring_icd_verrou = list(
+    fr = "Un calcul de l'ICD tourne d\u00e9j\u00e0 sur ce projet (processus actif).",
+    en = "An ICD computation is already running on this project (active process)."
   ),
   pipeline_step_sante_icd = list(
     fr = "Sant\u00e9 \u2014 ICD",

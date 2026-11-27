@@ -160,10 +160,13 @@ icd_entete_pixel <- function(s, annee, i18n) {
   ligne <- if (!is.null(an) && nrow(an)) an[an$annee == annee, , drop = FALSE] else NULL
   classe <- NULL; alerte <- NULL
   if (!is.null(ligne) && nrow(ligne)) {
-    classe <- sprintf("%s %d : %s (%s %d)", i18n$t("icd_entete_annee"),
-                      as.integer(annee),
-                      i18n$t(paste0("icd_cls_", as.integer(ligne$classe))),
-                      i18n$t("icd_entete_niveau"), as.integer(ligne$niveau))
+    # Classe absente (annee sans mois valide) : libelle dedie, pas de cle `NA`.
+    lib <- if (is.na(ligne$classe)) i18n$t("icd_cls_na")
+           else i18n$t(paste0("icd_cls_", as.integer(ligne$classe)))
+    niv <- if (is.na(ligne$niveau)) "" else sprintf(" (%s %d)", i18n$t("icd_entete_niveau"),
+                                                    as.integer(ligne$niveau))
+    classe <- sprintf("%s %d : %s%s", i18n$t("icd_entete_annee"),
+                      as.integer(annee), lib, niv)
     if (!is.na(ligne$date_alerte)) {
       alerte <- sprintf("%s : %s", i18n$t("icd_entete_alerte"),
                         format(ligne$date_alerte, "%Y-%m"))

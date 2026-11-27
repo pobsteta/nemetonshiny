@@ -4165,12 +4165,19 @@ mod_monitoring_server <- function(id, app_state) {
     # progression lache (meme regle que les trois autres moteurs, mission 072).
     # Renvoie TRUE si un calcul etait actif.
     .reset_icd_run <- function() {
-      cancel_path <- .resolve_progress_path(app_state$current_project,
-                                            "icd_cancel.flag")
-      if (!is.null(cancel_path)) {
-        tryCatch(file.create(cancel_path), error = function(e) NULL)
-      }
       actif <- !is.null(shiny::isolate(icd_run_start()))
+      # Le drapeau n'est pose que si un calcul ICD tourne : sans calcul, il
+      # resterait en place et serait lu comme un arret par le suivant.
+      if (actif) {
+        cancel_path <- .resolve_progress_path(app_state$current_project,
+                                              "icd_cancel.flag")
+        if (!is.null(cancel_path)) {
+          tryCatch(file.create(cancel_path), error = function(e) NULL)
+        }
+      }
+      # Arret DUR : l'enfant plafonne continue sinon de telecharger. Son erreur
+      # de sortie (" killed ") n'est pas une panne : le gestionnaire l'ignore.
+      if (length(.arreter_moteur_dur("icd"))) icd_result_consumed(TRUE)
       force_unlock_icd(TRUE)
       .retirer_toasts_progression(session, "icd")
       icd_run_start(NULL); icd_run_msg(NULL)
@@ -4200,6 +4207,8 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 8)
         return(invisible(FALSE))
       }
+      # Un enfant plafonne ICD vit encore (marqueur de run du coeur).
+      if (.moteur_deja_vivant("icd")) return(invisible(FALSE))
       proj <- app_state$current_project
       zid <- suppressWarnings(as.integer(zone_id %||% fordead_zone_id()))
       if (is.null(proj) || is.null(proj$path) || length(zid) != 1L || is.na(zid)) {
@@ -4243,8 +4252,13 @@ mod_monitoring_server <- function(id, app_state) {
       }
       icd_task$invoke(
         zone_id = zid, cache_dir = cd, result_dir = rd, poids = poids,
-        bdforet_path = bd, db_url = .resolve_monitoring_db_url(proj),
-        progress_path = ppath, cancel_path = flag)
+        bdforet_path = bd,
+        # Coupes rases : couple SUFOSAT deja en cache du projet, sinon rien (le
+        # coeur et l'ecran disent alors que les coupes ne sont pas retirees).
+        sufosat = .icd_sufosat_chemins(proj$path, proj$metadata),
+        db_url = .resolve_monitoring_db_url(proj),
+        progress_path = ppath, cancel_path = flag,
+        marker_path = .moteur_sante_marker_path(proj$path, "icd", creer = TRUE))
       invisible(TRUE)
     }
 

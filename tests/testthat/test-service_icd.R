@@ -104,50 +104,141 @@ test_that("lecteurs et comparaison sans resultat : vides, avec le vrai coeur", {
                    "icd_absent")
 })
 
-test_that(".icd_executer passe poids et BD Foret au coeur et ecrit le temoin", {
-  rd <- withr::local_tempdir()
-  gpkg <- file.path(withr::local_tempdir(), "bd.gpkg")
+.bd_gpkg <- function(env = parent.frame()) {
+  gpkg <- file.path(withr::local_tempdir(.local_envir = env), "bd.gpkg")
   sf::st_write(sf::st_sf(code_tfv = "FF1G01-01",
                          geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154)),
                gpkg, quiet = TRUE)
+  gpkg
+}
+
+test_that(".icd_enfant passe poids, BD Foret et coupes au coeur et ecrit le temoin", {
+  rd <- withr::local_tempdir()
+  gpkg <- .bd_gpkg()
+  d <- withr::local_tempdir()
+  r <- terra::rast(nrows = 2, ncols = 2, crs = "EPSG:2154"); terra::values(r) <- 1
+  terra::writeRaster(r, file.path(d, "dates_k.tif")); terra::writeRaster(r, file.path(d, "proba_k.tif"))
   p <- nemetonshiny:::project_icd_poids(NULL)
   v <- nemetonshiny:::icd_poids_resume(p)$valide
   vu <- NULL
   testthat::local_mocked_bindings(
     run_icd_decoloration = function(con, zone_id, cache_dir, result_dir, poids,
-                                    bdforet, progress_callback, cancel_path, ...) {
-      vu <<- list(zone = zone_id, poids = poids, bd = bdforet, cancel = cancel_path)
-      list(status = "success", poids = v, annees = 2017:2026, n_pixels_icd = 12L)
+                                    bdforet, sufosat_dates, sufosat_proba,
+                                    progress_callback, cancel_path, ...) {
+      vu <<- list(zone = zone_id, poids = poids, bd = bdforet, sd = sufosat_dates,
+                  sp = sufosat_proba, cancel = cancel_path, con = con)
+      list(status = "success", poids = v, annees = 2017:2026, n_pixels_icd = 12L,
+           coupes_retirees = TRUE)
     },
     .package = "nemeton")
-  res <- nemetonshiny:::.icd_executer(NULL, 5, "cache", rd, p, gpkg,
-                                      cancel_path = "flag")
-  expect_equal(vu$zone, 5L)
-  expect_equal(vu$poids, p)
-  expect_s3_class(vu$bd, "sf")
-  expect_identical(vu$cancel, "flag")
-  expect_equal(res$n_pixels_icd, 12L)
+  res <- nemetonshiny:::.icd_enfant("CON", 5, "cache", rd, p, gpkg,
+                                    file.path(d, "dates_k.tif"), file.path(d, "proba_k.tif"),
+                                    cancel_path = "flag")
+  expect_equal(vu$zone, 5L); expect_equal(vu$poids, p); expect_identical(vu$con, "CON")
+  expect_s3_class(vu$bd, "sf"); expect_s4_class(vu$sd, "SpatRaster")
+  expect_s4_class(vu$sp, "SpatRaster"); expect_identical(vu$cancel, "flag")
   expect_equal(nemetonshiny:::icd_annees_disponibles(rd, 5L)$annees, 2017:2026)
+  expect_true(nemetonshiny:::icd_coupes_retirees(rd, 5L))
 })
 
-test_that(".icd_executer leve l'erreur du coeur et laisse passer l'annulation", {
-  gpkg <- file.path(withr::local_tempdir(), "bd.gpkg")
-  sf::st_write(sf::st_sf(code_tfv = "FF1G01-01",
-                         geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154)),
-               gpkg, quiet = TRUE)
+test_that("sans SUFOSAT le coeur recoit NULL et le temoin dit coupes non retirees", {
+  rd <- withr::local_tempdir(); gpkg <- .bd_gpkg()
+  p <- nemetonshiny:::project_icd_poids(NULL)
+  v <- nemetonshiny:::icd_poids_resume(p)$valide
+  vu <- "x"
+  testthat::local_mocked_bindings(
+    run_icd_decoloration = function(..., sufosat_dates, sufosat_proba) {
+      vu <<- list(sufosat_dates, sufosat_proba)
+      list(status = "success", poids = v, annees = 2020:2021, coupes_retirees = FALSE)
+    }, .package = "nemeton")
+  nemetonshiny:::.icd_enfant(NULL, 5, "c", rd, p, gpkg)
+  expect_null(vu[[1]]); expect_null(vu[[2]])
+  expect_false(nemetonshiny:::icd_coupes_retirees(rd, 5L))
+  expect_true(is.na(nemetonshiny:::icd_coupes_retirees(withr::local_tempdir(), 5L)))
+})
+
+test_that(".icd_enfant leve l'erreur du coeur et laisse passer l'annulation", {
+  gpkg <- .bd_gpkg()
   p <- nemetonshiny:::project_icd_poids(NULL)
   testthat::local_mocked_bindings(
     run_icd_decoloration = function(...) list(status = "error", message = "panne S2"),
     .package = "nemeton")
-  expect_error(nemetonshiny:::.icd_executer(NULL, 5, "c", tempdir(), p, gpkg), "panne S2")
+  expect_error(nemetonshiny:::.icd_enfant(NULL, 5, "c", tempdir(), p, gpkg), "panne S2")
   testthat::local_mocked_bindings(
     run_icd_decoloration = function(...) list(status = "cancelled", phase = "ingest"),
     .package = "nemeton")
-  expect_identical(
-    nemetonshiny:::.icd_executer(NULL, 5, "c", tempdir(), p, gpkg)$status, "cancelled")
+  expect_identical(nemetonshiny:::.icd_enfant(NULL, 5, "c", tempdir(), p, gpkg)$status,
+                   "cancelled")
 })
 
-test_that(".icd_executer refuse une BD Foret illisible", {
-  expect_error(nemetonshiny:::.icd_executer(NULL, 5, "c", tempdir(), NULL,
-                                            "/nulle/part.gpkg"), "BD Foret")
+test_that(".icd_enfant refuse une BD Foret illisible", {
+  expect_error(nemetonshiny:::.icd_enfant(NULL, 5, "c", tempdir(), NULL,
+                                          "/nulle/part.gpkg"), "BD Foret")
+})
+
+test_that(".icd_executer lance l'enfant plafonne avec marqueur, journal et progression", {
+  vu <- NULL
+  testthat::local_mocked_bindings(
+    .run_capped = function(...) { vu <<- list(...); list(status = "success") })
+  r <- nemetonshiny:::.icd_executer(
+    db_url = "db://x", zone_id = 5L, cache_dir = "c", result_dir = "r", poids = "P",
+    bdforet_path = "bd.gpkg", sufosat = list(dates = "d.tif", proba = "p.tif"),
+    progress_path = "prog.json", cancel_path = "flag", marker_path = "m.json",
+    log_path = "log", plafonne = TRUE)
+  expect_identical(r$status, "success")
+  expect_identical(vu$fun, ".icd_enfant")
+  expect_identical(vu$package, "nemetonshiny")
+  expect_identical(vu$db_url, "db://x")
+  expect_identical(vu$marker_path, "m.json")
+  expect_identical(vu$log_path, "log")
+  expect_identical(vu$progress_path, "prog.json")
+  expect_identical(vu$args$sufosat_dates_path, "d.tif")
+  expect_identical(vu$args$bdforet_path, "bd.gpkg")
+  expect_identical(vu$args$cancel_path, "flag")
+  expect_false("con" %in% names(vu$args))      # la connexion s'ouvre dans l'enfant
+})
+
+test_that("l'erreur de l'enfant plafonne remonte et se lit sans pile ni ANSI", {
+  testthat::local_mocked_bindings(
+    .run_capped = function(...) stop(
+      "Function `run_icd_decoloration` failed in its capped child process.\n",
+      "\033[31mCaused by error:\033[39m ! Timeout was reached: api.stac.teledetection.fr",
+      call. = FALSE))
+  err <- tryCatch(
+    nemetonshiny:::.icd_executer("db://x", 5L, "c", "r", "P", "bd", plafonne = TRUE),
+    error = function(e) e)
+  expect_s3_class(err, "error")
+  txt <- nemetonshiny:::.monitoring_run_error_msg(
+    conditionMessage(err), get_i18n("fr"), "icd_error")
+  expect_match(txt, "Timeout was reached", fixed = TRUE)
+  expect_false(grepl("\033", txt, fixed = TRUE))
+})
+
+test_that("sans plafond possible, le calcul tourne dans le worker avec sa connexion", {
+  gpkg <- .bd_gpkg(); fermee <- FALSE; recu <- NULL
+  testthat::local_mocked_bindings(
+    get_monitoring_db_connection = function(...) "CON",
+    close_monitoring_db_connection = function(con) { fermee <<- TRUE },
+    .icd_enfant = function(con, ...) { recu <<- con; list(status = "success") })
+  r <- nemetonshiny:::.icd_executer("db://x", 5L, "c", "r", "P", gpkg, plafonne = FALSE)
+  expect_identical(recu, "CON"); expect_true(fermee)
+  expect_identical(r$status, "success")
+})
+
+test_that(".icd_sufosat_chemins prend le couple en cache, et rien si la source est eteinte", {
+  proj <- withr::local_tempdir()
+  d <- file.path(proj, "cache", "layers", "sufosat"); dir.create(d, recursive = TRUE)
+  expect_null(nemetonshiny:::.icd_sufosat_chemins(proj, list()))      # rien en cache
+  file.create(file.path(d, c("dates_a.tif", "proba_a.tif", "dates_orphelin.tif")))
+  r <- nemetonshiny:::.icd_sufosat_chemins(proj, list())
+  expect_identical(basename(r$dates), "dates_a.tif")
+  expect_identical(basename(r$proba), "proba_a.tif")
+  expect_null(nemetonshiny:::.icd_sufosat_chemins(
+    proj, list(sufosat = list(enabled = FALSE))))
+})
+
+test_that("l'ICD figure parmi les moteurs sante a marqueur", {
+  expect_true("icd" %in% nemetonshiny:::.moteurs_sante_plafonnes)
+  expect_match(nemetonshiny:::.moteur_sante_marker_path("/p", "icd"),
+               "layers/icd/engine_run.json", fixed = TRUE)
 })
