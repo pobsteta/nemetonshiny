@@ -266,7 +266,8 @@ test_that("les cles i18n de la mission 099 existent en FR et EN, 30 caracteres a
   expect_gte(length(cles), 15L)
   # Aucune cle maintenue par un test seul : toutes sont lues dans R/.
   src <- chemin_source("R")
-  skip_sans_sources(src)
+  # Sous covr, `R/` peut exister sans les sources : on exige un fichier connu.
+  skip_sans_sources(file.path(src, "service_source_s2.R"))
   code <- paste(unlist(lapply(list.files(src, "\\.R$", full.names = TRUE), readLines, warn = FALSE)), collapse = "\n")
   non_lues <- cles[!vapply(cles, function(k) grepl(paste0("\"", k, "\""), code, fixed = TRUE), logical(1))]
   expect_identical(non_lues, character(0))
