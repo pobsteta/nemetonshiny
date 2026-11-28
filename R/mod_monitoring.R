@@ -2492,6 +2492,10 @@ mod_monitoring_server <- function(id, app_state) {
       .fast_cancel_flag <- .resolve_progress_path(
         app_state$current_project, "fast_cancel.flag")
 
+      # Mission 099 : le temoin de source du run precedent ne doit pas decrire
+      # celui-ci s'il echoue ou s'il est annule.
+      .source_s2_invalider_temoin_fast(cache_dir)
+
       fast_task$invoke(
         zone_id       = zone_id_int,
         start         = d_from,
@@ -2516,7 +2520,9 @@ mod_monitoring_server <- function(id, app_state) {
         prewarm_alerts         = TRUE,
         prewarm_mask_cache_dir = .fast_alert_cache_dir(
           app_state$current_project$path
-        )
+        ),
+        # Mission 099 : NULL (par methode) = rien n'est passe au coeur.
+        source_s2 = project_source_s2(app_state$current_project$metadata)
       )
     }
 
@@ -2777,7 +2783,7 @@ mod_monitoring_server <- function(id, app_state) {
           ingest_log_offset(0L)
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_ingest_error"),
-                    e$message),
+                    .source_s2_message_erreur(e, i18n) %||% e$message),
             id       = session$ns("ingest_error"),
             type     = "error", duration = 8
           )
@@ -2810,6 +2816,14 @@ mod_monitoring_server <- function(id, app_state) {
                                   type = "warning", duration = 8)
           return()
         }
+        # Mission 099 : source effective du run (temoin pour la carte) et
+        # notifications lisibles du repli / du resultat indicatif.
+        .fast_s2_dossier <- .resolve_s2_cache_dir(shiny::isolate(app_state$current_project))
+        .source_s2_ecrire_temoin_fast(
+          .fast_s2_dossier, result$summary,
+          project_source_s2(shiny::isolate(app_state$current_project)$metadata))
+        .source_s2_notifier_projet("fast", shiny::isolate(app_state$current_project),
+                                   NULL, i18n)
         n_scenes <- as.integer(result$summary$n_scenes %||% 0L)
         # v0.53.1 - `n_obs_inserted` toujours 0 depuis nemeton@v0.58.0
         # (drop obs_pixel insertion). Plus consomme dans le toast.
@@ -3171,7 +3185,8 @@ mod_monitoring_server <- function(id, app_state) {
         # Arret dur de l'enfant plafonne (mission 075).
         marker_path       = .moteur_sante_marker_path(
                               app_state$current_project$path, "fordead",
-                              creer = TRUE)
+                              creer = TRUE),
+        source_s2         = project_source_s2(app_state$current_project$metadata)
       )
       .persist_monitoring_metadata()
       invisible(TRUE)
@@ -3420,6 +3435,8 @@ mod_monitoring_server <- function(id, app_state) {
             type     = "message", duration = 8
           )
           alerts_refresh(alerts_refresh() + 1L)
+          .source_s2_notifier_projet("fordead", shiny::isolate(app_state$current_project),
+                                     result$zone_id, i18n)
         }
         # Belt-and-suspenders : re-enable explicite du bouton apres
         # toute resolution (success ou error) en plus du status-based
@@ -3966,7 +3983,8 @@ mod_monitoring_server <- function(id, app_state) {
         marker_path   = .moteur_sante_marker_path(proj$path, "reconfort",
                                                   creer = TRUE),
         # Nom de projet (a jour) pour l'en-tete ntfy - cf. FAST.
-        project_name  = proj$metadata$name %||% proj$name
+        project_name  = proj$metadata$name %||% proj$name,
+        source_s2     = project_source_s2(proj$metadata)
       )
       invisible(TRUE)
     }
@@ -4067,6 +4085,8 @@ mod_monitoring_server <- function(id, app_state) {
                                  result$duration_sec %||% 0)),
           id = session$ns("reconfort_success"), type = "message", duration = 8
         )
+        .source_s2_notifier_projet("reconfort", shiny::isolate(app_state$current_project),
+                                   result$zone_id %||% suppressWarnings(shiny::isolate(fordead_zone_id())), i18n)
         reconfort_refresh(reconfort_refresh() + 1L)
         # Hand the fresh result (with `$rasters`) to the map sub-module so
         # the layered display (score / classes / proba + opacity) lights up.
@@ -4258,7 +4278,8 @@ mod_monitoring_server <- function(id, app_state) {
         sufosat = .icd_sufosat_chemins(proj$path, proj$metadata),
         db_url = .resolve_monitoring_db_url(proj),
         progress_path = ppath, cancel_path = flag,
-        marker_path = .moteur_sante_marker_path(proj$path, "icd", creer = TRUE))
+        marker_path = .moteur_sante_marker_path(proj$path, "icd", creer = TRUE),
+        source_s2 = project_source_s2(proj$metadata))
       invisible(TRUE)
     }
 
@@ -4342,6 +4363,9 @@ mod_monitoring_server <- function(id, app_state) {
         sprintf(i18n$t("icd_complete"),
                 as.integer(result$n_pixels_icd %||% 0L), format_elapsed(duree)),
         id = session$ns("icd_complete"), type = "message", duration = 8)
+      .source_s2_notifier_projet("icd", shiny::isolate(app_state$current_project),
+                                 result$zone_id %||% suppressWarnings(shiny::isolate(fordead_zone_id())),
+                                 i18n)
       icd_refresh(icd_refresh() + 1L)
     })
 
@@ -4576,8 +4600,11 @@ mod_monitoring_server <- function(id, app_state) {
   if (is.null(project) || is.null(project$path)) return(NULL)
   zid <- suppressWarnings(as.integer(zone_id))
   if (length(zid) != 1L || is.na(zid)) return(NULL)
-  out_dir <- file.path(project$path, "cache", "layers", "fordead",
-                       sprintf("output_zone_%d", zid))
+  # Mission 099 : sous THEIA, le dossier de FORDEAD est son frere `_theia`.
+  out_dir <- file.path(
+    .source_s2_dossier(file.path(project$path, "cache", "layers", "fordead"),
+                       project_source_s2(project$metadata)),
+    sprintf("output_zone_%d", zid))
   if (!dir.exists(out_dir)) {
     tryCatch(
       dir.create(out_dir, recursive = TRUE, showWarnings = FALSE),
@@ -5189,7 +5216,10 @@ mod_monitoring_server <- function(id, app_state) {
   if (nzchar(paste(msg, collapse = ""))) {
     try(cli::cli_verbatim(cli::ansi_strip(paste(msg, collapse = "\n"))), silent = TRUE)
   }
-  if (.monitoring_is_verrou_reconfort(msg)) {
+  if (!is.null(m_s2 <- .source_s2_message_erreur(msg, i18n))) {
+    # Cles THEIA refusees ou absentes : renvoi vers Sources & parametres.
+    htmltools::htmlEscape(m_s2)
+  } else if (.monitoring_is_verrou_reconfort(msg)) {
     i18n$t("monitoring_reconfort_verrou")
   } else if (.monitoring_is_oom(msg)) {
     sprintf("%s : %s", i18n$t("monitoring_error_oom_short"),

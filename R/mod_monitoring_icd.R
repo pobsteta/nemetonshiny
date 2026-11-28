@@ -20,6 +20,7 @@ mod_monitoring_icd_ui <- function(id) {
         width = 250L, position = "right", open = "always",
         shiny::uiOutput(ns("controls"))
       ),
+      shiny::uiOutput(ns("source_s2")),
       shiny::uiOutput(ns("bandeau")),
       htmltools::div(
         style = "position: relative;",
@@ -87,11 +88,27 @@ mod_monitoring_icd_server <- function(id, app_state, zone_id_r,
 
     i18n_r <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
 
-    result_dir_r <- shiny::reactive(.icd_result_dir(app_state$current_project$path))
-
     zone_r <- shiny::reactive({
       z <- suppressWarnings(as.integer(zone_id_r()))
       if (length(z) != 1L || is.na(z)) NA_integer_ else z
+    })
+
+    # Mission 099 : avec la source THEIA, les resultats sont dans
+    # `<result_dir>_theia` ; sans choix, le dossier d'avant.
+    result_dir_r <- shiny::reactive({
+      refresh_r()
+      proj <- app_state$current_project
+      z <- zone_r()
+      .source_s2_dossier_methode("icd", proj$path, project_source_s2(proj$metadata),
+                                 if (is.na(z)) NULL else z)
+    })
+
+    output$source_s2 <- shiny::renderUI({
+      refresh_r()
+      z <- zone_r()
+      proj <- app_state$current_project
+      if (is.null(proj) || is.na(z)) return(NULL)
+      .source_s2_ligne_ui(.source_s2_info_projet("icd", proj, z), i18n_r())
     })
 
     annees_r <- shiny::reactive({

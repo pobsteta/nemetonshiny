@@ -178,6 +178,45 @@
 
 
 
+# --- Arguments des appels du coeur (mission 099) ------------------------------
+# Isoles pour etre testes sans lancer de tache : sans choix de source, la liste
+# est exactement celle d'avant ; avec un choix, `source_s2` est ajoute.
+
+# Ingestion Sentinel-2 de FAST (appel direct dans le worker).
+.fast_ingest_coeur <- function(con, zone_id, start, end, bands, max_cloud,
+                               skip_cached, cache_dir, progress_callback,
+                               cancel_path, prewarm_alerts,
+                               prewarm_mask_cache_dir, source_s2 = NULL) {
+  do.call(nemeton::ingest_sentinel2_timeseries, c(list(
+    con = con, zone_id = zone_id, start = start, end = end, bands = bands,
+    max_cloud = max_cloud, skip_cached = skip_cached, cache_dir = cache_dir,
+    progress_callback = progress_callback, cancel_path = cancel_path,
+    prewarm_alerts = prewarm_alerts,
+    prewarm_mask_cache_dir = prewarm_mask_cache_dir),
+    .source_s2_args(source_s2)))
+}
+
+# Arguments de `nemeton::run_fordead_dieback()` (enfant plafonne).
+.fordead_args_coeur <- function(zone_id, cache_dir, dates_training,
+                                dates_monitoring, threshold_anomaly,
+                                vegetation_index, output_dir, keep_output,
+                                cancel_path, source_s2 = NULL) {
+  c(list(zone_id = zone_id, cache_dir = cache_dir,
+         dates_training = dates_training, dates_monitoring = dates_monitoring,
+         threshold_anomaly = threshold_anomaly,
+         vegetation_index = vegetation_index, output_dir = output_dir,
+         keep_output = keep_output, cancel_path = cancel_path),
+    .source_s2_args(source_s2))
+}
+
+# Arguments de `nemeton::run_reconfort_dieback()` (enfant plafonne).
+.reconfort_args_coeur <- function(zone_id, cache_dir, s2_year, output_dir,
+                                  cancel_path, source_s2 = NULL) {
+  c(list(zone_id = zone_id, cache_dir = cache_dir, s2_year = s2_year,
+         output_dir = output_dir, cancel_path = cancel_path),
+    .source_s2_args(source_s2))
+}
+
 run_ingestion_async <- function() {
   # Capture the package source path (when running via devtools::load_all)
   # so the future worker can re-load nemetonshiny - workers don't
@@ -228,6 +267,10 @@ run_ingestion_async <- function() {
                                    # ici car redondant avec spec 018.
                                    prewarm_alerts = TRUE,
                                    prewarm_mask_cache_dir = NULL,
+                                   # Mission 099 : source Sentinel-2 du projet.
+                                   # NULL = par methode : aucun `source_s2`
+                                   # n'est passe au coeur (appel inchange).
+                                   source_s2 = NULL,
                                    # Nom d'affichage (projet) resolu cote
                                    # parent depuis app_state - toujours a jour,
                                    # contrairement au nom de zone en DB qui peut
@@ -405,34 +448,16 @@ run_ingestion_async <- function() {
       warns <- character()
       summary <- tryCatch(
         withCallingHandlers(
-          nemeton::ingest_sentinel2_timeseries(
-            con               = con,
-            zone_id           = zone_id,
-            start             = start,
-            end               = end,
-            bands             = bands,
-            max_cloud         = max_cloud,
-            skip_cached       = skip_cached,
-            cache_dir         = cache_dir,
-            progress_callback = progress_cb,
-            # v0.52.0 - cancel cooperatif (nemeton@v0.53.0). Le worker
-            # polled `file.exists(cancel_path)` entre chaque tuile ; si
-            # present -> sortie propre avec commit partiel + resume
-            # `status = "cancelled"`. Le caller (mod_monitoring) ecrit
-            # le fichier sur clic " Annuler le diagnostic ", et le
-            # supprime avant chaque lancement pour eviter un cancel
-            # fantome persistant.
-            cancel_path       = cancel_path,
-            # v0.55.0 - pre-calcul natif des 4 cartes FAST (spec 018
-            # nemeton@v0.61.0). Quand `prewarm_alerts = TRUE`, le coeur
-            # enchaine 4 `read_fast_alert_raster()` (NDVI/NBR x count/
-            # rolling) en fin d'ingestion reussie + remplit le cache
-            # D6 sous `<prewarm_mask_cache_dir>/zone_<id>/`. Le
-            # `progress_callback` emet les events `fast_prewarm:*`
-            # consommes par l'observer parent.
-            prewarm_alerts         = prewarm_alerts,
-            prewarm_mask_cache_dir = prewarm_mask_cache_dir
-          ),
+          # Appel du coeur isole dans `.fast_ingest_coeur()` : cancel
+          # cooperatif (nemeton@v0.53.0), pre-calcul natif des cartes FAST
+          # (spec 018) et `source_s2` (mission 099, rien sans choix).
+          .fast_ingest_coeur(
+            con = con, zone_id = zone_id, start = start, end = end,
+            bands = bands, max_cloud = max_cloud, skip_cached = skip_cached,
+            cache_dir = cache_dir, progress_callback = progress_cb,
+            cancel_path = cancel_path, prewarm_alerts = prewarm_alerts,
+            prewarm_mask_cache_dir = prewarm_mask_cache_dir,
+            source_s2 = source_s2),
           # Catch every `message()` signaled by nemeton - including
           # `.s2_cache_log()` traces (gated on NEMETON_S2_CACHE_DEBUG)
           # AND cli's `cli_alert_*` / `cli_inform` calls (cli inherits
@@ -723,7 +748,10 @@ run_fordead_async <- function() {
                                    marker_path = NULL,
                                    # Nom d'affichage (projet) resolu cote parent
                                    # - cf. run_ingestion_async. NULL -> repli DB.
-                                   project_name = NULL) {
+                                   project_name = NULL,
+                                   # Mission 099 : source Sentinel-2 du projet
+                                   # (NULL = par methode, rien n'est passe).
+                                   source_s2 = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -840,29 +868,15 @@ run_fordead_async <- function() {
           fun = "run_fordead_dieback",
           log_path = child_log,
           marker_path = marker_path,
-          args = list(
-            zone_id           = zone_id,
-            cache_dir         = cache_dir,
-            dates_training    = dates_training,
-            dates_monitoring  = dates_monitoring,
+          # Arguments construits par `.fordead_args_coeur()` (mission 099 :
+          # `source_s2` seulement si le projet en a choisi un).
+          args = .fordead_args_coeur(
+            zone_id = zone_id, cache_dir = cache_dir,
+            dates_training = dates_training, dates_monitoring = dates_monitoring,
             threshold_anomaly = threshold_anomaly,
-            vegetation_index  = vegetation_index,
-            # v0.71.1 - Forward output_dir + keep_output au coeur
-            # (`nemeton::run_fordead_dieback`). Par defaut le coeur
-            # utilisait `tempfile("fordead_")` -> /tmp. Desormais les
-            # outputs intermediaires (training, masks bruts) vivent
-            # sous `<projet>/cache/layers/fordead/output_zone_<id>` et
-            # sont preserves (`keep_output = TRUE`) - inspectables.
-            # NULL = retombe sur le defaut coeur (back-compat).
-            output_dir        = output_dir,
-            keep_output       = keep_output,
-            # v0.52.0 - cancel cooperatif (nemeton@v0.53.0). L'enfant
-            # polle `file.exists(cancel_path)` entre phases reticulate
-            # (training -> monitoring -> ecriture alertes). Granularite
-            # plus grossiere que FAST mais coherente - l'utilisateur
-            # sait qu'il abandonne au prochain checkpoint.
-            cancel_path       = cancel_path
-          ),
+            vegetation_index = vegetation_index, output_dir = output_dir,
+            keep_output = keep_output, cancel_path = cancel_path,
+            source_s2 = source_s2),
           db_url            = child_db_url,
           progress_path     = progress_path,
           progress_callback = ntfy_cb
@@ -953,7 +967,10 @@ run_reconfort_async <- function() {
                                    marker_path = NULL,
                                    # Nom d'affichage (projet) resolu cote parent
                                    # - cf. run_ingestion_async. NULL -> repli DB.
-                                   project_name = NULL) {
+                                   project_name = NULL,
+                                   # Mission 099 : source Sentinel-2 du projet
+                                   # (NULL = par methode, rien n'est passe).
+                                   source_s2 = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -1055,13 +1072,10 @@ run_reconfort_async <- function() {
           fun = "run_reconfort_dieback",
           log_path = child_log,
           marker_path = marker_path,
-          args = list(
-            zone_id     = zone_id,
-            cache_dir   = cache_dir,
-            s2_year     = s2_year,
-            output_dir  = output_dir,
-            cancel_path = cancel_path
-          ),
+          args = .reconfort_args_coeur(
+            zone_id = zone_id, cache_dir = cache_dir, s2_year = s2_year,
+            output_dir = output_dir, cancel_path = cancel_path,
+            source_s2 = source_s2),
           db_url            = child_db_url,
           progress_path     = progress_path,
           progress_callback = ntfy_cb
@@ -1446,8 +1460,11 @@ run_reconfort_async <- function() {
   if (is.null(project) || is.null(project$path)) return(NULL)
   zone_id <- suppressWarnings(as.integer(zone_id)[1])
   if (length(zone_id) != 1L || is.na(zone_id)) return(NULL)
-  zdir <- file.path(project$path, "cache", "layers", "fordead",
-                    paste0("zone_", zone_id))
+  # Mission 099 : le dernier run FORDEAD peut etre dans `fordead_theia`.
+  zdir <- file.path(
+    .source_s2_dossier_methode("fordead", project$path,
+                               project_source_s2(project$metadata), zone_id),
+    paste0("zone_", zone_id))
   if (!dir.exists(zdir)) return(NULL)
   masks <- list.files(zdir, pattern = "^dieback_mask_.*\\.tif$",
                       full.names = TRUE)

@@ -261,6 +261,7 @@ mod_monitoring_fast_alerts_ui <- function(id) {
       # resolution Sentinel-2 (10 m) et decrit ce qui est peint selon le
       # mode (frequence / intensite) et l'indice. Output SEPARE du
       # leafletOutput (comme `banner`) -> re-render sans detruire la map.
+      shiny::uiOutput(ns("source_s2")),
       shiny::uiOutput(ns("resolution_badge")),
       shiny::uiOutput(ns("banner")),
       leaflet::leafletOutput(ns("map"), height = "55vh")
@@ -298,6 +299,14 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
+    })
+
+    # Mission 099 : source Sentinel-2 du dernier run FAST.
+    output$source_s2 <- shiny::renderUI({
+      refresh_r()
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      .source_s2_ligne_ui(.source_s2_info_projet("fast", proj), i18n_r())
     })
 
     # v0.53.0 - capture la derniere cause d'echec du raster (NULL =
@@ -406,7 +415,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (is.null(ppath) || !nzchar(ppath)) return(NULL)
       cd <- file.path(ppath, "cache", "layers", "sentinel2")
       if (!dir.exists(cd)) return(NULL)
-      cd
+      # Mission 099 : source THEIA -> cache frere `<cache>_theia` ; sans choix,
+      # ou en Sen2Cor, le cache d'avant.
+      .source_s2_dossier_lecture(cd, project_source_s2(proj$metadata),
+                                methode = "fast")
     })
 
     # Inventaire disque des scenes S2 cachees (scene_id + obs_date), requis
