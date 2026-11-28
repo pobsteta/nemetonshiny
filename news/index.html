@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9027</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.11.6.9028</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="2026.11.6.9028" id="nemetonshiny-20261169028-en-développement">nemetonshiny 2026.11.6.9028 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169028-en-d%C3%A9veloppement"></a></h2>
+<p>Demande le cœur <strong>nemeton &gt;= 2026.11.47</strong> (<code>Imports</code>). Aucun changement cassant (mission 099).</p>
+<div class="section level3">
+<h3 id="changements-2026-11-6-9028">Changements<a class="anchor" aria-label="anchor" href="#changements-2026-11-6-9028"></a></h3>
+<ul><li>
+<strong>Source Sentinel-2 du suivi sanitaire, au choix par projet</strong> (mission 099 ; décisions de Pascal du 2026-11-27, cœur 2026.11.47). Aucune logique métier : <code>R/service_source_s2.R</code> passe <code>source_s2</code> aux appels <code>nemeton::</code> et lit les métadonnées du dernier run.
+<ul><li>
+<strong>Réglage</strong> (Sources &amp; paramètres) : « par méthode (recommandé) » (défaut, y compris pour les projets existants : la clé <code>source_s2</code> des métadonnées est absente), « THEIA (MAJA) » ou « Sen2Cor (Planetary Computer) ». Aucune migration : un projet sans réglage se comporte comme avant.</li>
+<li>
+<strong>Transmission</strong> : <code>source_s2</code> est passé à FAST (ingestion), FORDEAD, RECONFORT et l’ICD seulement quand un choix existe ; « par méthode » laisse les appels inchangés.</li>
+<li>
+<strong>Lecture</strong> : avec THEIA, l’ICD est lu dans <code>&lt;result_dir&gt;_theia</code>, FORDEAD dans <code>&lt;mask_cache_dir&gt;_theia</code>, FAST dans <code>&lt;cache&gt;_theia</code> (repli sur le dossier d’origine si le run a basculé sur Sen2Cor).</li>
+<li>
+<strong>Affichage</strong> : sur FAST, FORDEAD, RECONFORT et l’ICD, une ligne « Source : … », le badge d’avertissement « indicatif » quand <code>calee_sur</code> diffère de la source effective (la <code>mention</code> du cœur en infobulle), et une ligne « repli : … » quand il a eu lieu. Pas de champ <code>validee</code>.</li>
+<li>
+<strong>Correctifs de relecture</strong> : toutes les lectures FAST, FORDEAD et ICD (plan de validation, réconciliation FORDEAD, dossier de sortie FORDEAD) suivent la source ; quand le dossier d’origine et son frère <code>_theia</code> portent un résultat, le plus récent (métadonnée du run, témoin FAST) est lu ; un run ancien sans <code>source_s2</code> est lu sur le défaut de la méthode ; le témoin FAST est invalidé au lancement ; les replis de voie RECONFORT (THEIA vers GEODES) ont leur message et « repli : » n’est jamais affiché sans cause. Les appels du cœur de FAST, FORDEAD et RECONFORT passent par des fonctions d’arguments testées par stubs.</li>
+<li>
+<strong>Messages</strong> : les repli et résultats hors calage deviennent des notifications lisibles ; un refus ou une absence de clés THEIA renvoie vers Sources &amp; paramètres, sans pile d’appels.</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2026.11.6.9027" id="nemetonshiny-20261169027-en-développement">nemetonshiny 2026.11.6.9027 (en développement)<a class="anchor" aria-label="anchor" href="#nemetonshiny-20261169027-en-d%C3%A9veloppement"></a></h2>
 <p>Demande le cœur <strong>nemeton &gt;= 2026.11.46</strong> (<code>Imports</code>). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084, 086, 088 et 097).</p>
