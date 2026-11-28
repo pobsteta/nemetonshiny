@@ -2492,6 +2492,10 @@ mod_monitoring_server <- function(id, app_state) {
       .fast_cancel_flag <- .resolve_progress_path(
         app_state$current_project, "fast_cancel.flag")
 
+      # Mission 099 : le temoin de source du run precedent ne doit pas decrire
+      # celui-ci s'il echoue ou s'il est annule.
+      .source_s2_invalider_temoin_fast(cache_dir)
+
       fast_task$invoke(
         zone_id       = zone_id_int,
         start         = d_from,
@@ -4596,8 +4600,11 @@ mod_monitoring_server <- function(id, app_state) {
   if (is.null(project) || is.null(project$path)) return(NULL)
   zid <- suppressWarnings(as.integer(zone_id))
   if (length(zid) != 1L || is.na(zid)) return(NULL)
-  out_dir <- file.path(project$path, "cache", "layers", "fordead",
-                       sprintf("output_zone_%d", zid))
+  # Mission 099 : sous THEIA, le dossier de FORDEAD est son frere `_theia`.
+  out_dir <- file.path(
+    .source_s2_dossier(file.path(project$path, "cache", "layers", "fordead"),
+                       project_source_s2(project$metadata)),
+    sprintf("output_zone_%d", zid))
   if (!dir.exists(out_dir)) {
     tryCatch(
       dir.create(out_dir, recursive = TRUE, showWarnings = FALSE),

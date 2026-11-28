@@ -182,7 +182,8 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       if (!dir.exists(cd)) return(NULL)
       # Mission 099 : source THEIA -> cache frere `<cache>_theia` ; sans choix,
       # ou en Sen2Cor, le cache d'avant.
-      .source_s2_dossier_lecture(cd, project_source_s2(proj$metadata))
+      .source_s2_dossier_lecture(cd, project_source_s2(proj$metadata),
+                                methode = "fast")
     })
 
     # v0.52.16 - `scenes_df_r` est desormais purement disk-driven : on

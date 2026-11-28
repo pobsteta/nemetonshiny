@@ -3629,6 +3629,10 @@ TRANSLATIONS <- list(
     fr = "repli : %s",
     en = "fallback: %s"
   ),
+  s2_repli_sans_cause = list(
+    fr = "repli sur Sen2Cor (cause non enregistr\u00e9e)",
+    en = "fallback to Sen2Cor (cause not recorded)"
+  ),
   s2_notif_repli = list(
     fr = "THEIA indisponible : la s\u00e9rie enti\u00e8re a \u00e9t\u00e9 refaite sur Sen2Cor (%s).",
     en = "THEIA unavailable: the whole series was redone on Sen2Cor (%s)."

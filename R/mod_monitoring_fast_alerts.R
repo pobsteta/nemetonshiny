@@ -417,7 +417,8 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (!dir.exists(cd)) return(NULL)
       # Mission 099 : source THEIA -> cache frere `<cache>_theia` ; sans choix,
       # ou en Sen2Cor, le cache d'avant.
-      .source_s2_dossier_lecture(cd, project_source_s2(proj$metadata))
+      .source_s2_dossier_lecture(cd, project_source_s2(proj$metadata),
+                                methode = "fast")
     })
 
     # Inventaire disque des scenes S2 cachees (scene_id + obs_date), requis

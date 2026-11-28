@@ -65,15 +65,47 @@ set_project_source_s2 <- function(project_id, source_s2 = NULL) {
   if (endsWith(base, "_theia")) base else paste0(base, "_theia")
 }
 
+# Horodatage du dernier run d'un dossier de resultats, pour departager le
+# dossier d'origine et son frere `_theia`. La metadonnee du run fait foi
+# (`meta.json` de l'ICD, `run_meta.json` de FORDEAD) ; a defaut, le fichier le
+# plus recent de la zone ; pour FAST (cache sans zone), le temoin de l'app.
+.source_s2_horodatage <- function(dossier, zone_id = NULL, methode = NULL) {
+  cible <- if (is.null(zone_id)) dossier else
+    file.path(dossier, sprintf("zone_%s", zone_id))
+  nom <- switch(if (is.null(methode)) "" else methode,
+                icd = "meta.json", fordead = "run_meta.json",
+                fast = "app_source_s2_fast.json", NULL)
+  if (!is.null(nom)) {
+    f <- list.files(cible, pattern = paste0("^", gsub("\\.", "\\\\.", nom), "$"),
+                    recursive = TRUE, full.names = TRUE)
+    if (length(f)) return(max(as.numeric(file.mtime(f)), na.rm = TRUE))
+  }
+  tous <- list.files(cible, recursive = TRUE, full.names = TRUE)
+  if (length(tous)) return(max(as.numeric(file.mtime(tous)), na.rm = TRUE))
+  as.numeric(file.mtime(cible))
+}
+
 # Dossier ou lire les resultats du dernier run. Sans choix, ou en Sen2Cor : le
-# dossier d'avant. En THEIA : `<dossier>_theia` s'il porte un resultat (de la
-# zone, quand elle est connue) ; sinon le dossier d'origine, ou le coeur a
-# range un run qui a bascule sur Sen2Cor (repli).
-.source_s2_dossier_lecture <- function(dossier, source_s2, zone_id = NULL) {
+# dossier d'avant. En THEIA : `<dossier>_theia` quand il porte un resultat (de
+# la zone, si elle est connue). Quand les deux dossiers en portent un (un run
+# THEIA ancien, puis un run recent qui a bascule sur Sen2Cor, ou l'inverse),
+# c'est le plus recent qui est lu : pour FAST, la source dite par le temoin.
+.source_s2_dossier_lecture <- function(dossier, source_s2, zone_id = NULL,
+                                       methode = NULL) {
   d <- .source_s2_dossier(dossier, source_s2)
   if (identical(d, dossier)) return(dossier)
-  cible <- if (is.null(zone_id)) d else file.path(d, sprintf("zone_%s", zone_id))
-  if (dir.exists(cible)) d else dossier
+  a_un <- function(x) dir.exists(if (is.null(zone_id)) x else
+    file.path(x, sprintf("zone_%s", zone_id)))
+  if (!a_un(d)) return(dossier)
+  if (!a_un(dossier)) return(d)
+  if (identical(methode, "fast")) {
+    t <- .source_s2_lire_json(file.path(dossier, "app_source_s2_fast.json"))
+    if (!is.null(t$source_s2)) {
+      return(if (identical(t$source_s2, "theia")) d else dossier)
+    }
+  }
+  if (.source_s2_horodatage(d, zone_id, methode) >=
+      .source_s2_horodatage(dossier, zone_id, methode)) d else dossier
 }
 
 # --- Metadonnees du dernier run -----------------------------------------------
@@ -121,6 +153,15 @@ set_project_source_s2 <- function(project_id, source_s2 = NULL) {
 
 # Temoin FAST : l'ingestion rend `source_s2` et `repli_sen2cor` ; l'app les range
 # a cote du cache pour que la carte les relise sans relancer le calcul.
+# Il est invalide au LANCEMENT de chaque ingestion, puis reecrit au succes : sur
+# echec ou annulation, il ne decrit jamais un run precedent.
+.source_s2_invalider_temoin_fast <- function(cache_dir) {
+  if (is.null(cache_dir) || !nzchar(cache_dir)) return(invisible(FALSE))
+  f <- file.path(cache_dir, "app_source_s2_fast.json")
+  if (file.exists(f)) unlink(f)
+  invisible(!file.exists(f))
+}
+
 .source_s2_ecrire_temoin_fast <- function(cache_dir, resume, choix = NULL) {
   if (is.null(cache_dir) || !nzchar(cache_dir)) return(invisible(FALSE))
   f <- file.path(cache_dir, "app_source_s2_fast.json")
@@ -139,9 +180,12 @@ set_project_source_s2 <- function(project_id, source_s2 = NULL) {
   if (!is.null(info) && !is.na(info$mention)) meta$mention_source <- info$mention
   tryCatch({
     dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-    writeLines(jsonlite::toJSON(meta, auto_unbox = TRUE), f)
+    suppressWarnings(writeLines(jsonlite::toJSON(meta, auto_unbox = TRUE), f))
     invisible(TRUE)
-  }, error = function(e) invisible(FALSE))
+  }, error = function(e) {
+    cli::cli_warn("FAST source witness not written ({conditionMessage(e)}).")
+    invisible(FALSE)
+  })
 }
 
 # Cause de repli, en une ligne lisible (jamais de pile d'appels).
@@ -160,19 +204,20 @@ set_project_source_s2 <- function(project_id, source_s2 = NULL) {
 #'
 #' @param methode `"fast"`, `"fordead"`, `"reconfort"` ou `"icd"`.
 #' @param meta Metadonnees du dernier run (liste) ou `NULL`.
-#' @param choix Choix du projet (`NULL`, `"theia"`, `"sen2cor"`).
 #' @return Liste : `source`, `calee_sur`, `indicatif`, `mention`, `repli`,
-#'   `cause`.
+#'   `repli_vers` (`"sen2cor"` ou `"voie"` : changement de voie d'acquisition
+#'   de RECONFORT, THEIA vers GEODES), `cause`. Un run dont les metadonnees ne
+#'   disent pas la source (run ancien) est lu sur le defaut de la methode, jamais
+#'   sur le choix actuel du projet.
 #' @noRd
-source_s2_info <- function(methode, meta = NULL, choix = NULL) {
-  choix <- .source_s2_normaliser(choix)
+source_s2_info <- function(methode, meta = NULL) {
   defaut <- nemeton::s2_source_resoudre(methode)
   source <- .source_s2_normaliser(meta$source_s2)
   if (is.null(source) && identical(methode, "reconfort") &&
       identical(meta$source_reflectances, "sen2cor")) {
     source <- "sen2cor"
   }
-  source <- source %||% choix %||% defaut$source_s2
+  source <- source %||% defaut$source_s2
   calee <- .source_s2_normaliser(meta$calee_sur) %||% defaut$calee_sur
   indicatif <- !identical(source, calee)
   mention <- NULL
@@ -186,8 +231,12 @@ source_s2_info <- function(methode, meta = NULL, choix = NULL) {
   causes <- unlist(meta$causes_repli)
   repli <- isTRUE(meta$repli_sen2cor) || length(causes) > 0L
   cause <- if (!is.null(meta$cause_repli)) meta$cause_repli else causes
+  # Repli de RECONFORT sans passage par Sen2Cor : changement de voie.
+  vers <- if (identical(source, "sen2cor") || isTRUE(meta$repli_sen2cor) ||
+              identical(meta$source_reflectances, "sen2cor")) "sen2cor" else "voie"
   list(source = source, calee_sur = calee, indicatif = indicatif,
        mention = mention, repli = repli,
+       repli_vers = if (repli) vers else NA_character_,
        cause = if (repli) paste(as.character(unlist(cause)), collapse = " ; ")
                else NA_character_)
 }
@@ -214,10 +263,12 @@ source_s2_info <- function(methode, meta = NULL, choix = NULL) {
       i18n$t("s2_indicatif"))
   }
   repli <- if (isTRUE(info$repli)) {
+    cause <- .source_s2_cause_lisible(info$cause, i18n)
     htmltools::div(
       class = "small text-warning-emphasis",
-      sprintf(i18n$t("s2_repli_ligne"),
-              .source_s2_cause_lisible(info$cause, i18n)))
+      # Jamais "repli :" suivi de rien quand la cause n'est pas enregistree.
+      if (nzchar(cause)) sprintf(i18n$t("s2_repli_ligne"), cause)
+      else i18n$t("s2_repli_sans_cause"))
   }
   htmltools::div(
     class = "small text-muted mb-1",
@@ -226,10 +277,6 @@ source_s2_info <- function(methode, meta = NULL, choix = NULL) {
 }
 
 # --- Avertissements et erreurs du coeur ---------------------------------------
-
-S2_CLASSES_AVERTISSEMENT <- c(
-  "nemeton_s2_repli_sen2cor", "nemeton_s2_source_non_calee",
-  "nemeton_reconfort_repli_archive", "nemeton_reconfort_repli_sen2cor")
 
 S2_CLASSES_CLES_THEIA <- c(
   "nemeton_s2_theia_refuse", "nemeton_s2_theia_sans_cles",
@@ -256,22 +303,6 @@ S2_CLASSES_CLES_THEIA <- c(
   i18n$t("s2_err_cles_theia")
 }
 
-# Message lisible d'un avertissement du coeur (condition), NULL si la classe
-# n'est pas l'une des quatre.
-.source_s2_message_avertissement <- function(w, i18n) {
-  if (!inherits(w, S2_CLASSES_AVERTISSEMENT)) return(NULL)
-  cause <- .source_s2_cause_lisible(
-    sub("^.*?\\(([^)]*)\\).*$", "\\1",
-        cli::ansi_strip(conditionMessage(w)), perl = TRUE), i18n)
-  if (inherits(w, "nemeton_s2_source_non_calee")) {
-    return(i18n$t("s2_notif_hors_calage"))
-  }
-  if (inherits(w, "nemeton_reconfort_repli_archive")) {
-    return(sprintf(i18n$t("s2_notif_repli_voie"), cause))
-  }
-  sprintf(i18n$t("s2_notif_repli"), cause)
-}
-
 # Notifications lisibles de fin de run, deduites des metadonnees (elles
 # traversent la frontiere de process, contrairement aux avertissements) : repli
 # et resultat indicatif. Rend la liste des textes ; `notifier` les affiche.
@@ -279,8 +310,14 @@ S2_CLASSES_CLES_THEIA <- c(
   if (is.null(info)) return(character())
   out <- character()
   if (isTRUE(info$repli)) {
-    out <- c(out, sprintf(i18n$t("s2_notif_repli"),
-                          .source_s2_cause_lisible(info$cause, i18n)))
+    cause <- .source_s2_cause_lisible(info$cause, i18n)
+    out <- c(out, if (!nzchar(cause)) {
+      i18n$t("s2_repli_sans_cause")
+    } else if (identical(info$repli_vers, "voie")) {
+      sprintf(i18n$t("s2_notif_repli_voie"), cause)
+    } else {
+      sprintf(i18n$t("s2_notif_repli"), cause)
+    })
   }
   if (isTRUE(info$indicatif)) {
     out <- c(out, sprintf(i18n$t("s2_notif_hors_calage"),
@@ -292,10 +329,10 @@ S2_CLASSES_CLES_THEIA <- c(
 }
 
 # Affiche ces notifications (presentation seule).
-.source_s2_notifier <- function(methode, dossier, zone_id, choix, i18n) {
+.source_s2_notifier <- function(methode, dossier, zone_id, i18n) {
   meta <- .source_s2_meta_run(methode, dossier, zone_id)
   if (is.null(meta)) return(invisible(character()))
-  info <- source_s2_info(methode, meta, choix)
+  info <- source_s2_info(methode, meta)
   msgs <- .source_s2_notifications(methode, info, i18n)
   for (m in msgs) shiny::showNotification(m, type = "warning", duration = 12)
   invisible(msgs)
@@ -314,10 +351,10 @@ S2_CLASSES_CLES_THEIA <- c(
     methode,
     fast = file.path(base, "sentinel2"),
     fordead = .source_s2_dossier_lecture(file.path(base, "fordead"), choix,
-                                         zone_id),
+                                         zone_id, "fordead"),
     reconfort = file.path(base, "reconfort"),
     icd = .source_s2_dossier_lecture(.icd_result_dir(project_path), choix,
-                                     zone_id),
+                                     zone_id, "icd"),
     NULL)
 }
 
@@ -325,7 +362,7 @@ S2_CLASSES_CLES_THEIA <- c(
 .source_s2_info_projet <- function(methode, project, zone_id = NULL) {
   choix <- project_source_s2(project$metadata)
   d <- .source_s2_dossier_methode(methode, project$path, choix, zone_id)
-  source_s2_info(methode, .source_s2_meta_run(methode, d, zone_id), choix)
+  source_s2_info(methode, .source_s2_meta_run(methode, d, zone_id))
 }
 
 # Notifications de fin de run pour un projet.
@@ -334,5 +371,5 @@ S2_CLASSES_CLES_THEIA <- c(
   .source_s2_notifier(methode,
                       .source_s2_dossier_methode(methode, project$path, choix,
                                                  zone_id),
-                      zone_id, choix, i18n)
+                      zone_id, i18n)
 }

@@ -212,7 +212,8 @@ generate_validation_plan <- function(con, project,
   cd <- file.path(project$path, "cache", "layers", sub)
   # Mission 099 : un run FORDEAD sur THEIA est range dans `fordead_theia`.
   if (identical(source, "FORDEAD")) {
-    cd <- .source_s2_dossier_lecture(cd, project_source_s2(project$metadata))
+    cd <- .source_s2_dossier_lecture(cd, project_source_s2(project$metadata),
+                                     methode = "fordead")
   }
   if (!dir.exists(cd)) return(none)
   strate <- suppressWarnings(as.integer(zone_id))
@@ -307,7 +308,9 @@ generate_trend_sanitary_plan <- function(con, project,
   if (length(zone_id) != 1L || is.na(zone_id)) {
     rlang::abort("No monitoring zone selected.", class = "validation_no_zone")
   }
-  cd <- file.path(project$path, "cache", "layers", "sentinel2")
+  cd <- .source_s2_dossier_lecture(
+    file.path(project$path, "cache", "layers", "sentinel2"),
+    project_source_s2(project$metadata), methode = "fast")
   if (!dir.exists(cd)) {
     rlang::abort("Sentinel-2 cache not found for this project.",
                  class = "validation_no_mask")
@@ -424,7 +427,9 @@ generate_trend_sanitary_plan <- function(con, project,
     )
     return(NULL)
   }
-  s2_cache <- file.path(project$path, "cache", "layers", "sentinel2")
+  s2_cache <- .source_s2_dossier_lecture(
+    file.path(project$path, "cache", "layers", "sentinel2"),
+    project_source_s2(project$metadata), methode = "fast")
   if (!dir.exists(s2_cache)) {
     cli::cli_alert_warning(
       "FAST mask compute requires a populated Sentinel-2 cache."
@@ -499,7 +504,8 @@ generate_trend_sanitary_plan <- function(con, project,
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
 
   if (identical(source, "FORDEAD")) {
-    cd <- file.path(project$path, "cache", "layers", "fordead")
+    cd <- .source_s2_dossier_methode("fordead", project$path,
+                                     project_source_s2(project$metadata))
     if (!dir.exists(cd)) return(NULL)
     id_tot <- if (is.null(read_zone_id)) {
       .monitoring_tot_zone_id(con, project, zone_id)
@@ -556,7 +562,9 @@ generate_trend_sanitary_plan <- function(con, project,
 .extract_mask_run_id <- function(project, source, zone_id) {
   if (is.null(project$path)) return(NA_character_)
   base <- if (identical(source, "FORDEAD")) {
-    file.path(project$path, "cache", "layers", "fordead",
+    file.path(.source_s2_dossier_methode("fordead", project$path,
+                                         project_source_s2(project$metadata),
+                                         zone_id),
               sprintf("zone_%d", zone_id))
   } else if (identical(source, "RECONFORT")) {
     file.path(project$path, "cache", "layers", "reconfort",
