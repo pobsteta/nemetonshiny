@@ -1,3 +1,16 @@
+# nemetonshiny 2026.11.6.9028 (en développement)
+
+Demande le cœur **nemeton >= 2026.11.47** (`Imports`). Aucun changement cassant (mission 099).
+
+## Changements
+
+- **Source Sentinel-2 du suivi sanitaire, au choix par projet** (mission 099 ; décisions de Pascal du 2026-11-27, cœur 2026.11.47). Aucune logique métier : `R/service_source_s2.R` passe `source_s2` aux appels `nemeton::` et lit les métadonnées du dernier run.
+  - **Réglage** (Sources & paramètres) : « par méthode (recommandé) » (défaut, y compris pour les projets existants : la clé `source_s2` des métadonnées est absente), « THEIA (MAJA) » ou « Sen2Cor (Planetary Computer) ». Aucune migration : un projet sans réglage se comporte comme avant.
+  - **Transmission** : `source_s2` est passé à FAST (ingestion), FORDEAD, RECONFORT et l'ICD seulement quand un choix existe ; « par méthode » laisse les appels inchangés.
+  - **Lecture** : avec THEIA, l'ICD est lu dans `<result_dir>_theia`, FORDEAD dans `<mask_cache_dir>_theia`, FAST dans `<cache>_theia` (repli sur le dossier d'origine si le run a basculé sur Sen2Cor).
+  - **Affichage** : sur FAST, FORDEAD, RECONFORT et l'ICD, une ligne « Source : … », le badge d'avertissement « indicatif » quand `calee_sur` diffère de la source effective (la `mention` du cœur en infobulle), et une ligne « repli : … » quand il a eu lieu. Pas de champ `validee`.
+  - **Messages** : les repli et résultats hors calage deviennent des notifications lisibles ; un refus ou une absence de clés THEIA renvoie vers Sources & paramètres, sans pile d'appels.
+
 # nemetonshiny 2026.11.6.9027 (en développement)
 
 Demande le cœur **nemeton >= 2026.11.46** (`Imports`). Aucun changement cassant (missions 043, 048, 063, 066, 067, 068, 069, 070, 072, 073, 075, 077, 078, 080, 083, 084, 086, 088 et 097).

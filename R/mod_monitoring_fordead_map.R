@@ -174,7 +174,9 @@ mod_monitoring_fordead_map_ui <- function(id) {
   htmltools::div(
     style = "position: relative;",
     leaflet::leafletOutput(ns("map"), height = "55vh"),
-    shiny::uiOutput(ns("overlay"))
+    shiny::uiOutput(ns("overlay")),
+    # Mission 099 : source Sentinel-2 effective du dernier run.
+    shiny::uiOutput(ns("source_s2"))
   )
 }
 
@@ -216,6 +218,17 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       get_i18n(app_state$language %||% "fr")
     })
 
+    output$source_s2 <- shiny::renderUI({
+      refresh_r()
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      z <- suppressWarnings(as.integer(zone_id_r()))
+      .source_s2_ligne_ui(
+        .source_s2_info_projet("fordead", proj,
+                               if (length(z) == 1L && !is.na(z)) z else NULL),
+        i18n_r())
+    })
+
     # Phase A (spec 008 sect.15, D2) - FORDEAD est calcule sur la zone `_tot`
     # (union des UGFs). Le masque ET la serie pixel vivent donc sous
     # `cache/layers/fordead/zone_<id_tot>/`. Ce helper resout l'id `_tot`
@@ -250,7 +263,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return(NULL)
-      cd <- file.path(proj$path, "cache", "layers", "fordead")
+      cd <- .source_s2_dossier_methode("fordead", proj$path, project_source_s2(proj$metadata))
       if (!dir.exists(cd)) return(NULL)
       # perf - reutilise la connexion RO du parent si fournie ; sinon
       # ouvre la sienne (back-compat / tests) et la ferme.
@@ -340,7 +353,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return(NULL)
-      cd <- file.path(proj$path, "cache", "layers", "fordead")
+      cd <- .source_s2_dossier_methode("fordead", proj$path, project_source_s2(proj$metadata))
       if (!dir.exists(cd)) return(NULL)
       own_con <- is.null(con_provider)
       con <- if (own_con)
@@ -648,7 +661,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(zone) || !isTRUE(nzchar(zone))) return()
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return()
-      cd <- file.path(proj$path, "cache", "layers", "fordead")
+      cd <- .source_s2_dossier_methode("fordead", proj$path, project_source_s2(proj$metadata))
       if (!dir.exists(cd)) return()
       lat <- input$map_click$lat
       lng <- input$map_click$lng

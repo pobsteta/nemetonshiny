@@ -153,6 +153,9 @@ mod_sources_config_ui <- function(id) {
     # d'ou un bloc distinct sur toute la largeur plutot qu'une troisieme
     # colonne : le lecteur ne doit pas croire qu'il active une donnee.
     shiny::uiOutput(ns("aef_block")),
+    # Source Sentinel-2 du suivi sanitaire (mission 099) : un choix par projet,
+    # transmis a FAST, FORDEAD, RECONFORT et l'ICD.
+    shiny::uiOutput(ns("s2_block")),
     shiny::uiOutput(ns("fast_block")),
     # Poids de la formule de l'ICD (indicateur composite de decoloration) :
     # un calibrage par projet, a cote des seuils FAST et FORDEAD.
@@ -207,7 +210,7 @@ mod_sources_config_server <- function(id, app_state) {
     # valeurs stockees et leurs modifications en cours disparaissaient.
     refresh <- shiny::reactiveValues(sufosat = 0, lst = 0, aef = 0, fast = 0, acc = 0,
                                      production = 0, desserte = 0, onf = 0,
-                                     regen = 0, video = 0, icd = 0)
+                                     regen = 0, video = 0, icd = 0, s2 = 0)
 
     # Identifiant du projet, qui ne change qu'avec le projet (pas a chaque
     # rechargement du meme projet).
@@ -499,6 +502,58 @@ mod_sources_config_server <- function(id, app_state) {
         set_project_aef(pid, enabled = isTRUE(input$aef_enabled))
         .refresh_project(pid, "aef")
         shiny::showNotification(i18n$t("aef_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Source Sentinel-2 du suivi sanitaire (mission 099)
+    # ========================================
+
+    output$s2_block <- shiny::renderUI({
+      i18n <- i18n_r()
+      refresh$s2
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("s2_source_titre"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("s2_source_aide"))
+      pid <- .pid()
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mt-3 p-2 border rounded", header, hint,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("sources_need_project"))))
+      }
+      actuel <- .source_s2_vers_choix(project_source_s2(
+        shiny::isolate(app_state$current_project)$metadata))
+      choix <- stats::setNames(
+        c("methode", "theia", "sen2cor"),
+        c(i18n$t("s2_choix_methode"), i18n$t("s2_choix_theia"),
+          i18n$t("s2_choix_sen2cor")))
+      htmltools::div(
+        class = "mt-3 p-2 border rounded",
+        header, hint,
+        shiny::selectInput(ns("s2_source"), label = NULL, choices = choix,
+                           selected = actuel, width = "100%"),
+        shiny::actionButton(
+          ns("s2_save"), i18n$t("s2_source_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save")))
+    })
+
+    shiny::observeEvent(input$s2_save, {
+      i18n <- i18n_r()
+      if (deny_if_readonly(app_state)) return()
+      pid <- .pid()
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("sources_need_project"), type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_source_s2(pid, input$s2_source)
+        .refresh_project(pid, "s2")
+        shiny::showNotification(i18n$t("s2_source_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")

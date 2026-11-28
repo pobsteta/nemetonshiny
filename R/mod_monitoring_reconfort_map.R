@@ -78,6 +78,7 @@ mod_monitoring_reconfort_map_ui <- function(id) {
       # connectee " et au-dessus des sous-onglets - parite de placement et de
       # style avec le bandeau FORDEAD. Le module expose `validity` (voir le
       # `invisible(list(...))` de retour) que le parent consomme.
+      shiny::uiOutput(ns("source_s2")),
       htmltools::div(
         style = "position: relative;",
         leaflet::leafletOutput(ns("map"), height = "55vh"),
@@ -115,6 +116,18 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
 
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
+    })
+
+    # Mission 099 : source Sentinel-2 du dernier run, "indicatif" hors calage.
+    output$source_s2 <- shiny::renderUI({
+      refresh_r(); result_r()
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      z <- suppressWarnings(as.integer(run_zone_id_r()))
+      .source_s2_ligne_ui(
+        .source_s2_info_projet("reconfort", proj,
+                               if (length(z) == 1L && !is.na(z)) z else NULL),
+        i18n_r())
     })
 
     # ----- cache_dir resolver -------------------------------------------

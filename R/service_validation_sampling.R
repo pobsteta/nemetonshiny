@@ -210,6 +210,10 @@ generate_validation_plan <- function(con, project,
   if (is.null(project$path) || !nzchar(project$path)) return(none)
   sub <- if (identical(source, "FORDEAD")) "fordead" else "reconfort"
   cd <- file.path(project$path, "cache", "layers", sub)
+  # Mission 099 : un run FORDEAD sur THEIA est range dans `fordead_theia`.
+  if (identical(source, "FORDEAD")) {
+    cd <- .source_s2_dossier_lecture(cd, project_source_s2(project$metadata))
+  }
   if (!dir.exists(cd)) return(none)
   strate <- suppressWarnings(as.integer(zone_id))
   ids <- unique(c(.monitoring_tot_zone_id(con, project, strate), strate))

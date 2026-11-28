@@ -3577,6 +3577,74 @@ TRANSLATIONS <- list(
     fr = "Enregistrer les seuils",
     en = "Save thresholds"
   ),
+  s2_source_titre = list(
+    fr = "Source Sentinel-2 du suivi sanitaire",
+    en = "Sentinel-2 source for health monitoring"
+  ),
+  s2_source_aide = list(
+    fr = "RECONFORT est cal\u00e9 sur THEIA (MAJA) ; FAST, FORDEAD et l'ICD sont cal\u00e9s sur Sen2Cor. Un r\u00e9sultat obtenu hors de la source de calage est indicatif. Si THEIA est en panne, la s\u00e9rie enti\u00e8re est refaite sur Sen2Cor.",
+    en = "RECONFORT is calibrated on THEIA (MAJA); FAST, FORDEAD and the ICD on Sen2Cor. A result obtained off its calibration source is indicative. If THEIA is down, the whole series is redone on Sen2Cor."
+  ),
+  s2_choix_methode = list(
+    fr = "Par m\u00e9thode (recommand\u00e9)",
+    en = "Per method (recommended)"
+  ),
+  s2_choix_theia = list(
+    fr = "THEIA (MAJA)",
+    en = "THEIA (MAJA)"
+  ),
+  s2_choix_sen2cor = list(
+    fr = "Sen2Cor (Planetary Computer)",
+    en = "Sen2Cor (Planetary Computer)"
+  ),
+  s2_source_save = list(
+    fr = "Enregistrer la source",
+    en = "Save source"
+  ),
+  s2_source_saved = list(
+    fr = "Source Sentinel-2 enregistr\u00e9e",
+    en = "Sentinel-2 source saved"
+  ),
+  s2_src_theia = list(
+    fr = "THEIA (MAJA)",
+    en = "THEIA (MAJA)"
+  ),
+  s2_src_sen2cor = list(
+    fr = "Sen2Cor",
+    en = "Sen2Cor"
+  ),
+  s2_source_ligne = list(
+    fr = "Source : %s",
+    en = "Source: %s"
+  ),
+  s2_indicatif = list(
+    fr = "indicatif",
+    en = "indicative"
+  ),
+  s2_indicatif_aide = list(
+    fr = "M\u00e9thode lanc\u00e9e hors de sa source de calage : seuils \u00e0 revoir.",
+    en = "Method run off its calibration source: thresholds to be revisited."
+  ),
+  s2_repli_ligne = list(
+    fr = "repli : %s",
+    en = "fallback: %s"
+  ),
+  s2_notif_repli = list(
+    fr = "THEIA indisponible : la s\u00e9rie enti\u00e8re a \u00e9t\u00e9 refaite sur Sen2Cor (%s).",
+    en = "THEIA unavailable: the whole series was redone on Sen2Cor (%s)."
+  ),
+  s2_notif_repli_voie = list(
+    fr = "RECONFORT : changement de voie d'acquisition (%s).",
+    en = "RECONFORT: acquisition route changed (%s)."
+  ),
+  s2_notif_hors_calage = list(
+    fr = "%s est cal\u00e9 sur %s mais a tourn\u00e9 sur %s : r\u00e9sultat indicatif.",
+    en = "%s is calibrated on %s but ran on %s: indicative result."
+  ),
+  s2_err_cles_theia = list(
+    fr = "THEIA a refus\u00e9 la requ\u00eate : v\u00e9rifier les cl\u00e9s THEIA (TLD_ACCESS_KEY et TLD_SECRET_KEY) dans Sources & param\u00e8tres.",
+    en = "THEIA refused the request: check the THEIA keys (TLD_ACCESS_KEY and TLD_SECRET_KEY) in Sources & settings."
+  ),
   fast_params_saved = list(
     fr = "Suivi sanitaire : seuils enregistr\u00e9s",
     en = "Health monitoring: thresholds saved"

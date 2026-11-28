@@ -284,6 +284,15 @@ icd_comparer_fast <- function(zone_id, annee, result_dir, con = NULL,
     })
 }
 
+# Dossier ou le coeur a effectivement range les resultats : `<result_dir>_theia`
+# pour un run THEIA, le dossier d'origine sinon (aussi apres un repli sur
+# Sen2Cor, que le retour du coeur dit par `source_s2`). Le temoin de l'app y est
+# ecrit, a cote de `meta.json`.
+.icd_dossier_effectif <- function(result_dir, res, source_s2 = NULL) {
+  if (is.null(.source_s2_normaliser(source_s2))) return(result_dir)
+  .source_s2_dossier(result_dir, res$source_s2 %||% source_s2)
+}
+
 # --- SUFOSAT (coupes rases) ---------------------------------------------------
 
 # Rasters SUFOSAT deja en cache dans le projet (ecrits par le calcul des
@@ -327,7 +336,7 @@ icd_coupes_retirees <- function(result_dir, zone_id) {
 .icd_enfant <- function(con, zone_id, cache_dir, result_dir, poids,
                         bdforet_path, sufosat_dates_path = NULL,
                         sufosat_proba_path = NULL, progress_callback = NULL,
-                        cancel_path = NULL) {
+                        cancel_path = NULL, source_s2 = NULL) {
   bd <- tryCatch(sf::st_read(bdforet_path, quiet = TRUE),
                  error = function(e) NULL)
   if (is.null(bd) || !nrow(bd)) {
@@ -341,17 +350,20 @@ icd_coupes_retirees <- function(result_dir, zone_id) {
   }
   # `write_alerts` reste au defaut du coeur (TRUE) : les alertes de la derniere
   # annee vont dans la table `alert` (`alert_type = "icd_decoloration"`).
-  res <- nemeton::run_icd_decoloration(
+  # Mission 099 : `source_s2` n'est passe que si le projet en a choisi un ; le
+  # coeur range alors le resultat dans `<result_dir>_theia` pour THEIA.
+  res <- do.call(nemeton::run_icd_decoloration, c(list(
     con = con, zone_id = as.integer(zone_id), cache_dir = cache_dir,
     result_dir = result_dir, poids = poids, bdforet = bd,
     sufosat_dates = sd, sufosat_proba = sp,
-    progress_callback = progress_callback, cancel_path = cancel_path)
+    progress_callback = progress_callback, cancel_path = cancel_path),
+    .source_s2_args(source_s2)))
   if (identical(res$status, "error")) {
     stop(res$message %||% "ICD run failed", call. = FALSE)
   }
   if (identical(res$status, "success")) {
     .icd_ecrire_temoin(
-      result_dir, zone_id, res$poids, res$annees,
+      .icd_dossier_effectif(result_dir, res, source_s2), zone_id, res$poids, res$annees,
       annee_provisoire = as.integer(format(Sys.Date(), "%Y")),
       coupes_retirees = isTRUE(res$coupes_retirees))
   }
@@ -371,11 +383,13 @@ icd_coupes_retirees <- function(result_dir, zone_id) {
 .icd_executer <- function(db_url, zone_id, cache_dir, result_dir, poids,
                           bdforet_path, sufosat = NULL, progress_path = NULL,
                           cancel_path = NULL, marker_path = NULL,
-                          log_path = NULL, plafonne = .icd_plafond_possible()) {
+                          log_path = NULL, plafonne = .icd_plafond_possible(),
+                          source_s2 = NULL) {
   args <- list(zone_id = zone_id, cache_dir = cache_dir, result_dir = result_dir,
                poids = poids, bdforet_path = bdforet_path,
                sufosat_dates_path = sufosat$dates,
                sufosat_proba_path = sufosat$proba, cancel_path = cancel_path)
+  if (!is.null(.source_s2_normaliser(source_s2))) args$source_s2 <- source_s2
   if (isTRUE(plafonne)) {
     return(.run_capped(
       fun = ".icd_enfant", package = "nemetonshiny", args = args,
@@ -414,7 +428,8 @@ run_icd_async <- function() {
                                    result_dir = NULL, poids = NULL,
                                    bdforet_path = NULL, sufosat = NULL,
                                    db_url = "", progress_path = NULL,
-                                   cancel_path = NULL, marker_path = NULL) {
+                                   cancel_path = NULL, marker_path = NULL,
+                                   source_s2 = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -434,6 +449,7 @@ run_icd_async <- function() {
         result_dir = result_dir, poids = poids, bdforet_path = bdforet_path,
         sufosat = sufosat, progress_path = progress_path,
         cancel_path = cancel_path, marker_path = marker_path,
+        source_s2 = source_s2,
         log_path = .child_log_path(dirname(progress_path %||% "."), "icd"))
     }, seed = TRUE)
   })
